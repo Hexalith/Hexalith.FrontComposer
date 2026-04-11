@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hexalith FrontComposer - Design Direction Mockups</title>
+<style>
+  :root {
+    --accent: #0097A7;
+    --accent-hover: #00838F;
+    --accent-light: rgba(0, 151, 167, 0.12);
+    --accent-pulse: rgba(0, 151, 167, 0.25);
+    /* Light theme */
+    --bg-app: #fafafa;
+    --bg-surface: #ffffff;
+    --bg-surface-alt: #f5f5f5;
+    --bg-nav: #f0f0f0;
+    --bg-header: #ffffff;
+    --bg-card: #ffffff;
+    --bg-row-hover: #f5f5f5;
+    --bg-row-expand: #fafafa;
+    --text-primary: #242424;
+    --text-secondary: #616161;
+    --text-tertiary: #9e9e9e;
+    --text-on-accent: #ffffff;
+    --border: #e0e0e0;
+    --border-subtle: #eeeeee;
+    --shadow-card: 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-panel: 0 4px 12px rgba(0,0,0,0.08);
+    --success: #107c10;
+    --success-bg: rgba(16,124,16,0.08);
+    --warning: #c19c00;
+    --warning-bg: rgba(193,156,0,0.08);
+    --danger: #d13438;
+    --danger-bg: rgba(209,52,56,0.08);
+    --info: #0078d4;
+    --info-bg: rgba(0,120,212,0.08);
+    --neutral-badge: #616161;
+    --neutral-badge-bg: rgba(97,97,97,0.08);
+    --focus-ring: #242424;
+  }
+  [data-theme="dark"] {
+    --bg-app: #1a1a1a;
+    --bg-surface: #2d2d2d;
+    --bg-surface-alt: #252525;
+    --bg-nav: #202020;
+    --bg-header: #2d2d2d;
+    --bg-card: #333333;
+    --bg-row-hover: #383838;
+    --bg-row-expand: #303030;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --text-tertiary: #707070;
+    --text-on-accent: #ffffff;
+    --border: #404040;
+    --border-subtle: #353535;
+    --shadow-card: 0 2px 4px rgba(0,0,0,0.2);
+    --shadow-panel: 0 4px 12px rgba(0,0,0,0.3);
+    --success: #54b054;
+    --success-bg: rgba(84,176,84,0.12);
+    --warning: #f0c800;
+    --warning-bg: rgba(240,200,0,0.12);
+    --danger: #f55050;
+    --danger-bg: rgba(245,80,80,0.12);
+    --info: #60b0f0;
+    --info-bg: rgba(96,176,240,0.12);
+    --neutral-badge: #a0a0a0;
+    --neutral-badge-bg: rgba(160,160,160,0.12);
+    --focus-ring: #e0e0e0;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    background: var(--bg-app);
+    color: var(--text-primary);
+    overflow-x: hidden;
+  }
+  /* === TOP CONTROL BAR === */
+  .control-bar {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 16px; height: 48px;
+    box-shadow: var(--shadow-card);
+  }
+  .control-bar h1 {
+    font-size: 14px; font-weight: 600; color: var(--accent);
+    margin-right: 16px; white-space: nowrap;
+  }
+  .control-bar .directions {
+    display: flex; gap: 4px; flex: 1; overflow-x: auto;
+  }
+  .dir-btn {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-secondary); border-radius: 4px;
+    padding: 4px 12px; font-size: 12px; font-weight: 600;
+    cursor: pointer; white-space: nowrap; transition: all 0.15s;
+    font-family: inherit;
+  }
+  .dir-btn:hover { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+  .dir-btn.active { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
+  .theme-toggle {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-secondary); border-radius: 4px;
+    padding: 4px 10px; font-size: 14px; cursor: pointer;
+    font-family: inherit; transition: all 0.15s;
+  }
+  .theme-toggle:hover { background: var(--accent-light); color: var(--accent); }
+
+  /* === MOCKUP CONTAINER === */
+  .mockup-container {
+    margin-top: 48px; height: calc(100vh - 48px);
+    display: none;
+  }
+  .mockup-container.active { display: flex; flex-direction: column; }
+  .mockup-info {
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 20px;
+  }
+  .mockup-info h2 { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .mockup-info p { font-size: 13px; color: var(--text-secondary); }
+  .mockup-info .tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .tag {
+    font-size: 11px; padding: 2px 8px; border-radius: 3px;
+    background: var(--accent-light); color: var(--accent); font-weight: 600;
+  }
+  .mockup-frame {
+    flex: 1; display: flex; overflow: hidden;
+    border: 2px solid var(--border); margin: 12px;
+    border-radius: 8px; box-shadow: var(--shadow-panel);
+    background: var(--bg-app);
+  }
+
+  /* === SHARED SHELL COMPONENTS === */
+  .shell-header {
+    height: 44px; background: var(--bg-header);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; padding: 0 16px;
+    gap: 12px;
+  }
+  .shell-header .app-title {
+    font-size: 15px; font-weight: 600; color: var(--accent);
+  }
+  .shell-header .breadcrumb {
+    font-size: 12px; color: var(--text-secondary);
+  }
+  .shell-header .breadcrumb span { color: var(--text-tertiary); margin: 0 4px; }
+  .shell-header .spacer { flex: 1; }
+  .shell-header .header-action {
+    background: transparent; border: none; color: var(--text-secondary);
+    font-size: 13px; cursor: pointer; padding: 4px 8px; border-radius: 4px;
+    font-family: inherit; display: flex; align-items: center; gap: 4px;
+  }
+  .shell-header .header-action:hover { background: var(--accent-light); color: var(--accent); }
+  .shell-header .search-box {
+    background: var(--bg-surface-alt); border: 1px solid var(--border);
+    border-radius: 4px; padding: 4px 10px; font-size: 12px;
+    color: var(--text-secondary); width: 180px; font-family: inherit;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--bg-nav); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .sidebar.wide { width: 240px; }
+  .sidebar.narrow { width: 48px; }
+  .sidebar.medium { width: 200px; }
+  .nav-group-label {
+    font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 12px 16px 4px; user-select: none;
+  }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 16px; font-size: 13px; color: var(--text-secondary);
+    cursor: pointer; transition: all 0.1s; border-left: 3px solid transparent;
+  }
+  .nav-item:hover { background: var(--accent-light); color: var(--text-primary); }
+  .nav-item.active {
+    background: var(--accent-light); color: var(--accent);
+    border-left-color: var(--accent); font-weight: 600;
+  }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; }
+  .nav-icon-only {
+    display: flex; align-items: center; justify-content: center;
+    width: 48px; height: 40px; font-size: 18px;
+    color: var(--text-secondary); cursor: pointer; transition: all 0.1s;
+    border-left: 3px solid transparent;
+  }
+  .nav-icon-only:hover { background: var(--accent-light); color: var(--accent); }
+  .nav-icon-only.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-light); }
+
+  /* Content area */
+  .content-area {
+    flex: 1; display: flex; flex-direction: column; overflow: hidden;
+    background: var(--bg-app);
+  }
+  .content-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+  .content-body.no-pad { padding: 0; }
+  .content-body.split { display: flex; gap: 0; padding: 0; }
+
+  /* DataGrid */
+  .datagrid {
+    width: 100%; border-collapse: collapse; font-size: 13px;
+  }
+  .datagrid th {
+    text-align: left; padding: 8px 12px; font-weight: 600;
+    font-size: 12px; color: var(--text-secondary);
+    border-bottom: 2px solid var(--border);
+    background: var(--bg-surface);
+    position: sticky; top: 0; z-index: 1;
+  }
+  .datagrid td {
+    padding: 8px 12px; border-bottom: 1px solid var(--border-subtle);
+    vertical-align: middle;
+  }
+  .datagrid tr:hover td { background: var(--bg-row-hover); }
+  .datagrid.compact th { padding: 6px 10px; }
+  .datagrid.compact td { padding: 5px 10px; font-size: 12px; }
+  .datagrid.spacious th { padding: 10px 16px; }
+  .datagrid.spacious td { padding: 10px 16px; }
+
+  /* Badges */
+  .badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 11px; font-weight: 600; padding: 2px 8px;
+    border-radius: 3px; white-space: nowrap;
+  }
+  .badge.success { color: var(--success); background: var(--success-bg); }
+  .badge.warning { color: var(--warning); background: var(--warning-bg); }
+  .badge.danger { color: var(--danger); background: var(--danger-bg); }
+  .badge.info { color: var(--info); background: var(--info-bg); }
+  .badge.neutral { color: var(--neutral-badge); background: var(--neutral-badge-bg); }
+  .badge.accent { color: var(--accent); background: var(--accent-light); }
+
+  /* Buttons */
+  .btn {
+    font-family: inherit; font-size: 13px; font-weight: 600;
+    border: none; border-radius: 4px; padding: 6px 16px;
+    cursor: pointer; transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: var(--text-on-accent); }
+  .btn-primary:hover { background: var(--accent-hover); }
+  .btn-outline {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-inline {
+    background: transparent; border: 1px solid var(--border);
+    color: var(--text-secondary); font-size: 11px; padding: 2px 10px;
+    border-radius: 3px;
+  }
+  .btn-inline:hover { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
+  .btn-sm { font-size: 12px; padding: 4px 12px; }
+  .btn-icon {
+    background: transparent; border: none; color: var(--text-secondary);
+    font-size: 14px; padding: 4px; cursor: pointer; border-radius: 3px;
+  }
+  .btn-icon:hover { background: var(--accent-light); color: var(--accent); }
+
+  /* Cards */
+  .card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 8px; box-shadow: var(--shadow-card);
+  }
+  .card-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border-subtle);
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .card-body { padding: 16px; }
+  .card-body.compact { padding: 12px; }
+
+  /* Forms */
+  .form-group { margin-bottom: 12px; }
+  .form-label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--text-secondary); margin-bottom: 4px;
+  }
+  .form-input {
+    width: 100%; padding: 6px 10px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--bg-surface); color: var(--text-primary);
+    font-family: inherit;
+  }
+  .form-input:focus { outline: 2px solid var(--accent); outline-offset: -1px; border-color: var(--accent); }
+  .form-select {
+    width: 100%; padding: 6px 10px; font-size: 13px;
+    border: 1px solid var(--border); border-radius: 4px;
+    background: var(--bg-surface); color: var(--text-primary);
+    font-family: inherit; appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23616161' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 8px center;
+  }
+
+  /* Expanded row detail */
+  .row-detail {
+    background: var(--bg-row-expand); border-bottom: 1px solid var(--border);
+    padding: 16px 20px;
+  }
+  .row-detail .detail-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  }
+  .detail-field .detail-label {
+    font-size: 11px; font-weight: 600; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: 0.3px;
+  }
+  .detail-field .detail-value { font-size: 13px; margin-top: 2px; }
+
+  /* Side panel */
+  .side-panel {
+    width: 360px; background: var(--bg-surface);
+    border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .side-panel .panel-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 14px; font-weight: 600;
+  }
+  .side-panel .panel-body { padding: 16px; flex: 1; overflow-y: auto; }
+
+  /* Notification area */
+  .notification-area {
+    position: absolute; top: 48px; right: 12px;
+    width: 320px; background: var(--bg-card);
+    border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: var(--shadow-panel); z-index: 50;
+  }
+  .notif-item {
+    padding: 10px 14px; border-bottom: 1px solid var(--border-subtle);
+    font-size: 12px; display: flex; gap: 10px; align-items: flex-start;
+  }
+  .notif-item .notif-icon { font-size: 16px; }
+  .notif-item .notif-text { flex: 1; }
+  .notif-item .notif-time { color: var(--text-tertiary); font-size: 11px; white-space: nowrap; }
+
+  /* Dashboard widgets */
+  .dashboard-grid {
+    display: grid; gap: 16px; padding: 16px 20px;
+  }
+  .dashboard-grid.cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .dashboard-grid.cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .widget-stat {
+    text-align: center; padding: 20px;
+  }
+  .widget-stat .stat-value {
+    font-size: 28px; font-weight: 700; color: var(--accent);
+  }
+  .widget-stat .stat-label {
+    font-size: 12px; color: var(--text-secondary); margin-top: 4px;
+  }
+
+  /* Lifecycle pulse animation */
+  @keyframes syncPulse {
+    0%, 100% { background-color: transparent; }
+    50% { background-color: var(--accent-pulse); }
+  }
+  .syncing td { animation: syncPulse 1.5s ease-in-out infinite; }
+
+  /* Toast */
+  .toast {
+    position: absolute; bottom: 16px; right: 16px;
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-left: 4px solid var(--success);
+    border-radius: 4px; padding: 10px 16px; font-size: 12px;
+    box-shadow: var(--shadow-panel); display: flex; align-items: center; gap: 8px;
+    z-index: 50;
+  }
+
+  /* Bottom sheet */
+  .bottom-sheet {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: var(--bg-surface); border-top: 2px solid var(--accent);
+    box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+    padding: 20px; z-index: 50;
+  }
+  .bottom-sheet h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center; padding: 40px 20px; color: var(--text-secondary);
+  }
+  .empty-state .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+  .empty-state p { font-size: 13px; margin-bottom: 12px; }
+
+  /* Activity feed */
+  .activity-item {
+    display: flex; gap: 10px; padding: 10px 0;
+    border-bottom: 1px solid var(--border-subtle); font-size: 13px;
+  }
+  .activity-item .activity-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    margin-top: 5px; flex-shrink: 0;
+  }
+  .activity-item .activity-time {
+    color: var(--text-tertiary); font-size: 11px; margin-top: 2px;
+  }
+
+  /* View title bar */
+  .view-title-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+  .view-title-bar h3 { font-size: 16px; font-weight: 600; }
+  .view-title-bar .view-actions { display: flex; gap: 8px; align-items: center; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-tertiary); }
+
+  /* Relative for absolute children */
+  .rel { position: relative; }
+</style>
+</head>
+<body>
+
+<!-- CONTROL BAR -->
+<div class="control-bar">
+  <h1>FrontComposer Directions</h1>
+  <div class="directions">
+    <button class="dir-btn active" onclick="showDir(1)">1. Azure Heritage</button>
+    <button class="dir-btn" onclick="showDir(2)">2. GitHub Efficiency</button>
+    <button class="dir-btn" onclick="showDir(3)">3. Notion Calm</button>
+    <button class="dir-btn" onclick="showDir(4)">4. Dense Ops Center</button>
+    <button class="dir-btn" onclick="showDir(5)">5. Split Workbench</button>
+    <button class="dir-btn" onclick="showDir(6)">6. Focused Task Flow</button>
+  </div>
+  <button class="theme-toggle" onclick="toggleTheme()">&#9681; Theme</button>
+</div>
+
+<!-- === DIRECTION 1: Azure Portal Heritage === -->
+<div class="mockup-container active" id="dir1">
+  <div class="mockup-info">
+    <h2>Direction 1: Azure Portal Heritage</h2>
+    <p>Prominent sidebar always expanded. Compact DataGrids. Commands in slide-out panel. Detail as side panel. Dashboard home with widgets. Notification bell for lifecycle.</p>
+    <div class="tags">
+      <span class="tag">Sidebar: Expanded</span>
+      <span class="tag">Grid: Compact</span>
+      <span class="tag">Commands: Slide-out panel</span>
+      <span class="tag">Details: Side panel</span>
+      <span class="tag">Home: Widgets</span>
+      <span class="tag">Lifecycle: Bell notifications</span>
+    </div>
+  </div>
+  <div class="mockup-frame">
+    <div class="sidebar wide">
+      <div style="padding:12px 16px;font-size:14px;font-weight:700;color:var(--accent);">FrontComposer</div>
+      <div class="nav-group-label">Commerce</div>
+      <div class="nav-item active"><span class="icon">&#128230;</span> Orders</div>
+      <div class="nav-item"><span class="icon">&#128179;</span> Invoices</div>
+      <div class="nav-group-label">Inventory</div>
+      <div class="nav-item"><span class="icon">&#128451;</span> Stock Levels</div>
+      <div class="nav-item"><span class="icon">&#128666;</span> Shipments</div>
+      <div class="nav-group-label">Customers</div>
+      <div class="nav-item"><span class="icon">&#128100;</span> Accounts</div>
+      <div class="nav-item"><span class="icon">&#128172;</span> Support Tickets</div>
+    </div>
+    <div class="content-area">
+      <div class="shell-header">
+        <span class="breadcrumb">Home <span>&rsaquo;</span> Commerce <span>&rsaquo;</span> <strong>Orders</strong></span>
+        <div class="spacer"></div>
+        <input class="search-box" placeholder="&#128269; Ctrl+K  Search..." readonly>
+        <button class="header-action" title="Notifications">&#128276; <span class="badge accent" style="font-size:10px;">3</span></button>
+        <button class="header-action">&#9681;</button>
+        <button class="header-action">&#9881;</button>
+      </div>
+      <div class="content-body split rel">
+        <div style="flex:1;overflow-y:auto;">
+          <div class="view-title-bar">
+            <h3>Order List</h3>
+            <div class="view-actions">
+              <span style="font-size:12px;color:var(--text-tertiary);">24 orders</span>
+              <button class="btn btn-outline btn-sm">&#128475; Filter</button>
+              <button class="btn btn-primary btn-sm">+ Send Order</button>
+            </div>
+          </div>
+          <table class="datagrid compact">
+            <thead><tr><th>Order ID</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead>
+            <tbody>
+              <tr><td style="font-family:monospace;font-size:11px;">ORD-2024-1847</td><td>Acme Corp</td><td>&euro;12,450</td><td><span class="badge warning">Pending</span></td><td>Apr 8, 2026</td><td><button class="btn-inline">Approve</button></td></tr>
+              <tr><td style="font-family:monospace;font-size:11px;">ORD-2024-1846</td><td>Globex Inc</td><td>&euro;8,200</td><td><span class="badge warning">Pending</span></td><td>Apr 8, 2026</td><td><button class="btn-inline">Approve</button></td></tr>
+              <tr class="syncing"><td style="font-family:monospace;font-size:11px;">ORD-2024-1845</td><td>Initech LLC</td><td>&euro;3,750</td><td><span class="badge accent">Syncing...</span></td><td>Apr 7, 2026</td><td><span style="font-size:11px;color:var(--text-tertiary);">Processing</span></td></tr>
+              <tr style="background:var(--bg-row-hover)"><td style="font-family:monospace;font-size:11px;">ORD-2024-1844</td><td>Wayne Enterprises</td><td>&euro;28,900</td><td><span class="badge success">Approved</span></td><td>Apr 7, 2026</td><td><button class="btn-icon">&#8942;</button></td></tr>
+              <tr><td style="font-family:monospace;font-size:11px;">ORD-2024-1843</td><td>Stark Industries</td><td>&euro;45,600</td><td><span class="badge success">Approved</span></td><td>Apr 6, 2026</td><td><button class="btn-icon">&#8942;</button></td></tr>
+              <tr><td style="font-family:monospace;font-size:11px;">ORD-2024-1842</td><td>Umbrella Corp</td><td>&euro;6,100</td><td><span class="badge danger">Rejected</span></td><td>Apr 6, 2026</td><td><button class="btn-icon">&#8942;</button></td></tr>
+              <tr><td style="font-family:monospace;font-size:11px;">ORD-2024-1841</td><td>Cyberdyne</td><td>&euro;19,300</td><td><span class="badge success">Approved</span></td><td>Apr 5, 2026</td><td><button class="btn-icon">&#8942;</button></td></tr>
+              <tr><td style="font-family:monospace;font-size:11px;">ORD-2024-1840</td><td>Oscorp</td><td>&euro;7,800</td><td><span class="badge info">Submitted</span></td><td>Apr 5, 2026</td><td><button class="btn-inline">Approve</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Side panel for selected order -->
+        <div class="side-panel">
+          <div class="panel-header">
+            <span>ORD-2024-1844</span>
+            <button class="btn-icon">&#10005;</button>
+          </div>
+          <div class="panel-body">
+            <div style="margin-bottom:16px;">
+              <span class="badge success">Approved</span>
+              <span style="font-size:12px;color:var(--text-tertiary);margin-left:8px;">Apr 7, 2026 at 14:23</span>
+            </div>
+            <div class="detail-field" style="margin-bottom:12px;">
+              <div class="detail-label">Customer</div>
+              <div class="detail-value">Wayne Enterprises</div>
+            </div>
+            <div class="detail-field" style="margin-bottom:12px;">
+              <div class="detail-label">Total Amount</div>
+              <div class="detail-value" style="font-size:18px;font-weight:600;">&euro;28,900.00</div>
+            </div>
+            <div class="detail-field" style="margin-bottom:12px;">
+              <div class="detail-label">Shipping Address</div>
+              <div class="detail-value">1007 Mountain Drive, Gotham City</div>
+            </div>
+            <div class="detail-field" style="margin-bottom:12px;">
+              <div class="detail-label">Order Lines</div>
+              <div class="detail-value" style="font-size:12px;">
+                <div style="padding:4px 0;border-bottom:1px solid var(--border-subtle);">3x Widget Alpha &mdash; &euro;9,600</div>
+                <div style="padding:4px 0;border-bottom:1px solid var(--border-subtle);">1x Widget Beta &mdash; &euro;12,500</div>
+                <div style="padding:4px 0;">2x Widget Gamma &mdash; &euro;6,800</div>
+              </div>
+            </div>
+            <div style="margin-top:16px;display:flex;gap:8px;">
+              <button class="btn btn-outline btn-sm">Modify Shipping</button>
+              <button class="btn btn-outline btn-sm" style="border-color:var(--danger);color:var(--danger);">Cancel Order</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === DIRECTION 2: GitHub Efficiency === -->
+<div class="mockup-container" id="dir2">
+  <div class="mockup-info">
+    <h2>Direction 2: GitHub Efficiency</h2>
+    <p>Minimal sidebar collapsed by default. Spacious DataGrids with inline actions. Commands inline below grid. Detail via expand-in-row accordion. Home as BC directory. Subtle inline lifecycle badges.</p>
+    <div class="tags">
+      <span class="tag">Sidebar: Collapsed</span>
+      <span class="tag">Grid: Spacious</span>
+      <span class="tag">Commands: Inline below grid</span>
+      <span class="tag">Details: Expand-in-row</span>
+      <span class="tag">Home: Directory</span>
+      <span class="tag">Lifecycle: Inline badges</span>
+    </div>
+  </div>
+  <div class="mockup-frame">
+    <div class="sidebar narrow">
+      <div style="padding:12px 0;text-align:center;font-size:18px;color:var(--accent);font-weight:700;">H</div>
+      <div class="nav-icon-only" title="Home">&#127968;</div>
+      <div class="nav-icon-only active" title="Orders">&#128230;</div>
+      <div class="nav-icon-only" title="Invoices">&#128179;</div>
+      <div class="nav-icon-only" title="Stock">&#128451;</div>
+      <div class="nav-icon-only" title="Shipments">&#128666;</div>
+      <div class="nav-icon-only" title="Customers">&#128100;</div>
+      <div class="nav-icon-only" title="Support">&#128172;</div>
+    </div>
+    <div class="content-area">
+      <div class="shell-header">
+        <span class="app-title">FrontComposer</span>
+        <span class="breadcrumb"><span>&rsaquo;</span> Commerce <span>&rsaquo;</span> <strong>Orders</strong></span>
+        <div class="spacer"></div>
+        <input class="search-box" placeholder="&#128269; Ctrl+K" readonly>
+        <button class="header-action">&#9681;</button>
+        <button class="header-action">&#9881;</button>
+      </div>
+      <div class="content-body" style="max-width:960px;margin:0 auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <h3 style="font-size:20px;font-weight:600;">Orders</h3>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-outline btn-sm">&#128475; Filter</button>
+            <button class="btn btn-primary btn-sm">+ Send Order</button>
+          </div>
+        </div>
+        <table class="datagrid spacious">
+          <thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th><th>Updated</th><th></th></tr></thead>
+          <tbody>
+            <tr><td><strong>ORD-2024-1847</strong><br><span style="font-size:11px;color:var(--text-tertiary);">3 items</span></td><td>Acme Corp</td><td>&euro;12,450</td><td><span class="badge warning">Pending</span></td><td style="color:var(--text-tertiary);font-size:12px;">2 hours ago</td><td><button class="btn-inline">Approve</button></td></tr>
+            <tr><td><strong>ORD-2024-1846</strong><br><span style="font-size:11px;color:var(--text-tertiary);">1 item</span></td><td>Globex Inc</td><td>&euro;8,200</td><td><span class="badge warning">Pending</span></td><td style="color:var(--text-tertiary);font-size:12px;">3 hours ago</td><td><button class="btn-inline">Approve</button></td></tr>
+            <!-- Expanded row -->
+            <tr style="background:var(--accent-light);"><td colspan="6" style="padding:0;">
+              <div style="padding:8px 12px;display:flex;align-items:center;justify-content:space-between;">
+                <div><strong>ORD-2024-1845</strong> &mdash; Initech LLC &mdash; &euro;3,750 &mdash; <span class="badge success">Approved</span></div>
+                <button class="btn-icon">&#9650;</button>
+              </div>
+            </td></tr>
+            <tr><td colspan="6" style="padding:0;">
+              <div class="row-detail">
+                <div class="detail-grid">
+                  <div class="detail-field"><div class="detail-label">Customer</div><div class="detail-value">Initech LLC</div></div>
+                  <div class="detail-field"><div class="detail-label">Amount</div><div class="detail-value">&euro;3,750.00</div></div>
+                  <div class="detail-field"><div class="detail-label">Approved By</div><div class="detail-value">Jerome P.</div></div>
+                  <div class="detail-field"><div class="detail-label">Shipping</div><div class="detail-value">742 Evergreen Terrace</div></div>
+                  <div class="detail-field"><div class="detail-label">Created</div><div class="detail-value">Apr 7, 2026</div></div>
+                  <div class="detail-field"><div class="detail-label">Order Lines</div><div class="detail-value">2x Widget Alpha, 1x Widget Gamma</div></div>
+                </div>
+                <div style="margin-top:12px;display:flex;gap:8px;">
+                  <button class="btn btn-outline btn-sm">Modify Shipping</button>
+                  <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);">Cancel</button>
+                </div>
+              </div>
+            </td></tr>
+            <tr><td><strong>ORD-2024-1844</strong><br><span style="font-size:11px;color:var(--text-tertiary);">6 items</span></td><td>Wayne Enterprises</td><td>&euro;28,900</td><td><span class="badge success">Approved</span></td><td style="color:var(--text-tertiary);font-size:12px;">1 day ago</td><td><button class="btn-icon">&#8942;</button></td></tr>
+            <tr><td><strong>ORD-2024-1843</strong><br><span style="font-size:11px;color:var(--text-tertiary);">2 items</span></td><td>Stark Industries</td><td>&euro;45,600</td><td><span class="badge success">Approved</span></td><td style="color:var(--text-tertiary);font-size:12px;">2 days ago</td><td><button class="btn-icon">&#8942;</button></td></tr>
+            <tr><td><strong>ORD-2024-1842</strong><br><span style="font-size:11px;color:var(--text-tertiary);">1 item</span></td><td>Umbrella Corp</td><td>&euro;6,100</td><td><span class="badge danger">Rejected</span></td><td style="color:var(--text-tertiary);font-size:12px;">2 days ago</td><td><button class="btn-icon">&#8942;</button></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === DIRECTION 3: Notion Calm === -->
+<div class="mockup-container" id="dir3">
+  <div class="mockup-info">
+    <h2>Direction 3: Notion Calm</h2>
+    <p>Spacious sidebar with large nav items. Generous whitespace. Commands as dedicated full-page forms. Details replace content. Home as recent activity feed. Toast-based lifecycle.</p>
+    <div class="tags">
+      <span class="tag">Sidebar: Spacious + large items</span>
+      <span class="tag">Grid: Spacious</span>
+      <span class="tag">Commands: Full-page form</span>
+      <span class="tag">Details: Content replacement</span>
+      <span class="tag">Home: Activity feed</span>
+      <span class="tag">Lifecycle: Toast</span>
+    </div>
+  </div>
+  <div class="mockup-frame">
+    <div class="sidebar wide" style="padding-top:8px;">
+      <div style="padding:16px 20px 20px;font-size:16px;font-weight:700;color:var(--accent);">FrontComposer</div>
+      <div class="nav-item" style="padding:10px 20px;font-size:14px;"><span class="icon">&#127968;</span> Home</div>
+      <div style="height:8px;"></div>
+      <div class="nav-group-label" style="padding:8px 20px 4px;">Commerce</div>
+      <div class="nav-item active" style="padding:10px 20px;font-size:14px;"><span class="icon">&#128230;</span> Orders</div>
+      <div class="nav-item" style="padding:10px 20px;font-size:14px;"><span class="icon">&#128179;</span> Invoices</div>
+      <div style="height:8px;"></div>
+      <div class="nav-group-label" style="padding:8px 20px 4px;">Inventory</div>
+      <div class="nav-item" style="padding:10px 20px;font-size:14px;"><span class="icon">&#128451;</span> Stock Levels</div>
+      <div class="nav-item" style="padding:10px 20px;font-size:14px;"><span class="icon">&#128666;</span> Shipments</div>
+      <div style="height:8px;"></div>
+      <div class="nav-group-label" style="padding:8px 20px 4px;">Customers</div>
+      <div class="nav-item" style="padding:10px 20px;font-size:14px;"><span class="icon">&#128100;</span> Accounts</div>
+    </div>
+    <div class="content-area rel">
+      <div class="shell-header" style="height:48px;">
+        <span class="breadcrumb">Commerce <span>&rsaquo;</span> <strong>Orders</strong></span>
+        <div class="spacer"></div>
+        <input class="search-box" placeholder="&#128269; Search or jump to... (Ctrl+K)" readonly style="width:260px;">
+        <button class="header-action">&#9681;</button>
+      </div>
+      <div class="content-body" style="max-width:800px;margin:0 auto;padding:24px 32px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+          <h3 style="font-size:22px;font-weight:600;">Orders</h3>
+          <button class="btn btn-primary">+ Send Order</button>
+        </div>
+        <table class="datagrid spacious">
+          <thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+            <tr style="cursor:pointer;"><td><strong>ORD-2024-1847</strong></td><td>Acme Corp</td><td>&euro;12,450</td><td><span class="badge warning">Pending</span></td><td style="color:var(--text-tertiary);">Apr 8</td></tr>
+            <tr style="cursor:pointer;"><td><strong>ORD-2024-1846</strong></td><td>Globex Inc</td><td>&euro;8,200</td><td><span class="badge warning">Pending</span></td><td style="color:var(--text-tertiary);">Apr 8</td></tr>
+            <tr style="cursor:pointer;"><td><strong>ORD-2024-1845</strong></td><td>Initech LLC</td><td>&euro;3,750</td><td><span class="badge success">Approved</span></td><td style="color:var(--text-tertiary);">Apr 7</td></tr>
+            <tr style="cursor:pointer;"><td><strong>ORD-2024-1844</strong></td><td>Wayne Enterprises</td><td>&euro;28,900</td><td><span class="badge success">Approved</span></td><td style="color:var(--text-tertiary);">Apr 7</td></tr>
+            <tr style="cursor:pointer;"><td><strong>ORD-2024-1843</strong></td><td>Stark Industries</td><td>&euro;45,600</td><td><span class="badge success">Approved</span></td><td style="color:var(--text-tertiary);">Apr 6</td></tr>
+            <tr style="cursor:pointer;"><td><strong>ORD-2024-1842</strong></td><td>Umbrella Corp</td><td>&euro;6,100</td><td><span class="badge danger">Rejected</span></td><td style="color:var(--text-tertiary);">Apr 6</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Toast notification -->
+      <div class="toast">
+        <span style="color:var(--success);font-size:16px;">&#10003;</span>
+        <div><strong>ORD-2024-1845 confirmed.</strong><br><span style="color:var(--text-secondary);">Approved by Jerome P.</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === DIRECTION 4: Dense Ops Center === -->
+<div class="mockup-container" id="dir4">
+  <div class="mockup-info">
+    <h2>Direction 4: Dense Operations Center</h2>
+    <p>Icon-only sidebar. Ultra-compact grid with inline micro-forms. Accordion detail in-row. Status overview dashboard. Inline lifecycle with badge transitions + subtle pulse. Maximum information density.</p>
+    <div class="tags">
+      <span class="tag">Sidebar: Icon-only</span>
+      <span class="tag">Grid: Ultra-compact</span>
+      <span class="tag">Commands: Inline micro-forms</span>
+      <span class="tag">Details: Accordion in-row</span>
+      <span class="tag">Home: Status overview</span>
+      <span class="tag">Lifecycle: Inline pulse</span>
+    </div>
+  </div>
+  <div class="mockup-frame">
+    <div class="sidebar narrow">
+      <div style="padding:8px 0;text-align:center;font-size:16px;color:var(--accent);font-weight:700;">H</div>
+      <div class="nav-icon-only active" title="Orders">&#128230;</div>
+      <div class="nav-icon-only" title="Invoices">&#128179;</div>
+      <div class="nav-icon-only" title="Stock">&#128451;</div>
+      <div class="nav-icon-only" title="Shipments">&#128666;</div>
+      <div class="nav-icon-only" title="Customers">&#128100;</div>
+      <div class="nav-icon-only" title="Support">&#128172;</div>
+    </div>
+    <div class="content-area">
+      <div class="shell-header" style="height:36px;padding:0 12px;">
+        <span style="font-size:12px;font-weight:600;">Orders</span>
+        <span style="font-size:11px;color:var(--text-tertiary);margin-left:8px;">24 total &middot; 3 pending &middot; 1 syncing</span>
+        <div class="spacer"></div>
+        <input class="search-box" placeholder="Ctrl+K" readonly style="width:120px;font-size:11px;padding:2px 8px;">
+        <button class="header-action" style="font-size:11px;padding:2px 6px;">&#9681;</button>
+      </div>
+      <div class="content-body no-pad" style="overflow-y:auto;">
+        <table class="datagrid compact">
+          <thead><tr><th style="width:130px;">Order ID</th><th>Customer</th><th style="width:90px;">Amount</th><th style="width:80px;">Status</th><th style="width:80px;">Date</th><th style="width:140px;">Quick Action</th></tr></thead>
+          <tbody>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1847</td><td>Acme Corp</td><td>&euro;12,450</td><td><span class="badge warning" style="font-size:10px;">Pending</span></td><td style="font-size:11px;">Apr 8</td>
+              <td><button class="btn-inline" style="font-size:10px;">Approve</button> <button class="btn-inline" style="font-size:10px;color:var(--danger);border-color:var(--danger);">Reject</button></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1846</td><td>Globex Inc</td><td>&euro;8,200</td><td><span class="badge warning" style="font-size:10px;">Pending</span></td><td style="font-size:11px;">Apr 8</td>
+              <td><button class="btn-inline" style="font-size:10px;">Approve</button> <button class="btn-inline" style="font-size:10px;color:var(--danger);border-color:var(--danger);">Reject</button></td></tr>
+            <tr class="syncing"><td style="font-family:monospace;font-size:10px;">ORD-2024-1845</td><td>Initech LLC</td><td>&euro;3,750</td><td><span class="badge accent" style="font-size:10px;">&#10227; Syncing</span></td><td style="font-size:11px;">Apr 7</td><td style="font-size:10px;color:var(--text-tertiary);">Awaiting confirmation</td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1844</td><td>Wayne Enterprises</td><td>&euro;28,900</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 7</td><td></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1843</td><td>Stark Industries</td><td>&euro;45,600</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 6</td><td></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1842</td><td>Umbrella Corp</td><td>&euro;6,100</td><td><span class="badge danger" style="font-size:10px;">Rejected</span></td><td style="font-size:11px;">Apr 6</td><td></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1841</td><td>Cyberdyne</td><td>&euro;19,300</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 5</td><td></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1840</td><td>Oscorp</td><td>&euro;7,800</td><td><span class="badge info" style="font-size:10px;">Submitted</span></td><td style="font-size:11px;">Apr 5</td><td><button class="btn-inline" style="font-size:10px;">Approve</button></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1839</td><td>LexCorp</td><td>&euro;14,200</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 4</td><td></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1838</td><td>Massive Dynamic</td><td>&euro;22,100</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 4</td><td></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1837</td><td>Weyland-Yutani</td><td>&euro;9,500</td><td><span class="badge neutral" style="font-size:10px;">Draft</span></td><td style="font-size:11px;">Apr 3</td><td><button class="btn-inline" style="font-size:10px;">Submit</button></td></tr>
+            <tr><td style="font-family:monospace;font-size:10px;">ORD-2024-1836</td><td>Soylent Corp</td><td>&euro;5,300</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 3</td><td></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === DIRECTION 5: Split Pane Workbench === -->
+<div class="mockup-container" id="dir5">
+  <div class="mockup-info">
+    <h2>Direction 5: Split Pane Workbench</h2>
+    <p>Expanded sidebar. DataGrid left, contextual detail+commands right (split pane). Selection-driven right pane. Home as split: BC nav left, activity right. Inline + toast lifecycle.</p>
+    <div class="tags">
+      <span class="tag">Sidebar: Expanded</span>
+      <span class="tag">Grid: Left pane</span>
+      <span class="tag">Commands: Right pane contextual</span>
+      <span class="tag">Details: Right pane</span>
+      <span class="tag">Home: Split view</span>
+      <span class="tag">Lifecycle: Inline + toast</span>
+    </div>
+  </div>
+  <div class="mockup-frame">
+    <div class="sidebar medium">
+      <div style="padding:12px 14px;font-size:14px;font-weight:700;color:var(--accent);">FrontComposer</div>
+      <div class="nav-group-label">Commerce</div>
+      <div class="nav-item active"><span class="icon">&#128230;</span> Orders</div>
+      <div class="nav-item"><span class="icon">&#128179;</span> Invoices</div>
+      <div class="nav-group-label">Inventory</div>
+      <div class="nav-item"><span class="icon">&#128451;</span> Stock Levels</div>
+      <div class="nav-item"><span class="icon">&#128666;</span> Shipments</div>
+      <div class="nav-group-label">Customers</div>
+      <div class="nav-item"><span class="icon">&#128100;</span> Accounts</div>
+    </div>
+    <div class="content-area">
+      <div class="shell-header">
+        <span class="breadcrumb">Commerce <span>&rsaquo;</span> <strong>Orders</strong></span>
+        <div class="spacer"></div>
+        <input class="search-box" placeholder="&#128269; Ctrl+K" readonly>
+        <button class="header-action">&#9681;</button>
+        <button class="header-action">&#9881;</button>
+      </div>
+      <div class="content-body split">
+        <!-- Left: List -->
+        <div style="flex:1;overflow-y:auto;border-right:1px solid var(--border);">
+          <div style="padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border-subtle);">
+            <span style="font-size:13px;font-weight:600;">24 orders</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-outline btn-sm" style="font-size:11px;">Filter</button>
+              <button class="btn btn-primary btn-sm" style="font-size:11px;">+ New</button>
+            </div>
+          </div>
+          <table class="datagrid compact">
+            <thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td style="font-size:12px;"><strong>ORD-1847</strong></td><td>Acme Corp</td><td>&euro;12,450</td><td><span class="badge warning" style="font-size:10px;">Pending</span></td></tr>
+              <tr><td style="font-size:12px;"><strong>ORD-1846</strong></td><td>Globex Inc</td><td>&euro;8,200</td><td><span class="badge warning" style="font-size:10px;">Pending</span></td></tr>
+              <tr style="background:var(--accent-light);"><td style="font-size:12px;"><strong>ORD-1844</strong></td><td>Wayne Ent.</td><td>&euro;28,900</td><td><span class="badge success" style="font-size:10px;">Approved</span></td></tr>
+              <tr><td style="font-size:12px;"><strong>ORD-1843</strong></td><td>Stark Ind.</td><td>&euro;45,600</td><td><span class="badge success" style="font-size:10px;">Approved</span></td></tr>
+              <tr><td style="font-size:12px;"><strong>ORD-1842</strong></td><td>Umbrella</td><td>&euro;6,100</td><td><span class="badge danger" style="font-size:10px;">Rejected</span></td></tr>
+              <tr><td style="font-size:12px;"><strong>ORD-1841</strong></td><td>Cyberdyne</td><td>&euro;19,300</td><td><span class="badge success" style="font-size:10px;">Approved</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- Right: Detail + Commands -->
+        <div style="width:380px;overflow-y:auto;background:var(--bg-surface);">
+          <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:14px;font-weight:600;">ORD-2024-1844</span>
+            <span class="badge success">Approved</span>
+          </div>
+          <div style="padding:16px;">
+            <div class="detail-field" style="margin-bottom:12px;"><div class="detail-label">Customer</div><div class="detail-value">Wayne Enterprises</div></div>
+            <div class="detail-field" style="margin-bottom:12px;"><div class="detail-label">Amount</div><div class="detail-value" style="font-size:20px;font-weight:600;">&euro;28,900.00</div></div>
+            <div class="detail-field" style="margin-bottom:12px;"><div class="detail-label">Shipping</div><div class="detail-value">1007 Mountain Drive, Gotham City</div></div>
+            <div class="detail-field" style="margin-bottom:12px;"><div class="detail-label">Lines</div>
+              <div style="font-size:12px;margin-top:4px;">
+                <div style="padding:3px 0;">3x Widget Alpha &mdash; &euro;9,600</div>
+                <div style="padding:3px 0;">1x Widget Beta &mdash; &euro;12,500</div>
+                <div style="padding:3px 0;">2x Widget Gamma &mdash; &euro;6,800</div>
+              </div>
+            </div>
+            <div style="border-top:1px solid var(--border-subtle);margin-top:16px;padding-top:16px;">
+              <div style="font-size:12px;font-weight:600;margin-bottom:8px;">Quick Command</div>
+              <div class="form-group">
+                <label class="form-label">New Shipping Address</label>
+                <input class="form-input" placeholder="Enter address..." value="1007 Mountain Drive, Gotham City">
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button class="btn btn-primary btn-sm">Modify Shipping</button>
+                <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger);">Cancel Order</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- === DIRECTION 6: Focused Task Flow === -->
+<div class="mockup-container" id="dir6">
+  <div class="mockup-info">
+    <h2>Direction 6: Focused Task Flow</h2>
+    <p>Collapsed sidebar. Full-width DataGrid as primary. Commands slide up from bottom (sheet pattern). Detail via strong accordion. Home as action-queue dashboard (what needs attention). Prominent notification area.</p>
+    <div class="tags">
+      <span class="tag">Sidebar: Collapsed</span>
+      <span class="tag">Grid: Full-width primary</span>
+      <span class="tag">Commands: Bottom sheet</span>
+      <span class="tag">Details: Strong accordion</span>
+      <span class="tag">Home: Action queue</span>
+      <span class="tag">Lifecycle: Notification area</span>
+    </div>
+  </div>
+  <div class="mockup-frame">
+    <div class="sidebar narrow">
+      <div style="padding:10px 0;text-align:center;font-size:16px;color:var(--accent);font-weight:700;">H</div>
+      <div class="nav-icon-only" title="Dashboard">&#128202;</div>
+      <div class="nav-icon-only active" title="Orders">&#128230;</div>
+      <div class="nav-icon-only" title="Invoices">&#128179;</div>
+      <div class="nav-icon-only" title="Stock">&#128451;</div>
+      <div class="nav-icon-only" title="Customers">&#128100;</div>
+    </div>
+    <div class="content-area rel">
+      <div class="shell-header">
+        <span class="app-title">FrontComposer</span>
+        <span class="breadcrumb" style="margin-left:8px;"><span>&rsaquo;</span> <strong>Orders</strong></span>
+        <div class="spacer"></div>
+        <input class="search-box" placeholder="&#128269; Ctrl+K" readonly>
+        <button class="header-action">&#128276; <span class="badge danger" style="font-size:10px;">1</span></button>
+        <button class="header-action">&#9681;</button>
+      </div>
+      <div class="view-title-bar">
+        <div>
+          <h3>Orders &mdash; Action Queue</h3>
+          <span style="font-size:12px;color:var(--text-tertiary);">3 items need your attention</span>
+        </div>
+        <div class="view-actions">
+          <button class="btn btn-outline btn-sm">All Orders</button>
+          <button class="btn btn-primary btn-sm">+ Send Order</button>
+        </div>
+      </div>
+      <div class="content-body no-pad" style="overflow-y:auto;">
+        <table class="datagrid">
+          <thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th><th>Waiting Since</th><th>Action</th></tr></thead>
+          <tbody>
+            <tr><td><strong>ORD-2024-1847</strong></td><td>Acme Corp</td><td>&euro;12,450</td><td><span class="badge warning">Pending</span></td><td style="color:var(--warning);font-size:12px;">2 hours</td><td><button class="btn btn-primary btn-sm" style="font-size:11px;">Approve</button></td></tr>
+            <tr><td><strong>ORD-2024-1846</strong></td><td>Globex Inc</td><td>&euro;8,200</td><td><span class="badge warning">Pending</span></td><td style="color:var(--warning);font-size:12px;">3 hours</td><td><button class="btn btn-primary btn-sm" style="font-size:11px;">Approve</button></td></tr>
+            <tr><td><strong>ORD-2024-1840</strong></td><td>Oscorp</td><td>&euro;7,800</td><td><span class="badge info">Submitted</span></td><td style="color:var(--text-tertiary);font-size:12px;">3 days</td><td><button class="btn btn-primary btn-sm" style="font-size:11px;">Approve</button></td></tr>
+          </tbody>
+        </table>
+        <div style="border-top:2px solid var(--border);margin-top:4px;padding:8px 16px;font-size:12px;color:var(--text-tertiary);">Recent (no action required)</div>
+        <table class="datagrid compact">
+          <thead><tr><th>Order</th><th>Customer</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+          <tbody>
+            <tr><td style="font-size:12px;">ORD-2024-1844</td><td>Wayne Enterprises</td><td>&euro;28,900</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 7</td></tr>
+            <tr><td style="font-size:12px;">ORD-2024-1843</td><td>Stark Industries</td><td>&euro;45,600</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 6</td></tr>
+            <tr><td style="font-size:12px;">ORD-2024-1842</td><td>Umbrella Corp</td><td>&euro;6,100</td><td><span class="badge danger" style="font-size:10px;">Rejected</span></td><td style="font-size:11px;">Apr 6</td></tr>
+            <tr><td style="font-size:12px;">ORD-2024-1841</td><td>Cyberdyne</td><td>&euro;19,300</td><td><span class="badge success" style="font-size:10px;">Approved</span></td><td style="font-size:11px;">Apr 5</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- Bottom sheet for command -->
+      <div class="bottom-sheet">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <h3>Modify Shipping &mdash; ORD-2024-1844</h3>
+          <button class="btn-icon" style="font-size:18px;">&#10005;</button>
+        </div>
+        <div style="display:flex;gap:16px;">
+          <div class="form-group" style="flex:1;margin-bottom:0;">
+            <label class="form-label">New Shipping Address</label>
+            <input class="form-input" value="1007 Mountain Drive, Gotham City">
+          </div>
+          <div class="form-group" style="width:160px;margin-bottom:0;">
+            <label class="form-label">Priority</label>
+            <select class="form-select"><option>Standard</option><option>Express</option></select>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn btn-primary">Modify Shipping</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showDir(n) {
+  document.querySelectorAll('.mockup-container').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.dir-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('dir' + n).classList.add('active');
+  document.querySelectorAll('.dir-btn')[n - 1].classList.add('active');
+}
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', current === 'dark' ? 'light' : 'dark');
+}
+// Start in light theme
+document.documentElement.setAttribute('data-theme', 'light');
+</script>
+
+</body>
+</html>
