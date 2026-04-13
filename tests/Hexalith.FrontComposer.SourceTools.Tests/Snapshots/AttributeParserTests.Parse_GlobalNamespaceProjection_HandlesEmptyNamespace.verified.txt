@@ -1,0 +1,13 @@
+﻿{
+  TypeName: GlobalProjection,
+  Namespace: ,
+  BoundedContext: Global,
+  Properties: [
+    {
+      Name: Name,
+      TypeName: String,
+      IsNullable: false,
+      IsUnsupported: false
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+﻿{
+  TypeName: BadgeMappingProjection,
+  Namespace: TestDomain,
+  BoundedContext: Orders,
+  Properties: [
+    {
+      Name: Status,
+      TypeName: Enum,
+      IsNullable: false,
+      IsUnsupported: false,
+      BadgeMappings: [
+        {
+          EnumMemberName: Pending,
+          Slot: Neutral
+        },
+        {
+          EnumMemberName: Processing,
+          Slot: Info
+        },
+        {
+          EnumMemberName: Completed,
+          Slot: Success
+        },
+        {
+          EnumMemberName: Failed,
+          Slot: Danger
+        }
+      ]
+    }
+  ]
+}

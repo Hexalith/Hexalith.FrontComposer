@@ -1,0 +1,26 @@
+﻿{
+  TypeName: CounterProjection,
+  Namespace: TestDomain,
+  BoundedContext: Counter,
+  ProjectionRole: StatusOverview,
+  Properties: [
+    {
+      Name: Name,
+      TypeName: String,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: Count,
+      TypeName: Int32,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: IsActive,
+      TypeName: Boolean,
+      IsNullable: false,
+      IsUnsupported: false
+    }
+  ]
+}

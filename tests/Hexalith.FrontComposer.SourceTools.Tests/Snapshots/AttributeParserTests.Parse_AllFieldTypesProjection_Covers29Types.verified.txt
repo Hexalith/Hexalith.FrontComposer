@@ -1,0 +1,189 @@
+﻿{
+  TypeName: AllFieldTypesProjection,
+  Namespace: TestDomain,
+  BoundedContext: Inventory,
+  ProjectionRole: DetailRecord,
+  Properties: [
+    {
+      Name: StringField,
+      TypeName: String,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: Int32Field,
+      TypeName: Int32,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: Int64Field,
+      TypeName: Int64,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: DecimalField,
+      TypeName: Decimal,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: DoubleField,
+      TypeName: Double,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: SingleField,
+      TypeName: Single,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: BooleanField,
+      TypeName: Boolean,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: DateTimeField,
+      TypeName: DateTime,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: DateTimeOffsetField,
+      TypeName: DateTimeOffset,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: DateOnlyField,
+      TypeName: DateOnly,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: TimeOnlyField,
+      TypeName: TimeOnly,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: GuidField,
+      TypeName: Guid,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: StatusField,
+      TypeName: Enum,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableInt32,
+      TypeName: Int32,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableInt64,
+      TypeName: Int64,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableDecimal,
+      TypeName: Decimal,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableDouble,
+      TypeName: Double,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableSingle,
+      TypeName: Single,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableBoolean,
+      TypeName: Boolean,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableDateTime,
+      TypeName: DateTime,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableDateTimeOffset,
+      TypeName: DateTimeOffset,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableDateOnly,
+      TypeName: DateOnly,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableTimeOnly,
+      TypeName: TimeOnly,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableGuid,
+      TypeName: Guid,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableEnum,
+      TypeName: Enum,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: NullableString,
+      TypeName: String,
+      IsNullable: true,
+      IsUnsupported: false
+    },
+    {
+      Name: ListField,
+      TypeName: Collection,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: EnumerableField,
+      TypeName: Collection,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: ReadOnlyListField,
+      TypeName: Collection,
+      IsNullable: false,
+      IsUnsupported: false
+    },
+    {
+      Name: DisplayNameField,
+      TypeName: String,
+      IsNullable: false,
+      IsUnsupported: false,
+      DisplayName: Item Name
+    }
+  ]
+}

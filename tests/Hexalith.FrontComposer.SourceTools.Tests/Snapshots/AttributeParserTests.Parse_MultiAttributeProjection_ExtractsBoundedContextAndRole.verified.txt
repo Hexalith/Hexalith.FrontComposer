@@ -1,0 +1,14 @@
+﻿{
+  TypeName: MultiAttributeProjection,
+  Namespace: TestDomain,
+  BoundedContext: Sales,
+  ProjectionRole: ActionQueue,
+  Properties: [
+    {
+      Name: Name,
+      TypeName: String,
+      IsNullable: false,
+      IsUnsupported: false
+    }
+  ]
+}
