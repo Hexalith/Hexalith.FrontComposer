@@ -1,0 +1,20 @@
+@implements IDisposable
+
+<p id="density-display">@DensityState.Value.CurrentDensity</p>
+
+@code {
+    [Inject] private IState<FrontComposerDensityState> DensityState { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        DensityState.StateChanged += OnStateChanged;
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        DensityState.StateChanged -= OnStateChanged;
+    }
+}

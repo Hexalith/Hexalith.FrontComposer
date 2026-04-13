@@ -1,0 +1,20 @@
+@implements IDisposable
+
+<p id="theme-display">@ThemeState.Value.CurrentTheme</p>
+
+@code {
+    [Inject] private IState<FrontComposerThemeState> ThemeState { get; set; } = default!;
+
+    protected override void OnInitialized()
+    {
+        ThemeState.StateChanged += OnStateChanged;
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        ThemeState.StateChanged -= OnStateChanged;
+    }
+}

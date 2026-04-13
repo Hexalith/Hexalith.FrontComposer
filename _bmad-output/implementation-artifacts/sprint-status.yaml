@@ -1,5 +1,5 @@
 # generated: 2026-04-12
-# last_updated: 2026-04-13 (story 1-2 review complete)
+# last_updated: 2026-04-13 (story 1-3 done)
 # project: Hexalith.FrontComposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: 2026-04-13 (story 1-2 review complete)
+last_updated: 2026-04-13 (story 1-3 done)
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -46,7 +46,7 @@ development_status:
   epic-1: in-progress
   1-1-solution-structure-and-build-infrastructure: done
   1-2-contracts-package-with-core-abstractions: done
-  1-3-fluxor-state-management-foundation: ready-for-dev
+  1-3-fluxor-state-management-foundation: done
   1-4-source-generator-parse-stage: backlog
   1-5-source-generator-transform-and-emit-stages: backlog
   1-6-counter-sample-domain-and-aspire-topology: backlog

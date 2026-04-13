@@ -23,6 +23,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Sour
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Contracts.Tests", "tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj", "{EE66327A-3FCD-4532-81A9-72BAF3DC6309}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Shell.Tests", "tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj", "{823226D8-30ED-4EAC-91A0-66E4FA6224FD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -117,6 +119,18 @@ Global
 		{EE66327A-3FCD-4532-81A9-72BAF3DC6309}.Release|x64.Build.0 = Release|Any CPU
 		{EE66327A-3FCD-4532-81A9-72BAF3DC6309}.Release|x86.ActiveCfg = Release|Any CPU
 		{EE66327A-3FCD-4532-81A9-72BAF3DC6309}.Release|x86.Build.0 = Release|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Debug|x64.Build.0 = Debug|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Debug|x86.Build.0 = Debug|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Release|Any CPU.Build.0 = Release|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Release|x64.ActiveCfg = Release|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Release|x64.Build.0 = Release|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Release|x86.ActiveCfg = Release|Any CPU
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -129,5 +143,6 @@ Global
 		{E0438DDF-F457-432B-A3F2-B571DC95D0D4} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{675F6A5A-06A8-4C69-B6F6-CD928377948A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{EE66327A-3FCD-4532-81A9-72BAF3DC6309} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{823226D8-30ED-4EAC-91A0-66E4FA6224FD} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
