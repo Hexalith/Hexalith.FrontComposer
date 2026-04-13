@@ -1,0 +1,141 @@
+# generated: 2026-04-12
+# last_updated: 2026-04-12
+# project: Hexalith.FrontComposer
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: {project-root}/_bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - Developer typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-04-12
+last_updated: 2026-04-12
+project: Hexalith.FrontComposer
+project_key: NOKEY
+tracking_system: file-system
+story_location: "{project-root}/_bmad-output/implementation-artifacts"
+
+development_status:
+  # Epic 1: Project Scaffolding & First Auto-Generated View
+  epic-1: backlog
+  1-1-solution-structure-and-build-infrastructure: backlog
+  1-2-contracts-package-with-core-abstractions: backlog
+  1-3-fluxor-state-management-foundation: backlog
+  1-4-source-generator-parse-stage: backlog
+  1-5-source-generator-transform-and-emit-stages: backlog
+  1-6-counter-sample-domain-and-aspire-topology: backlog
+  1-7-ci-pipeline-and-semantic-release: backlog
+  1-8-hot-reload-and-fluent-ui-contingency: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Command Submission & Lifecycle Feedback
+  epic-2: backlog
+  2-1-command-form-generation-and-field-type-inference: backlog
+  2-2-action-density-rules-and-rendering-modes: backlog
+  2-3-command-lifecycle-state-management: backlog
+  2-4-fclifecyclewrapper-visual-lifecycle-feedback: backlog
+  2-5-command-rejection-confirmation-and-form-protection: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Composition Shell & Navigation Experience
+  epic-3: backlog
+  3-1-shell-layout-theme-and-typography: backlog
+  3-2-sidebar-navigation-and-responsive-behavior: backlog
+  3-3-display-density-and-user-settings: backlog
+  3-4-fccommandpalette-and-keyboard-shortcuts: backlog
+  3-5-home-directory-badge-counts-and-new-capability-discovery: backlog
+  3-6-session-persistence-and-context-restoration: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Rich DataGrid & Projection Interaction
+  epic-4: backlog
+  4-1-projection-role-hints-and-view-rendering: backlog
+  4-2-status-badge-system: backlog
+  4-3-datagrid-filtering-sorting-and-search: backlog
+  4-4-virtual-scrolling-and-column-prioritization: backlog
+  4-5-expand-in-row-detail-and-progressive-disclosure: backlog
+  4-6-empty-states-field-descriptions-and-unsupported-types: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: Reliable Real-Time Experience
+  epic-5: backlog
+  5-1-eventstore-service-abstractions: backlog
+  5-2-http-response-handling-and-etag-caching: backlog
+  5-3-signalr-connection-and-disconnection-handling: backlog
+  5-4-reconnection-reconciliation-and-batched-updates: backlog
+  5-5-command-idempotency-and-optimistic-updates: backlog
+  5-6-build-time-infrastructure-enforcement-and-observability: backlog
+  5-7-signalr-fault-injection-test-harness: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: Developer Customization Gradient
+  epic-6: backlog
+  6-1-level-1-annotation-overrides: backlog
+  6-2-level-2-typed-razor-template-overrides: backlog
+  6-3-level-3-slot-level-field-replacement: backlog
+  6-4-level-4-full-component-replacement: backlog
+  6-5-fcdevmodeoverlay-and-starter-template-generator: backlog
+  6-6-build-time-validation-error-boundaries-and-diagnostics: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Authentication, Authorization & Multi-Tenancy
+  epic-7: backlog
+  7-1-oidc-saml-authentication-integration: backlog
+  7-2-tenant-context-propagation-and-isolation: backlog
+  7-3-command-authorization-policies: backlog
+  epic-7-retrospective: optional
+
+  # Epic 8: MCP & Agent Integration
+  epic-8: backlog
+  8-1-mcp-server-and-typed-tool-exposure: backlog
+  8-2-hallucination-rejection-and-tenant-scoped-tools: backlog
+  8-3-two-call-lifecycle-and-agent-command-semantics: backlog
+  8-4-projection-rendering-for-agents: backlog
+  8-5-skill-corpus-and-build-time-agent-support: backlog
+  8-6-schema-versioning-and-multi-surface-abstraction: backlog
+  epic-8-retrospective: optional
+
+  # Epic 9: Developer Tooling & Documentation
+  epic-9: backlog
+  9-1-build-time-drift-detection: backlog
+  9-2-cli-inspection-and-migration-tools: backlog
+  9-3-ide-parity-and-developer-experience: backlog
+  9-4-diagnostic-id-system-and-deprecation-policy: backlog
+  9-5-diataxis-documentation-site: backlog
+  epic-9-retrospective: optional
+
+  # Epic 10: Framework Quality & Adopter Confidence
+  epic-10: backlog
+  10-1-adopter-test-host-and-component-testing-utilities: backlog
+  10-2-accessibility-ci-gates-and-visual-specimen-verification: backlog
+  10-3-consumer-driven-contract-tests-pact: backlog
+  10-4-mutation-testing-and-property-based-testing: backlog
+  10-5-flaky-test-quarantine-and-ci-governance: backlog
+  10-6-llm-benchmark-signed-releases-and-sbom: backlog
+  epic-10-retrospective: optional
