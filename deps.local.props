@@ -1,0 +1,8 @@
+<Project>
+  <!-- Local submodule ProjectReference paths (default for dev + CI) -->
+  <!-- EventStore is ALWAYS from root submodule, never Tenants' nested copy -->
+  <PropertyGroup>
+    <EventStorePath>$(MSBuildThisFileDirectory)Hexalith.EventStore</EventStorePath>
+    <TenantsPath>$(MSBuildThisFileDirectory)Hexalith.Tenants</TenantsPath>
+  </PropertyGroup>
+</Project>

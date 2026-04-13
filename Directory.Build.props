@@ -1,0 +1,22 @@
+<Project>
+
+  <PropertyGroup>
+    <!-- Root detection: true only when the evaluated project resolves this repository's solution file. -->
+    <_FrontComposerSlnFromProject>$([MSBuild]::GetPathOfFileAbove('Hexalith.FrontComposer.sln', '$(MSBuildProjectDirectory)'))</_FrontComposerSlnFromProject>
+    <_FrontComposerSlnAtRepo>$(MSBuildThisFileDirectory)Hexalith.FrontComposer.sln</_FrontComposerSlnAtRepo>
+    <FrontComposerRoot Condition="'$(_FrontComposerSlnFromProject)' == '$(_FrontComposerSlnAtRepo)'">true</FrontComposerRoot>
+    <FrontComposerRoot Condition="'$(FrontComposerRoot)' == ''">false</FrontComposerRoot>
+  </PropertyGroup>
+
+  <!-- deps import switch: UseNuGetDeps selects between local submodule refs and NuGet packages -->
+  <Import Project="deps.local.props" Condition="'$(UseNuGetDeps)' != 'true' AND '$(FrontComposerRoot)' == 'true'" />
+  <Import Project="deps.nuget.props" Condition="'$(UseNuGetDeps)' == 'true' AND '$(FrontComposerRoot)' == 'true'" />
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+</Project>

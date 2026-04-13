@@ -419,3 +419,7 @@ FodyWeavers.xsd
 *.msix
 *.msm
 *.msp
+
+
+#Ignore cursor AI rules
+.cursor\rules\codacy.mdc

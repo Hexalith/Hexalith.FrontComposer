@@ -1,0 +1,30 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup Label="Roslyn">
+    <!-- MUST be exactly 4.12.0 — higher versions (5.x) break IDE analyzer load context.
+         PrivateAssets="all" is set in the project file, not here. -->
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Blazor">
+    <!-- Fluent UI v5 RC2 available on public NuGet (Path 1 from story spec).
+         ADR-003: build on v5 RC, pin exact version. -->
+    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.2-26098.1" />
+    <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
+  </ItemGroup>
+
+  <ItemGroup Label="Testing">
+    <!-- xUnit v3 to match EventStore submodule — bUnit 2.7.2 is compatible -->
+    <PackageVersion Include="xunit.v3" Version="3.2.2" />
+    <PackageVersion Include="xunit.v3.assert" Version="3.2.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+    <PackageVersion Include="bunit" Version="2.7.2" />
+    <PackageVersion Include="Shouldly" Version="4.3.0" />
+    <PackageVersion Include="NSubstitute" Version="5.3.0" />
+    <PackageVersion Include="coverlet.collector" Version="8.0.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+  </ItemGroup>
+</Project>
