@@ -1,4 +1,3 @@
-
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -15,51 +14,11 @@ using NSubstitute.ExceptionExtensions;
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
+
 /// <summary>
 /// Unit tests for <see cref="DensityEffects"/>.
 /// </summary>
 public class DensityEffectsTests {
-    [Fact]
-    public async Task HandleDensityChanged_PersistsToStorage() {
-        // Arrange
-        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        var storage = new InMemoryStorageService();
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
-        IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, logger);
-        var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
-        string key = StorageKeys.BuildKey(StorageKeys.DefaultTenantId, StorageKeys.DefaultUserId, "density");
-
-        // Act
-        await sut.HandleDensityChanged(action, dispatcher);
-
-        // Assert
-        object? stored = await storage.GetAsync<object>(key, ct);
-        stored.ShouldBe(DensityLevel.Compact);
-    }
-
-    [Fact]
-    public async Task HandleDensityChanged_StorageServiceThrows_LogsWarning() {
-        // Arrange
-        IStorageService storage = Substitute.For<IStorageService>();
-        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Storage failure"));
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
-        IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, logger);
-        var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
-
-        // Act — should not throw
-        await sut.HandleDensityChanged(action, dispatcher);
-
-        // Assert — logger was called
-        logger.ReceivedWithAnyArgs(1).Log(
-            default,
-            default,
-            default!,
-            default,
-            default!);
-    }
 
     [Fact]
     public async Task DispatchDensityChanged_StorageServiceThrows_StoreStillUpdatesState() {
@@ -117,6 +76,48 @@ public class DensityEffectsTests {
 
         // Assert — no dispatch because no stored density preference exists
         dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+    }
+
+    [Fact]
+    public async Task HandleDensityChanged_PersistsToStorage() {
+        // Arrange
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        var storage = new InMemoryStorageService();
+        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        var sut = new DensityEffects(storage, logger);
+        var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
+        string key = StorageKeys.BuildKey(StorageKeys.DefaultTenantId, StorageKeys.DefaultUserId, "density");
+
+        // Act
+        await sut.HandleDensityChanged(action, dispatcher);
+
+        // Assert
+        object? stored = await storage.GetAsync<object>(key, ct);
+        stored.ShouldBe(DensityLevel.Compact);
+    }
+
+    [Fact]
+    public async Task HandleDensityChanged_StorageServiceThrows_LogsWarning() {
+        // Arrange
+        IStorageService storage = Substitute.For<IStorageService>();
+        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Storage failure"));
+        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        var sut = new DensityEffects(storage, logger);
+        var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
+
+        // Act — should not throw
+        await sut.HandleDensityChanged(action, dispatcher);
+
+        // Assert — logger was called
+        logger.ReceivedWithAnyArgs(1).Log(
+            default,
+            default,
+            default!,
+            default,
+            default!);
     }
 
     private static ServiceProvider BuildProvider(IStorageService storage) {

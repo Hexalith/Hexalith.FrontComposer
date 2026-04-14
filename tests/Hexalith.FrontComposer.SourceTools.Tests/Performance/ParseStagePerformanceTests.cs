@@ -1,4 +1,3 @@
-
 using System.Diagnostics;
 using System.Text;
 
@@ -11,6 +10,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Performance;
 
 [Trait("Category", "Performance")]
 public class ParseStagePerformanceTests {
+
     [Fact]
     public void ParseStage_20PlusTypes_CompletesUnder500ms() {
         CancellationToken ct = TestContext.Current.CancellationToken;

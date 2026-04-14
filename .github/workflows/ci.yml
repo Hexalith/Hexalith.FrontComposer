@@ -101,6 +101,14 @@ jobs:
       # DIVERGENCE 4: Solution-level testing -- FrontComposer runs a single `dotnet test` on the
       # whole solution (all tests are Tier 1, no DAPR/Aspire tiers). EventStore runs 12 separate
       # per-project test commands because it has DAPR-dependent tiers.
+      #
+      # Story 1.8 AC2 note: the `[Trait("Category", "Performance")]`-tagged benchmark tests
+      # (IncrementalRebuildBenchmarkTests) run *within* this same step. "Advisory mode" for
+      # benchmark regressions is satisfied by job-level `continue-on-error: true` (line 59) —
+      # a perf regression does not block the merge today. When Epic 2 removes the job-level
+      # advisory flag, split the perf tests into a dedicated step filtered by
+      # `--filter Category=Performance` with its own `continue-on-error: true` so benchmark
+      # flakes stay advisory while functional regressions become blocking.
       - name: 'Gate 3: All Tests'
         env:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.

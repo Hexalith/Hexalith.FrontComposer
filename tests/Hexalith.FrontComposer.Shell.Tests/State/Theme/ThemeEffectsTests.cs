@@ -1,4 +1,3 @@
-
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Storage;
@@ -14,51 +13,11 @@ using NSubstitute.ExceptionExtensions;
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
+
 /// <summary>
 /// Unit tests for <see cref="ThemeEffects"/>.
 /// </summary>
 public class ThemeEffectsTests {
-    [Fact]
-    public async Task HandleThemeChanged_PersistsToStorage() {
-        // Arrange
-        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        var storage = new InMemoryStorageService();
-        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
-        IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, logger);
-        var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);
-        string key = StorageKeys.BuildKey(StorageKeys.DefaultTenantId, StorageKeys.DefaultUserId, "theme");
-
-        // Act
-        await sut.HandleThemeChanged(action, dispatcher);
-
-        // Assert
-        object? stored = await storage.GetAsync<object>(key, ct);
-        stored.ShouldBe(ThemeValue.Dark);
-    }
-
-    [Fact]
-    public async Task HandleThemeChanged_StorageServiceThrows_LogsWarning() {
-        // Arrange
-        IStorageService storage = Substitute.For<IStorageService>();
-        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Storage failure"));
-        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
-        IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new ThemeEffects(storage, logger);
-        var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);
-
-        // Act — should not throw
-        await sut.HandleThemeChanged(action, dispatcher);
-
-        // Assert — logger was called (warning level)
-        logger.ReceivedWithAnyArgs(1).Log(
-            default,
-            default,
-            default!,
-            default,
-            default!);
-    }
 
     [Fact]
     public async Task DispatchThemeChanged_StorageServiceThrows_StoreStillUpdatesState() {
@@ -116,6 +75,48 @@ public class ThemeEffectsTests {
 
         // Assert — no dispatch because no stored theme preference exists
         dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+    }
+
+    [Fact]
+    public async Task HandleThemeChanged_PersistsToStorage() {
+        // Arrange
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        var storage = new InMemoryStorageService();
+        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        var sut = new ThemeEffects(storage, logger);
+        var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);
+        string key = StorageKeys.BuildKey(StorageKeys.DefaultTenantId, StorageKeys.DefaultUserId, "theme");
+
+        // Act
+        await sut.HandleThemeChanged(action, dispatcher);
+
+        // Assert
+        object? stored = await storage.GetAsync<object>(key, ct);
+        stored.ShouldBe(ThemeValue.Dark);
+    }
+
+    [Fact]
+    public async Task HandleThemeChanged_StorageServiceThrows_LogsWarning() {
+        // Arrange
+        IStorageService storage = Substitute.For<IStorageService>();
+        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
+            .ThrowsAsync(new InvalidOperationException("Storage failure"));
+        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        var sut = new ThemeEffects(storage, logger);
+        var action = new ThemeChangedAction("corr-1", ThemeValue.Dark);
+
+        // Act — should not throw
+        await sut.HandleThemeChanged(action, dispatcher);
+
+        // Assert — logger was called (warning level)
+        logger.ReceivedWithAnyArgs(1).Log(
+            default,
+            default,
+            default!,
+            default,
+            default!);
     }
 
     private static ServiceProvider BuildProvider(IStorageService storage) {

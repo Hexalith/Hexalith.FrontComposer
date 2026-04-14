@@ -1,4 +1,3 @@
-
 // Story 1.8 — Task 2: Incremental rebuild benchmark.
 //
 // Two-pass incremental protocol:
@@ -26,6 +25,7 @@
 // Dev Notes ("xUnit v3 (3.2.2) with Verify.XunitV3 — use xUnit v3 patterns
 // for all new tests").
 
+using System.Collections.Immutable;
 using System.Diagnostics;
 
 using Microsoft.CodeAnalysis;
@@ -37,7 +37,8 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Benchmarks;
 
 [Trait("Category", "Performance")]
 public class IncrementalRebuildBenchmarkTests {
-    private const string InitialSource = @"
+
+    private const string _initialSource = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 
 namespace TestDomain;
@@ -52,7 +53,7 @@ public partial class CounterProjection
     public bool IsActive { get; set; }
 }";
 
-    private const string MutatedSource = @"
+    private const string _mutatedSource = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 
 namespace TestDomain;
@@ -70,9 +71,19 @@ public partial class CounterProjection
 
     [Fact]
     public void IncrementalDeltaRebuild_AddOneProperty_CompletesUnder500ms() {
+        // Measurement methodology (review-2 hardening):
+        //   1 warmup iteration (not measured) absorbs JIT of the equality/diff
+        //   paths on the first timed invocation. Then 5 sampled iterations; we
+        //   assert on the MEDIAN elapsed time to suppress outlier noise from
+        //   GC pauses or CI scheduler preemption. Single-shot stopwatch below
+        //   a ~100 ms target is noise-dominated; the median is the reliable
+        //   quantity to compare against the 500 ms NFR8 ceiling.
+        const int warmupIterations = 1;
+        const int sampleIterations = 5;
+
         CancellationToken ct = TestContext.Current.CancellationToken;
 
-        CSharpCompilation compilation1 = CompilationHelper.CreateCompilation(InitialSource);
+        CSharpCompilation compilation1 = CompilationHelper.CreateCompilation(_initialSource);
         FrontComposerGenerator generator = new();
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
@@ -90,37 +101,61 @@ public partial class CounterProjection
         // Mutate: replace the single syntax tree with the source containing one extra property.
         CSharpCompilation compilation2 = compilation1.ReplaceSyntaxTree(
             compilation1.SyntaxTrees.First(),
-            CSharpSyntaxTree.ParseText(MutatedSource, cancellationToken: ct));
+            CSharpSyntaxTree.ParseText(_mutatedSource, cancellationToken: ct));
 
-        // Pass 2: measure ONLY the delta rebuild.
-        var sw = Stopwatch.StartNew();
-        driver = driver.RunGenerators(compilation2, ct);
-        sw.Stop();
+        // Warmup: absorb JIT cost of the first delta-rebuild path. Not measured.
+        GeneratorDriver warmupDriver = driver;
+        for (int i = 0; i < warmupIterations; i++) {
+            warmupDriver = warmupDriver.RunGenerators(compilation2, ct);
+            // Re-seed with compilation1 so the next warmup iteration also observes a delta.
+            warmupDriver = warmupDriver.RunGenerators(compilation1, ct);
+        }
 
-        GeneratorDriverRunResult pass2Result = driver.GetRunResult();
+        // Sampled measurement: alternate compilation2 (the timed delta) with
+        // compilation1 (re-seed so the next delta is real). Collect median.
+        long[] samples = new long[sampleIterations];
+        GeneratorDriverRunResult lastDeltaResult = null!;
+        GeneratorDriver measureDriver = driver;
+        // Re-seed once so the next RunGenerators(compilation2) is a real delta.
+        measureDriver = measureDriver.RunGenerators(compilation1, ct);
+        for (int i = 0; i < sampleIterations; i++) {
+            var sw = Stopwatch.StartNew();
+            measureDriver = measureDriver.RunGenerators(compilation2, ct);
+            sw.Stop();
+            samples[i] = sw.ElapsedMilliseconds;
+            lastDeltaResult = measureDriver.GetRunResult();
+            // Re-seed for the next iteration so it observes a Modified Parse delta.
+            measureDriver = measureDriver.RunGenerators(compilation1, ct);
+        }
 
-        pass2Result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty(
+        long medianMs = samples.OrderBy(x => x).ElementAt(sampleIterations / 2);
+
+        lastDeltaResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty(
             "Incremental rebuild must not produce errors.");
 
         // Sanity: the Parse stage must have observed a modification (otherwise we didn't
         // actually measure a delta rebuild — the cache key may not reflect source changes).
-        GeneratorRunResult result = pass2Result.Results[0];
+        // Note: this asserts the cache is not *under-eager* (it does detect source change).
+        // The inverse property — that unchanged source produces Unchanged — is covered by
+        // IncrementalCachingTests.
+        GeneratorRunResult result = lastDeltaResult.Results[0];
         result.TrackedSteps.ContainsKey("Parse").ShouldBeTrue(
             "The Parse stage must be tracked so the incremental contract can be verified.");
         result.TrackedSteps["Parse"]
             .SelectMany(s => s.Outputs)
             .Any(o => o.Reason == IncrementalStepRunReason.Modified)
-            .ShouldBeTrue("Adding a property must cause the Parse stage to report Modified — otherwise the cache is over-eager.");
+            .ShouldBeTrue("Adding a property must cause the Parse stage to report Modified — otherwise the cache is under-eager.");
 
-        sw.ElapsedMilliseconds.ShouldBeLessThan(
+        medianMs.ShouldBeLessThan(
             500L,
-            $"Incremental delta rebuild took {sw.ElapsedMilliseconds}ms, exceeding the 500ms NFR8 budget. " +
+            $"Incremental delta rebuild median ({medianMs}ms across {sampleIterations} samples: " +
+            $"[{string.Join(", ", samples)}]) exceeds the 500ms NFR8 budget. " +
             "If this reflects a real regression, file an issue; if it reflects machine variance in CI, " +
             "the advisory mode (continue-on-error: true) keeps it non-blocking while the baseline is collected.");
     }
 
     [Fact]
-    public void IncrementalDeltaRebuild_MalformedProjection_ToleratedWithoutGeneratorException() {
+    public void MalformedProjection_ToleratedWithoutGeneratorException() {
         // Contract for invalid / partial syntax tolerance (Task 2.3).
         //
         // The story spec lists three desired properties:
@@ -181,5 +216,34 @@ public partial class Bad { public string X { get }";
         result.Diagnostics
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ShouldBeEmpty("The generator must not raise error-severity diagnostics on malformed input — that would regress the inner-loop experience.");
+
+        // (c'') The generator's emitted code must not introduce NEW error-severity
+        //       diagnostics beyond what the malformed original already had. Re-compile
+        //       with the generated syntax trees appended and count only error-severity
+        //       CS* diagnostics not present in the pre-generation compilation. This
+        //       guards against a regression where error-recovered semantic model output
+        //       causes the emitter to generate code that itself fails to compile
+        //       (making the developer's inner loop *worse* than the original error).
+        var originalErrorLocations = compilation
+            .GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error && d.Id.StartsWith("CS", System.StringComparison.Ordinal))
+            .Select(d => d.Id + "@" + d.Location.GetLineSpan().Path + ":" + d.Location.GetLineSpan().StartLinePosition.Line)
+            .ToImmutableHashSet();
+
+        CSharpCompilation postGenCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees);
+        Diagnostic[] newGeneratorErrors = postGenCompilation
+            .GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error && d.Id.StartsWith("CS", System.StringComparison.Ordinal))
+            .Where(d => {
+                string key = d.Id + "@" + d.Location.GetLineSpan().Path + ":" + d.Location.GetLineSpan().StartLinePosition.Line;
+                return !originalErrorLocations.Contains(key);
+            })
+            .ToArray();
+
+        newGeneratorErrors.ShouldBeEmpty(
+            $"The generator emitted code that introduces {newGeneratorErrors.Length} NEW compile error(s) " +
+            "beyond the malformed source's original diagnostics. This regresses the inner-loop experience: " +
+            "the developer sees generator-amplified noise on top of the real edit-in-progress error. " +
+            $"New errors: [{string.Join("; ", newGeneratorErrors.Select(d => d.Id + " " + d.GetMessage()))}].");
     }
 }

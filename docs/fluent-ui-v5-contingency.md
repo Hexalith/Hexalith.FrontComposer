@@ -151,9 +151,24 @@ jobs:
                     | jq -r '.searchResult[0].packages[0].latestVersion')
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Validate resolved version (guard against sed/regex corruption)
+        run: |
+          # Defense against jq-shape drift: reject anything that isn't a safe
+          # NuGet semver-style string. `sed` replacement is fed this value, so
+          # characters like `&`, `\`, `|` in the resolved string would corrupt
+          # `Directory.Packages.props` silently.
+          v='${{ steps.fluentui.outputs.version }}'
+          case "$v" in
+            ''|*[!A-Za-z0-9.\-]*)
+              echo "::error::Resolved Fluent UI version '$v' contains unsafe characters for sed/XML replacement"; exit 1 ;;
+          esac
+
       - name: Override pin
         run: |
-          # Temporarily bump the central package version to the resolved pre-release
+          # Temporarily bump the central package version to the resolved pre-release.
+          # The previous step validated the version string so sed will not corrupt XML.
+          # Longer-term (see "Known fragility" below), prefer an `XmlPoke`-style MSBuild
+          # target or a small `dotnet` script rather than regex-over-XML.
           sed -i -E "s|(<PackageVersion Include=\"Microsoft.FluentUI.AspNetCore.Components\" Version=\")[^\"]+(\".*)|\1${{ steps.fluentui.outputs.version }}\2|" Directory.Packages.props
 
       - name: Build
@@ -172,7 +187,7 @@ jobs:
               repo: context.repo.repo,
               title: `[canary] Fluent UI ${{ steps.fluentui.outputs.version }} broke the build`,
               labels: ['canary-failure'],
-              body: 'See workflow run: ' + context.runId
+              body: `See workflow run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
             });
 ```
 

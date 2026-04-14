@@ -1,4 +1,3 @@
-
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -9,21 +8,88 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 public class RazorModelTransformTests {
-    private static readonly EquatableArray<BadgeMappingEntry> EmptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
-
-    private static PropertyModel Prop(string name, string typeName, bool isNullable = false, bool isUnsupported = false, string? displayName = null)
-        => new(name, typeName, isNullable, isUnsupported, displayName, EmptyBadges);
-
-    private static DomainModel Model(params PropertyModel[] props)
-        => new("TestProjection", "TestDomain", "Test", null, null, new EquatableArray<PropertyModel>(props.ToImmutableArray()));
-
-    // --- Type inference tests (14 types) ---
+    private static readonly EquatableArray<BadgeMappingEntry> _emptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
 
     [Fact]
-    public void Transform_StringProperty_MapsToText() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Name", "String")));
+    public void Transform_BooleanProperty_MapsToBoolean() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("IsActive", "Boolean")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Boolean);
+        result.Columns[0].FormatHint.ShouldBe("Yes/No");
+    }
+
+    [Fact]
+    public void Transform_CollectionProperty_MapsToCollection() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Items", "Collection")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Collection);
+        result.Columns[0].FormatHint.ShouldBe("Count");
+    }
+
+    [Fact]
+    public void Transform_DateOnlyProperty_MapsToDateTime() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("BirthDate", "DateOnly")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
+        result.Columns[0].FormatHint.ShouldBe("d");
+    }
+
+    [Fact]
+    public void Transform_DateTimeOffsetProperty_MapsToDateTime() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Timestamp", "DateTimeOffset")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
+        result.Columns[0].FormatHint.ShouldBe("d");
+    }
+
+    [Fact]
+    public void Transform_DateTimeProperty_MapsToDateTime() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("CreatedAt", "DateTime")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
+        result.Columns[0].FormatHint.ShouldBe("d");
+    }
+
+    [Fact]
+    public void Transform_DecimalProperty_MapsToNumeric() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Price", "Decimal")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
+        result.Columns[0].FormatHint.ShouldBe("N2");
+    }
+
+    [Fact]
+    public void Transform_DisplayNameTakesPriority_OverHumanized() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("OrderDate", "DateTime", displayName: "Date Ordered")));
+        result.Columns[0].Header.ShouldBe("Date Ordered");
+    }
+
+    [Fact]
+    public void Transform_DoubleProperty_MapsToNumeric() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Rate", "Double")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
+        result.Columns[0].FormatHint.ShouldBe("N2");
+    }
+
+    [Fact]
+    public void Transform_EnumColumn_HasHumanize30FormatHint() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Status", "Enum")));
+        result.Columns[0].FormatHint.ShouldBe("Humanize:30");
+    }
+
+    [Fact]
+    public void Transform_EnumProperty_MapsToEnum() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Status", "Enum")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Enum);
+        result.Columns[0].FormatHint.ShouldBe("Humanize:30");
+    }
+
+    [Fact]
+    public void Transform_GuidProperty_MapsToText() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Id", "Guid")));
         result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Text);
-        result.Columns[0].FormatHint.ShouldBeNull();
+        result.Columns[0].FormatHint.ShouldBe("Truncate:8");
+    }
+
+    // --- Label resolution ---
+    [Fact]
+    public void Transform_HumanizedCamelCase_WhenNoDisplayName() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("OrderDate", "DateTime")));
+        result.Columns[0].Header.ShouldBe("Order Date");
     }
 
     [Fact]
@@ -39,152 +105,6 @@ public class RazorModelTransformTests {
         result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
         result.Columns[0].FormatHint.ShouldBe("N0");
     }
-
-    [Fact]
-    public void Transform_DecimalProperty_MapsToNumeric() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Price", "Decimal")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
-        result.Columns[0].FormatHint.ShouldBe("N2");
-    }
-
-    [Fact]
-    public void Transform_DoubleProperty_MapsToNumeric() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Rate", "Double")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
-        result.Columns[0].FormatHint.ShouldBe("N2");
-    }
-
-    [Fact]
-    public void Transform_SingleProperty_MapsToNumeric() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Score", "Single")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
-        result.Columns[0].FormatHint.ShouldBe("N2");
-    }
-
-    [Fact]
-    public void Transform_BooleanProperty_MapsToBoolean() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("IsActive", "Boolean")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Boolean);
-        result.Columns[0].FormatHint.ShouldBe("Yes/No");
-    }
-
-    [Fact]
-    public void Transform_DateTimeProperty_MapsToDateTime() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("CreatedAt", "DateTime")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
-        result.Columns[0].FormatHint.ShouldBe("d");
-    }
-
-    [Fact]
-    public void Transform_DateTimeOffsetProperty_MapsToDateTime() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Timestamp", "DateTimeOffset")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
-        result.Columns[0].FormatHint.ShouldBe("d");
-    }
-
-    [Fact]
-    public void Transform_DateOnlyProperty_MapsToDateTime() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("BirthDate", "DateOnly")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
-        result.Columns[0].FormatHint.ShouldBe("d");
-    }
-
-    [Fact]
-    public void Transform_TimeOnlyProperty_MapsToDateTime() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("StartTime", "TimeOnly")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
-        result.Columns[0].FormatHint.ShouldBe("t");
-    }
-
-    [Fact]
-    public void Transform_GuidProperty_MapsToText() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Id", "Guid")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Text);
-        result.Columns[0].FormatHint.ShouldBe("Truncate:8");
-    }
-
-    [Fact]
-    public void Transform_EnumProperty_MapsToEnum() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Status", "Enum")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Enum);
-        result.Columns[0].FormatHint.ShouldBe("Humanize:30");
-    }
-
-    [Fact]
-    public void Transform_CollectionProperty_MapsToCollection() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Items", "Collection")));
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Collection);
-        result.Columns[0].FormatHint.ShouldBe("Count");
-    }
-
-    // --- Nullable ---
-
-    [Fact]
-    public void Transform_NullableInt_SetsIsNullableTrue() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Count", "Int32", isNullable: true)));
-        result.Columns[0].IsNullable.ShouldBeTrue();
-    }
-
-    [Fact]
-    public void Transform_NullableString_SetsIsNullableTrue() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Name", "String", isNullable: true)));
-        result.Columns[0].IsNullable.ShouldBeTrue();
-    }
-
-    [Fact]
-    public void Transform_NullableCollection_SetsIsNullableAndCollection() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Items", "Collection", isNullable: true)));
-        result.Columns[0].IsNullable.ShouldBeTrue();
-        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Collection);
-    }
-
-    // --- Label resolution ---
-
-    [Fact]
-    public void Transform_DisplayNameTakesPriority_OverHumanized() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("OrderDate", "DateTime", displayName: "Date Ordered")));
-        result.Columns[0].Header.ShouldBe("Date Ordered");
-    }
-
-    [Fact]
-    public void Transform_HumanizedCamelCase_WhenNoDisplayName() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("OrderDate", "DateTime")));
-        result.Columns[0].Header.ShouldBe("Order Date");
-    }
-
-    [Fact]
-    public void Transform_RawPropertyName_WhenSimpleName() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Name", "String")));
-        result.Columns[0].Header.ShouldBe("Name");
-    }
-
-    // --- Unsupported properties skipped ---
-
-    [Fact]
-    public void Transform_UnsupportedPropertiesSkipped() {
-        PropertyModel[] props =
-        [
-            Prop("Name", "String"),
-            Prop("Count", "Int32"),
-            Prop("IsActive", "Boolean"),
-            Prop("CreatedAt", "DateTime"),
-            Prop("Status", "Enum"),
-            Prop("ByteArray", "byte[]", isUnsupported: true),
-            Prop("Dict", "Dictionary<string,int>", isUnsupported: true),
-        ];
-        RazorModel result = RazorModelTransform.Transform(Model(props));
-        result.Columns.Count.ShouldBe(5);
-    }
-
-    // --- Enum format hint ---
-
-    [Fact]
-    public void Transform_EnumColumn_HasHumanize30FormatHint() {
-        RazorModel result = RazorModelTransform.Transform(Model(Prop("Status", "Enum")));
-        result.Columns[0].FormatHint.ShouldBe("Humanize:30");
-    }
-
-    // --- Label resolution fallback chain ---
 
     [Fact]
     public void Transform_LabelResolution_AllThreeSteps() {
@@ -204,7 +124,25 @@ public class RazorModelTransformTests {
         r3.Columns[0].Header.ShouldBe("X");
     }
 
-    // --- No BoundedContext uses namespace ---
+    [Fact]
+    public void Transform_NullableCollection_SetsIsNullableAndCollection() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Items", "Collection", isNullable: true)));
+        result.Columns[0].IsNullable.ShouldBeTrue();
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Collection);
+    }
+
+    [Fact]
+    public void Transform_NullableInt_SetsIsNullableTrue() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Count", "Int32", isNullable: true)));
+        result.Columns[0].IsNullable.ShouldBeTrue();
+    }
+
+    // --- Nullable ---
+    [Fact]
+    public void Transform_NullableString_SetsIsNullableTrue() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Name", "String", isNullable: true)));
+        result.Columns[0].IsNullable.ShouldBeTrue();
+    }
 
     [Fact]
     public void Transform_PreservesMetadata() {
@@ -216,4 +154,59 @@ public class RazorModelTransformTests {
         result.Namespace.ShouldBe("MyApp.Orders");
         result.BoundedContext.ShouldBe("Orders");
     }
+
+    [Fact]
+    public void Transform_RawPropertyName_WhenSimpleName() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Name", "String")));
+        result.Columns[0].Header.ShouldBe("Name");
+    }
+
+    [Fact]
+    public void Transform_SingleProperty_MapsToNumeric() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Score", "Single")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
+        result.Columns[0].FormatHint.ShouldBe("N2");
+    }
+
+    [Fact]
+    public void Transform_StringProperty_MapsToText() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("Name", "String")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.Text);
+        result.Columns[0].FormatHint.ShouldBeNull();
+    }
+
+    // --- Type inference tests (14 types) ---
+    [Fact]
+    public void Transform_TimeOnlyProperty_MapsToDateTime() {
+        RazorModel result = RazorModelTransform.Transform(Model(Prop("StartTime", "TimeOnly")));
+        result.Columns[0].TypeCategory.ShouldBe(TypeCategory.DateTime);
+        result.Columns[0].FormatHint.ShouldBe("t");
+    }
+
+    [Fact]
+    public void Transform_UnsupportedPropertiesSkipped() {
+        PropertyModel[] props =
+        [
+            Prop("Name", "String"),
+            Prop("Count", "Int32"),
+            Prop("IsActive", "Boolean"),
+            Prop("CreatedAt", "DateTime"),
+            Prop("Status", "Enum"),
+            Prop("ByteArray", "byte[]", isUnsupported: true),
+            Prop("Dict", "Dictionary<string,int>", isUnsupported: true),
+        ];
+        RazorModel result = RazorModelTransform.Transform(Model(props));
+        result.Columns.Count.ShouldBe(5);
+    }
+
+    private static DomainModel Model(params PropertyModel[] props)
+        => new("TestProjection", "TestDomain", "Test", null, null, new EquatableArray<PropertyModel>(props.ToImmutableArray()));
+
+    private static PropertyModel Prop(string name, string typeName, bool isNullable = false, bool isUnsupported = false, string? displayName = null)
+                                                                                                            => new(name, typeName, isNullable, isUnsupported, displayName, _emptyBadges);
+
+    // --- Unsupported properties skipped ---
+    // --- Enum format hint ---
+    // --- Label resolution fallback chain ---
+    // --- No BoundedContext uses namespace ---
 }

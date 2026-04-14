@@ -1,4 +1,3 @@
-
 using Bunit;
 
 using Fluxor;
@@ -12,6 +11,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NSubstitute;
 
 namespace Hexalith.FrontComposer.Shell.Tests;
+
 /// <summary>
 /// Base test class that pre-configures Fluxor, storage, and override registry for bUnit tests.
 /// The Fluxor store is initialized during construction, and <see cref="InitializeStoreAsync"/>

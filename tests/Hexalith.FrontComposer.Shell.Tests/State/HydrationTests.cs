@@ -1,4 +1,3 @@
-
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -12,43 +11,11 @@ using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State;
+
 /// <summary>
 /// Integration tests for state hydration round-trips via Fluxor store.
 /// </summary>
 public class HydrationTests : FrontComposerTestBase {
-    [Fact]
-    public async Task ThemeHydration_StorageContainsValue_DispatchesRestoredTheme() {
-        // Arrange — pre-seed storage before store init
-        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        IStorageService storage = Services.GetRequiredService<IStorageService>();
-        await storage.SetAsync("default:anonymous:theme", ThemeValue.Dark, ct);
-        await InitializeStoreAsync();
-        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
-        IState<FrontComposerThemeState> themeState = Services.GetRequiredService<IState<FrontComposerThemeState>>();
-
-        // Act
-        dispatcher.Dispatch(new AppInitializedAction("hydrate-1"));
-        await Task.Delay(100, ct);
-
-        // Assert
-        themeState.Value.CurrentTheme.ShouldBe(ThemeValue.Dark);
-    }
-
-    [Fact]
-    public async Task ThemeHydration_StorageEmpty_UsesDefaultLight() {
-        // Arrange — no seeding
-        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        await InitializeStoreAsync();
-        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
-        IState<FrontComposerThemeState> themeState = Services.GetRequiredService<IState<FrontComposerThemeState>>();
-
-        // Act
-        dispatcher.Dispatch(new AppInitializedAction("hydrate-2"));
-        await Task.Delay(100, ct);
-
-        // Assert
-        themeState.Value.CurrentTheme.ShouldBe(ThemeValue.Light);
-    }
 
     [Fact]
     public async Task DensityHydration_StorageContainsValue_DispatchesRestoredDensity() {
@@ -82,5 +49,39 @@ public class HydrationTests : FrontComposerTestBase {
 
         // Assert
         densityState.Value.CurrentDensity.ShouldBe(DensityLevel.Comfortable);
+    }
+
+    [Fact]
+    public async Task ThemeHydration_StorageContainsValue_DispatchesRestoredTheme() {
+        // Arrange — pre-seed storage before store init
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        IStorageService storage = Services.GetRequiredService<IStorageService>();
+        await storage.SetAsync("default:anonymous:theme", ThemeValue.Dark, ct);
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IState<FrontComposerThemeState> themeState = Services.GetRequiredService<IState<FrontComposerThemeState>>();
+
+        // Act
+        dispatcher.Dispatch(new AppInitializedAction("hydrate-1"));
+        await Task.Delay(100, ct);
+
+        // Assert
+        themeState.Value.CurrentTheme.ShouldBe(ThemeValue.Dark);
+    }
+
+    [Fact]
+    public async Task ThemeHydration_StorageEmpty_UsesDefaultLight() {
+        // Arrange — no seeding
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IState<FrontComposerThemeState> themeState = Services.GetRequiredService<IState<FrontComposerThemeState>>();
+
+        // Act
+        dispatcher.Dispatch(new AppInitializedAction("hydrate-2"));
+        await Task.Delay(100, ct);
+
+        // Assert
+        themeState.Value.CurrentTheme.ShouldBe(ThemeValue.Light);
     }
 }

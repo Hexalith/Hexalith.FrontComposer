@@ -1,4 +1,3 @@
-
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -9,15 +8,6 @@ using Shouldly;
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 public class FluxorModelTransformTests {
-    private static DomainModel Model(string typeName)
-        => new(typeName, "TestDomain", "Test", null, null,
-            new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty));
-
-    [Fact]
-    public void Transform_StateName_IsDerivedFromTypeName() {
-        FluxorModel result = FluxorModelTransform.Transform(Model("OrderProjection"));
-        result.StateName.ShouldBe("OrderProjectionState");
-    }
 
     [Fact]
     public void Transform_FeatureName_IsDerivedFromTypeName() {
@@ -34,4 +24,14 @@ public class FluxorModelTransformTests {
         result.TypeName.ShouldBe("OrderProjection");
         result.Namespace.ShouldBe("MyApp.Orders");
     }
+
+    [Fact]
+    public void Transform_StateName_IsDerivedFromTypeName() {
+        FluxorModel result = FluxorModelTransform.Transform(Model("OrderProjection"));
+        result.StateName.ShouldBe("OrderProjectionState");
+    }
+
+    private static DomainModel Model(string typeName)
+                    => new(typeName, "TestDomain", "Test", null, null,
+            new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty));
 }

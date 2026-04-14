@@ -1,10 +1,10 @@
-
 using System.Reflection;
 using System.Runtime.ExceptionServices;
 
 using Hexalith.FrontComposer.Contracts.Registration;
 
 namespace Hexalith.FrontComposer.Shell.Registration;
+
 /// <summary>
 /// Encapsulates a deferred domain registration discovered from a generated Registration class.
 /// Registered as a singleton in DI by <c>AddHexalithDomain&lt;T&gt;()</c> and consumed
