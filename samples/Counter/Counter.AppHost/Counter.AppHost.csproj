@@ -4,6 +4,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <IsAspireHost>true</IsAspireHost>
+    <IsPackable>false</IsPackable>
     <!-- Suppress transitive vulnerability audit warnings from Aspire dependencies -->
     <NoWarn>$(NoWarn);NU1902;NU1903;NU1904</NoWarn>
   </PropertyGroup>
