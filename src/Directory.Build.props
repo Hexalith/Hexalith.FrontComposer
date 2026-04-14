@@ -1,0 +1,11 @@
+<Project>
+  <Import Project="$([MSBuild]::GetPathOfFileAbove('Directory.Build.props', '$(MSBuildThisFileDirectory)../'))" />
+  <PropertyGroup>
+    <Authors>Hexalith</Authors>
+    <Company>Hexalith</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/Hexalith/Hexalith.FrontComposer</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageTags>hexalith;frontcomposer;blazor;source-generator;cqrs</PackageTags>
+  </PropertyGroup>
+</Project>

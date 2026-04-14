@@ -421,5 +421,8 @@ FodyWeavers.xsd
 *.msp
 
 
+# NuGet output for semantic-release
+nupkgs/
+
 #Ignore cursor AI rules
 .cursor\rules\codacy.mdc

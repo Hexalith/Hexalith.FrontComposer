@@ -1,6 +1,7 @@
 namespace Hexalith.FrontComposer.Shell.Extensions;
 
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 using Fluxor;
@@ -58,6 +59,7 @@ public static class ServiceCollectionExtensions
     /// <typeparam name="T">A marker type in the domain assembly to scan.</typeparam>
     /// <param name="services">The service collection to configure.</param>
     /// <returns>The service collection for chaining.</returns>
+    [RequiresUnreferencedCode("Domain discovery uses reflection to scan assembly types at runtime.")]
     public static IServiceCollection AddHexalithDomain<T>(this IServiceCollection services)
         where T : class
     {
@@ -110,7 +112,8 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    private static bool HasStaticManifestMember(Type type)
+    private static bool HasStaticManifestMember(
+        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type)
     {
         PropertyInfo? prop = type.GetProperty("Manifest", BindingFlags.Public | BindingFlags.Static);
         if (prop is not null && prop.PropertyType == typeof(DomainManifest))

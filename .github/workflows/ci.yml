@@ -1,0 +1,203 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+          # DIVERGENCE 1: NO submodules here -- commitlint only needs commit history
+
+      - name: Validate Conventional Commits
+        uses: wagoid/commitlint-github-action@b948419dd99f3fd78a6548d48f94e3df7f6bf3ed # v6.2.1
+        with:
+          configFile: commitlint.config.mjs
+
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # DIVERGENCE 3: Advisory mode -- gates report but do not block merges during Epic 1.
+    # TODO(Epic 2): Remove continue-on-error to harden gates to blocking.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # DIVERGENCE 1: FrontComposer has nested submodules (EventStore has none).
+          # fetch-depth: 1 (shallow) to keep checkout fast with nested submodules.
+          fetch-depth: 1
+          submodules: recursive
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Validate npm lockfile
+        run: npm ci
+
+      - name: Cache NuGet packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ hashFiles('Directory.Packages.props') }}
+          restore-keys: nuget-
+
+      # Gate 1: Contracts builds in isolation targeting netstandard2.0
+      - name: 'Gate 1: Contracts Build (netstandard2.0)'
+        run: |
+          dotnet restore Hexalith.FrontComposer.sln
+          dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore
+
+      # Gate 2: Full solution builds
+      - name: 'Gate 2: Solution Build'
+        run: dotnet build Hexalith.FrontComposer.sln --configuration Release --no-restore
+
+      # Gate 3: All tests pass
+      # DIVERGENCE 4: Solution-level testing -- FrontComposer runs a single `dotnet test` on the
+      # whole solution (all tests are Tier 1, no DAPR/Aspire tiers). EventStore runs 12 separate
+      # per-project test commands because it has DAPR-dependent tiers.
+      - name: 'Gate 3: All Tests'
+        env:
+          # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
+          # Without this env var, a snapshot mismatch launches a diff tool and hangs the CI runner.
+          DiffEngine_Disabled: true
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+
+      # Guard: fail fast if no tests ran (--no-build silently exits 0 with 0 tests)
+      - name: Verify tests actually ran
+        run: test -f ./TestResults/test-results.trx
+
+      - name: Test Summary
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import xml.etree.ElementTree as ET
+
+          summary_path = os.environ['GITHUB_STEP_SUMMARY']
+
+          def pick_latest(glob_pattern):
+            matches = glob.glob(glob_pattern, recursive=True)
+            if not matches:
+              return None
+            return max(matches, key=os.path.getmtime)
+
+          def parse_trx(path):
+            root = ET.parse(path).getroot()
+            counters = root.find('.//{*}ResultSummary/{*}Counters')
+            if counters is not None:
+              total = int(counters.attrib.get('total', '0'))
+              passed = int(counters.attrib.get('passed', '0'))
+              failed = int(counters.attrib.get('failed', '0'))
+              return passed, failed, total
+            results = root.findall('.//{*}UnitTestResult')
+            total = len(results)
+            passed = sum(1 for r in results if r.attrib.get('outcome') == 'Passed')
+            failed = sum(1 for r in results if r.attrib.get('outcome') == 'Failed')
+            return passed, failed, total
+
+          with open(summary_path, 'a', encoding='utf-8') as summary:
+            summary.write('## CI Test Results\n')
+
+            trx = pick_latest('./TestResults/**/test-results.trx')
+            if trx is None:
+              summary.write('No TRX file found.\n')
+            else:
+              passed, failed, total = parse_trx(trx)
+              summary.write(f'**All Tests:** {passed} passed, {failed} failed (total: {total})\n\n')
+
+            summary.write('### Job Status\n')
+            summary.write('${{ job.status }}\n')
+          PY
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: test-results
+          path: '**/test-results.trx'
+
+      - name: Coverage Summary
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import glob
+          import os
+          import xml.etree.ElementTree as ET
+
+          summary_path = os.environ['GITHUB_STEP_SUMMARY']
+          coverage_files = glob.glob('**/coverage.cobertura.xml', recursive=True)
+
+          if not coverage_files:
+            with open(summary_path, 'a', encoding='utf-8') as f:
+              f.write('\n### Code Coverage\nNo coverage files found.\n')
+            exit(0)
+
+          total_lines = 0
+          covered_lines = 0
+          total_branches = 0
+          covered_branches = 0
+          per_project = []
+
+          for cov_file in coverage_files:
+            try:
+              tree = ET.parse(cov_file)
+              root = tree.getroot()
+              line_rate = float(root.attrib.get('line-rate', '0'))
+              branch_rate = float(root.attrib.get('branch-rate', '0'))
+              lines_valid = int(root.attrib.get('lines-valid', '0'))
+              lines_covered = int(root.attrib.get('lines-covered', '0'))
+              branches_valid = int(root.attrib.get('branches-valid', '0'))
+              branches_covered = int(root.attrib.get('branches-covered', '0'))
+
+              total_lines += lines_valid
+              covered_lines += lines_covered
+              total_branches += branches_valid
+              covered_branches += branches_covered
+
+              parts = cov_file.replace('\\', '/').split('/')
+              project_name = next((p for p in parts if p.endswith('.Tests')), os.path.basename(os.path.dirname(cov_file)))
+              per_project.append((project_name, line_rate * 100, branch_rate * 100, lines_valid))
+            except Exception as e:
+              print(f'Warning: could not parse {cov_file}: {e}')
+
+          overall_line = (covered_lines / total_lines * 100) if total_lines > 0 else 0
+          overall_branch = (covered_branches / total_branches * 100) if total_branches > 0 else 0
+
+          with open(summary_path, 'a', encoding='utf-8') as f:
+            f.write(f'\n### Code Coverage\n')
+            f.write(f'**Overall:** {overall_line:.1f}% line · {overall_branch:.1f}% branch ({covered_lines}/{total_lines} lines)\n\n')
+            f.write('| Project | Line % | Branch % | Lines |\n')
+            f.write('|---------|--------|----------|-------|\n')
+            for name, line_pct, branch_pct, lines in sorted(per_project):
+              f.write(f'| {name} | {line_pct:.1f}% | {branch_pct:.1f}% | {lines} |\n')
+          PY
+          # TODO(Epic 2): Add coverage thresholds and enforcement
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-reports
+          path: '**/coverage.cobertura.xml'
