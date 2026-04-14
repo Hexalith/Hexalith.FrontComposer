@@ -3,6 +3,7 @@ name: Release
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: release
@@ -21,6 +22,22 @@ jobs:
           fetch-depth: 0 # semantic-release needs full history
           persist-credentials: false
           submodules: recursive
+
+      - name: Require bootstrap tag before first release
+        shell: bash
+        run: |
+          if [ -n "$(git tag --list 'v*')" ]; then
+            exit 0
+          fi
+
+          {
+            echo '## Release bootstrap required'
+            echo
+            echo 'No semantic-release baseline tag was found.'
+            echo 'Create `v0.0.0` on the commit immediately before this first release commit, push the tag, then re-run this workflow.'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit 1
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
@@ -44,9 +61,15 @@ jobs:
       - name: Run All Tests
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --logger "trx;LogFileName=release-results.trx"
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
+
+      # Guard: fail fast if no tests ran (silent exit 0 with 0 tests would still trigger release).
+      - name: Verify tests actually ran
+        run: find ./TestResults -name 'release-results.trx' -type f | grep -q .
 
       - name: Install semantic-release
+        env:
+          HUSKY: 0
         run: npm ci
 
       - name: Configure git credentials
