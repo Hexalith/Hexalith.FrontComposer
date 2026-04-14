@@ -1,6 +1,7 @@
 namespace Hexalith.FrontComposer.SourceTools.Tests;
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
@@ -14,60 +15,70 @@ using Xunit;
 
 internal static class CompilationHelper
 {
-    internal static CSharpCompilation CreateCompilation(string source, bool enableNullable = true)
+    private static MetadataReference[] GetBaseReferences()
     {
-        MetadataReference[] references =
-        [
+        List<MetadataReference> refs = new List<MetadataReference>
+        {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(ProjectionAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute).Assembly.Location),
-        ];
+        };
 
-        // Add all runtime assemblies needed for netcoreapp compilation
+        // Add runtime assemblies needed for netcoreapp compilation
         string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll"];
-        MetadataReference[] additionalRefs = additionalDlls
-            .Select(dll => Path.Combine(runtimeDir, dll))
-            .Where(File.Exists)
-            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
-            .ToArray();
+        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.Collections.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll"];
+        foreach (string dll in additionalDlls)
+        {
+            string path = Path.Combine(runtimeDir, dll);
+            if (File.Exists(path))
+            {
+                refs.Add(MetadataReference.CreateFromFile(path));
+            }
+        }
 
+        // Add Fluxor, FluentUI, and ASP.NET Components for generated code compilation
+        TryAddAssemblyRef(refs, typeof(Fluxor.IState<>));                                  // Fluxor
+        TryAddAssemblyRef(refs, typeof(Fluxor.Feature<>));                                 // Fluxor
+        TryAddAssemblyRef(refs, typeof(Fluxor.ReducerMethodAttribute));                    // Fluxor
+        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.ComponentBase));     // ASP.NET Components
+        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.InjectAttribute));   // ASP.NET Components
+        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder)); // ASP.NET Rendering
+        TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid<>));   // FluentUI
+
+        return refs.ToArray();
+    }
+
+    private static void TryAddAssemblyRef(List<MetadataReference> refs, Type type)
+    {
+        string location = type.Assembly.Location;
+        if (!string.IsNullOrEmpty(location) && File.Exists(location))
+        {
+            refs.Add(MetadataReference.CreateFromFile(location));
+        }
+    }
+
+    internal static CSharpCompilation CreateCompilation(string source, bool enableNullable = true)
+    {
         CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable);
 
         return CSharpCompilation.Create(
             "TestAssembly",
             [CreateSyntaxTree(source, "Test0.cs")],
-            references.Concat(additionalRefs),
+            GetBaseReferences(),
             options);
     }
 
     internal static CSharpCompilation CreateCompilation(string[] sources, bool enableNullable = true)
     {
-        MetadataReference[] references =
-        [
-            MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(ProjectionAttribute).Assembly.Location),
-            MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute).Assembly.Location),
-        ];
-
-        string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll"];
-        MetadataReference[] additionalRefs = additionalDlls
-            .Select(dll => Path.Combine(runtimeDir, dll))
-            .Where(File.Exists)
-            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
-            .ToArray();
-
         CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable);
 
         return CSharpCompilation.Create(
             "TestAssembly",
             sources.Select((source, index) => CreateSyntaxTree(source, $"Test{index}.cs")),
-            references.Concat(additionalRefs),
+            GetBaseReferences(),
             options);
     }
 

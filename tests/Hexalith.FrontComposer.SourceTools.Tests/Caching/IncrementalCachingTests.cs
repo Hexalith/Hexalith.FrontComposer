@@ -136,12 +136,19 @@ public partial class NewProjection
                 trackIncrementalGeneratorSteps: true));
         driver1 = driver1.RunGenerators(compilation1, ct);
 
+        // Verify initial run produces 5 generated files
+        GeneratorDriverRunResult result1 = driver1.GetRunResult();
+        result1.GeneratedTrees.Length.ShouldBe(5, "Initial run should produce 5 files for one projection");
+
         // Add new projection class
         CSharpCompilation compilation2 = compilation1.AddSyntaxTrees(
             CSharpSyntaxTree.ParseText(cancellationToken: ct, text:newSource));
         GeneratorDriver driver2 = driver1.RunGenerators(compilation2, ct);
 
         GeneratorRunResult result2 = driver2.GetRunResult().Results[0];
+
+        // Should now produce 10 total files
+        driver2.GetRunResult().GeneratedTrees.Length.ShouldBe(10, "Two projections should produce 10 files");
 
         result2.TrackedSteps.ContainsKey("Parse").ShouldBeTrue("The parse stage should be tracked explicitly.");
 
@@ -155,5 +162,33 @@ public partial class NewProjection
 
         hasNewOutput.ShouldBeTrue("Adding a new [Projection] class should produce a new output");
         hasCachedOutput.ShouldBeTrue("Existing [Projection] class should remain cached");
+    }
+
+    [Fact]
+    public void DeterministicOutput_SameInputProducesByteIdenticalOutput()
+    {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BasicProjection);
+        FrontComposerGenerator generator = new();
+
+        GeneratorDriver driver1 = CSharpGeneratorDriver.Create(generator);
+        driver1 = driver1.RunGenerators(compilation, ct);
+        string[] output1 = driver1.GetRunResult().GeneratedTrees
+            .Select(t => t.GetText(ct).ToString())
+            .OrderBy(s => s)
+            .ToArray();
+
+        GeneratorDriver driver2 = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
+        driver2 = driver2.RunGenerators(compilation, ct);
+        string[] output2 = driver2.GetRunResult().GeneratedTrees
+            .Select(t => t.GetText(ct).ToString())
+            .OrderBy(s => s)
+            .ToArray();
+
+        output1.Length.ShouldBe(output2.Length);
+        for (int i = 0; i < output1.Length; i++)
+        {
+            output1[i].ShouldBe(output2[i], "Output should be byte-identical across runs");
+        }
     }
 }

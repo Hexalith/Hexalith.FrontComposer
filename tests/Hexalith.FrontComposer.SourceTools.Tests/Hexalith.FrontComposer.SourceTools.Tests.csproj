@@ -15,5 +15,10 @@
     <PackageReference Include="coverlet.collector" />
     <PackageReference Include="Verify" />
     <PackageReference Include="Verify.XunitV3" />
+    <PackageReference Include="Fluxor.Blazor.Web" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+  </ItemGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

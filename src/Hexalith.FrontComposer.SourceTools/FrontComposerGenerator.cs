@@ -3,7 +3,9 @@
 namespace Hexalith.FrontComposer.SourceTools;
 
 using Hexalith.FrontComposer.SourceTools.Diagnostics;
+using Hexalith.FrontComposer.SourceTools.Emitters;
 using Hexalith.FrontComposer.SourceTools.Parsing;
+using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -28,6 +30,25 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator
             .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
             .WithTrackingName("Parse");
 
+        IncrementalValueProvider<System.Collections.Immutable.ImmutableArray<ParseResult>> collectedParseResults = parseResults.Collect();
+        IncrementalValueProvider<System.Collections.Immutable.ImmutableArray<bool>> commandMatches = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                "Hexalith.FrontComposer.Contracts.Attributes.CommandAttribute",
+                predicate: static (node, _) => node is TypeDeclarationSyntax,
+                transform: static (_, _) => true)
+            .Collect();
+
+        context.RegisterSourceOutput(collectedParseResults.Combine(commandMatches), static (spc, source) =>
+        {
+            if (source.Left.Length == 0 && source.Right.Length == 0)
+            {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.NoAnnotatedTypesFound,
+                    Location.None,
+                    "No [Command] or [Projection] types found in compilation"));
+            }
+        });
+
         // Output registration -- unpack ParseResult, report diagnostics, forward model
         context.RegisterSourceOutput(parseResults, static (spc, result) =>
         {
@@ -40,10 +61,19 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator
                     diagInfo.Message));
             }
 
-            // Transform + Emit will go here in Story 1.5
             if (result.Model is not null)
             {
-                // Placeholder for Story 1.5 Transform + Emit stages
+                // Transform
+                RazorModel razorModel = RazorModelTransform.Transform(result.Model);
+                FluxorModel fluxorModel = FluxorModelTransform.Transform(result.Model);
+                RegistrationModel registrationModel = RegistrationModelTransform.Transform(result.Model);
+
+                // Emit
+                spc.AddSource(result.Model.TypeName + ".g.razor.cs", RazorEmitter.Emit(razorModel));
+                spc.AddSource(result.Model.TypeName + "Feature.g.cs", FluxorFeatureEmitter.Emit(fluxorModel));
+                spc.AddSource(result.Model.TypeName + "Actions.g.cs", FluxorActionsEmitter.EmitActions(fluxorModel));
+                spc.AddSource(result.Model.TypeName + "Reducers.g.cs", FluxorActionsEmitter.EmitReducers(fluxorModel));
+                spc.AddSource(result.Model.TypeName + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
             }
         });
     }
@@ -52,6 +82,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator
     {
         switch (id)
         {
+            case "HFC1001":
+                return DiagnosticDescriptors.NoAnnotatedTypesFound;
             case "HFC1002":
                 return DiagnosticDescriptors.UnsupportedFieldType;
             case "HFC1003":

@@ -9,7 +9,16 @@ using Microsoft.CodeAnalysis;
 /// </summary>
 public static class DiagnosticDescriptors
 {
-    // HFC1001 reserved for "No [Command] or [Projection] types found" (Story 1.5)
+    /// <summary>
+    /// HFC1001: No [Command] or [Projection] types found in compilation.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NoAnnotatedTypesFound = new DiagnosticDescriptor(
+        id: "HFC1001",
+        title: "No [Command] or [Projection] types found",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 
     /// <summary>
     /// HFC1002: Unsupported field type in [Projection].
