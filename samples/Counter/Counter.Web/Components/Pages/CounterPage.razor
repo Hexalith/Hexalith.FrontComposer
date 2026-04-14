@@ -1,0 +1,39 @@
+@page "/counter"
+@implements IDisposable
+@inject IState<Counter.Domain.CounterProjectionState> CounterState
+
+<h1>Counter</h1>
+
+@if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
+{
+    <Counter.Domain.CounterProjectionView />
+}
+else
+{
+    <FluentStack Orientation="Orientation.Vertical"
+                 HorizontalAlignment="HorizontalAlignment.Center"
+                 VerticalAlignment="VerticalAlignment.Center"
+                 Style="padding: 32px; gap: 12px; text-align: center;">
+        <FluentText Size="TextSize.Size400" Weight="TextWeight.Semibold">
+            No counter data yet. Send your first Increment Counter command.
+        </FluentText>
+        <FluentButton Appearance="ButtonAppearance.Primary" Disabled="true">
+            Increment Counter
+        </FluentButton>
+    </FluentStack>
+}
+
+@code {
+    protected override void OnInitialized()
+    {
+        CounterState.StateChanged += OnStateChanged;
+    }
+
+    private void OnStateChanged(object? sender, EventArgs e)
+        => InvokeAsync(StateHasChanged);
+
+    public void Dispose()
+    {
+        CounterState.StateChanged -= OnStateChanged;
+    }
+}

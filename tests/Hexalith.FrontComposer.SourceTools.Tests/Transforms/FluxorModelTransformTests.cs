@@ -12,7 +12,7 @@ using Xunit;
 public class FluxorModelTransformTests
 {
     private static DomainModel Model(string typeName)
-        => new DomainModel(typeName, "TestDomain", "Test", null,
+        => new DomainModel(typeName, "TestDomain", "Test", null, null,
             new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty));
 
     [Fact]
@@ -32,7 +32,7 @@ public class FluxorModelTransformTests
     [Fact]
     public void Transform_PreservesTypeNameAndNamespace()
     {
-        DomainModel model = new DomainModel("OrderProjection", "MyApp.Orders", "Orders", null,
+        DomainModel model = new DomainModel("OrderProjection", "MyApp.Orders", "Orders", null, null,
             new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty));
         FluxorModel result = FluxorModelTransform.Transform(model);
 

@@ -11,8 +11,8 @@ using Xunit;
 
 public class RegistrationModelTransformTests
 {
-    private static DomainModel Model(string typeName, string ns, string? boundedContext)
-        => new DomainModel(typeName, ns, boundedContext, null,
+    private static DomainModel Model(string typeName, string ns, string? boundedContext, string? displayLabel = null)
+        => new DomainModel(typeName, ns, boundedContext, displayLabel, null,
             new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty));
 
     [Fact]
@@ -51,9 +51,16 @@ public class RegistrationModelTransformTests
     }
 
     [Fact]
-    public void Transform_DisplayLabel_IsNullCurrently()
+    public void Transform_DisplayLabel_IsNullWhenNotProvided()
     {
         RegistrationModel result = RegistrationModelTransform.Transform(Model("OrderProjection", "MyApp.Orders", "Orders"));
         result.DisplayLabel.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Transform_DisplayLabel_PropagatedFromDomainModel()
+    {
+        RegistrationModel result = RegistrationModelTransform.Transform(Model("OrderProjection", "MyApp.Orders", "Orders", "Commandes"));
+        result.DisplayLabel.ShouldBe("Commandes");
     }
 }

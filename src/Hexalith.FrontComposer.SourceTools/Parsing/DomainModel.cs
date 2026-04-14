@@ -17,12 +17,14 @@ public sealed class DomainModel : IEquatable<DomainModel>
         string typeName,
         string @namespace,
         string? boundedContext,
+        string? boundedContextDisplayLabel,
         string? projectionRole,
         EquatableArray<PropertyModel> properties)
     {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
+        BoundedContextDisplayLabel = boundedContextDisplayLabel;
         ProjectionRole = projectionRole;
         Properties = properties;
     }
@@ -32,6 +34,8 @@ public sealed class DomainModel : IEquatable<DomainModel>
     public string Namespace { get; }
 
     public string? BoundedContext { get; }
+
+    public string? BoundedContextDisplayLabel { get; }
 
     public string? ProjectionRole { get; }
 
@@ -52,6 +56,7 @@ public sealed class DomainModel : IEquatable<DomainModel>
         return TypeName == other.TypeName
             && Namespace == other.Namespace
             && BoundedContext == other.BoundedContext
+            && BoundedContextDisplayLabel == other.BoundedContextDisplayLabel
             && ProjectionRole == other.ProjectionRole
             && Properties == other.Properties;
     }
@@ -66,6 +71,7 @@ public sealed class DomainModel : IEquatable<DomainModel>
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
             hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (BoundedContextDisplayLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionRole?.GetHashCode() ?? 0);
             hash = (hash * 31) + Properties.GetHashCode();
             return hash;

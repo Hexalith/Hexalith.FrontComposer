@@ -20,13 +20,11 @@ public static class RegistrationModelTransform
         string boundedContext = model.BoundedContext
             ?? GetNamespaceLastSegment(model.Namespace);
 
-        // DisplayLabel is not currently carried in DomainModel IR;
-        // BoundedContextAttribute.DisplayLabel support will be added in a future story.
         return new RegistrationModel(
             boundedContext,
             model.TypeName,
             model.Namespace,
-            displayLabel: null);
+            model.BoundedContextDisplayLabel);
     }
 
     private static string GetNamespaceLastSegment(string @namespace)

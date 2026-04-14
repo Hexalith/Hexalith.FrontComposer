@@ -28,13 +28,13 @@ public class GeneratorDriverTests
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
         result.GeneratedTrees.Length.ShouldBe(5, "Generator should produce 5 files per projection");
 
-        // Verify file names
+        // Verify file names (namespace-qualified hint names for collision safety)
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
-        fileNames.ShouldContain("CounterProjection.g.razor.cs");
-        fileNames.ShouldContain("CounterProjectionFeature.g.cs");
-        fileNames.ShouldContain("CounterProjectionActions.g.cs");
-        fileNames.ShouldContain("CounterProjectionReducers.g.cs");
-        fileNames.ShouldContain("CounterProjectionRegistration.g.cs");
+        fileNames.ShouldContain("TestDomain.CounterProjection.g.razor.cs");
+        fileNames.ShouldContain("TestDomain.CounterProjectionFeature.g.cs");
+        fileNames.ShouldContain("TestDomain.CounterProjectionActions.g.cs");
+        fileNames.ShouldContain("TestDomain.CounterProjectionReducers.g.cs");
+        fileNames.ShouldContain("TestDomain.CounterProjectionRegistration.g.cs");
 
         // Verify generated code compiles
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
@@ -212,10 +212,10 @@ public partial class OrderItemProjection
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
         result.GeneratedTrees.Length.ShouldBe(10, "Two projections should produce 10 files");
 
-        // Verify both registration files contribute to same partial class
+        // Verify both registration files contribute to same partial class (namespace-qualified hint names)
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
-        fileNames.ShouldContain("OrderProjectionRegistration.g.cs");
-        fileNames.ShouldContain("OrderItemProjectionRegistration.g.cs");
+        fileNames.ShouldContain("TestDomain.OrderProjectionRegistration.g.cs");
+        fileNames.ShouldContain("TestDomain.OrderItemProjectionRegistration.g.cs");
 
         // Verify all generated code compiles together (partial classes merge)
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
@@ -223,6 +223,115 @@ public partial class OrderItemProjection
         outputCompilation.GetDiagnostics(ct)
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ShouldBeEmpty("Two projections sharing BoundedContext should compile together");
+    }
+
+    [Fact]
+    public void RunGenerators_DisplayLabel_PropagatedToRegistration()
+    {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.DisplayLabelProjection);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+
+        // Find the registration file and verify it contains the display label
+        SyntaxTree registrationTree = result.GeneratedTrees
+            .Single(t => System.IO.Path.GetFileName(t.FilePath).Contains("Registration"));
+        string registrationSource = registrationTree.GetText(ct).ToString();
+        registrationSource.ShouldContain("Commandes");
+
+        // Verify all generated code compiles
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
+            result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("Generated code with DisplayLabel should compile without errors");
+    }
+
+    [Fact]
+    public void RunGenerators_SameNameDifferentNamespace_NoHintNameCollision()
+    {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string[] sources =
+        [
+            @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace NamespaceA;
+
+[BoundedContext(""DomainA"")]
+[Projection]
+public partial class SharedProjection
+{
+    public string Name { get; set; } = string.Empty;
+}",
+            @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace NamespaceB;
+
+[BoundedContext(""DomainB"")]
+[Projection]
+public partial class SharedProjection
+{
+    public int Count { get; set; }
+}",
+        ];
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(sources);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        result.GeneratedTrees.Length.ShouldBe(10, "Two same-named projections in different namespaces should produce 10 files");
+
+        // Verify namespace-qualified hint names prevent collision
+        string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldContain("NamespaceA.SharedProjection.g.razor.cs");
+        fileNames.ShouldContain("NamespaceB.SharedProjection.g.razor.cs");
+
+        // Verify all generated code compiles
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
+            result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("Same-named projections in different namespaces should compile together");
+    }
+
+    [Fact]
+    public void RunGenerators_GlobalNamespaceProjection_HintNameHasNoNamespacePrefix()
+    {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.GlobalNamespaceProjection);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        result.GeneratedTrees.Length.ShouldBe(5, "Global namespace projection should produce 5 files");
+
+        // Verify hint names have no namespace prefix (just TypeName)
+        string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldContain("GlobalProjection.g.razor.cs");
+        fileNames.ShouldContain("GlobalProjectionFeature.g.cs");
+        fileNames.ShouldContain("GlobalProjectionActions.g.cs");
+        fileNames.ShouldContain("GlobalProjectionReducers.g.cs");
+        fileNames.ShouldContain("GlobalProjectionRegistration.g.cs");
+
+        // Verify generated code compiles
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
+            result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("Global namespace projection should compile without errors");
     }
 
     [Fact]

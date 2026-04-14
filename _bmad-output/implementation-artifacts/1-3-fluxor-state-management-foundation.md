@@ -484,7 +484,7 @@ Recent commits are planning/documentation artifacts only. No implementation code
 - Store registered as scoped service -- each Blazor circuit gets its own store instance
 - `StoreInitializer` component required in layout for store initialization
 - Supports `ScanAssemblies()` for automatic discovery of features, reducers, and effects
-- In bUnit tests, call `IStore.InitializeAsync()` explicitly (no `StoreInitializer` component needed)
+- In raw bUnit tests, call `IStore.InitializeAsync()` explicitly (no `StoreInitializer` component needed). `FrontComposerTestBase` now performs this during construction so derived tests do not need to repeat it.
 
 **Fluxor Feature Class Pattern:**
 ```csharp
@@ -522,7 +522,7 @@ Claude Opus 4.6 (1M context)
 - CA1062/CA2007 analyzer errors fixed by adding ArgumentNullException.ThrowIfNull and ConfigureAwait(false) per project .editorconfig
 - bUnit 2.7.2 uses BunitContext (not deprecated TestContext); xUnit v3 IAsyncLifetime removed from base
 - NSubstitute .Returns() incompatible with nullable value types from unconstrained generic GetAsync<T> — switched to InMemoryStorageService in effect tests
-- GetAsync<T> for value types with unconstrained generics returns default(T) not null — fixed hydration effects to use GetAsync<object> with pattern matching (stored is ThemeValue theme) for correct null detection
+- GetAsync<T> for value types with unconstrained generics returns default(T) not null — hydration effects were updated to use nullable enum reads (`GetAsync<ThemeValue?>`, `GetAsync<DensityLevel?>`) so missing keys remain null while stored values stay strongly typed
 - xUnit1051 enforces CancellationToken on all methods accepting it — added TestContext.Current.CancellationToken to all test methods
 
 ### Completion Notes List
@@ -531,9 +531,9 @@ Claude Opus 4.6 (1M context)
 - AC2: Test components (TestThemeComponent.razor, TestDensityComponent.razor) demonstrate IState<T> + IDisposable pattern. FluxorComponent is never used. Subscription/dispose lifecycle verified via bUnit tests.
 - AC3: FrontComposerThemeFeature (Light default) and FrontComposerDensityFeature (Comfortable default) with immutable record actions, CorrelationId, past-tense naming. Static [ReducerMethod] reducers.
 - AC4: Effects persist to IStorageService with try/catch + ILogger. Keys use StorageKeys.BuildKey with default/anonymous placeholders.
-- AC5: Hydration effects respond to AppInitializedAction, retrieve stored values via GetAsync<object> with pattern matching. Feature defaults apply when storage is empty.
-- AC6: FrontComposerTestBase pre-configures Fluxor, InMemoryStorageService, mock IOverrideRegistry. InitializeStoreAsync() called per test.
-- Key design decision: Effects use GetAsync<object> instead of GetAsync<ThemeValue> for hydration because IStorageService.GetAsync<T> with unconstrained generics returns default(T) for value types instead of null when key not found. Pattern matching (stored is ThemeValue theme) properly handles null.
+- AC5: Hydration effects respond to AppInitializedAction and retrieve stored values via typed nullable reads (`GetAsync<ThemeValue?>`, `GetAsync<DensityLevel?>`). Feature defaults apply when storage is empty.
+- AC6: FrontComposerTestBase pre-configures Fluxor, InMemoryStorageService, and a mock IOverrideRegistry. The base class initializes the store during construction; `InitializeStoreAsync()` remains safe for explicit sequencing in specialized tests.
+- Key design decision: Hydration uses nullable enum reads rather than `GetAsync<object>` boxing so cache misses stay null without losing strong typing for stored values.
 
 ### File List
 

@@ -207,6 +207,18 @@ public enum OrderStatus
     Failed,
 }";
 
+    internal const string DisplayLabelProjection = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Orders"", DisplayLabel = ""Commandes"")]
+[Projection]
+public partial class DisplayLabelProjection
+{
+    public string Name { get; set; } = string.Empty;
+}";
+
     internal const string NullBoundedContextProjection = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 
@@ -303,5 +315,20 @@ public partial class NullableContextDisabledProjection
 {
     public string Name { get; set; }
     public int Count { get; set; }
+}";
+
+    internal const string CounterProjectionSource = @"
+using System;
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace Counter.Domain;
+
+[Projection]
+[BoundedContext(""Counter"")]
+public partial class CounterProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public int Count { get; set; }
+    public DateTimeOffset LastUpdated { get; set; }
 }";
 }

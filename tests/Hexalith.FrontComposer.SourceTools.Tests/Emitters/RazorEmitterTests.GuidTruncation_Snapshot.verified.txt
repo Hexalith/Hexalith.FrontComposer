@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using Fluxor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -146,7 +147,7 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
             // Guid column: Id
             b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
             b.AddAttribute(colSeq++, "Title", "Id");
-            b.AddAttribute(colSeq++, "Property", (System.Func<OrderProjection, string?>)(x => x.Id.ToString("N")[..8]));
+            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Id.ToString("N").Substring(0, 8)));
             b.CloseComponent();
         }));
 

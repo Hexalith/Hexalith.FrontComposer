@@ -16,6 +16,10 @@
     <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Aspire">
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.2.1" />
+  </ItemGroup>
+
   <ItemGroup Label="Testing">
     <!-- xUnit v3 to match EventStore submodule — bUnit 2.7.2 is compatible -->
     <PackageVersion Include="xunit.v3" Version="3.2.2" />

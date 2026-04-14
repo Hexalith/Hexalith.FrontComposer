@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Linq.Expressions;
 using Fluxor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -146,20 +147,20 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
             // Text column: Name
             b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
             b.AddAttribute(colSeq++, "Title", "Name");
-            b.AddAttribute(colSeq++, "Property", (System.Func<OrderProjection, string?>)(x => x.Name ?? "\u2014"));
+            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Name ?? "\u2014"));
             b.CloseComponent();
 
             // Numeric column: Count
             b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
             b.AddAttribute(colSeq++, "Title", "Count");
-            b.AddAttribute(colSeq++, "Property", (System.Func<OrderProjection, string?>)(x => x.Count?.ToString("N0", CultureInfo.CurrentCulture) ?? "\u2014"));
+            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Count.HasValue ? x.Count.Value.ToString("N0", CultureInfo.CurrentCulture) : "\u2014"));
             b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
             b.CloseComponent();
 
             // Boolean column: IsActive
             b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
             b.AddAttribute(colSeq++, "Title", "Is Active");
-            b.AddAttribute(colSeq++, "Property", (System.Func<OrderProjection, string?>)(x => x.IsActive is null ? "\u2014" : x.IsActive.Value ? "Yes" : "No"));
+            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.IsActive.HasValue ? (x.IsActive.Value ? "Yes" : "No") : "\u2014"));
             b.CloseComponent();
         }));
 

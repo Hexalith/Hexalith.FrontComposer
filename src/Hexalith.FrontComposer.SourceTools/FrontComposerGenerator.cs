@@ -68,14 +68,26 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator
                 FluxorModel fluxorModel = FluxorModelTransform.Transform(result.Model);
                 RegistrationModel registrationModel = RegistrationModelTransform.Transform(result.Model);
 
-                // Emit
-                spc.AddSource(result.Model.TypeName + ".g.razor.cs", RazorEmitter.Emit(razorModel));
-                spc.AddSource(result.Model.TypeName + "Feature.g.cs", FluxorFeatureEmitter.Emit(fluxorModel));
-                spc.AddSource(result.Model.TypeName + "Actions.g.cs", FluxorActionsEmitter.EmitActions(fluxorModel));
-                spc.AddSource(result.Model.TypeName + "Reducers.g.cs", FluxorActionsEmitter.EmitReducers(fluxorModel));
-                spc.AddSource(result.Model.TypeName + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
+                // Emit -- use namespace-qualified hint names to avoid collisions
+                // between same-named projections in different namespaces
+                string hintPrefix = GetQualifiedHintPrefix(result.Model);
+                spc.AddSource(hintPrefix + ".g.razor.cs", RazorEmitter.Emit(razorModel));
+                spc.AddSource(hintPrefix + "Feature.g.cs", FluxorFeatureEmitter.Emit(fluxorModel));
+                spc.AddSource(hintPrefix + "Actions.g.cs", FluxorActionsEmitter.EmitActions(fluxorModel));
+                spc.AddSource(hintPrefix + "Reducers.g.cs", FluxorActionsEmitter.EmitReducers(fluxorModel));
+                spc.AddSource(hintPrefix + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
             }
         });
+    }
+
+    private static string GetQualifiedHintPrefix(DomainModel model)
+    {
+        if (string.IsNullOrEmpty(model.Namespace))
+        {
+            return model.TypeName;
+        }
+
+        return model.Namespace + "." + model.TypeName;
     }
 
     private static DiagnosticDescriptor GetDescriptor(string id)

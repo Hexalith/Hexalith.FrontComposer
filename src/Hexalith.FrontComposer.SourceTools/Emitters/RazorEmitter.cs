@@ -29,6 +29,7 @@ public static class RazorEmitter
         sb.AppendLine("using System.Collections.Generic;");
         sb.AppendLine("using System.Globalization;");
         sb.AppendLine("using System.Linq;");
+        sb.AppendLine("using System.Linq.Expressions;");
         sb.AppendLine("using Fluxor;");
         sb.AppendLine("using Microsoft.AspNetCore.Components;");
         sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
@@ -174,15 +175,10 @@ public static class RazorEmitter
         sb.AppendLine("        {");
         sb.AppendLine("            builder.OpenElement(3, \"div\");");
         sb.AppendLine("            builder.AddAttribute(4, \"class\", \"fc-empty-state\");");
-
-        if (model.Columns.Count == 0)
-        {
-            sb.AppendLine("            builder.AddContent(5, \"No data columns available\");");
-        }
-        else
-        {
-            sb.AppendLine("            builder.AddContent(5, \"No data available\");");
-        }
+        string emptyContent = model.Columns.Count == 0
+            ? "No data columns available"
+            : "No data available";
+        sb.AppendLine("            builder.AddContent(5, \"" + emptyContent + "\");");
 
         sb.AppendLine("            builder.CloseElement();");
         sb.AppendLine("            return;");
@@ -259,11 +255,11 @@ public static class RazorEmitter
 
             if (col.IsNullable)
             {
-                sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + "?.ToString(\"N\")[.." + length + "] ?? \"\\u2014\"));");
+                sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + " == null ? \"\\u2014\" : x." + col.PropertyName + ".Value.ToString(\"N\").Substring(0, " + length + ")));");
             }
             else
             {
-                sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + ".ToString(\"N\")[.." + length + "]));");
+                sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".ToString(\"N\").Substring(0, " + length + ")));");
             }
 
             sb.AppendLine("            b.CloseComponent();");
@@ -274,7 +270,7 @@ public static class RazorEmitter
             sb.AppendLine("            // Text column: " + col.PropertyName);
             sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
             sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + EscapeString(col.Header) + "\");");
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + " ?? \"\\u2014\"));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + " ?? \"\\u2014\"));");
             sb.AppendLine("            b.CloseComponent();");
         }
     }
@@ -288,11 +284,11 @@ public static class RazorEmitter
 
         if (col.IsNullable)
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + "?.ToString(\"" + format + "\", CultureInfo.CurrentCulture) ?? \"\\u2014\"));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? x." + col.PropertyName + ".Value.ToString(\"" + format + "\", CultureInfo.CurrentCulture) : \"\\u2014\"));");
         }
         else
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + ".ToString(\"" + format + "\", CultureInfo.CurrentCulture)));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".ToString(\"" + format + "\", CultureInfo.CurrentCulture)));");
         }
 
         sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-col-numeric\");");
@@ -307,11 +303,11 @@ public static class RazorEmitter
 
         if (col.IsNullable)
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + " is null ? \"\\u2014\" : x." + col.PropertyName + ".Value ? \"Yes\" : \"No\"));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? (x." + col.PropertyName + ".Value ? \"Yes\" : \"No\") : \"\\u2014\"));");
         }
         else
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + " ? \"Yes\" : \"No\"));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + " ? \"Yes\" : \"No\"));");
         }
 
         sb.AppendLine("            b.CloseComponent();");
@@ -326,11 +322,11 @@ public static class RazorEmitter
 
         if (col.IsNullable)
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + "?.ToString(\"" + format + "\", CultureInfo.CurrentCulture) ?? \"\\u2014\"));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? x." + col.PropertyName + ".Value.ToString(\"" + format + "\", CultureInfo.CurrentCulture) : \"\\u2014\"));");
         }
         else
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + ".ToString(\"" + format + "\", CultureInfo.CurrentCulture)));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".ToString(\"" + format + "\", CultureInfo.CurrentCulture)));");
         }
 
         sb.AppendLine("            b.CloseComponent();");
@@ -344,11 +340,11 @@ public static class RazorEmitter
 
         if (col.IsNullable)
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + " is null ? \"\\u2014\" : Truncate(HumanizeEnumLabel(x." + col.PropertyName + ".Value.ToString()), 30)));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? Truncate(HumanizeEnumLabel(x." + col.PropertyName + ".Value.ToString()), 30) : \"\\u2014\"));");
         }
         else
         {
-            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => Truncate(HumanizeEnumLabel(x." + col.PropertyName + ".ToString()), 30)));");
+            sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => Truncate(HumanizeEnumLabel(x." + col.PropertyName + ".ToString()), 30)));");
         }
 
         sb.AppendLine("            b.CloseComponent();");
@@ -359,7 +355,7 @@ public static class RazorEmitter
         sb.AppendLine("            // Collection column: " + col.PropertyName);
         sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + EscapeString(col.Header) + "\");");
-        sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (System.Func<" + typeName + ", string?>)(x => x." + col.PropertyName + " is null ? \"\\u2014\" : System.Linq.Enumerable.Count(x." + col.PropertyName + ").ToString() + \" items\"));");
+        sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + " == null ? \"\\u2014\" : System.Linq.Enumerable.Count(x." + col.PropertyName + ").ToString() + \" items\"));");
         sb.AppendLine("            b.CloseComponent();");
     }
 

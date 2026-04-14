@@ -18,7 +18,7 @@ public class RazorModelTransformTests
         => new PropertyModel(name, typeName, isNullable, isUnsupported, displayName, EmptyBadges);
 
     private static DomainModel Model(params PropertyModel[] props)
-        => new DomainModel("TestProjection", "TestDomain", "Test", null, new EquatableArray<PropertyModel>(props.ToImmutableArray()));
+        => new DomainModel("TestProjection", "TestDomain", "Test", null, null, new EquatableArray<PropertyModel>(props.ToImmutableArray()));
 
     // --- Type inference tests (14 types) ---
 
@@ -235,7 +235,7 @@ public class RazorModelTransformTests
     [Fact]
     public void Transform_PreservesMetadata()
     {
-        DomainModel model = new DomainModel("OrderProjection", "MyApp.Orders", "Orders", "StatusOverview",
+        DomainModel model = new DomainModel("OrderProjection", "MyApp.Orders", "Orders", null, "StatusOverview",
             new EquatableArray<PropertyModel>(ImmutableArray.Create(Prop("Name", "String"))));
         RazorModel result = RazorModelTransform.Transform(model);
 

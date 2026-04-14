@@ -74,7 +74,7 @@ public static class AttributeParser
             : typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
 
         // Parse attributes on the type
-        string? boundedContext = ParseBoundedContext(typeSymbol, diagnostics, filePath, linePos);
+        string? boundedContext = ParseBoundedContext(typeSymbol, diagnostics, filePath, linePos, out string? boundedContextDisplayLabel);
         string? projectionRole = ParseProjectionRole(typeSymbol, diagnostics, filePath, linePos);
 
         if (ct.IsCancellationRequested)
@@ -107,6 +107,7 @@ public static class AttributeParser
             typeName,
             ns,
             boundedContext,
+            boundedContextDisplayLabel,
             projectionRole,
             new EquatableArray<PropertyModel>(propertiesBuilder.ToImmutable()));
 
@@ -197,12 +198,24 @@ public static class AttributeParser
         INamedTypeSymbol typeSymbol,
         List<DiagnosticInfo> diagnostics,
         string filePath,
-        Microsoft.CodeAnalysis.Text.LinePosition linePos)
+        Microsoft.CodeAnalysis.Text.LinePosition linePos,
+        out string? displayLabel)
     {
+        displayLabel = null;
         foreach (AttributeData attr in typeSymbol.GetAttributes())
         {
             if (attr.AttributeClass?.ToDisplayString() == BoundedContextAttributeName)
             {
+                // Extract DisplayLabel from named arguments
+                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments)
+                {
+                    if (namedArg.Key == "DisplayLabel" && namedArg.Value.Value is string label
+                        && !string.IsNullOrWhiteSpace(label))
+                    {
+                        displayLabel = label;
+                    }
+                }
+
                 if (attr.ConstructorArguments.Length > 0)
                 {
                     TypedConstant arg = attr.ConstructorArguments[0];
@@ -211,6 +224,8 @@ public static class AttributeParser
                         return name.Trim();
                     }
 
+                    // BoundedContext name is invalid — clear any captured DisplayLabel
+                    displayLabel = null;
                     diagnostics.Add(new DiagnosticInfo(
                         "HFC1005",
                         string.Format("Invalid argument for attribute 'BoundedContext' on type '{0}': name must be a non-empty string", typeSymbol.Name),

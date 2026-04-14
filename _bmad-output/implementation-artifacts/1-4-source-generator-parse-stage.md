@@ -92,7 +92,7 @@ So that the framework can reason about domain types at compile time with a testa
 - [x] Task 3: Implement AttributeParser (AC: #2)
   - [x] 3.1 Create `AttributeParser.cs` in `Parsing/` folder
   - [x] 3.2 Signature: `static ParseResult Parse(GeneratorAttributeSyntaxContext context, CancellationToken ct)` -- use `context.TargetSymbol` (cast to `INamedTypeSymbol`) and `context.Attributes` (pre-resolved matched attributes). Do NOT re-query attributes via `GetAttributes()`.
-  - [x] 3.3 Parse `[BoundedContext(name)]` from type or containing namespace
+  - [x] 3.3 Parse `[BoundedContext(name)]` from the annotated type only. If absent, leave bounded-context discovery to downstream fallback logic rather than inferring a namespace-level attribute that C# cannot express.
   - [x] 3.4 Parse `[ProjectionRole(role)]` from type
   - [x] 3.5 Parse `[Display(Name=...)]` from properties (use `System.ComponentModel.DataAnnotations.DisplayAttribute`)
   - [x] 3.6 Parse `[ProjectionBadge(slot)]` from **enum member fields** (NOT from projection properties). `ProjectionBadgeAttribute` targets `AttributeTargets.Field` -- it decorates individual enum members (e.g., `[ProjectionBadge(BadgeSlot.Warning)] Active`), not properties on the projection class. To parse: resolve the property's type symbol to the enum, then iterate `IFieldSymbol` members of that enum for badge attribute data. Store as `BadgeMappingEntry(string EnumMemberName, BadgeSlot Slot)` list on the `PropertyModel`.

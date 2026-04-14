@@ -2,13 +2,23 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);ASP0006</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\..\samples\Counter\Counter.Domain\Counter.Domain.csproj" />
+    <ProjectReference Include="..\..\samples\Counter\Counter.Web\Counter.Web.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="bunit" />
     <PackageReference Include="NSubstitute" />
     <PackageReference Include="Shouldly" />
+    <PackageReference Include="Verify" />
+    <PackageReference Include="Verify.XunitV3" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.v3.assert" />
     <PackageReference Include="xunit.runner.visualstudio" />

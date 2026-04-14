@@ -41,6 +41,25 @@ public class AttributeParserTests
     public async Task Parse_GlobalNamespaceProjection_HandlesEmptyNamespace()
         => await VerifyProjectionAsync(TestSources.GlobalNamespaceProjection, "GlobalProjection");
 
+    [Fact]
+    public void Parse_DisplayLabelProjection_ExtractsDisplayLabel()
+    {
+        ParseResult result = CompilationHelper.ParseProjection(TestSources.DisplayLabelProjection, "TestDomain.DisplayLabelProjection");
+
+        result.Model.ShouldNotBeNull();
+        result.Model.BoundedContext.ShouldBe("Orders");
+        result.Model.BoundedContextDisplayLabel.ShouldBe("Commandes");
+    }
+
+    [Fact]
+    public void Parse_BasicProjection_DisplayLabelIsNull()
+    {
+        ParseResult result = CompilationHelper.ParseProjection(TestSources.BasicProjection, "TestDomain.CounterProjection");
+
+        result.Model.ShouldNotBeNull();
+        result.Model.BoundedContextDisplayLabel.ShouldBeNull();
+    }
+
     // Diagnostic negative-path tests
 
     [Fact]

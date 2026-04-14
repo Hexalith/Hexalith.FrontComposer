@@ -20,4 +20,10 @@ public sealed class BoundedContextAttribute : Attribute
     /// Gets the bounded context name.
     /// </summary>
     public string Name { get; }
+
+    /// <summary>
+    /// Gets or sets the optional display label for the bounded context.
+    /// When set, overrides the default display name derived from the bounded context name.
+    /// </summary>
+    public string? DisplayLabel { get; set; }
 }

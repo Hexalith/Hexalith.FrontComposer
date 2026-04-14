@@ -1,0 +1,166 @@
+namespace Hexalith.FrontComposer.Shell.Tests.Generated;
+
+using System.Globalization;
+using System.Text.RegularExpressions;
+
+using Bunit;
+
+using Counter.Domain;
+using Counter.Web.Components.Pages;
+
+using Fluxor;
+
+using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Extensions;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.FluentUI.AspNetCore.Components;
+
+using Shouldly;
+
+using Xunit;
+
+public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
+{
+    public CounterStoryVerificationTests()
+        : base(typeof(CounterProjection).Assembly, typeof(StatusProjection).Assembly)
+    {
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_LoadedState_RendersColumnsAndFormatting()
+    {
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+        [
+            new CounterProjection
+            {
+                Id = "counter-1",
+                Count = 1234,
+                LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+            },
+        ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        cut.WaitForAssertion(() =>
+        {
+            string markup = cut.Markup;
+            markup.IndexOf("Id", StringComparison.Ordinal).ShouldBeLessThan(markup.IndexOf("Count", StringComparison.Ordinal));
+            markup.IndexOf("Count", StringComparison.Ordinal).ShouldBeLessThan(markup.IndexOf("Last Updated", StringComparison.Ordinal));
+            markup.ShouldContain("counter-1");
+            markup.ShouldContain("1,234");
+            markup.ShouldContain("04/14/2026");
+        });
+
+        await Verify(NormalizeGridMarkup(cut.Markup));
+    }
+
+    [Fact]
+    public async Task CounterProjectionState_LoadActions_UpdateFluxorStateAndRegistryManifest()
+    {
+        ServiceCollection services = new();
+        services.AddFluentUIComponents();
+        services.AddHexalithFrontComposer(o => o.ScanAssemblies(typeof(CounterProjection).Assembly));
+        services.AddHexalithDomain<CounterDomain>();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        IStore store = provider.GetRequiredService<IStore>();
+        await store.InitializeAsync();
+
+        IFrontComposerRegistry registry = provider.GetRequiredService<IFrontComposerRegistry>();
+        IState<CounterProjectionState> state = provider.GetRequiredService<IState<CounterProjectionState>>();
+        IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction());
+        SpinWait.SpinUntil(() => state.Value.IsLoading, TimeSpan.FromSeconds(1)).ShouldBeTrue();
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+        [
+            new CounterProjection
+            {
+                Id = "counter-1",
+                Count = 2,
+                LastUpdated = DateTimeOffset.UtcNow,
+            },
+        ]));
+
+        SpinWait.SpinUntil(
+            () => !state.Value.IsLoading && state.Value.Items?.Count == 1,
+            TimeSpan.FromSeconds(1)).ShouldBeTrue();
+
+        DomainManifest counterManifest = registry.GetManifests().Single(m => m.BoundedContext == "Counter");
+        counterManifest.Projections.ShouldContain(typeof(CounterProjection).FullName!);
+        counterManifest.Commands.ShouldContain(typeof(IncrementCommand).FullName!);
+    }
+
+    [Fact]
+    public async Task CounterPage_EmptyState_RendersStoryMessage()
+    {
+        await InitializeStoreAsync();
+
+        IRenderedComponent<CounterPage> cut = Render<CounterPage>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.ShouldContain("No counter data yet. Send your first Increment Counter command.");
+            cut.Markup.ShouldContain("Increment Counter");
+        });
+    }
+
+    [Fact]
+    public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot()
+    {
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new StatusProjectionLoadedAction(
+        [
+            new StatusProjection { Name = null, IsEnabled = true },
+            new StatusProjection { Name = "Beta", IsEnabled = false },
+            new StatusProjection { Name = "Gamma", IsEnabled = null },
+        ]));
+
+        IRenderedComponent<StatusProjectionView> cut = Render<StatusProjectionView>();
+
+        cut.WaitForAssertion(() =>
+        {
+            cut.Markup.ShouldContain("Yes");
+            cut.Markup.ShouldContain("No");
+            cut.Markup.ShouldContain("—");
+        });
+
+        await Verify(NormalizeGridMarkup(cut.Markup));
+    }
+
+    private sealed class CultureScope : IDisposable
+    {
+        private readonly CultureInfo _originalCulture;
+        private readonly CultureInfo _originalUICulture;
+
+        public CultureScope(CultureInfo culture)
+        {
+            _originalCulture = CultureInfo.CurrentCulture;
+            _originalUICulture = CultureInfo.CurrentUICulture;
+            CultureInfo.CurrentCulture = culture;
+            CultureInfo.CurrentUICulture = culture;
+        }
+
+        public void Dispose()
+        {
+            CultureInfo.CurrentCulture = _originalCulture;
+            CultureInfo.CurrentUICulture = _originalUICulture;
+        }
+    }
+
+    private static string NormalizeGridMarkup(string markup)
+    {
+        string normalized = Regex.Replace(markup, "\\s+id=\"[^\"]+\"", string.Empty);
+        normalized = Regex.Replace(normalized, "\\s+blazor:[^=]+=\"[^\"]*\"", string.Empty);
+        return normalized.Replace("\r\n", "\n");
+    }
+}
