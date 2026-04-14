@@ -1,8 +1,3 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Caching;
-
-using System.Linq;
-using System.Threading;
-
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
 using Microsoft.CodeAnalysis;
@@ -10,13 +5,11 @@ using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Caching;
 
-public class IncrementalCachingTests
-{
+public class IncrementalCachingTests {
     [Fact]
-    public void UnrelatedFileEdit_GeneratorStep_ShowsCached()
-    {
+    public void UnrelatedFileEdit_GeneratorStep_ShowsCached() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BasicProjection);
         FrontComposerGenerator generator = new();
@@ -30,7 +23,7 @@ public class IncrementalCachingTests
         driver1 = driver1.RunGenerators(compilation, ct);
 
         // Run 2: add unrelated file -- expect Cached
-        SyntaxTree newTree = CSharpSyntaxTree.ParseText(cancellationToken: ct, text:"public class Unrelated { }");
+        SyntaxTree newTree = CSharpSyntaxTree.ParseText(cancellationToken: ct, text: "public class Unrelated { }");
         CSharpCompilation compilation2 = compilation.AddSyntaxTrees(newTree);
         GeneratorDriver driver2 = driver1.RunGenerators(compilation2, ct);
 
@@ -40,15 +33,14 @@ public class IncrementalCachingTests
 
         bool hasCachedOrUnchangedOutput = result2.TrackedSteps["Parse"]
             .SelectMany(s => s.Outputs)
-            .Any(o => o.Reason == IncrementalStepRunReason.Cached || o.Reason == IncrementalStepRunReason.Unchanged);
+            .Any(o => o.Reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged);
 
         hasCachedOrUnchangedOutput.ShouldBeTrue(
             "The parse stage should show Cached/Unchanged outputs for unrelated file changes");
     }
 
     [Fact]
-    public void AttributeArgumentChange_GeneratorStep_ShowsModified()
-    {
+    public void AttributeArgumentChange_GeneratorStep_ShowsModified() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source1 = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
@@ -86,7 +78,7 @@ public partial class TestProjection
         // Replace the source tree with modified attribute argument
         CSharpCompilation compilation2 = compilation1.ReplaceSyntaxTree(
             compilation1.SyntaxTrees.First(),
-            CSharpSyntaxTree.ParseText(cancellationToken: ct, text:source2));
+            CSharpSyntaxTree.ParseText(cancellationToken: ct, text: source2));
         GeneratorDriver driver2 = driver1.RunGenerators(compilation2, ct);
 
         GeneratorRunResult result2 = driver2.GetRunResult().Results[0];
@@ -100,8 +92,7 @@ public partial class TestProjection
     }
 
     [Fact]
-    public void AddNewProjectionClass_ExistingCachedOutputsNotInvalidated()
-    {
+    public void AddNewProjectionClass_ExistingCachedOutputsNotInvalidated() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string existingSource = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
@@ -142,7 +133,7 @@ public partial class NewProjection
 
         // Add new projection class
         CSharpCompilation compilation2 = compilation1.AddSyntaxTrees(
-            CSharpSyntaxTree.ParseText(cancellationToken: ct, text:newSource));
+            CSharpSyntaxTree.ParseText(cancellationToken: ct, text: newSource));
         GeneratorDriver driver2 = driver1.RunGenerators(compilation2, ct);
 
         GeneratorRunResult result2 = driver2.GetRunResult().Results[0];
@@ -158,15 +149,14 @@ public partial class NewProjection
 
         bool hasCachedOutput = result2.TrackedSteps["Parse"]
             .SelectMany(s => s.Outputs)
-            .Any(o => o.Reason == IncrementalStepRunReason.Cached || o.Reason == IncrementalStepRunReason.Unchanged);
+            .Any(o => o.Reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged);
 
         hasNewOutput.ShouldBeTrue("Adding a new [Projection] class should produce a new output");
         hasCachedOutput.ShouldBeTrue("Existing [Projection] class should remain cached");
     }
 
     [Fact]
-    public void DeterministicOutput_SameInputProducesByteIdenticalOutput()
-    {
+    public void DeterministicOutput_SameInputProducesByteIdenticalOutput() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BasicProjection);
         FrontComposerGenerator generator = new();
@@ -186,8 +176,7 @@ public partial class NewProjection
             .ToArray();
 
         output1.Length.ShouldBe(output2.Length);
-        for (int i = 0; i < output1.Length; i++)
-        {
+        for (int i = 0; i < output1.Length; i++) {
             output1[i].ShouldBe(output2[i], "Output should be byte-identical across runs");
         }
     }

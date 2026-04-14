@@ -1,7 +1,7 @@
-namespace Hexalith.FrontComposer.Shell.State.Density;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 
+namespace Hexalith.FrontComposer.Shell.State.Density;
 /// <summary>
 /// Dispatched when the application display density changes.
 /// </summary>

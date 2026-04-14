@@ -4,8 +4,7 @@ namespace Hexalith.FrontComposer.Contracts.Telemetry;
 /// Shared telemetry source name and version constants for the FrontComposer framework.
 /// The actual ActivitySource instance is created in Shell (net10.0).
 /// </summary>
-public static class FrontComposerActivitySource
-{
+public static class FrontComposerActivitySource {
     /// <summary>
     /// The telemetry source name.
     /// </summary>

@@ -11,6 +11,5 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// via Roslyn symbol analysis.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class ProjectionAttribute : Attribute
-{
+public sealed class ProjectionAttribute : Attribute {
 }

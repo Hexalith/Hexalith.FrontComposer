@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State;
 
 using Fluxor;
 
@@ -10,16 +9,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State;
 /// <summary>
 /// Tests verifying <see cref="FrontComposerTestBase"/> infrastructure.
 /// </summary>
-public class TestBaseTests : FrontComposerTestBase
-{
+public class TestBaseTests : FrontComposerTestBase {
     [Fact]
-    public async Task FrontComposerTestBase_StoreInitialized_DispatchDoesNotThrow()
-    {
+    public async Task FrontComposerTestBase_StoreInitialized_DispatchDoesNotThrow() {
         // Arrange
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -29,11 +25,10 @@ public class TestBaseTests : FrontComposerTestBase
     }
 
     [Fact]
-    public void FrontComposerTestBase_ServicesRegistered_AllDependenciesResolve()
-    {
+    public void FrontComposerTestBase_ServicesRegistered_AllDependenciesResolve() {
         // Assert
-        Services.GetService<IStorageService>().ShouldNotBeNull();
-        Services.GetService<IOverrideRegistry>().ShouldNotBeNull();
-        Services.GetService<IDispatcher>().ShouldNotBeNull();
+        _ = Services.GetService<IStorageService>().ShouldNotBeNull();
+        _ = Services.GetService<IOverrideRegistry>().ShouldNotBeNull();
+        _ = Services.GetService<IDispatcher>().ShouldNotBeNull();
     }
 }

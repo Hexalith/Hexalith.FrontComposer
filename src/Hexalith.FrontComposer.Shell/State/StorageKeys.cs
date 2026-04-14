@@ -4,8 +4,7 @@ namespace Hexalith.FrontComposer.Shell.State;
 /// Builds storage keys for persisted Fluxor state features.
 /// Keys follow the pattern documented in <see cref="Contracts.Storage.IStorageService"/>.
 /// </summary>
-public static class StorageKeys
-{
+public static class StorageKeys {
     // TODO: Replace with ITenantContext/IUserContext when authentication is implemented (Epic 7)
 
     /// <summary>Placeholder tenant identifier used before multi-tenancy is enabled.</summary>

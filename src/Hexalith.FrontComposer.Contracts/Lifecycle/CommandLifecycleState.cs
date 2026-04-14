@@ -3,8 +3,7 @@ namespace Hexalith.FrontComposer.Contracts.Lifecycle;
 /// <summary>
 /// Tracks the lifecycle state of a dispatched command from submission through confirmation.
 /// </summary>
-public enum CommandLifecycleState
-{
+public enum CommandLifecycleState {
     /// <summary>Default -- no command in flight.</summary>
     Idle,
 

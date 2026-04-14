@@ -1,13 +1,11 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
-public class CamelCaseHumanizerTests
-{
+public class CamelCaseHumanizerTests {
     [Theory]
     [InlineData("OrderDate", "Order Date")]
     [InlineData("XMLParser", "XML Parser")]
@@ -24,14 +22,8 @@ public class CamelCaseHumanizerTests
     [InlineData("getHTTPResponse", "Get HTTP Response")]
     [InlineData("VeryLongEnumMemberNameThatExceedsThirtyCharacterLimit", "Very Long Enum Member Name That Exceeds Thirty Character Limit")]
     [InlineData("Name", "Name")]
-    public void Humanize_KnownInputs_ReturnsExpected(string input, string expected)
-    {
-        CamelCaseHumanizer.Humanize(input).ShouldBe(expected);
-    }
+    public void Humanize_KnownInputs_ReturnsExpected(string input, string expected) => CamelCaseHumanizer.Humanize(input).ShouldBe(expected);
 
     [Fact]
-    public void Humanize_Null_ReturnsNull()
-    {
-        CamelCaseHumanizer.Humanize(null).ShouldBeNull();
-    }
+    public void Humanize_Null_ReturnsNull() => CamelCaseHumanizer.Humanize(null).ShouldBeNull();
 }

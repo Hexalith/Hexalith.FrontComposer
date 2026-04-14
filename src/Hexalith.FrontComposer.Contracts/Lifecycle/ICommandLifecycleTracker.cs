@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Contracts.Lifecycle;
 /// Story 1.3 may extend lifecycle handling through companion abstractions while
 /// keeping this interface stable for existing implementers.
 /// </summary>
-public interface ICommandLifecycleTracker
-{
+public interface ICommandLifecycleTracker {
     /// <summary>
     /// Returns the IDs of all commands currently in a non-Idle state.
     /// </summary>

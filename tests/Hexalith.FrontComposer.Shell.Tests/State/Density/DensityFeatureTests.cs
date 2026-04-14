@@ -1,20 +1,16 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.Density;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// <summary>
 /// Unit tests for <see cref="FrontComposerDensityFeature"/>.
 /// </summary>
-public class DensityFeatureTests
-{
+public class DensityFeatureTests {
     [Fact]
-    public void GetInitialState_ReturnsComfortable()
-    {
+    public void GetInitialState_ReturnsComfortable() {
         // Arrange
         var feature = new TestableFrontComposerDensityFeature();
 
@@ -26,8 +22,7 @@ public class DensityFeatureTests
         feature.GetName().ShouldBe("FrontComposerDensity");
     }
 
-    private sealed class TestableFrontComposerDensityFeature : FrontComposerDensityFeature
-    {
+    private sealed class TestableFrontComposerDensityFeature : FrontComposerDensityFeature {
         public FrontComposerDensityState ExposeInitialState() => GetInitialState();
     }
 }

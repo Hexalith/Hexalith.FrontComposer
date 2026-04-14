@@ -4,6 +4,10 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsPackable>false</IsPackable>
+    <!-- RS2002: HFC1010 is intentionally reserved as a table row in AnalyzerReleases.Unshipped.md
+         without a DiagnosticDescriptor field (Story 1.8 AC4). Implementation requires an analyzer
+         (generators see current state, not diffs) — deferred. See docs/hot-reload-guide.md. -->
+    <NoWarn>$(NoWarn);RS2002</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />

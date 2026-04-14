@@ -1,29 +1,20 @@
 // Licensed to the .NET Foundation under one or more agreements.
 // Vendored for netstandard2.0 compatibility -- no Span<T> or HashCode.Combine.
 
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools.Parsing;
-
-using System;
 using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
+namespace Hexalith.FrontComposer.SourceTools.Parsing;
 /// <summary>
 /// An immutable array wrapper that implements value-based equality
 /// for use in Roslyn incremental generator caching.
 /// </summary>
 /// <typeparam name="T">The element type (must implement <see cref="IEquatable{T}"/>).</typeparam>
 public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnumerable<T>
-    where T : IEquatable<T>
-{
+    where T : IEquatable<T> {
     private readonly ImmutableArray<T> _array;
 
-    public EquatableArray(ImmutableArray<T> array)
-    {
-        _array = array;
-    }
+    public EquatableArray(ImmutableArray<T> array) => _array = array;
 
     public ImmutableArray<T> AsImmutableArray() => _array.IsDefault ? ImmutableArray<T>.Empty : _array;
 
@@ -35,20 +26,16 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnume
 
     public static bool operator !=(EquatableArray<T> left, EquatableArray<T> right) => !left.Equals(right);
 
-    public bool Equals(EquatableArray<T> other)
-    {
+    public bool Equals(EquatableArray<T> other) {
         ImmutableArray<T> a = AsImmutableArray();
         ImmutableArray<T> b = other.AsImmutableArray();
 
-        if (a.Length != b.Length)
-        {
+        if (a.Length != b.Length) {
             return false;
         }
 
-        for (int i = 0; i < a.Length; i++)
-        {
-            if (!EqualityComparer<T>.Default.Equals(a[i], b[i]))
-            {
+        for (int i = 0; i < a.Length; i++) {
+            if (!EqualityComparer<T>.Default.Equals(a[i], b[i])) {
                 return false;
             }
         }
@@ -58,14 +45,11 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnume
 
     public override bool Equals(object? obj) => obj is EquatableArray<T> other && Equals(other);
 
-    public override int GetHashCode()
-    {
+    public override int GetHashCode() {
         ImmutableArray<T> items = AsImmutableArray();
-        unchecked
-        {
+        unchecked {
             int hash = 17;
-            for (int i = 0; i < items.Length; i++)
-            {
+            for (int i = 0; i < items.Length; i++) {
                 hash = (hash * 31) + EqualityComparer<T>.Default.GetHashCode(items[i]);
             }
 
@@ -75,11 +59,9 @@ public readonly struct EquatableArray<T> : IEquatable<EquatableArray<T>>, IEnume
 
     public ImmutableArray<T>.Enumerator GetEnumerator() => AsImmutableArray().GetEnumerator();
 
-    IEnumerator<T> IEnumerable<T>.GetEnumerator()
-    {
+    IEnumerator<T> IEnumerable<T>.GetEnumerator() {
         ImmutableArray<T> arr = AsImmutableArray();
-        for (int i = 0; i < arr.Length; i++)
-        {
+        for (int i = 0; i < arr.Length; i++) {
             yield return arr[i];
         }
     }

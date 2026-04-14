@@ -1,29 +1,23 @@
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools.Transforms;
 
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
+namespace Hexalith.FrontComposer.SourceTools.Transforms;
 /// <summary>
 /// Transforms a DomainModel IR into a RazorModel for DataGrid component generation.
 /// </summary>
-public static class RazorModelTransform
-{
+public static class RazorModelTransform {
     /// <summary>
     /// Transforms a parsed domain model into a Razor output model.
     /// </summary>
     /// <param name="model">The domain model IR from the Parse stage.</param>
     /// <returns>A RazorModel ready for the Emit stage.</returns>
-    public static RazorModel Transform(DomainModel model)
-    {
+    public static RazorModel Transform(DomainModel model) {
         ImmutableArray<ColumnModel>.Builder columnsBuilder = ImmutableArray.CreateBuilder<ColumnModel>();
 
-        foreach (PropertyModel property in model.Properties)
-        {
-            if (property.IsUnsupported)
-            {
+        foreach (PropertyModel property in model.Properties) {
+            if (property.IsUnsupported) {
                 continue;
             }
 
@@ -47,77 +41,37 @@ public static class RazorModelTransform
             new EquatableArray<ColumnModel>(columnsBuilder.ToImmutable()));
     }
 
-    private static TypeCategory MapTypeCategory(string typeName)
-    {
-        switch (typeName)
-        {
-            case "String":
-            case "Guid":
-                return TypeCategory.Text;
-            case "Int32":
-            case "Int64":
-            case "Decimal":
-            case "Double":
-            case "Single":
-                return TypeCategory.Numeric;
-            case "Boolean":
-                return TypeCategory.Boolean;
-            case "DateTime":
-            case "DateTimeOffset":
-            case "DateOnly":
-            case "TimeOnly":
-                return TypeCategory.DateTime;
-            case "Enum":
-                return TypeCategory.Enum;
-            case "Collection":
-                return TypeCategory.Collection;
-            default:
-                return TypeCategory.Unsupported;
-        }
-    }
+    private static TypeCategory MapTypeCategory(string typeName) => typeName switch {
+        "String" or "Guid" => TypeCategory.Text,
+        "Int32" or "Int64" or "Decimal" or "Double" or "Single" => TypeCategory.Numeric,
+        "Boolean" => TypeCategory.Boolean,
+        "DateTime" or "DateTimeOffset" or "DateOnly" or "TimeOnly" => TypeCategory.DateTime,
+        "Enum" => TypeCategory.Enum,
+        "Collection" => TypeCategory.Collection,
+        _ => TypeCategory.Unsupported,
+    };
 
-    private static string? GetFormatHint(string typeName, TypeCategory category)
-    {
-        switch (typeName)
-        {
-            case "Int32":
-            case "Int64":
-                return "N0";
-            case "Decimal":
-            case "Double":
-            case "Single":
-                return "N2";
-            case "Boolean":
-                return "Yes/No";
-            case "DateTime":
-            case "DateTimeOffset":
-            case "DateOnly":
-                return "d";
-            case "TimeOnly":
-                return "t";
-            case "Enum":
-                return "Humanize:30";
-            case "Guid":
-                return "Truncate:8";
-            case "Collection":
-                return "Count";
-            default:
-                return null;
-        }
-    }
+    private static string? GetFormatHint(string typeName, TypeCategory category) => typeName switch {
+        "Int32" or "Int64" => "N0",
+        "Decimal" or "Double" or "Single" => "N2",
+        "Boolean" => "Yes/No",
+        "DateTime" or "DateTimeOffset" or "DateOnly" => "d",
+        "TimeOnly" => "t",
+        "Enum" => "Humanize:30",
+        "Guid" => "Truncate:8",
+        "Collection" => "Count",
+        _ => null,
+    };
 
-    private static string ResolveHeader(PropertyModel property)
-    {
+    private static string ResolveHeader(PropertyModel property) {
         // Priority 1: [Display(Name)] attribute value
-        if (!string.IsNullOrEmpty(property.DisplayName))
-        {
+        if (!string.IsNullOrEmpty(property.DisplayName)) {
             return property.DisplayName!;
         }
 
         // Priority 2: Humanized CamelCase
         string? humanized = CamelCaseHumanizer.Humanize(property.Name);
-        if (!string.IsNullOrEmpty(humanized))
-        {
+        if (!string.IsNullOrEmpty(humanized)) {
             return humanized!;
         }
 

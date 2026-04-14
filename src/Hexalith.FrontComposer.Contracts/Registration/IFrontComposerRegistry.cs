@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// against this interface. Story 1.3 may extend composition through companion abstractions
 /// while keeping this interface stable for existing implementers.
 /// </summary>
-public interface IFrontComposerRegistry
-{
+public interface IFrontComposerRegistry {
     /// <summary>
     /// Adds a navigation group entry for a bounded context.
     /// </summary>

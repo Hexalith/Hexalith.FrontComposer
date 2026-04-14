@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// Story 1.3 may extend query behavior through companion abstractions while
 /// keeping this interface stable for existing implementers.
 /// </summary>
-public interface IQueryService
-{
+public interface IQueryService {
     /// <summary>
     /// Executes a query against a projection type.
     /// </summary>

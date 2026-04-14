@@ -1,21 +1,17 @@
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
+namespace Hexalith.FrontComposer.SourceTools.Transforms;
 /// <summary>
 /// Transforms a DomainModel IR into a RegistrationModel for domain registration generation.
 /// </summary>
-public static class RegistrationModelTransform
-{
+public static class RegistrationModelTransform {
     /// <summary>
     /// Transforms a parsed domain model into a registration output model.
     /// </summary>
     /// <param name="model">The domain model IR from the Parse stage.</param>
     /// <returns>A RegistrationModel ready for the Emit stage.</returns>
-    public static RegistrationModel Transform(DomainModel model)
-    {
+    public static RegistrationModel Transform(DomainModel model) {
         // BoundedContext from attribute, or fallback to namespace last segment
         string boundedContext = model.BoundedContext
             ?? GetNamespaceLastSegment(model.Namespace);
@@ -27,10 +23,8 @@ public static class RegistrationModelTransform
             model.BoundedContextDisplayLabel);
     }
 
-    private static string GetNamespaceLastSegment(string @namespace)
-    {
-        if (string.IsNullOrEmpty(@namespace))
-        {
+    private static string GetNamespaceLastSegment(string @namespace) {
+        if (string.IsNullOrEmpty(@namespace)) {
             return "Global";
         }
 

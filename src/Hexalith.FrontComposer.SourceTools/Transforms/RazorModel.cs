@@ -1,22 +1,15 @@
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools.Transforms;
-
-using System;
-
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
+namespace Hexalith.FrontComposer.SourceTools.Transforms;
 /// <summary>
 /// Output model for Razor DataGrid component generation.
 /// </summary>
-public sealed class RazorModel : IEquatable<RazorModel>
-{
+public sealed class RazorModel : IEquatable<RazorModel> {
     public RazorModel(
         string typeName,
         string @namespace,
         string? boundedContext,
-        EquatableArray<ColumnModel> columns)
-    {
+        EquatableArray<ColumnModel> columns) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -31,15 +24,12 @@ public sealed class RazorModel : IEquatable<RazorModel>
 
     public EquatableArray<ColumnModel> Columns { get; }
 
-    public bool Equals(RazorModel? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(RazorModel? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -51,10 +41,8 @@ public sealed class RazorModel : IEquatable<RazorModel>
 
     public override bool Equals(object? obj) => Equals(obj as RazorModel);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);

@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// Story 1.3 may extend subscription behavior through companion abstractions while
 /// keeping this interface stable for existing implementers.
 /// </summary>
-public interface IProjectionSubscription
-{
+public interface IProjectionSubscription {
     /// <summary>
     /// Subscribes to change notifications for a projection type within a tenant.
     /// </summary>

@@ -4,8 +4,7 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
 /// Customization gradient support. Placeholder for v1 -- method set is provisional.
 /// Generic convenience methods will be added as extension methods in Shell.
 /// </summary>
-public interface IOverrideRegistry
-{
+public interface IOverrideRegistry {
     /// <summary>
     /// Registers a customization override for a projection type.
     /// </summary>

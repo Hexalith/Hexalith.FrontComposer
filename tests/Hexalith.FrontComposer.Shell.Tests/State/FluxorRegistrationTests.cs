@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State;
 
 using Fluxor;
 
@@ -11,60 +10,53 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State;
 /// <summary>
 /// Tests verifying DI registration via <see cref="ServiceCollectionExtensions.AddHexalithFrontComposer"/>.
 /// </summary>
-public class FluxorRegistrationTests
-{
-    private static ServiceProvider BuildProvider()
-    {
+public class FluxorRegistrationTests {
+    private static ServiceProvider BuildProvider() {
         ServiceCollection services = new();
-        services.AddLogging();
-        services.AddHexalithFrontComposer();
+        _ = services.AddLogging();
+        _ = services.AddHexalithFrontComposer();
         return services.BuildServiceProvider();
     }
 
     [Fact]
-    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesIStore()
-    {
+    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesIStore() {
         // Arrange
         using ServiceProvider provider = BuildProvider();
 
         // Act & Assert
-        provider.GetService<IStore>().ShouldNotBeNull();
+        _ = provider.GetService<IStore>().ShouldNotBeNull();
     }
 
     [Fact]
-    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesIDispatcher()
-    {
+    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesIDispatcher() {
         // Arrange
         using ServiceProvider provider = BuildProvider();
 
         // Act & Assert
-        provider.GetService<IDispatcher>().ShouldNotBeNull();
+        _ = provider.GetService<IDispatcher>().ShouldNotBeNull();
     }
 
     [Fact]
-    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesAllStateTypes()
-    {
+    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesAllStateTypes() {
         // Arrange
         using ServiceProvider provider = BuildProvider();
 
         // Act & Assert
-        provider.GetService<IState<FrontComposerThemeState>>().ShouldNotBeNull();
-        provider.GetService<IState<FrontComposerDensityState>>().ShouldNotBeNull();
+        _ = provider.GetService<IState<FrontComposerThemeState>>().ShouldNotBeNull();
+        _ = provider.GetService<IState<FrontComposerDensityState>>().ShouldNotBeNull();
     }
 
     [Fact]
-    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesIStorageService()
-    {
+    public void FluxorRegistration_AddHexalithFrontComposer_ResolvesIStorageService() {
         // Arrange
         using ServiceProvider provider = BuildProvider();
 
         // Act & Assert
-        provider.GetService<IStorageService>().ShouldNotBeNull();
-        provider.GetService<IStorageService>().ShouldBeOfType<InMemoryStorageService>();
+        _ = provider.GetService<IStorageService>().ShouldNotBeNull();
+        _ = provider.GetService<IStorageService>().ShouldBeOfType<InMemoryStorageService>();
     }
 }

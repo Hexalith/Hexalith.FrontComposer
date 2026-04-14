@@ -1,38 +1,27 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests;
-
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests;
 
-internal static class CompilationHelper
-{
-    private static MetadataReference[] GetBaseReferences()
-    {
-        List<MetadataReference> refs = new List<MetadataReference>
-        {
+internal static class CompilationHelper {
+    private static MetadataReference[] GetBaseReferences() {
+        List<MetadataReference> refs =
+        [
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(ProjectionAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute).Assembly.Location),
-        };
+        ];
 
         // Add runtime assemblies needed for netcoreapp compilation
         string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
         string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.Collections.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll"];
-        foreach (string dll in additionalDlls)
-        {
+        foreach (string dll in additionalDlls) {
             string path = Path.Combine(runtimeDir, dll);
-            if (File.Exists(path))
-            {
+            if (File.Exists(path)) {
                 refs.Add(MetadataReference.CreateFromFile(path));
             }
         }
@@ -49,17 +38,14 @@ internal static class CompilationHelper
         return refs.ToArray();
     }
 
-    private static void TryAddAssemblyRef(List<MetadataReference> refs, Type type)
-    {
+    private static void TryAddAssemblyRef(List<MetadataReference> refs, Type type) {
         string location = type.Assembly.Location;
-        if (!string.IsNullOrEmpty(location) && File.Exists(location))
-        {
+        if (!string.IsNullOrEmpty(location) && File.Exists(location)) {
             refs.Add(MetadataReference.CreateFromFile(location));
         }
     }
 
-    internal static CSharpCompilation CreateCompilation(string source, bool enableNullable = true)
-    {
+    internal static CSharpCompilation CreateCompilation(string source, bool enableNullable = true) {
         CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable);
 
@@ -70,8 +56,7 @@ internal static class CompilationHelper
             options);
     }
 
-    internal static CSharpCompilation CreateCompilation(string[] sources, bool enableNullable = true)
-    {
+    internal static CSharpCompilation CreateCompilation(string[] sources, bool enableNullable = true) {
         CSharpCompilationOptions options = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             .WithNullableContextOptions(enableNullable ? NullableContextOptions.Enable : NullableContextOptions.Disable);
 
@@ -88,8 +73,7 @@ internal static class CompilationHelper
     internal static ParseResult ParseProjection(string[] sources, string metadataName, bool enableNullable = true)
         => ParseProjection(CreateCompilation(sources, enableNullable), metadataName);
 
-    internal static ParseResult ParseProjection(CSharpCompilation compilation, string metadataName)
-    {
+    internal static ParseResult ParseProjection(CSharpCompilation compilation, string metadataName) {
         INamedTypeSymbol typeSymbol = compilation.GetTypeByMetadataName(metadataName)
             ?? throw new InvalidOperationException($"Could not find projection type '{metadataName}' in the test compilation.");
 

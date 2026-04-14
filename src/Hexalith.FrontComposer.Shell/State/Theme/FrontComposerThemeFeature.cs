@@ -1,12 +1,11 @@
-namespace Hexalith.FrontComposer.Shell.State.Theme;
 
 using Fluxor;
 
+namespace Hexalith.FrontComposer.Shell.State.Theme;
 /// <summary>
 /// Fluxor feature registration for <see cref="FrontComposerThemeState"/>.
 /// </summary>
-public class FrontComposerThemeFeature : Feature<FrontComposerThemeState>
-{
+public class FrontComposerThemeFeature : Feature<FrontComposerThemeState> {
     /// <inheritdoc/>
     public override string GetName() => "FrontComposerTheme";
 

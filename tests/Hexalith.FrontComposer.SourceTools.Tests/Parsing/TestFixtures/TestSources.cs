@@ -1,7 +1,6 @@
 namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
-internal static class TestSources
-{
+internal static class TestSources {
     internal const string BasicProjection = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 

@@ -8,8 +8,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// </summary>
 /// <typeparam name="TModel">The model type to render.</typeparam>
 /// <typeparam name="TOutput">The output type produced by the renderer.</typeparam>
-public interface IRenderer<in TModel, out TOutput>
-{
+public interface IRenderer<in TModel, out TOutput> {
     /// <summary>
     /// Determines whether this renderer can handle the given model.
     /// </summary>

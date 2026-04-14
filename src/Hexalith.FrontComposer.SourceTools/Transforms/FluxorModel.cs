@@ -1,20 +1,13 @@
-#nullable enable
-
 namespace Hexalith.FrontComposer.SourceTools.Transforms;
-
-using System;
-
 /// <summary>
 /// Output model for Fluxor feature/actions/reducers generation.
 /// </summary>
-public sealed class FluxorModel : IEquatable<FluxorModel>
-{
+public sealed class FluxorModel : IEquatable<FluxorModel> {
     public FluxorModel(
         string typeName,
         string @namespace,
         string stateName,
-        string featureName)
-    {
+        string featureName) {
         TypeName = typeName;
         Namespace = @namespace;
         StateName = stateName;
@@ -29,15 +22,12 @@ public sealed class FluxorModel : IEquatable<FluxorModel>
 
     public string FeatureName { get; }
 
-    public bool Equals(FluxorModel? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(FluxorModel? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -49,10 +39,8 @@ public sealed class FluxorModel : IEquatable<FluxorModel>
 
     public override bool Equals(object? obj) => Equals(obj as FluxorModel);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);

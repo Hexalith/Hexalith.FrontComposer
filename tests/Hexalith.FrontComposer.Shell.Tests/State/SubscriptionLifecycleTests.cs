@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State;
 
 using Bunit;
 
@@ -13,16 +12,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State;
 /// <summary>
 /// bUnit tests verifying the IState&lt;T&gt; + IDisposable subscription lifecycle pattern (AC2).
 /// </summary>
-public class SubscriptionLifecycleTests : FrontComposerTestBase
-{
+public class SubscriptionLifecycleTests : FrontComposerTestBase {
     [Fact]
-    public async Task ThemeSubscription_ComponentRendered_ReceivesInitialState()
-    {
+    public async Task ThemeSubscription_ComponentRendered_ReceivesInitialState() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();
@@ -35,8 +31,7 @@ public class SubscriptionLifecycleTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task ThemeSubscription_ActionDispatched_ComponentRerendersWithNewState()
-    {
+    public async Task ThemeSubscription_ActionDispatched_ComponentRerendersWithNewState() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();
@@ -52,8 +47,7 @@ public class SubscriptionLifecycleTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task ThemeSubscription_ComponentDisposed_UnsubscribesFromStateChanged()
-    {
+    public async Task ThemeSubscription_ComponentDisposed_UnsubscribesFromStateChanged() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();
@@ -73,8 +67,7 @@ public class SubscriptionLifecycleTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task DensitySubscription_ComponentRendered_ReceivesInitialState()
-    {
+    public async Task DensitySubscription_ComponentRendered_ReceivesInitialState() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();
@@ -87,8 +80,7 @@ public class SubscriptionLifecycleTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task DensitySubscription_ActionDispatched_ComponentRerendersWithNewState()
-    {
+    public async Task DensitySubscription_ActionDispatched_ComponentRerendersWithNewState() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();
@@ -104,8 +96,7 @@ public class SubscriptionLifecycleTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task DensitySubscription_ComponentDisposed_UnsubscribesFromStateChanged()
-    {
+    public async Task DensitySubscription_ComponentDisposed_UnsubscribesFromStateChanged() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();

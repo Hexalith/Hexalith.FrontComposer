@@ -1,7 +1,5 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 
 using System.Collections.Immutable;
-using System.Threading;
 
 using Hexalith.FrontComposer.SourceTools.Emitters;
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -11,19 +9,17 @@ using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 
-public class RazorEmitterTests
-{
+public class RazorEmitterTests {
     private static readonly EquatableArray<BadgeMappingEntry> EmptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
 
     private static ColumnModel Col(string name, string header, TypeCategory cat, string? formatHint = null, bool isNullable = false)
-        => new ColumnModel(name, header, cat, formatHint, isNullable, EmptyBadges);
+        => new(name, header, cat, formatHint, isNullable, EmptyBadges);
 
     [Fact]
-    public Task BasicProjection_Snapshot()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public Task BasicProjection_Snapshot() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Name", "Name", TypeCategory.Text),
                 Col("Count", "Count", TypeCategory.Numeric, "N0"),
@@ -35,9 +31,8 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public Task NullableProperties_Snapshot()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public Task NullableProperties_Snapshot() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Name", "Name", TypeCategory.Text, isNullable: true),
                 Col("Count", "Count", TypeCategory.Numeric, "N0", isNullable: true),
@@ -48,9 +43,8 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public Task DisplayNameOverrides_Snapshot()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public Task DisplayNameOverrides_Snapshot() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("OrderDate", "Date Ordered", TypeCategory.DateTime, "d"))));
 
@@ -59,13 +53,12 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public Task EnumAndBadgeMappings_Snapshot()
-    {
+    public Task EnumAndBadgeMappings_Snapshot() {
         EquatableArray<BadgeMappingEntry> badges = new(ImmutableArray.Create(
             new BadgeMappingEntry("Active", "Success"),
             new BadgeMappingEntry("Inactive", "Neutral")));
 
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 new ColumnModel("Status", "Status", TypeCategory.Enum, "Humanize:30", false, badges))));
 
@@ -74,9 +67,8 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public Task GuidTruncation_Snapshot()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public Task GuidTruncation_Snapshot() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Id", "Id", TypeCategory.Text, "Truncate:8"))));
 
@@ -85,10 +77,9 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public void EmittedCode_ParsesAsValidCSharp()
-    {
+    public void EmittedCode_ParsesAsValidCSharp() {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Name", "Name", TypeCategory.Text),
                 Col("Count", "Count", TypeCategory.Numeric, "N0"),
@@ -106,9 +97,8 @@ public class RazorEmitterTests
     // Semantic spot-checks
 
     [Fact]
-    public void EmittedCode_UsesShortDateFormat_LowercaseD()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public void EmittedCode_UsesShortDateFormat_LowercaseD() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("CreatedAt", "Created At", TypeCategory.DateTime, "d"))));
         string source = RazorEmitter.Emit(model);
@@ -117,9 +107,8 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public void EmittedCode_UsesEmDash_NotHyphen()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public void EmittedCode_UsesEmDash_NotHyphen() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Name", "Name", TypeCategory.Text))));
         string source = RazorEmitter.Emit(model);
@@ -127,9 +116,8 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public void EmittedCode_UsesCorrectNumericFormats()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public void EmittedCode_UsesCorrectNumericFormats() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Count", "Count", TypeCategory.Numeric, "N0"),
                 Col("Price", "Price", TypeCategory.Numeric, "N2"))));
@@ -139,9 +127,8 @@ public class RazorEmitterTests
     }
 
     [Fact]
-    public void EmittedCode_HumanizesEnumLabels_AndPreservesThirtyCharacterLimit()
-    {
-        RazorModel model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+    public void EmittedCode_HumanizesEnumLabels_AndPreservesThirtyCharacterLimit() {
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Status", "Status", TypeCategory.Enum, "Humanize:30"))));
         string source = RazorEmitter.Emit(model);

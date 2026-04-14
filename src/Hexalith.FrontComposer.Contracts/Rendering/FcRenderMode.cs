@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// Named FcRenderMode to avoid collision with
 /// <c>Microsoft.AspNetCore.Components.Web.RenderMode</c>.
 /// </summary>
-public enum FcRenderMode
-{
+public enum FcRenderMode {
     /// <summary>Server-side interactive rendering via SignalR.</summary>
     Server,
 

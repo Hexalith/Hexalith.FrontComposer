@@ -3,8 +3,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// <summary>
 /// Display density level controlling spacing and sizing of rendered components.
 /// </summary>
-public enum DensityLevel
-{
+public enum DensityLevel {
     /// <summary>Reduced spacing for dense data displays.</summary>
     Compact,
 

@@ -3,8 +3,7 @@ namespace Hexalith.FrontComposer.Shell.State.Theme;
 /// <summary>
 /// Application color theme options.
 /// </summary>
-public enum ThemeValue
-{
+public enum ThemeValue {
     /// <summary>Light color theme.</summary>
     Light,
 

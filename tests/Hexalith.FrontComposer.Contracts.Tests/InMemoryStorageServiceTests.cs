@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Contracts.Tests;
 
 using Hexalith.FrontComposer.Contracts.Storage;
 
@@ -6,14 +5,13 @@ using Shouldly;
 
 using Xunit;
 
+namespace Hexalith.FrontComposer.Contracts.Tests;
 /// <summary>
 /// Unit tests for <see cref="InMemoryStorageService"/>.
 /// </summary>
-public class InMemoryStorageServiceTests
-{
+public class InMemoryStorageServiceTests {
     [Fact]
-    public async Task FlushAsync_CompletesSuccessfully()
-    {
+    public async Task FlushAsync_CompletesSuccessfully() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();
@@ -29,8 +27,7 @@ public class InMemoryStorageServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_KeyDoesNotExist_ReturnsNull()
-    {
+    public async Task GetAsync_KeyDoesNotExist_ReturnsNull() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();
@@ -43,8 +40,7 @@ public class InMemoryStorageServiceTests
     }
 
     [Fact]
-    public async Task GetKeysAsync_NoMatchingKeys_ReturnsEmptyList()
-    {
+    public async Task GetKeysAsync_NoMatchingKeys_ReturnsEmptyList() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();
@@ -59,8 +55,7 @@ public class InMemoryStorageServiceTests
     }
 
     [Fact]
-    public async Task GetKeysAsync_WithPrefix_ReturnsOnlyMatchingKeys()
-    {
+    public async Task GetKeysAsync_WithPrefix_ReturnsOnlyMatchingKeys() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();
@@ -78,8 +73,7 @@ public class InMemoryStorageServiceTests
     }
 
     [Fact]
-    public async Task RemoveAsync_ExistingKey_RemovesIt()
-    {
+    public async Task RemoveAsync_ExistingKey_RemovesIt() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();
@@ -93,8 +87,7 @@ public class InMemoryStorageServiceTests
     }
 
     [Fact]
-    public async Task RemoveAsync_MissingKey_DoesNotThrow()
-    {
+    public async Task RemoveAsync_MissingKey_DoesNotThrow() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();
@@ -104,8 +97,7 @@ public class InMemoryStorageServiceTests
     }
 
     [Fact]
-    public async Task SetAndGetAsync_ConcurrentAccess_NoDataCorruption()
-    {
+    public async Task SetAndGetAsync_ConcurrentAccess_NoDataCorruption() {
         // Arrange
         var sut = new InMemoryStorageService();
         const int operationCount = 100;
@@ -117,24 +109,21 @@ public class InMemoryStorageServiceTests
         await Task.WhenAll(writeTasks);
 
         // 100 parallel reads — collect tasks, then await all
-        Task<string?>[] readTasks = new Task<string?>[operationCount];
-        for (int i = 0; i < operationCount; i++)
-        {
+        var readTasks = new Task<string?>[operationCount];
+        for (int i = 0; i < operationCount; i++) {
             readTasks[i] = sut.GetAsync<string>($"key{i}", CancellationToken.None);
         }
 
         string?[] results = await Task.WhenAll(readTasks);
 
         // Assert — no lost updates
-        for (int i = 0; i < operationCount; i++)
-        {
+        for (int i = 0; i < operationCount; i++) {
             results[i].ShouldBe($"value{i}");
         }
     }
 
     [Fact]
-    public async Task SetAsync_SameKeyTwice_OverwritesValue()
-    {
+    public async Task SetAsync_SameKeyTwice_OverwritesValue() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();
@@ -148,8 +137,7 @@ public class InMemoryStorageServiceTests
     }
 
     [Fact]
-    public async Task SetAsync_ThenGetAsync_ReturnsStoredValue()
-    {
+    public async Task SetAsync_ThenGetAsync_ReturnsStoredValue() {
         // Arrange
         CancellationToken ct = TestContext.Current.CancellationToken;
         var sut = new InMemoryStorageService();

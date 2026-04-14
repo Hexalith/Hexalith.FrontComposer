@@ -1,6 +1,3 @@
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools;
 
 using Hexalith.FrontComposer.SourceTools.Diagnostics;
 using Hexalith.FrontComposer.SourceTools.Emitters;
@@ -10,16 +7,15 @@ using Hexalith.FrontComposer.SourceTools.Transforms;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+namespace Hexalith.FrontComposer.SourceTools;
 /// <summary>
 /// Roslyn incremental source generator for the FrontComposer framework.
 /// Discovers [Projection]-annotated types and builds a typed intermediate representation.
 /// </summary>
 [Generator]
-public sealed class FrontComposerGenerator : IIncrementalGenerator
-{
+public sealed class FrontComposerGenerator : IIncrementalGenerator {
     /// <inheritdoc />
-    public void Initialize(IncrementalGeneratorInitializationContext context)
-    {
+    public void Initialize(IncrementalGeneratorInitializationContext context) {
         // Parse stage: discover [Projection]-annotated types
         // ForAttributeWithMetadataName is the REQUIRED approach (not CreateSyntaxProvider)
         IncrementalValuesProvider<ParseResult> parseResults = context.SyntaxProvider
@@ -38,10 +34,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator
                 transform: static (_, _) => true)
             .Collect();
 
-        context.RegisterSourceOutput(collectedParseResults.Combine(commandMatches), static (spc, source) =>
-        {
-            if (source.Left.Length == 0 && source.Right.Length == 0)
-            {
+        context.RegisterSourceOutput(collectedParseResults.Combine(commandMatches), static (spc, source) => {
+            if (source.Left.Length == 0 && source.Right.Length == 0) {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.NoAnnotatedTypesFound,
                     Location.None,
@@ -50,19 +44,16 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator
         });
 
         // Output registration -- unpack ParseResult, report diagnostics, forward model
-        context.RegisterSourceOutput(parseResults, static (spc, result) =>
-        {
+        context.RegisterSourceOutput(parseResults, static (spc, result) => {
             // Report diagnostics collected during parse (cannot emit from transform callback)
-            foreach (DiagnosticInfo diagInfo in result.Diagnostics)
-            {
+            foreach (DiagnosticInfo diagInfo in result.Diagnostics) {
                 spc.ReportDiagnostic(Diagnostic.Create(
                     GetDescriptor(diagInfo.Id),
                     diagInfo.ToLocation(),
                     diagInfo.Message));
             }
 
-            if (result.Model is not null)
-            {
+            if (result.Model is not null) {
                 // Transform
                 RazorModel razorModel = RazorModelTransform.Transform(result.Model);
                 FluxorModel fluxorModel = FluxorModelTransform.Transform(result.Model);
@@ -80,38 +71,26 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator
         });
     }
 
-    private static string GetQualifiedHintPrefix(DomainModel model)
-    {
-        if (string.IsNullOrEmpty(model.Namespace))
-        {
+    private static string GetQualifiedHintPrefix(DomainModel model) {
+        if (string.IsNullOrEmpty(model.Namespace)) {
             return model.TypeName;
         }
 
         return model.Namespace + "." + model.TypeName;
     }
 
-    private static DiagnosticDescriptor GetDescriptor(string id)
-    {
-        switch (id)
-        {
-            case "HFC1001":
-                return DiagnosticDescriptors.NoAnnotatedTypesFound;
-            case "HFC1002":
-                return DiagnosticDescriptors.UnsupportedFieldType;
-            case "HFC1003":
-                return DiagnosticDescriptors.ProjectionShouldBePartial;
-            case "HFC1004":
-                return DiagnosticDescriptors.UnsupportedTypeKind;
-            case "HFC1005":
-                return DiagnosticDescriptors.InvalidAttributeArgument;
-            default:
-                return new DiagnosticDescriptor(
-                    id,
-                    "FrontComposer Diagnostic",
-                    "{0}",
-                    "HexalithFrontComposer",
-                    DiagnosticSeverity.Warning,
-                    isEnabledByDefault: true);
-        }
-    }
+    private static DiagnosticDescriptor GetDescriptor(string id) => id switch {
+        "HFC1001" => DiagnosticDescriptors.NoAnnotatedTypesFound,
+        "HFC1002" => DiagnosticDescriptors.UnsupportedFieldType,
+        "HFC1003" => DiagnosticDescriptors.ProjectionShouldBePartial,
+        "HFC1004" => DiagnosticDescriptors.UnsupportedTypeKind,
+        "HFC1005" => DiagnosticDescriptors.InvalidAttributeArgument,
+        _ => new DiagnosticDescriptor(
+                            id,
+                            "FrontComposer Diagnostic",
+                            "{0}",
+                            "HexalithFrontComposer",
+                            DiagnosticSeverity.Warning,
+                            isEnabledByDefault: true),
+    };
 }

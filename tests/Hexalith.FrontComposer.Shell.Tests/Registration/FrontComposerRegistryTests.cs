@@ -1,7 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.Registration;
-
-using System.Linq;
-
 using Counter.Domain;
 
 using Hexalith.FrontComposer.Contracts.Registration;
@@ -12,26 +8,23 @@ using Microsoft.Extensions.Logging;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.Shell.Tests.Registration;
 
-public class FrontComposerRegistryTests
-{
+public class FrontComposerRegistryTests {
     [Fact]
-    public void AddHexalithFrontComposer_RegistersRegistry()
-    {
+    public void AddHexalithFrontComposer_RegistersRegistry() {
         ServiceCollection services = new();
-        services.AddHexalithFrontComposer();
+        _ = services.AddHexalithFrontComposer();
         using ServiceProvider sp = services.BuildServiceProvider();
 
         IFrontComposerRegistry registry = sp.GetRequiredService<IFrontComposerRegistry>();
-        registry.ShouldNotBeNull();
+        _ = registry.ShouldNotBeNull();
     }
 
     [Fact]
-    public void Registry_RegisterDomain_ManifestRetrievable()
-    {
+    public void Registry_RegisterDomain_ManifestRetrievable() {
         ServiceCollection services = new();
-        services.AddHexalithFrontComposer();
+        _ = services.AddHexalithFrontComposer();
         using ServiceProvider sp = services.BuildServiceProvider();
 
         IFrontComposerRegistry registry = sp.GetRequiredService<IFrontComposerRegistry>();
@@ -45,32 +38,27 @@ public class FrontComposerRegistryTests
     }
 
     [Fact]
-    public void AddHexalithFrontComposer_WithFluxorOptions_BackwardCompatible()
-    {
+    public void AddHexalithFrontComposer_WithFluxorOptions_BackwardCompatible() {
         // Parameterless call (backward compatible)
         ServiceCollection services1 = new();
-        services1.AddHexalithFrontComposer();
+        _ = services1.AddHexalithFrontComposer();
         using ServiceProvider sp1 = services1.BuildServiceProvider();
-        sp1.GetRequiredService<IFrontComposerRegistry>().ShouldNotBeNull();
+        _ = sp1.GetRequiredService<IFrontComposerRegistry>().ShouldNotBeNull();
 
         // Call with fluxor options
         ServiceCollection services2 = new();
         bool optionsInvoked = false;
-        services2.AddHexalithFrontComposer(o =>
-        {
-            optionsInvoked = true;
-        });
+        _ = services2.AddHexalithFrontComposer(o => optionsInvoked = true);
         using ServiceProvider sp2 = services2.BuildServiceProvider();
-        sp2.GetRequiredService<IFrontComposerRegistry>().ShouldNotBeNull();
+        _ = sp2.GetRequiredService<IFrontComposerRegistry>().ShouldNotBeNull();
         optionsInvoked.ShouldBeTrue();
     }
 
     [Fact]
-    public void AddHexalithDomain_CounterAssembly_MergesProjectionAndCommands()
-    {
+    public void AddHexalithDomain_CounterAssembly_MergesProjectionAndCommands() {
         ServiceCollection services = new();
-        services.AddHexalithFrontComposer();
-        services.AddHexalithDomain<CounterDomain>();
+        _ = services.AddHexalithFrontComposer();
+        _ = services.AddHexalithDomain<CounterDomain>();
 
         using ServiceProvider sp = services.BuildServiceProvider();
         IFrontComposerRegistry registry = sp.GetRequiredService<IFrontComposerRegistry>();
@@ -81,13 +69,12 @@ public class FrontComposerRegistryTests
     }
 
     [Fact]
-    public void AddHexalithDomain_PartialRegistration_LogsWarning()
-    {
+    public void AddHexalithDomain_PartialRegistration_LogsWarning() {
         ServiceCollection services = new();
         CollectingLoggerProvider loggerProvider = new();
-        services.AddLogging(builder => builder.AddProvider(loggerProvider));
-        services.AddHexalithFrontComposer();
-        services.AddHexalithDomain<LoggingDomain>();
+        _ = services.AddLogging(builder => builder.AddProvider(loggerProvider));
+        _ = services.AddHexalithFrontComposer();
+        _ = services.AddHexalithDomain<LoggingDomain>();
 
         using ServiceProvider sp = services.BuildServiceProvider();
         _ = sp.GetRequiredService<IFrontComposerRegistry>();
@@ -95,20 +82,17 @@ public class FrontComposerRegistryTests
         loggerProvider.Messages.ShouldContain(message => message.Contains("PartialLoggingRegistration", StringComparison.Ordinal));
     }
 
-    private sealed class CollectingLoggerProvider : ILoggerProvider
-    {
+    private sealed class CollectingLoggerProvider : ILoggerProvider {
         private readonly List<string> _messages = [];
 
         public IReadOnlyList<string> Messages => _messages;
 
         public ILogger CreateLogger(string categoryName) => new CollectingLogger(_messages);
 
-        public void Dispose()
-        {
+        public void Dispose() {
         }
 
-        private sealed class CollectingLogger(List<string> messages) : ILogger
-        {
+        private sealed class CollectingLogger(List<string> messages) : ILogger {
             public IDisposable BeginScope<TState>(TState state)
                 where TState : notnull
                 => NullScope.Instance;
@@ -120,18 +104,13 @@ public class FrontComposerRegistryTests
                 EventId eventId,
                 TState state,
                 Exception? exception,
-                Func<TState, Exception?, string> formatter)
-            {
-                messages.Add(formatter(state, exception));
-            }
+                Func<TState, Exception?, string> formatter) => messages.Add(formatter(state, exception));
         }
 
-        private sealed class NullScope : IDisposable
-        {
+        private sealed class NullScope : IDisposable {
             public static readonly NullScope Instance = new();
 
-            public void Dispose()
-            {
+            public void Dispose() {
             }
         }
     }

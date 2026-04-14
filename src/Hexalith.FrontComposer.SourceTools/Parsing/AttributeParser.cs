@@ -1,23 +1,15 @@
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools.Parsing;
-
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Threading;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+namespace Hexalith.FrontComposer.SourceTools.Parsing;
 /// <summary>
 /// Parses [Projection]-annotated types into DomainModel IR.
 /// Pure function: no side effects, no Compilation references in output.
 /// </summary>
-public static class AttributeParser
-{
+public static class AttributeParser {
     private const string BoundedContextAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.BoundedContextAttribute";
     private const string ProjectionRoleEnumName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole";
     private const string ProjectionRoleAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionRoleAttribute";
@@ -31,10 +23,8 @@ public static class AttributeParser
     /// <summary>
     /// Parses a [Projection]-annotated type into a ParseResult containing IR and diagnostics.
     /// </summary>
-    public static ParseResult Parse(GeneratorAttributeSyntaxContext context, CancellationToken ct)
-    {
-        if (context.TargetSymbol is not INamedTypeSymbol typeSymbol)
-        {
+    public static ParseResult Parse(GeneratorAttributeSyntaxContext context, CancellationToken ct) {
+        if (context.TargetSymbol is not INamedTypeSymbol typeSymbol) {
             return EmptyParseResult;
         }
 
@@ -48,22 +38,19 @@ public static class AttributeParser
     /// <param name="targetNode">The syntax node declaring the projection type.</param>
     /// <param name="ct">Cancellation token for generator responsiveness.</param>
     /// <returns>The parsed IR and any collected diagnostics.</returns>
-    public static ParseResult Parse(INamedTypeSymbol typeSymbol, SyntaxNode targetNode, CancellationToken ct)
-    {
-        if (ct.IsCancellationRequested)
-        {
+    public static ParseResult Parse(INamedTypeSymbol typeSymbol, SyntaxNode targetNode, CancellationToken ct) {
+        if (ct.IsCancellationRequested) {
             return EmptyParseResult;
         }
 
-        List<DiagnosticInfo> diagnostics = new List<DiagnosticInfo>();
+        List<DiagnosticInfo> diagnostics = [];
         string filePath = GetFilePath(targetNode);
         Microsoft.CodeAnalysis.Text.LinePosition linePos = GetLinePosition(targetNode);
 
         // Validate type kind
         ValidateTypeKind(typeSymbol, targetNode, diagnostics, filePath, linePos);
 
-        if (ct.IsCancellationRequested)
-        {
+        if (ct.IsCancellationRequested) {
             return EmptyParseResult;
         }
 
@@ -77,8 +64,7 @@ public static class AttributeParser
         string? boundedContext = ParseBoundedContext(typeSymbol, diagnostics, filePath, linePos, out string? boundedContextDisplayLabel);
         string? projectionRole = ParseProjectionRole(typeSymbol, diagnostics, filePath, linePos);
 
-        if (ct.IsCancellationRequested)
-        {
+        if (ct.IsCancellationRequested) {
             return EmptyParseResult;
         }
 
@@ -86,24 +72,21 @@ public static class AttributeParser
         ImmutableArray<PropertyModel>.Builder propertiesBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
 
         ImmutableArray<ISymbol> members = typeSymbol.GetMembers();
-        for (int i = 0; i < members.Length; i++)
-        {
-            if (ct.IsCancellationRequested)
-            {
+        for (int i = 0; i < members.Length; i++) {
+            if (ct.IsCancellationRequested) {
                 return EmptyParseResult;
             }
 
             if (members[i] is IPropertySymbol propertySymbol
                 && propertySymbol.DeclaredAccessibility == Accessibility.Public
                 && !propertySymbol.IsStatic
-                && !propertySymbol.IsIndexer)
-            {
+                && !propertySymbol.IsIndexer) {
                 PropertyModel property = ParseProperty(propertySymbol, typeName, diagnostics, filePath);
                 propertiesBuilder.Add(property);
             }
         }
 
-        DomainModel model = new DomainModel(
+        var model = new DomainModel(
             typeName,
             ns,
             boundedContext,
@@ -121,13 +104,11 @@ public static class AttributeParser
         SyntaxNode targetNode,
         List<DiagnosticInfo> diagnostics,
         string filePath,
-        Microsoft.CodeAnalysis.Text.LinePosition linePos)
-    {
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
         // Check partial keyword
         bool isPartial = targetNode is TypeDeclarationSyntax tds
             && tds.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
-        if (!isPartial)
-        {
+        if (!isPartial) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1003",
                 string.Format("[Projection] type '{0}' should be declared as partial for source generator to emit code", typeSymbol.Name),
@@ -138,8 +119,7 @@ public static class AttributeParser
         }
 
         // Check for struct types
-        if (typeSymbol.TypeKind == TypeKind.Struct)
-        {
+        if (typeSymbol.TypeKind == TypeKind.Struct) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1004",
                 string.Format("[Projection] attribute on '{0}' is not supported: structs are not supported. Only non-abstract, non-generic classes and records are supported", typeSymbol.Name),
@@ -150,8 +130,7 @@ public static class AttributeParser
         }
 
         // Check for abstract types
-        if (typeSymbol.IsAbstract)
-        {
+        if (typeSymbol.IsAbstract) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1004",
                 string.Format("[Projection] attribute on '{0}' is not supported: abstract types are not supported. Only non-abstract, non-generic classes and records are supported", typeSymbol.Name),
@@ -162,8 +141,7 @@ public static class AttributeParser
         }
 
         // Check for generic types
-        if (typeSymbol.IsGenericType)
-        {
+        if (typeSymbol.IsGenericType) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1004",
                 string.Format("[Projection] attribute on '{0}' is not supported: generic types are not supported. Only non-abstract, non-generic classes and records are supported", typeSymbol.Name),
@@ -174,14 +152,12 @@ public static class AttributeParser
         }
 
         // Check for nested class in non-partial outer
-        if (typeSymbol.ContainingType is INamedTypeSymbol containingType)
-        {
+        if (typeSymbol.ContainingType is INamedTypeSymbol containingType) {
             SyntaxReference? outerRef = containingType.DeclaringSyntaxReferences.FirstOrDefault();
             bool outerIsPartial = outerRef?.GetSyntax() is TypeDeclarationSyntax outerTds
                 && outerTds.Modifiers.Any(m => m.IsKind(SyntaxKind.PartialKeyword));
 
-            if (!outerIsPartial)
-            {
+            if (!outerIsPartial) {
                 diagnostics.Add(new DiagnosticInfo(
                     "HFC1004",
                     string.Format("[Projection] attribute on '{0}' is not supported: nested in non-partial type '{1}'. Only non-abstract, non-generic classes and records are supported", typeSymbol.Name, containingType.Name),
@@ -199,28 +175,21 @@ public static class AttributeParser
         List<DiagnosticInfo> diagnostics,
         string filePath,
         Microsoft.CodeAnalysis.Text.LinePosition linePos,
-        out string? displayLabel)
-    {
+        out string? displayLabel) {
         displayLabel = null;
-        foreach (AttributeData attr in typeSymbol.GetAttributes())
-        {
-            if (attr.AttributeClass?.ToDisplayString() == BoundedContextAttributeName)
-            {
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == BoundedContextAttributeName) {
                 // Extract DisplayLabel from named arguments
-                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments)
-                {
+                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
                     if (namedArg.Key == "DisplayLabel" && namedArg.Value.Value is string label
-                        && !string.IsNullOrWhiteSpace(label))
-                    {
+                        && !string.IsNullOrWhiteSpace(label)) {
                         displayLabel = label;
                     }
                 }
 
-                if (attr.ConstructorArguments.Length > 0)
-                {
+                if (attr.ConstructorArguments.Length > 0) {
                     TypedConstant arg = attr.ConstructorArguments[0];
-                    if (arg.Value is string name && !string.IsNullOrWhiteSpace(name))
-                    {
+                    if (arg.Value is string name && !string.IsNullOrWhiteSpace(name)) {
                         return name.Trim();
                     }
 
@@ -246,19 +215,13 @@ public static class AttributeParser
         INamedTypeSymbol typeSymbol,
         List<DiagnosticInfo> diagnostics,
         string filePath,
-        Microsoft.CodeAnalysis.Text.LinePosition linePos)
-    {
-        foreach (AttributeData attr in typeSymbol.GetAttributes())
-        {
-            if (attr.AttributeClass?.ToDisplayString() == ProjectionRoleAttributeName)
-            {
-                if (attr.ConstructorArguments.Length > 0)
-                {
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == ProjectionRoleAttributeName) {
+                if (attr.ConstructorArguments.Length > 0) {
                     TypedConstant arg = attr.ConstructorArguments[0];
-                    if (arg.Value is int enumValue)
-                    {
-                        if (TryResolveEnumMemberName(attr.AttributeClass!.ContainingAssembly, ProjectionRoleEnumName, enumValue, out string roleName))
-                        {
+                    if (arg.Value is int enumValue) {
+                        if (TryResolveEnumMemberName(attr.AttributeClass!.ContainingAssembly, ProjectionRoleEnumName, enumValue, out string roleName)) {
                             return roleName;
                         }
 
@@ -283,47 +246,40 @@ public static class AttributeParser
         IPropertySymbol propertySymbol,
         string containingTypeName,
         List<DiagnosticInfo> diagnostics,
-        string filePath)
-    {
+        string filePath) {
         ITypeSymbol propertyType = propertySymbol.Type;
         bool isNullable = false;
         string fullyQualifiedTypeName;
-        bool isEnum = false;
 
         // Handle Nullable<T> for value types
         if (propertyType is INamedTypeSymbol namedType
             && namedType.OriginalDefinition.SpecialType == SpecialType.System_Nullable_T
-            && namedType.TypeArguments.Length == 1)
-        {
+            && namedType.TypeArguments.Length == 1) {
             isNullable = true;
             propertyType = namedType.TypeArguments[0];
         }
 
         // Handle reference type nullability via annotation
-        if (!isNullable && propertySymbol.NullableAnnotation == NullableAnnotation.Annotated)
-        {
+        if (!isNullable && propertySymbol.NullableAnnotation == NullableAnnotation.Annotated) {
             isNullable = true;
         }
 
         // Handle nullable context disabled: treat reference types as nullable by default
         if (!isNullable
             && propertySymbol.NullableAnnotation == NullableAnnotation.None
-            && propertyType.IsReferenceType)
-        {
+            && propertyType.IsReferenceType) {
             isNullable = true;
         }
 
         bool isEnumType = propertyType.TypeKind == TypeKind.Enum;
-        isEnum = IsSupportedEnumType(propertyType);
+        bool isEnum = IsSupportedEnumType(propertyType);
 
         // Get fully qualified type name for mapping
-        if (propertyType is INamedTypeSymbol namedPropertyType && namedPropertyType.IsGenericType)
-        {
+        if (propertyType is INamedTypeSymbol namedPropertyType && namedPropertyType.IsGenericType) {
             // Build constructed name for display
             fullyQualifiedTypeName = namedPropertyType.OriginalDefinition.ContainingNamespace?.ToDisplayString() + "." + namedPropertyType.OriginalDefinition.Name;
         }
-        else
-        {
+        else {
             fullyQualifiedTypeName = propertyType.ToDisplayString(
                 new SymbolDisplayFormat(
                     typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces));
@@ -333,8 +289,7 @@ public static class AttributeParser
         string? irType = FieldTypeMapper.MapType(fullyQualifiedTypeName, isEnum);
         bool isUnsupported = irType is null;
 
-        if (isUnsupported)
-        {
+        if (isUnsupported) {
             Location location = propertySymbol.Locations.FirstOrDefault() ?? Location.None;
             Microsoft.CodeAnalysis.Text.LinePosition propLinePos = location.GetLineSpan().StartLinePosition;
             string propFilePath = location.SourceTree?.FilePath ?? filePath;
@@ -375,17 +330,12 @@ public static class AttributeParser
             badgeMappings);
     }
 
-    private static string? ParseDisplayAttribute(IPropertySymbol propertySymbol)
-    {
-        foreach (AttributeData attr in propertySymbol.GetAttributes())
-        {
-            if (attr.AttributeClass?.ToDisplayString() == DisplayAttributeName)
-            {
+    private static string? ParseDisplayAttribute(IPropertySymbol propertySymbol) {
+        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == DisplayAttributeName) {
                 // DisplayAttribute uses named arguments: Name="...", Description="..."
-                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments)
-                {
-                    if (namedArg.Key == "Name" && namedArg.Value.Value is string name)
-                    {
+                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
+                    if (namedArg.Key == "Name" && namedArg.Value.Value is string name) {
                         return name;
                     }
                 }
@@ -399,36 +349,27 @@ public static class AttributeParser
         ITypeSymbol propertyType,
         bool isEnum,
         List<DiagnosticInfo> diagnostics,
-        string filePath)
-    {
-        if (!isEnum)
-        {
+        string filePath) {
+        if (!isEnum) {
             return EmptyBadgeMappings;
         }
 
-        if (propertyType is not INamedTypeSymbol enumType)
-        {
+        if (propertyType is not INamedTypeSymbol enumType) {
             return EmptyBadgeMappings;
         }
 
         ImmutableArray<BadgeMappingEntry>.Builder builder = ImmutableArray.CreateBuilder<BadgeMappingEntry>();
 
-        foreach (ISymbol member in enumType.GetMembers())
-        {
-            if (member is IFieldSymbol field && field.HasConstantValue)
-            {
-                foreach (AttributeData attr in field.GetAttributes())
-                {
+        foreach (ISymbol member in enumType.GetMembers()) {
+            if (member is IFieldSymbol field && field.HasConstantValue) {
+                foreach (AttributeData attr in field.GetAttributes()) {
                     if (attr.AttributeClass?.ToDisplayString() == ProjectionBadgeAttributeName
                         && attr.ConstructorArguments.Length > 0
-                        && attr.ConstructorArguments[0].Value is int slotValue)
-                    {
-                        if (TryResolveEnumMemberName(attr.AttributeClass!.ContainingAssembly, BadgeSlotEnumName, slotValue, out string slotName))
-                        {
+                        && attr.ConstructorArguments[0].Value is int slotValue) {
+                        if (TryResolveEnumMemberName(attr.AttributeClass!.ContainingAssembly, BadgeSlotEnumName, slotValue, out string slotName)) {
                             builder.Add(new BadgeMappingEntry(field.Name, slotName));
                         }
-                        else
-                        {
+                        else {
                             Location location = field.Locations.FirstOrDefault() ?? Location.None;
                             Microsoft.CodeAnalysis.Text.LinePosition linePos = location.GetLineSpan().StartLinePosition;
                             string fieldFilePath = location.SourceTree?.FilePath ?? filePath;
@@ -449,37 +390,28 @@ public static class AttributeParser
         return new EquatableArray<BadgeMappingEntry>(builder.ToImmutable());
     }
 
-    private static bool IsSupportedEnumType(ITypeSymbol propertyType)
-    {
-        return propertyType is INamedTypeSymbol enumType
+    private static bool IsSupportedEnumType(ITypeSymbol propertyType) => propertyType is INamedTypeSymbol enumType
             && enumType.TypeKind == TypeKind.Enum
             && enumType.EnumUnderlyingType?.SpecialType == SpecialType.System_Int32;
-    }
 
-    private static string DescribeUnsupportedType(ITypeSymbol propertyType, bool isEnumType)
-    {
+    private static string DescribeUnsupportedType(ITypeSymbol propertyType, bool isEnumType) {
         if (isEnumType
             && propertyType is INamedTypeSymbol enumType
-            && enumType.EnumUnderlyingType is ITypeSymbol underlyingType)
-        {
+            && enumType.EnumUnderlyingType is ITypeSymbol underlyingType) {
             return string.Format("{0} (enum underlying type {1})", propertyType.ToDisplayString(), underlyingType.ToDisplayString());
         }
 
         return propertyType.ToDisplayString();
     }
 
-    private static bool TryResolveEnumMemberName(IAssemblySymbol assembly, string metadataName, int value, out string memberName)
-    {
+    private static bool TryResolveEnumMemberName(IAssemblySymbol assembly, string metadataName, int value, out string memberName) {
         INamedTypeSymbol? enumType = assembly.GetTypeByMetadataName(metadataName);
-        if (enumType is not null)
-        {
-            foreach (ISymbol member in enumType.GetMembers())
-            {
+        if (enumType is not null) {
+            foreach (ISymbol member in enumType.GetMembers()) {
                 if (member is IFieldSymbol field
                     && field.HasConstantValue
                     && field.ConstantValue is int fieldValue
-                    && fieldValue == value)
-                {
+                    && fieldValue == value) {
                     memberName = field.Name;
                     return true;
                 }

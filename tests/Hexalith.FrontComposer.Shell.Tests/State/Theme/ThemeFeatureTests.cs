@@ -1,19 +1,15 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 /// <summary>
 /// Unit tests for <see cref="FrontComposerThemeFeature"/>.
 /// </summary>
-public class ThemeFeatureTests
-{
+public class ThemeFeatureTests {
     [Fact]
-    public void GetInitialState_ReturnsLight()
-    {
+    public void GetInitialState_ReturnsLight() {
         // Arrange
         var feature = new TestableFrontComposerThemeFeature();
 
@@ -25,8 +21,7 @@ public class ThemeFeatureTests
         feature.GetName().ShouldBe("FrontComposerTheme");
     }
 
-    private sealed class TestableFrontComposerThemeFeature : FrontComposerThemeFeature
-    {
+    private sealed class TestableFrontComposerThemeFeature : FrontComposerThemeFeature {
         public FrontComposerThemeState ExposeInitialState() => GetInitialState();
     }
 }

@@ -1,23 +1,18 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Performance;
 
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Performance;
 
 [Trait("Category", "Performance")]
-public class ParseStagePerformanceTests
-{
+public class ParseStagePerformanceTests {
     [Fact]
-    public void ParseStage_20PlusTypes_CompletesUnder500ms()
-    {
+    public void ParseStage_20PlusTypes_CompletesUnder500ms() {
         CancellationToken ct = TestContext.Current.CancellationToken;
 
         // Generate 25 projection types with diverse field types
@@ -33,7 +28,7 @@ public class ParseStagePerformanceTests
 
         // Measure: re-create driver for clean run
         GeneratorDriver freshDriver = CSharpGeneratorDriver.Create(new FrontComposerGenerator());
-        Stopwatch sw = Stopwatch.StartNew();
+        var sw = Stopwatch.StartNew();
 
         freshDriver = freshDriver.RunGenerators(compilation, ct);
 
@@ -47,46 +42,44 @@ public class ParseStagePerformanceTests
             $"Parse stage for 25 types took {sw.ElapsedMilliseconds}ms, exceeding 500ms budget");
     }
 
-    private static string GenerateMultipleProjectionSource(int count)
-    {
+    private static string GenerateMultipleProjectionSource(int count) {
         StringBuilder sb = new();
-        sb.AppendLine("using System;");
-        sb.AppendLine("using System.Collections.Generic;");
-        sb.AppendLine("using System.ComponentModel.DataAnnotations;");
-        sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
-        sb.AppendLine();
-        sb.AppendLine("namespace TestDomain.Performance;");
-        sb.AppendLine();
+        _ = sb.AppendLine("using System;");
+        _ = sb.AppendLine("using System.Collections.Generic;");
+        _ = sb.AppendLine("using System.ComponentModel.DataAnnotations;");
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("namespace TestDomain.Performance;");
+        _ = sb.AppendLine();
 
         // Shared enum for badge mapping
-        sb.AppendLine("public enum ItemStatus");
-        sb.AppendLine("{");
-        sb.AppendLine("    [ProjectionBadge(BadgeSlot.Success)] Active,");
-        sb.AppendLine("    [ProjectionBadge(BadgeSlot.Warning)] Inactive,");
-        sb.AppendLine("    [ProjectionBadge(BadgeSlot.Danger)] Archived,");
-        sb.AppendLine("}");
-        sb.AppendLine();
+        _ = sb.AppendLine("public enum ItemStatus");
+        _ = sb.AppendLine("{");
+        _ = sb.AppendLine("    [ProjectionBadge(BadgeSlot.Success)] Active,");
+        _ = sb.AppendLine("    [ProjectionBadge(BadgeSlot.Warning)] Inactive,");
+        _ = sb.AppendLine("    [ProjectionBadge(BadgeSlot.Danger)] Archived,");
+        _ = sb.AppendLine("}");
+        _ = sb.AppendLine();
 
-        for (int i = 0; i < count; i++)
-        {
-            sb.AppendLine($"[BoundedContext(\"Perf\")]");
-            sb.AppendLine($"[Projection]");
-            sb.AppendLine($"[ProjectionRole(ProjectionRole.StatusOverview)]");
-            sb.AppendLine($"public partial class Projection{i}");
-            sb.AppendLine("{");
-            sb.AppendLine($"    [Display(Name = \"Name {i}\")]");
-            sb.AppendLine($"    public string Name {{ get; set; }} = string.Empty;");
-            sb.AppendLine($"    public int Count {{ get; set; }}");
-            sb.AppendLine($"    public decimal Amount {{ get; set; }}");
-            sb.AppendLine($"    public bool IsActive {{ get; set; }}");
-            sb.AppendLine($"    public DateTime CreatedAt {{ get; set; }}");
-            sb.AppendLine($"    public Guid Id {{ get; set; }}");
-            sb.AppendLine($"    public ItemStatus Status {{ get; set; }}");
-            sb.AppendLine($"    public string? Description {{ get; set; }}");
-            sb.AppendLine($"    public int? OptionalCount {{ get; set; }}");
-            sb.AppendLine($"    public List<string> Tags {{ get; set; }} = new();");
-            sb.AppendLine("}");
-            sb.AppendLine();
+        for (int i = 0; i < count; i++) {
+            _ = sb.AppendLine($"[BoundedContext(\"Perf\")]");
+            _ = sb.AppendLine($"[Projection]");
+            _ = sb.AppendLine($"[ProjectionRole(ProjectionRole.StatusOverview)]");
+            _ = sb.AppendLine($"public partial class Projection{i}");
+            _ = sb.AppendLine("{");
+            _ = sb.AppendLine($"    [Display(Name = \"Name {i}\")]");
+            _ = sb.AppendLine($"    public string Name {{ get; set; }} = string.Empty;");
+            _ = sb.AppendLine($"    public int Count {{ get; set; }}");
+            _ = sb.AppendLine($"    public decimal Amount {{ get; set; }}");
+            _ = sb.AppendLine($"    public bool IsActive {{ get; set; }}");
+            _ = sb.AppendLine($"    public DateTime CreatedAt {{ get; set; }}");
+            _ = sb.AppendLine($"    public Guid Id {{ get; set; }}");
+            _ = sb.AppendLine($"    public ItemStatus Status {{ get; set; }}");
+            _ = sb.AppendLine($"    public string? Description {{ get; set; }}");
+            _ = sb.AppendLine($"    public int? OptionalCount {{ get; set; }}");
+            _ = sb.AppendLine($"    public List<string> Tags {{ get; set; }} = new();");
+            _ = sb.AppendLine("}");
+            _ = sb.AppendLine();
         }
 
         return sb.ToString();

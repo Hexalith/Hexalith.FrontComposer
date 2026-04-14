@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 
 using Fluxor;
 
@@ -7,24 +6,21 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Density;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// <summary>
 /// Unit tests for <see cref="DensityEffects"/>.
 /// </summary>
-public class DensityEffectsTests
-{
+public class DensityEffectsTests {
     [Fact]
-    public async Task HandleDensityChanged_PersistsToStorage()
-    {
+    public async Task HandleDensityChanged_PersistsToStorage() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
@@ -43,11 +39,10 @@ public class DensityEffectsTests
     }
 
     [Fact]
-    public async Task HandleDensityChanged_StorageServiceThrows_LogsWarning()
-    {
+    public async Task HandleDensityChanged_StorageServiceThrows_LogsWarning() {
         // Arrange
         IStorageService storage = Substitute.For<IStorageService>();
-        storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
+        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Storage failure"));
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -67,11 +62,10 @@ public class DensityEffectsTests
     }
 
     [Fact]
-    public async Task DispatchDensityChanged_StorageServiceThrows_StoreStillUpdatesState()
-    {
+    public async Task DispatchDensityChanged_StorageServiceThrows_StoreStillUpdatesState() {
         // Arrange
         IStorageService storage = Substitute.For<IStorageService>();
-        storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
+        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Storage failure"));
 
         using ServiceProvider provider = BuildProvider(storage);
@@ -90,8 +84,7 @@ public class DensityEffectsTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_StorageContainsValue_DispatchesDensityChanged()
-    {
+    public async Task HandleAppInitialized_StorageContainsValue_DispatchesDensityChanged() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
@@ -111,8 +104,7 @@ public class DensityEffectsTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_StorageEmpty_DoesNotDispatch()
-    {
+    public async Task HandleAppInitialized_StorageEmpty_DoesNotDispatch() {
         // Arrange — empty storage, no seeding
         var storage = new InMemoryStorageService();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
@@ -127,12 +119,11 @@ public class DensityEffectsTests
         dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
     }
 
-    private static ServiceProvider BuildProvider(IStorageService storage)
-    {
+    private static ServiceProvider BuildProvider(IStorageService storage) {
         ServiceCollection services = new();
-        services.AddLogging();
-        services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerDensityState).Assembly));
-        services.AddSingleton(storage);
+        _ = services.AddLogging();
+        _ = services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerDensityState).Assembly));
+        _ = services.AddSingleton(storage);
         return services.BuildServiceProvider();
     }
 

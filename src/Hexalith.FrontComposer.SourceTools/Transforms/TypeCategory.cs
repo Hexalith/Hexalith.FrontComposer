@@ -1,12 +1,10 @@
-#nullable enable
 
 namespace Hexalith.FrontComposer.SourceTools.Transforms;
 
 /// <summary>
 /// Categorizes a property type for DataGrid column rendering.
 /// </summary>
-public enum TypeCategory
-{
+public enum TypeCategory {
     /// <summary>Text column (string, default).</summary>
     Text,
 

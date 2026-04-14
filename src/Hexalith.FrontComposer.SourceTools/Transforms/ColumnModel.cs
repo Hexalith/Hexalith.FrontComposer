@@ -1,24 +1,17 @@
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools.Transforms;
-
-using System;
-
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
+namespace Hexalith.FrontComposer.SourceTools.Transforms;
 /// <summary>
 /// Output model for a single DataGrid column, derived from a PropertyModel.
 /// </summary>
-public sealed class ColumnModel : IEquatable<ColumnModel>
-{
+public sealed class ColumnModel : IEquatable<ColumnModel> {
     public ColumnModel(
         string propertyName,
         string header,
         TypeCategory typeCategory,
         string? formatHint,
         bool isNullable,
-        EquatableArray<BadgeMappingEntry> badgeMappings)
-    {
+        EquatableArray<BadgeMappingEntry> badgeMappings) {
         PropertyName = propertyName;
         Header = header;
         TypeCategory = typeCategory;
@@ -39,15 +32,12 @@ public sealed class ColumnModel : IEquatable<ColumnModel>
 
     public EquatableArray<BadgeMappingEntry> BadgeMappings { get; }
 
-    public bool Equals(ColumnModel? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(ColumnModel? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -61,10 +51,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel>
 
     public override bool Equals(object? obj) => Equals(obj as ColumnModel);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (PropertyName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Header?.GetHashCode() ?? 0);

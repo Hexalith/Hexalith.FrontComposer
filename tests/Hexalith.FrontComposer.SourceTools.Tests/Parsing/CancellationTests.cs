@@ -1,8 +1,3 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
-
-using System;
-using System.Threading;
-
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
@@ -11,13 +6,11 @@ using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
 
-public class CancellationTests
-{
+public class CancellationTests {
     [Fact]
-    public void Parse_CancelledToken_ReturnsEmptyResult()
-    {
+    public void Parse_CancelledToken_ReturnsEmptyResult() {
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BasicProjection);
         INamedTypeSymbol typeSymbol = compilation.GetTypeByMetadataName("TestDomain.CounterProjection")!;
         SyntaxNode targetNode = typeSymbol.DeclaringSyntaxReferences[0].GetSyntax(TestContext.Current.CancellationToken);
@@ -27,8 +20,8 @@ public class CancellationTests
 
         ParseResult? result = null;
 
-        Should.NotThrow(() => result = AttributeParser.Parse(typeSymbol, targetNode, cts.Token));
-        result.ShouldNotBeNull();
+        _ = Should.NotThrow(() => result = AttributeParser.Parse(typeSymbol, targetNode, cts.Token));
+        _ = result.ShouldNotBeNull();
         result.Model.ShouldBeNull();
         result.Diagnostics.Count.ShouldBe(0);
     }

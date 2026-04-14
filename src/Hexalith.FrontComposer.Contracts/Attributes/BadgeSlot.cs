@@ -4,8 +4,7 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// Defines semantic badge color slots for projection field values.
 /// Maps to Fluent UI badge appearance tokens at render time.
 /// </summary>
-public enum BadgeSlot
-{
+public enum BadgeSlot {
     /// <summary>Default neutral badge appearance.</summary>
     Neutral,
 

@@ -6,8 +6,7 @@ namespace Hexalith.FrontComposer.Contracts.Storage;
 /// keeping this interface stable for netstandard2.0 implementers.
 /// Cache key pattern: {tenantId}:{userId}:{featureName}:{discriminator}.
 /// </summary>
-public interface IStorageService
-{
+public interface IStorageService {
     /// <summary>
     /// Flushes any buffered writes before the host shuts down.
     /// Implementations with no buffered state may treat this operation as a no-op.

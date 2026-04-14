@@ -1,6 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Extensions;
-
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
@@ -15,11 +12,69 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
 
+namespace Hexalith.FrontComposer.Shell.Extensions;
+
 /// <summary>
 /// Extension methods for registering FrontComposer Shell services.
 /// </summary>
-public static class ServiceCollectionExtensions
-{
+public static class ServiceCollectionExtensions {
+
+    /// <summary>
+    /// Discovers and registers generated domain registration classes from the assembly containing <typeparamref name="T"/>.
+    /// Each class whose name ends in "Registration" and exposes both a static <c>Manifest</c> property
+    /// of type <see cref="DomainManifest"/> and a static <c>RegisterDomain(IFrontComposerRegistry)</c> method
+    /// is registered for invocation when the registry is constructed.
+    /// </summary>
+    /// <typeparam name="T">A marker type in the domain assembly to scan.</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The service collection for chaining.</returns>
+    [RequiresUnreferencedCode("Domain discovery uses reflection to scan assembly types at runtime.")]
+    public static IServiceCollection AddHexalithDomain<T>(this IServiceCollection services)
+        where T : class {
+        Assembly domainAssembly = typeof(T).Assembly;
+        BoundedContextAttribute? markerContext = typeof(T).GetCustomAttribute<BoundedContextAttribute>();
+        var commandGroups = new Dictionary<string, CommandGroup>(StringComparer.Ordinal);
+
+        foreach (Type type in domainAssembly.GetExportedTypes()) {
+            if (!type.Name.EndsWith("Registration", StringComparison.Ordinal)) {
+                CollectCommandRegistration(type, markerContext, commandGroups);
+                continue;
+            }
+
+            bool hasManifest = HasStaticManifestMember(type);
+            MethodInfo? registerMethod = type.GetMethod(
+                "RegisterDomain",
+                BindingFlags.Public | BindingFlags.Static,
+                null,
+                [typeof(IFrontComposerRegistry)],
+                null);
+
+            if (hasManifest && registerMethod is not null) {
+                _ = services.AddSingleton(new DomainRegistrationAction(registerMethod));
+            }
+            else if (hasManifest || registerMethod is not null) {
+                _ = services.AddSingleton(new DomainRegistrationWarning(
+                    type.FullName ?? type.Name,
+                    hasManifest,
+                    registerMethod is not null));
+            }
+
+            CollectCommandRegistration(type, markerContext, commandGroups);
+        }
+
+        foreach ((string boundedContext, CommandGroup group) in commandGroups) {
+            DomainManifest manifest = new(
+                group.DisplayName ?? boundedContext,
+                boundedContext,
+                [],
+                [.. group.Commands]);
+
+            _ = services.AddSingleton(new DomainRegistrationAction(registry => registry.RegisterDomain(manifest)));
+        }
+
+        return services;
+    }
+
     /// <summary>
     /// Registers Fluxor state management, storage services, and all FrontComposer Shell dependencies.
     /// <para>
@@ -37,87 +92,46 @@ public static class ServiceCollectionExtensions
     /// <returns>The service collection for chaining.</returns>
     public static IServiceCollection AddHexalithFrontComposer(
         this IServiceCollection services,
-        Action<FluxorOptions>? configureFluxor = null)
-    {
-        services.AddLogging();
-        services.AddFluxor(o =>
-        {
-            o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);
+        Action<FluxorOptions>? configureFluxor = null) {
+        _ = services.AddLogging();
+        _ = services.AddFluxor(o => {
+            _ = o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);
             configureFluxor?.Invoke(o);
         });
-        services.AddSingleton<IStorageService, InMemoryStorageService>();
-        services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
+        _ = services.AddSingleton<IStorageService, InMemoryStorageService>();
+        _ = services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
         return services;
     }
 
-    /// <summary>
-    /// Discovers and registers generated domain registration classes from the assembly containing <typeparamref name="T"/>.
-    /// Each class whose name ends in "Registration" and exposes both a static <c>Manifest</c> property
-    /// of type <see cref="DomainManifest"/> and a static <c>RegisterDomain(IFrontComposerRegistry)</c> method
-    /// is registered for invocation when the registry is constructed.
-    /// </summary>
-    /// <typeparam name="T">A marker type in the domain assembly to scan.</typeparam>
-    /// <param name="services">The service collection to configure.</param>
-    /// <returns>The service collection for chaining.</returns>
-    [RequiresUnreferencedCode("Domain discovery uses reflection to scan assembly types at runtime.")]
-    public static IServiceCollection AddHexalithDomain<T>(this IServiceCollection services)
-        where T : class
-    {
-        Assembly domainAssembly = typeof(T).Assembly;
-        BoundedContextAttribute? markerContext = typeof(T).GetCustomAttribute<BoundedContextAttribute>();
-        Dictionary<string, CommandGroup> commandGroups = new(StringComparer.Ordinal);
-
-        foreach (Type type in domainAssembly.GetExportedTypes())
-        {
-            if (!type.Name.EndsWith("Registration", StringComparison.Ordinal))
-            {
-                CollectCommandRegistration(type, markerContext, commandGroups);
-                continue;
-            }
-
-            bool hasManifest = HasStaticManifestMember(type);
-            MethodInfo? registerMethod = type.GetMethod(
-                "RegisterDomain",
-                BindingFlags.Public | BindingFlags.Static,
-                null,
-                [typeof(IFrontComposerRegistry)],
-                null);
-
-            if (hasManifest && registerMethod is not null)
-            {
-                services.AddSingleton(new DomainRegistrationAction(registerMethod));
-            }
-            else if (hasManifest || registerMethod is not null)
-            {
-                services.AddSingleton(new DomainRegistrationWarning(
-                    type.FullName ?? type.Name,
-                    hasManifest,
-                    registerMethod is not null));
-            }
-
-            CollectCommandRegistration(type, markerContext, commandGroups);
+    private static void CollectCommandRegistration(
+        Type type,
+        BoundedContextAttribute? markerContext,
+        Dictionary<string, CommandGroup> commandGroups) {
+        if (type.GetCustomAttribute<CommandAttribute>() is null) {
+            return;
         }
 
-        foreach ((string boundedContext, CommandGroup group) in commandGroups)
-        {
-            DomainManifest manifest = new(
-                group.DisplayName ?? boundedContext,
-                boundedContext,
-                [],
-                [.. group.Commands]);
-
-            services.AddSingleton(new DomainRegistrationAction(registry => registry.RegisterDomain(manifest)));
+        BoundedContextAttribute? commandContext = type.GetCustomAttribute<BoundedContextAttribute>();
+        string? boundedContext = commandContext?.Name ?? markerContext?.Name;
+        if (string.IsNullOrWhiteSpace(boundedContext)) {
+            return;
         }
 
-        return services;
+        if (!commandGroups.TryGetValue(boundedContext, out CommandGroup? group)) {
+            group = new CommandGroup(commandContext?.DisplayLabel ?? markerContext?.DisplayLabel);
+            commandGroups[boundedContext] = group;
+        }
+
+        string commandTypeName = type.FullName ?? type.Name;
+        if (!group.Commands.Contains(commandTypeName)) {
+            group.Commands.Add(commandTypeName);
+        }
     }
 
     private static bool HasStaticManifestMember(
-        [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type)
-    {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type) {
         PropertyInfo? prop = type.GetProperty("Manifest", BindingFlags.Public | BindingFlags.Static);
-        if (prop is not null && prop.PropertyType == typeof(DomainManifest))
-        {
+        if (prop is not null && prop.PropertyType == typeof(DomainManifest)) {
             return true;
         }
 
@@ -125,45 +139,11 @@ public static class ServiceCollectionExtensions
         return field is not null && field.FieldType == typeof(DomainManifest);
     }
 
-    private static void CollectCommandRegistration(
-        Type type,
-        BoundedContextAttribute? markerContext,
-        Dictionary<string, CommandGroup> commandGroups)
-    {
-        if (type.GetCustomAttribute<CommandAttribute>() is null)
-        {
-            return;
-        }
+    private sealed class CommandGroup {
 
-        BoundedContextAttribute? commandContext = type.GetCustomAttribute<BoundedContextAttribute>();
-        string? boundedContext = commandContext?.Name ?? markerContext?.Name;
-        if (string.IsNullOrWhiteSpace(boundedContext))
-        {
-            return;
-        }
-
-        if (!commandGroups.TryGetValue(boundedContext, out CommandGroup? group))
-        {
-            group = new CommandGroup(commandContext?.DisplayLabel ?? markerContext?.DisplayLabel);
-            commandGroups[boundedContext] = group;
-        }
-
-        string commandTypeName = type.FullName ?? type.Name;
-        if (!group.Commands.Contains(commandTypeName))
-        {
-            group.Commands.Add(commandTypeName);
-        }
-    }
-
-    private sealed class CommandGroup
-    {
-        public CommandGroup(string? displayName)
-        {
-            DisplayName = displayName;
-        }
-
-        public string? DisplayName { get; }
+        public CommandGroup(string? displayName) => DisplayName = displayName;
 
         public List<string> Commands { get; } = [];
+        public string? DisplayName { get; }
     }
 }

@@ -1,8 +1,3 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
-
-using System.Linq;
-using System.Threading;
-
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
@@ -11,12 +6,9 @@ using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
-using VerifyXunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
 
-using Xunit;
-
-public class AttributeParserTests
-{
+public class AttributeParserTests {
     [Fact]
     public async Task Parse_BasicProjection_ProducesCorrectIR()
         => await VerifyProjectionAsync(TestSources.BasicProjection, "TestDomain.CounterProjection");
@@ -42,29 +34,26 @@ public class AttributeParserTests
         => await VerifyProjectionAsync(TestSources.GlobalNamespaceProjection, "GlobalProjection");
 
     [Fact]
-    public void Parse_DisplayLabelProjection_ExtractsDisplayLabel()
-    {
+    public void Parse_DisplayLabelProjection_ExtractsDisplayLabel() {
         ParseResult result = CompilationHelper.ParseProjection(TestSources.DisplayLabelProjection, "TestDomain.DisplayLabelProjection");
 
-        result.Model.ShouldNotBeNull();
+        _ = result.Model.ShouldNotBeNull();
         result.Model.BoundedContext.ShouldBe("Orders");
         result.Model.BoundedContextDisplayLabel.ShouldBe("Commandes");
     }
 
     [Fact]
-    public void Parse_BasicProjection_DisplayLabelIsNull()
-    {
+    public void Parse_BasicProjection_DisplayLabelIsNull() {
         ParseResult result = CompilationHelper.ParseProjection(TestSources.BasicProjection, "TestDomain.CounterProjection");
 
-        result.Model.ShouldNotBeNull();
+        _ = result.Model.ShouldNotBeNull();
         result.Model.BoundedContextDisplayLabel.ShouldBeNull();
     }
 
     // Diagnostic negative-path tests
 
     [Fact]
-    public void Parse_UnsupportedFieldType_EmitsHFC1002()
-    {
+    public void Parse_UnsupportedFieldType_EmitsHFC1002() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.UnsupportedFieldProjection);
         FrontComposerGenerator generator = new();
@@ -79,8 +68,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_NonPartialProjection_EmitsHFC1003()
-    {
+    public void Parse_NonPartialProjection_EmitsHFC1003() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonPartialProjection);
         FrontComposerGenerator generator = new();
@@ -93,8 +81,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_StructProjection_EmitsHFC1004()
-    {
+    public void Parse_StructProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.StructProjection);
         FrontComposerGenerator generator = new();
@@ -107,8 +94,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_RecordStructProjection_EmitsHFC1004()
-    {
+    public void Parse_RecordStructProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.RecordStructProjection);
         FrontComposerGenerator generator = new();
@@ -121,8 +107,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_GenericProjection_EmitsHFC1004()
-    {
+    public void Parse_GenericProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.GenericProjection);
         FrontComposerGenerator generator = new();
@@ -135,8 +120,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_AbstractProjection_EmitsHFC1004()
-    {
+    public void Parse_AbstractProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.AbstractProjection);
         FrontComposerGenerator generator = new();
@@ -149,8 +133,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_NestedInNonPartialProjection_EmitsHFC1004()
-    {
+    public void Parse_NestedInNonPartialProjection_EmitsHFC1004() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NestedInNonPartialProjection);
         FrontComposerGenerator generator = new();
@@ -163,8 +146,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_NullBoundedContext_EmitsHFC1005()
-    {
+    public void Parse_NullBoundedContext_EmitsHFC1005() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NullBoundedContextProjection);
         FrontComposerGenerator generator = new();
@@ -177,8 +159,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_InvalidProjectionRole_EmitsHFC1005()
-    {
+    public void Parse_InvalidProjectionRole_EmitsHFC1005() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.InvalidProjectionRoleProjection);
         FrontComposerGenerator generator = new();
@@ -191,8 +172,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_InvalidBadgeSlot_EmitsHFC1005()
-    {
+    public void Parse_InvalidBadgeSlot_EmitsHFC1005() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.InvalidBadgeSlotProjection);
         FrontComposerGenerator generator = new();
@@ -205,8 +185,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_NullableContextDisabled_TreatsReferenceTypesAsNullable()
-    {
+    public void Parse_NullableContextDisabled_TreatsReferenceTypesAsNullable() {
         ParseResult result = CompilationHelper.ParseProjection(
             TestSources.NullableContextDisabledProjection,
             "TestDomain.NullableContextDisabledProjection",
@@ -217,18 +196,16 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_UnsupportedFieldProjection_ProducesPartialIR()
-    {
+    public void Parse_UnsupportedFieldProjection_ProducesPartialIR() {
         ParseResult result = CompilationHelper.ParseProjection(TestSources.UnsupportedFieldProjection, "TestDomain.UnsupportedFieldProjection");
 
-        result.Model.ShouldNotBeNull();
+        _ = result.Model.ShouldNotBeNull();
         result.Model.Properties.AsImmutableArray().Any(p => p.IsUnsupported).ShouldBeTrue();
         result.Diagnostics.AsImmutableArray().Any(d => d.Id == "HFC1002").ShouldBeTrue();
     }
 
     [Fact]
-    public void Parse_UnsupportedFieldType_DiagnosticsHaveSourceLocation()
-    {
+    public void Parse_UnsupportedFieldType_DiagnosticsHaveSourceLocation() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.UnsupportedFieldProjection);
         FrontComposerGenerator generator = new();
@@ -243,8 +220,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_NonIntEnumProjection_EmitsHFC1002()
-    {
+    public void Parse_NonIntEnumProjection_EmitsHFC1002() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.NonIntEnumProjection);
         FrontComposerGenerator generator = new();
@@ -257,8 +233,7 @@ public class AttributeParserTests
     }
 
     [Fact]
-    public void Parse_CompoundUnsupportedTypes_EmitsHFC1002PerField()
-    {
+    public void Parse_CompoundUnsupportedTypes_EmitsHFC1002PerField() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source = @"
 using System;
@@ -287,13 +262,12 @@ public partial class CompoundTypeProjection
         hfc1002.Length.ShouldBe(4, "Expected one HFC1002 per unsupported field (byte[], tuple, Dictionary, object)");
     }
 
-    private static async Task VerifyProjectionAsync(string source, string metadataName)
-    {
+    private static async Task VerifyProjectionAsync(string source, string metadataName) {
         ParseResult result = CompilationHelper.ParseProjection(source, metadataName);
         result.Diagnostics.Count.ShouldBe(0);
-        result.Model.ShouldNotBeNull();
+        _ = result.Model.ShouldNotBeNull();
 
-        await Verifier.Verify(result.Model)
+        _ = await Verifier.Verify(result.Model)
             .UseDirectory("../Snapshots");
     }
 }

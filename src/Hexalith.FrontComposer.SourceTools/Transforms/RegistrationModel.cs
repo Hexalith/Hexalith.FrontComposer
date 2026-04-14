@@ -1,21 +1,14 @@
-#nullable enable
-
 namespace Hexalith.FrontComposer.SourceTools.Transforms;
-
-using System;
-
 /// <summary>
 /// Output model for domain registration generation.
 /// Each projection contributes its own partial class member.
 /// </summary>
-public sealed class RegistrationModel : IEquatable<RegistrationModel>
-{
+public sealed class RegistrationModel : IEquatable<RegistrationModel> {
     public RegistrationModel(
         string boundedContext,
         string typeName,
         string @namespace,
-        string? displayLabel)
-    {
+        string? displayLabel) {
         BoundedContext = boundedContext;
         TypeName = typeName;
         Namespace = @namespace;
@@ -30,15 +23,12 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel>
 
     public string? DisplayLabel { get; }
 
-    public bool Equals(RegistrationModel? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(RegistrationModel? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -50,10 +40,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel>
 
     public override bool Equals(object? obj) => Equals(obj as RegistrationModel);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);

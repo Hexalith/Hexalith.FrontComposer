@@ -4,8 +4,7 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// Defines the UI role a projection plays, determining the default rendering strategy.
 /// Capped at five roles to enforce focused domain modeling.
 /// </summary>
-public enum ProjectionRole
-{
+public enum ProjectionRole {
     /// <summary>A queue of pending actions requiring user intervention.</summary>
     ActionQueue,
 

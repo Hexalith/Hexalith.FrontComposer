@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 using System.Reflection;
 
@@ -9,28 +8,24 @@ using Fluxor;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
 
-public abstract class GeneratedComponentTestBase : BunitContext
-{
+namespace Hexalith.FrontComposer.Shell.Tests.Generated;
+
+public abstract class GeneratedComponentTestBase : BunitContext {
     private bool _storeInitialized;
 
-    protected GeneratedComponentTestBase(params Assembly[] scanAssemblies)
-    {
+    protected GeneratedComponentTestBase(params Assembly[] scanAssemblies) {
         JSInterop.Mode = JSRuntimeMode.Loose;
-        Services.AddFluentUIComponents();
-        Services.AddLogging();
-        Services.AddFluxor(o =>
-        {
-            foreach (Assembly assembly in scanAssemblies)
-            {
-                o.ScanAssemblies(assembly);
+        _ = Services.AddFluentUIComponents();
+        _ = Services.AddLogging();
+        _ = Services.AddFluxor(o => {
+            foreach (Assembly assembly in scanAssemblies) {
+                _ = o.ScanAssemblies(assembly);
             }
         });
     }
 
-    protected async Task InitializeStoreAsync()
-    {
-        if (_storeInitialized)
-        {
+    protected async Task InitializeStoreAsync() {
+        if (_storeInitialized) {
             return;
         }
 

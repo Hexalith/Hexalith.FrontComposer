@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 
 using Fluxor;
 
@@ -6,24 +5,21 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using NSubstitute;
 using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 /// <summary>
 /// Unit tests for <see cref="ThemeEffects"/>.
 /// </summary>
-public class ThemeEffectsTests
-{
+public class ThemeEffectsTests {
     [Fact]
-    public async Task HandleThemeChanged_PersistsToStorage()
-    {
+    public async Task HandleThemeChanged_PersistsToStorage() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
@@ -42,11 +38,10 @@ public class ThemeEffectsTests
     }
 
     [Fact]
-    public async Task HandleThemeChanged_StorageServiceThrows_LogsWarning()
-    {
+    public async Task HandleThemeChanged_StorageServiceThrows_LogsWarning() {
         // Arrange
         IStorageService storage = Substitute.For<IStorageService>();
-        storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
+        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Storage failure"));
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
@@ -66,11 +61,10 @@ public class ThemeEffectsTests
     }
 
     [Fact]
-    public async Task DispatchThemeChanged_StorageServiceThrows_StoreStillUpdatesState()
-    {
+    public async Task DispatchThemeChanged_StorageServiceThrows_StoreStillUpdatesState() {
         // Arrange
         IStorageService storage = Substitute.For<IStorageService>();
-        storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
+        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
             .ThrowsAsync(new InvalidOperationException("Storage failure"));
 
         using ServiceProvider provider = BuildProvider(storage);
@@ -89,8 +83,7 @@ public class ThemeEffectsTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_StorageContainsValue_DispatchesThemeChanged()
-    {
+    public async Task HandleAppInitialized_StorageContainsValue_DispatchesThemeChanged() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
@@ -110,8 +103,7 @@ public class ThemeEffectsTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_StorageEmpty_DoesNotDispatch()
-    {
+    public async Task HandleAppInitialized_StorageEmpty_DoesNotDispatch() {
         // Arrange — empty storage, no seeding
         var storage = new InMemoryStorageService();
         ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
@@ -126,12 +118,11 @@ public class ThemeEffectsTests
         dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
     }
 
-    private static ServiceProvider BuildProvider(IStorageService storage)
-    {
+    private static ServiceProvider BuildProvider(IStorageService storage) {
         ServiceCollection services = new();
-        services.AddLogging();
-        services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly));
-        services.AddSingleton(storage);
+        _ = services.AddLogging();
+        _ = services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly));
+        _ = services.AddSingleton(storage);
         return services.BuildServiceProvider();
     }
 

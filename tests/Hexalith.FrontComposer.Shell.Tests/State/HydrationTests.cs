@@ -1,4 +1,3 @@
-namespace Hexalith.FrontComposer.Shell.Tests.State;
 
 using Fluxor;
 
@@ -12,16 +11,13 @@ using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
-using Xunit;
-
+namespace Hexalith.FrontComposer.Shell.Tests.State;
 /// <summary>
 /// Integration tests for state hydration round-trips via Fluxor store.
 /// </summary>
-public class HydrationTests : FrontComposerTestBase
-{
+public class HydrationTests : FrontComposerTestBase {
     [Fact]
-    public async Task ThemeHydration_StorageContainsValue_DispatchesRestoredTheme()
-    {
+    public async Task ThemeHydration_StorageContainsValue_DispatchesRestoredTheme() {
         // Arrange — pre-seed storage before store init
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         IStorageService storage = Services.GetRequiredService<IStorageService>();
@@ -39,8 +35,7 @@ public class HydrationTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task ThemeHydration_StorageEmpty_UsesDefaultLight()
-    {
+    public async Task ThemeHydration_StorageEmpty_UsesDefaultLight() {
         // Arrange — no seeding
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();
@@ -56,8 +51,7 @@ public class HydrationTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task DensityHydration_StorageContainsValue_DispatchesRestoredDensity()
-    {
+    public async Task DensityHydration_StorageContainsValue_DispatchesRestoredDensity() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         IStorageService storage = Services.GetRequiredService<IStorageService>();
@@ -75,8 +69,7 @@ public class HydrationTests : FrontComposerTestBase
     }
 
     [Fact]
-    public async Task DensityHydration_StorageEmpty_UsesDefaultComfortable()
-    {
+    public async Task DensityHydration_StorageEmpty_UsesDefaultComfortable() {
         // Arrange — no seeding
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await InitializeStoreAsync();

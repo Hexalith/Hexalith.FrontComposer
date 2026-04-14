@@ -1,26 +1,19 @@
-#nullable enable
-
-namespace Hexalith.FrontComposer.SourceTools.Parsing;
-
-using System;
-
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
+namespace Hexalith.FrontComposer.SourceTools.Parsing;
 /// <summary>
 /// Intermediate representation of a [Projection]-annotated domain type,
 /// produced by the Parse stage. Pure data -- no Roslyn symbol references.
 /// </summary>
-public sealed class DomainModel : IEquatable<DomainModel>
-{
+public sealed class DomainModel : IEquatable<DomainModel> {
     public DomainModel(
         string typeName,
         string @namespace,
         string? boundedContext,
         string? boundedContextDisplayLabel,
         string? projectionRole,
-        EquatableArray<PropertyModel> properties)
-    {
+        EquatableArray<PropertyModel> properties) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -41,15 +34,12 @@ public sealed class DomainModel : IEquatable<DomainModel>
 
     public EquatableArray<PropertyModel> Properties { get; }
 
-    public bool Equals(DomainModel? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(DomainModel? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -63,10 +53,8 @@ public sealed class DomainModel : IEquatable<DomainModel>
 
     public override bool Equals(object? obj) => Equals(obj as DomainModel);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
@@ -83,16 +71,14 @@ public sealed class DomainModel : IEquatable<DomainModel>
 /// <summary>
 /// IR representation of a single property on a [Projection]-annotated type.
 /// </summary>
-public sealed class PropertyModel : IEquatable<PropertyModel>
-{
+public sealed class PropertyModel : IEquatable<PropertyModel> {
     public PropertyModel(
         string name,
         string typeName,
         bool isNullable,
         bool isUnsupported,
         string? displayName,
-        EquatableArray<BadgeMappingEntry> badgeMappings)
-    {
+        EquatableArray<BadgeMappingEntry> badgeMappings) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -113,15 +99,12 @@ public sealed class PropertyModel : IEquatable<PropertyModel>
 
     public EquatableArray<BadgeMappingEntry> BadgeMappings { get; }
 
-    public bool Equals(PropertyModel? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(PropertyModel? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -135,10 +118,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel>
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (Name?.GetHashCode() ?? 0);
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
@@ -154,10 +135,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel>
 /// <summary>
 /// Maps an enum member to a badge slot, extracted from [ProjectionBadge] on enum fields.
 /// </summary>
-public sealed class BadgeMappingEntry : IEquatable<BadgeMappingEntry>
-{
-    public BadgeMappingEntry(string enumMemberName, string slot)
-    {
+public sealed class BadgeMappingEntry : IEquatable<BadgeMappingEntry> {
+    public BadgeMappingEntry(string enumMemberName, string slot) {
         EnumMemberName = enumMemberName;
         Slot = slot;
     }
@@ -166,15 +145,12 @@ public sealed class BadgeMappingEntry : IEquatable<BadgeMappingEntry>
 
     public string Slot { get; }
 
-    public bool Equals(BadgeMappingEntry? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(BadgeMappingEntry? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -183,11 +159,9 @@ public sealed class BadgeMappingEntry : IEquatable<BadgeMappingEntry>
 
     public override bool Equals(object? obj) => Equals(obj as BadgeMappingEntry);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
-            return (17 * 31 + (EnumMemberName?.GetHashCode() ?? 0)) * 31 + (Slot?.GetHashCode() ?? 0);
+    public override int GetHashCode() {
+        unchecked {
+            return (((17 * 31) + (EnumMemberName?.GetHashCode() ?? 0)) * 31) + (Slot?.GetHashCode() ?? 0);
         }
     }
 }
@@ -196,10 +170,8 @@ public sealed class BadgeMappingEntry : IEquatable<BadgeMappingEntry>
 /// Result of the Parse stage: a domain model (if valid) plus any diagnostics.
 /// Diagnostics travel as data because SourceProductionContext is only available in RegisterSourceOutput.
 /// </summary>
-public sealed class ParseResult : IEquatable<ParseResult>
-{
-    public ParseResult(DomainModel? model, EquatableArray<DiagnosticInfo> diagnostics)
-    {
+public sealed class ParseResult : IEquatable<ParseResult> {
+    public ParseResult(DomainModel? model, EquatableArray<DiagnosticInfo> diagnostics) {
         Model = model;
         Diagnostics = diagnostics;
     }
@@ -208,15 +180,12 @@ public sealed class ParseResult : IEquatable<ParseResult>
 
     public EquatableArray<DiagnosticInfo> Diagnostics { get; }
 
-    public bool Equals(ParseResult? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(ParseResult? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -228,10 +197,8 @@ public sealed class ParseResult : IEquatable<ParseResult>
 
     public override bool Equals(object? obj) => Equals(obj as ParseResult);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (Model?.GetHashCode() ?? 0);
             hash = (hash * 31) + Diagnostics.GetHashCode();
@@ -243,10 +210,8 @@ public sealed class ParseResult : IEquatable<ParseResult>
 /// <summary>
 /// Serializable diagnostic information -- no Roslyn Location references.
 /// </summary>
-public sealed class DiagnosticInfo : IEquatable<DiagnosticInfo>
-{
-    public DiagnosticInfo(string id, string message, string severity, string filePath, int line, int column)
-    {
+public sealed class DiagnosticInfo : IEquatable<DiagnosticInfo> {
+    public DiagnosticInfo(string id, string message, string severity, string filePath, int line, int column) {
         Id = id;
         Message = message;
         Severity = severity;
@@ -267,15 +232,12 @@ public sealed class DiagnosticInfo : IEquatable<DiagnosticInfo>
 
     public int Column { get; }
 
-    public bool Equals(DiagnosticInfo? other)
-    {
-        if (other is null)
-        {
+    public bool Equals(DiagnosticInfo? other) {
+        if (other is null) {
             return false;
         }
 
-        if (ReferenceEquals(this, other))
-        {
+        if (ReferenceEquals(this, other)) {
             return true;
         }
 
@@ -289,10 +251,8 @@ public sealed class DiagnosticInfo : IEquatable<DiagnosticInfo>
 
     public override bool Equals(object? obj) => Equals(obj as DiagnosticInfo);
 
-    public override int GetHashCode()
-    {
-        unchecked
-        {
+    public override int GetHashCode() {
+        unchecked {
             int hash = 17;
             hash = (hash * 31) + (Id?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Message?.GetHashCode() ?? 0);
@@ -308,10 +268,8 @@ public sealed class DiagnosticInfo : IEquatable<DiagnosticInfo>
     /// Converts the serialized diagnostic coordinates back into a Roslyn location.
     /// </summary>
     /// <returns>The diagnostic location, or <see cref="Location.None"/> when unavailable.</returns>
-    public Location ToLocation()
-    {
-        if (string.IsNullOrWhiteSpace(FilePath) || Line < 0 || Column < 0)
-        {
+    public Location ToLocation() {
+        if (string.IsNullOrWhiteSpace(FilePath) || Line < 0 || Column < 0) {
             return Location.None;
         }
 

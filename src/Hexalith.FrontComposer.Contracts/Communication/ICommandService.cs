@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// Story 1.3 may extend command handling through companion abstractions while
 /// keeping this interface stable for existing implementers.
 /// </summary>
-public interface ICommandService
-{
+public interface ICommandService {
     /// <summary>
     /// Dispatches a command for processing.
     /// </summary>

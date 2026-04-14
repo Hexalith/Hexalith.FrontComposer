@@ -5,8 +5,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// Story 1.3 may extend notification behavior through companion abstractions while
 /// keeping this interface stable for existing implementers.
 /// </summary>
-public interface IProjectionChangeNotifier
-{
+public interface IProjectionChangeNotifier {
     /// <summary>
     /// Raised when a projection type has been updated.
     /// The string parameter is the projection type name.

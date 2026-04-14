@@ -1,7 +1,7 @@
-namespace Hexalith.FrontComposer.Contracts.Rendering;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 
+namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// <summary>
 /// Additional rendering hints for field-level customization.
 /// </summary>

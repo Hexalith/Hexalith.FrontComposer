@@ -1,8 +1,3 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
-
-using System.Linq;
-using System.Threading;
-
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
 using Microsoft.CodeAnalysis;
@@ -10,13 +5,11 @@ using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
-public class GeneratorDriverTests
-{
+public class GeneratorDriverTests {
     [Fact]
-    public void RunGenerators_BasicProjection_Produces5Files()
-    {
+    public void RunGenerators_BasicProjection_Produces5Files() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BasicProjection);
         FrontComposerGenerator generator = new();
@@ -45,8 +38,7 @@ public class GeneratorDriverTests
     }
 
     [Fact]
-    public void RunGenerators_AllFieldTypesProjection_GeneratedCodeCompiles()
-    {
+    public void RunGenerators_AllFieldTypesProjection_GeneratedCodeCompiles() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.AllFieldTypesProjection);
         FrontComposerGenerator generator = new();
@@ -66,8 +58,7 @@ public class GeneratorDriverTests
     }
 
     [Fact]
-    public void RunGenerators_UnsupportedFieldProjection_GeneratedCodeCompiles()
-    {
+    public void RunGenerators_UnsupportedFieldProjection_GeneratedCodeCompiles() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.UnsupportedFieldProjection);
         FrontComposerGenerator generator = new();
@@ -86,8 +77,7 @@ public class GeneratorDriverTests
     }
 
     [Fact]
-    public void RunGenerators_MultipleProjectionTypes_AllProcessed()
-    {
+    public void RunGenerators_MultipleProjectionTypes_AllProcessed() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string[] sources =
         [
@@ -106,8 +96,7 @@ public class GeneratorDriverTests
     }
 
     [Fact]
-    public void RunGenerators_NoAnnotatedTypes_ReportsHfc1001()
-    {
+    public void RunGenerators_NoAnnotatedTypes_ReportsHfc1001() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source = @"
 namespace TestDomain;
@@ -128,8 +117,7 @@ public class NotAProjection
     }
 
     [Fact]
-    public void RunGenerators_CommandOnlyCompilation_DoesNotReportHfc1001()
-    {
+    public void RunGenerators_CommandOnlyCompilation_DoesNotReportHfc1001() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
@@ -153,8 +141,7 @@ public partial class SubmitOrderCommand
     }
 
     [Fact]
-    public void RunGenerators_BadgeMappingProjection_GeneratedCodeCompiles()
-    {
+    public void RunGenerators_BadgeMappingProjection_GeneratedCodeCompiles() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.BadgeMappingProjection);
         FrontComposerGenerator generator = new();
@@ -173,8 +160,7 @@ public partial class SubmitOrderCommand
     }
 
     [Fact]
-    public void RunGenerators_BoundedContextGrouping_NoHintNameCrash()
-    {
+    public void RunGenerators_BoundedContextGrouping_NoHintNameCrash() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string[] sources =
         [
@@ -226,8 +212,7 @@ public partial class OrderItemProjection
     }
 
     [Fact]
-    public void RunGenerators_DisplayLabel_PropagatedToRegistration()
-    {
+    public void RunGenerators_DisplayLabel_PropagatedToRegistration() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.DisplayLabelProjection);
         FrontComposerGenerator generator = new();
@@ -253,8 +238,7 @@ public partial class OrderItemProjection
     }
 
     [Fact]
-    public void RunGenerators_SameNameDifferentNamespace_NoHintNameCollision()
-    {
+    public void RunGenerators_SameNameDifferentNamespace_NoHintNameCollision() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string[] sources =
         [
@@ -305,8 +289,7 @@ public partial class SharedProjection
     }
 
     [Fact]
-    public void RunGenerators_GlobalNamespaceProjection_HintNameHasNoNamespacePrefix()
-    {
+    public void RunGenerators_GlobalNamespaceProjection_HintNameHasNoNamespacePrefix() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.GlobalNamespaceProjection);
         FrontComposerGenerator generator = new();
@@ -335,8 +318,7 @@ public partial class SharedProjection
     }
 
     [Fact]
-    public void RunGenerators_OnlyUnsupportedFields_StillGeneratesCode()
-    {
+    public void RunGenerators_OnlyUnsupportedFields_StillGeneratesCode() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string source = @"
 using System;

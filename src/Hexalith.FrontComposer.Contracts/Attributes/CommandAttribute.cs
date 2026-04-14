@@ -5,6 +5,5 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// to emit form components and dispatch registration code.
 /// </summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class CommandAttribute : Attribute
-{
+public sealed class CommandAttribute : Attribute {
 }

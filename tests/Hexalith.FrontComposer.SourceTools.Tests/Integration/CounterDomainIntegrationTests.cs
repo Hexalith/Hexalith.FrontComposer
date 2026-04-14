@@ -1,8 +1,3 @@
-namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
-
-using System.Linq;
-using System.Threading;
-
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
 
 using Microsoft.CodeAnalysis;
@@ -10,13 +5,11 @@ using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
-using Xunit;
+namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
-public class CounterDomainIntegrationTests
-{
+public class CounterDomainIntegrationTests {
     [Fact]
-    public void RunGenerators_CounterProjection_Produces5Files()
-    {
+    public void RunGenerators_CounterProjection_Produces5Files() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.CounterProjectionSource);
         FrontComposerGenerator generator = new();
@@ -43,8 +36,7 @@ public class CounterDomainIntegrationTests
     }
 
     [Fact]
-    public void RunGenerators_CounterRegistration_ContainsManifestAndRegisterDomain()
-    {
+    public void RunGenerators_CounterRegistration_ContainsManifestAndRegisterDomain() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.CounterProjectionSource);
         FrontComposerGenerator generator = new();
@@ -64,8 +56,7 @@ public class CounterDomainIntegrationTests
     }
 
     [Fact]
-    public void RunGenerators_CounterProjection_GeneratesCorrectColumns()
-    {
+    public void RunGenerators_CounterProjection_GeneratesCorrectColumns() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.CounterProjectionSource);
         FrontComposerGenerator generator = new();
