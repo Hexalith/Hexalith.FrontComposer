@@ -33,6 +33,10 @@ internal static class CompilationHelper {
         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.ComponentBase));     // ASP.NET Components
         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.InjectAttribute));   // ASP.NET Components
         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder)); // ASP.NET Rendering
+        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Forms.EditContext)); // ASP.NET Forms
+        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Forms.EditForm));    // ASP.NET Components.Web
+        TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Localization.IStringLocalizer<>)); // Localization
+        TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Logging.ILogger<>));            // Logging
         TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid<>));   // FluentUI
 
         return refs.ToArray();
@@ -82,6 +86,20 @@ internal static class CompilationHelper {
 
         SyntaxNode targetNode = syntaxReference.GetSyntax(TestContext.Current.CancellationToken);
         return AttributeParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
+    }
+
+    internal static CommandParseResult ParseCommand(string source, string metadataName, bool enableNullable = true)
+        => ParseCommand(CreateCompilation(source, enableNullable), metadataName);
+
+    internal static CommandParseResult ParseCommand(CSharpCompilation compilation, string metadataName) {
+        INamedTypeSymbol typeSymbol = compilation.GetTypeByMetadataName(metadataName)
+            ?? throw new InvalidOperationException($"Could not find command type '{metadataName}' in the test compilation.");
+
+        SyntaxReference syntaxReference = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()
+            ?? throw new InvalidOperationException($"Command type '{metadataName}' has no declaring syntax reference.");
+
+        SyntaxNode targetNode = syntaxReference.GetSyntax(TestContext.Current.CancellationToken);
+        return CommandParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
     }
 
     private static SyntaxTree CreateSyntaxTree(string source, string filePath)

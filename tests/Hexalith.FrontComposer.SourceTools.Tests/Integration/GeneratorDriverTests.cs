@@ -136,8 +136,14 @@ public partial class SubmitOrderCommand
         driver = driver.RunGenerators(compilation, ct);
         GeneratorDriverRunResult result = driver.GetRunResult();
 
-        result.GeneratedTrees.ShouldBeEmpty();
         result.Diagnostics.Where(d => d.Id == "HFC1001").ShouldBeEmpty();
+        result.GeneratedTrees.Length.ShouldBe(4, "Command-only compilations should emit form, actions, lifecycle feature, and registration sources");
+
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
+            result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("Generated command-only code should compile without errors");
     }
 
     [Fact]

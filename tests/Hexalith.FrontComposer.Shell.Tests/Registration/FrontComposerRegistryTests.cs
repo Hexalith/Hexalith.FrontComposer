@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 
 using Shouldly;
@@ -48,6 +49,16 @@ public class FrontComposerRegistryTests {
 
         IFrontComposerRegistry registry = sp.GetRequiredService<IFrontComposerRegistry>();
         _ = registry.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void AddHexalithFrontComposer_RegistersLocalizationServices() {
+        ServiceCollection services = new();
+        _ = services.AddHexalithFrontComposer();
+        using ServiceProvider sp = services.BuildServiceProvider();
+
+        IStringLocalizer<FrontComposerRegistryTests> localizer = sp.GetRequiredService<IStringLocalizer<FrontComposerRegistryTests>>();
+        _ = localizer.ShouldNotBeNull();
     }
 
     [Fact]

@@ -5,12 +5,15 @@ using Fluxor;
 using Fluxor.DependencyInjection;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Registration;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
 
@@ -93,6 +96,7 @@ public static class ServiceCollectionExtensions {
     public static IServiceCollection AddHexalithFrontComposer(
         this IServiceCollection services,
         Action<FluxorOptions>? configureFluxor = null) {
+        _ = services.AddLocalization();
         _ = services.AddLogging();
         _ = services.AddFluxor(o => {
             _ = o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);
@@ -100,6 +104,11 @@ public static class ServiceCollectionExtensions {
         });
         _ = services.AddSingleton<IStorageService, InMemoryStorageService>();
         _ = services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
+
+        // Default stub command service (ADR-010). Adopters replace it via Story 5.1's AddHexalithEventStore().
+        services.TryAddScoped<ICommandService, StubCommandService>();
+        _ = services.Configure<StubCommandServiceOptions>(_ => { });
+
         return services;
     }
 
