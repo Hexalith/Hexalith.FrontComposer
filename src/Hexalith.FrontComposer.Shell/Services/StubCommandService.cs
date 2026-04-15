@@ -1,6 +1,8 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Services;
@@ -17,10 +19,12 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// </remarks>
 public sealed class StubCommandService : ICommandServiceWithLifecycle {
     private readonly IOptionsSnapshot<StubCommandServiceOptions> _options;
+    private readonly ILogger<StubCommandService> _logger;
 
     /// <summary>Initializes a new instance of the <see cref="StubCommandService"/> class.</summary>
-    public StubCommandService(IOptionsSnapshot<StubCommandServiceOptions> options) {
+    public StubCommandService(IOptionsSnapshot<StubCommandServiceOptions> options, ILogger<StubCommandService>? logger = null) {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _logger = logger ?? NullLogger<StubCommandService>.Instance;
     }
 
     /// <inheritdoc />
@@ -50,7 +54,10 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
 
         string messageId = Guid.NewGuid().ToString();
 
-        _ = Task.Run(
+        // Fire-and-forget continuation. We observe the task via ContinueWith so an unhandled
+        // exception inside the user-supplied onLifecycleChange (e.g., disposed Fluxor dispatcher)
+        // does not escape as an unobserved task exception. (See code-review 2026-04-15, patch P9.)
+        Task continuation = Task.Run(
             async () => {
                 try {
                     if (opts.SyncingDelayMs > 0) {
@@ -76,8 +83,25 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
                 catch (OperationCanceledException) {
                     // Form disposed during the callback sequence. Nothing to do.
                 }
+                catch (Exception ex) {
+                    _logger.LogError(
+                        ex,
+                        "Lifecycle callback threw for MessageId={MessageId}. Syncing/Confirmed notifications were skipped.",
+                        messageId);
+                }
             },
             cancellationToken);
+
+        _ = continuation.ContinueWith(
+            static (t, state) => {
+                if (t.IsFaulted && t.Exception is not null) {
+                    ((ILogger)state!).LogError(t.Exception.Flatten(), "StubCommandService background task faulted.");
+                }
+            },
+            _logger,
+            CancellationToken.None,
+            TaskContinuationOptions.OnlyOnFaulted | TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
 
         return new CommandResult(messageId, "Accepted");
     }

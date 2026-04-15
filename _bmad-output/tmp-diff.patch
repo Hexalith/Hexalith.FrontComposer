@@ -1,0 +1,3957 @@
+diff --git a/Directory.Packages.props b/Directory.Packages.props
+index 9ec7718..fd88dfc 100644
+--- a/Directory.Packages.props
++++ b/Directory.Packages.props
+@@ -33,5 +33,7 @@
+     <!-- Verify snapshot testing — XunitV3 for xUnit v3 (NOT Verify.Xunit which is v2) -->
+     <PackageVersion Include="Verify" Version="31.15.0" />
+     <PackageVersion Include="Verify.XunitV3" Version="31.15.0" />
++    <!-- FsCheck property-based testing (Story 2.1 adds FsCheck.Xunit.v3 for xUnit v3 integration) -->
++    <PackageVersion Include="FsCheck.Xunit.v3" Version="3.3.1" />
+   </ItemGroup>
+ </Project>
+diff --git a/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor b/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor
+index fa1e6de..a078b41 100644
+--- a/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor
++++ b/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor
+@@ -4,24 +4,28 @@
+ 
+ <h1>Counter</h1>
+ 
+-@if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
+-{
+-    <Counter.Domain.CounterProjectionView />
+-}
+-else
+-{
+-    <FluentStack Orientation="Orientation.Vertical"
+-                 HorizontalAlignment="HorizontalAlignment.Center"
+-                 VerticalAlignment="VerticalAlignment.Center"
+-                 Style="padding: 32px; gap: 12px; text-align: center;">
+-        <FluentText Size="TextSize.Size400" Weight="TextWeight.Semibold">
+-            No counter data yet. Send your first Increment Counter command.
+-        </FluentText>
+-        <FluentButton Appearance="ButtonAppearance.Primary" Disabled="true">
+-            Increment Counter
+-        </FluentButton>
+-    </FluentStack>
+-}
++<div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
++    <section class="command-section">
++        <Counter.Domain.IncrementCommandForm />
++    </section>
++    <section class="data-section">
++        @if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
++        {
++            <Counter.Domain.CounterProjectionView />
++        }
++        else
++        {
++            <FluentStack Orientation="Orientation.Vertical"
++                         HorizontalAlignment="HorizontalAlignment.Center"
++                         VerticalAlignment="VerticalAlignment.Center"
++                         Style="padding: 32px; gap: 12px; text-align: center;">
++                <FluentText Size="TextSize.Size400" Weight="TextWeight.Semibold">
++                    No counter data yet. Send your first Increment Counter command.
++                </FluentText>
++            </FluentStack>
++        }
++    </section>
++</div>
+ 
+ @code {
+     protected override void OnInitialized()
+diff --git a/samples/Counter/Counter.Web/CounterProjectionEffects.cs b/samples/Counter/Counter.Web/CounterProjectionEffects.cs
+new file mode 100644
+index 0000000..58ceb01
+--- /dev/null
++++ b/samples/Counter/Counter.Web/CounterProjectionEffects.cs
+@@ -0,0 +1,38 @@
++using Counter.Domain;
++
++using Fluxor;
++
++namespace Counter.Web;
++
++/// <summary>
++/// Sample-code effect that simulates SignalR projection catch-up. When a Counter command is
++/// confirmed, it re-dispatches <see cref="CounterProjectionLoadRequestedAction"/> so the demo
++/// visibly updates the Counter grid. In the real EventStore pipeline (Story 5.1+), this behaviour
++/// is driven by incoming SignalR notifications rather than a client-local effect.
++/// </summary>
++public sealed class CounterProjectionEffects {
++    private readonly IState<CounterProjectionState> _state;
++
++    /// <summary>Initializes a new instance of the <see cref="CounterProjectionEffects"/> class.</summary>
++    public CounterProjectionEffects(IState<CounterProjectionState> state) {
++        _state = state ?? throw new ArgumentNullException(nameof(state));
++    }
++
++    /// <summary>Handles <see cref="IncrementCommandActions.ConfirmedAction"/> by re-requesting the Counter projection.</summary>
++    [EffectMethod]
++    public Task OnCommandConfirmed(IncrementCommandActions.ConfirmedAction action, IDispatcher dispatcher) {
++        ArgumentNullException.ThrowIfNull(action);
++        ArgumentNullException.ThrowIfNull(dispatcher);
++
++        // Bump the in-memory counter so the grid actually changes for the demo.
++        CounterProjection updated = new() {
++            Id = "counter-1",
++            Count = (_state.Value.Items?.FirstOrDefault()?.Count ?? 0) + 1,
++            LastUpdated = DateTimeOffset.UtcNow,
++        };
++
++        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(action.CorrelationId));
++        dispatcher.Dispatch(new CounterProjectionLoadedAction(action.CorrelationId, [updated]));
++        return Task.CompletedTask;
++    }
++}
+diff --git a/samples/Counter/Counter.Web/Program.cs b/samples/Counter/Counter.Web/Program.cs
+index 7ebd424..0077947 100644
+--- a/samples/Counter/Counter.Web/Program.cs
++++ b/samples/Counter/Counter.Web/Program.cs
+@@ -1,6 +1,7 @@
+ using Counter.Domain;
+ 
+ using Hexalith.FrontComposer.Shell.Extensions;
++using Hexalith.FrontComposer.Shell.Services;
+ 
+ using Microsoft.FluentUI.AspNetCore.Components;
+ 
+@@ -15,6 +16,13 @@ builder.Services.AddHexalithFrontComposer(
+     o => o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly));
+ builder.Services.AddHexalithDomain<CounterDomain>();
+ 
++// Slightly higher stub latencies so the 5-state lifecycle is observable in the Counter sample.
++builder.Services.Configure<StubCommandServiceOptions>(o => {
++    o.AcknowledgeDelayMs = 150;
++    o.SyncingDelayMs = 150;
++    o.ConfirmDelayMs = 200;
++});
++
+ WebApplication app = builder.Build();
+ 
+ app.UseStaticFiles();
+diff --git a/src/Hexalith.FrontComposer.Contracts/Attributes/DerivedFromAttribute.cs b/src/Hexalith.FrontComposer.Contracts/Attributes/DerivedFromAttribute.cs
+new file mode 100644
+index 0000000..0c94478
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Attributes/DerivedFromAttribute.cs
+@@ -0,0 +1,45 @@
++namespace Hexalith.FrontComposer.Contracts.Attributes;
++
++/// <summary>
++/// Marks a command property as being derived from an infrastructure source
++/// (e.g., context, user session, timestamp). Derived properties are excluded from
++/// auto-generated command forms.
++/// </summary>
++/// <remarks>
++/// Applied per-property. The source generator also classifies properties named
++/// <c>MessageId</c>, <c>CommandId</c>, <c>CorrelationId</c>, <c>TenantId</c>, <c>UserId</c>,
++/// <c>Timestamp</c>, <c>CreatedAt</c>, and <c>ModifiedAt</c> as derivable without
++/// requiring this attribute.
++/// </remarks>
++[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
++public sealed class DerivedFromAttribute : Attribute {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="DerivedFromAttribute"/> class.
++    /// </summary>
++    /// <param name="source">The infrastructure source that supplies the property value.</param>
++    public DerivedFromAttribute(DerivedFromSource source) {
++        Source = source;
++    }
++
++    /// <summary>
++    /// Gets the infrastructure source that supplies the property value at dispatch time.
++    /// </summary>
++    public DerivedFromSource Source { get; }
++}
++
++/// <summary>
++/// Infrastructure sources that populate derivable command properties.
++/// </summary>
++public enum DerivedFromSource {
++    /// <summary>Derived from the current request/session context.</summary>
++    Context,
++
++    /// <summary>Derived from the authenticated user identity.</summary>
++    User,
++
++    /// <summary>Derived from the current UTC timestamp.</summary>
++    Timestamp,
++
++    /// <summary>Derived from a ULID generated at dispatch time.</summary>
++    MessageId,
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Communication/CommandRejectedException.cs b/src/Hexalith.FrontComposer.Contracts/Communication/CommandRejectedException.cs
+new file mode 100644
+index 0000000..f73bade
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Communication/CommandRejectedException.cs
+@@ -0,0 +1,23 @@
++namespace Hexalith.FrontComposer.Contracts.Communication;
++
++/// <summary>
++/// Thrown by <see cref="ICommandService"/> implementations when a command fails
++/// domain validation. The rejection reason becomes the exception <see cref="Exception.Message"/>,
++/// and <see cref="Resolution"/> carries user-facing guidance for recovery.
++/// </summary>
++public class CommandRejectedException : Exception {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="CommandRejectedException"/> class.
++    /// </summary>
++    /// <param name="reason">The domain-specific reason for rejection. Becomes <see cref="Exception.Message"/>.</param>
++    /// <param name="resolution">User-facing guidance on how to recover from the rejection.</param>
++    public CommandRejectedException(string reason, string resolution)
++        : base(reason) {
++        Resolution = resolution;
++    }
++
++    /// <summary>
++    /// Gets user-facing guidance that describes how to recover from the rejection.
++    /// </summary>
++    public string Resolution { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs b/src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs
+new file mode 100644
+index 0000000..183c8f8
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs
+@@ -0,0 +1,34 @@
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++
++namespace Hexalith.FrontComposer.Contracts.Communication;
++
++/// <summary>
++/// Compatibility overloads for <see cref="ICommandService"/>.
++/// </summary>
++public static class CommandServiceExtensions {
++    /// <summary>
++    /// Dispatches a command and forwards lifecycle notifications when the implementation supports
++    /// <see cref="ICommandServiceWithLifecycle"/>. Implementations that only support the original
++    /// <see cref="ICommandService"/> contract still dispatch successfully; the callback is ignored.
++    /// </summary>
++    /// <typeparam name="TCommand">The command type.</typeparam>
++    /// <param name="commandService">The command service.</param>
++    /// <param name="command">The command to dispatch.</param>
++    /// <param name="onLifecycleChange">Optional lifecycle callback.</param>
++    /// <param name="cancellationToken">A token to observe for cancellation.</param>
++    /// <returns>The acknowledgement result for the dispatch.</returns>
++    public static Task<CommandResult> DispatchAsync<TCommand>(
++        this ICommandService commandService,
++        TCommand command,
++        Action<CommandLifecycleState, string?>? onLifecycleChange,
++        CancellationToken cancellationToken = default)
++        where TCommand : class {
++        if (commandService is null) {
++            throw new ArgumentNullException(nameof(commandService));
++        }
++
++        return commandService is ICommandServiceWithLifecycle lifecycleAware
++            ? lifecycleAware.DispatchAsync(command, onLifecycleChange, cancellationToken)
++            : commandService.DispatchAsync(command, cancellationToken);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Communication/ICommandService.cs b/src/Hexalith.FrontComposer.Contracts/Communication/ICommandService.cs
+index ebd37e3..db7d8cd 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Communication/ICommandService.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Communication/ICommandService.cs
+@@ -1,10 +1,15 @@
+ namespace Hexalith.FrontComposer.Contracts.Communication;
+ 
+ /// <summary>
+-/// Provisional command dispatch contract for the EventStore REST API.
+-/// Story 1.3 may extend command handling through companion abstractions while
+-/// keeping this interface stable for existing implementers.
++/// Command dispatch contract for the EventStore REST API.
+ /// </summary>
++/// <remarks>
++/// Rejection is signalled by throwing <see cref="CommandRejectedException"/> rather than via a
++/// <see cref="CommandResult"/> status code, so the error path is explicit in the type system.
++/// Implementations that can surface post-acknowledgement lifecycle transitions should also
++/// implement <see cref="ICommandServiceWithLifecycle"/>. Callers can then use the
++/// callback-aware overload exposed by <see cref="CommandServiceExtensions"/>.
++/// </remarks>
+ public interface ICommandService {
+     /// <summary>
+     /// Dispatches a command for processing.
+@@ -12,7 +17,8 @@ public interface ICommandService {
+     /// <typeparam name="TCommand">The command type.</typeparam>
+     /// <param name="command">The command to dispatch.</param>
+     /// <param name="cancellationToken">A token to observe for cancellation.</param>
+-    /// <returns>The command result containing a message ID and status.</returns>
++    /// <returns>The command result containing the dispatched MessageId and acknowledgement status.</returns>
++    /// <exception cref="CommandRejectedException">Thrown when domain validation rejects the command.</exception>
+     Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
+         where TCommand : class;
+ }
+diff --git a/src/Hexalith.FrontComposer.Contracts/Communication/ICommandServiceWithLifecycle.cs b/src/Hexalith.FrontComposer.Contracts/Communication/ICommandServiceWithLifecycle.cs
+new file mode 100644
+index 0000000..3051083
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Communication/ICommandServiceWithLifecycle.cs
+@@ -0,0 +1,36 @@
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++
++namespace Hexalith.FrontComposer.Contracts.Communication;
++
++/// <summary>
++/// Optional extension for <see cref="ICommandService"/> implementations that can surface
++/// post-acknowledgement lifecycle transitions.
++/// </summary>
++/// <remarks>
++/// This preserves the original <see cref="ICommandService"/> contract for existing implementers
++/// while allowing richer clients to observe <see cref="CommandLifecycleState.Syncing"/> and
++/// <see cref="CommandLifecycleState.Confirmed"/> via
++/// <see cref="CommandServiceExtensions.DispatchAsync{TCommand}(ICommandService, TCommand, Action{CommandLifecycleState, string?}?, CancellationToken)"/>.
++/// </remarks>
++public interface ICommandServiceWithLifecycle : ICommandService {
++    /// <summary>
++    /// Dispatches a command and optionally reports post-acknowledgement lifecycle transitions.
++    /// </summary>
++    /// <typeparam name="TCommand">The command type.</typeparam>
++    /// <param name="command">The command to dispatch.</param>
++    /// <param name="onLifecycleChange">
++    /// Optional callback invoked for post-acknowledgement lifecycle transitions together with the
++    /// correlating MessageId. Implementations must stop invoking the callback when
++    /// <paramref name="cancellationToken"/> is cancelled.
++    /// </param>
++    /// <param name="cancellationToken">A token to observe for cancellation.</param>
++    /// <returns>
++    /// The command result containing the dispatched MessageId and acknowledgement status
++    /// once the initial HTTP round-trip completes.
++    /// </returns>
++    Task<CommandResult> DispatchAsync<TCommand>(
++        TCommand command,
++        Action<CommandLifecycleState, string?>? onLifecycleChange,
++        CancellationToken cancellationToken = default)
++        where TCommand : class;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor b/src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor
+new file mode 100644
+index 0000000..a786565
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor
+@@ -0,0 +1,25 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Rendering
++
++<div role="status"
++     tabindex="0"
++     aria-label="@($"{FieldName} requires a custom renderer")"
++     class="@CssClass"
++     style="border: 2px dashed var(--neutral-stroke-rest, #aaaaaa); padding: 12px; margin: 4px 0; background-color: var(--neutral-fill-rest, #fafafa);">
++    <strong>@FieldName</strong> (@TypeName) — This field requires a custom renderer.
++    <a href="https://hexalith.dev/docs/customization-gradient" target="_blank" rel="noopener">Learn how to customize this field</a>
++</div>
++
++@code {
++    /// <summary>Gets or sets the name of the property this placeholder represents.</summary>
++    [Parameter, EditorRequired] public string FieldName { get; set; } = default!;
++
++    /// <summary>Gets or sets the fully qualified name of the unsupported type.</summary>
++    [Parameter, EditorRequired] public string TypeName { get; set; } = default!;
++
++    /// <summary>Gets or sets a value indicating whether the placeholder is rendered in developer mode (red dashed border).</summary>
++    [Parameter] public bool IsDevMode { get; set; }
++
++    private string CssClass => IsDevMode
++        ? "fc-field-placeholder fc-field-placeholder-dev"
++        : "fc-field-placeholder";
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css b/src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css
+new file mode 100644
+index 0000000..a48cf62
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldPlaceholder.razor.css
+@@ -0,0 +1,13 @@
++/* Shared styles for auto-generated command forms. */
++
++.fc-field-placeholder {
++    background-color: var(--neutral-fill-rest, #fafafa);
++}
++
++.fc-field-placeholder-dev {
++    border-color: var(--error-foreground-rest, #cc0000) !important;
++}
++
++::deep .fc-monospace {
++    font-family: Consolas, "Courier New", monospace;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+index 41e6745..35e6805 100644
+--- a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+@@ -5,12 +5,15 @@ using Fluxor;
+ using Fluxor.DependencyInjection;
+ 
+ using Hexalith.FrontComposer.Contracts.Attributes;
++using Hexalith.FrontComposer.Contracts.Communication;
+ using Hexalith.FrontComposer.Contracts.Registration;
+ using Hexalith.FrontComposer.Contracts.Storage;
+ using Hexalith.FrontComposer.Shell.Registration;
++using Hexalith.FrontComposer.Shell.Services;
+ using Hexalith.FrontComposer.Shell.State.Theme;
+ 
+ using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.DependencyInjection.Extensions;
+ 
+ namespace Hexalith.FrontComposer.Shell.Extensions;
+ 
+@@ -93,6 +96,7 @@ public static class ServiceCollectionExtensions {
+     public static IServiceCollection AddHexalithFrontComposer(
+         this IServiceCollection services,
+         Action<FluxorOptions>? configureFluxor = null) {
++        _ = services.AddLocalization();
+         _ = services.AddLogging();
+         _ = services.AddFluxor(o => {
+             _ = o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);
+@@ -100,6 +104,11 @@ public static class ServiceCollectionExtensions {
+         });
+         _ = services.AddSingleton<IStorageService, InMemoryStorageService>();
+         _ = services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
++
++        // Default stub command service (ADR-010). Adopters replace it via Story 5.1's AddHexalithEventStore().
++        services.TryAddScoped<ICommandService, StubCommandService>();
++        _ = services.Configure<StubCommandServiceOptions>(_ => { });
++
+         return services;
+     }
+ 
+diff --git a/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj b/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj
+index ca90501..536b42c 100644
+--- a/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj
++++ b/src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj
+@@ -8,4 +8,7 @@
+     <PackageReference Include="Fluxor.Blazor.Web" />
+     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+   </ItemGroup>
++  <ItemGroup>
++    <FrameworkReference Include="Microsoft.AspNetCore.App" />
++  </ItemGroup>
+ </Project>
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs b/src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs
+new file mode 100644
+index 0000000..56afe39
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs
+@@ -0,0 +1,84 @@
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++
++using Microsoft.Extensions.Options;
++
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// In-memory <see cref="ICommandServiceWithLifecycle"/> that simulates the full 5-state lifecycle without contacting a real EventStore.
++/// </summary>
++/// <remarks>
++/// The initial <see cref="Task.Delay(int, CancellationToken)"/> models the HTTP round-trip and returns a
++/// <see cref="CommandResult"/>; subsequent <see cref="CommandLifecycleState.Syncing"/> and
++/// <see cref="CommandLifecycleState.Confirmed"/> callbacks are raised from a fire-and-forget task that observes
++/// the provided <see cref="CancellationToken"/> so the form can cancel in-flight callbacks on dispose
++/// (Decisions D5, D6, D8, ADR-010).
++/// </remarks>
++public sealed class StubCommandService : ICommandServiceWithLifecycle {
++    private readonly IOptionsSnapshot<StubCommandServiceOptions> _options;
++
++    /// <summary>Initializes a new instance of the <see cref="StubCommandService"/> class.</summary>
++    public StubCommandService(IOptionsSnapshot<StubCommandServiceOptions> options) {
++        _options = options ?? throw new ArgumentNullException(nameof(options));
++    }
++
++    /// <inheritdoc />
++    public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
++        where TCommand : class
++        => DispatchAsync(command, onLifecycleChange: null, cancellationToken);
++
++    /// <inheritdoc />
++    public async Task<CommandResult> DispatchAsync<TCommand>(
++        TCommand command,
++        Action<CommandLifecycleState, string?>? onLifecycleChange,
++        CancellationToken cancellationToken = default)
++        where TCommand : class {
++        ArgumentNullException.ThrowIfNull(command);
++
++        StubCommandServiceOptions opts = _options.Value;
++
++        if (opts.AcknowledgeDelayMs > 0) {
++            await Task.Delay(opts.AcknowledgeDelayMs, cancellationToken).ConfigureAwait(false);
++        }
++
++        if (opts.SimulateRejection) {
++            throw new CommandRejectedException(
++                opts.RejectionReason ?? "Simulated rejection",
++                opts.RejectionResolution ?? "Adjust input and retry");
++        }
++
++        string messageId = Guid.NewGuid().ToString();
++
++        _ = Task.Run(
++            async () => {
++                try {
++                    if (opts.SyncingDelayMs > 0) {
++                        await Task.Delay(opts.SyncingDelayMs, cancellationToken).ConfigureAwait(false);
++                    }
++
++                    if (cancellationToken.IsCancellationRequested) {
++                        return;
++                    }
++
++                    onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, messageId);
++
++                    if (opts.ConfirmDelayMs > 0) {
++                        await Task.Delay(opts.ConfirmDelayMs, cancellationToken).ConfigureAwait(false);
++                    }
++
++                    if (cancellationToken.IsCancellationRequested) {
++                        return;
++                    }
++
++                    onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, messageId);
++                }
++                catch (OperationCanceledException) {
++                    // Form disposed during the callback sequence. Nothing to do.
++                }
++            },
++            cancellationToken);
++
++        return new CommandResult(messageId, "Accepted");
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/StubCommandServiceOptions.cs b/src/Hexalith.FrontComposer.Shell/Services/StubCommandServiceOptions.cs
+new file mode 100644
+index 0000000..d216ee5
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/StubCommandServiceOptions.cs
+@@ -0,0 +1,29 @@
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// Configuration for <see cref="StubCommandService"/>. Registered via
++/// <c>IOptionsSnapshot&lt;StubCommandServiceOptions&gt;</c> at <c>Scoped</c> lifetime.
++/// </summary>
++/// <remarks>
++/// Properties are mutable (not <c>init</c>-only) because <c>services.Configure&lt;T&gt;</c>
++/// binds via an <see cref="System.Action{T}"/> that mutates a default instance.
++/// </remarks>
++public sealed class StubCommandServiceOptions {
++    /// <summary>Gets or sets the delay before the stub returns an acknowledgement (emulates HTTP round-trip).</summary>
++    public int AcknowledgeDelayMs { get; set; } = 100;
++
++    /// <summary>Gets or sets the delay before the Syncing callback fires (emulates SignalR catch-up latency).</summary>
++    public int SyncingDelayMs { get; set; } = 100;
++
++    /// <summary>Gets or sets the delay before the Confirmed callback fires (emulates projection arrival).</summary>
++    public int ConfirmDelayMs { get; set; } = 200;
++
++    /// <summary>Gets or sets a value indicating whether to simulate a rejection instead of acknowledging.</summary>
++    public bool SimulateRejection { get; set; }
++
++    /// <summary>Gets or sets the reason string used when <see cref="SimulateRejection"/> is <see langword="true"/>.</summary>
++    public string? RejectionReason { get; set; }
++
++    /// <summary>Gets or sets the resolution guidance used when <see cref="SimulateRejection"/> is <see langword="true"/>.</summary>
++    public string? RejectionResolution { get; set; }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+index d87de7e..5e3f3cc 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
++++ b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+@@ -7,4 +7,6 @@ HFC1002 | HexalithFrontComposer | Warning | Unsupported field type in [Projectio
+ HFC1003 | HexalithFrontComposer | Warning | Projection type should be partial
+ HFC1004 | HexalithFrontComposer | Warning | Projection on unsupported type kind
+ HFC1005 | HexalithFrontComposer | Warning | Invalid attribute argument
++HFC1006 | HexalithFrontComposer | Warning | Command missing MessageId property
++HFC1007 | HexalithFrontComposer | Warning | Command has too many non-derivable properties
+ HFC1010 | HexalithFrontComposer | Info | Reserved — full restart required (not yet implemented)
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+index 5474361..97cc610 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+@@ -61,5 +61,28 @@ public static class DiagnosticDescriptors {
+         defaultSeverity: DiagnosticSeverity.Warning,
+         isEnabledByDefault: true);
+ 
++    /// <summary>
++    /// HFC1006: [Command] type is missing a <c>MessageId</c> property (required for correlation).
++    /// </summary>
++    public static readonly DiagnosticDescriptor CommandMissingMessageId = new(
++        id: "HFC1006",
++        title: "Command missing MessageId property",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Warning,
++        isEnabledByDefault: true);
++
++    /// <summary>
++    /// HFC1007: [Command] type has an excessive number of non-derivable properties (DoS mitigation).
++    /// Warning at &gt; 30 properties; error at &gt; 100.
++    /// </summary>
++    public static readonly DiagnosticDescriptor CommandTooManyProperties = new(
++        id: "HFC1007",
++        title: "Command has too many non-derivable properties",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Warning,
++        isEnabledByDefault: true);
++
+     // HFC1010 reserved — "Full restart required for this change type" (not yet implemented; requires analyzer, not generator — see docs/hot-reload-guide.md)
+ }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFluxorActionsEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFluxorActionsEmitter.cs
+new file mode 100644
+index 0000000..c2b6528
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFluxorActionsEmitter.cs
+@@ -0,0 +1,49 @@
++using System.Text;
++
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++namespace Hexalith.FrontComposer.SourceTools.Emitters;
++
++/// <summary>
++/// Emits the static actions wrapper class containing the 5-state lifecycle action records.
++/// </summary>
++public static class CommandFluxorActionsEmitter {
++    /// <summary>
++    /// Generates the actions wrapper source code.
++    /// </summary>
++    public static string Emit(CommandFluxorModel model) {
++        var sb = new StringBuilder(1024);
++        _ = sb.AppendLine("// Generated by FrontComposer source generator");
++        _ = sb.AppendLine("// Do not edit directly");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("#nullable enable");
++        _ = sb.AppendLine();
++
++        bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
++        if (hasNamespace) {
++            _ = sb.AppendLine("namespace " + model.Namespace + ";");
++            _ = sb.AppendLine();
++        }
++
++        _ = sb.AppendLine("/// <summary>Wrapper for <see cref=\"" + model.TypeName + "\"/> lifecycle action records.</summary>");
++        _ = sb.AppendLine("public static class " + model.ActionsWrapperName);
++        _ = sb.AppendLine("{");
++        _ = sb.AppendLine("    /// <summary>User clicked submit -- command is being dispatched.</summary>");
++        _ = sb.AppendLine("    public sealed record SubmittedAction(string CorrelationId, " + model.CommandFullyQualifiedName + " Command);");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    /// <summary>Command service returned a MessageId (EventStore 202).</summary>");
++        _ = sb.AppendLine("    public sealed record AcknowledgedAction(string CorrelationId, string MessageId);");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    /// <summary>Projection is being updated (SignalR catch-up in flight).</summary>");
++        _ = sb.AppendLine("    public sealed record SyncingAction(string CorrelationId);");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    /// <summary>Projection state confirmed -- the command fully resolved.</summary>");
++        _ = sb.AppendLine("    public sealed record ConfirmedAction(string CorrelationId);");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    /// <summary>Command rejected by the domain. Form retains its field values.</summary>");
++        _ = sb.AppendLine("    public sealed record RejectedAction(string CorrelationId, string Reason, string Resolution);");
++        _ = sb.AppendLine("}");
++
++        return sb.ToString();
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFluxorFeatureEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFluxorFeatureEmitter.cs
+new file mode 100644
+index 0000000..425b56e
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFluxorFeatureEmitter.cs
+@@ -0,0 +1,83 @@
++using System.Text;
++
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++namespace Hexalith.FrontComposer.SourceTools.Emitters;
++
++/// <summary>
++/// Emits the Fluxor <c>LifecycleState</c> record, <c>LifecycleFeature</c>, and reducers for a command.
++/// </summary>
++public static class CommandFluxorFeatureEmitter {
++    /// <summary>
++    /// Generates the feature, state, and reducers source code.
++    /// </summary>
++    public static string Emit(CommandFluxorModel model) {
++        var sb = new StringBuilder(2048);
++        _ = sb.AppendLine("// Generated by FrontComposer source generator");
++        _ = sb.AppendLine("// Do not edit directly");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("#nullable enable");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Lifecycle;");
++        _ = sb.AppendLine();
++
++        bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
++        if (hasNamespace) {
++            _ = sb.AppendLine("namespace " + model.Namespace + ";");
++            _ = sb.AppendLine();
++        }
++
++        // State record
++        _ = sb.AppendLine("/// <summary>Fluxor lifecycle state for <see cref=\"" + model.TypeName + "\"/>.</summary>");
++        _ = sb.AppendLine("public sealed record " + model.StateName + "(");
++        _ = sb.AppendLine("    CommandLifecycleState State,");
++        _ = sb.AppendLine("    string? CorrelationId,");
++        _ = sb.AppendLine("    string? MessageId,");
++        _ = sb.AppendLine("    string? Error,");
++        _ = sb.AppendLine("    string? Resolution);");
++        _ = sb.AppendLine();
++
++        // Feature class
++        _ = sb.AppendLine("/// <summary>Fluxor feature that owns <see cref=\"" + model.StateName + "\"/>.</summary>");
++        _ = sb.AppendLine("public class " + model.FeatureName + " : Fluxor.Feature<" + model.StateName + ">");
++        _ = sb.AppendLine("{");
++        _ = sb.AppendLine("    /// <inheritdoc />");
++        _ = sb.AppendLine("    public override string GetName() => \"" + model.FeatureQualifiedName + "\";");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    /// <inheritdoc />");
++        _ = sb.AppendLine("    protected override " + model.StateName + " GetInitialState()");
++        _ = sb.AppendLine("        => new(CommandLifecycleState.Idle, null, null, null, null);");
++        _ = sb.AppendLine("}");
++        _ = sb.AppendLine();
++
++        // Reducers
++        _ = sb.AppendLine("/// <summary>Reducers for <see cref=\"" + model.StateName + "\"/>.</summary>");
++        _ = sb.AppendLine("public static class " + model.ReducersClassName);
++        _ = sb.AppendLine("{");
++        string state = model.StateName;
++        string actions = model.ActionsWrapperName;
++
++        _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
++        _ = sb.AppendLine("    public static " + state + " OnSubmitted(" + state + " state, " + actions + ".SubmittedAction action)");
++        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Submitting, CorrelationId = action.CorrelationId, Error = null, Resolution = null };");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
++        _ = sb.AppendLine("    public static " + state + " OnAcknowledged(" + state + " state, " + actions + ".AcknowledgedAction action)");
++        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Acknowledged, MessageId = action.MessageId };");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
++        _ = sb.AppendLine("    public static " + state + " OnSyncing(" + state + " state, " + actions + ".SyncingAction action)");
++        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Syncing };");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
++        _ = sb.AppendLine("    public static " + state + " OnConfirmed(" + state + " state, " + actions + ".ConfirmedAction action)");
++        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Confirmed };");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
++        _ = sb.AppendLine("    public static " + state + " OnRejected(" + state + " state, " + actions + ".RejectedAction action)");
++        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Rejected, Error = action.Reason, Resolution = action.Resolution };");
++        _ = sb.AppendLine("}");
++
++        return sb.ToString();
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs
+new file mode 100644
+index 0000000..94ad039
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs
+@@ -0,0 +1,460 @@
++using System.Text;
++
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++namespace Hexalith.FrontComposer.SourceTools.Emitters;
++
++/// <summary>
++/// Emits a Blazor command form partial class (.g.razor.cs) from a <see cref="CommandFormModel"/>.
++/// </summary>
++/// <remarks>
++/// Decision D3: wraps the form in a standard Blazor <c>&lt;EditForm&gt;</c> -- <c>FluentEditForm</c>
++/// does not exist in Fluent UI v5. Decision D11: emits <c>&lt;DataAnnotationsValidator /&gt;</c> so
++/// adopters get validation via <c>[Required]</c>, <c>[Range]</c>, etc. without pulling in FluentValidation.
++/// Decision D7: localizer is runtime-resolved through the emitted <c>ResolveLabel</c> helper.
++/// Decision D13: visual feedback is limited to a <c>FluentProgressRing</c> inside the submit button
++/// while the state is <c>Submitting</c>; richer lifecycle feedback lives in Story 2-4.
++/// </remarks>
++public static class CommandFormEmitter {
++    /// <summary>
++    /// Generates the command form partial class source.
++    /// </summary>
++    /// <param name="form">Form-rendering metadata.</param>
++    /// <param name="fluxor">Companion Fluxor metadata that names the state, actions wrapper, and feature type.</param>
++    /// <returns>The generated C# source code.</returns>
++    public static string Emit(CommandFormModel form, CommandFluxorModel fluxor) {
++        var sb = new StringBuilder(4096);
++
++        _ = sb.AppendLine("// Generated by FrontComposer source generator");
++        _ = sb.AppendLine("// Do not edit directly");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("#nullable enable");
++        _ = sb.AppendLine("#pragma warning disable ASP0006 // seq++ pattern inside BuildRenderTree");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("using System;");
++        _ = sb.AppendLine("using System.Globalization;");
++        _ = sb.AppendLine("using System.Linq;");
++        _ = sb.AppendLine("using System.Threading;");
++        _ = sb.AppendLine("using System.Threading.Tasks;");
++        _ = sb.AppendLine("using Fluxor;");
++        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Communication;");
++        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Lifecycle;");
++        _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
++        _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Forms;");
++        _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
++        _ = sb.AppendLine("using Microsoft.Extensions.Localization;");
++        _ = sb.AppendLine("using Microsoft.Extensions.Logging;");
++        _ = sb.AppendLine("using Microsoft.FluentUI.AspNetCore.Components;");
++        _ = sb.AppendLine();
++
++        bool hasNamespace = !string.IsNullOrEmpty(form.Namespace);
++        if (hasNamespace) {
++            _ = sb.AppendLine("namespace " + form.Namespace + ";");
++            _ = sb.AppendLine();
++        }
++
++        string componentName = form.TypeName + "Form";
++        string escapedButtonLabel = EscapeString(form.ButtonLabel);
++        string commandFqn = form.CommandFullyQualifiedName;
++
++        _ = sb.AppendLine("/// <summary>");
++        _ = sb.AppendLine("/// Auto-generated command form for <see cref=\"" + form.TypeName + "\"/>.");
++        _ = sb.AppendLine("/// </summary>");
++        _ = sb.AppendLine("public partial class " + componentName + " : ComponentBase, IDisposable");
++        _ = sb.AppendLine("{");
++
++        _ = sb.AppendLine("    [Parameter] public " + commandFqn + "? InitialValue { get; set; }");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    [Inject] private IState<" + fluxor.StateName + "> LifecycleState { get; set; } = default!;");
++        _ = sb.AppendLine("    [Inject] private IDispatcher Dispatcher { get; set; } = default!;");
++        _ = sb.AppendLine("    [Inject] private ICommandService CommandService { get; set; } = default!;");
++        _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
++        _ = sb.AppendLine("    [Inject] private ILogger<" + componentName + ">? Logger { get; set; }");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    private " + commandFqn + " _model = new();");
++        _ = sb.AppendLine("    private EditContext? _editContext;");
++        _ = sb.AppendLine("    private CancellationTokenSource? _cts;");
++        _ = sb.AppendLine("    /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>");
++        _ = sb.AppendLine("    public bool IsDirty { get; private set; }");
++        _ = sb.AppendLine();
++
++        EmitFieldBackingFields(sb, form);
++
++        _ = sb.AppendLine("    /// <inheritdoc />");
++        _ = sb.AppendLine("    protected override void OnInitialized()");
++        _ = sb.AppendLine("    {");
++        _ = sb.AppendLine("        _model = InitialValue ?? new();");
++        _ = sb.AppendLine("        _editContext = new EditContext(_model);");
++        _ = sb.AppendLine("        _editContext.OnFieldChanged += OnEditContextFieldChanged;");
++        _ = sb.AppendLine("        LifecycleState.StateChanged += OnStateChanged;");
++        _ = sb.AppendLine("    }");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) { IsDirty = true; }");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    /// <summary>Resolves a field label via <see cref=\"IStringLocalizer\"/>, falling back to the compile-time label.</summary>");
++        _ = sb.AppendLine("    private string ResolveLabel(string propertyName, string staticLabel)");
++        _ = sb.AppendLine("    {");
++        _ = sb.AppendLine("        try");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            var localized = Localizer?[propertyName];");
++        _ = sb.AppendLine("            if (localized is not null && !localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))");
++        _ = sb.AppendLine("            {");
++        _ = sb.AppendLine("                return localized.Value;");
++        _ = sb.AppendLine("            }");
++        _ = sb.AppendLine("        }");
++        _ = sb.AppendLine("        catch { /* localizer failures are non-fatal. */ }");
++        _ = sb.AppendLine("        return staticLabel;");
++        _ = sb.AppendLine("    }");
++        _ = sb.AppendLine();
++
++        EmitSubmitMethod(sb, form, fluxor);
++        EmitDispose(sb);
++        EmitBuildRenderTree(sb, form, fluxor, escapedButtonLabel);
++        EmitNumericConverters(sb, form);
++
++        _ = sb.AppendLine("}");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("#pragma warning restore ASP0006");
++
++        return sb.ToString();
++    }
++
++    private static void EmitFieldBackingFields(StringBuilder sb, CommandFormModel form) {
++        foreach (FormFieldModel field in form.Fields) {
++            if (field.TypeCategory == FormFieldTypeCategory.NumberInput
++                || field.TypeCategory == FormFieldTypeCategory.DecimalInput) {
++                _ = sb.AppendLine("    private string? _" + field.PropertyName + "String;");
++                _ = sb.AppendLine("    private string? _" + field.PropertyName + "ParseError;");
++            }
++        }
++
++        if (form.Fields.Count > 0) {
++            _ = sb.AppendLine();
++        }
++    }
++
++    private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor) {
++        _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
++        _ = sb.AppendLine("    {");
++        _ = sb.AppendLine("        _cts?.Cancel();");
++        _ = sb.AppendLine("        _cts = new CancellationTokenSource();");
++        _ = sb.AppendLine("        var correlationId = Guid.NewGuid().ToString();");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SubmittedAction(correlationId, _model));");
++        _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
++        _ = sb.AppendLine("        Logger?.LogInformation(\"Command submitted. CorrelationId={CorrelationId}\", correlationId);");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("        try");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            var result = await CommandService.DispatchAsync(");
++        _ = sb.AppendLine("                _model,");
++        _ = sb.AppendLine("                onLifecycleChange: (state, _) =>");
++        _ = sb.AppendLine("                {");
++        _ = sb.AppendLine("                    switch (state)");
++        _ = sb.AppendLine("                    {");
++        _ = sb.AppendLine("                        case CommandLifecycleState.Syncing:");
++        _ = sb.AppendLine("                            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SyncingAction(correlationId));");
++        _ = sb.AppendLine("                            break;");
++        _ = sb.AppendLine("                        case CommandLifecycleState.Confirmed:");
++        _ = sb.AppendLine("                            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ConfirmedAction(correlationId));");
++        _ = sb.AppendLine("                            break;");
++        _ = sb.AppendLine("                    }");
++        _ = sb.AppendLine("                },");
++        _ = sb.AppendLine("                cancellationToken: _cts.Token);");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId));");
++        _ = sb.AppendLine("        }");
++        _ = sb.AppendLine("        catch (CommandRejectedException ex)");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, ex.Message, ex.Resolution));");
++        _ = sb.AppendLine("            Logger?.LogWarning(\"Command rejected. CorrelationId={CorrelationId} Reason={Reason}\", correlationId, ex.Message);");
++        _ = sb.AppendLine("        }");
++        _ = sb.AppendLine("        catch (OperationCanceledException)");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            // Form disposed during submission. Ignore.");
++        _ = sb.AppendLine("        }");
++        _ = sb.AppendLine("    }");
++        _ = sb.AppendLine();
++    }
++
++    private static void EmitDispose(StringBuilder sb) {
++        _ = sb.AppendLine("    /// <inheritdoc />");
++        _ = sb.AppendLine("    public void Dispose()");
++        _ = sb.AppendLine("    {");
++        _ = sb.AppendLine("        _cts?.Cancel();");
++        _ = sb.AppendLine("        _cts?.Dispose();");
++        _ = sb.AppendLine("        if (_editContext is not null)");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            _editContext.OnFieldChanged -= OnEditContextFieldChanged;");
++        _ = sb.AppendLine("        }");
++        _ = sb.AppendLine("        LifecycleState.StateChanged -= OnStateChanged;");
++        _ = sb.AppendLine("    }");
++        _ = sb.AppendLine();
++    }
++
++    private static void EmitBuildRenderTree(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor, string escapedButtonLabel) {
++        _ = sb.AppendLine("    /// <inheritdoc />");
++        _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
++        _ = sb.AppendLine("    {");
++        _ = sb.AppendLine("        int seq = 0;");
++        _ = sb.AppendLine("        builder.OpenElement(seq++, \"div\");");
++        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"style\", \"max-width: 720px; margin: 0 auto;\");");
++        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", \"Send " + EscapeString(form.TypeName) + " command form\");");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("        builder.OpenComponent<EditForm>(seq++);");
++        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"EditContext\", _editContext);");
++        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OnValidSubmit\", EventCallback.Factory.Create<EditContext>(this, _ => OnValidSubmitAsync()));");
++        _ = sb.AppendLine("        RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            int cseq = 0;");
++        _ = sb.AppendLine("            __b.OpenComponent<DataAnnotationsValidator>(cseq++);");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("            __b.OpenComponent<FluentValidationSummary>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Model\", (object)_model);");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++
++        foreach (FormFieldModel field in form.Fields) {
++            EmitField(sb, field);
++        }
++
++        // Submit button
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("            __b.OpenComponent<FluentButton>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Type\", ButtonType.Submit);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Disabled\", LifecycleState.Value.State != CommandLifecycleState.Idle);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__btn =>");
++        _ = sb.AppendLine("            {");
++        _ = sb.AppendLine("                int bseq = 0;");
++        _ = sb.AppendLine("                if (LifecycleState.Value.State == CommandLifecycleState.Submitting)");
++        _ = sb.AppendLine("                {");
++        _ = sb.AppendLine("                    __btn.OpenComponent<FluentSpinner>(bseq++);");
++        _ = sb.AppendLine("                    __btn.AddAttribute(bseq++, \"Style\", \"width: 20px; height: 20px; margin-right: 8px;\");");
++        _ = sb.AppendLine("                    __btn.CloseComponent();");
++        _ = sb.AppendLine("                }");
++        _ = sb.AppendLine("                __btn.AddContent(bseq++, \"" + escapedButtonLabel + "\");");
++        _ = sb.AppendLine("            }));");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++        _ = sb.AppendLine("        });");
++        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", formBody);");
++        _ = sb.AppendLine("        builder.CloseComponent();");
++        _ = sb.AppendLine("        builder.CloseElement();");
++        _ = sb.AppendLine("    }");
++        _ = sb.AppendLine();
++    }
++
++    private static void EmitField(StringBuilder sb, FormFieldModel field) {
++        string propertyName = field.PropertyName;
++        string staticLabel = EscapeString(field.StaticLabel);
++        string isRequired = field.IsRequired ? "true" : "false";
++
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("            // Field: " + propertyName);
++
++        switch (field.TypeCategory) {
++            case FormFieldTypeCategory.TextInput:
++                EmitTextInput(sb, propertyName, staticLabel, isRequired, inputType: null, monospace: false);
++                break;
++            case FormFieldTypeCategory.NumberInput:
++                EmitNumericInput(sb, field, decimalMode: false);
++                break;
++            case FormFieldTypeCategory.DecimalInput:
++                EmitNumericInput(sb, field, decimalMode: true);
++                break;
++            case FormFieldTypeCategory.Switch:
++                EmitSwitch(sb, propertyName, staticLabel);
++                break;
++            case FormFieldTypeCategory.DatePicker:
++                EmitDatePicker(sb, field);
++                break;
++            case FormFieldTypeCategory.Select:
++                EmitEnumSelect(sb, field);
++                break;
++            case FormFieldTypeCategory.MonospaceText:
++                EmitTextInput(sb, propertyName, staticLabel, isRequired, inputType: null, monospace: true);
++                break;
++            case FormFieldTypeCategory.Placeholder:
++                EmitPlaceholder(sb, field);
++                break;
++        }
++    }
++
++    private static void EmitTextInput(StringBuilder sb, string propertyName, string staticLabel, string isRequired, string? inputType, bool monospace) {
++        _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => _model." + propertyName + " = v ?? string.Empty));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
++        if (inputType is not null) {
++            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType." + inputType + ");");
++        }
++
++        if (monospace) {
++            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Class\", \"fc-monospace\");");
++        }
++
++        _ = sb.AppendLine("            __b.CloseComponent();");
++    }
++
++    private static void EmitNumericInput(StringBuilder sb, FormFieldModel field, bool decimalMode) {
++        string propertyName = field.PropertyName;
++        string staticLabel = EscapeString(field.StaticLabel);
++        string isRequired = field.IsRequired ? "true" : "false";
++
++        _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _" + propertyName + "String ?? _model." + propertyName + ".ToString(CultureInfo.CurrentCulture));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => On" + propertyName + "Changed(v)));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType.Number);");
++        if (decimalMode) {
++            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"InputMode\", TextInputMode.Decimal);");
++        }
++
++        _ = sb.AppendLine("            if (!string.IsNullOrEmpty(_" + propertyName + "ParseError))");
++        _ = sb.AppendLine("            {");
++        _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"Message\", _" + propertyName + "ParseError);");
++        _ = sb.AppendLine("                __b.AddAttribute(cseq++, \"MessageState\", MessageState.Error);");
++        _ = sb.AppendLine("            }");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++    }
++
++    private static void EmitSwitch(StringBuilder sb, string propertyName, string staticLabel) {
++        _ = sb.AppendLine("            __b.OpenComponent<FluentSwitch>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<bool>(this, v => _model." + propertyName + " = v));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++    }
++
++    private static void EmitDatePicker(StringBuilder sb, FormFieldModel field) {
++        string propertyName = field.PropertyName;
++        string staticLabel = EscapeString(field.StaticLabel);
++        string valueType = field.TypeName switch {
++            "DateTime" => "DateTime",
++            "DateTimeOffset" => "DateTimeOffset",
++            "DateOnly" => "DateOnly",
++            _ => "DateTime",
++        };
++
++        string genericArg = field.IsNullable ? valueType + "?" : valueType;
++
++        _ = sb.AppendLine("            __b.OpenComponent<FluentDatePicker<" + genericArg + ">>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + genericArg + ">(this, v => _model." + propertyName + " = v));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++    }
++
++    private static void EmitEnumSelect(StringBuilder sb, FormFieldModel field) {
++        string propertyName = field.PropertyName;
++        string staticLabel = EscapeString(field.StaticLabel);
++        string enumFqn = field.EnumFullyQualifiedName ?? "object";
++
++        _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + enumFqn + ", " + enumFqn + ">>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + enumFqn + ">)System.Enum.GetValues<" + enumFqn + ">());");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + enumFqn + ">(this, v => _model." + propertyName + " = v));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"OptionText\", (Func<" + enumFqn + ", string>)(e => HumanizeEnumLabel(e.ToString() ?? string.Empty)));");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++    }
++
++    private static void EmitPlaceholder(StringBuilder sb, FormFieldModel field) {
++        string propertyName = field.PropertyName;
++        string typeName = EscapeString(field.TypeName);
++
++        _ = sb.AppendLine("            __b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>(cseq++);");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"FieldName\", \"" + EscapeString(propertyName) + "\");");
++        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TypeName\", \"" + typeName + "\");");
++        _ = sb.AppendLine("            __b.CloseComponent();");
++    }
++
++    private static void EmitNumericConverters(StringBuilder sb, CommandFormModel form) {
++        bool emittedHumanize = false;
++        foreach (FormFieldModel field in form.Fields) {
++            if (field.TypeCategory != FormFieldTypeCategory.Select) {
++                continue;
++            }
++
++            if (!emittedHumanize) {
++                EmitHumanizeHelper(sb);
++                emittedHumanize = true;
++            }
++        }
++
++        foreach (FormFieldModel field in form.Fields) {
++            if (field.TypeCategory != FormFieldTypeCategory.NumberInput
++                && field.TypeCategory != FormFieldTypeCategory.DecimalInput) {
++                continue;
++            }
++
++            string numericType = field.TypeName switch {
++                "Int32" => "int",
++                "Int64" => "long",
++                "Decimal" => "decimal",
++                "Double" => "double",
++                "Single" => "float",
++                _ => "int",
++            };
++
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("    private void On" + field.PropertyName + "Changed(string? value)");
++            _ = sb.AppendLine("    {");
++            _ = sb.AppendLine("        _" + field.PropertyName + "String = value;");
++            _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(value))");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            _model." + field.PropertyName + " = default;");
++            _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = null;");
++            _ = sb.AppendLine("            return;");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine("        if (" + numericType + ".TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out var parsed))");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            _model." + field.PropertyName + " = parsed;");
++            _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = null;");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine("        else");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = \"Invalid number format.\";");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine("    }");
++        }
++
++        if (form.Fields.Any(f => f.TypeCategory == FormFieldTypeCategory.NumberInput || f.TypeCategory == FormFieldTypeCategory.DecimalInput)) {
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("    private static System.Globalization.NumberStyles NumberStyles_Any => System.Globalization.NumberStyles.Any;");
++        }
++    }
++
++    private static void EmitHumanizeHelper(StringBuilder sb) {
++        int maxLen = CommandFormTransform.EnumOptionLabelMaxLength;
++        _ = sb.AppendLine();
++        _ = sb.AppendLine("    private static string HumanizeEnumLabel(string value)");
++        _ = sb.AppendLine("    {");
++        _ = sb.AppendLine("        if (string.IsNullOrEmpty(value)) return value;");
++        _ = sb.AppendLine("        var sb = new System.Text.StringBuilder(value.Length + 8);");
++        _ = sb.AppendLine("        for (int i = 0; i < value.Length; i++)");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            char c = value[i];");
++        _ = sb.AppendLine("            if (i == 0) { sb.Append(char.ToUpperInvariant(c)); continue; }");
++        _ = sb.AppendLine("            bool isUpper = c >= 'A' && c <= 'Z';");
++        _ = sb.AppendLine("            bool prevIsLower = value[i - 1] >= 'a' && value[i - 1] <= 'z';");
++        _ = sb.AppendLine("            if (isUpper && prevIsLower) { sb.Append(' '); sb.Append(c); }");
++        _ = sb.AppendLine("            else { sb.Append(c); }");
++        _ = sb.AppendLine("        }");
++        _ = sb.AppendLine("        string label = sb.ToString();");
++        _ = sb.AppendLine("        if (label.Length <= " + maxLen + ") return label;");
++        _ = sb.AppendLine("        return label.Substring(0, " + (maxLen - 1) + ") + \"\\u2026\";");
++        _ = sb.AppendLine("    }");
++    }
++
++    private static string EscapeString(string value) => value
++        .Replace("\\", "\\\\")
++        .Replace("\"", "\\\"")
++        .Replace("\n", "\\n")
++        .Replace("\r", "\\r")
++        .Replace("\t", "\\t")
++        .Replace("\0", "\\0");
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs
+index 4b13859..16120b2 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/FluxorActionsEmitter.cs
+@@ -30,23 +30,28 @@ public static class FluxorActionsEmitter {
+             _ = sb.AppendLine();
+         }
+ 
+-        // Actions (past-tense naming convention)
++        // Actions (past-tense naming convention, CorrelationId carries the per-dispatch trace id -- ADR-008)
+         _ = sb.AppendLine("/// <summary>");
+         _ = sb.AppendLine("/// Triggers data fetch for <see cref=\"" + model.TypeName + "\"/>.");
+         _ = sb.AppendLine("/// </summary>");
+-        _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction();");
++        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by all actions in this load cycle.</param>");
++        _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction(string CorrelationId);");
+         _ = sb.AppendLine();
+ 
+         _ = sb.AppendLine("/// <summary>");
+         _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeName + "\"/>.");
+         _ = sb.AppendLine("/// </summary>");
+-        _ = sb.AppendLine("public record " + model.TypeName + "LoadedAction(IReadOnlyList<" + model.TypeName + "> Items);");
++        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
++        _ = sb.AppendLine("/// <param name=\"Items\">The loaded projection items.</param>");
++        _ = sb.AppendLine("public record " + model.TypeName + "LoadedAction(string CorrelationId, IReadOnlyList<" + model.TypeName + "> Items);");
+         _ = sb.AppendLine();
+ 
+         _ = sb.AppendLine("/// <summary>");
+         _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeName + "\"/>.");
+         _ = sb.AppendLine("/// </summary>");
+-        _ = sb.AppendLine("public record " + model.TypeName + "LoadFailedAction(string Error);");
++        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
++        _ = sb.AppendLine("/// <param name=\"Error\">The failure reason.</param>");
++        _ = sb.AppendLine("public record " + model.TypeName + "LoadFailedAction(string CorrelationId, string Error);");
+ 
+         return sb.ToString();
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs
+index c16e981..b9eb802 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs
+@@ -46,11 +46,18 @@ public static class RegistrationEmitter {
+         _ = sb.AppendLine("    /// <summary>");
+         _ = sb.AppendLine("    /// Gets the domain manifest describing this projection's bounded context.");
+         _ = sb.AppendLine("    /// </summary>");
++        string projectionsList = model.IsCommand
++            ? "new List<string>()"
++            : "new List<string> { typeof(" + model.TypeName + ").FullName! }";
++        string commandsList = model.IsCommand
++            ? "new List<string> { typeof(" + model.TypeName + ").FullName! }"
++            : "new List<string>()";
++
+         _ = sb.AppendLine("    public static DomainManifest Manifest { get; } = new DomainManifest(");
+         _ = sb.AppendLine("        Name: \"" + EscapeString(displayName) + "\",");
+         _ = sb.AppendLine("        BoundedContext: \"" + EscapeString(model.BoundedContext) + "\",");
+-        _ = sb.AppendLine("        Projections: new List<string> { typeof(" + model.TypeName + ").FullName! },");
+-        _ = sb.AppendLine("        Commands: new List<string>());");
++        _ = sb.AppendLine("        Projections: " + projectionsList + ",");
++        _ = sb.AppendLine("        Commands: " + commandsList + ");");
+         _ = sb.AppendLine();
+ 
+         // RegisterDomain method
+diff --git a/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs b/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
+index b5ca26d..fb2c56e 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
+@@ -1,3 +1,4 @@
++using System.Collections.Immutable;
+ 
+ using Hexalith.FrontComposer.SourceTools.Diagnostics;
+ using Hexalith.FrontComposer.SourceTools.Emitters;
+@@ -8,17 +9,16 @@ using Microsoft.CodeAnalysis;
+ using Microsoft.CodeAnalysis.CSharp.Syntax;
+ 
+ namespace Hexalith.FrontComposer.SourceTools;
++
+ /// <summary>
+ /// Roslyn incremental source generator for the FrontComposer framework.
+-/// Discovers [Projection]-annotated types and builds a typed intermediate representation.
++/// Discovers [Projection]- and [Command]-annotated types and emits UI/Fluxor/registration artifacts.
+ /// </summary>
+ [Generator]
+ public sealed class FrontComposerGenerator : IIncrementalGenerator {
+     /// <inheritdoc />
+     public void Initialize(IncrementalGeneratorInitializationContext context) {
+-        // Parse stage: discover [Projection]-annotated types
+-        // ForAttributeWithMetadataName is the REQUIRED approach (not CreateSyntaxProvider)
+-        IncrementalValuesProvider<ParseResult> parseResults = context.SyntaxProvider
++        IncrementalValuesProvider<ParseResult> projectionResults = context.SyntaxProvider
+             .ForAttributeWithMetadataName(
+                 "Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute",
+                 predicate: static (node, _) => node is TypeDeclarationSyntax,
+@@ -26,42 +26,42 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
+             .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
+             .WithTrackingName("Parse");
+ 
+-        IncrementalValueProvider<System.Collections.Immutable.ImmutableArray<ParseResult>> collectedParseResults = parseResults.Collect();
+-        IncrementalValueProvider<System.Collections.Immutable.ImmutableArray<bool>> commandMatches = context.SyntaxProvider
++        IncrementalValuesProvider<CommandParseResult> commandResults = context.SyntaxProvider
+             .ForAttributeWithMetadataName(
+                 "Hexalith.FrontComposer.Contracts.Attributes.CommandAttribute",
+                 predicate: static (node, _) => node is TypeDeclarationSyntax,
+-                transform: static (_, _) => true)
+-            .Collect();
++                transform: static (ctx, ct) => CommandParser.Parse(ctx, ct))
++            .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
++            .WithTrackingName("ParseCommand");
+ 
+-        context.RegisterSourceOutput(collectedParseResults.Combine(commandMatches), static (spc, source) => {
+-            if (source.Left.Length == 0 && source.Right.Length == 0) {
+-                spc.ReportDiagnostic(Diagnostic.Create(
+-                    DiagnosticDescriptors.NoAnnotatedTypesFound,
+-                    Location.None,
+-                    "No [Command] or [Projection] types found in compilation"));
+-            }
+-        });
++        IncrementalValueProvider<ImmutableArray<ParseResult>> collectedProjections = projectionResults.Collect();
++        IncrementalValueProvider<ImmutableArray<CommandParseResult>> collectedCommands = commandResults.Collect();
+ 
+-        // Output registration -- unpack ParseResult, report diagnostics, forward model
+-        context.RegisterSourceOutput(parseResults, static (spc, result) => {
+-            // Report diagnostics collected during parse (cannot emit from transform callback)
++        context.RegisterSourceOutput(
++            collectedProjections.Combine(collectedCommands),
++            static (spc, source) => {
++                if (source.Left.Length == 0 && source.Right.Length == 0) {
++                    spc.ReportDiagnostic(Diagnostic.Create(
++                        DiagnosticDescriptors.NoAnnotatedTypesFound,
++                        Location.None,
++                        "No [Command] or [Projection] types found in compilation"));
++                }
++            });
++
++        context.RegisterSourceOutput(projectionResults, static (spc, result) => {
+             foreach (DiagnosticInfo diagInfo in result.Diagnostics) {
+                 spc.ReportDiagnostic(Diagnostic.Create(
+-                    GetDescriptor(diagInfo.Id),
++                    GetDescriptor(diagInfo.Id, diagInfo.Severity),
+                     diagInfo.ToLocation(),
+                     diagInfo.Message));
+             }
+ 
+             if (result.Model is not null) {
+-                // Transform
+                 RazorModel razorModel = RazorModelTransform.Transform(result.Model);
+                 FluxorModel fluxorModel = FluxorModelTransform.Transform(result.Model);
+                 RegistrationModel registrationModel = RegistrationModelTransform.Transform(result.Model);
+ 
+-                // Emit -- use namespace-qualified hint names to avoid collisions
+-                // between same-named projections in different namespaces
+-                string hintPrefix = GetQualifiedHintPrefix(result.Model);
++                string hintPrefix = GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName);
+                 spc.AddSource(hintPrefix + ".g.razor.cs", RazorEmitter.Emit(razorModel));
+                 spc.AddSource(hintPrefix + "Feature.g.cs", FluxorFeatureEmitter.Emit(fluxorModel));
+                 spc.AddSource(hintPrefix + "Actions.g.cs", FluxorActionsEmitter.EmitActions(fluxorModel));
+@@ -69,28 +69,54 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
+                 spc.AddSource(hintPrefix + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
+             }
+         });
+-    }
+ 
+-    private static string GetQualifiedHintPrefix(DomainModel model) {
+-        if (string.IsNullOrEmpty(model.Namespace)) {
+-            return model.TypeName;
+-        }
++        context.RegisterSourceOutput(commandResults, static (spc, result) => {
++            foreach (DiagnosticInfo diagInfo in result.Diagnostics) {
++                spc.ReportDiagnostic(Diagnostic.Create(
++                    GetDescriptor(diagInfo.Id, diagInfo.Severity),
++                    diagInfo.ToLocation(),
++                    diagInfo.Message));
++            }
++
++            if (result.Model is not null) {
++                CommandFluxorModel fluxorModel = CommandFluxorTransform.Transform(result.Model);
++                CommandFormModel formModel = CommandFormTransform.Transform(result.Model);
++                RegistrationModel registrationModel = RegistrationModelTransform.TransformCommand(result.Model);
+ 
+-        return model.Namespace + "." + model.TypeName;
++                string hintPrefix = GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName);
++                spc.AddSource(hintPrefix + "Form.g.razor.cs", CommandFormEmitter.Emit(formModel, fluxorModel));
++                spc.AddSource(hintPrefix + "Actions.g.cs", CommandFluxorActionsEmitter.Emit(fluxorModel));
++                spc.AddSource(hintPrefix + "LifecycleFeature.g.cs", CommandFluxorFeatureEmitter.Emit(fluxorModel));
++                spc.AddSource(hintPrefix + "CommandRegistration.g.cs", RegistrationEmitter.Emit(registrationModel));
++            }
++        });
+     }
+ 
+-    private static DiagnosticDescriptor GetDescriptor(string id) => id switch {
++    private static string GetQualifiedHintPrefix(string @namespace, string typeName)
++        => string.IsNullOrEmpty(@namespace) ? typeName : @namespace + "." + typeName;
++
++    private static DiagnosticDescriptor GetDescriptor(string id, string severity) => id switch {
+         "HFC1001" => DiagnosticDescriptors.NoAnnotatedTypesFound,
+         "HFC1002" => DiagnosticDescriptors.UnsupportedFieldType,
+         "HFC1003" => DiagnosticDescriptors.ProjectionShouldBePartial,
+         "HFC1004" => DiagnosticDescriptors.UnsupportedTypeKind,
+         "HFC1005" => DiagnosticDescriptors.InvalidAttributeArgument,
++        "HFC1006" => DiagnosticDescriptors.CommandMissingMessageId,
++        "HFC1007" => severity == "Error" ? CreateError(id, "Command has too many non-derivable properties") : DiagnosticDescriptors.CommandTooManyProperties,
+         _ => new DiagnosticDescriptor(
+-                            id,
+-                            "FrontComposer Diagnostic",
+-                            "{0}",
+-                            "HexalithFrontComposer",
+-                            DiagnosticSeverity.Warning,
+-                            isEnabledByDefault: true),
++            id,
++            "FrontComposer Diagnostic",
++            "{0}",
++            "HexalithFrontComposer",
++            DiagnosticSeverity.Warning,
++            isEnabledByDefault: true),
+     };
++
++    private static DiagnosticDescriptor CreateError(string id, string title) => new(
++        id: id,
++        title: title,
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Error,
++        isEnabledByDefault: true);
+ }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs b/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs
+index 64abd26..01aa437 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs
+@@ -242,6 +242,16 @@ public static class AttributeParser {
+         return null;
+     }
+ 
++    /// <summary>
++    /// Parses a single property symbol into a <see cref="PropertyModel"/>. Called by
++    /// <see cref="CommandParser"/> as well so unsupported-type diagnostics stay consistent.
++    /// </summary>
++    internal static PropertyModel ParsePropertyForCommand(
++        IPropertySymbol propertySymbol,
++        string containingTypeName,
++        List<DiagnosticInfo> diagnostics,
++        string filePath) => ParseProperty(propertySymbol, containingTypeName, diagnostics, filePath);
++
+     private static PropertyModel ParseProperty(
+         IPropertySymbol propertySymbol,
+         string containingTypeName,
+@@ -288,6 +298,8 @@ public static class AttributeParser {
+         // Map the type
+         string? irType = FieldTypeMapper.MapType(fullyQualifiedTypeName, isEnum);
+         bool isUnsupported = irType is null;
++        string? enumFqn = isEnum ? fullyQualifiedTypeName : null;
++        string? unsupportedFqn = isUnsupported ? fullyQualifiedTypeName : null;
+ 
+         if (isUnsupported) {
+             Location location = propertySymbol.Locations.FirstOrDefault() ?? Location.None;
+@@ -327,7 +339,9 @@ public static class AttributeParser {
+             isNullable,
+             isUnsupported,
+             displayName,
+-            badgeMappings);
++            badgeMappings,
++            enumFqn,
++            unsupportedFqn);
+     }
+ 
+     private static string? ParseDisplayAttribute(IPropertySymbol propertySymbol) {
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs b/src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs
+new file mode 100644
+index 0000000..7e51734
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs
+@@ -0,0 +1,273 @@
++using System.Collections.Immutable;
++
++using Microsoft.CodeAnalysis;
++using Microsoft.CodeAnalysis.CSharp;
++using Microsoft.CodeAnalysis.CSharp.Syntax;
++
++namespace Hexalith.FrontComposer.SourceTools.Parsing;
++
++/// <summary>
++/// Parses [Command]-annotated types into <see cref="CommandModel"/> IR.
++/// Pure function: no side effects, no Compilation references in output.
++/// </summary>
++public static class CommandParser {
++    /// <summary>
++    /// Property names that are classified as derivable by convention (filled by infrastructure).
++    /// </summary>
++    private static readonly HashSet<string> WellKnownDerivablePropertyNames = new(StringComparer.Ordinal) {
++        "MessageId",
++        "CommandId",
++        "CorrelationId",
++        "TenantId",
++        "UserId",
++        "Timestamp",
++        "CreatedAt",
++        "ModifiedAt",
++    };
++
++    private const string BoundedContextAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.BoundedContextAttribute";
++    private const string DerivedFromAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.DerivedFromAttribute";
++    private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
++
++    /// <summary>Warning threshold for non-derivable property count.</summary>
++    public const int NonDerivableWarningThreshold = 30;
++
++    /// <summary>Hard error threshold for non-derivable property count (DoS mitigation).</summary>
++    public const int NonDerivableErrorThreshold = 100;
++
++    private static readonly EquatableArray<DiagnosticInfo> EmptyDiagnostics = new(ImmutableArray<DiagnosticInfo>.Empty);
++    private static readonly CommandParseResult EmptyResult = new(null, EmptyDiagnostics);
++
++    /// <summary>
++    /// Parses a <see cref="GeneratorAttributeSyntaxContext"/> target symbol into a command IR.
++    /// </summary>
++    public static CommandParseResult Parse(GeneratorAttributeSyntaxContext context, CancellationToken ct) {
++        if (context.TargetSymbol is not INamedTypeSymbol typeSymbol) {
++            return EmptyResult;
++        }
++
++        return Parse(typeSymbol, context.TargetNode, ct);
++    }
++
++    /// <summary>
++    /// Parses a [Command]-annotated type symbol into a command IR plus any diagnostics.
++    /// </summary>
++    public static CommandParseResult Parse(INamedTypeSymbol typeSymbol, SyntaxNode targetNode, CancellationToken ct) {
++        if (ct.IsCancellationRequested) {
++            return EmptyResult;
++        }
++
++        List<DiagnosticInfo> diagnostics = [];
++        string filePath = targetNode.SyntaxTree.FilePath ?? string.Empty;
++        Microsoft.CodeAnalysis.Text.LinePosition linePos = targetNode.GetLocation().GetLineSpan().StartLinePosition;
++
++        ValidateTypeKind(typeSymbol, targetNode, diagnostics, filePath, linePos);
++
++        if (ct.IsCancellationRequested) {
++            return EmptyResult;
++        }
++
++        string typeName = typeSymbol.Name;
++        string ns = typeSymbol.ContainingNamespace?.IsGlobalNamespace == true
++            ? string.Empty
++            : typeSymbol.ContainingNamespace?.ToDisplayString() ?? string.Empty;
++
++        string? boundedContext = ParseBoundedContext(typeSymbol, out string? boundedContextDisplayLabel);
++        string? displayName = ParseDisplayAttribute(typeSymbol);
++
++        if (ct.IsCancellationRequested) {
++            return EmptyResult;
++        }
++
++        // Collect public, non-static, non-indexer properties, including inherited ones (e.g., MessageId on a base record).
++        ImmutableArray<PropertyModel>.Builder allBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
++        ImmutableArray<PropertyModel>.Builder derivableBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
++        ImmutableArray<PropertyModel>.Builder nonDerivableBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
++
++        HashSet<string> seenNames = new(StringComparer.Ordinal);
++        INamedTypeSymbol? currentType = typeSymbol;
++        while (currentType is not null && currentType.SpecialType != SpecialType.System_Object) {
++            foreach (ISymbol member in currentType.GetMembers()) {
++                if (ct.IsCancellationRequested) {
++                    return EmptyResult;
++                }
++
++                if (member is not IPropertySymbol propertySymbol
++                    || propertySymbol.DeclaredAccessibility != Accessibility.Public
++                    || propertySymbol.IsStatic
++                    || propertySymbol.IsIndexer) {
++                    continue;
++                }
++
++                // Skip record synthetic EqualityContract property.
++                if (propertySymbol.Name == "EqualityContract") {
++                    continue;
++                }
++
++                // Inherited override: keep the most-derived declaration only.
++                if (!seenNames.Add(propertySymbol.Name)) {
++                    continue;
++                }
++
++                PropertyModel property = AttributeParser.ParsePropertyForCommand(propertySymbol, typeName, diagnostics, filePath);
++                allBuilder.Add(property);
++
++                bool isDerivable = IsDerivableProperty(propertySymbol);
++                if (isDerivable) {
++                    derivableBuilder.Add(property);
++                }
++                else {
++                    nonDerivableBuilder.Add(property);
++                }
++            }
++
++            currentType = currentType.BaseType;
++        }
++
++        // Check MessageId presence (HFC1006).
++        if (!seenNames.Contains("MessageId")) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1006",
++                string.Format("[Command] type '{0}' is missing a 'MessageId' property. Add a string MessageId property (or inherit from a base record that provides it) so commands can be correlated end-to-end.", typeName),
++                "Warning",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++        }
++
++        int nonDerivableCount = nonDerivableBuilder.Count;
++        if (nonDerivableCount > NonDerivableErrorThreshold) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1007",
++                string.Format("[Command] type '{0}' has {1} non-derivable properties, exceeding the hard limit of {2}. Split the command into smaller aggregates.", typeName, nonDerivableCount, NonDerivableErrorThreshold),
++                "Error",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++        }
++        else if (nonDerivableCount > NonDerivableWarningThreshold) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1007",
++                string.Format("[Command] type '{0}' has {1} non-derivable properties, above the recommended limit of {2}. Consider splitting the command for better form ergonomics.", typeName, nonDerivableCount, NonDerivableWarningThreshold),
++                "Warning",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++        }
++
++        var model = new CommandModel(
++            typeName,
++            ns,
++            boundedContext,
++            boundedContextDisplayLabel,
++            displayName,
++            new EquatableArray<PropertyModel>(allBuilder.ToImmutable()),
++            new EquatableArray<PropertyModel>(derivableBuilder.ToImmutable()),
++            new EquatableArray<PropertyModel>(nonDerivableBuilder.ToImmutable()));
++
++        return new CommandParseResult(
++            model,
++            new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()));
++    }
++
++    private static bool IsDerivableProperty(IPropertySymbol propertySymbol) {
++        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
++            if (attr.AttributeClass?.ToDisplayString() == DerivedFromAttributeName) {
++                return true;
++            }
++        }
++
++        return WellKnownDerivablePropertyNames.Contains(propertySymbol.Name);
++    }
++
++    private static void ValidateTypeKind(
++        INamedTypeSymbol typeSymbol,
++        SyntaxNode targetNode,
++        List<DiagnosticInfo> diagnostics,
++        string filePath,
++        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
++        if (typeSymbol.TypeKind == TypeKind.Struct) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1004",
++                string.Format("[Command] attribute on '{0}' is not supported: structs are not supported. Only non-abstract, non-generic classes and records are supported.", typeSymbol.Name),
++                "Warning",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++        }
++
++        if (typeSymbol.IsAbstract) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1004",
++                string.Format("[Command] attribute on '{0}' is not supported: abstract types are not supported.", typeSymbol.Name),
++                "Warning",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++        }
++
++        if (typeSymbol.IsGenericType) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1004",
++                string.Format("[Command] attribute on '{0}' is not supported: generic types are not supported.", typeSymbol.Name),
++                "Warning",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++        }
++
++        if (typeSymbol.ContainingNamespace?.ToDisplayString().StartsWith("System", StringComparison.Ordinal) == true) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1004",
++                string.Format("[Command] attribute on '{0}' is not supported: command types must not live in the 'System' namespace.", typeSymbol.Name),
++                "Warning",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++        }
++    }
++
++    private static string? ParseBoundedContext(INamedTypeSymbol typeSymbol, out string? displayLabel) {
++        displayLabel = null;
++        INamedTypeSymbol? current = typeSymbol;
++        while (current is not null) {
++            foreach (AttributeData attr in current.GetAttributes()) {
++                if (attr.AttributeClass?.ToDisplayString() == BoundedContextAttributeName) {
++                    foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
++                        if (namedArg.Key == "DisplayLabel"
++                            && namedArg.Value.Value is string label
++                            && !string.IsNullOrWhiteSpace(label)) {
++                            displayLabel = label;
++                        }
++                    }
++
++                    if (attr.ConstructorArguments.Length > 0
++                        && attr.ConstructorArguments[0].Value is string name
++                        && !string.IsNullOrWhiteSpace(name)) {
++                        return name.Trim();
++                    }
++
++                    return null;
++                }
++            }
++
++            current = current.ContainingType;
++        }
++
++        return null;
++    }
++
++    private static string? ParseDisplayAttribute(INamedTypeSymbol typeSymbol) {
++        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
++            if (attr.AttributeClass?.ToDisplayString() == DisplayAttributeName) {
++                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
++                    if (namedArg.Key == "Name" && namedArg.Value.Value is string name) {
++                        return name;
++                    }
++                }
++            }
++        }
++
++        return null;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs b/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
+index 6793d5a..4a8e86b 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
+@@ -68,6 +68,126 @@ public sealed class DomainModel : IEquatable<DomainModel> {
+ 
+ }
+ 
++/// <summary>
++/// Intermediate representation of a [Command]-annotated type, produced by the
++/// Parse stage. Pure data -- no Roslyn symbol references. The property collection
++/// is split into derivable (infrastructure-sourced, hidden from the form) and
++/// non-derivable (user-input, rendered as form fields) subsets.
++/// </summary>
++public sealed class CommandModel : IEquatable<CommandModel> {
++    public CommandModel(
++        string typeName,
++        string @namespace,
++        string? boundedContext,
++        string? boundedContextDisplayLabel,
++        string? displayName,
++        EquatableArray<PropertyModel> properties,
++        EquatableArray<PropertyModel> derivableProperties,
++        EquatableArray<PropertyModel> nonDerivableProperties) {
++        TypeName = typeName;
++        Namespace = @namespace;
++        BoundedContext = boundedContext;
++        BoundedContextDisplayLabel = boundedContextDisplayLabel;
++        DisplayName = displayName;
++        Properties = properties;
++        DerivableProperties = derivableProperties;
++        NonDerivableProperties = nonDerivableProperties;
++    }
++
++    public string TypeName { get; }
++
++    public string Namespace { get; }
++
++    public string? BoundedContext { get; }
++
++    public string? BoundedContextDisplayLabel { get; }
++
++    public string? DisplayName { get; }
++
++    public EquatableArray<PropertyModel> Properties { get; }
++
++    public EquatableArray<PropertyModel> DerivableProperties { get; }
++
++    public EquatableArray<PropertyModel> NonDerivableProperties { get; }
++
++    public bool Equals(CommandModel? other) {
++        if (other is null) {
++            return false;
++        }
++
++        if (ReferenceEquals(this, other)) {
++            return true;
++        }
++
++        return TypeName == other.TypeName
++            && Namespace == other.Namespace
++            && BoundedContext == other.BoundedContext
++            && BoundedContextDisplayLabel == other.BoundedContextDisplayLabel
++            && DisplayName == other.DisplayName
++            && Properties == other.Properties
++            && DerivableProperties == other.DerivableProperties
++            && NonDerivableProperties == other.NonDerivableProperties;
++    }
++
++    public override bool Equals(object? obj) => Equals(obj as CommandModel);
++
++    public override int GetHashCode() {
++        unchecked {
++            int hash = 17;
++            hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (BoundedContextDisplayLabel?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (DisplayName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + Properties.GetHashCode();
++            hash = (hash * 31) + DerivableProperties.GetHashCode();
++            hash = (hash * 31) + NonDerivableProperties.GetHashCode();
++            return hash;
++        }
++    }
++}
++
++/// <summary>
++/// Result of parsing a [Command]-annotated type: the IR model (if valid) plus any diagnostics.
++/// Mirrors <see cref="ParseResult"/> for the projection pipeline.
++/// </summary>
++public sealed class CommandParseResult : IEquatable<CommandParseResult> {
++    public CommandParseResult(CommandModel? model, EquatableArray<DiagnosticInfo> diagnostics) {
++        Model = model;
++        Diagnostics = diagnostics;
++    }
++
++    public CommandModel? Model { get; }
++
++    public EquatableArray<DiagnosticInfo> Diagnostics { get; }
++
++    public bool Equals(CommandParseResult? other) {
++        if (other is null) {
++            return false;
++        }
++
++        if (ReferenceEquals(this, other)) {
++            return true;
++        }
++
++        bool modelsEqual = (Model is null && other.Model is null)
++            || (Model is not null && Model.Equals(other.Model));
++
++        return modelsEqual && Diagnostics == other.Diagnostics;
++    }
++
++    public override bool Equals(object? obj) => Equals(obj as CommandParseResult);
++
++    public override int GetHashCode() {
++        unchecked {
++            int hash = 17;
++            hash = (hash * 31) + (Model?.GetHashCode() ?? 0);
++            hash = (hash * 31) + Diagnostics.GetHashCode();
++            return hash;
++        }
++    }
++}
++
+ /// <summary>
+ /// IR representation of a single property on a [Projection]-annotated type.
+ /// </summary>
+@@ -78,13 +198,17 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+         bool isNullable,
+         bool isUnsupported,
+         string? displayName,
+-        EquatableArray<BadgeMappingEntry> badgeMappings) {
++        EquatableArray<BadgeMappingEntry> badgeMappings,
++        string? enumFullyQualifiedName = null,
++        string? unsupportedTypeFullyQualifiedName = null) {
+         Name = name;
+         TypeName = typeName;
+         IsNullable = isNullable;
+         IsUnsupported = isUnsupported;
+         DisplayName = displayName;
+         BadgeMappings = badgeMappings;
++        EnumFullyQualifiedName = enumFullyQualifiedName;
++        UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
+     }
+ 
+     public string Name { get; }
+@@ -99,6 +223,18 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+ 
+     public EquatableArray<BadgeMappingEntry> BadgeMappings { get; }
+ 
++    /// <summary>
++    /// Gets the fully qualified enum type name when <see cref="TypeName"/> is <c>"Enum"</c>.
++    /// Used by command form emission to populate <c>FluentSelect</c> items.
++    /// </summary>
++    public string? EnumFullyQualifiedName { get; }
++
++    /// <summary>
++    /// Gets the original fully qualified type name when <see cref="IsUnsupported"/> is <see langword="true"/>.
++    /// Surfaced to <c>FcFieldPlaceholder</c> so operators see the exact unsupported type.
++    /// </summary>
++    public string? UnsupportedTypeFullyQualifiedName { get; }
++
+     public bool Equals(PropertyModel? other) {
+         if (other is null) {
+             return false;
+@@ -113,7 +249,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+             && IsNullable == other.IsNullable
+             && IsUnsupported == other.IsUnsupported
+             && DisplayName == other.DisplayName
+-            && BadgeMappings == other.BadgeMappings;
++            && BadgeMappings == other.BadgeMappings
++            && EnumFullyQualifiedName == other.EnumFullyQualifiedName
++            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
+@@ -127,6 +265,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+             hash = (hash * 31) + IsUnsupported.GetHashCode();
+             hash = (hash * 31) + (DisplayName?.GetHashCode() ?? 0);
+             hash = (hash * 31) + BadgeMappings.GetHashCode();
++            hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFluxorModel.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFluxorModel.cs
+new file mode 100644
+index 0000000..f3919c9
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFluxorModel.cs
+@@ -0,0 +1,87 @@
++using Hexalith.FrontComposer.SourceTools.Parsing;
++
++namespace Hexalith.FrontComposer.SourceTools.Transforms;
++
++/// <summary>
++/// Output model for command-lifecycle Fluxor feature, actions, and reducers generation.
++/// </summary>
++/// <remarks>
++/// Unlike the projection Fluxor pipeline (Load/Loaded/LoadFailed), command features represent the
++/// 5-state lifecycle: Idle -&gt; Submitting -&gt; Acknowledged -&gt; Syncing -&gt; Confirmed / Rejected.
++/// </remarks>
++public sealed class CommandFluxorModel : IEquatable<CommandFluxorModel> {
++    public CommandFluxorModel(
++        string typeName,
++        string @namespace,
++        string stateName,
++        string featureName,
++        string actionsWrapperName,
++        string reducersClassName,
++        string commandFullyQualifiedName,
++        string featureQualifiedName) {
++        TypeName = typeName;
++        Namespace = @namespace;
++        StateName = stateName;
++        FeatureName = featureName;
++        ActionsWrapperName = actionsWrapperName;
++        ReducersClassName = reducersClassName;
++        CommandFullyQualifiedName = commandFullyQualifiedName;
++        FeatureQualifiedName = featureQualifiedName;
++    }
++
++    public string TypeName { get; }
++
++    public string Namespace { get; }
++
++    public string StateName { get; }
++
++    public string FeatureName { get; }
++
++    public string ActionsWrapperName { get; }
++
++    public string ReducersClassName { get; }
++
++    public string CommandFullyQualifiedName { get; }
++
++    /// <summary>
++    /// Gets the fully qualified feature name used by <see cref="Fluxor.Feature{T}.GetName"/>
++    /// (Decision D14: <c>{Namespace}.{TypeName}LifecycleState</c>).
++    /// </summary>
++    public string FeatureQualifiedName { get; }
++
++    public bool Equals(CommandFluxorModel? other) {
++        if (other is null) {
++            return false;
++        }
++
++        if (ReferenceEquals(this, other)) {
++            return true;
++        }
++
++        return TypeName == other.TypeName
++            && Namespace == other.Namespace
++            && StateName == other.StateName
++            && FeatureName == other.FeatureName
++            && ActionsWrapperName == other.ActionsWrapperName
++            && ReducersClassName == other.ReducersClassName
++            && CommandFullyQualifiedName == other.CommandFullyQualifiedName
++            && FeatureQualifiedName == other.FeatureQualifiedName;
++    }
++
++    public override bool Equals(object? obj) => Equals(obj as CommandFluxorModel);
++
++    public override int GetHashCode() {
++        unchecked {
++            int hash = 17;
++            hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (StateName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (FeatureName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (ActionsWrapperName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (ReducersClassName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (CommandFullyQualifiedName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (FeatureQualifiedName?.GetHashCode() ?? 0);
++            return hash;
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFluxorTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFluxorTransform.cs
+new file mode 100644
+index 0000000..848cf3f
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFluxorTransform.cs
+@@ -0,0 +1,35 @@
++using Hexalith.FrontComposer.SourceTools.Parsing;
++
++namespace Hexalith.FrontComposer.SourceTools.Transforms;
++
++/// <summary>
++/// Pure function that converts a <see cref="CommandModel"/> into a
++/// <see cref="CommandFluxorModel"/> describing its lifecycle feature.
++/// </summary>
++public static class CommandFluxorTransform {
++    /// <summary>
++    /// Transforms the command IR into Fluxor generation metadata.
++    /// </summary>
++    public static CommandFluxorModel Transform(CommandModel model) {
++        string stateName = model.TypeName + "LifecycleState";
++        string featureName = model.TypeName + "LifecycleFeature";
++        string actionsWrapper = model.TypeName + "Actions";
++        string reducers = model.TypeName + "Reducers";
++        string commandFqn = string.IsNullOrEmpty(model.Namespace)
++            ? model.TypeName
++            : model.Namespace + "." + model.TypeName;
++        string featureQualified = string.IsNullOrEmpty(model.Namespace)
++            ? stateName
++            : model.Namespace + "." + stateName;
++
++        return new CommandFluxorModel(
++            model.TypeName,
++            model.Namespace,
++            stateName,
++            featureName,
++            actionsWrapper,
++            reducers,
++            commandFqn,
++            featureQualified);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs
+new file mode 100644
+index 0000000..236a043
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs
+@@ -0,0 +1,107 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.SourceTools.Parsing;
++
++namespace Hexalith.FrontComposer.SourceTools.Transforms;
++
++/// <summary>
++/// Pure function that converts a <see cref="CommandModel"/> IR into a
++/// <see cref="CommandFormModel"/> describing the fields to render.
++/// </summary>
++public static class CommandFormTransform {
++    /// <summary>
++    /// Maximum character length for humanized enum option labels.
++    /// </summary>
++    public const int EnumOptionLabelMaxLength = 30;
++
++    /// <summary>
++    /// Transforms a command IR into a form rendering model.
++    /// </summary>
++    /// <param name="model">The command IR from the Parse stage.</param>
++    /// <returns>A ready-to-emit <see cref="CommandFormModel"/>.</returns>
++    public static CommandFormModel Transform(CommandModel model) {
++        ImmutableArray<FormFieldModel>.Builder fields = ImmutableArray.CreateBuilder<FormFieldModel>();
++        foreach (PropertyModel property in model.NonDerivableProperties) {
++            fields.Add(MapField(property));
++        }
++
++        string commandFqn = string.IsNullOrEmpty(model.Namespace)
++            ? model.TypeName
++            : model.Namespace + "." + model.TypeName;
++
++        string buttonLabel = BuildButtonLabel(model);
++
++        return new CommandFormModel(
++            model.TypeName,
++            model.Namespace,
++            model.BoundedContext,
++            commandFqn,
++            buttonLabel,
++            new EquatableArray<FormFieldModel>(fields.ToImmutable()));
++    }
++
++    private static FormFieldModel MapField(PropertyModel property) {
++        FormFieldTypeCategory category = MapCategory(property);
++        string staticLabel = ResolveLabel(property);
++        bool isRequired = !property.IsNullable && !property.IsUnsupported;
++
++        return new FormFieldModel(
++            property.Name,
++            property.TypeName,
++            category,
++            staticLabel,
++            property.IsNullable,
++            isRequired,
++            property.EnumFullyQualifiedName);
++    }
++
++    private static FormFieldTypeCategory MapCategory(PropertyModel property) {
++        if (property.IsUnsupported) {
++            return FormFieldTypeCategory.Placeholder;
++        }
++
++        return property.TypeName switch {
++            "String" => FormFieldTypeCategory.TextInput,
++            "Int32" or "Int64" => FormFieldTypeCategory.NumberInput,
++            "Decimal" or "Double" or "Single" => FormFieldTypeCategory.DecimalInput,
++            "Boolean" => FormFieldTypeCategory.Switch,
++            "DateTime" or "DateTimeOffset" or "DateOnly" => FormFieldTypeCategory.DatePicker,
++            "TimeOnly" => FormFieldTypeCategory.TextInput,
++            "Enum" => FormFieldTypeCategory.Select,
++            "Guid" => FormFieldTypeCategory.MonospaceText,
++            _ => FormFieldTypeCategory.Placeholder,
++        };
++    }
++
++    private static string ResolveLabel(PropertyModel property) {
++        if (!string.IsNullOrEmpty(property.DisplayName)) {
++            return property.DisplayName!;
++        }
++
++        string? humanized = CamelCaseHumanizer.Humanize(property.Name);
++        return string.IsNullOrEmpty(humanized) ? property.Name : humanized!;
++    }
++
++    private static string BuildButtonLabel(CommandModel model) {
++        if (!string.IsNullOrEmpty(model.DisplayName)) {
++            return "Send " + model.DisplayName;
++        }
++
++        string? humanized = CamelCaseHumanizer.Humanize(model.TypeName);
++        return "Send " + (string.IsNullOrEmpty(humanized) ? model.TypeName : humanized);
++    }
++
++    /// <summary>
++    /// Humanizes an enum member name and truncates it to <see cref="EnumOptionLabelMaxLength"/>.
++    /// Exposed for tests and for the emitter's inline helper generation.
++    /// </summary>
++    public static string HumanizeAndTruncateEnumMember(string memberName) {
++        string? humanized = CamelCaseHumanizer.Humanize(memberName);
++        string label = string.IsNullOrEmpty(humanized) ? memberName : humanized!;
++        if (label.Length <= EnumOptionLabelMaxLength) {
++            return label;
++        }
++
++        return label.Substring(0, EnumOptionLabelMaxLength - 1) + "\u2026";
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs
+new file mode 100644
+index 0000000..7325733
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs
+@@ -0,0 +1,154 @@
++using Hexalith.FrontComposer.SourceTools.Parsing;
++
++namespace Hexalith.FrontComposer.SourceTools.Transforms;
++
++/// <summary>
++/// Output model describing a single rendered field on an auto-generated command form.
++/// </summary>
++public sealed class FormFieldModel : IEquatable<FormFieldModel> {
++    public FormFieldModel(
++        string propertyName,
++        string typeName,
++        FormFieldTypeCategory typeCategory,
++        string staticLabel,
++        bool isNullable,
++        bool isRequired,
++        string? enumFullyQualifiedName) {
++        PropertyName = propertyName;
++        TypeName = typeName;
++        TypeCategory = typeCategory;
++        StaticLabel = staticLabel;
++        IsNullable = isNullable;
++        IsRequired = isRequired;
++        EnumFullyQualifiedName = enumFullyQualifiedName;
++    }
++
++    /// <summary>Gets the .NET property name (e.g., <c>Amount</c>).</summary>
++    public string PropertyName { get; }
++
++    /// <summary>Gets the IR type name produced by the parser (e.g., <c>Int32</c>, <c>Enum</c>).</summary>
++    public string TypeName { get; }
++
++    /// <summary>Gets the form-field rendering category.</summary>
++    public FormFieldTypeCategory TypeCategory { get; }
++
++    /// <summary>
++    /// Gets the compile-time label (from <c>[Display(Name)]</c>, humanized CamelCase, or raw name).
++    /// Runtime <c>IStringLocalizer</c> overrides this at render time when available.
++    /// </summary>
++    public string StaticLabel { get; }
++
++    /// <summary>Gets a value indicating whether the property type is nullable.</summary>
++    public bool IsNullable { get; }
++
++    /// <summary>
++    /// Gets a value indicating whether the field is required at the UI layer. Derived from
++    /// "not nullable" for reference types plus any additional signals.
++    /// </summary>
++    public bool IsRequired { get; }
++
++    /// <summary>
++    /// Gets the fully qualified enum type name when <see cref="TypeCategory"/> is
++    /// <see cref="FormFieldTypeCategory.Select"/>, otherwise <see langword="null"/>.
++    /// </summary>
++    public string? EnumFullyQualifiedName { get; }
++
++    public bool Equals(FormFieldModel? other) {
++        if (other is null) {
++            return false;
++        }
++
++        if (ReferenceEquals(this, other)) {
++            return true;
++        }
++
++        return PropertyName == other.PropertyName
++            && TypeName == other.TypeName
++            && TypeCategory == other.TypeCategory
++            && StaticLabel == other.StaticLabel
++            && IsNullable == other.IsNullable
++            && IsRequired == other.IsRequired
++            && EnumFullyQualifiedName == other.EnumFullyQualifiedName;
++    }
++
++    public override bool Equals(object? obj) => Equals(obj as FormFieldModel);
++
++    public override int GetHashCode() {
++        unchecked {
++            int hash = 17;
++            hash = (hash * 31) + (PropertyName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + TypeCategory.GetHashCode();
++            hash = (hash * 31) + (StaticLabel?.GetHashCode() ?? 0);
++            hash = (hash * 31) + IsNullable.GetHashCode();
++            hash = (hash * 31) + IsRequired.GetHashCode();
++            hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
++            return hash;
++        }
++    }
++}
++
++/// <summary>
++/// Output model for command form component generation. Mirrors <see cref="RazorModel"/>
++/// for the projection pipeline.
++/// </summary>
++public sealed class CommandFormModel : IEquatable<CommandFormModel> {
++    public CommandFormModel(
++        string typeName,
++        string @namespace,
++        string? boundedContext,
++        string commandFullyQualifiedName,
++        string buttonLabel,
++        EquatableArray<FormFieldModel> fields) {
++        TypeName = typeName;
++        Namespace = @namespace;
++        BoundedContext = boundedContext;
++        CommandFullyQualifiedName = commandFullyQualifiedName;
++        ButtonLabel = buttonLabel;
++        Fields = fields;
++    }
++
++    public string TypeName { get; }
++
++    public string Namespace { get; }
++
++    public string? BoundedContext { get; }
++
++    public string CommandFullyQualifiedName { get; }
++
++    public string ButtonLabel { get; }
++
++    public EquatableArray<FormFieldModel> Fields { get; }
++
++    public bool Equals(CommandFormModel? other) {
++        if (other is null) {
++            return false;
++        }
++
++        if (ReferenceEquals(this, other)) {
++            return true;
++        }
++
++        return TypeName == other.TypeName
++            && Namespace == other.Namespace
++            && BoundedContext == other.BoundedContext
++            && CommandFullyQualifiedName == other.CommandFullyQualifiedName
++            && ButtonLabel == other.ButtonLabel
++            && Fields == other.Fields;
++    }
++
++    public override bool Equals(object? obj) => Equals(obj as CommandFormModel);
++
++    public override int GetHashCode() {
++        unchecked {
++            int hash = 17;
++            hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (CommandFullyQualifiedName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (ButtonLabel?.GetHashCode() ?? 0);
++            hash = (hash * 31) + Fields.GetHashCode();
++            return hash;
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldTypeCategory.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldTypeCategory.cs
+new file mode 100644
+index 0000000..048de79
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldTypeCategory.cs
+@@ -0,0 +1,35 @@
++namespace Hexalith.FrontComposer.SourceTools.Transforms;
++
++/// <summary>
++/// Categorizes a command property type for form field rendering.
++/// </summary>
++/// <remarks>
++/// Command forms render a richer set of input controls than projection grids, so this
++/// enumeration is more granular than <see cref="TypeCategory"/>. The mapping drives the
++/// per-field emission table in the command form emitter.
++/// </remarks>
++public enum FormFieldTypeCategory {
++    /// <summary><c>FluentTextInput</c> with the default string binding.</summary>
++    TextInput,
++
++    /// <summary><c>FluentTextInput</c> with <c>TextInputType.Number</c> and an integer string-backing converter.</summary>
++    NumberInput,
++
++    /// <summary><c>FluentTextInput</c> with <c>TextInputType.Number</c>, <c>InputMode.Decimal</c>, and a decimal string-backing converter.</summary>
++    DecimalInput,
++
++    /// <summary><c>FluentSwitch</c> for a binary on/off toggle.</summary>
++    Switch,
++
++    /// <summary><c>FluentDatePicker&lt;TValue&gt;</c>.</summary>
++    DatePicker,
++
++    /// <summary><c>FluentSelect&lt;TEnum, TEnum&gt;</c> populated with enum members (humanized labels truncated to 30 chars).</summary>
++    Select,
++
++    /// <summary><c>FluentTextInput</c> styled with a monospace CSS class for identifier values (Guid, ULID).</summary>
++    MonospaceText,
++
++    /// <summary><c>FcFieldPlaceholder</c> indicating the field requires a custom renderer.</summary>
++    Placeholder,
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs
+index bfdb4a4..cc3edd1 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs
+@@ -8,11 +8,13 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+         string boundedContext,
+         string typeName,
+         string @namespace,
+-        string? displayLabel) {
++        string? displayLabel,
++        bool isCommand = false) {
+         BoundedContext = boundedContext;
+         TypeName = typeName;
+         Namespace = @namespace;
+         DisplayLabel = displayLabel;
++        IsCommand = isCommand;
+     }
+ 
+     public string BoundedContext { get; }
+@@ -23,6 +25,12 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+ 
+     public string? DisplayLabel { get; }
+ 
++    /// <summary>
++    /// Gets a value indicating whether the registered type is a command (otherwise a projection).
++    /// Drives the placement of <c>typeof(...).FullName</c> into <c>Commands</c> vs <c>Projections</c>.
++    /// </summary>
++    public bool IsCommand { get; }
++
+     public bool Equals(RegistrationModel? other) {
+         if (other is null) {
+             return false;
+@@ -35,7 +43,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+         return BoundedContext == other.BoundedContext
+             && TypeName == other.TypeName
+             && Namespace == other.Namespace
+-            && DisplayLabel == other.DisplayLabel;
++            && DisplayLabel == other.DisplayLabel
++            && IsCommand == other.IsCommand;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as RegistrationModel);
+@@ -47,6 +56,7 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (DisplayLabel?.GetHashCode() ?? 0);
++            hash = (hash * 31) + IsCommand.GetHashCode();
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs
+index bbd2563..3f60bb7 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs
+@@ -23,6 +23,21 @@ public static class RegistrationModelTransform {
+             model.BoundedContextDisplayLabel);
+     }
+ 
++    /// <summary>
++    /// Transforms a parsed command model into a registration output model.
++    /// </summary>
++    public static RegistrationModel TransformCommand(CommandModel model) {
++        string boundedContext = model.BoundedContext
++            ?? GetNamespaceLastSegment(model.Namespace);
++
++        return new RegistrationModel(
++            boundedContext,
++            model.TypeName,
++            model.Namespace,
++            model.BoundedContextDisplayLabel,
++            isCommand: true);
++    }
++
+     private static string GetNamespaceLastSegment(string @namespace) {
+         if (string.IsNullOrEmpty(@namespace)) {
+             return "Global";
+diff --git a/tests/Hexalith.FrontComposer.Contracts.Tests/CommandServiceExtensionsTests.cs b/tests/Hexalith.FrontComposer.Contracts.Tests/CommandServiceExtensionsTests.cs
+new file mode 100644
+index 0000000..6967afb
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Contracts.Tests/CommandServiceExtensionsTests.cs
+@@ -0,0 +1,73 @@
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++
++using Shouldly;
++
++using Xunit;
++
++namespace Hexalith.FrontComposer.Contracts.Tests;
++
++public class CommandServiceExtensionsTests {
++    [Fact]
++    public async Task DispatchAsync_CallbackOverload_FallsBackToBaseContract_WhenLifecycleIsUnsupported() {
++        BasicCommandService service = new();
++        using CancellationTokenSource cts = new();
++        bool callbackInvoked = false;
++
++        CommandResult result = await service.DispatchAsync(
++            new object(),
++            onLifecycleChange: (_, _) => callbackInvoked = true,
++            cancellationToken: cts.Token);
++
++        result.MessageId.ShouldBe("basic-message");
++        service.ObservedToken.ShouldBe(cts.Token);
++        callbackInvoked.ShouldBeFalse();
++    }
++
++    [Fact]
++    public async Task DispatchAsync_CallbackOverload_UsesLifecycleAwareImplementation_WhenAvailable() {
++        LifecycleAwareCommandService service = new();
++        using CancellationTokenSource cts = new();
++        List<CommandLifecycleState> observedStates = [];
++
++        CommandResult result = await ((ICommandService)service).DispatchAsync(
++            new object(),
++            onLifecycleChange: (state, _) => observedStates.Add(state),
++            cancellationToken: cts.Token);
++
++        result.MessageId.ShouldBe("lifecycle-message");
++        service.ObservedToken.ShouldBe(cts.Token);
++        observedStates.ShouldBe([CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed]);
++    }
++
++    private sealed class BasicCommandService : ICommandService {
++        public CancellationToken ObservedToken { get; private set; }
++
++        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
++            where TCommand : class {
++            ObservedToken = cancellationToken;
++            return Task.FromResult(new CommandResult("basic-message", "Accepted"));
++        }
++    }
++
++    private sealed class LifecycleAwareCommandService : ICommandServiceWithLifecycle {
++        public CancellationToken ObservedToken { get; private set; }
++
++        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
++            where TCommand : class {
++            ObservedToken = cancellationToken;
++            return Task.FromResult(new CommandResult("legacy-message", "Accepted"));
++        }
++
++        public Task<CommandResult> DispatchAsync<TCommand>(
++            TCommand command,
++            Action<CommandLifecycleState, string?>? onLifecycleChange,
++            CancellationToken cancellationToken = default)
++            where TCommand : class {
++            ObservedToken = cancellationToken;
++            onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, "lifecycle-message");
++            onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, "lifecycle-message");
++            return Task.FromResult(new CommandResult("lifecycle-message", "Accepted"));
++        }
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
+index cd4289d..0d205f3 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
+@@ -51,18 +51,20 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
+         IState<CounterProjectionState> state = provider.GetRequiredService<IState<CounterProjectionState>>();
+         IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
+ 
+-        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction());
++        string correlationId = Guid.NewGuid().ToString();
++        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
+         SpinWait.SpinUntil(() => state.Value.IsLoading, TimeSpan.FromSeconds(1)).ShouldBeTrue();
+ 
+         dispatcher.Dispatch(new CounterProjectionLoadedAction(
+-        [
+-            new CounterProjection
+-            {
+-                Id = "counter-1",
+-                Count = 2,
+-                LastUpdated = DateTimeOffset.UtcNow,
+-            },
+-        ]));
++            correlationId,
++            [
++                new CounterProjection
++                {
++                    Id = "counter-1",
++                    Count = 2,
++                    LastUpdated = DateTimeOffset.UtcNow,
++                },
++            ]));
+ 
+         SpinWait.SpinUntil(
+             () => !state.Value.IsLoading && state.Value.Items?.Count == 1,
+@@ -81,14 +83,15 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
+         using CultureScope _ = new(CultureInfo.InvariantCulture);
+ 
+         dispatcher.Dispatch(new CounterProjectionLoadedAction(
+-        [
+-            new CounterProjection
+-            {
+-                Id = "counter-1",
+-                Count = 1234,
+-                LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+-            },
+-        ]));
++            Guid.NewGuid().ToString(),
++            [
++                new CounterProjection
++                {
++                    Id = "counter-1",
++                    Count = 1234,
++                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
++                },
++            ]));
+ 
+         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+ 
+@@ -110,11 +113,12 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
+         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+ 
+         dispatcher.Dispatch(new StatusProjectionLoadedAction(
+-        [
+-            new StatusProjection { Name = null, IsEnabled = true },
+-            new StatusProjection { Name = "Beta", IsEnabled = false },
+-            new StatusProjection { Name = "Gamma", IsEnabled = null },
+-        ]));
++            Guid.NewGuid().ToString(),
++            [
++                new StatusProjection { Name = null, IsEnabled = true },
++                new StatusProjection { Name = "Beta", IsEnabled = false },
++                new StatusProjection { Name = "Gamma", IsEnabled = null },
++            ]));
+ 
+         IRenderedComponent<StatusProjectionView> cut = Render<StatusProjectionView>();
+ 
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs
+index 1c1e6ff..40fb20f 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs
+@@ -4,6 +4,9 @@ using Bunit;
+ 
+ using Fluxor;
+ 
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Shell.Services;
++
+ using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.FluentUI.AspNetCore.Components;
+ 
+@@ -16,11 +19,20 @@ public abstract class GeneratedComponentTestBase : BunitContext {
+         JSInterop.Mode = JSRuntimeMode.Loose;
+         _ = Services.AddFluentUIComponents();
+         _ = Services.AddLogging();
++        _ = Services.AddLocalization();
+         _ = Services.AddFluxor(o => {
+             foreach (Assembly assembly in scanAssemblies) {
+                 _ = o.ScanAssemblies(assembly);
+             }
+         });
++
++        // Zero-delay stub so bUnit tests stay deterministic under CI load.
++        _ = Services.Configure<StubCommandServiceOptions>(o => {
++            o.AcknowledgeDelayMs = 0;
++            o.SyncingDelayMs = 0;
++            o.ConfirmDelayMs = 0;
++        });
++        _ = Services.AddScoped<ICommandService, StubCommandService>();
+     }
+ 
+     protected async Task InitializeStoreAsync() {
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Registration/FrontComposerRegistryTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Registration/FrontComposerRegistryTests.cs
+index fa42449..0662c14 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Registration/FrontComposerRegistryTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Registration/FrontComposerRegistryTests.cs
+@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Registration;
+ using Hexalith.FrontComposer.Shell.Extensions;
+ 
+ using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Localization;
+ using Microsoft.Extensions.Logging;
+ 
+ using Shouldly;
+@@ -50,6 +51,16 @@ public class FrontComposerRegistryTests {
+         _ = registry.ShouldNotBeNull();
+     }
+ 
++    [Fact]
++    public void AddHexalithFrontComposer_RegistersLocalizationServices() {
++        ServiceCollection services = new();
++        _ = services.AddHexalithFrontComposer();
++        using ServiceProvider sp = services.BuildServiceProvider();
++
++        IStringLocalizer<FrontComposerRegistryTests> localizer = sp.GetRequiredService<IStringLocalizer<FrontComposerRegistryTests>>();
++        _ = localizer.ShouldNotBeNull();
++    }
++
+     [Fact]
+     public void AddHexalithFrontComposer_WithFluxorOptions_BackwardCompatible() {
+         // Parameterless call (backward compatible)
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Services/StubCommandServiceTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Services/StubCommandServiceTests.cs
+new file mode 100644
+index 0000000..deea8eb
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Services/StubCommandServiceTests.cs
+@@ -0,0 +1,161 @@
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Shell.Services;
++
++using Microsoft.Extensions.Options;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Services;
++
++public class StubCommandServiceTests {
++    private static StubCommandService BuildService(StubCommandServiceOptions options) {
++        return new StubCommandService(new OptionsSnapshotStub(options));
++    }
++
++    private static StubCommandServiceOptions ZeroDelays() => new() {
++        AcknowledgeDelayMs = 0,
++        SyncingDelayMs = 0,
++        ConfirmDelayMs = 0,
++    };
++
++    [Fact]
++    public async Task DispatchAsync_Acknowledgement_ReturnsCommandResultWithNonEmptyMessageId() {
++        StubCommandService service = BuildService(ZeroDelays());
++
++        CommandResult result = await service.DispatchAsync(new object(), cancellationToken: TestContext.Current.CancellationToken);
++
++        result.MessageId.ShouldNotBeNullOrEmpty();
++        result.Status.ShouldBe("Accepted");
++    }
++
++    [Fact]
++    public async Task DispatchAsync_Syncing_ThenConfirmed_CallbacksFireInOrder() {
++        StubCommandService service = BuildService(ZeroDelays());
++        List<CommandLifecycleState> observed = [];
++
++        await service.DispatchAsync(
++            new object(),
++            onLifecycleChange: (state, _) => {
++                lock (observed) {
++                    observed.Add(state);
++                }
++            },
++            cancellationToken: TestContext.Current.CancellationToken);
++
++        SpinWait.SpinUntil(() => observed.Count == 2, TimeSpan.FromSeconds(2)).ShouldBeTrue();
++        observed[0].ShouldBe(CommandLifecycleState.Syncing);
++        observed[1].ShouldBe(CommandLifecycleState.Confirmed);
++    }
++
++    [Fact]
++    public async Task DispatchAsync_Rejection_ThrowsCommandRejectedException() {
++        StubCommandServiceOptions options = ZeroDelays();
++        options.SimulateRejection = true;
++        options.RejectionReason = "domain failure";
++        options.RejectionResolution = "fix your input";
++        StubCommandService service = BuildService(options);
++
++        CommandRejectedException? caught = null;
++        try {
++            _ = await service.DispatchAsync(new object(), cancellationToken: TestContext.Current.CancellationToken);
++        }
++        catch (CommandRejectedException ex) {
++            caught = ex;
++        }
++
++        _ = caught.ShouldNotBeNull();
++        caught.Message.ShouldBe("domain failure");
++        caught.Resolution.ShouldBe("fix your input");
++    }
++
++    [Fact]
++    public async Task DispatchAsync_Rejection_DoesNotFireLifecycleCallbacks() {
++        StubCommandServiceOptions options = ZeroDelays();
++        options.SimulateRejection = true;
++        StubCommandService service = BuildService(options);
++        List<CommandLifecycleState> observed = [];
++
++        try {
++            _ = await service.DispatchAsync(
++                new object(),
++                onLifecycleChange: (state, _) => {
++                    lock (observed) {
++                        observed.Add(state);
++                    }
++                },
++                cancellationToken: TestContext.Current.CancellationToken);
++        }
++        catch (CommandRejectedException) {
++            // expected
++        }
++
++        // Wait a short time -- if a callback were going to fire, it would have by now.
++        await Task.Delay(50, TestContext.Current.CancellationToken);
++        observed.ShouldBeEmpty();
++    }
++
++    [Fact]
++    public async Task DispatchAsync_CancellationToken_StopsCallbackInvocation() {
++        StubCommandServiceOptions options = new() {
++            AcknowledgeDelayMs = 0,
++            SyncingDelayMs = 200,
++            ConfirmDelayMs = 200,
++        };
++        StubCommandService service = BuildService(options);
++        using CancellationTokenSource cts = new();
++        List<CommandLifecycleState> observed = [];
++
++        CommandResult result = await service.DispatchAsync(
++            new object(),
++            onLifecycleChange: (state, _) => {
++                lock (observed) {
++                    observed.Add(state);
++                }
++            },
++            cancellationToken: cts.Token);
++
++        result.MessageId.ShouldNotBeNullOrEmpty();
++        cts.Cancel();
++        await Task.Delay(300, TestContext.Current.CancellationToken);
++
++        observed.ShouldNotContain(CommandLifecycleState.Confirmed);
++    }
++
++    [Fact]
++    public async Task DispatchAsync_AcknowledgementDelayHonoursOptions() {
++        StubCommandServiceOptions options = new() {
++            AcknowledgeDelayMs = 100,
++            SyncingDelayMs = 0,
++            ConfirmDelayMs = 0,
++        };
++        StubCommandService service = BuildService(options);
++
++        System.Diagnostics.Stopwatch sw = System.Diagnostics.Stopwatch.StartNew();
++        _ = await service.DispatchAsync(new object(), cancellationToken: TestContext.Current.CancellationToken);
++        sw.Stop();
++
++        sw.ElapsedMilliseconds.ShouldBeGreaterThanOrEqualTo(80);
++    }
++
++    [Fact]
++    public async Task DispatchAsync_NullCommand_ThrowsArgumentNullException() {
++        StubCommandService service = BuildService(ZeroDelays());
++
++        ArgumentNullException? caught = null;
++        try {
++            _ = await service.DispatchAsync<object>(null!, cancellationToken: TestContext.Current.CancellationToken);
++        }
++        catch (ArgumentNullException ex) {
++            caught = ex;
++        }
++
++        _ = caught.ShouldNotBeNull();
++    }
++
++    private sealed class OptionsSnapshotStub : IOptionsSnapshot<StubCommandServiceOptions> {
++        public OptionsSnapshotStub(StubCommandServiceOptions value) => Value = value;
++        public StubCommandServiceOptions Value { get; }
++        public StubCommandServiceOptions Get(string? name) => Value;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/CompilationHelper.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/CompilationHelper.cs
+index 78af45e..4ece4a5 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/CompilationHelper.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/CompilationHelper.cs
+@@ -33,6 +33,10 @@ internal static class CompilationHelper {
+         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.ComponentBase));     // ASP.NET Components
+         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.InjectAttribute));   // ASP.NET Components
+         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder)); // ASP.NET Rendering
++        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Forms.EditContext)); // ASP.NET Forms
++        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Forms.EditForm));    // ASP.NET Components.Web
++        TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Localization.IStringLocalizer<>)); // Localization
++        TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Logging.ILogger<>));            // Logging
+         TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid<>));   // FluentUI
+ 
+         return refs.ToArray();
+@@ -84,6 +88,20 @@ internal static class CompilationHelper {
+         return AttributeParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
+     }
+ 
++    internal static CommandParseResult ParseCommand(string source, string metadataName, bool enableNullable = true)
++        => ParseCommand(CreateCompilation(source, enableNullable), metadataName);
++
++    internal static CommandParseResult ParseCommand(CSharpCompilation compilation, string metadataName) {
++        INamedTypeSymbol typeSymbol = compilation.GetTypeByMetadataName(metadataName)
++            ?? throw new InvalidOperationException($"Could not find command type '{metadataName}' in the test compilation.");
++
++        SyntaxReference syntaxReference = typeSymbol.DeclaringSyntaxReferences.FirstOrDefault()
++            ?? throw new InvalidOperationException($"Command type '{metadataName}' has no declaring syntax reference.");
++
++        SyntaxNode targetNode = syntaxReference.GetSyntax(TestContext.Current.CancellationToken);
++        return CommandParser.Parse(typeSymbol, targetNode, TestContext.Current.CancellationToken);
++    }
++
+     private static SyntaxTree CreateSyntaxTree(string source, string filePath)
+         => CSharpSyntaxTree.ParseText(source, path: filePath);
+ }
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFluxorEmitterTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFluxorEmitterTests.cs
+new file mode 100644
+index 0000000..8bb0ea9
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFluxorEmitterTests.cs
+@@ -0,0 +1,147 @@
++using Hexalith.FrontComposer.SourceTools.Emitters;
++using Hexalith.FrontComposer.SourceTools.Parsing;
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Microsoft.CodeAnalysis.CSharp;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
++
++public class CommandFluxorEmitterTests {
++    private static CommandFluxorModel BuildModel(string typeName = "IncrementCommand", string @namespace = "Counter.Domain") {
++        return new CommandFluxorModel(
++            typeName,
++            @namespace,
++            typeName + "LifecycleState",
++            typeName + "LifecycleFeature",
++            typeName + "Actions",
++            typeName + "Reducers",
++            @namespace + "." + typeName,
++            @namespace + "." + typeName + "LifecycleState");
++    }
++
++    [Fact]
++    public void Actions_Emit_ContainsAllFiveLifecycleRecords() {
++        string source = CommandFluxorActionsEmitter.Emit(BuildModel());
++
++        source.ShouldContain("sealed record SubmittedAction");
++        source.ShouldContain("sealed record AcknowledgedAction");
++        source.ShouldContain("sealed record SyncingAction");
++        source.ShouldContain("sealed record ConfirmedAction");
++        source.ShouldContain("sealed record RejectedAction");
++    }
++
++    [Fact]
++    public void Actions_Emit_ParsesAsValidCSharp() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        string source = CommandFluxorActionsEmitter.Emit(BuildModel());
++        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
++        tree.GetDiagnostics(ct).ShouldBeEmpty();
++    }
++
++    [Fact]
++    public void Feature_Emit_ContainsStateRecordFeatureAndReducers() {
++        string source = CommandFluxorFeatureEmitter.Emit(BuildModel());
++
++        source.ShouldContain("sealed record IncrementCommandLifecycleState");
++        source.ShouldContain("class IncrementCommandLifecycleFeature : Fluxor.Feature<IncrementCommandLifecycleState>");
++        source.ShouldContain("static class IncrementCommandReducers");
++        source.ShouldContain("[Fluxor.ReducerMethod]");
++    }
++
++    [Fact]
++    public void Feature_Emit_UsesFullyQualifiedStateName() {
++        string source = CommandFluxorFeatureEmitter.Emit(BuildModel());
++
++        source.ShouldContain("GetName() => \"Counter.Domain.IncrementCommandLifecycleState\"");
++    }
++
++    [Fact]
++    public void Feature_Emit_ReducersCoverAllFiveStates() {
++        string source = CommandFluxorFeatureEmitter.Emit(BuildModel());
++
++        source.ShouldContain("CommandLifecycleState.Submitting");
++        source.ShouldContain("CommandLifecycleState.Acknowledged");
++        source.ShouldContain("CommandLifecycleState.Syncing");
++        source.ShouldContain("CommandLifecycleState.Confirmed");
++        source.ShouldContain("CommandLifecycleState.Rejected");
++    }
++
++    [Fact]
++    public void Feature_Emit_ParsesAsValidCSharp() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        string source = CommandFluxorFeatureEmitter.Emit(BuildModel());
++        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
++        tree.GetDiagnostics(ct).ShouldBeEmpty();
++    }
++
++    [Fact]
++    public void Feature_Emit_DifferentNamespaces_ProduceDistinctGetNameValues() {
++        CommandFluxorModel fromNsA = BuildModel("Same", "Domain.A");
++        CommandFluxorModel fromNsB = BuildModel("Same", "Domain.B");
++
++        string a = CommandFluxorFeatureEmitter.Emit(fromNsA);
++        string b = CommandFluxorFeatureEmitter.Emit(fromNsB);
++
++        a.ShouldContain("\"Domain.A.SameLifecycleState\"");
++        b.ShouldContain("\"Domain.B.SameLifecycleState\"");
++    }
++
++    [Fact]
++    public void CommandFluxorModel_IEquatable_SameValues_Equal() {
++        CommandFluxorModel a = BuildModel();
++        CommandFluxorModel b = BuildModel();
++
++        a.Equals(b).ShouldBeTrue();
++        a.GetHashCode().ShouldBe(b.GetHashCode());
++    }
++
++    [Fact]
++    public void CommandFluxorModel_IEquatable_DifferentTypeName_NotEqual() {
++        CommandFluxorModel a = BuildModel("A");
++        CommandFluxorModel b = BuildModel("B");
++
++        a.Equals(b).ShouldBeFalse();
++    }
++
++    [Fact]
++    public void CommandFluxorTransform_ProducesExpectedNames() {
++        CommandModel command = new(
++            "FooCommand",
++            "Foo.Bar",
++            null,
++            null,
++            null,
++            new EquatableArray<PropertyModel>(System.Collections.Immutable.ImmutableArray<PropertyModel>.Empty),
++            new EquatableArray<PropertyModel>(System.Collections.Immutable.ImmutableArray<PropertyModel>.Empty),
++            new EquatableArray<PropertyModel>(System.Collections.Immutable.ImmutableArray<PropertyModel>.Empty));
++
++        CommandFluxorModel model = CommandFluxorTransform.Transform(command);
++
++        model.StateName.ShouldBe("FooCommandLifecycleState");
++        model.FeatureName.ShouldBe("FooCommandLifecycleFeature");
++        model.ActionsWrapperName.ShouldBe("FooCommandActions");
++        model.ReducersClassName.ShouldBe("FooCommandReducers");
++        model.FeatureQualifiedName.ShouldBe("Foo.Bar.FooCommandLifecycleState");
++        model.CommandFullyQualifiedName.ShouldBe("Foo.Bar.FooCommand");
++    }
++
++    [Fact]
++    public void Actions_Emit_ContainsCorrelationIdOnEveryRecord() {
++        string source = CommandFluxorActionsEmitter.Emit(BuildModel());
++
++        source.ShouldContain("SubmittedAction(string CorrelationId,");
++        source.ShouldContain("AcknowledgedAction(string CorrelationId,");
++        source.ShouldContain("SyncingAction(string CorrelationId)");
++        source.ShouldContain("ConfirmedAction(string CorrelationId)");
++        source.ShouldContain("RejectedAction(string CorrelationId,");
++    }
++
++    [Fact]
++    public void Feature_Emit_InitialStateIsIdle() {
++        string source = CommandFluxorFeatureEmitter.Emit(BuildModel());
++
++        source.ShouldContain("CommandLifecycleState.Idle");
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs
+new file mode 100644
+index 0000000..dbe0b5e
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs
+@@ -0,0 +1,171 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.SourceTools.Emitters;
++using Hexalith.FrontComposer.SourceTools.Parsing;
++using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Microsoft.CodeAnalysis.CSharp;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
++
++public class CommandFormEmitterTests {
++    private static CommandFluxorModel BuildFluxor(string typeName = "IncrementCommand", string @namespace = "Counter.Domain") {
++        return new CommandFluxorModel(
++            typeName,
++            @namespace,
++            typeName + "LifecycleState",
++            typeName + "LifecycleFeature",
++            typeName + "Actions",
++            typeName + "Reducers",
++            @namespace + "." + typeName,
++            @namespace + "." + typeName + "LifecycleState");
++    }
++
++    private static CommandFormModel BuildForm(IEnumerable<FormFieldModel> fields, string typeName = "IncrementCommand", string @namespace = "Counter.Domain") {
++        return new CommandFormModel(
++            typeName,
++            @namespace,
++            null,
++            @namespace + "." + typeName,
++            "Send " + typeName,
++            new EquatableArray<FormFieldModel>(fields.ToImmutableArray()));
++    }
++
++    [Fact]
++    public void Emit_ProducesValidCSharp() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CommandFormModel form = BuildForm([
++            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
++        ]);
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
++        tree.GetDiagnostics(ct).ShouldBeEmpty();
++    }
++
++    [Fact]
++    public void Emit_ProducesDeterministicOutputForSameInput() {
++        CommandFormModel form = BuildForm([
++            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
++        ]);
++        CommandFluxorModel fluxor = BuildFluxor();
++
++        string first = CommandFormEmitter.Emit(form, fluxor);
++        string second = CommandFormEmitter.Emit(form, fluxor);
++
++        first.ShouldBe(second);
++    }
++
++    [Fact]
++    public void Emit_RendersAllFieldCategoriesWithoutErrors() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        FormFieldModel[] fields = [
++            new("StringField", "String", FormFieldTypeCategory.TextInput, "String Field", false, true, null),
++            new("IntField", "Int32", FormFieldTypeCategory.NumberInput, "Int Field", false, true, null),
++            new("DecimalField", "Decimal", FormFieldTypeCategory.DecimalInput, "Decimal Field", false, true, null),
++            new("BoolField", "Boolean", FormFieldTypeCategory.Switch, "Bool Field", false, false, null),
++            new("DateField", "DateTime", FormFieldTypeCategory.DatePicker, "Date Field", false, true, null),
++            new("IdField", "Guid", FormFieldTypeCategory.MonospaceText, "Id Field", false, true, null),
++            new("UnknownField", "System.Object", FormFieldTypeCategory.Placeholder, "Unknown Field", true, false, null),
++        ];
++
++        string source = CommandFormEmitter.Emit(BuildForm(fields), BuildFluxor());
++
++        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
++        tree.GetDiagnostics(ct).ShouldBeEmpty();
++    }
++
++    [Fact]
++    public void Emit_IncludesEditFormAndDataAnnotationsValidator() {
++        CommandFormModel form = BuildForm([
++            new FormFieldModel("Name", "String", FormFieldTypeCategory.TextInput, "Name", false, true, null),
++        ]);
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        source.ShouldContain("OpenComponent<EditForm>");
++        source.ShouldContain("OpenComponent<DataAnnotationsValidator>");
++        source.ShouldContain("OpenComponent<FluentValidationSummary>");
++    }
++
++    [Fact]
++    public void Emit_ButtonDisabledWhenNotIdle() {
++        CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        source.ShouldContain("LifecycleState.Value.State != CommandLifecycleState.Idle");
++    }
++
++    [Fact]
++    public void Emit_SubmitDispatchesSubmittedThenAcknowledged() {
++        CommandFormModel form = BuildForm([
++            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
++        ]);
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        source.ShouldContain("IncrementCommandActions.SubmittedAction(correlationId, _model)");
++        source.ShouldContain("IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId)");
++        source.ShouldContain("IncrementCommandActions.SyncingAction(correlationId)");
++        source.ShouldContain("IncrementCommandActions.ConfirmedAction(correlationId)");
++        source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution)");
++    }
++
++    [Fact]
++    public void Emit_IncludesCancellationTokenSourceDisposal() {
++        CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        source.ShouldContain("_cts?.Cancel();");
++        source.ShouldContain("_cts?.Dispose();");
++    }
++
++    [Fact]
++    public void Emit_IncludesResolveLabelHelper() {
++        CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        source.ShouldContain("private string ResolveLabel(string propertyName, string staticLabel)");
++        source.ShouldContain("Localizer?[propertyName]");
++    }
++
++    [Fact]
++    public void Emit_DoesNotLogModelInstance() {
++        CommandFormModel form = BuildForm([
++            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
++        ]);
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        // Decision D15: never log _model
++        source.ShouldNotContain("_model,\n");
++        source.ShouldNotContain("LogInformation(\"Submitted command {Model}\"");
++    }
++
++    [Fact]
++    public void Emit_NumericFieldEmitsBackingStateAndHandler() {
++        CommandFormModel form = BuildForm([
++            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
++        ]);
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        source.ShouldContain("_AmountString");
++        source.ShouldContain("_AmountParseError");
++        source.ShouldContain("OnAmountChanged(string? value)");
++        source.ShouldContain("int.TryParse(value,");
++    }
++
++    [Fact]
++    public void Emit_EndToEnd_FromParsedCommand_CompilesSuccessfully() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CommandParseResult parse = CompilationHelper.ParseCommand(CommandTestSources.MultiFieldCommand, "TestDomain.PlaceOrderCommand");
++
++        _ = parse.Model.ShouldNotBeNull();
++        CommandFluxorModel fluxor = CommandFluxorTransform.Transform(parse.Model);
++        CommandFormModel form = CommandFormTransform.Transform(parse.Model);
++        string source = CommandFormEmitter.Emit(form, fluxor);
++
++        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
++        tree.GetDiagnostics(ct).ShouldBeEmpty();
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/FluxorActionsEmitterTests.Actions_Snapshot.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/FluxorActionsEmitterTests.Actions_Snapshot.verified.txt
+index 9b40733..b8e7d9b 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/FluxorActionsEmitterTests.Actions_Snapshot.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/FluxorActionsEmitterTests.Actions_Snapshot.verified.txt
+@@ -1,4 +1,4 @@
+-﻿// Generated by FrontComposer source generator
++// Generated by FrontComposer source generator
+ // Do not edit directly
+ 
+ #nullable enable
+@@ -10,14 +10,19 @@ namespace TestDomain;
+ /// <summary>
+ /// Triggers data fetch for <see cref="OrderProjection"/>.
+ /// </summary>
+-public record OrderProjectionLoadRequestedAction();
++/// <param name="CorrelationId">Trace identifier shared by all actions in this load cycle.</param>
++public record OrderProjectionLoadRequestedAction(string CorrelationId);
+ 
+ /// <summary>
+ /// Data arrived for <see cref="OrderProjection"/>.
+ /// </summary>
+-public record OrderProjectionLoadedAction(IReadOnlyList<OrderProjection> Items);
++/// <param name="CorrelationId">Trace identifier shared with the originating <see cref="OrderProjectionLoadRequestedAction"/>.</param>
++/// <param name="Items">The loaded projection items.</param>
++public record OrderProjectionLoadedAction(string CorrelationId, IReadOnlyList<OrderProjection> Items);
+ 
+ /// <summary>
+ /// Data fetch failed for <see cref="OrderProjection"/>.
+ /// </summary>
+-public record OrderProjectionLoadFailedAction(string Error);
++/// <param name="CorrelationId">Trace identifier shared with the originating <see cref="OrderProjectionLoadRequestedAction"/>.</param>
++/// <param name="Error">The failure reason.</param>
++public record OrderProjectionLoadFailedAction(string CorrelationId, string Error);
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs
+index 167f77b..46aa77b 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs
+@@ -136,8 +136,14 @@ public partial class SubmitOrderCommand
+         driver = driver.RunGenerators(compilation, ct);
+         GeneratorDriverRunResult result = driver.GetRunResult();
+ 
+-        result.GeneratedTrees.ShouldBeEmpty();
+         result.Diagnostics.Where(d => d.Id == "HFC1001").ShouldBeEmpty();
++        result.GeneratedTrees.Length.ShouldBe(4, "Command-only compilations should emit form, actions, lifecycle feature, and registration sources");
++
++        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
++            result.GeneratedTrees.ToArray());
++        outputCompilation.GetDiagnostics(ct)
++            .Where(d => d.Severity == DiagnosticSeverity.Error)
++            .ShouldBeEmpty("Generated command-only code should compile without errors");
+     }
+ 
+     [Fact]
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs
+new file mode 100644
+index 0000000..f6e1c59
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs
+@@ -0,0 +1,217 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.SourceTools.Parsing;
++using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
++
++public class CommandParserTests {
++    [Fact]
++    public void Parse_SingleStringFieldCommand_SeparatesMessageIdFromName() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.SingleStringFieldCommand, "TestDomain.SetNameCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.TypeName.ShouldBe("SetNameCommand");
++        result.Model.Namespace.ShouldBe("TestDomain");
++        result.Model.Properties.Count.ShouldBe(2);
++        result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(new[] { "MessageId" });
++        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(new[] { "Name" });
++    }
++
++    [Fact]
++    public void Parse_MultiFieldCommand_ClassifiesDerivableAndNonDerivable() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.MultiFieldCommand, "TestDomain.PlaceOrderCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.BoundedContext.ShouldBe("Orders");
++        result.Model.DerivableProperties.Select(p => p.Name).ShouldBe(new[] { "MessageId", "TenantId" }, ignoreOrder: true);
++        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldBe(new[] { "CustomerName", "Quantity", "TotalAmount", "Expedited", "OrderedAt" }, ignoreOrder: true);
++    }
++
++    [Fact]
++    public void Parse_RecordPositionalCommand_CapturesPositionalParams() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.RecordPositionalCommand, "TestDomain.IncrementCounterCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.Properties.Select(p => p.Name).ShouldContain("MessageId");
++        result.Model.Properties.Select(p => p.Name).ShouldContain("Amount");
++        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldContain("Amount");
++        result.Model.DerivableProperties.Select(p => p.Name).ShouldContain("MessageId");
++    }
++
++    [Fact]
++    public void Parse_RecordPropertyCommand_CapturesInitProperties() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.RecordPropertyCommand, "TestDomain.DecrementCounterCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.Properties.Count.ShouldBe(2);
++    }
++
++    [Fact]
++    public void Parse_EmptyCommand_ProducesModelWithSingleDerivableProperty() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.EmptyCommand, "TestDomain.EmptyCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.NonDerivableProperties.Count.ShouldBe(0);
++        result.Model.DerivableProperties.Count.ShouldBe(1);
++    }
++
++    [Fact]
++    public void Parse_MissingMessageId_EmitsHFC1006() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.MissingMessageIdCommand, "TestDomain.NoMessageIdCommand");
++
++        result.Diagnostics.Select(d => d.Id).ShouldContain("HFC1006");
++    }
++
++    [Fact]
++    public void Parse_DerivedFromAttribute_ClassifiesPropertyAsDerivable() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.DerivedFromAttributeCommand, "TestDomain.AnnotatedDerivedCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.DerivableProperties.Select(p => p.Name).ShouldContain("RequestIp");
++        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldContain("UserName");
++    }
++
++    [Theory]
++    [InlineData("MessageId")]
++    [InlineData("CommandId")]
++    [InlineData("CorrelationId")]
++    [InlineData("TenantId")]
++    [InlineData("UserId")]
++    [InlineData("Timestamp")]
++    [InlineData("CreatedAt")]
++    [InlineData("ModifiedAt")]
++    public void Parse_WellKnownDerivableProperty_IsClassifiedAsDerivable(string propertyName) {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.WellKnownDerivableCommand, "TestDomain.KitchenSinkCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.DerivableProperties.Select(p => p.Name).ShouldContain(propertyName);
++        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldNotContain(propertyName);
++    }
++
++    [Fact]
++    public void Parse_WellKnownDerivableCommand_PayloadIsNotDerivable() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.WellKnownDerivableCommand, "TestDomain.KitchenSinkCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.NonDerivableProperties.Select(p => p.Name).ShouldContain("Payload");
++    }
++
++    [Fact]
++    public void Parse_BaseRecordWithMessageId_InheritsFromBase() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.BaseRecordWithMessageId, "TestDomain.ChildCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.Properties.Select(p => p.Name).ShouldContain("MessageId");
++        result.Diagnostics.Select(d => d.Id).ShouldNotContain("HFC1006");
++    }
++
++    [Fact]
++    public void Parse_BaseClassWithMessageId_InheritsFromBase() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.BaseClassWithMessageId, "TestDomain.ChildClassCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.Properties.Select(p => p.Name).ShouldContain("MessageId");
++        result.Diagnostics.Select(d => d.Id).ShouldNotContain("HFC1006");
++    }
++
++    [Fact]
++    public void Parse_DisplayAttribute_CapturesDisplayName() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.DisplayAttributeCommand, "TestDomain.DisplayLabeledCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.DisplayName.ShouldBe("Place Order");
++        PropertyModel customerName = result.Model.Properties.Single(p => p.Name == "CustomerName");
++        customerName.DisplayName.ShouldBe("Customer Name");
++    }
++
++    [Fact]
++    public void Parse_UnsupportedFieldType_EmitsHFC1002() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.UnsupportedFieldCommand, "TestDomain.UnsupportedCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Diagnostics.Select(d => d.Id).ShouldContain("HFC1002");
++        PropertyModel raw = result.Model.Properties.Single(p => p.Name == "Raw");
++        raw.IsUnsupported.ShouldBeTrue();
++    }
++
++    [Fact]
++    public void Parse_TooManyProperties_WarningThreshold_EmitsHFC1007Warning() {
++        string source = CommandTestSources.TooManyPropertiesCommand(CommandParser.NonDerivableWarningThreshold + 1);
++        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.TooManyPropertiesCommand");
++
++        DiagnosticInfo? hfc1007 = result.Diagnostics.FirstOrDefault(d => d.Id == "HFC1007");
++        _ = hfc1007.ShouldNotBeNull();
++        hfc1007.Severity.ShouldBe("Warning");
++    }
++
++    [Fact]
++    public void Parse_TooManyProperties_ErrorThreshold_EmitsHFC1007Error() {
++        string source = CommandTestSources.TooManyPropertiesCommand(CommandParser.NonDerivableErrorThreshold + 1);
++        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.TooManyPropertiesCommand");
++
++        DiagnosticInfo? hfc1007 = result.Diagnostics.FirstOrDefault(d => d.Id == "HFC1007");
++        _ = hfc1007.ShouldNotBeNull();
++        hfc1007.Severity.ShouldBe("Error");
++    }
++
++    [Fact]
++    public void Parse_StructCommand_EmitsHFC1004() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.StructCommand, "TestDomain.StructCommand");
++
++        result.Diagnostics.Select(d => d.Id).ShouldContain("HFC1004");
++    }
++
++    [Fact]
++    public void Parse_SystemNamespaceCommand_EmitsHFC1004() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.SystemNamespaceCommand, "System.FakeNamespace.SystemNamespaceCommand");
++
++        result.Diagnostics.Select(d => d.Id).ShouldContain("HFC1004");
++    }
++
++    [Fact]
++    public void CommandModel_IEquatable_DifferentTypeName_NotEqual() {
++        CommandModel left = BuildModel("A");
++        CommandModel right = BuildModel("B");
++
++        left.Equals(right).ShouldBeFalse();
++        (left.GetHashCode() == right.GetHashCode()).ShouldBeFalse();
++    }
++
++    [Fact]
++    public void CommandModel_IEquatable_SameValues_Equal() {
++        CommandModel left = BuildModel("A");
++        CommandModel right = BuildModel("A");
++
++        left.Equals(right).ShouldBeTrue();
++        left.GetHashCode().ShouldBe(right.GetHashCode());
++    }
++
++    [Fact]
++    public void CommandModel_IEquatable_IsSymmetric() {
++        CommandModel left = BuildModel("A");
++        CommandModel right = BuildModel("A");
++
++        left.Equals(right).ShouldBe(right.Equals(left));
++    }
++
++    private static CommandModel BuildModel(string typeName) {
++        EquatableArray<BadgeMappingEntry> noBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
++        PropertyModel property = new("MessageId", "String", false, false, null, noBadges);
++        EquatableArray<PropertyModel> all = new(ImmutableArray.Create(property));
++        EquatableArray<PropertyModel> derivable = new(ImmutableArray.Create(property));
++        EquatableArray<PropertyModel> nonDerivable = new(ImmutableArray<PropertyModel>.Empty);
++
++        return new CommandModel(
++            typeName,
++            "TestDomain",
++            "TestContext",
++            null,
++            null,
++            all,
++            derivable,
++            nonDerivable);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs
+new file mode 100644
+index 0000000..9eb674f
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs
+@@ -0,0 +1,201 @@
++namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
++
++internal static class CommandTestSources {
++    internal const string SingleStringFieldCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public class SetNameCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++    public string Name { get; set; } = string.Empty;
++}";
++
++    internal const string MultiFieldCommand = @"
++using System;
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++[BoundedContext(""Orders"")]
++public class PlaceOrderCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++    public string TenantId { get; set; } = string.Empty;
++    public string CustomerName { get; set; } = string.Empty;
++    public int Quantity { get; set; }
++    public decimal TotalAmount { get; set; }
++    public bool Expedited { get; set; }
++    public DateTime OrderedAt { get; set; }
++}";
++
++    internal const string RecordPositionalCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public record IncrementCounterCommand(string MessageId, int Amount);";
++
++    internal const string RecordPropertyCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public record DecrementCounterCommand
++{
++    public string MessageId { get; init; } = string.Empty;
++    public int Amount { get; init; }
++}";
++
++    internal const string EmptyCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public class EmptyCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++}";
++
++    internal const string MissingMessageIdCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public class NoMessageIdCommand
++{
++    public string Name { get; set; } = string.Empty;
++}";
++
++    internal const string DerivedFromAttributeCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public class AnnotatedDerivedCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++    [DerivedFrom(DerivedFromSource.Context)]
++    public string RequestIp { get; set; } = string.Empty;
++    public string UserName { get; set; } = string.Empty;
++}";
++
++    internal const string WellKnownDerivableCommand = @"
++using System;
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public class KitchenSinkCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++    public string CommandId { get; set; } = string.Empty;
++    public string CorrelationId { get; set; } = string.Empty;
++    public string TenantId { get; set; } = string.Empty;
++    public string UserId { get; set; } = string.Empty;
++    public DateTime Timestamp { get; set; }
++    public DateTime CreatedAt { get; set; }
++    public DateTime ModifiedAt { get; set; }
++    public string Payload { get; set; } = string.Empty;
++}";
++
++    internal const string BaseRecordWithMessageId = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++public abstract record CommandBase(string MessageId);
++
++[Command]
++public record ChildCommand(string MessageId, string Extra) : CommandBase(MessageId);";
++
++    internal const string BaseClassWithMessageId = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++public class CommandBaseClass
++{
++    public string MessageId { get; set; } = string.Empty;
++}
++
++[Command]
++public class ChildClassCommand : CommandBaseClass
++{
++    public string Extra { get; set; } = string.Empty;
++}";
++
++    internal const string DisplayAttributeCommand = @"
++using System.ComponentModel.DataAnnotations;
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++[Display(Name=""Place Order"")]
++public class DisplayLabeledCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++    [Display(Name=""Customer Name"")]
++    public string CustomerName { get; set; } = string.Empty;
++}";
++
++    internal const string UnsupportedFieldCommand = @"
++using System.Collections.Generic;
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public class UnsupportedCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++    public object Raw { get; set; } = new();
++    public Dictionary<string, string> Map { get; set; } = new();
++}";
++
++    internal const string StructCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++public struct StructCommand
++{
++    public string MessageId { get; set; }
++}";
++
++    internal const string SystemNamespaceCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace System.FakeNamespace;
++
++[Command]
++public class SystemNamespaceCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++}";
++
++    internal static string TooManyPropertiesCommand(int count) {
++        var sb = new System.Text.StringBuilder();
++        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Attributes;");
++        _ = sb.AppendLine("namespace TestDomain;");
++        _ = sb.AppendLine("[Command]");
++        _ = sb.AppendLine("public class TooManyPropertiesCommand {");
++        _ = sb.AppendLine("    public string MessageId { get; set; } = string.Empty;");
++        for (int i = 0; i < count; i++) {
++            _ = sb.AppendLine("    public string Field" + i + " { get; set; } = string.Empty;");
++        }
++        _ = sb.AppendLine("}");
++        return sb.ToString();
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_AllFieldTypesProjection_Covers29Types.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_AllFieldTypesProjection_Covers29Types.verified.txt
+index 633bbe6..c8d28b2 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_AllFieldTypesProjection_Covers29Types.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_AllFieldTypesProjection_Covers29Types.verified.txt
+@@ -80,7 +80,8 @@
+       Name: StatusField,
+       TypeName: Enum,
+       IsNullable: false,
+-      IsUnsupported: false
++      IsUnsupported: false,
++      EnumFullyQualifiedName: TestDomain.ItemStatus
+     },
+     {
+       Name: NullableInt32,
+@@ -152,7 +153,8 @@
+       Name: NullableEnum,
+       TypeName: Enum,
+       IsNullable: true,
+-      IsUnsupported: false
++      IsUnsupported: false,
++      EnumFullyQualifiedName: TestDomain.ItemStatus
+     },
+     {
+       Name: NullableString,
+@@ -186,4 +188,4 @@
+       DisplayName: Item Name
+     }
+   ]
+-}
++}
+\ No newline at end of file
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_BadgeMappingProjection_ExtractsBadgeSlots.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_BadgeMappingProjection_ExtractsBadgeSlots.verified.txt
+index 99dddf7..b44688a 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_BadgeMappingProjection_ExtractsBadgeSlots.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/AttributeParserTests.Parse_BadgeMappingProjection_ExtractsBadgeSlots.verified.txt
+@@ -25,7 +25,8 @@
+           EnumMemberName: Failed,
+           Slot: Danger
+         }
+-      ]
++      ],
++      EnumFullyQualifiedName: TestDomain.OrderStatus
+     }
+   ]
+-}
++}
+\ No newline at end of file
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs
+new file mode 100644
+index 0000000..9f3b2f1
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs
+@@ -0,0 +1,204 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.SourceTools.Parsing;
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
++
++public class CommandFormTransformTests {
++    [Theory]
++    [InlineData("String", FormFieldTypeCategory.TextInput)]
++    [InlineData("Int32", FormFieldTypeCategory.NumberInput)]
++    [InlineData("Int64", FormFieldTypeCategory.NumberInput)]
++    [InlineData("Decimal", FormFieldTypeCategory.DecimalInput)]
++    [InlineData("Double", FormFieldTypeCategory.DecimalInput)]
++    [InlineData("Single", FormFieldTypeCategory.DecimalInput)]
++    [InlineData("Boolean", FormFieldTypeCategory.Switch)]
++    [InlineData("DateTime", FormFieldTypeCategory.DatePicker)]
++    [InlineData("DateTimeOffset", FormFieldTypeCategory.DatePicker)]
++    [InlineData("DateOnly", FormFieldTypeCategory.DatePicker)]
++    [InlineData("TimeOnly", FormFieldTypeCategory.TextInput)]
++    [InlineData("Enum", FormFieldTypeCategory.Select)]
++    [InlineData("Guid", FormFieldTypeCategory.MonospaceText)]
++    public void Transform_MapsTypeCategory(string typeName, FormFieldTypeCategory expected) {
++        PropertyModel property = BuildProperty(name: "Value", typeName: typeName);
++        CommandModel command = BuildCommand(nonDerivable: [property]);
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.Fields.Single().TypeCategory.ShouldBe(expected);
++    }
++
++    [Fact]
++    public void Transform_UnsupportedField_MapsToPlaceholder() {
++        PropertyModel property = BuildProperty(name: "Unsupported", typeName: "System.Object", isUnsupported: true);
++        CommandModel command = BuildCommand(nonDerivable: [property]);
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.Fields.Single().TypeCategory.ShouldBe(FormFieldTypeCategory.Placeholder);
++    }
++
++    [Fact]
++    public void Transform_UsesDisplayNameWhenSet() {
++        PropertyModel property = BuildProperty(name: "CustomerName", typeName: "String", displayName: "Customer Name");
++        CommandModel command = BuildCommand(nonDerivable: [property]);
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.Fields.Single().StaticLabel.ShouldBe("Customer Name");
++    }
++
++    [Fact]
++    public void Transform_HumanizesCamelCaseWhenDisplayAbsent() {
++        PropertyModel property = BuildProperty(name: "CustomerName", typeName: "String");
++        CommandModel command = BuildCommand(nonDerivable: [property]);
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.Fields.Single().StaticLabel.ShouldBe("Customer Name");
++    }
++
++    [Fact]
++    public void Transform_ButtonLabel_SimpleCommandName() {
++        CommandModel command = BuildCommand(typeName: "Foo");
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.ButtonLabel.ShouldBe("Send Foo");
++    }
++
++    [Fact]
++    public void Transform_ButtonLabel_MultiWordCommandName() {
++        CommandModel command = BuildCommand(typeName: "IncrementCounterCommand");
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.ButtonLabel.ShouldBe("Send Increment Counter Command");
++    }
++
++    [Fact]
++    public void Transform_ButtonLabel_UsesDisplayNameIfPresent() {
++        CommandModel command = BuildCommand(typeName: "SomeCommand", displayName: "Place Order");
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.ButtonLabel.ShouldBe("Send Place Order");
++    }
++
++    [Fact]
++    public void Transform_SkipsDerivableProperties() {
++        PropertyModel messageId = BuildProperty(name: "MessageId", typeName: "String");
++        PropertyModel amount = BuildProperty(name: "Amount", typeName: "Int32");
++        CommandModel command = BuildCommand(nonDerivable: [amount], derivable: [messageId]);
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.Fields.Select(f => f.PropertyName).ShouldBe(new[] { "Amount" });
++    }
++
++    [Fact]
++    public void Transform_ZeroNonDerivableFields_ProducesEmptyFieldArray() {
++        PropertyModel messageId = BuildProperty(name: "MessageId", typeName: "String");
++        CommandModel command = BuildCommand(derivable: [messageId]);
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.Fields.Count.ShouldBe(0);
++    }
++
++    [Fact]
++    public void HumanizeAndTruncateEnumMember_TruncatesLongNames() {
++        string input = "ThisIsAnExtremelyLongEnumMemberName";
++
++        string result = CommandFormTransform.HumanizeAndTruncateEnumMember(input);
++
++        result.Length.ShouldBeLessThanOrEqualTo(CommandFormTransform.EnumOptionLabelMaxLength);
++        result.ShouldEndWith("\u2026");
++    }
++
++    [Fact]
++    public void HumanizeAndTruncateEnumMember_ShortName_NotTruncated() {
++        string result = CommandFormTransform.HumanizeAndTruncateEnumMember("InProgress");
++        result.ShouldBe("In Progress");
++    }
++
++    [Fact]
++    public void FormFieldModel_IEquatable_SameValues_Equal() {
++        FormFieldModel a = new("A", "String", FormFieldTypeCategory.TextInput, "A", false, true, null);
++        FormFieldModel b = new("A", "String", FormFieldTypeCategory.TextInput, "A", false, true, null);
++
++        a.Equals(b).ShouldBeTrue();
++        a.GetHashCode().ShouldBe(b.GetHashCode());
++    }
++
++    [Fact]
++    public void FormFieldModel_IEquatable_DifferentCategory_NotEqual() {
++        FormFieldModel a = new("A", "String", FormFieldTypeCategory.TextInput, "A", false, true, null);
++        FormFieldModel b = new("A", "String", FormFieldTypeCategory.NumberInput, "A", false, true, null);
++
++        a.Equals(b).ShouldBeFalse();
++    }
++
++    [Fact]
++    public void CommandFormModel_IEquatable_SameFields_Equal() {
++        CommandFormModel a = BuildFormModel();
++        CommandFormModel b = BuildFormModel();
++
++        a.Equals(b).ShouldBeTrue();
++        a.GetHashCode().ShouldBe(b.GetHashCode());
++    }
++
++    [Fact]
++    public void CommandFormModel_IEquatable_DifferentButtonLabel_NotEqual() {
++        CommandFormModel a = BuildFormModel();
++        CommandFormModel b = new(a.TypeName, a.Namespace, a.BoundedContext, a.CommandFullyQualifiedName, "Different", a.Fields);
++
++        a.Equals(b).ShouldBeFalse();
++    }
++
++    private static CommandFormModel BuildFormModel() {
++        FormFieldModel field = new("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null);
++        EquatableArray<FormFieldModel> fields = new(ImmutableArray.Create(field));
++        return new CommandFormModel("FooCommand", "TestDomain", "Test", "TestDomain.FooCommand", "Send Foo Command", fields);
++    }
++
++    private static PropertyModel BuildProperty(
++        string name,
++        string typeName,
++        bool isNullable = false,
++        bool isUnsupported = false,
++        string? displayName = null,
++        string? enumFqn = null) {
++        return new PropertyModel(
++            name,
++            typeName,
++            isNullable,
++            isUnsupported,
++            displayName,
++            new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
++            enumFqn);
++    }
++
++    private static CommandModel BuildCommand(
++        string typeName = "TestCommand",
++        string @namespace = "TestDomain",
++        string? boundedContext = null,
++        string? displayName = null,
++        IReadOnlyList<PropertyModel>? nonDerivable = null,
++        IReadOnlyList<PropertyModel>? derivable = null) {
++        IReadOnlyList<PropertyModel> all = ((derivable ?? Array.Empty<PropertyModel>()).Concat(nonDerivable ?? Array.Empty<PropertyModel>())).ToList();
++
++        return new CommandModel(
++            typeName,
++            @namespace,
++            boundedContext,
++            null,
++            displayName,
++            new EquatableArray<PropertyModel>(all.ToImmutableArray()),
++            new EquatableArray<PropertyModel>((derivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()),
++            new EquatableArray<PropertyModel>((nonDerivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()));
++    }
++}

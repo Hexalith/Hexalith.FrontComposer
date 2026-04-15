@@ -74,6 +74,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private " + commandFqn + " _model = new();");
         _ = sb.AppendLine("    private EditContext? _editContext;");
         _ = sb.AppendLine("    private CancellationTokenSource? _cts;");
+        _ = sb.AppendLine("    private bool _disposed;");
         _ = sb.AppendLine("    /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>");
         _ = sb.AppendLine("    public bool IsDirty { get; private set; }");
         _ = sb.AppendLine();
@@ -98,8 +99,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            var localized = Localizer?[propertyName];");
-        _ = sb.AppendLine("            if (localized is not null && !localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))");
+        _ = sb.AppendLine("            var localized = Localizer[propertyName];");
+        _ = sb.AppendLine("            if (!localized.ResourceNotFound && !string.IsNullOrEmpty(localized.Value))");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                return localized.Value;");
         _ = sb.AppendLine("            }");
@@ -138,9 +139,27 @@ public static class CommandFormEmitter {
     private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor) {
         _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        _cts?.Cancel();");
+        _ = sb.AppendLine("        // State-guard against rapid double-click: only allow submit from terminal or idle state.");
+        _ = sb.AppendLine("        // (See code-review 2026-04-15, patch P19.)");
+        _ = sb.AppendLine("        var currentState = LifecycleState.Value.State;");
+        _ = sb.AppendLine("        if (currentState != CommandLifecycleState.Idle");
+        _ = sb.AppendLine("            && currentState != CommandLifecycleState.Rejected");
+        _ = sb.AppendLine("            && currentState != CommandLifecycleState.Confirmed)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Cancel + dispose the previous CTS before reassignment (patch P12 -- leak fix).");
+        _ = sb.AppendLine("        CancellationTokenSource? previous = _cts;");
         _ = sb.AppendLine("        _cts = new CancellationTokenSource();");
+        _ = sb.AppendLine("        if (previous is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            try { previous.Cancel(); } catch (ObjectDisposedException) { }");
+        _ = sb.AppendLine("            previous.Dispose();");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        var correlationId = Guid.NewGuid().ToString();");
+        _ = sb.AppendLine("        var cts = _cts;");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SubmittedAction(correlationId, _model));");
         _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
@@ -152,6 +171,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                _model,");
         _ = sb.AppendLine("                onLifecycleChange: (state, _) =>");
         _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    // Guard against callbacks arriving after form disposal or cancellation (patch P10).");
+        _ = sb.AppendLine("                    if (_disposed || cts.IsCancellationRequested) return;");
         _ = sb.AppendLine("                    switch (state)");
         _ = sb.AppendLine("                    {");
         _ = sb.AppendLine("                        case CommandLifecycleState.Syncing:");
@@ -162,18 +183,26 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                            break;");
         _ = sb.AppendLine("                    }");
         _ = sb.AppendLine("                },");
-        _ = sb.AppendLine("                cancellationToken: _cts.Token);");
+        _ = sb.AppendLine("                cancellationToken: cts.Token);");
         _ = sb.AppendLine();
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId));");
+        _ = sb.AppendLine("            Logger?.LogInformation(\"Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}\", correlationId, result.MessageId);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandRejectedException ex)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, ex.Message, ex.Resolution));");
+        _ = sb.AppendLine("            // Notify validation pipeline so any stale error state redraws (patch P16).");
+        _ = sb.AppendLine("            _editContext?.NotifyValidationStateChanged();");
         _ = sb.AppendLine("            Logger?.LogWarning(\"Command rejected. CorrelationId={CorrelationId} Reason={Reason}\", correlationId, ex.Message);");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (OperationCanceledException)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            // Form disposed during submission. Ignore.");
+        _ = sb.AppendLine("            // Form disposed during submission; the Dispose path already handles state cleanup.");
+        _ = sb.AppendLine("            if (!_disposed)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                // Submit was cancelled without disposal -- reset lifecycle so the user can retry (patch P11).");
+        _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction());");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -183,8 +212,12 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    public void Dispose()");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        _cts?.Cancel();");
+        _ = sb.AppendLine("        // Idempotent dispose (patch P18). Blazor can invoke Dispose more than once on teardown.");
+        _ = sb.AppendLine("        if (_disposed) return;");
+        _ = sb.AppendLine("        _disposed = true;");
+        _ = sb.AppendLine("        try { _cts?.Cancel(); } catch (ObjectDisposedException) { }");
         _ = sb.AppendLine("        _cts?.Dispose();");
+        _ = sb.AppendLine("        _cts = null;");
         _ = sb.AppendLine("        if (_editContext is not null)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            _editContext.OnFieldChanged -= OnEditContextFieldChanged;");
@@ -200,6 +233,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        int seq = 0;");
         _ = sb.AppendLine("        builder.OpenElement(seq++, \"div\");");
+        _ = sb.AppendLine("        // AC3 density: Comfortable by default (patch P13).");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", \"fc-command-form fc-density-comfortable\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"style\", \"max-width: 720px; margin: 0 auto;\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", \"Send " + EscapeString(form.TypeName) + " command form\");");
         _ = sb.AppendLine();
@@ -224,7 +259,11 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("            __b.OpenComponent<FluentButton>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Type\", ButtonType.Submit);");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Disabled\", LifecycleState.Value.State != CommandLifecycleState.Idle);");
+        _ = sb.AppendLine("            // Enable submit in Idle, Confirmed, or Rejected (terminals allow retry) -- patch P3.");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Disabled\",");
+        _ = sb.AppendLine("                LifecycleState.Value.State != CommandLifecycleState.Idle");
+        _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Confirmed");
+        _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Rejected);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__btn =>");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                int bseq = 0;");
@@ -391,6 +430,7 @@ public static class CommandFormEmitter {
                 continue;
             }
 
+            bool isInteger = field.TypeCategory == FormFieldTypeCategory.NumberInput;
             string numericType = field.TypeName switch {
                 "Int32" => "int",
                 "Int64" => "long",
@@ -400,31 +440,57 @@ public static class CommandFormEmitter {
                 _ => "int",
             };
 
+            // Restricted NumberStyles (patch P14): integer path forbids exponents/currency;
+            // float path allows decimal separators + thousands but still disallows currency / parentheses.
+            string numberStyles = isInteger
+                ? "NumberStyles.Integer | NumberStyles.AllowLeadingSign | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingWhite"
+                : "NumberStyles.Float | NumberStyles.AllowThousands";
+
+            bool propertyIsNullable = field.IsNullable;
+
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private void On" + field.PropertyName + "Changed(string? value)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        _" + field.PropertyName + "String = value;");
             _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(value))");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            _model." + field.PropertyName + " = default;");
-            _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = null;");
+            if (propertyIsNullable) {
+                _ = sb.AppendLine("            _model." + field.PropertyName + " = null;");
+                _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = null;");
+            }
+            else {
+                // Empty is ambiguous for a non-nullable value type; leave the previous value untouched
+                // and flag the input as required (patch P4).
+                _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = \"A number is required.\";");
+            }
+
             _ = sb.AppendLine("            return;");
             _ = sb.AppendLine("        }");
-            _ = sb.AppendLine("        if (" + numericType + ".TryParse(value, NumberStyles.Any, CultureInfo.CurrentCulture, out var parsed))");
+            _ = sb.AppendLine("        if (" + numericType + ".TryParse(value, " + numberStyles + ", CultureInfo.CurrentCulture, out var parsed))");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            _model." + field.PropertyName + " = parsed;");
-            _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = null;");
+            // Reject non-finite for floating-point types so NaN / Infinity cannot round-trip.
+            if (numericType is "double" or "float") {
+                _ = sb.AppendLine("            if (" + numericType + ".IsFinite(parsed))");
+                _ = sb.AppendLine("            {");
+                _ = sb.AppendLine("                _model." + field.PropertyName + " = parsed;");
+                _ = sb.AppendLine("                _" + field.PropertyName + "ParseError = null;");
+                _ = sb.AppendLine("            }");
+                _ = sb.AppendLine("            else");
+                _ = sb.AppendLine("            {");
+                _ = sb.AppendLine("                _" + field.PropertyName + "ParseError = \"NaN and Infinity are not allowed.\";");
+                _ = sb.AppendLine("            }");
+            }
+            else {
+                _ = sb.AppendLine("            _model." + field.PropertyName + " = parsed;");
+                _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = null;");
+            }
+
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        else");
             _ = sb.AppendLine("        {");
             _ = sb.AppendLine("            _" + field.PropertyName + "ParseError = \"Invalid number format.\";");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("    }");
-        }
-
-        if (form.Fields.Any(f => f.TypeCategory == FormFieldTypeCategory.NumberInput || f.TypeCategory == FormFieldTypeCategory.DecimalInput)) {
-            _ = sb.AppendLine();
-            _ = sb.AppendLine("    private static System.Globalization.NumberStyles NumberStyles_Any => System.Globalization.NumberStyles.Any;");
         }
     }
 

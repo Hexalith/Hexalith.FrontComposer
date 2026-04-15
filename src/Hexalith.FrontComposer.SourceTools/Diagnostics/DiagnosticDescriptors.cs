@@ -84,5 +84,30 @@ public static class DiagnosticDescriptors {
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    /// <summary>
+    /// HFC1008: [Command] property uses a <c>[Flags]</c> enum. Single-select controls cannot express composite values;
+    /// the field renders as <c>FcFieldPlaceholder</c> so adopters supply a multi-select renderer via the customization gradient.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandFlagsEnumProperty = new(
+        id: "HFC1008",
+        title: "Command property is a [Flags] enum (renders as placeholder)",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1009: [Command] type has no public parameterless constructor. The generated form initialises
+    /// <c>_model = new()</c>, which fails to compile for positional records and for classes without a default ctor.
+    /// Add a parameterless ctor, or provide defaults on every positional parameter.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandMissingParameterlessCtor = new(
+        id: "HFC1009",
+        title: "Command type has no parameterless constructor",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     // HFC1010 reserved — "Full restart required for this change type" (not yet implemented; requires analyzer, not generator — see docs/hot-reload-guide.md)
 }

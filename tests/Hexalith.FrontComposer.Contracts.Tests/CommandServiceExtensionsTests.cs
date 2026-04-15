@@ -9,19 +9,32 @@ namespace Hexalith.FrontComposer.Contracts.Tests;
 
 public class CommandServiceExtensionsTests {
     [Fact]
-    public async Task DispatchAsync_CallbackOverload_FallsBackToBaseContract_WhenLifecycleIsUnsupported() {
+    public async Task DispatchAsync_CallbackOverload_Throws_WhenCallbackSuppliedAndLifecycleUnsupported() {
+        // Loud-fail contract (ADR-010 amendment 2026-04-15): supplying onLifecycleChange to a
+        // non-lifecycle-aware service must throw so Syncing/Confirmed cannot be silently dropped.
         BasicCommandService service = new();
         using CancellationTokenSource cts = new();
-        bool callbackInvoked = false;
+
+        NotSupportedException ex = await Should.ThrowAsync<NotSupportedException>(async () => await service.DispatchAsync(
+            new object(),
+            onLifecycleChange: (_, _) => { },
+            cancellationToken: cts.Token).ConfigureAwait(true)).ConfigureAwait(true);
+
+        ex.Message.ShouldContain(nameof(ICommandServiceWithLifecycle));
+    }
+
+    [Fact]
+    public async Task DispatchAsync_CallbackOverload_FallsBackToBaseContract_WhenCallbackIsNull() {
+        BasicCommandService service = new();
+        using CancellationTokenSource cts = new();
 
         CommandResult result = await service.DispatchAsync(
             new object(),
-            onLifecycleChange: (_, _) => callbackInvoked = true,
+            onLifecycleChange: null,
             cancellationToken: cts.Token);
 
         result.MessageId.ShouldBe("basic-message");
         service.ObservedToken.ShouldBe(cts.Token);
-        callbackInvoked.ShouldBeFalse();
     }
 
     [Fact]

@@ -103,6 +103,29 @@ so that my development inner loop is fast and I'm protected against upstream Flu
 - [x] `[Review][Patch]` HFC1010 severity drift between `AnalyzerReleases.Unshipped.md` (`Info`) and `hot-reload-guide.md` §2 (intended as warning). Align the two or add a note in the guide that severity is not yet wired up. [`src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md:10`]
 - [x] `[Review][Patch]` Review Findings block above (three `[x]` bullets) references a prior unchecked state that the current diff has already altered (Task 1 now `[x]`, subtask 2.3 still `[ ]`, contingency doc baseline updated). Add a date/cycle marker so future readers can trace provenance. [`_bmad-output/implementation-artifacts/1-8-hot-reload-and-fluent-ui-contingency.md:86-88`]
 
+#### Review Findings — 2026-04-14 (third review: Story 1.8 scope only)
+
+BMAD code review re-run with scope limited to Story 1.8 (hot reload guide, Fluent UI contingency, incremental benchmarks, HFC1010 reservation, CI notes)—not Epic 2 command-form work. **Re-triage** of second-review items against the current branch:
+
+- [x] `[Review][Dismiss]` Benchmark warmup + **median** of N samples — **Implemented** in `IncrementalRebuildBenchmarkTests.IncrementalDeltaRebuild_AddOneProperty_CompletesUnder500ms`. [`tests/Hexalith.FrontComposer.SourceTools.Tests/Benchmarks/IncrementalRebuildBenchmarkTests.cs`]
+- [x] `[Review][Dismiss]` Malformed-projection **(c'')** (re-compile with `GeneratedTrees`, no new CS* errors) — **Implemented** in `MalformedProjection_ToleratedWithoutGeneratorException`. [same file]
+- [x] `[Review][Dismiss]` Misleading test name — **Renamed** to `MalformedProjection_ToleratedWithoutGeneratorException`. [same file]
+- [x] `[Review][Dismiss]` HFC1010 **severity drift** — **`docs/hot-reload-guide.md`** §2 "Diagnostic Reservation" states `Info` in `AnalyzerReleases.Unshipped.md` is tooling-only until the analyzer ships. [`docs/hot-reload-guide.md`]
+- [x] `[Review][Dismiss]` Fluent UI contingency **test count** — **`docs/fluent-ui-v5-contingency.md`** baseline updated to **204** tests (9 / 43 / 152). [`docs/fluent-ui-v5-contingency.md`]
+- [x] `[Review][Dismiss]` Task **2.3** / AC2 checkbox narrative — Tasks section checks **2.3** with explicit deferral for contract **(a)**. [this file, Tasks / Subtasks]
+- [x] `[Review][Dismiss]` Canary **`sed`/`jq` XML corruption** and **issue body URL** — **`docs/fluent-ui-v5-contingency.md`** §5 skeleton now includes a semver validation step before `sed`, documents fragility, and uses a full Actions run URL in `github-script` `body`. [`docs/fluent-ui-v5-contingency.md` §5]
+
+**Remaining (merge / repo hygiene—still open before PR merge)**
+
+- [ ] `[Review][Patch]` **Submodule gitlinks must not record `-dirty`:** Commit only clean `Hexalith.EventStore` / `Hexalith.Tenants` SHAs (or intentional bumps after `git submodule status` is clean). [`Hexalith.EventStore`, `Hexalith.Tenants`]
+- [ ] `[Review][Patch]` **`_bmad-output/implementation-artifacts/1-8-review-diff.patch`:** ~850-line captured diff duplicates git—remove, move out-of-repo, or justify retention in one sentence in this story's File List. [`_bmad-output/implementation-artifacts/1-8-review-diff.patch`]
+- [ ] `[Review][Patch]` **`.cursor/rules/codacy.mdc`:** Restoring the `provider` / `organization` / `repository` guidance block is recommended unless the removal was an intentional, separately-reviewed change (split PR). [`.cursor/rules/codacy.mdc`]
+- [ ] `[Review][Patch]` **`Directory.Packages.props`:** FsCheck package comment cites "Story 2.1" on a branch that is otherwise 1.8-focused—split commit or reword (e.g. "Epic 2 prep") for traceability. [`Directory.Packages.props`]
+
+**Deferred (already documented in CI; Epic 2 hardening)**
+
+- [x] `[Review][Defer]` **Perf vs functional CI:** Job-level `continue-on-error: true` still makes *all* `build-and-test` outcomes advisory; split `--filter Category=Performance` into its own step with targeted `continue-on-error` when Epic 2 removes the job-level flag (see **Gate 3** comment in `.github/workflows/ci.yml`). [`.github/workflows/ci.yml`]
+
 ## Dev Notes
 
 ### Critical Architecture Constraint: Source Generator Output and Hot Reload

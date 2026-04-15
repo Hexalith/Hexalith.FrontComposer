@@ -52,9 +52,13 @@ public class FrontComposerRegistryTests {
     }
 
     [Fact]
-    public void AddHexalithFrontComposer_RegistersLocalizationServices() {
+    public void AddHexalithFrontComposer_DoesNotForceLocalization_AdopterOwnsIt() {
+        // Since 2026-04-15 Shell no longer FrameworkReferences Microsoft.AspNetCore.App
+        // and no longer calls AddLocalization inside AddHexalithFrontComposer. The adopter is
+        // expected to call services.AddLocalization() themselves when they need IStringLocalizer.
         ServiceCollection services = new();
         _ = services.AddHexalithFrontComposer();
+        _ = services.AddLocalization();
         using ServiceProvider sp = services.BuildServiceProvider();
 
         IStringLocalizer<FrontComposerRegistryTests> localizer = sp.GetRequiredService<IStringLocalizer<FrontComposerRegistryTests>>();

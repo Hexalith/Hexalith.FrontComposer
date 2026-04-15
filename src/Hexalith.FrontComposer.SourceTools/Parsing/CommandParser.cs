@@ -67,6 +67,23 @@ public static class CommandParser {
             return EmptyResult;
         }
 
+        // HFC1009: emitted form body uses `_model = new()`; commands without a public parameterless
+        // ctor (positional records, classes with only parameterised ctors) would generate uncompilable
+        // code. Surface a build error so the adopter fixes the command shape. (Patch P1.)
+        if (!HasPublicParameterlessConstructor(typeSymbol)) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1009",
+                string.Format(
+                    "[Command] type '{0}' has no public parameterless constructor. The generated form requires 'new {0}()' to build the form model. Add a parameterless constructor, or give every positional parameter a default value.",
+                    typeSymbol.Name),
+                "Error",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+
+            return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
+        }
+
         string typeName = typeSymbol.Name;
         string ns = typeSymbol.ContainingNamespace?.IsGlobalNamespace == true
             ? string.Empty
@@ -170,14 +187,68 @@ public static class CommandParser {
             new EquatableArray<DiagnosticInfo>(diagnostics.ToImmutableArray()));
     }
 
-    private static bool IsDerivableProperty(IPropertySymbol propertySymbol) {
-        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
-            if (attr.AttributeClass?.ToDisplayString() == DerivedFromAttributeName) {
+    private static bool HasPublicParameterlessConstructor(INamedTypeSymbol typeSymbol) {
+        foreach (IMethodSymbol ctor in typeSymbol.InstanceConstructors) {
+            if (ctor.DeclaredAccessibility != Accessibility.Public) {
+                continue;
+            }
+
+            if (ctor.Parameters.Length == 0) {
+                return true;
+            }
+
+            // A ctor whose parameters all have default values (including positional record
+            // primary ctors like `record Foo(string A = "", int B = 0)`) is callable as `new Foo()`.
+            bool allOptional = true;
+            foreach (IParameterSymbol parameter in ctor.Parameters) {
+                if (!parameter.HasExplicitDefaultValue) {
+                    allOptional = false;
+                    break;
+                }
+            }
+
+            if (allOptional) {
                 return true;
             }
         }
 
+        return false;
+    }
+
+    private static bool IsDerivableProperty(IPropertySymbol propertySymbol) {
+        // Walk the property's inheritance chain (override / shadow / base positional params):
+        // attributes placed on a base declaration must still be discoverable when a derived
+        // record shadows the property (see code-review 2026-04-15, patch P15).
+        IPropertySymbol? current = propertySymbol;
+        while (current is not null) {
+            foreach (AttributeData attr in current.GetAttributes()) {
+                if (attr.AttributeClass?.ToDisplayString() == DerivedFromAttributeName) {
+                    return true;
+                }
+            }
+
+            current = current.OverriddenProperty ?? FindShadowedProperty(current);
+        }
+
         return WellKnownDerivablePropertyNames.Contains(propertySymbol.Name);
+    }
+
+    private static IPropertySymbol? FindShadowedProperty(IPropertySymbol propertySymbol) {
+        INamedTypeSymbol? baseType = propertySymbol.ContainingType?.BaseType;
+        while (baseType is not null && baseType.SpecialType != SpecialType.System_Object) {
+            foreach (ISymbol member in baseType.GetMembers(propertySymbol.Name)) {
+                if (member is IPropertySymbol basePropertySymbol
+                    && basePropertySymbol.DeclaredAccessibility == Accessibility.Public
+                    && !basePropertySymbol.IsStatic
+                    && !basePropertySymbol.IsIndexer) {
+                    return basePropertySymbol;
+                }
+            }
+
+            baseType = baseType.BaseType;
+        }
+
+        return null;
     }
 
     private static void ValidateTypeKind(

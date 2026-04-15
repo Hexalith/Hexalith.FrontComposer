@@ -12,6 +12,9 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddFluentUIComponents();
 
+// Adopter owns AddLocalization (Shell no longer FrameworkReferences Microsoft.AspNetCore.App).
+builder.Services.AddLocalization();
+
 builder.Services.AddHexalithFrontComposer(
     o => o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly));
 builder.Services.AddHexalithDomain<CounterDomain>();

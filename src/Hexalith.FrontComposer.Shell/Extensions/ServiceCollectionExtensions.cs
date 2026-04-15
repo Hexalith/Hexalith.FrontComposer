@@ -87,8 +87,16 @@ public static class ServiceCollectionExtensions {
     /// </para>
     /// </summary>
     /// <remarks>
+    /// <para>
     /// DI scope divergence: on Blazor Server, services are scoped per circuit;
     /// on Blazor WebAssembly, services are scoped per application instance.
+    /// </para>
+    /// <para>
+    /// Adopters must call <c>services.AddLocalization()</c> themselves when they use
+    /// <see cref="Microsoft.Extensions.Localization.IStringLocalizer{T}"/> for command-form
+    /// labels. Shell no longer pulls in the ASP.NET Core shared framework automatically so
+    /// non-web consumers are not forced to carry it.
+    /// </para>
     /// </remarks>
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configureFluxor">Optional callback to configure additional Fluxor options (e.g., scan consumer assemblies).</param>
@@ -96,7 +104,6 @@ public static class ServiceCollectionExtensions {
     public static IServiceCollection AddHexalithFrontComposer(
         this IServiceCollection services,
         Action<FluxorOptions>? configureFluxor = null) {
-        _ = services.AddLocalization();
         _ = services.AddLogging();
         _ = services.AddFluxor(o => {
             _ = o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);

@@ -83,11 +83,14 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 CommandFormModel formModel = CommandFormTransform.Transform(result.Model);
                 RegistrationModel registrationModel = RegistrationModelTransform.TransformCommand(result.Model);
 
-                string hintPrefix = GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName);
+                // Suffix with ".Command" segment so command-pipeline hints never collide with
+                // projection-pipeline hints when a type carries both attributes.
+                // (See code-review 2026-04-15, patch P6.)
+                string hintPrefix = GetQualifiedHintPrefix(result.Model.Namespace, result.Model.TypeName) + ".Command";
                 spc.AddSource(hintPrefix + "Form.g.razor.cs", CommandFormEmitter.Emit(formModel, fluxorModel));
                 spc.AddSource(hintPrefix + "Actions.g.cs", CommandFluxorActionsEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "LifecycleFeature.g.cs", CommandFluxorFeatureEmitter.Emit(fluxorModel));
-                spc.AddSource(hintPrefix + "CommandRegistration.g.cs", RegistrationEmitter.Emit(registrationModel));
+                spc.AddSource(hintPrefix + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
             }
         });
     }
@@ -103,6 +106,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1005" => DiagnosticDescriptors.InvalidAttributeArgument,
         "HFC1006" => DiagnosticDescriptors.CommandMissingMessageId,
         "HFC1007" => severity == "Error" ? CreateError(id, "Command has too many non-derivable properties") : DiagnosticDescriptors.CommandTooManyProperties,
+        "HFC1008" => DiagnosticDescriptors.CommandFlagsEnumProperty,
+        "HFC1009" => DiagnosticDescriptors.CommandMissingParameterlessCtor,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

@@ -38,7 +38,15 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 namespace TestDomain;
 
 [Command]
-public record IncrementCounterCommand(string MessageId, int Amount);";
+public record IncrementCounterCommand(string MessageId = """", int Amount = 0);";
+
+    internal const string RecordPositionalCommand_NoDefaults = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+public record IncrementCounterCommandNoDefaults(string MessageId, int Amount);";
 
     internal const string RecordPropertyCommand = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
@@ -113,10 +121,10 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 
 namespace TestDomain;
 
-public abstract record CommandBase(string MessageId);
+public abstract record CommandBase(string MessageId = """");
 
 [Command]
-public record ChildCommand(string MessageId, string Extra) : CommandBase(MessageId);";
+public record ChildCommand(string MessageId = """", string Extra = """") : CommandBase(MessageId);";
 
     internal const string BaseClassWithMessageId = @"
 using Hexalith.FrontComposer.Contracts.Attributes;

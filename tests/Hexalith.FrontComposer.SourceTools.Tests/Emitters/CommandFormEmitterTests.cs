@@ -127,7 +127,7 @@ public class CommandFormEmitterTests {
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
         source.ShouldContain("private string ResolveLabel(string propertyName, string staticLabel)");
-        source.ShouldContain("Localizer?[propertyName]");
+        source.ShouldContain("Localizer[propertyName]");
     }
 
     [Fact]

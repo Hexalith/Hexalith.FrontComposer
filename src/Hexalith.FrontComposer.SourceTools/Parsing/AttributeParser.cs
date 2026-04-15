@@ -250,13 +250,14 @@ public static class AttributeParser {
         IPropertySymbol propertySymbol,
         string containingTypeName,
         List<DiagnosticInfo> diagnostics,
-        string filePath) => ParseProperty(propertySymbol, containingTypeName, diagnostics, filePath);
+        string filePath) => ParseProperty(propertySymbol, containingTypeName, diagnostics, filePath, isCommandContext: true);
 
     private static PropertyModel ParseProperty(
         IPropertySymbol propertySymbol,
         string containingTypeName,
         List<DiagnosticInfo> diagnostics,
-        string filePath) {
+        string filePath,
+        bool isCommandContext = false) {
         ITypeSymbol propertyType = propertySymbol.Type;
         bool isNullable = false;
         string fullyQualifiedTypeName;
@@ -301,6 +302,29 @@ public static class AttributeParser {
         string? enumFqn = isEnum ? fullyQualifiedTypeName : null;
         string? unsupportedFqn = isUnsupported ? fullyQualifiedTypeName : null;
 
+        // HFC1008 (command-only): [Flags] enum properties cannot be expressed by a single-select
+        // FluentSelect. Route them through the unsupported path so FcFieldPlaceholder renders.
+        // (See code-review 2026-04-15, Decision 3.)
+        if (isCommandContext && isEnumType && HasFlagsAttribute(propertyType)) {
+            Location flagsLocation = propertySymbol.Locations.FirstOrDefault() ?? Location.None;
+            Microsoft.CodeAnalysis.Text.LinePosition flagsLinePos = flagsLocation.GetLineSpan().StartLinePosition;
+            string flagsFilePath = flagsLocation.SourceTree?.FilePath ?? filePath;
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1008",
+                string.Format(
+                    "Property '{0}' on command '{1}' is a [Flags] enum, which cannot be expressed by a single-select control. The field will render as FcFieldPlaceholder; provide a custom multi-select renderer via the customization gradient.",
+                    propertySymbol.Name,
+                    containingTypeName),
+                "Warning",
+                flagsFilePath,
+                flagsLinePos.Line,
+                flagsLinePos.Character));
+            isUnsupported = true;
+            unsupportedFqn = fullyQualifiedTypeName;
+            irType = propertyType.ToDisplayString();
+            enumFqn = null;
+        }
+
         if (isUnsupported) {
             Location location = propertySymbol.Locations.FirstOrDefault() ?? Location.None;
             Microsoft.CodeAnalysis.Text.LinePosition propLinePos = location.GetLineSpan().StartLinePosition;
@@ -342,6 +366,16 @@ public static class AttributeParser {
             badgeMappings,
             enumFqn,
             unsupportedFqn);
+    }
+
+    private static bool HasFlagsAttribute(ITypeSymbol typeSymbol) {
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == "System.FlagsAttribute") {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static string? ParseDisplayAttribute(IPropertySymbol propertySymbol) {

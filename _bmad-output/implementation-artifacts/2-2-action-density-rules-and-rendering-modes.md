@@ -2,6 +2,79 @@
 
 Status: ready-for-dev
 
+---
+
+## Dev Agent Cheat Sheet (Read First — 2 pages)
+
+> Amelia-facing terse summary. Authoritative spec is the full document below. Every line here links to a section for detail.
+
+**Goal:** emit one renderer per `[Command]` that selects Inline / CompactInline / FullPage based on `CommandDensity` classification, delegating all submit/validation to Story 2-1's `{CommandTypeName}Form`.
+
+**13 files to create / extend:**
+
+| Path | Action |
+|---|---|
+| `src/Hexalith.FrontComposer.Contracts/Attributes/IconAttribute.cs` | Create (Task 0.5) |
+| `src/Hexalith.FrontComposer.Contracts/Rendering/CommandRenderMode.cs` | Create (Task 2.1) |
+| `src/Hexalith.FrontComposer.Contracts/Rendering/ICommandPageContext.cs` | Create (Task 2.2) |
+| `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionContext.cs` | Create (Task 2.3) |
+| `src/Hexalith.FrontComposer.Contracts/Rendering/IDerivedValueProvider.cs` + `DerivedValueResult.cs` | Create (Task 3.1) |
+| `src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs` | Create/extend (Task 2.4, D26, D33) |
+| `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs` | Extend — add `CommandDensity` enum + `Density`/`IconName` on `CommandModel` (Task 1) |
+| `src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs` + `CommandRendererModel.cs` | Create (Task 4.1) |
+| `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs` + `CommandPageEmitter.cs` + `LastUsedSubscriberEmitter.cs` | Create (Tasks 4, 4bis) |
+| `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs` | Extend — add `DerivableFieldsHidden`, `ShowFieldsOnly`, `OnConfirmed`, `RegisterExternalSubmit` params (Task 5.1) |
+| `src/Hexalith.FrontComposer.Shell/Services/DerivedValues/{System,ProjectionContext,ExplicitDefault,LastUsed,ConstructorDefault}ValueProvider.cs` | Create 5 (Task 3.2–3.6) |
+| `src/Hexalith.FrontComposer.Shell/Services/{IExpandInRowJSModule,ExpandInRowJSModule,LastUsedSubscriberRegistry}.cs` | Create 3 (Task 4.9, D25, D35) |
+| `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/` | Create feature — State/Actions/Reducers/Feature, NO effects (Task 6.1, D30) |
+| `src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-expandinrow.js` | Create (Task 7.1) |
+| `samples/Counter/Counter.Domain/{BatchIncrementCommand,ConfigureCounterCommand}.cs` | Create (Task 9.1–9.2) |
+| `samples/Counter/Counter.Web/Pages/CounterPage.razor` | Update — wrap renderers in `<CascadingValue>` (Task 9.3) |
+
+**Generated naming (Decision D22 — full TypeName, no stripping):**
+- `IncrementCommand` → `IncrementCommandRenderer.g.razor.cs`
+- `ConfigureCounterCommand` → `ConfigureCounterCommandRenderer.g.razor.cs` + `ConfigureCounterCommandPage.g.razor.cs`
+- Button label strips `Command` for UX only: `"Increment"`, `"Configure Counter"` (Decision D23)
+
+**AC quick index (details in ACs section below):**
+
+| AC | One-liner | Task(s) |
+|---|---|---|
+| AC1 | `CommandModel.Density` computed from `NonDerivableProperties.Length` | 1 |
+| AC2 | Inline mode: 0 fields = button; 1 field = FluentPopover + single field (2-1 Form inside popover) | 4.4, 10.1 |
+| AC3 | CompactInline mode: FluentCard with expand-in-row JS scroll stabilization | 4.4, 7, 10.2 |
+| AC4 | FullPage mode: `/commands/{BC}/{CommandTypeName}` route, max-width via `FcShellOptions`, ReturnPath validated (D32) | 4.4–4.5, 10.3 |
+| AC5 | `RenderMode` parameter override; HFC1008 runtime log on mismatch | 4.3, 10.4 |
+| AC6 | 5-provider chain: System → ProjectionContext → ExplicitDefault → LastUsed → ConstructorDefault (D24) | 3, 4bis |
+| AC7 | `DataGridNavigationState` reducer-only (effects deferred to Story 4.3, D30) | 6 |
+| AC8 | Button hierarchy per UX spec §2236 (Secondary inline, Primary compact/full) | 4.4, 4.6 |
+| AC9 | Accessibility: scroll-before-focus, circuit reconnect handling, keyboard tab order, axe-core clean | 10.1, 10.5, 12 |
+| AC10 | Counter sample demonstrates all 3 modes (no state-restoration demo — deferred to 4.3) | 9 |
+
+**Binding contract with Story 2-1 (ADR-016):** Renderer is CHROME ONLY. `{CommandTypeName}Form` owns `<EditForm>`, validation, submit, lifecycle dispatch. Renderer extends Form with 4 new params: `DerivableFieldsHidden`, `ShowFieldsOnly`, `OnConfirmed`, `RegisterExternalSubmit`. **Re-approve ALL 12 existing Story 2-1 `.verified.txt` snapshots** with the D23 `DisplayLabel` button text (was "Send X", now "X") in a single pre-emitter-change commit (Task 5.3). Byte-identical regression gate guards the contract (Task 5.2).
+
+**ADR-016 one-liner:** Form = engine. Renderer = shape. One form, three possible shapes.
+
+**4 new diagnostics (HFC numbers in AnalyzerReleases.Unshipped.md):**
+- HFC1008 Warning — RenderMode/density mismatch (runtime log; analyzer emission → Epic 9)
+- HFC1011 Error — property count > 200
+- HFC1012 Error — `[DefaultValue]` type mismatch
+- HFC1014 Error — nested `[Command]` unsupported
+
+**Scope guardrails (do NOT implement — see Known Gaps for owning story):**
+- Destructive command Danger UX, 30s abandonment, `beforeunload` guard → **Story 2-5**
+- DataGridNav `IStorageService` effects, hydration, capture-side wiring → **Story 4.3**
+- Shell header breadcrumb, shell-level `ProjectionContext` cascade → **Stories 3.1 / 4.1**
+- HFC1009 (invalid ident), HFC1010 (icon format), HFC1013 (BaseName collision) → deferred/redundant (see Round 2 Trim section)
+
+**Test expectation: 121 new tests, cumulative ~463.** Breakdown at Task 13.1.
+
+**Start here:** Task 0 (prereqs) → Task 1 (IR) → Tasks 2–3 (Contracts + providers + FrontComposerStorageKey helper) → Task 4 (emitter) → Task 4bis (LastUsed subscriber with D38 correlation-dict) → Task 5 (Form extension + regression gate) → Task 6 (Fluxor feature) → Task 7 (JS module) → Task 8 (pipeline wiring) → Task 9 (Counter sample + FcDiagnosticsPanel) → Tasks 10–12 (tests) → Task 13 (automated E2E with machine-readable artifact).
+
+**The 39 Decisions and 4 ADRs in the sections below are BINDING. Do not revisit without raising first.** (Updated in Round 3: D36 = 0-field button disabled until Form's `RegisterExternalSubmit` fires; D37 = at-most-one Inline popover open at a time via `InlinePopoverRegistry`. Updated in Party Mode review: D38 = LastUsed subscriber uses `ConcurrentDictionary<CorrelationId, PendingEntry>` with TTL=5min + MaxInFlight=16 eviction; D39 = storage-key segments NFC-normalized + URL-encoded + email-lowercased via `FrontComposerStorageKey.Build(...)` helper.)
+
+---
+
 ## Story
 
 As a business user,
@@ -10,32 +83,7 @@ so that I can take action quickly on simple commands without navigating away, wh
 
 ---
 
-## Review Findings Applied (Party Mode Round 1)
-
-This story was patched after a multi-agent review (Winston, Amelia, Sally, Murat). Key changes from the first draft:
-
-| Concern | Resolution | Reference |
-|---|---|---|
-| `DataGridNavigationState` half-shipped (effects without producers) | Trimmed to REDUCER-ONLY in Story 2-2; effects deferred to Story 4.3 | Decision D30, Task 6.2 |
-| Renderer vs Form submit ownership ambiguity (double `<EditForm>` risk) | Renderer is chrome; Form owns submit. Explicit contract. | ADR-016, Decisions D21 |
-| Naming collision `IncrementCommandCommandRenderer` | Strip trailing `Command` suffix → `IncrementRenderer` / `IncrementPage` | Decision D22, Naming table |
-| Button label inconsistency ("Send" prefix) | Unified to `"{Humanized BaseName}"` in all modes; Story 2-1 snapshots re-approved | Decision D23, Task 5.3 |
-| Pre-fill chain LastUsed-beats-Default footgun | `[DefaultValue]` becomes a hard floor BEFORE LastUsed in the chain | Decision D24, Task 3.4 |
-| JS module re-import per component + prerender crash risk | Scoped `IExpandInRowJSModule` with `Lazy<Task<IJSObjectReference>>` cache + prerender guard | Decision D25, Task 4.9 |
-| 720px hard-coded literal | `FcShellOptions.FullPageFormMaxWidth` (default 720px) | Decision D26, AC4 |
-| `ProjectionContext` cascading unowned | Epic 4 cascades at shell; Story 2-2 ships null-tolerant renderer + Counter manual `<CascadingValue>` | Decision D27, Task 9.3 |
-| `LastUsedValueProvider` Fluxor subscription unclear | Hand-written generic provider; per-command emitted typed subscriber (`{BaseName}LastUsedSubscriber.g.cs`) | Decision D28, Task 4bis |
-| `FluentPopover` outside-click dismissal semantics | Manual wiring via backdrop click handler | Decision D29 |
-| Focus return on popover submit/dismiss | Explicit AC + 2 dedicated tests | AC9, Task 10.1 #8-9 |
-| Counter AC10 state-restore "theater" (no capture side) | AC10 no longer claims end-to-end state restoration (deferred to Story 4.3); only proves `RestoreGridStateAction` dispatch contract | AC10, Decision D30 |
-| Missing 2-1 regression gate | 12 byte-identical snapshot assertions in CI | Task 5.2 |
-| Missing 2-1↔2-2 contract test | Structural equality test | Task 11.4 |
-| bUnit JS-interop flakiness risk | `JSRuntimeMode.Loose` prohibited for Task 10.2; explicit `SetupModule` + `VerifyInvoke` required | Task 10 fixture rules |
-| Pre-fill race (OnInitializedAsync vs render) | `cut.WaitForAssertion(...)` mandatory; no synchronous `Find` post-render | Task 10 fixture rules |
-| 9 density classification tests vs FsCheck opportunity | Replaced with 1 FsCheck property + snapshot boundary + equality/hash = 4 tests | Task 1.4 |
-| Test count math undercount (70 → actual ~80-82) | Recounted and reconciled to **97** with explicit table | Task 13.1 |
-| Axe-core count unfalsifiable ("per mode") | Explicit 3 tests (one per mode) + separate keyboard tab-order tests | Task 12.1, Task 10.5 |
-| Task 13.4 "automated" ambiguity | Transparency note — dev-agent local, not CI-automated E2E | Task 13.4 |
+> **Doc-evolution history** (Party Mode review + 4 elicitation rounds) is available in the **Appendix: Review & Elicitation History** at the end of this document. It is audit trail, not reader guidance — skip unless debugging a decision's rationale.
 
 ---
 
@@ -52,7 +100,7 @@ These decisions are BINDING. Tasks reference them by number. If implementation u
 | D5 | Full-page mode uses a **generated Blazor route** (`@page "/commands/{BoundedContext}/{CommandName}"`) wrapping the same form body emitted by Story 2-1. Breadcrumb content is rendered via `ICommandPageContext` service (new, registered scoped). | Routable URL enables deep linking, browser back button, and bookmarks. `ICommandPageContext` is the seam that Story 3.1 (shell layout) wires the breadcrumb into. |
 | D6 | Inline button mode for **0 non-derivable fields** submits on click (no form, no popover). For **exactly 1 non-derivable field**, it renders a `FluentButton` that, when clicked, opens a **`FluentPopover` anchored to the button** containing a single-field inline form. NOT a dialog. | Popover preserves viewport context; dialog would be heavy for 1 field. Aligns with UX spec §2217 "inline action per density rules". |
 | D7 | Derivable field pre-fill is sourced via a **new `IDerivedValueProvider` service** (scoped). The generated renderer calls `provider.ResolveAsync<TCommand>(propertyName, context)` per derivable field before submit. Three built-in providers are chained in this order: **ProjectionContextProvider → LastUsedValueProvider → DefaultValueProvider**. | Extensible for adopters (they register additional providers). Chaining order matches UX spec §1197: "(1) projection context, (2) last-used, (3) default". |
-| D8 | `LastUsedValueProvider` persists values to `IStorageService` (Story 1-1 seam) under the key `frontcomposer:lastused:{tenantId}:{userId}:{commandTypeFqn}:{propertyName}`. Values are **session-scoped** (in-memory + flush on `beforeunload`), NOT cross-session. | UX spec §1197 says "session-persisted". Persisting cross-session creates surprise and PII risk. |
+| D8 | `LastUsedValueProvider` persists values to `IStorageService` (Story 1-1 seam) under the key `frontcomposer:lastused:{tenantId}:{userId}:{commandTypeFqn}:{propertyName}`. Values are **session-scoped**, NOT cross-session. Immediate `IStorageService.WriteAsync` on every `Record<TCommand>` call; `beforeunload` flush is handled by Story 1-1's existing `beforeunload.js` hook at the `IStorageService` layer (not duplicated here). Session boundaries are enforced by the storage provider's session-scoping, not by this provider. | UX spec §1197 says "session-persisted". Persisting cross-session creates surprise and PII risk. |
 | D9 | DataGrid state preservation for full-page form navigation uses **a new per-concern Fluxor feature `DataGridNavigationState`** in `Shell/State/DataGridNavigation/`. Keyed by `"{boundedContext}:{projectionTypeFqn}"`. Contains scroll position, filters, sort, expanded row id, selected row id. | Aligns with architecture D7 (per-concern Fluxor features). Explicit state lives in Fluxor; LocalStorage persistence via existing `IStorageService` + `FlushAsync` hook. |
 | D10 | `DataGridNavigationState` is **populated by DataGrid components (Epic 4) and consumed by command renderer only** in Story 2-2. Story 2-2 adds the feature + actions + reducers + contracts but does NOT wire DataGrid writes (that happens in Epic 4). Full-page form reads state on mount and no-ops if empty. | Enables Story 2-2 to ship independently of Epic 4. Feature is forward-compatible. |
 | D11 | Expand-in-row scroll stabilization JS is delivered as a **new `wwwroot/js/fc-expandinrow.js` module** exposing `initializeExpandInRow(elementRef)` which: (a) calls `scrollIntoView({block:'nearest'})`, (b) uses `requestAnimationFrame` to re-measure, (c) honours `prefers-reduced-motion` by skipping the rAF smoothing. Loaded via `IJSRuntime.InvokeAsync<IJSObjectReference>("import", "./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js")`. | UX spec §1207 explicit implementation contract. Module-scoped import avoids global namespace pollution. |
@@ -66,15 +114,24 @@ These decisions are BINDING. Tasks reference them by number. If implementation u
 | D19 | **No overlap with Story 2-4**: Story 2-4 owns lifecycle visual feedback (`FcLifecycleWrapper`, sync pulse, "Still syncing..."). Story 2-2 ONLY owns rendering mode selection + layout. The progress ring during `Submitting` remains inside the submit button (already in Story 2-1's `CommandFormEmitter` Task 3B.3). Do NOT re-emit lifecycle UI in the renderer. | Prevents duplicate emission. |
 | D20 | **No overlap with Story 2-3**: Story 2-3 owns `ILifecycleStateService` + ULID idempotency. Story 2-2 consumes Story 2-1's existing `{CommandName}LifecycleState` Fluxor state for button disabled-during-Submitting behavior only. | Prevents duplicate lifecycle plumbing. |
 | D21 | **Renderer is chrome, Form owns submit.** The `{CommandName}Form` emitted by Story 2-1 retains FULL ownership of `<EditForm>`, `EditContext`, `OnValidSubmitAsync`, and all lifecycle dispatch. The renderer only wraps/positions the form (FluentCard for Compact, breadcrumb container for FullPage, FluentPopover for 1-field Inline). The renderer NEVER emits `<EditForm>`. See ADR-016. | Prevents double-EditForm. Single source of truth for validation + lifecycle. |
-| D22 | **Generated type names strip trailing `Command` suffix** from the source command type to avoid `IncrementCommandCommandRenderer`. Rule: if `{CommandTypeName}` ends with `Command`, the renderer hint name uses `{BaseName}Renderer.g.razor.cs` where `BaseName = CommandTypeName[..^7]`. Same rule for Page. Story 2-1's `{CommandName}Form` is frozen as `{FullCommandTypeName}Form.g.razor.cs` (no trim) for backward compatibility. | `IncrementCommand → IncrementRenderer + IncrementPage + IncrementCommandForm`. |
-| D23 | **Button label is `"{Humanized CommandBaseName}"` everywhere** (no "Send " prefix for any mode). Button-label rule in Story 2-1 Task 2.3 must be updated: `"{HumanizeCamelCase(BaseName)}"` where `BaseName = strip-trailing-Command({CommandTypeName})`. | UX consistency (Sally: "Send" is developer-speak). Label parity across all three modes reduces product-feel drift. |
+| D22 | **Generated type names use the full `{CommandTypeName}` with NO stripping.** Renderer is `{CommandTypeName}Renderer.g.razor.cs`, Page is `{CommandTypeName}Page.g.razor.cs`. Produces `IncrementCommandRenderer` / `IncrementCommandPage` — cosmetically doubled `Command` but deterministic and collision-free by construction. Matches Story 2-1's `{CommandTypeName}Form` convention. **Trailing-`Command` stripping was evaluated and rejected during elicitation round 2 (Occam + matrix scoring):** cosmetic benefit did not justify HFC1013 collision-detection + naming edge-case handlers. Throughout this document, references to `{CommandTypeName}` should be read as `{CommandTypeName}`. | `IncrementCommand → IncrementCommandForm + IncrementCommandRenderer + IncrementCommandPage`. Uniform pattern; no special-case stripping. |
+| D23 | **Button label is `{DisplayLabel}` everywhere** (no "Send " prefix for any mode). `DisplayLabel` is computed at parse time as `HumanizeCamelCase(TypeName)` with trailing ` Command` (space + Command) stripped from the humanized form. Example: `IncrementCommand → "Increment"`, `BatchIncrementCommand → "Batch Increment"`, `ConfigureCounterCommand → "Configure Counter"`. **Display-only stripping** — class/hint/route names still use full `{CommandTypeName}` per D22. Button-label rule in Story 2-1 Task 2.3 must be updated to emit `DisplayLabel`. | UX consistency (Sally: "Send" is developer-speak). Label parity across all three modes reduces product-feel drift. |
 | D24 | **Pre-fill chain honors `[DefaultValue]` as a hard floor.** Chain order becomes: `SystemValueProvider → ProjectionContextProvider → ExplicitDefaultValueProvider (if [DefaultValue] attr present) → LastUsedValueProvider → ConstructorDefaultValueProvider`. If a property declares `[DefaultValue(x)]`, `x` beats LastUsed. If no `[DefaultValue]`, LastUsed beats constructor default. | Protects reset-semantics fields (e.g., `[DefaultValue(1)] int Amount`) from stale last-used values. |
 | D25 | **JS module is cached via `Lazy<Task<IJSObjectReference>>` in a scoped `IExpandInRowJSModule` service**, NOT re-imported per component. Module is only initialized when `OnAfterRenderAsync(firstRender=true)` AND `RendererInfo.IsInteractive` is true (guards prerendering). Module is disposed on circuit teardown via the scoped service's `IAsyncDisposable`. | Prevents prerender crashes. Prevents per-instance module re-import. |
 | D26 | **`FcShellOptions.FullPageFormMaxWidth`** (default `"720px"`) replaces the hard-coded 720px literal in the renderer emitter. Compact mode does not constrain width. | Themeable via options; still ships with UX spec default. |
 | D27 | **`ProjectionContext` cascading is rendered by the host DataGrid row component (Epic 4)**, NOT by Story 2-2. Story 2-2's renderer reads `[CascadingParameter] public ProjectionContext? ProjectionContext { get; set; }` and tolerates null. The Counter sample wires a **manual `<CascadingValue Value="@_manualContext">`** around the inline command renderer to demonstrate pre-fill; generic shell cascading is Epic 4 (Story 4.1). | Decouples Story 2-2 from Epic 4 DataGrid timing. Null-safe degradation. |
-| D28 | **LastUsedValueProvider is hand-written (generic), but each `[Command]` emits its own `{BaseName}LastUsedSubscriber.g.cs`** registering via `Fluxor.IActionSubscriber.SubscribeToAction<{CommandName}Actions.ConfirmedAction>(...)`. The subscriber calls `LastUsedValueProvider.Record<TCommand>(command)` with typed command. Emitted per command to avoid reflection dispatch. | Static subscription is AOT-safe; tests use `Fluxor.TestStore`. |
+| D28 | **LastUsedValueProvider is hand-written (generic), but each `[Command]` emits its own `{CommandTypeName}LastUsedSubscriber.g.cs`** registering via `Fluxor.IActionSubscriber.SubscribeToAction<{CommandName}Actions.ConfirmedAction>(...)`. The subscriber calls `LastUsedValueProvider.Record<TCommand>(command)` with typed command. Emitted per command to avoid reflection dispatch. | Static subscription is AOT-safe; tests use `Fluxor.TestStore`. |
 | D29 | **FluentPopover outside-click dismissal is wired manually** via a click-outside handler on a transparent backdrop `<div>` rendered inside the popover open state. Dismiss calls the renderer's `ClosePopoverAsync` which restores focus to the trigger button. | FluentPopover v5 does not auto-dismiss on outside-click; explicit handler required. |
 | D30 | **DataGridNavigationState in Story 2-2 is REDUCER-ONLY.** Story 2-2 ships: feature, state record, actions (Capture, Restore, Clear, PruneExpired), reducers, IEquatable tests. **Effects (IStorageService persistence, hydration on SessionStart, beforeunload flush) are DEFERRED to Story 4.3** alongside DataGrid capture-side wiring. FullPage renderer dispatches `RestoreGridStateAction` which is a no-op in 2-2 (state map always empty); wiring proves the contract. | Resolves Winston's "dead code" risk and Sally's "theater" finding. Feature contract locked, persistence earns its keep in Epic 4. |
+| D31 | **`LastUsedValueProvider` REFUSES both reads and writes when `tenantId` OR `userId` is null or empty.** Instead: returns `HasValue=false` (chain continues); writes log a single `ILogger.LogWarning` per circuit (rate-limited) and no-op. Applies to ALL storage keys — the `frontcomposer:lastused:*` pattern is NEVER keyed on a literal "anonymous" or empty segment. | Pre-mortem PM-1. Prevents cross-tenant PII leak when adopters forget to wire `IHttpContextAccessor`. |
+| D32 | **`ICommandPageContext.ReturnPath` MUST validate as a relative URI.** Validation: `Uri.IsWellFormedUriString(path, UriKind.Relative) && !path.StartsWith("//")`. On violation: log `ILogger.LogError` with `CorrelationId` and navigate to the home route (`/`) instead. Applies to the generated `{CommandTypeName}Page` `OnConfirmed` handler and any `NavigationManager.NavigateTo` call sourced from `ReturnPath`. | Pre-mortem PM-3, Red-team RT-3. Prevents first-class open-redirect CVE. |
+| D33 | **LRU cap on `DataGridNavigationState.ViewStates` only (50 entries)** via reducer-side eviction (oldest `CapturedAt` wins eviction). Configurable via `FcShellOptions.DataGridNavCap` (default 50). **LastUsed storage cap was evaluated and deferred** during elicitation round 2 matrix scoring (score 2.75) — no evidence-based cap number, and LocalStorage quota pressure is not a v0.1 concern (Counter sample is single-tenant, single-command). Will add on adopter signal or when Epic 8 MCP broadens command surface. | Red-team RT-7 addressed for DataGridNav. RT-6 deferred pending evidence. |
+| D34 | **`[Icon]` fallback is RUNTIME, not parse-time.** The emitter emits `new Icons.{IconName}()` wrapped in a `try/catch` that falls back to `new Icons.Regular.Size16.Play()` on any binding failure AND logs `ILogger.LogWarning` with `CorrelationId + IconName + CommandType`. Parse-time validation is deferred until the Fluent UI icon catalog can be statically validated (Epic 9 analyzer work). | Chaos CM-4, Hindsight #4. Compile errors in generated code look like framework bugs; runtime fallback is adopter-friendly and evolvable with Fluent UI versions. |
+| D35 | **`{CommandTypeName}LastUsedSubscriber` registration is idempotent within a circuit and lazy.** `AddHexalithFrontComposer()` registers a hosted `LastUsedSubscriberRegistry` (scoped) that tracks which command-type subscribers are already active in the current scope by `Type`. Registration is a no-op if the type is already registered. Subscribers are NOT resolved eagerly at circuit start — they are resolved on first dispatch of `{CommandName}Actions.SubmittedAction` via `IActionSubscriber.SubscribeToAction` wiring that self-unsubscribes on circuit teardown. | Pre-mortem PM-4, Chaos CM-7. Prevents hot-reload subscriber accumulation + reduces startup latency on large domains. |
+| D36 | **Inline 0-field button is disabled until `RegisterExternalSubmit` completes.** The renderer's 0-field button emits `[disabled]=@(_externalSubmit is null)`. The inner `{CommandTypeName}Form` invokes `RegisterExternalSubmit(action)` in `OnAfterRender(firstRender=true)`, then the renderer calls `StateHasChanged()` to re-enable the button. Prevents silent click-drop during the SSR-to-interactive transition window. | Round 3 Rubber Duck finding B. Silent click-drop would violate NFR88 ("zero 'did it work?' hesitations"). |
+| D37 | **At most ONE Inline popover is open at a time across the entire circuit.** A scoped `InlinePopoverRegistry` (new, hand-written in `Shell/Services/`) tracks the currently-open popover. When any renderer opens its popover, the registry asks any currently-open popover to close via its `ClosePopoverAsync()` method (Decision D29's manual dismissal). Applies only to the Inline 1-field popover — CompactInline expand-in-row is already one-at-a-time by UX spec. | Round 3 Rubber Duck finding C. Prevents two live `<EditForm>` instances and ambiguous focus/z-index state. Forward-compatible with Decision D29 + future Story 2-5 dialog coordination. |
+| D38 | **LastUsed subscriber pending-command state is a `ConcurrentDictionary<CorrelationId, PendingEntry>` with bounded eviction.** `PendingEntry` = `(TCommand Command, DateTimeOffset CapturedAt)`. On every `SubmittedAction`, the subscriber (a) prunes entries older than **TTL = 5 minutes** (upper bound on Submitted→Confirmed lifecycle per Story 2-1 stub delays), then (b) caps at **MaxInFlight = 16 entries per command type per circuit** evicting oldest `CapturedAt`. Evictions emit `ILogger.LogWarning` (rate-limited implicit — cap eviction is itself rare). Scalar `_pendingCommand` field is PROHIBITED — interleaved Submitted(A)/Submitted(B)/Confirmed(A) would cross-contaminate correlations because Story 2-1's `ConfirmedAction(string CorrelationId)` carries no typed payload. | Party Mode review (Winston + Murat + Amelia convergent finding). Prevents (1) concurrent-submit correlation corruption, (2) out-of-order confirmation replay, (3) orphan-Submitted memory leak when Confirmed never arrives, (4) unbounded growth on long-lived circuits. |
+| D39 | **Storage-key segments are canonicalized before concatenation.** `LastUsedValueProvider` (and the future `DataGridNav` persistence effect in Story 4.3) build keys using: `tenantId` → trim + NFC-normalize + URL-encode; `userId` → trim + NFC-normalize + lowercase + URL-encode (email local-parts are practically case-insensitive); `commandTypeFqn` + `propertyName` → verbatim (already C#-legal). Separator remains `:`. A helper `FrontComposerStorageKey.Build(...)` in `Shell/Services/` centralizes the rule. Keys MUST round-trip: `Parse(Build(t,u,c,p)) == (t_canon,u_canon,c,p)`. | Party Mode review (Murat MEDIUM-HIGH risk). Prevents cache misses from NFC/NFD mismatch, whitespace, case variance, and collision from `:` appearing inside unencoded segments. Replaces the naive string-concat example that misled the Round 1-3 drafts. |
 
 ---
 
@@ -106,21 +163,27 @@ These decisions are BINDING. Tasks reference them by number. If implementation u
 
 ### ADR-016: Renderer/Form Contract — Chrome vs Core
 
+> **TL;DR (for new adopters):** Form = engine. Renderer = shape. One form, three possible shapes.
+
 - **Status:** Accepted
-- **Context:** Story 2-1 emits `{FullCommandTypeName}Form.g.razor.cs` that owns `<EditForm>`, `EditContext`, `OnValidSubmitAsync`, and all lifecycle dispatch. Story 2-2 introduces three rendering modes that must REUSE this form without duplicating submit orchestration and without creating nested `<EditForm>` elements.
+- **Context:** Story 2-1 emits `{CommandTypeName}Form.g.razor.cs` that owns `<EditForm>`, `EditContext`, `OnValidSubmitAsync`, and all lifecycle dispatch. Story 2-2 introduces three rendering modes that must REUSE this form without duplicating submit orchestration and without creating nested `<EditForm>` elements.
 - **Decision:** The renderer emitted by Story 2-2 is **CHROME ONLY**. Rules:
   1. The renderer NEVER emits `<EditForm>`.
-  2. The renderer ALWAYS wraps `<{FullCommandTypeName}Form ... />` as the single inner component that owns validation and submit.
+  2. The renderer ALWAYS wraps `<{CommandTypeName}Form ... />` as the single inner component that owns validation and submit.
   3. Story 2-1's `CommandFormEmitter` is extended (backward-compatible) with two parameters: `DerivableFieldsHidden` (bool, default false) and `ShowFieldsOnly` (string[]?, default null).
   4. The three modes differ ONLY in wrapping chrome:
      - **Inline (0 fields):** renderer emits a single `FluentButton` whose `OnClick` dispatches a synthetic form submit via `EventCallback` exposed by the Form (`[Parameter] public EventCallback OnExternalSubmitRequested { get; set; }`). Form handles the rest.
-     - **Inline (1 field):** renderer emits the button + a `FluentPopover` containing `<{FullCommandTypeName}Form ShowFieldsOnly="new[]{\"{PropName}\"}" />`. Form retains its `<EditForm>` — this is acceptable because there is exactly one form per page.
-     - **CompactInline:** renderer emits `<FluentCard class="fc-expand-in-row">` wrapping `<{FullCommandTypeName}Form DerivableFieldsHidden="true" />`.
-     - **FullPage:** renderer emits breadcrumb + max-width container wrapping `<{FullCommandTypeName}Form />`.
+     - **Inline (1 field):** renderer emits the button + a `FluentPopover` containing `<{CommandTypeName}Form ShowFieldsOnly="new[]{\"{PropName}\"}" />`. Form retains its `<EditForm>` — this is acceptable because there is exactly one form per page.
+     - **CompactInline:** renderer emits `<FluentCard class="fc-expand-in-row">` wrapping `<{CommandTypeName}Form DerivableFieldsHidden="true" />`.
+     - **FullPage:** renderer emits breadcrumb + max-width container wrapping `<{CommandTypeName}Form />`.
   5. Story 2-1's `OnValidSubmitAsync` is the SOLE submit path. The renderer MUST NOT dispatch `{CommandName}Actions.SubmittedAction` itself.
   6. The 0-field inline button path requires ONE new capability in Story 2-1's Form: trigger `OnValidSubmitAsync` externally. Added parameter: `public ElementReference? ExternalTriggerAnchor { get; set; }` + exposed method `InvokeAsync(Func<Task>)` wrapper. Simpler: Form exposes `[Parameter] public Action? RegisterExternalSubmit { get; set; }` which the renderer stores and invokes.
 - **Consequences:** (+) Single validation path; (+) lifecycle dispatch stays in Form; (+) Popover with inner `<EditForm>` is standard Blazor. (-) Requires 3 new Form parameters (still backward-compatible — all default to pre-2-2 behavior).
-- **Rejected alternatives:** Renderer owns submit and Form becomes field-render helper (duplicates lifecycle dispatch from 2-1 — ADR-010 violation); emit three separate Form variants (combinatorial emitter explosion); use `CascadingValue` to pass submit handler (overkill for 1 hop).
+- **Rejected alternatives:**
+  - **Renderer owns submit and Form becomes field-render helper** — duplicates lifecycle dispatch from 2-1 (ADR-010 violation).
+  - **Emit three separate Form variants** — combinatorial emitter explosion.
+  - **Use `CascadingValue` to pass submit handler** — overkill for 1 hop.
+  - **Fold all three rendering modes into `CommandFormEmitter`** (first-principles alternative, evaluated during advanced elicitation): add `RenderMode?` parameter to `{CommandName}Form` directly; emit all three mode branches inside the form body. **Rejected because:** (a) bloats form emission to ~600 lines with three mode branches + popover + card + breadcrumb, harming readability and snapshot diff signal; (b) mixes validation concern (form's core) with layout concern (renderer's core); (c) breaks MCP introspection symmetry with Epic 8 — separate `{CommandTypeName}Renderer` artifact gives the agent registry a cleaner surface per density mode; (d) makes adopter overrides awkward (per-instance `RenderMode` override on a form tied to validation lifetime). **Trade-off accepted:** the split creates two emitted files per command (Form + Renderer) which future devs must understand together. Documented via this ADR so the question doesn't need re-litigation.
 
 ```
 # INLINE MODE (0-1 non-derivable fields) ---------------------------
@@ -183,7 +246,7 @@ USER          /commands/{bc}/{cmd} page   DataGridNavigationState   Form body
 **Then** it renders as a single `FluentButton`
 **And** appearance is `Appearance.Secondary` when inside a DataGrid row context (`CommandRenderMode.Inline`)
 **And** a leading `FluentIcon` is rendered if the `[Command]` declares one via `[Icon(...)]` (new attribute, see Task 1) or the default `Regular.Size16.Play` icon otherwise
-**And** the button label is `"{Humanized CommandBaseName}"` (Decision D22, D23 — trailing `Command` suffix stripped, no `"Send "` prefix in ANY mode)
+**And** the button label is `{DisplayLabel}` (Decision D23 — display-only trailing " Command" strip, no `"Send "` prefix in ANY mode; class/hint/route names remain full `{CommandTypeName}` per D22)
 **And** clicking the button:
 - Pre-fills derivable fields via `IDerivedValueProvider` chain (AC7)
 - Submits immediately via the same lifecycle flow as Story 2-1 (no popover, no form)
@@ -196,6 +259,12 @@ USER          /commands/{bc}/{cmd} page   DataGridNavigationState   Form body
 **And** pressing Escape dismisses the popover
 **And** submitting dispatches the Story 2-1 lifecycle flow
 
+**And** opening a popover on one renderer closes any other open Inline popover in the same circuit first (Decision D37 — at-most-one constraint); no transitional state where two popovers are simultaneously open
+
+**And** the 0-field Inline button is disabled (`[disabled]`) until the inner Form invokes `RegisterExternalSubmit` on first render; this prevents silent click-drop during SSR-to-interactive transition (Decision D36)
+
+**And** when the popover form is shown AND `LastUsedValueProvider` reports no stored entry for this `(tenantId, userId, commandType)` triple (first-session case — Sally Journey 1), a subtle muted-caption line renders below the single field: `"Your last value will be remembered after your first submission."` Rendered only when pre-fill chain returned no `HasValue=true` result AND the field has no `[DefaultValue]`. Removes the "why didn't it remember me?" antipattern. Styling: `<FluentBodyText Typo="Typography.Caption" Color="Color.Neutral">`.
+
 ### AC3: Compact Inline Form Mode (2-4 Non-Derivable Fields)
 
 **Given** a `[Command]` with 2-4 non-derivable fields
@@ -207,15 +276,19 @@ USER          /commands/{bc}/{cmd} page   DataGridNavigationState   Form body
 **And** when `prefers-reduced-motion` is set, the JS module skips the `requestAnimationFrame` smoothing and only calls `scrollIntoView({block:'nearest'})`
 **And** the form is consumable standalone (placed below any content) for Story 2-2 scope; DataGrid row integration lands in Story 4.5
 
+**And** Story 2-2 does NOT constrain multiple CompactInline renderers on the same page — the UX-spec invariant "one row expanded at a time (v1)" is the **DataGrid container's responsibility** (enforced in Story 4.5). Standalone CompactInline placement (e.g., the Counter sample `BatchIncrementCommandRenderer`) is legitimately unconstrained in 2-2 and may coexist with other CompactInline instances without enforcement.
+
 ### AC4: Full-Page Form Mode (5+ Non-Derivable Fields)
 
 **Given** a `[Command]` with 5+ non-derivable fields
 **When** its generated `{CommandName}CommandRenderer` is placed as a page component
-**Then** a Blazor route `@page "/commands/{BoundedContext}/{CommandBaseName}"` is emitted (Decision D5, D22)
+**Then** a Blazor route `@page "/commands/{BoundedContext}/{CommandTypeName}"` is emitted (Decision D5, D22 — full TypeName, no stripping)
 **And** the page renders the Story 2-1 form body wrapped in `<div style="max-width: @FcShellOptions.FullPageFormMaxWidth; margin: 0 auto;">` (reuses Story 2-1 AC3 layout; width from options per Decision D26)
-**And** an embedded `FluentBreadcrumb` displays "{BoundedContext} > {Humanized CommandBaseName}" when `FcShellOptions.EmbeddedBreadcrumb=true` (Decision D15, D23, default true)
+**And** an embedded `FluentBreadcrumb` displays "{BoundedContext} > {DisplayLabel}" when `FcShellOptions.EmbeddedBreadcrumb=true` (Decision D15, D23, default true)
 **And** on mount, `RestoreGridStateAction` is dispatched with the referring bounded-context + projection (from `NavigationManager.Uri` parsing) — no-op if state is empty (Decision D10)
 **And** on successful `Confirmed`, the renderer navigates to `ReturnPath` (from `ICommandPageContext.ReturnPath`) or the home route if unset
+
+**And** `ReturnPath` is validated via `Uri.IsWellFormedUriString(path, UriKind.Relative) && !path.StartsWith("//")` before navigation (Decision D32); on failure, navigate to `/` and log `ILogger.LogError` with `CorrelationId` (open-redirect CVE defense)
 
 ### AC5: Density-Driven Renderer Selection
 
@@ -236,7 +309,7 @@ USER          /commands/{bc}/{cmd} page   DataGridNavigationState   Form body
 **And** `ProjectionContextProvider` reads from `[CascadingParameter] public ProjectionContext? ProjectionContext { get; set; }` on the renderer (null-tolerant per Decision D27; cascade source is Epic 4 DataGrid row or Counter sample manual `<CascadingValue>`)
 **And** `ExplicitDefaultValueProvider` returns `HasValue=true` ONLY when the property has a `[DefaultValue(x)]` attribute — uses that attribute's value (Decision D24, protects reset-semantics fields)
 **And** `LastUsedValueProvider` reads from `IStorageService` under key `frontcomposer:lastused:{tenantId}:{userId}:{commandTypeFqn}:{propertyName}` (Decision D8)
-**And** `LastUsedValueProvider` writes to that key via a per-command emitted `{BaseName}LastUsedSubscriber.g.cs` (Decision D28) that subscribes to `{CommandName}Actions.ConfirmedAction` via `Fluxor.IActionSubscriber.SubscribeToAction<...>` and calls a typed `LastUsedValueProvider.Record<TCommand>(command)` — no reflection dispatch
+**And** `LastUsedValueProvider` writes to that key via a per-command emitted `{CommandTypeName}LastUsedSubscriber.g.cs` (Decision D28) that subscribes to `{CommandName}Actions.ConfirmedAction` via `Fluxor.IActionSubscriber.SubscribeToAction<...>` and calls a typed `LastUsedValueProvider.Record<TCommand>(command)` — no reflection dispatch
 **And** `ConstructorDefaultValueProvider` returns the command record's constructor default (property initialization value) via compile-time generated property accessors in the emitted subscriber, NOT runtime reflection
 
 **And** if no provider returns `HasValue=true` for a field that is classified as derivable, an error is logged and the field reverts to `default(T)` with a visible `FcFieldPlaceholder` in debug mode
@@ -281,16 +354,18 @@ USER          /commands/{bc}/{cmd} page   DataGridNavigationState   Form body
 **Then**:
 - Inline mode: `Tab` reaches the button; `Enter`/`Space` activates it; popover (1-field) is keyboard-dismissable via `Escape`; `Tab` inside the popover cycles between field, submit, cancel; outside-click dismissal is manually wired (Decision D29)
 - CompactInline mode: `Tab` reaches the card; `Escape` closes the expanded form (via `OnCollapseRequested` callback); form fields follow Story 2-1's field order
-- FullPage mode: `Tab` skips to content via skip-link; breadcrumb is focusable; form has `aria-label="{Humanized CommandBaseName} command form"` (Decision D23)
+- FullPage mode: `Tab` skips to content via skip-link; breadcrumb is focusable; form has `aria-label="{DisplayLabel} command form"` (Decision D23)
 
 **And** `aria-expanded` is set correctly on the inline button when a popover is open
 
 **Focus return contract (per Sally's review — binding):**
-- **Popover submit (success):** On `Confirmed` state transition, focus returns to the INVOKING trigger button; the triggering row (if inside a DataGrid) remains scrolled into view via `scrollIntoView({block:'nearest'})` on the trigger's `ElementReference`
+- **Popover submit (success):** On `Confirmed` state transition, the trigger button is first scrolled into view via `scrollIntoView({block:'nearest'})` (handles the case where `Confirmed` arrives ~2s later and the user has scrolled — Hindsight #3), THEN focus is restored via `ElementReference.FocusAsync()`. Both operations must complete in order — scroll-then-focus, never focus-then-scroll.
 - **Popover submit (rejected):** Focus returns to the FIRST invalid field in the popover; popover remains open
-- **Popover dismiss (Escape or outside-click):** Focus returns to the trigger button; no form submission occurs; row remains scrolled into view
+- **Popover dismiss (Escape or outside-click):** Focus returns to the trigger button; no form submission occurs; row remains scrolled into view (same scroll-then-focus order)
+- **Circuit reconnect mid-popover (Pre-mortem PM-2, Chaos CM-6):** On `CircuitHandler.OnConnectionUpAsync` after a disconnect, if `_popoverOpen == true`, the popover is closed silently, `_popoverOpen = false`, and a warning is logged: `Logger?.LogWarning("Popover state lost on circuit reconnect for {CommandType}. Full draft preservation is Story 2-5 scope.", "{CommandTypeFqn}")`. Full draft preservation is 2-5's concern; Story 2-2 ensures the fail-closed path doesn't leak ghost state or raise exceptions.
+- **Popover + FluentDialog z-index conflict (Pre-mortem PM-6):** Known cross-story risk deferred to Story 2-5 scope — 2-5's dialog-opening path will need to close any open Story 2-2 popover before rendering a destructive confirmation. The coordination contract (interface + registry) lands with 2-5 rather than being speculatively built here. Story 2-2 surfaces this in Known Gaps and its popover components expose a public `ClosePopoverAsync()` method so 2-5 can integrate without needing a new contract.
 - **CompactInline collapse (Escape):** Focus returns to whichever element invoked the expansion (recorded via `OnCollapseRequested` callback); if no invoker is recorded, focus falls back to the first focusable element in the containing section
-- **FullPage submit (success):** Navigation to `ReturnPath` occurs; focus is set to the skip-link target of the destination page (native Blazor `NavigationManager.NavigateTo` behavior; verified, not overridden)
+- **FullPage submit (success):** Navigation to `ReturnPath` occurs (after Decision D32 validation); focus is set to the skip-link target of the destination page (native Blazor `NavigationManager.NavigateTo` behavior; verified, not overridden)
 
 **And** axe-core scan on Counter sample with all three density modes shows zero serious/critical violations
 **And** dedicated keyboard tab-order tests (separate from axe-core DOM scans) verify the full focus journey for each mode using bUnit `cut.InvokeAsync(() => element.FocusAsync())` + element-under-focus assertions
@@ -305,9 +380,9 @@ USER          /commands/{bc}/{cmd} page   DataGridNavigationState   Form body
 - `ConfigureCounterCommand` (new, 5 non-derivable fields: `Name`, `Description`, `InitialValue`, `MaxValue`, `Category`) → FullPage
 
 **And** the CounterPage demonstrates all three:
-- A header row with the CompactInline `BatchIncrementRenderer` (expand-in-row style, standalone placement; Decision D22 naming)
-- An inline-button `IncrementRenderer` rendered with its popover
-- A link navigating to the full-page route `/commands/Counter/ConfigureCounter`
+- A header row with the CompactInline `BatchIncrementCommandRenderer` (expand-in-row style, standalone placement; Decision D22 uses full TypeName — no stripping)
+- An inline-button `IncrementCommandRenderer` rendered with its popover
+- A link navigating to the full-page route `/commands/Counter/ConfigureCounterCommand`
 
 **And** the Counter sample wraps the inline/compact renderers in a manual `<CascadingValue Value="@_demoProjectionContext">` to demonstrate `ProjectionContextProvider` pre-fill for the derivable aggregate ID (Decision D27 — shell-level cascading is Epic 4)
 
@@ -334,6 +409,15 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 | Shell-level `ProjectionContext` cascading from DataGrid rows | Story 4.1 | Epic 4 DataGrid infrastructure; 2-2 ships null-tolerant renderer + Counter-sample manual cascade |
 | Real DataGrid state preservation end-to-end demo | Story 4.3 | 2-2 only proves `RestoreGridStateAction` dispatch contract with an empty state map (Decision D30) |
 | `[PrefillStrategy(SkipLastUsed=true)]` attribute (bypass LastUsed entirely) | Future (post-v0.1) | Current `[DefaultValue]` hard-floor rule (Decision D24) handles 80% of cases; wider attribute added on adopter feedback |
+| FluentMessageBar form abandonment UX (UX-DR38 full treatment) **AND** any interim draft-protection | Story 2-5 | 2-2 evaluated a minimal native `beforeunload` guard and rejected it during elicitation round 2 (matrix score 2.25) — shipping half-UX creates prompt-fatigue debt before 2-5's real treatment lands. Adopters who need interim protection wire `beforeunload` themselves. |
+| Popover ↔ FluentDialog coordination (z-index / force-close before dialog opens) | Story 2-5 | 2-2 exposes `ClosePopoverAsync()` on popover components; 2-5 owns the coordination contract when it adds destructive confirmation dialogs (Pre-mortem PM-6). Building the contract speculatively was rejected at matrix score 2.45. |
+| Static Fluent UI icon-catalog validator (parse-time HFC1010) | Epic 9 | 2-2 ships runtime try/catch fallback + warning (Decision D34); parse-time validation needs Fluent UI version-aware analyzer and is redundant given the runtime safety net. |
+| Command-type-name character validation (parse-time HFC1009) | Roslyn native | Roslyn's identifier rules already reject invalid C# identifiers — this validation was redundant and cut in round 2. |
+| LastUsed storage LRU cap | Future (adopter signal) | DoS via 1M LastUsed keys is theoretical in v0.1. Add when Epic 8 MCP broadens command surface or adopter quota pressure is reported. Decision D33 is DataGridNav-only. |
+| DataGrid state orphan-detection telemetry (stale FQN-keyed snapshots after projection rename) | Story 4.3 | 2-2's 24-hour TTL prunes silently; telemetry on orphan pickup lands with capture-side wiring. |
+| MCP command manifest emission (expose density + provider chain per command for Epic 8 agent introspection) | Epic 8 | Renderer currently emits no MCP-facing manifest. Adding `{CommandTypeName}McpManifest.g.json` per command would let MCP tool server introspect without reflection. Defer to Epic 8 where the MCP tool server design lands. |
+| Custom `CommandRenderMode` resolver delegate (e.g., "always FullPage on mobile", "Inline for power users") | Backlog | Currently `RenderMode?` is a static per-instance parameter. A `Func<CommandDensity, DeviceContext, CommandRenderMode>` resolver would enable runtime mode decisions. No adopter demand evidence yet; revisit after adopter feedback. |
+| `LastUsedValueProvider` audit log (compliance-ready "who wrote what" trail without values) | Epic 7 (compliance/multi-tenancy) | 2-2 logs nothing on `Record<TCommand>`; compliance adopters will want a structured audit trail (command type + property names + tenant + user + timestamp, NO values). Defer to Epic 7 where compliance requirements land. |
 
 ---
 
@@ -355,8 +439,13 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   }
   ```
 - [ ] 0.6: **Reuse `System.ComponentModel.DefaultValueAttribute`** — do NOT create a new attribute. The `ExplicitDefaultValueProvider` reads this type (Decision D24).
-- [ ] 0.7: Register diagnostic `HFC1008` in `DiagnosticDescriptors.cs`: "RenderMode incompatible with command density" (severity: Warning, deferred to Epic 9 for analyzer emission; Story 2-2 wires the log message).
-- [ ] 0.8: Update `AnalyzerReleases.Unshipped.md` with `HFC1008`.
+- [ ] 0.7: Register the following diagnostics in `DiagnosticDescriptors.cs`:
+  - **HFC1008** (Warning): "RenderMode incompatible with command density" (runtime log in 2-2; analyzer emission deferred to Epic 9)
+  - **HFC1011** (Error): "Command property count exceeds 200 — DoS risk" — hard limit on total property count. Red-team RT-5 defense.
+  - **HFC1012** (Error): "`[DefaultValue(x)]` value type does not match property type" — parse-time validation. Chaos CM-1 defense.
+  - **HFC1014** (Error): "Nested `[Command]` type is unsupported" — `[Command]` must be a top-level type within a namespace, not nested inside a containing class. Chaos CM-3 defense.
+  - **NOTE:** HFC1009 (invalid identifier), HFC1010 (invalid icon format), and HFC1013 (BaseName collision) were proposed and REMOVED during elicitation round 2 matrix scoring — HFC1009 is covered by Roslyn's native identifier validation; HFC1010 is redundant with Decision D34 runtime icon fallback; HFC1013 became unnecessary after Decision D22 reverted to full `{CommandTypeName}` naming. Diagnostic IDs are reserved but unused.
+- [ ] 0.8: Update `AnalyzerReleases.Unshipped.md` with `HFC1008`, `HFC1011`, `HFC1012`, `HFC1014`.
 
 ### Task 1: Extend CommandModel IR with Density (AC: 1) (See Decision D3, ADR-013)
 
@@ -367,12 +456,18 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 - [ ] 1.2: Add `Density` property to `CommandModel` (sealed class, Decision D1 from Story 2-1 carries):
   - Compute in constructor from `NonDerivableProperties.Length`
   - Include in `Equals` and `GetHashCode` (ADR-009)
-- [ ] 1.3: Add `IconName` property to `CommandModel` (nullable string). Populate from `[Icon]` attribute in `AttributeParser.ParseCommand` if present; validate via `EscapeString` helper.
-- [ ] 1.4: Unit tests for density classification — **exactly 4 tests** (replaces 9-test example matrix with property-based coverage per Murat's review):
+- [ ] 1.3: Add `IconName` property to `CommandModel` (nullable string). Populate from `[Icon]` attribute in `AttributeParser.ParseCommand` if present; escape via `EscapeString` helper. **Icon format validation is deferred to runtime** (Decision D34 try/catch fallback) — no parse-time regex check.
+- [ ] 1.3a: Enforce total property count ≤ 200 (**HFC1011** hard error) in addition to Story 2-1's existing HFC1007 (>30 non-derivable warning, >100 non-derivable error). Red-team RT-5 defense.
+- [ ] 1.3b: Reject nested `[Command]` types (containing type is a class/struct, not a namespace) → emit **HFC1014**. Chaos CM-3 defense.
+- [ ] 1.3c: Validate `[DefaultValue]` value type is assignable to the decorated property type → emit **HFC1012** on mismatch. Chaos CM-1 defense. Check applies to all property types including nullable.
+- [ ] 1.4: Unit tests for density classification + new parse-time diagnostics — **exactly 7 tests**:
   1. `Density_ClassificationProperty` (FsCheck): for any `int count ∈ [0, int.MaxValue)`, `ComputeDensity(count)` matches the specification: `count ≤ 1 → Inline`, `count ∈ [2..4] → CompactInline`, `count ≥ 5 → FullPage`. Seed-pinned to catch regression.
   2. `Density_BoundarySnapshot_AtZeroOneTwoFourFive` — single snapshot asserting CommandModel.Density for a command with 0, 1, 2, 4, and 5 fields in a table (Decision D17 boundary parity)
   3. `CommandModel_Equality_IncludesDensityAndIconName` — two CommandModels differing only by `Density` are non-equal; differing only by `IconName` are non-equal
   4. `CommandModel_HashCode_IncludesDensityAndIconName` — consistency check
+  5. `HFC1011_RejectsGreaterThan200Properties` — 201-property command rejected
+  6. `HFC1012_RejectsDefaultValueTypeMismatch` — `[DefaultValue("hello")] int Amount` rejected
+  7. `HFC1014_RejectsNestedCommand` — `[Command]` class nested inside another class rejected
 
 ### Task 2: Command Render Mode Types (AC: 5)
 
@@ -426,10 +521,18 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   - Otherwise `HasValue=false` (chain continues)
   - Registered 3rd in the chain (beats LastUsed — protects reset-semantics)
 - [ ] 3.5: Implement `LastUsedValueProvider` in `Shell/Services/DerivedValues/` (Scoped):
-  - Reads from `IStorageService` key `frontcomposer:lastused:{tenantId}:{userId}:{commandTypeFqn}:{propertyName}`
-  - Exposes `public Task Record<TCommand>(TCommand command) where TCommand : class` — persists ALL non-system properties to storage
+  - Reads from `IStorageService` key built via **`FrontComposerStorageKey.Build(tenantId, userId, commandTypeFqn, propertyName)`** helper (Decision D39 — NFC-normalize + URL-encode + email-lowercase). Never concatenate raw segments.
+  - **TENANT GUARD (Decision D31, Pre-mortem PM-1):** Both `ResolveAsync` (read) and `Record<TCommand>` (write) return / no-op when `tenantId` is null/empty OR `userId` is null/empty. NEVER use `"anonymous"`, `"default"`, or empty-string segments. Failing closed prevents cross-tenant PII leak.
+  - **Dev-mode visibility (Sally — Journey 3):** Provider exposes `bool TenantGuardTripped` (per-circuit flag) and publishes a `DevDiagnosticEvent` through `IDiagnosticSink` (new scoped service, see Task 3.5a) on first trip. In `ASPNETCORE_ENVIRONMENT=Development`, the generated renderer surfaces a `<FluentMessageBar Intent="Warning">` inline: "LastUsed persistence disabled: tenant/user context missing. Wire `IHttpContextAccessor` or set `FcShellOptions.LastUsedDisabled=true` to silence." Production builds skip the render (zero tenant-info leak surface).
+  - Write path also emits one rate-limited `ILogger.LogWarning` per circuit (existing D31 behavior preserved for prod observability).
+  - Exposes `public Task Record<TCommand>(TCommand command) where TCommand : class` — persists ALL non-system properties to storage.
   - Does NOT subscribe to Fluxor itself. Per-command typed subscribers are EMITTED by Task 4bis and call `Record<TCommand>` on the Confirmed transition.
-  - Registered 4th in the chain
+  - Registered 4th in the chain.
+  - **Storage cap deferred:** LRU cap for LastUsed keys was evaluated and deferred (Decision D33 note) — no v0.1 evidence of quota pressure; add when Epic 8 broadens command surface or adopter signal arrives.
+- [ ] 3.5a: Add `IDiagnosticSink` + `FrontComposerStorageKey` helper in `Shell/Services/` (Decision D39):
+  - `FrontComposerStorageKey.Build(string? tenantId, string? userId, string commandTypeFqn, string propertyName)` → returns `string` or throws `InvalidOperationException` if tenant/user null/empty (fail-closed per D31); applies D39 canonicalization; segments separated by `:`.
+  - `IDiagnosticSink` (scoped) — one-line interface `void Publish(DevDiagnosticEvent evt)`; default impl `InMemoryDiagnosticSink` retains last N events for the `<FcDiagnosticsPanel>` component (below) AND forwards to `ILogger`. Aspire OTLP exporter can swap the impl; demo wiring uses the in-memory default.
+  - `<FcDiagnosticsPanel>` Blazor component in `Shell/Components/Diagnostics/` — renders a FluentMessageBar list of recent `DevDiagnosticEvent`s when `IHostEnvironment.IsDevelopment()`. Adopter opts-in via `<FcDiagnosticsPanel />` placement; Counter sample places it below the CascadingValue in Task 9.3.
 - [ ] 3.6: Implement `ConstructorDefaultValueProvider` in `Shell/Services/DerivedValues/` (Singleton):
   - Reads command type's property default via a compiled delegate cache (`new TCommand()` then get property) — NOT per-call reflection
   - Delegate cache keyed by `Type`
@@ -438,63 +541,123 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   - Prepends to the chain (custom providers win over all built-ins)
   - Lifetime defaults to `Scoped`; adopter supplies if Singleton
 - [ ] 3.8: Register built-in providers in `AddHexalithFrontComposer()` in this exact order (Decision D24): `System → ProjectionContext → ExplicitDefault → LastUsed → ConstructorDefault`.
-- [ ] 3.9: Unit tests for provider chain — **exactly 16 tests** (was 14; +2 for new 5-provider chain):
+- [ ] 3.9: Unit tests for provider chain — **exactly 20 tests** (18 prior + 2 for D39 canonicalization):
   - 2 per provider (positive resolve + miss) × 5 = 10
   - Chain ordering (5 tests: system beats projection, projection beats explicit-default, explicit-default beats last-used, last-used beats constructor-default, prepended custom beats all built-ins)
   - Chain stops at first HasValue=true (1 test)
+  - `LastUsed_NullTenantId_RefusesRead_ReturnsHasValueFalse` (Decision D31)
+  - `LastUsed_EmptyUserId_RefusesWrite_LogsWarningOncePerCircuit` (Decision D31, rate-limit)
+  - `StorageKey_Build_Roundtrip_FsCheckProperty` (D39 — FsCheck arbitrary tenant/user strings including NFC/NFD, case variants, `:` in segments, whitespace; assert `Parse(Build(t,u,c,p)) == (Canon(t), Canon(u), c, p)`)
+  - `StorageKey_Build_NullOrEmptyTenantOrUser_Throws_InvalidOperationException` (D31+D39 fail-closed at key construction, not just provider boundary)
 
 ### Task 4bis: Per-Command LastUsed Subscriber Emitter (AC: 6) (See Decision D28)
 
 - [ ] 4bis.1: Create `LastUsedSubscriberEmitter.cs` in `SourceTools/Emitters/`. Emits `{CommandFqn}LastUsedSubscriber.g.cs` per `[Command]`:
   ```csharp
   // Example emitted output (netstandard2.0-safe, no Fluxor/FluentUI ref in emitter — strings only):
-  public sealed class {BaseName}LastUsedSubscriber : IDisposable
+  public sealed class {CommandTypeName}LastUsedSubscriber : IDisposable
   {
       private readonly Fluxor.IActionSubscriber _subscriber;
       private readonly LastUsedValueProvider _provider;
+      private readonly ILogger<{CommandTypeName}LastUsedSubscriber>? _logger;
 
-      public {BaseName}LastUsedSubscriber(Fluxor.IActionSubscriber subscriber, LastUsedValueProvider provider)
+      // CorrelationId → typed command. Keyed dict (NOT scalar) so interleaved submits cannot cross-contaminate
+      // correlations. Story 2-1 ConfirmedAction carries ONLY CorrelationId (not the payload), so matching requires the dict.
+      // Bounded per Decision D38 (eviction policy) to prevent growth when Confirmed never arrives.
+      private readonly System.Collections.Concurrent.ConcurrentDictionary<string, PendingEntry> _pending = new();
+
+      private readonly record struct PendingEntry({CommandTypeFqn} Command, DateTimeOffset CapturedAt);
+
+      public {CommandTypeName}LastUsedSubscriber(
+          Fluxor.IActionSubscriber subscriber,
+          LastUsedValueProvider provider,
+          ILogger<{CommandTypeName}LastUsedSubscriber>? logger = null)
       {
           _subscriber = subscriber;
           _provider = provider;
+          _logger = logger;
+          // Subscribe to both actions: Submitted captures the typed command keyed by CorrelationId;
+          // Confirmed looks up by CorrelationId and calls typed Record (Decision D28 — no reflection dispatch).
+          _subscriber.SubscribeToAction<{CommandName}Actions.SubmittedAction>(this, OnSubmitted);
           _subscriber.SubscribeToAction<{CommandName}Actions.ConfirmedAction>(this, OnConfirmed);
+      }
+
+      private void OnSubmitted({CommandName}Actions.SubmittedAction action)
+      {
+          // Decision D38 eviction: before inserting, prune entries older than TTL AND cap at MaxInFlight.
+          PruneExpiredAndCap();
+          _pending[action.CorrelationId] = new PendingEntry(action.Command, DateTimeOffset.UtcNow);
       }
 
       private void OnConfirmed({CommandName}Actions.ConfirmedAction action)
       {
-          // CorrelationId → command lookup: LastUsedValueProvider holds the most recent submitted command per CorrelationId in a scoped WeakDict populated by SubmittedAction subscription (emit in same class).
-          // Simpler: subscribe to SubmittedAction too; record on Submitted, flush on Confirmed.
-          _ = _provider.FlushAsync(action.CorrelationId);
+          // Decision D28: call typed Record<TCommand> with the CorrelationId-matched command.
+          if (_pending.TryRemove(action.CorrelationId, out var entry))
+          {
+              _ = _provider.Record<{CommandTypeFqn}>(entry.Command);
+          }
+          // No-op if CorrelationId absent: orphaned Confirmed (e.g., replay after reconnect) — benign.
+      }
+
+      private void PruneExpiredAndCap()
+      {
+          // D38: TTL = 5 minutes (command lifecycle upper bound); MaxInFlight = 16 per command type per circuit.
+          var threshold = DateTimeOffset.UtcNow.AddMinutes(-5);
+          foreach (var kvp in _pending)
+              if (kvp.Value.CapturedAt < threshold)
+                  _pending.TryRemove(kvp.Key, out _);
+          while (_pending.Count >= 16)
+          {
+              var oldest = default(KeyValuePair<string, PendingEntry>);
+              var oldestAt = DateTimeOffset.MaxValue;
+              foreach (var kvp in _pending)
+                  if (kvp.Value.CapturedAt < oldestAt) { oldest = kvp; oldestAt = kvp.Value.CapturedAt; }
+              if (oldest.Key is null) break;
+              _pending.TryRemove(oldest.Key, out _);
+              _logger?.LogWarning("D38 cap reached: evicted pending {CommandType} CorrelationId={CorrelationId}", "{CommandTypeFqn}", oldest.Key);
+          }
       }
 
       public void Dispose() => _subscriber.UnsubscribeFromAllActions(this);
   }
 
-  // Registration partial emitted to {BaseName}LastUsedSubscriberRegistration.g.cs:
+  // Registration partial emitted to {CommandTypeName}LastUsedSubscriberRegistration.g.cs:
   public static partial class {CommandName}ServiceCollectionExtensions
   {
-      public static IServiceCollection Add{BaseName}LastUsedSubscriber(this IServiceCollection services)
-          => services.AddScoped<{BaseName}LastUsedSubscriber>();
+      public static IServiceCollection Add{CommandTypeName}LastUsedSubscriber(this IServiceCollection services)
+          => services.AddScoped<{CommandTypeName}LastUsedSubscriber>();
   }
   ```
-- [ ] 4bis.2: Wire per-command registration into the existing `FrontComposerRegistry.RegisterDomain()` aggregation (ADR-012 pattern). At runtime, all subscribers are resolved eagerly on circuit start via a hosted init step.
-- [ ] 4bis.3: Unit tests — **exactly 5 tests**:
+- [ ] 4bis.2: Wire per-command registration via a scoped `LastUsedSubscriberRegistry` service (Decision D35):
+  - Registry tracks active subscriber types via `HashSet<Type>` per scope
+  - `Ensure<TCommand>()` method: no-ops if type already registered; otherwise constructs and subscribes
+  - Called LAZILY on the first `{CommandName}Actions.SubmittedAction` dispatch (via a single `IActionSubscriber.SubscribeToAction<SubmittedActionBase>` or generic open-type subscription), NOT at circuit start
+  - All subscribers self-unsubscribe on `IAsyncDisposable.DisposeAsync` invoked on circuit teardown
+  - Prevents hot-reload accumulation (Pre-mortem PM-4) and startup latency on large domains (Chaos CM-7)
+- [ ] 4bis.3: Unit tests — **exactly 12 tests** (7 prior + 5 for D38 correlation-keyed dict per Party Mode review):
   1. Emitter generates subscriber per command
   2. Snapshot of emitted subscriber code
-  3. Subscriber registers on construction
-  4. Subscriber unsubscribes on Dispose
-  5. Confirmed flushes `LastUsedValueProvider.FlushAsync` with correct CorrelationId (via `Fluxor.TestStore`)
+  3. Subscriber registers on first `Ensure<T>()` call
+  4. Subscriber unsubscribes on registry Dispose
+  5. `Submitted_Then_Confirmed_CallsRecordWithTypedCommand` (happy path via `Fluxor.TestStore` — asserts `Record<TCommand>` called with the Submitted command matched by CorrelationId)
+  6. `Ensure<T>_CalledTwice_RegistersOnce` (idempotency — Decision D35)
+  7. `Subscribers_NotResolved_UntilFirstDispatch` (lazy — Decision D35)
+  8. **T-race-1 — `InterleavedSubmits_OrderedConfirms_PreservesCorrelation`** (D38): Submitted(corr=A, cmd=A) → Submitted(corr=B, cmd=B) → Confirmed(A) → Confirmed(B); assert `Record` called twice with `(A,A)` then `(B,B)`, never `(A,B)` or `(B,A)`. Uses deterministic interleaving via `TestStore`.
+  9. **T-race-2 — `InterleavedSubmits_OutOfOrderConfirms_PreservesCorrelation`** (D38): Submitted(A) → Submitted(B) → Confirmed(B) → Confirmed(A); assert Record invoked `(B,B)` then `(A,A)` — NOT latest-wins.
+  10. **T-orphan — `SubmittedWithoutConfirmed_LaterSubmit_NoStaleReplay`** (D38): Submitted(A), no Confirmed; then Submitted(B) + Confirmed(B); assert only `(B,B)` recorded; A entry is pruned when its 5-minute TTL elapses (simulated via injectable `TimeProvider`).
+  11. **T-dispose — `DisposedMidFlight_NoExceptionNoGhostRecord`** (D38): Submitted(A), subscriber disposed, then Confirmed(A) dispatched to disposed store; assert no throw, no `Record` call.
+  12. **T-cap — `ExceedsMaxInFlight_EvictsOldestAndLogsWarning`** (D38): dispatch 17 Submitteds without Confirms; assert dictionary size capped at 16, oldest evicted, `ILogger.LogWarning` invoked with cap-eviction template.
 
 ### Task 4: CommandRendererEmitter — Core (AC: 2, 3, 4, 5, 8) (See Decisions D1, D2, D6, D12, D21, D22, D25, ADR-016)
 
 - [ ] 4.1: Create `CommandRendererTransform.cs` in `SourceTools/Transforms/`:
   - Input: `CommandModel`
   - Output: `CommandRendererModel` (sealed class, manual IEquatable per ADR-009)
-  - Fields: `TypeName`, `BaseName` (TypeName with trailing `Command` stripped per Decision D22), `Namespace`, `BoundedContext`, `Density`, `IconName`, `ButtonLabel` (= `HumanizeCamelCase(BaseName)` per Decision D23), `FullPageRoute` (= `/commands/{BoundedContext}/{BaseName}` per Decision D22), `NonDerivablePropertyNames` (EquatableArray<string>), `DerivablePropertyNames` (EquatableArray<string>), `HasIconAttribute` (bool)
-- [ ] 4.2: Create `CommandRendererEmitter.cs` in `SourceTools/Emitters/`. Emits `{BaseName}Renderer.g.razor.cs` partial class (Decision D22) inheriting `ComponentBase` (NO `IAsyncDisposable` — the module lifecycle is owned by the scoped `IExpandInRowJSModule` service per Decision D25).
+  - Fields: `TypeName`, `Namespace`, `BoundedContext`, `Density`, `IconName`, `DisplayLabel` (= `HumanizeCamelCase(TypeName)` with trailing ` Command` stripped per Decision D23), `FullPageRoute` (= `/commands/{BoundedContext}/{CommandTypeName}` per Decision D22), `NonDerivablePropertyNames` (EquatableArray<string>), `DerivablePropertyNames` (EquatableArray<string>), `HasIconAttribute` (bool)
+- [ ] 4.2: Create `CommandRendererEmitter.cs` in `SourceTools/Emitters/`. Emits `{CommandTypeName}Renderer.g.razor.cs` partial class (Decision D22) inheriting `ComponentBase` (NO `IAsyncDisposable` — the module lifecycle is owned by the scoped `IExpandInRowJSModule` service per Decision D25).
 - [ ] 4.3: Emitted class structure (binding contract — CHROME ONLY per ADR-016):
   ```csharp
-  public partial class {BaseName}Renderer : ComponentBase
+  public partial class {CommandTypeName}Renderer : ComponentBase
   {
       [Parameter] public CommandRenderMode? RenderMode { get; set; }
       [Parameter] public {CommandTypeFqn}? InitialValue { get; set; } // forwarded to inner Form
@@ -505,7 +668,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
       [Inject] private IEnumerable<IDerivedValueProvider> DerivedValueProviders { get; set; } = default!;
       [Inject] private IExpandInRowJSModule ExpandInRowJS { get; set; } = default!; // scoped, Lazy-cached (Decision D25)
       [Inject] private NavigationManager NavigationManager { get; set; } = default!;
-      [Inject] private ILogger<{BaseName}Renderer>? Logger { get; set; }
+      [Inject] private ILogger<{CommandTypeName}Renderer>? Logger { get; set; }
 
       private {CommandTypeFqn} _prefilledModel = new();
       private CommandRenderMode _effectiveMode;
@@ -518,8 +681,13 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
       {
           _effectiveMode = RenderMode ?? CommandRenderMode.{DensityDerivedMode}; // from IR
           if (!IsModeCompatibleWithDensity(_effectiveMode, CommandDensity.{Density}))
-              Logger?.LogWarning("HFC1008: RenderMode {Mode} incompatible with {BaseName} density {Density}",
-                  _effectiveMode, "{BaseName}", CommandDensity.{Density});
+              Logger?.LogWarning("HFC1008: RenderMode {Mode} incompatible with {CommandTypeName} density {Density}",
+                  _effectiveMode, "{CommandTypeName}", CommandDensity.{Density});
+
+          // Observability hook (Round 4 finding) — enables downstream telemetry of mode/density usage per command.
+          // Intentionally logs no PII (no _model contents per Story 2-1 Decision D15).
+          Logger?.LogInformation("Rendering {CommandType} in {Mode} (density={Density})",
+              "{CommandTypeFqn}", _effectiveMode, CommandDensity.{Density});
 
           _prefilledModel = InitialValue ?? new();
           await PrefillDerivableFieldsAsync();
@@ -550,15 +718,19 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
           }
       }
 
-      // Called by the inner {CommandName}Form via [Parameter] RegisterExternalSubmit (ADR-016)
-      private void OnFormRegisteredExternalSubmit(Action submit) => _externalSubmit = submit;
+      // Called by the inner {CommandTypeName}Form via [Parameter] RegisterExternalSubmit (ADR-016, Decision D36)
+      private void OnFormRegisteredExternalSubmit(Action submit)
+      {
+          _externalSubmit = submit;
+          InvokeAsync(StateHasChanged); // re-render to enable the 0-field button (D36)
+      }
 
-      // Called by renderer's own 0-field inline button click
+      // Called by renderer's own 0-field inline button click.
+      // Button is [disabled] until _externalSubmit is non-null (D36 — prevents silent click-drop during SSR→interactive transition).
       private async Task OnZeroFieldClickAsync()
       {
-          // Delegate to Form's OnValidSubmitAsync via the registered callback.
-          // Form is still rendered (hidden) so its EditContext/OnValidSubmit is wired.
-          _externalSubmit?.Invoke();
+          if (_externalSubmit is null) return; // defensive; unreachable when button enabled
+          _externalSubmit.Invoke();
           await Task.CompletedTask;
       }
 
@@ -577,20 +749,22 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   ```
 - [ ] 4.4: Emit `BuildRenderTree` branches per `_effectiveMode` (use `#pragma warning disable ASP0006` for `seq++`). **The renderer NEVER emits `<EditForm>` (ADR-016).**
   - `Inline` + 0 fields:
-    - Visible: `FluentButton @onclick=OnZeroFieldClickAsync` with leading icon + `{ButtonLabel}`
-    - Hidden (display:none): `<{FullCommandTypeName}Form InitialValue="_prefilledModel" RegisterExternalSubmit="OnFormRegisteredExternalSubmit" />` — Form's `<EditForm>` wires but isn't visible; synthetic submit via registered callback
+    - Visible: `FluentButton @onclick=OnZeroFieldClickAsync Disabled="@(_externalSubmit is null)"` with leading icon + `{DisplayLabel}` (Decision D36 — disabled until Form registers external submit callback)
+    - Hidden (display:none): `<{CommandTypeName}Form InitialValue="_prefilledModel" RegisterExternalSubmit="OnFormRegisteredExternalSubmit" />` — Form's `<EditForm>` wires but isn't visible; synthetic submit via registered callback. Form invokes `RegisterExternalSubmit` in its own `OnAfterRender(firstRender=true)`; renderer's `StateHasChanged` re-renders to flip the disabled state.
   - `Inline` + 1 field:
-    - `FluentButton @ref=_triggerButtonRef` with `@onclick` toggling `_popoverOpen`; `aria-expanded=@_popoverOpen`
+    - `FluentButton @ref=_triggerButtonRef` with `@onclick=OpenPopoverAsync`; `aria-expanded=@_popoverOpen`
+    - `OpenPopoverAsync()` calls `await InlinePopoverRegistry.OpenAsync(this)` which closes any other open popover in the circuit first (Decision D37), then sets `_popoverOpen = true`
     - `<FluentPopover AnchorId="@_triggerButtonRef" Open="@_popoverOpen" @onkeydown=HandleEscape>` (outside-click dismissal via backdrop, Decision D29)
-    - Inside popover: `<{FullCommandTypeName}Form InitialValue="_prefilledModel" ShowFieldsOnly='@(new[]{"{PropName}"})' OnConfirmed=ClosePopoverAndReturnFocus />`
+    - Inside popover: `<{CommandTypeName}Form InitialValue="_prefilledModel" ShowFieldsOnly='@(new[]{"{PropName}"})' OnConfirmed=ClosePopoverAndReturnFocus />`
+    - Renderer implements `public Task ClosePopoverAsync()` as a public method so `InlinePopoverRegistry` (D37) and future Story 2-5 dialog coordination can dismiss the popover externally
   - `CompactInline`:
-    - `<FluentCard class="fc-expand-in-row" @ref=_compactCardRef>` wrapping `<{FullCommandTypeName}Form InitialValue="_prefilledModel" DerivableFieldsHidden="true" />`
+    - `<FluentCard class="fc-expand-in-row" @ref=_compactCardRef>` wrapping `<{CommandTypeName}Form InitialValue="_prefilledModel" DerivableFieldsHidden="true" />`
   - `FullPage`:
-    - `<div style="max-width: @Options.FullPageFormMaxWidth; margin: 0 auto;">` (Decision D26) + optional `<FluentBreadcrumb>` + `<{FullCommandTypeName}Form InitialValue="_prefilledModel" OnConfirmed=NavigateToReturnPath />`
-- [ ] 4.5: For `FullPage` mode, also emit a routable page partial `{BaseName}Page.g.razor.cs` (Decision D22):
+    - `<div style="max-width: @Options.FullPageFormMaxWidth; margin: 0 auto;">` (Decision D26) + optional `<FluentBreadcrumb>` + `<{CommandTypeName}Form InitialValue="_prefilledModel" OnConfirmed=NavigateToReturnPath />`
+- [ ] 4.5: For `FullPage` mode, also emit a routable page partial `{CommandTypeName}Page.g.razor.cs` (Decision D22):
   ```csharp
-  [Route("/commands/{BoundedContext}/{BaseName}")]
-  public partial class {BaseName}Page : ComponentBase
+  [Route("/commands/{BoundedContext}/{CommandTypeName}")]
+  public partial class {CommandTypeName}Page : ComponentBase
   {
       [Inject] private Fluxor.IDispatcher Dispatcher { get; set; } = default!;
 
@@ -600,17 +774,29 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
           if (viewKey is not null)
               Dispatcher.Dispatch(new RestoreGridStateAction(viewKey)); // no-op in v0.1 (Decision D30)
       }
-      // Renders: <{BaseName}Renderer RenderMode="CommandRenderMode.FullPage" />
+      // Renders: <{CommandTypeName}Renderer RenderMode="CommandRenderMode.FullPage" />
   }
   ```
-- [ ] 4.6: Button hierarchy emission (Decision D12, D23, AC8) — labels are `"{Humanized BaseName}"` in ALL modes (no "Send" prefix):
+- [ ] 4.6: Button hierarchy emission (Decision D12, D23, AC8) — labels are `{DisplayLabel}` in ALL modes (no "Send" prefix):
   - Inline + 0 fields → `Appearance="Appearance.Secondary"` + leading icon
   - Inline + 1 field popover trigger → `Appearance="Appearance.Secondary"` + leading icon
   - Inline + 1 field popover submit (inside Form) → `Appearance="Appearance.Primary"` (Form already emits this; renderer does not override)
   - CompactInline submit (inside Form) → `Appearance="Appearance.Primary"` + leading icon
   - FullPage submit (inside Form) → `Appearance="Appearance.Primary"` + leading icon
-  - **Note:** 2-1's `CommandFormEmitter` (Task 2.3) must be updated to compute `ButtonLabel` using the D23 rule `HumanizeCamelCase(BaseName)`; Story 2-1 snapshots that contained "Send Increment" will re-verify (see Task 5.2).
-- [ ] 4.7: Icon emission: `<FluentIcon Value="@(new Icons.{IconName}())" />` where `IconName` is the `[Icon]` attribute value or default `Regular.Size16.Play` in all modes (Decision D23 — single default icon for label consistency, renderers differentiate via size/placement, not semantics). Escape the icon name via `EscapeString`.
+  - **Note:** 2-1's `CommandFormEmitter` (Task 2.3) must be updated to compute the button label as `DisplayLabel` (Decision D23: `HumanizeCamelCase(TypeName)` with trailing " Command" stripped); Story 2-1 snapshots that contained "Send Increment" will re-verify (see Task 5.2).
+- [ ] 4.7: Icon emission with runtime fallback (Decision D34): emit a `ResolveIcon()` helper in the renderer that wraps `new Icons.{IconName}()` in a `try/catch`:
+  ```csharp
+  private Microsoft.FluentUI.AspNetCore.Components.Icon ResolveIcon()
+  {
+      try { return new Icons.{IconName}(); }
+      catch (Exception ex)
+      {
+          Logger?.LogWarning("Icon '{IconName}' failed to resolve on {CommandType}: {Error}", "{IconName}", "{CommandTypeFqn}", ex.Message);
+          return new Icons.Regular.Size16.Play();
+      }
+  }
+  ```
+  Default icon when no `[Icon]` attribute is declared: `Regular.Size16.Play` in all modes (Decision D23 — single default icon for label consistency; renderers differentiate via size/placement, not semantics). Escape the icon name via `EscapeString` at emission. Runtime fallback (Decision D34) is the SOLE validation layer — parse-time icon format validation was evaluated and cut in R2 Trim as redundant (HFC1010 removed; see Known Gaps + R2 Trim table).
 - [ ] 4.8: Focus return & popover dismissal (AC9) — emit helpers:
   - `ClosePopoverAndReturnFocus()` → sets `_popoverOpen=false`, awaits `_triggerButtonRef.FocusAsync()`, then `await _triggerButtonRef.ScrollIntoViewAsync()` (extension method via JS interop)
   - `HandleEscape(KeyboardEventArgs)` → when `Escape` and `_popoverOpen`, invoke `ClosePopoverAndReturnFocus`
@@ -654,7 +840,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 
 ### Task 5: Story 2-1 Form Body Extension (AC: 2, 3, 4) (ADR-016)
 
-- [ ] 5.1: Extend Story 2-1's `{FullCommandTypeName}Form` component (modify `CommandFormEmitter`) with the following backward-compatible parameters:
+- [ ] 5.1: Extend Story 2-1's `{CommandTypeName}Form` component (modify `CommandFormEmitter`) with the following backward-compatible parameters:
   - `[Parameter] public bool DerivableFieldsHidden { get; set; } = false` — when true, skip rendering derivable field UI but retain bindings (values come from pre-fill)
   - `[Parameter] public string[]? ShowFieldsOnly { get; set; } = null` — when non-null, only render fields with property names in the set
   - `[Parameter] public {CommandTypeFqn}? InitialValue { get; set; }` — seeds `_model` on `OnInitialized` (already exists in 2-1 Task 3A.2 — verify)
@@ -665,7 +851,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   - Add test `CommandForm_Story21Regression_ByteIdenticalWhenDefaultParameters` in `SourceTools.Tests/Emitters/`
   - For every existing Story 2-1 `.verified.txt` snapshot (12 tests from Task 3E.1), run the updated emitter with a `CommandModel` identical to Story 2-1's input, assert byte-for-byte equality with the committed 2-1 snapshot
   - MUST run in CI; failure blocks merge
-- [ ] 5.3: **Button label migration** — Decision D23 changes 2-1's button label from `"Send {Humanized CommandName}"` to `"{Humanized BaseName}"`. This is a visible change; re-approve Story 2-1's 12 snapshots with the new labels in a single pre-emitter-change commit so Task 5.2's regression gate passes against the new baselines. Document in `deferred-work.md`.
+- [ ] 5.3: **Button label migration** — Decision D23 changes 2-1's button label from `"Send {Humanized CommandName}"` to `{DisplayLabel}` (HumanizeCamelCase + trailing-" Command" strip for display). This is a visible change; **re-approve all 12 Story 2-1 `.verified.txt` snapshots** with the new labels in a single pre-emitter-change commit so Task 5.2's regression gate passes against the new baselines. Document in `deferred-work.md`.
 - [ ] 5.4: Add 2 new snapshot tests covering `DerivableFieldsHidden=true` and `ShowFieldsOnly=["Amount"]`:
   - `CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly` (snapshot)
   - `CommandForm_ShowFieldsOnly_RendersOnlyNamedFields` (snapshot)
@@ -678,9 +864,10 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   - `DataGridNavigationFeature.cs` — Fluxor `Feature<DataGridNavigationState>`, `GetName() => "Hexalith.FrontComposer.Shell.State.DataGridNavigationState"`
   - `DataGridNavigationActions.cs` — `CaptureGridStateAction(string viewKey, GridViewSnapshot snapshot)`, `RestoreGridStateAction(string viewKey)`, `ClearGridStateAction(string viewKey)`, `PruneExpiredAction(DateTimeOffset threshold)`
   - `DataGridNavigationReducers.cs` — handles each action; `PruneExpiredAction` removes snapshots where `CapturedAt < threshold`
+  - **LRU CAP ENFORCEMENT (Decision D33):** `CaptureGridStateAction` reducer, after inserting/updating, evicts the entry with the oldest `CapturedAt` when `ViewStates.Count > FcShellOptions.DataGridNavCap` (default 50). Reducer reads cap from a static `FcShellOptions.Current` or an injected `IOptions<FcShellOptions>` snapshot via Fluxor's `[InjectState]` bridging.
 - [ ] 6.2: **DEFERRED to Story 4.3 (Decision D30)** — `DataGridNavigationEffects.cs` (persistence + hydration + beforeunload). Story 2-2 ships reducers only. Add a stub comment in the folder marking effects as intentionally deferred.
-- [ ] 6.3: Register feature in `AddHexalithFrontComposer()` via standard Fluxor assembly scanning (per Story 1-3 pattern).
-- [ ] 6.4: Unit tests for feature — **exactly 9 tests** (trimmed from 12; effects-related tests move to Story 4.3):
+- [ ] 6.3: Register feature in `AddHexalithFrontComposer()` via standard Fluxor assembly scanning (per Story 1-3 pattern). **Verify no duplicate `AddFluxor` invocation** occurs across Story 2-1, 2-2, and future stories — Story 1-3 established the single-scan rule. Add an integration test `Fluxor_AssemblyScan_NoDuplicateRegistration` that asserts the `IServiceCollection` contains exactly one `IStore` registration after `AddHexalithFrontComposer()`.
+- [ ] 6.4: Unit tests for feature — **exactly 11 tests** (9 prior + 2 LRU cap per Decision D33):
   1. `CaptureGridStateAction` adds snapshot
   2. `CaptureGridStateAction` overwrites existing snapshot for same viewKey
   3. `RestoreGridStateAction` is a pure no-op reducer (state unchanged when viewKey missing; remains unchanged even when present — restore is read-side only)
@@ -690,6 +877,8 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   7. Per-view isolation (two viewKeys coexist in state)
   8. IEquatable for `GridViewSnapshot` (hash consistency, structural equality)
   9. IEquatable for `DataGridNavigationState` (dictionary equality semantics)
+  10. `CaptureGridStateAction_ExceedsCap_EvictsOldestCapturedAt` (Decision D33)
+  11. `CaptureGridStateAction_CapConfigurable_RespectsFcShellOptions` (Decision D33)
 
 ### Task 7: fc-expandinrow JS Module (AC: 3) (See Decision D11)
 
@@ -763,27 +952,43 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 
   <CascadingValue Value="_demoContext">
       <section class="command-section">
-          <BatchIncrementRenderer />  @* CompactInline *@
+          <BatchIncrementCommandRenderer />  @* CompactInline *@
       </section>
       <section class="inline-section">
-          <IncrementRenderer />  @* Inline + popover *@
+          <IncrementCommandRenderer />  @* Inline + popover *@
       </section>
   </CascadingValue>
+
+  @* Sally — Journey 3: dev-mode diagnostics surface for fail-closed LastUsed etc. *@
+  <FcDiagnosticsPanel />
 
   <section class="data-section">
       <CounterProjectionView />
   </section>
 
-  <FluentAnchor Href="/commands/Counter/ConfigureCounter" Appearance="Appearance.Hypertext">
+  @* Sally — Journey 2: make FullPage state-restoration gap INTENTIONAL, not missing *@
+  <FluentMessageBar Intent="Informational">
+      Navigation state persistence (scroll, filter, sort across FullPage round-trip) lands in Story 4.3.
+      The current demo proves routing + breadcrumb return only.
+  </FluentMessageBar>
+  <FluentAnchor Href="/commands/Counter/ConfigureCounterCommand" Appearance="Appearance.Hypertext">
       Configure Counter
   </FluentAnchor>
   ```
-  Naming per Decision D22: renderer class names are `IncrementRenderer`, `BatchIncrementRenderer`, `ConfigureCounterRenderer` (trailing `Command` stripped).
+  Naming per Decision D22: renderer class names use full TypeName — `IncrementCommandRenderer`, `BatchIncrementCommandRenderer`, `ConfigureCounterCommandRenderer` (no stripping; "Command" suffix retained in class/hint names; display label strips for UX only per Decision D23).
 - [ ] 9.4: Update `Counter.Web/Program.cs`:
   - Ensure `AddHexalithFrontComposer()` is called (registers new providers + feature)
-  - Eagerly resolve emitted per-command subscribers once at circuit start (Task 4bis.2) — no additional wiring required
-- [ ] 9.5: Update `Counter.Web/_Imports.razor` + `App.razor` to include `<Router>` that picks up the generated `{BaseName}Page` route (e.g., `/commands/Counter/ConfigureCounter`) — already present via default Blazor routing; verify.
+  - `LastUsedSubscriberRegistry` (Decision D35 / Task 4bis.2) resolves per-command subscribers **lazily on first `{CommandName}Actions.SubmittedAction` dispatch** — NOT eagerly at circuit start. No additional wiring required; do NOT call `Ensure<T>()` from `Program.cs`.
+  - **Demo `IHttpContextAccessor` stub (Round 3 Rubber Duck finding A):** Counter.Web is single-tenant demo without real auth. To exercise `LastUsedValueProvider` pre-fill end-to-end, register a scoped `DemoUserContextAccessor : IHttpContextAccessor` that returns synthetic claims: `tenantId="counter-demo"`, `userId="demo-user"`. Without this stub, Decision D31's tenant guard silently no-ops and the LastUsed pre-fill behavior is invisible in the demo. Document in Completion Notes: "Real adopter apps wire `IHttpContextAccessor` from their auth provider (Story 7.1 OIDC)."
+- [ ] 9.5: Update `Counter.Web/_Imports.razor` + `App.razor` to include `<Router>` that picks up the generated `{CommandTypeName}Page` route (e.g., `/commands/Counter/ConfigureCounterCommand` per Decision D22 — full TypeName in route) — already present via default Blazor routing; verify.
 - [ ] 9.6: Extend `CounterProjectionEffects.cs` (from Story 2-1 Task 7.3) to subscribe to both `BatchIncrementCommandActions.ConfirmedAction` and `ConfigureCounterCommandActions.ConfirmedAction` in addition to the existing `IncrementCommandActions.ConfirmedAction` — all three trigger `CounterProjectionActions.LoadRequestedAction`.
+- [ ] 9.7: Write adopter migration note to `_bmad-output/implementation-artifacts/deferred-work.md` documenting:
+  - **Automatic changes after 2-2 lands:** existing `[Command]`-annotated types get a `{CommandTypeName}Renderer.g.razor.cs` emitted alongside the existing `{CommandTypeName}Form.g.razor.cs`; density-driven mode selection happens with no adopter code change
+  - **Breaking change (visible):** button label switches from `"Send X"` to `"X"` (Decision D23 `DisplayLabel`). Adopters who override labels via `[Display(Name)]` keep their overrides.
+  - **Required action for density > 0 fields:** adopter chooses where to place the new `<{CommandTypeName}Renderer />` component (if they want density-driven rendering) OR continues using `<{CommandTypeName}Form />` directly (backward-compatible — Form still works standalone)
+  - **New optional attribute:** `[Icon("Regular.Size16.X")]` on command type declares the rendered icon; default is `Regular.Size16.Play`
+  - **New optional configuration:** `FcShellOptions.FullPageFormMaxWidth` (default `"720px"`), `FcShellOptions.EmbeddedBreadcrumb` (default `true`), `FcShellOptions.DataGridNavCap` (default 50)
+  - **Multi-tenant wiring reminder:** `LastUsedValueProvider` requires `IHttpContextAccessor` with `tenantId` + `userId` claims; silent no-op otherwise (Decision D31 fail-closed)
 
 ### Task 10: bUnit Test Coverage (AC: 2, 3, 4, 5, 8, 9)
 
@@ -792,7 +997,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 - For JS-interop tests: explicit `JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js")` stub, and assert the stub's `VerifyInvoke("initializeExpandInRow", 1)` at end of test. `JSRuntimeMode.Loose` is PROHIBITED for Task 10.2 specifically.
 - Fluxor dispatch tests use `Fluxor.TestStore` with deterministic reducer execution; reducers are sync, effects are mocked.
 
-- [ ] 10.1: `CommandRendererInlineTests.cs` — **exactly 9 tests**:
+- [ ] 10.1: `CommandRendererInlineTests.cs` — **exactly 14 tests** (12 prior + 2 for Decisions D36 / D37 from Round 3):
   1. `Renderer_ZeroFields_RendersSingleButton`
   2. `Renderer_ZeroFields_ClickInvokesRegisteredExternalSubmit` (verifies ADR-016 synthetic submit path)
   3. `Renderer_OneField_ClickOpensPopover` (asserts `aria-expanded=true`)
@@ -800,8 +1005,13 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   5. `Renderer_OneField_PopoverSubmit_InnerFormDispatchesSubmittedAction`
   6. `Renderer_Inline_UsesSecondaryAppearance`
   7. `Renderer_Inline_LeadingIconPresent`
-  8. `Renderer_OneField_FocusReturnsToTriggerButtonOnPopoverSubmit` (AC9 focus return)
+  8. `Renderer_OneField_ScrollIntoView_ThenFocusReturnsToTrigger_OnConfirmed` (AC9 scroll-then-focus order, Hindsight #3)
   9. `Renderer_OneField_FocusReturnsToTriggerButtonOnEscape` (AC9 focus return)
+  10. `Renderer_CircuitReconnect_WithOpenPopover_ClosesSilentlyAndLogs` (Pre-mortem PM-2, Chaos CM-6)
+  11. `Renderer_AllFieldsDerivable_Renders0FieldInlineButton_SubmitsImmediately` (Chaos CM-5 — no user input case)
+  12. `Renderer_IconFallback_InvalidIconName_FallsBackToDefaultAndLogs` (Decision D34 runtime fallback)
+  13. `Renderer_ZeroFields_ButtonDisabled_UntilExternalSubmitRegistered` (Decision D36 — Rubber Duck B, race defense)
+  14. `Renderer_OpeningSecondPopover_ClosesFirstPopoverFirst` (Decision D37 — Rubber Duck C, at-most-one invariant; uses `InlinePopoverRegistry` stub)
 - [ ] 10.2: `CommandRendererCompactInlineTests.cs` — **exactly 7 tests**:
   1. `Renderer_CompactInline_RendersFluentCardWithExpandInRowClass`
   2. `Renderer_CompactInline_UsesPrimaryAppearanceOnInnerFormSubmit`
@@ -810,7 +1020,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   5. `Renderer_CompactInline_PrerenderDoesNotCallJSModule` (guards Decision D25 — skip when not interactive)
   6. `Renderer_CompactInline_EscapeInvokesOnCollapseRequested`
   7. `Renderer_CompactInline_PrefersReducedMotionHonored` (pass environment signal to module stub; assert parameter passthrough)
-- [ ] 10.3: `CommandRendererFullPageTests.cs` — **exactly 7 tests**:
+- [ ] 10.3: `CommandRendererFullPageTests.cs` — **exactly 9 tests** (7 prior + 2 for ReturnPath security; beforeunload guard deferred to 2-5):
   1. `Renderer_FullPage_WrapsInFcShellOptionsMaxWidthContainer` (reads `FullPageFormMaxWidth` option)
   2. `Renderer_FullPage_RendersEmbeddedBreadcrumbWhenOptionOn`
   3. `Renderer_FullPage_DispatchesRestoreGridStateOnMount` (via `TestStore`; asserts action type and viewKey format)
@@ -818,6 +1028,8 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   5. `Renderer_FullPage_GeneratedPageRegistersRoute`
   6. `Renderer_FullPage_UsesPrimaryAppearanceOnInnerFormSubmit`
   7. `Renderer_FullPage_LeadingIconPresent`
+  8. `Renderer_FullPage_ReturnPathAbsoluteUrl_NavigatesHomeAndLogsError` (Decision D32 — blocks `https://evil.com`)
+  9. `Renderer_FullPage_ReturnPathProtocolRelative_NavigatesHomeAndLogsError` (Decision D32 — blocks `//evil.com`)
 - [ ] 10.4: `RenderModeOverrideTests.cs` — **exactly 4 tests**:
   1. `Renderer_DefaultMode_MatchesDensityForZeroFields`
   2. `Renderer_DefaultMode_MatchesDensityForThreeFields`
@@ -849,9 +1061,9 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 ### Task 12: Accessibility & Axe-Core (AC: 9)
 
 - [ ] 12.1: bUnit + axe-core integration tests — **exactly 3 tests** (one per mode):
-  - `AxeCore_InlineRenderer_NoSeriousOrCriticalViolations` (IncrementRenderer)
-  - `AxeCore_CompactInlineRenderer_NoSeriousOrCriticalViolations` (BatchIncrementRenderer)
-  - `AxeCore_FullPageRenderer_NoSeriousOrCriticalViolations` (ConfigureCounterRenderer)
+  - `AxeCore_InlineRenderer_NoSeriousOrCriticalViolations` (IncrementCommandRenderer)
+  - `AxeCore_CompactInlineRenderer_NoSeriousOrCriticalViolations` (BatchIncrementCommandRenderer)
+  - `AxeCore_FullPageRenderer_NoSeriousOrCriticalViolations` (ConfigureCounterCommandRenderer)
   - Each test runs `axe.run()` via JSInterop mock; fails on any serious or critical violation
   - Keyboard tab-order coverage is handled separately in Task 10.5 (axe scans DOM, not keyboard traversal)
 - [ ] 12.2: Manual keyboard walk-through documented in story Completion Notes:
@@ -859,29 +1071,44 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 
 ### Task 13: Final Integration & QA (AC: all)
 
-- [ ] 13.1: Run full test suite. **Expected new test count: 73** — reconciled math (Murat review):
+- [ ] 13.1: Run full test suite. **Expected new test count: 121** — reconciled after Party Mode review additions (D38 correlation-dict tests + D39 canonicalization tests):
 
   | Task | Tests | Task | Tests |
   |---|---:|---|---:|
-  | 1.4 density (FsCheck + snapshots) | 4 | 10.2 CompactInline bUnit | 7 |
-  | 3.9 provider chain | 16 | 10.3 FullPage bUnit | 7 |
-  | 4bis.3 LastUsed subscriber emitter | 5 | 10.4 RenderMode override | 4 |
-  | 5.2 Story 2-1 regression gate | 12 (one per existing 2-1 snapshot) | 10.5 Keyboard tab order | 3 |
+  | 1.4 density + HFC1011/1012/1014 | 7 | 10.2 CompactInline bUnit | 7 |
+  | 3.9 provider chain + tenant guard + D39 canon | 20 | 10.3 FullPage bUnit + ReturnPath security | 9 |
+  | 4bis.3 LastUsed subscriber + D38 correlation-dict | 12 | 10.4 RenderMode override | 4 |
+  | 5.2 Story 2-1 regression gate | 12 | 10.5 Keyboard tab order | 3 |
   | 5.4 new Form-parameter snapshots | 2 | 11.1 Renderer snapshots | 8 |
-  | 6.4 DataGridNav reducers | 9 | 11.2 parseability | 1 |
+  | 6.4 DataGridNav reducers + LRU cap | 11 | 11.2 parseability | 1 |
   | 8.2 emitter selection integration | 4 | 11.3 determinism | 1 |
   | 8.3 RenderMode integration | 1 | 11.4 2-1↔2-2 contract | 1 |
-  | 10.1 Inline bUnit | 9 | 12.1 axe-core per mode | 3 |
+  | 10.1 Inline bUnit + D36/D37 + first-session caption | 14 | 12.1 axe-core per mode | 3 |
+  | 6.3 Fluxor single-scan integration test | 1 | | |
 
-  **Total:** 4+16+5+12+2+9+4+1+9+7+7+4+3+8+1+1+1+3 = **97**. Story 2-1 delivered ~342 so cumulative target is ~439. The earlier "70" figure undercounted integration, regression, and axe buckets — this revised count is authoritative.
+  **Total:** 7+20+12+12+2+11+4+1+14+7+9+4+3+8+1+1+1+3+1 = **121**. Story 2-1 delivered ~342, cumulative target ~463. Additions from Party Mode review: +2 (Task 3.9 D39 canonicalization property-based + fail-closed-at-build) and +5 (Task 4bis.3 D38 correlation-dict race/orphan/dispose/cap tests). **CI gate:** `dotnet test --list-tests | wc -l` on the 2-2 test projects MUST match this rollup at merge time; drift fails the build (Murat risk gate).
 - [ ] 13.2: `dotnet build --configuration Release` succeeds with zero warnings (`TreatWarningsAsErrors=true`).
-- [ ] 13.3: Manual smoke on Counter.Web via `dotnet watch`:
-  - All three commands render in their correct modes
-  - IncrementCommand popover opens/submits correctly with the 1 non-derivable field
-  - BatchIncrementCommand compact form pre-fills Timestamp and MessageId; user supplies Amount, Note, EffectiveDate
-  - Navigate to `/commands/Counter/ConfigureCounterCommand`, submit, land back on CounterPage; DataGrid state preserved (manually exercise scroll + filter before navigating away)
-  - Hot reload: modify `BatchIncrementCommand` to add a 4th non-derivable field, verify renderer still CompactInline. Add a 5th, verify it becomes FullPage + a route appears.
-- [ ] 13.4: Dev-agent automated validation via Aspire MCP (`mcp__aspire__list_resources`, `list_console_logs`) + Claude browser (`mcp__claude-in-chrome__navigate`, `find`, `read_page`) to exercise Counter sample flow. Record screenshots or DOM snapshots as evidence in Completion Notes. **No human validation required.**
+- [ ] 13.3: **Automated end-to-end validation — single authoritative path** (no manual smoke; per `feedback_no_manual_validation.md` memory + Winston E2 finding: prior split between 13.3 manual steps and 13.4 automation created ambiguity — collapsed to one task).
+
+  Dev-agent runs Aspire MCP (`mcp__aspire__list_resources`, `list_console_logs`) + Claude browser (`mcp__claude-in-chrome__navigate`, `find`, `read_page`, `read_console_messages`) against `Counter.Web` in the dev circuit. Each scenario MUST produce a row in a machine-readable artifact `tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/2-2-e2e-results.json` with shape `[{ "scenario": string, "status": "pass"|"fail", "evidence": { "screenshot"?: path, "domSelectors": string[], "consoleMatches": string[] }, "durationMs": int }]`. Story is NOT `done` unless `2-2-e2e-results.json` shows `"status": "pass"` for every scenario below AND the file is committed as evidence in the story's Dev Agent Record / File List.
+
+  Scenarios with explicit assertion predicates (Murat risk gate — no "validates UI behaves correctly" theater):
+
+  | # | Scenario | DOM assertion | Console assertion |
+  |---|---|---|---|
+  | S1 | Inline 0/1-field render | `#increment-renderer button[appearance="secondary"]` exists with text `Increment` | no `HFC1008` warning |
+  | S2 | Inline popover open/close | Click button → `fluent-popover[open]` present; `Escape` key → popover removed from DOM | no exception log |
+  | S3 | Inline popover submit | Type `5` in field, click submit → `fluent-popover` removed; `.fc-lifecycle-state[data-state="Confirmed"]` within 3s | no `HFC1008`, no `InvalidOperationException` |
+  | S4 | CompactInline render + JS scroll | `[data-cmd="BatchIncrement"] fluent-card.fc-expand-in-row` exists; console shows `initializeExpandInRow` invocation trace | no `IJSObjectReference` disposal error |
+  | S5 | CompactInline prefill | After S3, navigate away and back → the `Amount` field shows `5` (LastUsed via D28 subscriber) | no `D31 tenant guard` warning |
+  | S6 | FullPage route | Navigate `/commands/Counter/ConfigureCounterCommand` → page renders, breadcrumb `"Counter > Configure Counter"` present | no 404, no routing warning |
+  | S7 | FullPage ReturnPath safe | Attempt `?returnPath=https://evil.com` → asserts `NavigationManager.Uri` resolves to `/`, logger emits `D32 open-redirect blocked` | D32 log present |
+  | S8 | Hot-reload density flip | Add 5th field to `BatchIncrementCommand`, save → `dotnet watch` rebuilds; CompactInline renderer replaced by FullPage page mount on route | no HFC1011 (≤ 200 props) |
+  | S9 | D31 dev-mode warning | Start circuit without `IHttpContextAccessor` wiring → `<FcDiagnosticsPanel>` surfaces `FluentMessageBar` with "LastUsed persistence disabled" within 2s of first command render | D31 rate-limited warning logged once |
+  | S10 | D38 interleaved submit | Rapidly submit two `IncrementCommand` clicks before either Confirms → both ultimately produce correct LastUsed values keyed by their CorrelationIds | no "correlation not found" errors |
+
+  **No human validation required.** If any scenario cannot be automated (e.g., hot-reload S8 flakes in CI), move to Known Gaps with an owning follow-up story — do NOT downgrade to manual.
+- [ ] 13.4: **[MERGED INTO 13.3]** — this slot is retained as an anchor for link stability from Dev Notes / reviews; the authoritative task is 13.3 above.
   > **Transparency note (Murat):** This is dev-agent local automated validation, NOT headless-CI automated. The path exercises the Aspire topology and the browser end-to-end from the dev agent's session. CI coverage is limited to unit + bUnit + snapshot; end-to-end Playwright-in-CI is Story 7.x / Epic 10 scope. Do not claim "CI-automated E2E" on this story's report.
 - [ ] 13.5: axe-core scan on all three Counter modes — zero serious/critical violations.
 - [ ] 13.6: Update `deferred-work.md`:
@@ -914,7 +1141,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 - DO NOT use `record` for IR types (Decision D1 from Story 2-1 carries — sealed classes with manual equality).
 - DO NOT call `services.AddFluxor()` twice when registering the new `DataGridNavigationFeature` — Fluxor assembly scanning picks it up automatically.
 - DO NOT log `_model` in any component (Decision D15 from Story 2-1) — log CorrelationId and property names only.
-- DO NOT reuse HFC1003 (Projection partial warning) for new diagnostics — use HFC1008 (Decision 0.5).
+- DO NOT reuse HFC1003 (Projection partial warning) for new diagnostics — use HFC1008 (registered in Task 0.7).
 - DO NOT dispatch Fluxor actions from the `StubCommandService` or any `IDerivedValueProvider` — only components dispatch (Decision D5 from Story 2-1).
 - DO NOT use `GetTypes()` — use `GetExportedTypes()` when reflecting on assemblies (Epic 1 intel).
 - DO NOT create a second `EquatableArray<T>` — reuse the existing one.
@@ -982,9 +1209,9 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 - `CommandRendererModel.cs` (sealed class, manual IEquatable)
 
 **SourceTools/Emitters:**
-- `CommandRendererEmitter.cs` — emits `{BaseName}Renderer.g.razor.cs`
-- `CommandPageEmitter.cs` — emits `{BaseName}Page.g.razor.cs` (only when `Density == FullPage`)
-- `LastUsedSubscriberEmitter.cs` — emits `{BaseName}LastUsedSubscriber.g.cs` per command (Decision D28)
+- `CommandRendererEmitter.cs` — emits `{CommandTypeName}Renderer.g.razor.cs`
+- `CommandPageEmitter.cs` — emits `{CommandTypeName}Page.g.razor.cs` (only when `Density == FullPage`)
+- `LastUsedSubscriberEmitter.cs` — emits `{CommandTypeName}LastUsedSubscriber.g.cs` per command (Decision D28)
 
 **SourceTools/Diagnostics:**
 - Extend `DiagnosticDescriptors.cs`: add HFC1008 (runtime warning for MVP; analyzer reporting deferred to Epic 9)
@@ -1000,6 +1227,19 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 
 **Shell/Services/:**
 - `IExpandInRowJSModule.cs` + `ExpandInRowJSModule.cs` (Scoped, `Lazy<Task<IJSObjectReference>>` cache per Decision D25)
+- `LastUsedSubscriberRegistry.cs` (Scoped, tracks active subscriber types via `HashSet<Type>`; idempotent `Ensure<T>()` per Decision D35)
+- `InlinePopoverRegistry.cs` (Scoped, tracks the currently-open Inline popover; enforces at-most-one-open invariant per Decision D37)
+- `FrontComposerStorageKey.cs` (static helper for Decision D39 — canonicalized storage-key builder/parser with FsCheck roundtrip property)
+- `IDiagnosticSink.cs` + `InMemoryDiagnosticSink.cs` (Scoped, retains recent `DevDiagnosticEvent`s for `<FcDiagnosticsPanel>`; forwards to `ILogger`)
+- `CircuitHandler` extension wiring (for popover cleanup on reconnect per Pre-mortem PM-2) — either a custom `CircuitHandler` subclass in `Shell/Infrastructure/Circuit/` or integration with existing `FrontComposer` root state
+
+**Shell/Components/Diagnostics/:**
+- `FcDiagnosticsPanel.razor` + `.razor.cs` (dev-mode-only Fluent message-bar surface for D31 fail-closed + D38 eviction + future diagnostic events)
+
+**FcShellOptions additions:**
+- `public string FullPageFormMaxWidth { get; set; } = "720px";` (Decision D26)
+- `public bool EmbeddedBreadcrumb { get; set; } = true;` (Decision D15)
+- `public int DataGridNavCap { get; set; } = 50;` (Decision D33 — DataGridNav only; LastUsed cap deferred)
 
 **Shell/State/DataGridNavigation/:**
 - `GridViewSnapshot.cs`
@@ -1007,7 +1247,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 - `DataGridNavigationFeature.cs`
 - `DataGridNavigationActions.cs`
 - `DataGridNavigationReducers.cs`
-- `DataGridNavigationEffects.cs`
+- ~~`DataGridNavigationEffects.cs`~~ **DEFERRED to Story 4.3 (Decision D30 / Task 6.2) — do NOT create in Story 2-2.**
 
 **Shell/wwwroot/js/:**
 - `fc-expandinrow.js`
@@ -1017,7 +1257,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 
 **Story 2-1 modifications (backward-compatible except button label re-approval, Decision D23):**
 - `CommandFormEmitter.cs` — add `DerivableFieldsHidden`, `ShowFieldsOnly`, `OnConfirmed`, `RegisterExternalSubmit` parameters (ADR-016)
-- `CommandFormEmitter.cs` — update button-label computation to `HumanizeCamelCase(BaseName)` (Decision D23) — requires re-approving Story 2-1's 12 `.verified.txt` snapshots in the same commit (Task 5.3)
+- `CommandFormEmitter.cs` — update button-label computation to `DisplayLabel` (Decision D23: HumanizeCamelCase + trailing " Command" strip) — requires re-approving all 12 Story 2-1 `.verified.txt` snapshots in the same commit (Task 5.3)
 - Add regression gate test `CommandForm_Story21Regression_ByteIdenticalWhenDefaultParameters` (Task 5.2)
 
 **samples/Counter/Counter.Domain/:**
@@ -1039,22 +1279,22 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 - `Components/RenderModeOverrideTests.cs`
 - `Services/DerivedValueProviderChainTests.cs`
 - `State/DataGridNavigationReducerTests.cs`
-- `State/DataGridNavigationEffectsTests.cs`
+- ~~`State/DataGridNavigationEffectsTests.cs`~~ **DEFERRED to Story 4.3 alongside effects (Decision D30 / Task 6.2) — do NOT create in Story 2-2.**
 
 ### Naming Convention Reference
 
 | Element | Pattern | Example |
 |---------|---------|---------|
-| Generated renderer partial | `{BaseName}Renderer.g.razor.cs` (trailing `Command` stripped, Decision D22) | `IncrementRenderer.g.razor.cs`, `ConfigureCounterRenderer.g.razor.cs` |
-| Generated page partial | `{BaseName}Page.g.razor.cs` | `ConfigureCounterPage.g.razor.cs` |
-| Generated LastUsed subscriber | `{BaseName}LastUsedSubscriber.g.cs` | `IncrementLastUsedSubscriber.g.cs` |
-| Generated form partial (Story 2-1, unchanged naming) | `{FullCommandTypeName}Form.g.razor.cs` | `IncrementCommandForm.g.razor.cs` |
-| Full-page route | `/commands/{BoundedContext}/{BaseName}` | `/commands/Counter/ConfigureCounter` |
+| Generated renderer partial | `{CommandTypeName}Renderer.g.razor.cs` (full type name, Decision D22) | `IncrementCommandRenderer.g.razor.cs`, `ConfigureCounterCommandRenderer.g.razor.cs` |
+| Generated page partial | `{CommandTypeName}Page.g.razor.cs` | `ConfigureCounterCommandPage.g.razor.cs` |
+| Generated LastUsed subscriber | `{CommandTypeName}LastUsedSubscriber.g.cs` | `IncrementCommandLastUsedSubscriber.g.cs` |
+| Generated form partial (Story 2-1) | `{CommandTypeName}Form.g.razor.cs` | `IncrementCommandForm.g.razor.cs` |
+| Full-page route | `/commands/{BoundedContext}/{CommandTypeName}` | `/commands/Counter/ConfigureCounterCommand` |
 | Fluxor feature `GetName()` | `"Hexalith.FrontComposer.Shell.State.DataGridNavigationState"` | (same) |
 | Grid view key | `"{commandBoundedContext}:{projectionTypeFqn}"` | `"Counter:Counter.Domain.CounterProjection"` |
-| LastUsed storage key | `frontcomposer:lastused:{tenantId}:{userId}:{commandTypeFqn}:{propertyName}` | `frontcomposer:lastused:default:anon:Counter.Domain.IncrementCommand:Amount` |
-| Grid nav storage key (deferred to Story 4.3) | `frontcomposer:gridnav:{tenantId}:{userId}` | `frontcomposer:gridnav:default:anon` |
-| Button label (ALL modes, Decision D23) | `"{Humanized BaseName}"` | `"Increment"`, `"Batch Increment"`, `"Configure Counter"` |
+| LastUsed storage key | `frontcomposer:lastused:{tenantId}:{userId}:{commandTypeFqn}:{propertyName}` | `frontcomposer:lastused:acme-corp:alice@example.com:Counter.Domain.IncrementCommand:Amount` **(Decision D31: `tenantId` / `userId` MUST be non-empty; `"default"` / `"anonymous"` / empty segments are PROHIBITED — provider fails closed instead.)** |
+| Grid nav storage key (deferred to Story 4.3) | `frontcomposer:gridnav:{tenantId}:{userId}` | `frontcomposer:gridnav:acme-corp:alice@example.com` **(same D31 fail-closed rule applies)** |
+| Button label (ALL modes, Decision D23) | `"{Humanized CommandTypeName with trailing Command stripped for display only}"` — display-only stripping | `"Increment"`, `"Batch Increment"`, `"Configure Counter"` (trim for UX, never for hint/class names) |
 | Icon default (ALL modes, Decision D23) | `Regular.Size16.Play` unless `[Icon]` overrides | (same) |
 | FullPage max-width option | `FcShellOptions.FullPageFormMaxWidth` (default `"720px"`) | (same) |
 
@@ -1070,7 +1310,7 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
 - `DiffEngine_Disabled: true` in CI
 - **Story 2-1 regression gate** (Task 5.2): 12 byte-identical snapshot assertions prevent silent contract breaks
 - **2-1↔2-2 contract test** (Task 11.4): structural equality between Story 2-1 Form defaults and CompactInline renderer-delegated Form
-- **Expected new test count: 97.** Target cumulative total: ~439.
+- **Expected new test count: 114.** Target cumulative total: ~456.
 - **Post-story (optional)**: Stryker.NET mutation run against the 3-mode branch logic in renderer. Nightly-tier, not blocking.
 
 ### Build & CI
@@ -1128,6 +1368,127 @@ These are cross-story deferrals intentionally out of scope for Story 2-2. QA sho
   - New `Shell/State/DataGridNavigation/` folder — consistent with existing per-concern Fluxor feature folders (`Theme/`, `Density/`, `Navigation/`, `DataGrid/`, `ETagCache/`, `CommandLifecycle/`).
   - `Shell/wwwroot/js/fc-expandinrow.js` — first JS module for the project; coexists with planned `Shell/wwwroot/js/beforeunload.js` (Story 1-1/5.x).
 - Detected conflicts or variances: none. All additions extend existing architecture patterns without contradiction.
+
+---
+
+## Appendix: Review & Elicitation History
+
+This appendix preserves the audit trail from the story's iterative review process. It is NOT required reading for implementation — the authoritative spec is in the sections above. Useful for:
+- Retrospectively understanding why a decision was made
+- Debugging a decision's rationale if an adopter challenges it
+- Feeding into the `_bmad-output/process-notes/story-creation-lessons.md` ledger for future story creation
+
+The appendix has three parts in chronological order:
+
+### A.1 Party Mode Round 1 (Multi-Agent Review)
+
+Four agents (Winston, Amelia, Sally, Murat) reviewed the first draft. Key changes:
+
+| Concern | Resolution | Reference |
+|---|---|---|
+| `DataGridNavigationState` half-shipped (effects without producers) | Trimmed to REDUCER-ONLY in Story 2-2; effects deferred to Story 4.3 | Decision D30, Task 6.2 |
+| Renderer vs Form submit ownership ambiguity (double `<EditForm>` risk) | Renderer is chrome; Form owns submit. Explicit contract. | ADR-016, Decisions D21 |
+| Naming collision `IncrementCommandCommandRenderer` | Initially proposed trailing-`Command` strip. **Subsequently reverted in R2 Trim** — uniform `{CommandTypeName}Renderer` / `{CommandTypeName}Page`. Display label strips " Command" for UX only via Decision D23 `DisplayLabel`. | Decision D22 (final), Decision D23, Naming table |
+| Button label inconsistency ("Send" prefix) | Unified to `{DisplayLabel}` in all modes (HumanizeCamelCase of TypeName with trailing " Command" stripped for display); Story 2-1 snapshots re-approved | Decision D23, Task 5.3 |
+| Pre-fill chain LastUsed-beats-Default footgun | `[DefaultValue]` becomes a hard floor BEFORE LastUsed in the chain | Decision D24, Task 3.4 |
+| JS module re-import per component + prerender crash risk | Scoped `IExpandInRowJSModule` with `Lazy<Task<IJSObjectReference>>` cache + prerender guard | Decision D25, Task 4.9 |
+| 720px hard-coded literal | `FcShellOptions.FullPageFormMaxWidth` (default 720px) | Decision D26, AC4 |
+| `ProjectionContext` cascading unowned | Epic 4 cascades at shell; Story 2-2 ships null-tolerant renderer + Counter manual `<CascadingValue>` | Decision D27, Task 9.3 |
+| `LastUsedValueProvider` Fluxor subscription unclear | Hand-written generic provider; per-command emitted typed subscriber (`{CommandTypeName}LastUsedSubscriber.g.cs`) | Decision D28, Task 4bis |
+| `FluentPopover` outside-click dismissal semantics | Manual wiring via backdrop click handler | Decision D29 |
+| Focus return on popover submit/dismiss | Explicit AC + 2 dedicated tests | AC9, Task 10.1 #8-9 |
+| Counter AC10 state-restore "theater" (no capture side) | AC10 no longer claims end-to-end state restoration (deferred to Story 4.3); only proves `RestoreGridStateAction` dispatch contract | AC10, Decision D30 |
+| Missing 2-1 regression gate | 12 byte-identical snapshot assertions in CI | Task 5.2 |
+| Missing 2-1↔2-2 contract test | Structural equality test | Task 11.4 |
+| bUnit JS-interop flakiness risk | `JSRuntimeMode.Loose` prohibited for Task 10.2; explicit `SetupModule` + `VerifyInvoke` required | Task 10 fixture rules |
+| Pre-fill race (OnInitializedAsync vs render) | `cut.WaitForAssertion(...)` mandatory; no synchronous `Find` post-render | Task 10 fixture rules |
+| Density classification test redundancy | Replaced 9 example tests with 1 FsCheck property + snapshot boundary + equality/hash = 4 tests | Task 1.4 |
+| Axe-core count unfalsifiable ("per mode") | Explicit 3 tests (one per mode) + separate keyboard tab-order tests | Task 12.1, Task 10.5 |
+| Task 13.4 "automated" ambiguity | Transparency note — dev-agent local, not CI-automated E2E | Task 13.4 |
+
+### A.2 Advanced Elicitation Round 2 (Pre-mortem / Red Team / First Principles / Chaos / Hindsight)
+
+Five-method pass identified security gaps and robustness edges:
+
+| Concern | Severity | Resolution | Reference |
+|---|---|---|---|
+| Cross-tenant PII leak when adopter forgets `IHttpContextAccessor` wiring | 🔴 P0 (security) | `LastUsedValueProvider` refuses read/write when tenant or user is null/empty | Decision D31, Task 3.5 |
+| Open-redirect CVE via `ICommandPageContext.ReturnPath` | 🔴 P0 (security) | Relative-URI validation + log-and-navigate-home on violation | Decision D32, AC4 clause, Task 10.3 #8-9 |
+| DoS via 10k fields, `[DefaultValue]` mismatch, nested Command | 🔴 P0 (security/correctness) | **HFC1011/1012/1014** parse-time diagnostics. [NOTE: HFC1009 invalid ident, HFC1010 invalid icon, HFC1013 name collision were also proposed here but subsequently cut in A.3 Trim — see trim table below.] | Task 0.7, Task 1.3a–c, Task 1.4 #5–7 |
+| Storage quota DoS (DataGridNav unbounded) | 🟠 P1 | DataGridNav LRU cap of 50 via `FcShellOptions.DataGridNavCap`. [LastUsed 1000/tenant cap was initially proposed here but subsequently cut in A.3 Trim — deferred to adopter signal.] | Decision D33, Task 6.1, Task 6.4 |
+| `[Icon]` typo → compile error in generated code (framework-bug perception) | 🟠 P1 | Runtime try/catch fallback to default icon + warning log | Decision D34, Task 4.7, Task 10.1 #12 |
+| `{CommandTypeName}LastUsedSubscriber` hot-reload accumulation + eager-resolution startup latency | 🟠 P1 | Idempotent registration via `LastUsedSubscriberRegistry` + lazy-on-first-dispatch resolution | Decision D35, Task 4bis.2, Task 4bis.3 #6–7 |
+| Circuit reconnect loses popover draft silently (NFR88 violation) | 🟠 P1 | Fail-closed close + warning log; full preservation is 2-5 | AC9 clause, Task 10.1 #10 |
+| Trigger button scrolled off-screen when `Confirmed` arrives 2s later | 🟠 P1 | Scroll-into-view MUST precede focus-return | AC9 clause, Task 10.1 #8 |
+| Popover + FluentDialog z-index collision | 🟠 P1 | **[Subsequently cut in A.3 Trim below]** `IPopoverCoordinator` was proposed but deferred to Story 2-5. Popovers now expose `ClosePopoverAsync()` for 2-5 to integrate. | Known Gaps, A.3 Trim |
+| FullPage form ships without ANY abandonment guard for 6 weeks until 2-5 | 🟠 P1 | **[Subsequently cut in A.3 Trim below]** Minimal `beforeunload` guard was proposed but deferred to Story 2-5 (half-UX rejected). | Known Gaps, A.3 Trim |
+| All-fields-derivable edge case under-tested | 🟡 P2 | Explicit 0-field inline test | Task 10.1 #11 |
+| Renderer/Form split (ADR-016) never challenged by party review | 🟡 P2 | First-principles fold-in alternative explicitly considered and rejected in ADR-016 | ADR-016 rejected alternatives |
+
+### A.3 Elicitation Round 2 Trim (Occam + Matrix — Cuts Applied)
+
+Multi-method scoring (Occam's Razor + Critical Challenge + Comparative Matrix) identified over-engineering in the Round 2 additions. Cuts applied to tighten scope without losing core safety:
+
+| Cut | Matrix Score | Reason | Destination |
+|---|---|---|---|
+| **Decision D22 — strip trailing `Command` suffix** | n/a (Occam) | Cosmetic benefit didn't justify HFC1013 collision-detection + naming edge-cases. Reverted to full `{CommandTypeName}` naming (`IncrementCommandRenderer`). | Removed entirely |
+| **HFC1009** (invalid identifier) | 2.40 | Roslyn rejects invalid C# identifiers natively; parse-time duplication | Deferred (redundant) |
+| **HFC1010** (invalid icon format) | 3.35 | Redundant with Decision D34 runtime icon fallback | Deferred (redundant) |
+| **HFC1013** (BaseName collision) | 2.55 | Only existed because of D22; cut together | Removed with D22 |
+| **Decision D33 LastUsed LRU cap** (1000 keys) | 2.75 | Arbitrary number; v0.1 has no DoS evidence. DataGridNav cap (50) retained. | Deferred to adopter signal |
+| **`IPopoverCoordinator` service + contract** | 2.45 | Speculative future-proofing — Story 2-5 doesn't exist yet. Popovers expose `ClosePopoverAsync()` for 2-5 to integrate when it lands. | Deferred to Story 2-5 |
+| **FullPage beforeunload minimal guard** | 2.25 | Native `confirm()` creates prompt-fatigue debt before 2-5's real UX. | Deferred to Story 2-5 |
+
+**Net impact:** 118 tests → 111 tests; 9 new diagnostics → 4 new diagnostics; 2 new services → 1 service; ~6 hours dev effort saved. All P0 security retained (D31, D32, HFC1011/1012/1014). Core UX retained (AC9 focus return, scroll-before-focus, circuit reconnect handling).
+
+### A.4 Round 3 Consistency Pass (Self-Consistency + Rubber Duck + Thread of Thought)
+
+Scan after the Round 2 trim surfaced orphan placeholder references and two real implementation gaps:
+
+| Finding | Resolution | Reference |
+|---|---|---|
+| 17+ orphan `{BaseName}` / `{FullCommandTypeName}` references after D22 revert | Global placeholder normalization to `{CommandTypeName}`; `BaseName` IR field replaced by `DisplayLabel` (display-only) | Doc-wide |
+| Stale "HFC1010 parse-time" reference in Task 4.7 | Removed; runtime fallback (D34) is sole icon validation layer | Task 4.7 |
+| RegisterExternalSubmit race (silent click-drop during SSR→interactive transition) | 0-field button disabled until Form registers external submit; re-render on registration | Decision D36, AC2, Task 10.1 #13 |
+| Multiple simultaneous Inline popovers (ambiguous v1 behavior) | At-most-one open via new `InlinePopoverRegistry` scoped service | Decision D37, AC2, Task 10.1 #14 |
+| Counter sample tenant/user wiring gap | Task 9.4 adds demo `IHttpContextAccessor` stub | Task 9.4 |
+| Fluxor double-scan risk | New integration test `Fluxor_AssemblyScan_NoDuplicateRegistration` | Task 6.3 |
+| ADR-016 hard to explain simply | One-liner added: "Form = engine. Renderer = shape. One form, three possible shapes." | ADR-016 TL;DR |
+
+### A.5 Round 4 Polish (Critique + Persona Focus Group + Reverse Engineering + Explain Reasoning + Yes-And)
+
+Reader-validation pass:
+
+| Finding | Resolution | Reference |
+|---|---|---|
+| History tables between Story and Critical Decisions created narrative speed bump for first-time readers | **Moved to this appendix** — current spec flows directly from Story → Critical Decisions | Doc structure |
+| Legacy test counts 97, 111 lingered in doc body | Scrubbed — only 114 is authoritative | Task 13.1 |
+| No adopter migration guide | Task 9.7 added: write note to `deferred-work.md` | Task 9.7 |
+| No telemetry hook for mode/density usage | Observability `ILogger.LogInformation` emitted in renderer `OnInitialized` | Task 4.3 |
+| Standalone CompactInline multiplicity undefined | AC3 clarifies DataGrid container (Story 4.5) enforces; 2-2 standalone is unconstrained | AC3 |
+| Future-extension hints not captured | Known Gaps extended with 3 speculative items (MCP manifest, custom RenderMode resolver, LastUsed audit) | Known Gaps |
+
+### A.6 Party Mode Review (Post-Checklist, 2026-04-15)
+
+After the 7-fix checklist pass, Jerome ran a Party Mode multi-agent review (Winston, Amelia, Murat, Sally spawned as independent subagents). All four converged on: **the 7 fixes closed surface holes but C5 opened a deeper architectural seam**. Findings applied:
+
+| Finding | Agent | Resolution | Reference |
+|---|---|---|---|
+| Story 2-1 `SubmittedAction(string CorrelationId, TCommand Command)` carries typed payload ✓; `ConfirmedAction(string CorrelationId)` does NOT — scalar `_pendingCommand` field would cross-contaminate interleaved submits | Amelia (verified via grep of `CommandFluxorActionsEmitter.cs`) | Redesigned subscriber to `ConcurrentDictionary<string, PendingEntry>` keyed by CorrelationId | Task 4bis.1 code, Decision D38 |
+| Pending-command state has no bounded lifetime — orphaned Submitted without Confirmed leaks on long-lived circuits | Winston + Murat | TTL=5min (command lifecycle upper bound) + MaxInFlight=16 per type per circuit; eviction emits `LogWarning` | Decision D38, Task 4bis.3 tests T-race-1/T-race-2/T-orphan/T-dispose/T-cap |
+| Storage-key naive `:`-concat breaks under NFC/NFD, whitespace, case variance, `:` in email local-part, `:` in tenant ID | Murat | `FrontComposerStorageKey.Build(...)` canonicalization helper (NFC + URL-encode + email-lowercase); FsCheck roundtrip property test | Decision D39, Task 3.5a, Task 3.9 test #19 |
+| D22 revert residue: `{CommandBaseName}` still in AC4 route example at line 281 | Winston | Changed to `{CommandTypeName}` | AC4 |
+| Fail-closed D31 silently no-ops for dev who hasn't wired `IHttpContextAccessor` — UX bug as security feature | Sally (Journey 3) | Added dev-mode `<FluentMessageBar>` surface via `IDiagnosticSink` + `<FcDiagnosticsPanel>`; prod-stripped | Task 3.5, Task 3.5a, Counter `CounterPage.razor` |
+| "Second-try feature" UX on first session — user expects LastUsed, gets empty form with no signal | Sally (Journey 1) | First-session caption "Your last value will be remembered after your first submission" in popover when chain returned no value | AC2 |
+| Counter FullPage demo without state persistence feels broken | Sally (Journey 2) | Explicit `<FluentMessageBar Intent="Informational">` "Navigation state persistence lands in Story 4.3" above the full-page anchor | Task 9.3 |
+| Task 13.3 as "scenario catalog" left ambiguous execution authority | Winston (E2 half-done) | Merged into Task 13.3 as single automated E2E task with machine-readable JSON result artifact + explicit DOM/console assertion predicates per scenario | Task 13.3 (merged), Task 13.4 (merged-away) |
+| Test count 114 would drift stale after C3/C4 strikethroughs + Party Mode additions (7 new tests) | Amelia + Murat | Recomputed to 121, added CI gate: `dotnet test --list-tests | wc -l` MUST match rollup at merge | Task 13.1 |
+
+Net impact: 114 tests → 121 tests, 37 decisions → 39 decisions, one race-prone scalar field → bounded concurrent dict, manual/automated split → one automated E2E with machine-verifiable artifact. Story remains `ready-for-dev`.
+
+### A.7 Process Lessons Harvested
+
+Reusable patterns from this review process have been saved to `_bmad-output/process-notes/story-creation-lessons.md` (L01–L11) and three user-memory entries in `~/.claude/projects/.../memory/`. Apply these when creating Stories 2-3, 2-4, 2-5, and Epic 4+ stories.
 
 ---
 
