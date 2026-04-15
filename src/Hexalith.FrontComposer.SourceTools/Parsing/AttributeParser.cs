@@ -242,6 +242,16 @@ public static class AttributeParser {
         return null;
     }
 
+    /// <summary>
+    /// Parses a single property symbol into a <see cref="PropertyModel"/>. Called by
+    /// <see cref="CommandParser"/> as well so unsupported-type diagnostics stay consistent.
+    /// </summary>
+    internal static PropertyModel ParsePropertyForCommand(
+        IPropertySymbol propertySymbol,
+        string containingTypeName,
+        List<DiagnosticInfo> diagnostics,
+        string filePath) => ParseProperty(propertySymbol, containingTypeName, diagnostics, filePath);
+
     private static PropertyModel ParseProperty(
         IPropertySymbol propertySymbol,
         string containingTypeName,
@@ -288,6 +298,8 @@ public static class AttributeParser {
         // Map the type
         string? irType = FieldTypeMapper.MapType(fullyQualifiedTypeName, isEnum);
         bool isUnsupported = irType is null;
+        string? enumFqn = isEnum ? fullyQualifiedTypeName : null;
+        string? unsupportedFqn = isUnsupported ? fullyQualifiedTypeName : null;
 
         if (isUnsupported) {
             Location location = propertySymbol.Locations.FirstOrDefault() ?? Location.None;
@@ -327,7 +339,9 @@ public static class AttributeParser {
             isNullable,
             isUnsupported,
             displayName,
-            badgeMappings);
+            badgeMappings,
+            enumFqn,
+            unsupportedFqn);
     }
 
     private static string? ParseDisplayAttribute(IPropertySymbol propertySymbol) {

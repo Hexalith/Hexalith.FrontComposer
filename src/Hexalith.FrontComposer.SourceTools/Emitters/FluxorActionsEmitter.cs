@@ -30,23 +30,28 @@ public static class FluxorActionsEmitter {
             _ = sb.AppendLine();
         }
 
-        // Actions (past-tense naming convention)
+        // Actions (past-tense naming convention, CorrelationId carries the per-dispatch trace id -- ADR-008)
         _ = sb.AppendLine("/// <summary>");
         _ = sb.AppendLine("/// Triggers data fetch for <see cref=\"" + model.TypeName + "\"/>.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction();");
+        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared by all actions in this load cycle.</param>");
+        _ = sb.AppendLine("public record " + model.TypeName + "LoadRequestedAction(string CorrelationId);");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
         _ = sb.AppendLine("/// Data arrived for <see cref=\"" + model.TypeName + "\"/>.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("public record " + model.TypeName + "LoadedAction(IReadOnlyList<" + model.TypeName + "> Items);");
+        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
+        _ = sb.AppendLine("/// <param name=\"Items\">The loaded projection items.</param>");
+        _ = sb.AppendLine("public record " + model.TypeName + "LoadedAction(string CorrelationId, IReadOnlyList<" + model.TypeName + "> Items);");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("/// <summary>");
         _ = sb.AppendLine("/// Data fetch failed for <see cref=\"" + model.TypeName + "\"/>.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("public record " + model.TypeName + "LoadFailedAction(string Error);");
+        _ = sb.AppendLine("/// <param name=\"CorrelationId\">Trace identifier shared with the originating <see cref=\"" + model.TypeName + "LoadRequestedAction\"/>.</param>");
+        _ = sb.AppendLine("/// <param name=\"Error\">The failure reason.</param>");
+        _ = sb.AppendLine("public record " + model.TypeName + "LoadFailedAction(string CorrelationId, string Error);");
 
         return sb.ToString();
     }

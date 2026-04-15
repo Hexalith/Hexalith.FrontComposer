@@ -51,18 +51,20 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         IState<CounterProjectionState> state = provider.GetRequiredService<IState<CounterProjectionState>>();
         IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
 
-        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction());
+        string correlationId = Guid.NewGuid().ToString();
+        dispatcher.Dispatch(new CounterProjectionLoadRequestedAction(correlationId));
         SpinWait.SpinUntil(() => state.Value.IsLoading, TimeSpan.FromSeconds(1)).ShouldBeTrue();
 
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
-        [
-            new CounterProjection
-            {
-                Id = "counter-1",
-                Count = 2,
-                LastUpdated = DateTimeOffset.UtcNow,
-            },
-        ]));
+            correlationId,
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 2,
+                    LastUpdated = DateTimeOffset.UtcNow,
+                },
+            ]));
 
         SpinWait.SpinUntil(
             () => !state.Value.IsLoading && state.Value.Items?.Count == 1,
@@ -81,14 +83,15 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         using CultureScope _ = new(CultureInfo.InvariantCulture);
 
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
-        [
-            new CounterProjection
-            {
-                Id = "counter-1",
-                Count = 1234,
-                LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
-            },
-        ]));
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+                },
+            ]));
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
@@ -110,11 +113,12 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
         dispatcher.Dispatch(new StatusProjectionLoadedAction(
-        [
-            new StatusProjection { Name = null, IsEnabled = true },
-            new StatusProjection { Name = "Beta", IsEnabled = false },
-            new StatusProjection { Name = "Gamma", IsEnabled = null },
-        ]));
+            Guid.NewGuid().ToString(),
+            [
+                new StatusProjection { Name = null, IsEnabled = true },
+                new StatusProjection { Name = "Beta", IsEnabled = false },
+                new StatusProjection { Name = "Gamma", IsEnabled = null },
+            ]));
 
         IRenderedComponent<StatusProjectionView> cut = Render<StatusProjectionView>();
 

@@ -46,11 +46,18 @@ public static class RegistrationEmitter {
         _ = sb.AppendLine("    /// <summary>");
         _ = sb.AppendLine("    /// Gets the domain manifest describing this projection's bounded context.");
         _ = sb.AppendLine("    /// </summary>");
+        string projectionsList = model.IsCommand
+            ? "new List<string>()"
+            : "new List<string> { typeof(" + model.TypeName + ").FullName! }";
+        string commandsList = model.IsCommand
+            ? "new List<string> { typeof(" + model.TypeName + ").FullName! }"
+            : "new List<string>()";
+
         _ = sb.AppendLine("    public static DomainManifest Manifest { get; } = new DomainManifest(");
         _ = sb.AppendLine("        Name: \"" + EscapeString(displayName) + "\",");
         _ = sb.AppendLine("        BoundedContext: \"" + EscapeString(model.BoundedContext) + "\",");
-        _ = sb.AppendLine("        Projections: new List<string> { typeof(" + model.TypeName + ").FullName! },");
-        _ = sb.AppendLine("        Commands: new List<string>());");
+        _ = sb.AppendLine("        Projections: " + projectionsList + ",");
+        _ = sb.AppendLine("        Commands: " + commandsList + ");");
         _ = sb.AppendLine();
 
         // RegisterDomain method

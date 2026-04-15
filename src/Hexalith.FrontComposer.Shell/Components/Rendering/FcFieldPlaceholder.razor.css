@@ -1,0 +1,13 @@
+/* Shared styles for auto-generated command forms. */
+
+.fc-field-placeholder {
+    background-color: var(--neutral-fill-rest, #fafafa);
+}
+
+.fc-field-placeholder-dev {
+    border-color: var(--error-foreground-rest, #cc0000) !important;
+}
+
+::deep .fc-monospace {
+    font-family: Consolas, "Courier New", monospace;
+}

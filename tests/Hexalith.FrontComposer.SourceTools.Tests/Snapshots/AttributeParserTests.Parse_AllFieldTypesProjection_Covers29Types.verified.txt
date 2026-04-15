@@ -80,7 +80,8 @@
       Name: StatusField,
       TypeName: Enum,
       IsNullable: false,
-      IsUnsupported: false
+      IsUnsupported: false,
+      EnumFullyQualifiedName: TestDomain.ItemStatus
     },
     {
       Name: NullableInt32,
@@ -152,7 +153,8 @@
       Name: NullableEnum,
       TypeName: Enum,
       IsNullable: true,
-      IsUnsupported: false
+      IsUnsupported: false,
+      EnumFullyQualifiedName: TestDomain.ItemStatus
     },
     {
       Name: NullableString,

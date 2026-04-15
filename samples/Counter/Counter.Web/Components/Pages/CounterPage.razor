@@ -4,24 +4,28 @@
 
 <h1>Counter</h1>
 
-@if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
-{
-    <Counter.Domain.CounterProjectionView />
-}
-else
-{
-    <FluentStack Orientation="Orientation.Vertical"
-                 HorizontalAlignment="HorizontalAlignment.Center"
-                 VerticalAlignment="VerticalAlignment.Center"
-                 Style="padding: 32px; gap: 12px; text-align: center;">
-        <FluentText Size="TextSize.Size400" Weight="TextWeight.Semibold">
-            No counter data yet. Send your first Increment Counter command.
-        </FluentText>
-        <FluentButton Appearance="ButtonAppearance.Primary" Disabled="true">
-            Increment Counter
-        </FluentButton>
-    </FluentStack>
-}
+<div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
+    <section class="command-section">
+        <Counter.Domain.IncrementCommandForm />
+    </section>
+    <section class="data-section">
+        @if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
+        {
+            <Counter.Domain.CounterProjectionView />
+        }
+        else
+        {
+            <FluentStack Orientation="Orientation.Vertical"
+                         HorizontalAlignment="HorizontalAlignment.Center"
+                         VerticalAlignment="VerticalAlignment.Center"
+                         Style="padding: 32px; gap: 12px; text-align: center;">
+                <FluentText Size="TextSize.Size400" Weight="TextWeight.Semibold">
+                    No counter data yet. Send your first Increment Counter command.
+                </FluentText>
+            </FluentStack>
+        }
+    </section>
+</div>
 
 @code {
     protected override void OnInitialized()

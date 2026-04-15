@@ -25,7 +25,8 @@
           EnumMemberName: Failed,
           Slot: Danger
         }
-      ]
+      ],
+      EnumFullyQualifiedName: TestDomain.OrderStatus
     }
   ]
 }

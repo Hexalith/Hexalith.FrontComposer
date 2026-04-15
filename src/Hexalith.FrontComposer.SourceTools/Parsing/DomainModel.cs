@@ -69,6 +69,126 @@ public sealed class DomainModel : IEquatable<DomainModel> {
 }
 
 /// <summary>
+/// Intermediate representation of a [Command]-annotated type, produced by the
+/// Parse stage. Pure data -- no Roslyn symbol references. The property collection
+/// is split into derivable (infrastructure-sourced, hidden from the form) and
+/// non-derivable (user-input, rendered as form fields) subsets.
+/// </summary>
+public sealed class CommandModel : IEquatable<CommandModel> {
+    public CommandModel(
+        string typeName,
+        string @namespace,
+        string? boundedContext,
+        string? boundedContextDisplayLabel,
+        string? displayName,
+        EquatableArray<PropertyModel> properties,
+        EquatableArray<PropertyModel> derivableProperties,
+        EquatableArray<PropertyModel> nonDerivableProperties) {
+        TypeName = typeName;
+        Namespace = @namespace;
+        BoundedContext = boundedContext;
+        BoundedContextDisplayLabel = boundedContextDisplayLabel;
+        DisplayName = displayName;
+        Properties = properties;
+        DerivableProperties = derivableProperties;
+        NonDerivableProperties = nonDerivableProperties;
+    }
+
+    public string TypeName { get; }
+
+    public string Namespace { get; }
+
+    public string? BoundedContext { get; }
+
+    public string? BoundedContextDisplayLabel { get; }
+
+    public string? DisplayName { get; }
+
+    public EquatableArray<PropertyModel> Properties { get; }
+
+    public EquatableArray<PropertyModel> DerivableProperties { get; }
+
+    public EquatableArray<PropertyModel> NonDerivableProperties { get; }
+
+    public bool Equals(CommandModel? other) {
+        if (other is null) {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other)) {
+            return true;
+        }
+
+        return TypeName == other.TypeName
+            && Namespace == other.Namespace
+            && BoundedContext == other.BoundedContext
+            && BoundedContextDisplayLabel == other.BoundedContextDisplayLabel
+            && DisplayName == other.DisplayName
+            && Properties == other.Properties
+            && DerivableProperties == other.DerivableProperties
+            && NonDerivableProperties == other.NonDerivableProperties;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as CommandModel);
+
+    public override int GetHashCode() {
+        unchecked {
+            int hash = 17;
+            hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (BoundedContextDisplayLabel?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (DisplayName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + Properties.GetHashCode();
+            hash = (hash * 31) + DerivableProperties.GetHashCode();
+            hash = (hash * 31) + NonDerivableProperties.GetHashCode();
+            return hash;
+        }
+    }
+}
+
+/// <summary>
+/// Result of parsing a [Command]-annotated type: the IR model (if valid) plus any diagnostics.
+/// Mirrors <see cref="ParseResult"/> for the projection pipeline.
+/// </summary>
+public sealed class CommandParseResult : IEquatable<CommandParseResult> {
+    public CommandParseResult(CommandModel? model, EquatableArray<DiagnosticInfo> diagnostics) {
+        Model = model;
+        Diagnostics = diagnostics;
+    }
+
+    public CommandModel? Model { get; }
+
+    public EquatableArray<DiagnosticInfo> Diagnostics { get; }
+
+    public bool Equals(CommandParseResult? other) {
+        if (other is null) {
+            return false;
+        }
+
+        if (ReferenceEquals(this, other)) {
+            return true;
+        }
+
+        bool modelsEqual = (Model is null && other.Model is null)
+            || (Model is not null && Model.Equals(other.Model));
+
+        return modelsEqual && Diagnostics == other.Diagnostics;
+    }
+
+    public override bool Equals(object? obj) => Equals(obj as CommandParseResult);
+
+    public override int GetHashCode() {
+        unchecked {
+            int hash = 17;
+            hash = (hash * 31) + (Model?.GetHashCode() ?? 0);
+            hash = (hash * 31) + Diagnostics.GetHashCode();
+            return hash;
+        }
+    }
+}
+
+/// <summary>
 /// IR representation of a single property on a [Projection]-annotated type.
 /// </summary>
 public sealed class PropertyModel : IEquatable<PropertyModel> {
@@ -78,13 +198,17 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         bool isNullable,
         bool isUnsupported,
         string? displayName,
-        EquatableArray<BadgeMappingEntry> badgeMappings) {
+        EquatableArray<BadgeMappingEntry> badgeMappings,
+        string? enumFullyQualifiedName = null,
+        string? unsupportedTypeFullyQualifiedName = null) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
         IsUnsupported = isUnsupported;
         DisplayName = displayName;
         BadgeMappings = badgeMappings;
+        EnumFullyQualifiedName = enumFullyQualifiedName;
+        UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
     }
 
     public string Name { get; }
@@ -98,6 +222,18 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     public string? DisplayName { get; }
 
     public EquatableArray<BadgeMappingEntry> BadgeMappings { get; }
+
+    /// <summary>
+    /// Gets the fully qualified enum type name when <see cref="TypeName"/> is <c>"Enum"</c>.
+    /// Used by command form emission to populate <c>FluentSelect</c> items.
+    /// </summary>
+    public string? EnumFullyQualifiedName { get; }
+
+    /// <summary>
+    /// Gets the original fully qualified type name when <see cref="IsUnsupported"/> is <see langword="true"/>.
+    /// Surfaced to <c>FcFieldPlaceholder</c> so operators see the exact unsupported type.
+    /// </summary>
+    public string? UnsupportedTypeFullyQualifiedName { get; }
 
     public bool Equals(PropertyModel? other) {
         if (other is null) {
@@ -113,7 +249,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && IsNullable == other.IsNullable
             && IsUnsupported == other.IsUnsupported
             && DisplayName == other.DisplayName
-            && BadgeMappings == other.BadgeMappings;
+            && BadgeMappings == other.BadgeMappings
+            && EnumFullyQualifiedName == other.EnumFullyQualifiedName
+            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -127,6 +265,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + IsUnsupported.GetHashCode();
             hash = (hash * 31) + (DisplayName?.GetHashCode() ?? 0);
             hash = (hash * 31) + BadgeMappings.GetHashCode();
+            hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
             return hash;
         }
     }

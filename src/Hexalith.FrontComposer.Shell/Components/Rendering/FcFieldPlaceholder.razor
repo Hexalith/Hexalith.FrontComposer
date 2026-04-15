@@ -1,0 +1,25 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+
+<div role="status"
+     tabindex="0"
+     aria-label="@($"{FieldName} requires a custom renderer")"
+     class="@CssClass"
+     style="border: 2px dashed var(--neutral-stroke-rest, #aaaaaa); padding: 12px; margin: 4px 0; background-color: var(--neutral-fill-rest, #fafafa);">
+    <strong>@FieldName</strong> (@TypeName) — This field requires a custom renderer.
+    <a href="https://hexalith.dev/docs/customization-gradient" target="_blank" rel="noopener">Learn how to customize this field</a>
+</div>
+
+@code {
+    /// <summary>Gets or sets the name of the property this placeholder represents.</summary>
+    [Parameter, EditorRequired] public string FieldName { get; set; } = default!;
+
+    /// <summary>Gets or sets the fully qualified name of the unsupported type.</summary>
+    [Parameter, EditorRequired] public string TypeName { get; set; } = default!;
+
+    /// <summary>Gets or sets a value indicating whether the placeholder is rendered in developer mode (red dashed border).</summary>
+    [Parameter] public bool IsDevMode { get; set; }
+
+    private string CssClass => IsDevMode
+        ? "fc-field-placeholder fc-field-placeholder-dev"
+        : "fc-field-placeholder";
+}

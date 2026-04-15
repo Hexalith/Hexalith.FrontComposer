@@ -61,5 +61,28 @@ public static class DiagnosticDescriptors {
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
 
+    /// <summary>
+    /// HFC1006: [Command] type is missing a <c>MessageId</c> property (required for correlation).
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandMissingMessageId = new(
+        id: "HFC1006",
+        title: "Command missing MessageId property",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1007: [Command] type has an excessive number of non-derivable properties (DoS mitigation).
+    /// Warning at &gt; 30 properties; error at &gt; 100.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandTooManyProperties = new(
+        id: "HFC1007",
+        title: "Command has too many non-derivable properties",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
     // HFC1010 reserved — "Full restart required for this change type" (not yet implemented; requires analyzer, not generator — see docs/hot-reload-guide.md)
 }

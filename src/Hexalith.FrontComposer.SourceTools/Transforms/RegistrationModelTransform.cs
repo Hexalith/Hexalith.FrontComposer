@@ -23,6 +23,21 @@ public static class RegistrationModelTransform {
             model.BoundedContextDisplayLabel);
     }
 
+    /// <summary>
+    /// Transforms a parsed command model into a registration output model.
+    /// </summary>
+    public static RegistrationModel TransformCommand(CommandModel model) {
+        string boundedContext = model.BoundedContext
+            ?? GetNamespaceLastSegment(model.Namespace);
+
+        return new RegistrationModel(
+            boundedContext,
+            model.TypeName,
+            model.Namespace,
+            model.BoundedContextDisplayLabel,
+            isCommand: true);
+    }
+
     private static string GetNamespaceLastSegment(string @namespace) {
         if (string.IsNullOrEmpty(@namespace)) {
             return "Global";

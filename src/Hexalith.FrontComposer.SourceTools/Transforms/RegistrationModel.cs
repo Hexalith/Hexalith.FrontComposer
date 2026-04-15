@@ -8,11 +8,13 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
         string boundedContext,
         string typeName,
         string @namespace,
-        string? displayLabel) {
+        string? displayLabel,
+        bool isCommand = false) {
         BoundedContext = boundedContext;
         TypeName = typeName;
         Namespace = @namespace;
         DisplayLabel = displayLabel;
+        IsCommand = isCommand;
     }
 
     public string BoundedContext { get; }
@@ -22,6 +24,12 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
     public string Namespace { get; }
 
     public string? DisplayLabel { get; }
+
+    /// <summary>
+    /// Gets a value indicating whether the registered type is a command (otherwise a projection).
+    /// Drives the placement of <c>typeof(...).FullName</c> into <c>Commands</c> vs <c>Projections</c>.
+    /// </summary>
+    public bool IsCommand { get; }
 
     public bool Equals(RegistrationModel? other) {
         if (other is null) {
@@ -35,7 +43,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
         return BoundedContext == other.BoundedContext
             && TypeName == other.TypeName
             && Namespace == other.Namespace
-            && DisplayLabel == other.DisplayLabel;
+            && DisplayLabel == other.DisplayLabel
+            && IsCommand == other.IsCommand;
     }
 
     public override bool Equals(object? obj) => Equals(obj as RegistrationModel);
@@ -47,6 +56,7 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
             hash = (hash * 31) + (TypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DisplayLabel?.GetHashCode() ?? 0);
+            hash = (hash * 31) + IsCommand.GetHashCode();
             return hash;
         }
     }
