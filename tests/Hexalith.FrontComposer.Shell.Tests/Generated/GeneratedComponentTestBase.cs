@@ -50,6 +50,10 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         _ = Services.AddSingleton<IUlidFactory, UlidFactory>();
         _ = Services.AddOptions<LifecycleOptions>();
         _ = Services.AddScoped<ILifecycleStateService, LifecycleStateService>();
+
+        // Story 2-4 — FcLifecycleWrapper injects TimeProvider; use the system clock by default
+        // so generated-form rendering doesn't block on a fake clock that never ticks.
+        _ = Services.AddSingleton(TimeProvider.System);
     }
 
     protected async Task InitializeStoreAsync() {

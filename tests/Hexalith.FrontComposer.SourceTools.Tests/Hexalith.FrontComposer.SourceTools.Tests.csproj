@@ -6,6 +6,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj" />
     <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <!-- Story 2-4 — generated forms now wrap EditForm in FcLifecycleWrapper (Shell). The tests
+         add the Shell to the CompilationHelper reference set so generated .g.cs compiles. -->
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="xunit.v3" />
     <PackageReference Include="xunit.v3.assert" />

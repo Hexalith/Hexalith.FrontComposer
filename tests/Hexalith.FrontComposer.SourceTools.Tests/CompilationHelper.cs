@@ -38,6 +38,9 @@ internal static class CompilationHelper {
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Localization.IStringLocalizer<>)); // Localization
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Logging.ILogger<>));            // Logging
         TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid<>));   // FluentUI
+        // Story 2-4 — emitter wraps generated EditForm in FcLifecycleWrapper, so the Shell
+        // assembly must be resolvable by the test compilation.
+        TryAddAssemblyRef(refs, typeof(Hexalith.FrontComposer.Shell.Components.Lifecycle.FcLifecycleWrapper));
         // Story 2-2: generated renderer + subscriber pull in these ASP.NET / Extensions types.
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Options.IOptions<>));            // Options
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection)); // DI

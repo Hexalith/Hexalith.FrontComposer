@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
+using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 
 namespace Counter.Domain;
 
@@ -258,9 +259,14 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         builder.AddAttribute(seq++, "class", "fc-command-form fc-density-comfortable");
         builder.AddAttribute(seq++, "aria-label", "Send IncrementCommand command form");
 
-        builder.OpenComponent<EditForm>(seq++);
-        builder.AddAttribute(seq++, "EditContext", _editContext);
-        builder.AddAttribute(seq++, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, _ => OnValidSubmitAsync()));
+        builder.OpenComponent<FcLifecycleWrapper>(seq++);
+        builder.AddAttribute(seq++, "CorrelationId", _submittedCorrelationId);
+        builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__wrap =>
+        {
+            int wseq = 0;
+            __wrap.OpenComponent<EditForm>(wseq++);
+            __wrap.AddAttribute(wseq++, "EditContext", _editContext);
+            __wrap.AddAttribute(wseq++, "OnValidSubmit", EventCallback.Factory.Create<EditContext>(this, _ => OnValidSubmitAsync()));
         RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>
         {
             int cseq = 0;
@@ -321,7 +327,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             }));
             __b.CloseComponent();
         });
-        builder.AddAttribute(seq++, "ChildContent", formBody);
+            __wrap.AddAttribute(wseq++, "ChildContent", formBody);
+            __wrap.CloseComponent();
+        }));
         builder.CloseComponent();
         builder.CloseElement();
     }
