@@ -32,7 +32,6 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("using System;");
         _ = sb.AppendLine("using System.Collections.Generic;");
         _ = sb.AppendLine("using System.Globalization;");
-        _ = sb.AppendLine("using System.Reflection;");
         _ = sb.AppendLine("using System.Threading.Tasks;");
         _ = sb.AppendLine("using Fluxor;");
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts;");
@@ -67,6 +66,8 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("{");
         _ = sb.AppendLine("    [Parameter] public CommandRenderMode? RenderMode { get; set; }");
         _ = sb.AppendLine("    [Parameter] public " + commandFqn + "? InitialValue { get; set; }");
+        _ = sb.AppendLine("    // Story 2-2 code-review D11 — CompactInline collapse callback (AC9 Escape focus-return). Story 2-5 adds NavigateAwayRequested.");
+        _ = sb.AppendLine("    [Parameter] public EventCallback OnCollapseRequested { get; set; }");
         _ = sb.AppendLine("    [CascadingParameter] public ProjectionContext? ProjectionContext { get; set; }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    [Inject] private IEnumerable<IDerivedValueProvider> DerivedValueProviders { get; set; } = default!;");
@@ -81,7 +82,9 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    private CommandRenderMode _effectiveMode;");
         _ = sb.AppendLine("    private bool _popoverOpen;");
         _ = sb.AppendLine("    private ElementReference _compactCardRef;");
-        _ = sb.AppendLine("    private readonly string _triggerButtonId = \"fc-trigger-\" + Guid.NewGuid().ToString(\"N\");");
+        // Story 2-2 code-review D12 — stable id derived from command type FullName for SSR/interactive consistency.
+        string stableTriggerId = "fc-trigger-" + SanitizeCssId(model.CommandFullyQualifiedName);
+        _ = sb.AppendLine("    private readonly string _triggerButtonId = \"" + stableTriggerId + "\";");
         _ = sb.AppendLine("    private Action? _externalSubmit;");
         _ = sb.AppendLine("    private IJSObjectReference? _expandInRowModule;");
         _ = sb.AppendLine("    private " + commandFqn + " _prefilledModel = new();");
@@ -113,8 +116,10 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    private Task RefreshDerivedValuesBeforeSubmitAsync()");
         _ = sb.AppendLine("        => PrefillDerivableFieldsAsync();");
         _ = sb.AppendLine();
+        // Story 2-2 code-review P31 — distinguish "no provider resolved" from "provider resolved but assignment failed".
         _ = sb.AppendLine("    private async Task TryPrefillPropertyAsync(string propertyName)");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        bool anyProviderResolved = false;");
         _ = sb.AppendLine("        foreach (IDerivedValueProvider provider in DerivedValueProviders)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            DerivedValueResult result = await provider.ResolveAsync(typeof(" + commandFqn + "), propertyName, ProjectionContext, default).ConfigureAwait(false);");
@@ -123,21 +128,25 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                continue;");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("            anyProviderResolved = true;");
         _ = sb.AppendLine("            if (TrySetPropertyValue(propertyName, result.Value))");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                return;");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine();
-            _ = sb.AppendLine("            Logger?.LogWarning(\"Derived value for {PropertyName} on {CommandType} could not be assigned.\", propertyName, \"" + commandFqn + "\");");
-        _ = sb.AppendLine("            continue;");
+        _ = sb.AppendLine("            Logger?.LogWarning(\"Derived value for {PropertyName} on {CommandType} could not be assigned.\", propertyName, \"" + commandFqn + "\");");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        Logger?.LogWarning(\"No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.\", propertyName, \"" + commandFqn + "\");");
+        _ = sb.AppendLine("        if (!anyProviderResolved)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            Logger?.LogDebug(\"No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.\", propertyName, \"" + commandFqn + "\");");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        // Story 2-2 code-review P25 — use CurrentCulture for DateTime/number parse (matches CommandFormEmitter numeric binding).
         _ = sb.AppendLine("    private bool TrySetPropertyValue(string propertyName, object? value)");
         _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        PropertyInfo? property = typeof(" + commandFqn + ").GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);");
+        _ = sb.AppendLine("        System.Reflection.PropertyInfo? property = typeof(" + commandFqn + ").GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);");
         _ = sb.AppendLine("        if (property is null || !property.CanWrite)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            return false;");
@@ -169,14 +178,14 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                {");
         _ = sb.AppendLine("                    converted = value is DateTimeOffset dto");
         _ = sb.AppendLine("                        ? dto");
-        _ = sb.AppendLine("                        : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!, CultureInfo.InvariantCulture);");
+        _ = sb.AppendLine("                        : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture);");
         _ = sb.AppendLine("                }");
         _ = sb.AppendLine("                else");
         _ = sb.AppendLine("                {");
-        _ = sb.AppendLine("                    converted = Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);");
+        _ = sb.AppendLine("                    converted = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);");
         _ = sb.AppendLine("                }");
         _ = sb.AppendLine("            }");
-        _ = sb.AppendLine("            catch");
+        _ = sb.AppendLine("            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                return false;");
         _ = sb.AppendLine("            }");
@@ -276,6 +285,15 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("        return e.Key == \"Escape\" && _popoverOpen ? ClosePopoverAsync() : Task.CompletedTask;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    // Story 2-2 code-review D11 — CompactInline Escape → OnCollapseRequested (AC9 focus-return contract).");
+        _ = sb.AppendLine("    private async Task HandleCompactEscapeAsync(KeyboardEventArgs e)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (e.Key == \"Escape\" && _effectiveMode == CommandRenderMode.CompactInline && OnCollapseRequested.HasDelegate)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await OnCollapseRequested.InvokeAsync().ConfigureAwait(false);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
 
         _ = sb.AppendLine("    private Task OnConfirmedAsync()");
         _ = sb.AppendLine("    {");
@@ -307,10 +325,9 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("        NavigationManager.NavigateTo(\"/\");");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        // Story 2-2 code-review D8 — delegate to Contracts.Rendering.ReturnPathValidator for security single-source-of-truth.
         _ = sb.AppendLine("    private static bool IsValidRelativeReturnPath(string? path)");
-        _ = sb.AppendLine("        => !string.IsNullOrWhiteSpace(path)");
-        _ = sb.AppendLine("            && System.Uri.IsWellFormedUriString(path, System.UriKind.Relative)");
-        _ = sb.AppendLine("            && !path.StartsWith(\"//\", StringComparison.Ordinal);");
+        _ = sb.AppendLine("        => Hexalith.FrontComposer.Contracts.Rendering.ReturnPathValidator.IsSafeRelativePath(path);");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private string? GetRawReturnPath()");
         _ = sb.AppendLine("        => !string.IsNullOrWhiteSpace(PageContext.ReturnPath) ? PageContext.ReturnPath : GetQueryParameter(\"returnPath\");");
@@ -381,7 +398,7 @@ public static class CommandRendererEmitter {
     private static void EmitBuildRenderTree(StringBuilder sb, CommandRendererModel model, string displayLabelEscaped) {
         string formFqn = string.IsNullOrEmpty(model.Namespace) ? model.FormComponentName : model.Namespace + "." + model.FormComponentName;
         int nonDerivableCount = model.NonDerivablePropertyNames.Count;
-        string firstFieldName = nonDerivableCount >= 1 ? model.NonDerivablePropertyNames[0] : "";
+        string firstFieldName = nonDerivableCount >= 1 ? EscapeString(model.NonDerivablePropertyNames[0]) : "";
 
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
@@ -457,6 +474,8 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
         _ = sb.AppendLine("                builder.AddAttribute(seq++, \"class\", \"fc-expand-in-row\");");
+        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"onkeydown\", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));");
+        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"tabindex\", \"-1\");");
         _ = sb.AppendLine("                builder.AddElementReferenceCapture(seq++, r => _compactCardRef = r);");
         _ = sb.AppendLine("                builder.OpenComponent<FluentCard>(seq++);");
         _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Appearance\", CardAppearance.Outline);");
@@ -524,5 +543,19 @@ public static class CommandRendererEmitter {
         }
 
         return Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value!, quote: false);
+    }
+
+    /// <summary>Story 2-2 code-review D12 — reduce a command FQN to a stable CSS/HTML id.</summary>
+    private static string SanitizeCssId(string value) {
+        if (string.IsNullOrEmpty(value)) {
+            return "unknown";
+        }
+
+        StringBuilder sb = new(value.Length);
+        foreach (char c in value) {
+            _ = sb.Append(char.IsLetterOrDigit(c) ? c : '-');
+        }
+
+        return sb.ToString();
     }
 }

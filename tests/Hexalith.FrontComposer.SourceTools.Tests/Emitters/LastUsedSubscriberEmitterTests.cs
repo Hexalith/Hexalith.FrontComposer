@@ -29,7 +29,7 @@ public class LastUsedSubscriberEmitterTests {
         source.ShouldContain("TimeProvider? timeProvider = null");
         source.ShouldContain("_timeProvider = timeProvider ?? TimeProvider.System;");
         source.ShouldContain("private async Task RecordConfirmedAsync(Counter.Domain.IncrementCommand command)");
-        source.ShouldContain("await _recorder.RecordAsync<Counter.Domain.IncrementCommand>(command).ConfigureAwait(false);");
+        source.ShouldContain("await _recorder.RecordAsync<Counter.Domain.IncrementCommand>(command, _cts.Token).ConfigureAwait(false);");
         source.ShouldContain("services.AddScoped<IncrementCommandLastUsedSubscriber>()");
     }
 

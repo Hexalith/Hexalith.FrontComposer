@@ -17,8 +17,12 @@ export function focusTriggerElementById(elementId) {
     }
 }
 
+// Follow-up scroll is only applied when the element is this many pixels past a viewport edge —
+// avoids fighting a smooth scrollIntoView that's still in flight.
+const SCROLL_CORRECTION_THRESHOLD_PX = 4;
+
 export function initializeExpandInRow(elementRef) {
-    if (!elementRef) {
+    if (!(elementRef instanceof Element) || !elementRef.isConnected) {
         return;
     }
 
@@ -31,17 +35,25 @@ export function initializeExpandInRow(elementRef) {
         behavior: reduceMotion ? 'auto' : 'smooth',
     });
 
-    if (!reduceMotion) {
-        requestAnimationFrame(() => {
-            const rect = elementRef.getBoundingClientRect();
-            if (rect.top < 0) {
-                window.scrollBy({ top: rect.top, behavior: 'smooth' });
-            }
-        });
+    if (reduceMotion || typeof window === 'undefined') {
+        return;
     }
-}
 
-// Reserved for v2 multi-expand support; no-op today (Decision D11 forward-compat stub).
-export function collapseExpandInRow(_elementRef) {
-    // Intentionally empty — v1 is single-expand per DataGrid (Story 4.5 enforces).
+    requestAnimationFrame(() => {
+        if (!elementRef.isConnected) {
+            return;
+        }
+        const rect = elementRef.getBoundingClientRect();
+        const viewportHeight = window.innerHeight || document.documentElement.clientHeight;
+        let delta = 0;
+        if (rect.top < -SCROLL_CORRECTION_THRESHOLD_PX) {
+            delta = rect.top;
+        }
+        else if (rect.bottom > viewportHeight + SCROLL_CORRECTION_THRESHOLD_PX) {
+            delta = rect.bottom - viewportHeight;
+        }
+        if (delta !== 0) {
+            window.scrollBy({ top: delta, behavior: 'smooth' });
+        }
+    });
 }

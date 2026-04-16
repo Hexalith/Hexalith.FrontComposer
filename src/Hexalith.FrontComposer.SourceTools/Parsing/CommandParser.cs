@@ -127,7 +127,7 @@ public static class CommandParser {
 
         // Case-insensitive dedup + MessageId lookup (patch 2026-04-16 P-02): a property named
         // `messageId` satisfies the runtime MessageId contract, so HFC1006 must not fire on casing alone.
-        HashSet<string> seenNames = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> seenNames = new(StringComparer.Ordinal);
         List<IPropertySymbol> nonDerivableSymbols = new();
         INamedTypeSymbol? currentType = typeSymbol;
         while (currentType is not null && currentType.SpecialType != SpecialType.System_Object) {
@@ -515,11 +515,34 @@ public static class CommandParser {
         }
     }
 
-    private static bool IsDefaultValueTypeAssignable(ITypeSymbol candidateType, ITypeSymbol propertyType)
-        => SymbolEqualityComparer.Default.Equals(candidateType, propertyType)
-            || (candidateType.SpecialType == SpecialType.System_Int32
-                && (propertyType.SpecialType is SpecialType.System_Int64
-                    or SpecialType.System_Double
-                    or SpecialType.System_Single
-                    or SpecialType.System_Decimal));
+    // ECMA-334 §10.2.3 implicit numeric conversion coverage (Story 2-2 code-review P26).
+    private static bool IsDefaultValueTypeAssignable(ITypeSymbol candidateType, ITypeSymbol propertyType) {
+        if (SymbolEqualityComparer.Default.Equals(candidateType, propertyType)) {
+            return true;
+        }
+
+        SpecialType from = candidateType.SpecialType;
+        SpecialType to = propertyType.SpecialType;
+        return (from, to) switch {
+            (SpecialType.System_SByte, SpecialType.System_Int16 or SpecialType.System_Int32 or SpecialType.System_Int64
+                or SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_Byte, SpecialType.System_Int16 or SpecialType.System_UInt16 or SpecialType.System_Int32 or SpecialType.System_UInt32
+                or SpecialType.System_Int64 or SpecialType.System_UInt64
+                or SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_Int16, SpecialType.System_Int32 or SpecialType.System_Int64
+                or SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_UInt16, SpecialType.System_Int32 or SpecialType.System_UInt32 or SpecialType.System_Int64 or SpecialType.System_UInt64
+                or SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_Int32, SpecialType.System_Int64
+                or SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_UInt32, SpecialType.System_Int64 or SpecialType.System_UInt64
+                or SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_Int64 or SpecialType.System_UInt64, SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_Char, SpecialType.System_UInt16 or SpecialType.System_Int32 or SpecialType.System_UInt32
+                or SpecialType.System_Int64 or SpecialType.System_UInt64
+                or SpecialType.System_Single or SpecialType.System_Double or SpecialType.System_Decimal) => true,
+            (SpecialType.System_Single, SpecialType.System_Double) => true,
+            _ => false,
+        };
+    }
 }

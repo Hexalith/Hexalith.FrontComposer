@@ -22,7 +22,8 @@ public static class CommandRendererTransform {
 
         string displayLabel = BuildDisplayLabel(model);
         string boundedContext = string.IsNullOrEmpty(model.BoundedContext) ? "Default" : model.BoundedContext!;
-        string route = "/commands/" + boundedContext + "/" + model.TypeName;
+        // Story 2-2 code-review P40 — sanitize route segments to safe URL-path characters.
+        string route = "/commands/" + SanitizeRouteSegment(boundedContext) + "/" + SanitizeRouteSegment(model.TypeName);
 
         ImmutableArray<string>.Builder nonDerivable = ImmutableArray.CreateBuilder<string>();
         foreach (PropertyModel p in model.NonDerivableProperties) {
@@ -61,10 +62,29 @@ public static class CommandRendererTransform {
         return StripTrailingCommand(source);
     }
 
+    // Story 2-2 code-review P40 — restrict route segments to URL-safe characters (letters, digits, '.', '-', '_').
+    // Anything else collapses to '-'; empty segments become "_".
+    private static string SanitizeRouteSegment(string segment) {
+        if (string.IsNullOrEmpty(segment)) {
+            return "_";
+        }
+
+        System.Text.StringBuilder sb = new(segment.Length);
+        foreach (char c in segment) {
+            _ = sb.Append(char.IsLetterOrDigit(c) || c == '.' || c == '-' || c == '_' ? c : '-');
+        }
+
+        return sb.ToString();
+    }
+
+    // Story 2-2 code-review P41/P42 — case-insensitive suffix strip; fall back to original when result is empty.
     private static string StripTrailingCommand(string label) {
         const string suffix = " Command";
-        return label.EndsWith(suffix, StringComparison.Ordinal)
-            ? label.Substring(0, label.Length - suffix.Length)
-            : label;
+        if (!label.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) {
+            return label;
+        }
+
+        string stripped = label.Substring(0, label.Length - suffix.Length);
+        return string.IsNullOrWhiteSpace(stripped) ? label : stripped;
     }
 }

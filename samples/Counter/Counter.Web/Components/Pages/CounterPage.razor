@@ -1,6 +1,7 @@
 @page "/counter"
 @implements IDisposable
 @using Counter.Domain
+@using System.Collections.Immutable
 
 <PageTitle>Counter sample</PageTitle>
 @inject IState<Counter.Domain.CounterProjectionState> CounterState
@@ -49,10 +50,11 @@
     // Story 2-2 Decision D27 — manual CascadingValue to exercise ProjectionContextProvider
     // pre-fill without Epic 4's DataGrid row cascade. Demo-only.
     private readonly Hexalith.FrontComposer.Contracts.Rendering.ProjectionContext _demoContext = new(
-        ProjectionTypeFqn: "Counter.Domain.CounterProjection",
-        BoundedContext: "Counter",
-        AggregateId: "counter-demo-1",
-        Fields: new Dictionary<string, object?> { ["TenantId"] = "counter-demo" });
+        projectionTypeFqn: "Counter.Domain.CounterProjection",
+        boundedContext: "Counter",
+        aggregateId: "counter-demo-1",
+        fields: ImmutableDictionary.CreateRange<string, object?>(
+            new Dictionary<string, object?> { ["TenantId"] = "counter-demo" }));
 
     protected override void OnInitialized()
     {

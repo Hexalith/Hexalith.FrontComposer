@@ -13,12 +13,10 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
-using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
 
@@ -126,10 +124,10 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<ICommandService, StubCommandService>();
         _ = services.Configure<StubCommandServiceOptions>(_ => { });
 
-        // Story 2-2 Decision D33 — wire DataGridNav LRU cap from FcShellOptions.
-        // Reducers are static; the ambient Cap is mutated from the options snapshot here.
+        // Story 2-2 Decision D33 — DataGridNav LRU cap is seeded from FcShellOptions.DataGridNavCap
+        // into DataGridNavigationState.Cap by DataGridNavigationFeature at first state construction
+        // (Group D code review W1 resolution — no mutable process-static).
         _ = services.AddOptions<FcShellOptions>();
-        _ = services.AddSingleton<IPostConfigureOptions<FcShellOptions>, DataGridNavCapBinder>();
 
         // Story 2-2 Task 3.5a — dev diagnostic sink (per-circuit scope).
         services.TryAddScoped<IDiagnosticSink, InMemoryDiagnosticSink>();
@@ -146,6 +144,21 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<IExpandInRowJSModule, ExpandInRowJSModule>();
 
         // Story 2-2 Decision D37 — at-most-one Inline popover registry (Contracts/Rendering).
+        // The registry MUST be Scoped (per circuit). Singleton would cross-leak popovers between
+        // user circuits because the "currently-open" reference would be process-wide. Reject any
+        // pre-existing non-Scoped registration loudly. We scan every matching descriptor (not just
+        // the first) so duplicate registrations with mixed lifetimes — e.g. Scoped registered first,
+        // Singleton appended later — still trip the throw, since DI resolves the last-registered
+        // descriptor.
+        ServiceDescriptor? offendingPopoverRegistry = services.FirstOrDefault(
+            d => d.ServiceType == typeof(Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry)
+                && d.Lifetime != ServiceLifetime.Scoped);
+        if (offendingPopoverRegistry is not null) {
+            throw new InvalidOperationException(
+                $"InlinePopoverRegistry must be registered as Scoped (found: {offendingPopoverRegistry.Lifetime}). "
+                + "Singleton or Transient registration would cross-leak popovers between user circuits.");
+        }
+
         services.TryAddScoped<Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry>();
 
         // Default no-op ICommandPageContext — adopter-hosted pages override via scoped registration.
@@ -182,17 +195,6 @@ public static class ServiceCollectionExtensions {
         // Prepend so custom providers come first in enumeration order.
         services.Insert(0, descriptor);
         return services;
-    }
-
-    /// <summary>
-    /// Binds <see cref="FcShellOptions.DataGridNavCap"/> to the ambient reducer cap
-    /// (Story 2-2 Decision D33). Post-configure fires once options are resolved.
-    /// </summary>
-    private sealed class DataGridNavCapBinder : IPostConfigureOptions<FcShellOptions> {
-        public void PostConfigure(string? name, FcShellOptions options) {
-            ArgumentNullException.ThrowIfNull(options);
-            DataGridNavigationReducers.Cap = options.DataGridNavCap;
-        }
     }
 
     private static void CollectCommandRegistration(

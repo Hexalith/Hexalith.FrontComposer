@@ -1,0 +1,156 @@
+diff --git a/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor b/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor
+index 0bef9d8..ed9049b 100644
+--- a/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor
++++ b/samples/Counter/Counter.Web/Components/Pages/CounterPage.razor
+@@ -49,10 +49,11 @@
+     // Story 2-2 Decision D27 — manual CascadingValue to exercise ProjectionContextProvider
+     // pre-fill without Epic 4's DataGrid row cascade. Demo-only.
+     private readonly Hexalith.FrontComposer.Contracts.Rendering.ProjectionContext _demoContext = new(
+-        ProjectionTypeFqn: "Counter.Domain.CounterProjection",
+-        BoundedContext: "Counter",
+-        AggregateId: "counter-demo-1",
+-        Fields: new Dictionary<string, object?> { ["TenantId"] = "counter-demo" });
++        projectionTypeFqn: "Counter.Domain.CounterProjection",
++        boundedContext: "Counter",
++        aggregateId: "counter-demo-1",
++        fields: System.Collections.Immutable.ImmutableDictionary.CreateRange<string, object?>(
++            new Dictionary<string, object?> { ["TenantId"] = "counter-demo" }));
+ 
+     protected override void OnInitialized()
+     {
+diff --git a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+index 4cd51b1..afc8720 100644
+--- a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+@@ -146,6 +146,17 @@ public static class ServiceCollectionExtensions {
+         services.TryAddScoped<IExpandInRowJSModule, ExpandInRowJSModule>();
+ 
+         // Story 2-2 Decision D37 — at-most-one Inline popover registry (Contracts/Rendering).
++        // The registry MUST be Scoped (per circuit). Singleton would cross-leak popovers between
++        // user circuits because the "currently-open" reference would be process-wide. Reject any
++        // pre-existing non-Scoped registration loudly rather than silently no-op via TryAddScoped.
++        ServiceDescriptor? existingPopoverRegistry = services.FirstOrDefault(
++            d => d.ServiceType == typeof(Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry));
++        if (existingPopoverRegistry is not null && existingPopoverRegistry.Lifetime != ServiceLifetime.Scoped) {
++            throw new InvalidOperationException(
++                $"InlinePopoverRegistry must be registered as Scoped (current: {existingPopoverRegistry.Lifetime}). "
++                + "Singleton or Transient registration would cross-leak popovers between user circuits.");
++        }
++
+         services.TryAddScoped<Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry>();
+ 
+         // Default no-op ICommandPageContext — adopter-hosted pages override via scoped registration.
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/LastUsedValueProvider.cs b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/LastUsedValueProvider.cs
+index f2a0620..fe226bf 100644
+--- a/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/LastUsedValueProvider.cs
++++ b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/LastUsedValueProvider.cs
+@@ -68,10 +68,12 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
+     /// </summary>
+     /// <inheritdoc cref="ILastUsedRecorder.RecordAsync{TCommand}"/>
+     [UnconditionalSuppressMessage("Trimming", "IL2091:UnrecognizedReflectionPattern", Justification = "Call site is generated subscriber code with concrete TCommand type; trim preservation is the renderer's responsibility.")]
+-    public Task RecordAsync<TCommand>(TCommand command) where TCommand : class => Record(command);
++    public Task RecordAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class
++        => Record(command, cancellationToken);
+ 
+-    public async Task Record<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TCommand>(TCommand command) where TCommand : class {
++    public async Task Record<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class {
+         ArgumentNullException.ThrowIfNull(command);
++        cancellationToken.ThrowIfCancellationRequested();
+ 
+         if (!TryResolveTenantAndUser(out string? tenantId, out string? userId)) {
+             return;
+@@ -95,11 +97,11 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
+ 
+             object? value = prop.GetValue(command);
+             if (value is null) {
+-                await _storage.RemoveAsync(key).ConfigureAwait(false);
++                await _storage.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
+                 continue;
+             }
+ 
+-            await _storage.SetAsync(key, value).ConfigureAwait(false);
++            await _storage.SetAsync(key, value, cancellationToken).ConfigureAwait(false);
+         }
+     }
+ 
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererTestBase.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererTestBase.cs
+index 2539a7d..132d66b 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererTestBase.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererTestBase.cs
+@@ -81,6 +81,6 @@ public abstract class CommandRendererTestBase : BunitContext {
+     }
+ 
+     private sealed class NullLastUsedRecorder : ILastUsedRecorder {
+-        public Task RecordAsync<TCommand>(TCommand command) where TCommand : class => Task.CompletedTask;
++        public Task RecordAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class => Task.CompletedTask;
+     }
+ }
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Services/DerivedValueProviderChainTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Services/DerivedValueProviderChainTests.cs
+index cfb5d11..5d76098 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Services/DerivedValueProviderChainTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Services/DerivedValueProviderChainTests.cs
+@@ -1,3 +1,4 @@
++using System.Collections.Immutable;
+ using System.ComponentModel;
+ using System.Globalization;
+ using System.Text;
+@@ -66,7 +67,7 @@ public class DerivedValueProviderChainTests {
+     // 3. ProjectionContextProvider — positive (field match)
+     [Fact]
+     public async Task ProjectionContext_Positive_FieldMatch() {
+-        var ctx = new ProjectionContext("X.Y.Z", "BC", null, new Dictionary<string, object?> { ["Amount"] = 42 });
++        var ctx = new ProjectionContext("X.Y.Z", "BC", null, ImmutableDictionary.CreateRange<string, object?>(new Dictionary<string, object?> { ["Amount"] = 42 }));
+         var p = new ProjectionContextProvider();
+         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "Amount", ctx, TestContext.Current.CancellationToken);
+         r.HasValue.ShouldBeTrue();
+@@ -142,7 +143,7 @@ public class DerivedValueProviderChainTests {
+     // 11. System beats ProjectionContext
+     [Fact]
+     public async Task ChainOrder_SystemBeatsProjectionContext_ForMessageId() {
+-        var ctx = new ProjectionContext("X.Y.Z", "BC", null, new Dictionary<string, object?> { ["MessageId"] = "from-projection" });
++        var ctx = new ProjectionContext("X.Y.Z", "BC", null, ImmutableDictionary.CreateRange<string, object?>(new Dictionary<string, object?> { ["MessageId"] = "from-projection" }));
+         DerivedValueResult result = await ResolveChain("MessageId", ctx,
+             new SystemValueProvider(),
+             new ProjectionContextProvider());
+@@ -153,7 +154,7 @@ public class DerivedValueProviderChainTests {
+     // 12. ProjectionContext beats ExplicitDefault
+     [Fact]
+     public async Task ChainOrder_ProjectionContextBeatsExplicitDefault_ForAmount() {
+-        var ctx = new ProjectionContext("X.Y.Z", "BC", null, new Dictionary<string, object?> { ["Amount"] = 99 });
++        var ctx = new ProjectionContext("X.Y.Z", "BC", null, ImmutableDictionary.CreateRange<string, object?>(new Dictionary<string, object?> { ["Amount"] = 99 }));
+         DerivedValueResult result = await ResolveChain("Amount", ctx,
+             new ProjectionContextProvider(),
+             new ExplicitDefaultValueProvider());
+@@ -227,8 +228,8 @@ public class DerivedValueProviderChainTests {
+         var sink = new InMemoryDiagnosticSink(NullLogger<InMemoryDiagnosticSink>());
+         var p = new LastUsedValueProvider(storage, StubUser(user: ""), sink);
+ 
+-        await p.Record(new TestCommand { Note = "n1" });
+-        await p.Record(new TestCommand { Note = "n2" });
++        await p.Record(new TestCommand { Note = "n1" }, TestContext.Current.CancellationToken);
++        await p.Record(new TestCommand { Note = "n2" }, TestContext.Current.CancellationToken);
+ 
+         await storage.DidNotReceive().SetAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
+         sink.RecentEvents.Count(e => e.Code == "D31").ShouldBe(1);
+@@ -240,7 +241,7 @@ public class DerivedValueProviderChainTests {
+         var storage = Substitute.For<IStorageService>();
+         var p = new LastUsedValueProvider(storage, StubUser());
+ 
+-        await p.Record(new NullableCommand { MessageId = "m1", Note = null });
++        await p.Record(new NullableCommand { MessageId = "m1", Note = null }, TestContext.Current.CancellationToken);
+ 
+         string key = FrontComposerStorageKey.Build("t1", "alice@example.com", typeof(NullableCommand).FullName!, "Note");
+         await storage.Received(1).RemoveAsync(key, Arg.Any<CancellationToken>());
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Services/LastUsedSubscriberRuntimeTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Services/LastUsedSubscriberRuntimeTests.cs
+index e767c24..06d12dc 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Services/LastUsedSubscriberRuntimeTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Services/LastUsedSubscriberRuntimeTests.cs
+@@ -263,7 +263,7 @@ public sealed class LastUsedSubscriberRuntimeTests {
+     private sealed class TestLastUsedRecorder : ILastUsedRecorder {
+         public List<RecordedInvocation> Invocations { get; } = [];
+ 
+-        public Task RecordAsync<TCommand>(TCommand command) where TCommand : class {
++        public Task RecordAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class {
+             Invocations.Add(new RecordedInvocation(typeof(TCommand), command));
+             return Task.CompletedTask;
+         }

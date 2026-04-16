@@ -12,6 +12,9 @@
   <ItemGroup Label="Runtime">
     <!-- System.Collections.Immutable is ONLY needed on netstandard2.0 — net10.0 carries it in-box. -->
     <PackageVersion Include="System.Collections.Immutable" Version="9.0.0" />
+    <!-- System.ComponentModel.Annotations is ONLY needed on netstandard2.0 — net10.0 carries it in-box.
+         Used by FcShellOptions for [Range] / [RegularExpression] validation. -->
+    <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Blazor">

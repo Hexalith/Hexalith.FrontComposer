@@ -7,7 +7,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.Reflection;
 using System.Threading.Tasks;
 using Fluxor;
 using Hexalith.FrontComposer.Contracts;
@@ -28,6 +27,8 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 {
     [Parameter] public CommandRenderMode? RenderMode { get; set; }
     [Parameter] public Demo.Domain.DemoCommand? InitialValue { get; set; }
+    // Story 2-2 code-review D11 — CompactInline collapse callback (AC9 Escape focus-return). Story 2-5 adds NavigateAwayRequested.
+    [Parameter] public EventCallback OnCollapseRequested { get; set; }
     [CascadingParameter] public ProjectionContext? ProjectionContext { get; set; }
 
     [Inject] private IEnumerable<IDerivedValueProvider> DerivedValueProviders { get; set; } = default!;
@@ -42,7 +43,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     private CommandRenderMode _effectiveMode;
     private bool _popoverOpen;
     private ElementReference _compactCardRef;
-    private readonly string _triggerButtonId = "fc-trigger-" + Guid.NewGuid().ToString("N");
+    private readonly string _triggerButtonId = "fc-trigger-Demo-Domain-DemoCommand";
     private Action? _externalSubmit;
     private IJSObjectReference? _expandInRowModule;
     private Demo.Domain.DemoCommand _prefilledModel = new();
@@ -73,6 +74,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
 
     private async Task TryPrefillPropertyAsync(string propertyName)
     {
+        bool anyProviderResolved = false;
         foreach (IDerivedValueProvider provider in DerivedValueProviders)
         {
             DerivedValueResult result = await provider.ResolveAsync(typeof(Demo.Domain.DemoCommand), propertyName, ProjectionContext, default).ConfigureAwait(false);
@@ -81,21 +83,24 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 continue;
             }
 
+            anyProviderResolved = true;
             if (TrySetPropertyValue(propertyName, result.Value))
             {
                 return;
             }
 
             Logger?.LogWarning("Derived value for {PropertyName} on {CommandType} could not be assigned.", propertyName, "Demo.Domain.DemoCommand");
-            continue;
         }
 
-        Logger?.LogWarning("No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.", propertyName, "Demo.Domain.DemoCommand");
+        if (!anyProviderResolved)
+        {
+            Logger?.LogDebug("No derived value could be resolved for {PropertyName} on {CommandType}; leaving default value in place.", propertyName, "Demo.Domain.DemoCommand");
+        }
     }
 
     private bool TrySetPropertyValue(string propertyName, object? value)
     {
-        PropertyInfo? property = typeof(Demo.Domain.DemoCommand).GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
+        System.Reflection.PropertyInfo? property = typeof(Demo.Domain.DemoCommand).GetProperty(propertyName, System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
         if (property is null || !property.CanWrite)
         {
             return false;
@@ -127,14 +132,14 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                 {
                     converted = value is DateTimeOffset dto
                         ? dto
-                        : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.InvariantCulture)!, CultureInfo.InvariantCulture);
+                        : DateTimeOffset.Parse(Convert.ToString(value, CultureInfo.CurrentCulture)!, CultureInfo.CurrentCulture);
                 }
                 else
                 {
-                    converted = Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+                    converted = Convert.ChangeType(value, targetType, CultureInfo.CurrentCulture);
                 }
             }
-            catch
+            catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException or ArgumentException)
             {
                 return false;
             }
@@ -222,6 +227,15 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
         return e.Key == "Escape" && _popoverOpen ? ClosePopoverAsync() : Task.CompletedTask;
     }
 
+    // Story 2-2 code-review D11 — CompactInline Escape → OnCollapseRequested (AC9 focus-return contract).
+    private async Task HandleCompactEscapeAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && _effectiveMode == CommandRenderMode.CompactInline && OnCollapseRequested.HasDelegate)
+        {
+            await OnCollapseRequested.InvokeAsync().ConfigureAwait(false);
+        }
+    }
+
     private Task OnConfirmedAsync()
     {
         if (_effectiveMode == CommandRenderMode.Inline && _popoverOpen)
@@ -252,9 +266,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     }
 
     private static bool IsValidRelativeReturnPath(string? path)
-        => !string.IsNullOrWhiteSpace(path)
-            && System.Uri.IsWellFormedUriString(path, System.UriKind.Relative)
-            && !path.StartsWith("//", StringComparison.Ordinal);
+        => Hexalith.FrontComposer.Contracts.Rendering.ReturnPathValidator.IsSafeRelativePath(path);
 
     private string? GetRawReturnPath()
         => !string.IsNullOrWhiteSpace(PageContext.ReturnPath) ? PageContext.ReturnPath : GetQueryParameter("returnPath");
@@ -358,6 +370,8 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
             {
                 builder.OpenElement(seq++, "div");
                 builder.AddAttribute(seq++, "class", "fc-expand-in-row");
+                builder.AddAttribute(seq++, "onkeydown", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));
+                builder.AddAttribute(seq++, "tabindex", "-1");
                 builder.AddElementReferenceCapture(seq++, r => _compactCardRef = r);
                 builder.OpenComponent<FluentCard>(seq++);
                 builder.AddAttribute(seq++, "Appearance", CardAppearance.Outline);

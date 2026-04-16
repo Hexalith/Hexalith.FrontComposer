@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Globalization;
 using System.Text;
@@ -49,7 +50,7 @@ public class DerivedValueProviderChainTests {
     // 1. SystemValueProvider — positive
     [Fact]
     public async Task System_Positive_ResolvesMessageId() {
-        var p = new SystemValueProvider();
+        var p = new SystemValueProvider(new NullUserContextAccessor());
         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "MessageId", null, TestContext.Current.CancellationToken);
         r.HasValue.ShouldBeTrue();
         r.Value.ShouldBeOfType<string>().ShouldNotBeNullOrWhiteSpace();
@@ -58,7 +59,7 @@ public class DerivedValueProviderChainTests {
     // 2. SystemValueProvider — miss (unknown property name)
     [Fact]
     public async Task System_Miss_UnknownProperty_ReturnsNone() {
-        var p = new SystemValueProvider();
+        var p = new SystemValueProvider(new NullUserContextAccessor());
         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "UnknownProperty", null, TestContext.Current.CancellationToken);
         r.HasValue.ShouldBeFalse();
     }
@@ -66,7 +67,7 @@ public class DerivedValueProviderChainTests {
     // 3. ProjectionContextProvider — positive (field match)
     [Fact]
     public async Task ProjectionContext_Positive_FieldMatch() {
-        var ctx = new ProjectionContext("X.Y.Z", "BC", null, new Dictionary<string, object?> { ["Amount"] = 42 });
+        var ctx = new ProjectionContext("X.Y.Z", "BC", null, ImmutableDictionary.CreateRange<string, object?>(new Dictionary<string, object?> { ["Amount"] = 42 }));
         var p = new ProjectionContextProvider();
         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "Amount", ctx, TestContext.Current.CancellationToken);
         r.HasValue.ShouldBeTrue();
@@ -142,9 +143,9 @@ public class DerivedValueProviderChainTests {
     // 11. System beats ProjectionContext
     [Fact]
     public async Task ChainOrder_SystemBeatsProjectionContext_ForMessageId() {
-        var ctx = new ProjectionContext("X.Y.Z", "BC", null, new Dictionary<string, object?> { ["MessageId"] = "from-projection" });
+        var ctx = new ProjectionContext("X.Y.Z", "BC", null, ImmutableDictionary.CreateRange<string, object?>(new Dictionary<string, object?> { ["MessageId"] = "from-projection" }));
         DerivedValueResult result = await ResolveChain("MessageId", ctx,
-            new SystemValueProvider(),
+            new SystemValueProvider(new NullUserContextAccessor()),
             new ProjectionContextProvider());
         // System provides a fresh GUID; projection's value must be ignored.
         result.Value.ShouldNotBe("from-projection");
@@ -153,7 +154,7 @@ public class DerivedValueProviderChainTests {
     // 12. ProjectionContext beats ExplicitDefault
     [Fact]
     public async Task ChainOrder_ProjectionContextBeatsExplicitDefault_ForAmount() {
-        var ctx = new ProjectionContext("X.Y.Z", "BC", null, new Dictionary<string, object?> { ["Amount"] = 99 });
+        var ctx = new ProjectionContext("X.Y.Z", "BC", null, ImmutableDictionary.CreateRange<string, object?>(new Dictionary<string, object?> { ["Amount"] = 99 }));
         DerivedValueResult result = await ResolveChain("Amount", ctx,
             new ProjectionContextProvider(),
             new ExplicitDefaultValueProvider());
@@ -227,8 +228,8 @@ public class DerivedValueProviderChainTests {
         var sink = new InMemoryDiagnosticSink(NullLogger<InMemoryDiagnosticSink>());
         var p = new LastUsedValueProvider(storage, StubUser(user: ""), sink);
 
-        await p.Record(new TestCommand { Note = "n1" });
-        await p.Record(new TestCommand { Note = "n2" });
+        await p.Record(new TestCommand { Note = "n1" }, TestContext.Current.CancellationToken);
+        await p.Record(new TestCommand { Note = "n2" }, TestContext.Current.CancellationToken);
 
         await storage.DidNotReceive().SetAsync(Arg.Any<string>(), Arg.Any<object>(), Arg.Any<CancellationToken>());
         sink.RecentEvents.Count(e => e.Code == "D31").ShouldBe(1);
@@ -239,11 +240,12 @@ public class DerivedValueProviderChainTests {
     public async Task LastUsed_Record_NullValue_RemovesStoredKey() {
         var storage = Substitute.For<IStorageService>();
         var p = new LastUsedValueProvider(storage, StubUser());
+        CancellationToken ct = TestContext.Current.CancellationToken;
 
-        await p.Record(new NullableCommand { MessageId = "m1", Note = null });
+        await p.Record(new NullableCommand { MessageId = "m1", Note = null }, ct);
 
         string key = FrontComposerStorageKey.Build("t1", "alice@example.com", typeof(NullableCommand).FullName!, "Note");
-        await storage.Received(1).RemoveAsync(key, Arg.Any<CancellationToken>());
+        await storage.Received(1).RemoveAsync(key, Arg.Is<CancellationToken>(t => t == ct));
         await storage.DidNotReceive().SetAsync(key, Arg.Any<object>(), Arg.Any<CancellationToken>());
     }
 

@@ -14,8 +14,11 @@ public interface ICommandPageContext {
 
     /// <summary>
     /// Gets the relative URL the renderer should navigate to on successful <c>Confirmed</c>.
-    /// Validated via <c>Uri.IsWellFormedUriString(UriKind.Relative)</c> before navigation
-    /// (Story 2-2 Decision D32 — open-redirect defense).
+    /// Renderers MUST validate via <see cref="ReturnPathValidator.IsSafeRelativePath(string?)"/>
+    /// before navigation (Story 2-2 Decision D32 — open-redirect defense). Implementations
+    /// SHOULD return a value that already passes the validator; the validator is the single
+    /// source of truth and rejects protocol-relative URLs (<c>//evil.example</c>),
+    /// absolute URLs, and control-character payloads.
     /// </summary>
     string? ReturnPath { get; }
 }

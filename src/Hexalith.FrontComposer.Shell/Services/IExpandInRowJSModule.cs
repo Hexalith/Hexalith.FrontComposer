@@ -20,36 +20,105 @@ public sealed class ExpandInRowJSModule : IExpandInRowJSModule, IAsyncDisposable
     private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js";
 
     private readonly IJSRuntime _js;
-    private readonly Lazy<Task<IJSObjectReference>> _moduleTask;
+    private readonly object _importGate = new();
+    private Task<IJSObjectReference>? _moduleTask;
 
     public ExpandInRowJSModule(IJSRuntime js) {
         _js = js ?? throw new ArgumentNullException(nameof(js));
-        _moduleTask = new Lazy<Task<IJSObjectReference>>(() => _js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask());
     }
 
     /// <inheritdoc/>
     public async Task InitializeAsync(ElementReference element) {
+        Task<IJSObjectReference> importTask = GetOrStartImport();
+
+        IJSObjectReference module;
         try {
-            IJSObjectReference module = await _moduleTask.Value.ConfigureAwait(false);
-            await module.InvokeVoidAsync("initializeExpandInRow", element).ConfigureAwait(false);
+            module = await importTask.ConfigureAwait(false);
         }
         catch (InvalidOperationException) {
             // Prerender: JSInterop not yet available. Ignored per Decision D25.
+            ClearFaultedImport(importTask);
+            return;
         }
         catch (JSDisconnectedException) {
             // Circuit disconnected during init — module is lost with the circuit; benign.
+            ClearFaultedImport(importTask);
+            return;
+        }
+        catch (JSException) {
+            // Module import path failed (404, module SyntaxError). Clear the cache so a
+            // subsequent call can retry instead of permanently disabling expand-in-row.
+            ClearFaultedImport(importTask);
+            return;
+        }
+        catch (OperationCanceledException) {
+            ClearFaultedImport(importTask);
+            return;
+        }
+
+        try {
+            await module.InvokeVoidAsync("initializeExpandInRow", element).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) {
+            // Circuit tore down between import and invoke; benign.
+        }
+        catch (JSException) {
+            // JS-side initialization failed (e.g. detached element). Story 2-2 AC3 treats
+            // scroll stabilization as best-effort; swallow to avoid faulting the host component.
+        }
+        catch (OperationCanceledException) {
+            // Ignored.
         }
     }
 
     /// <inheritdoc/>
     public async ValueTask DisposeAsync() {
-        if (_moduleTask.IsValueCreated) {
-            try {
-                IJSObjectReference module = await _moduleTask.Value.ConfigureAwait(false);
-                await module.DisposeAsync().ConfigureAwait(false);
-            }
-            catch {
-                // Disposal is best-effort; circuit teardown may have already torn the JS host down.
+        Task<IJSObjectReference>? snapshot;
+        lock (_importGate) {
+            snapshot = _moduleTask;
+            _moduleTask = null;
+        }
+
+        if (snapshot is null) {
+            return;
+        }
+
+        IJSObjectReference module;
+        try {
+            module = await snapshot.ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) {
+            return;
+        }
+        catch (JSException) {
+            return;
+        }
+        catch (OperationCanceledException) {
+            return;
+        }
+
+        try {
+            await module.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) {
+            // Circuit tore down before module dispose — benign.
+        }
+        catch (JSException) {
+            // JS-side dispose failed; best-effort only.
+        }
+    }
+
+    private Task<IJSObjectReference> GetOrStartImport() {
+        lock (_importGate) {
+            _moduleTask ??= _js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
+            return _moduleTask;
+        }
+    }
+
+    private void ClearFaultedImport(Task<IJSObjectReference> faulted) {
+        lock (_importGate) {
+            if (ReferenceEquals(_moduleTask, faulted)) {
+                _moduleTask = null;
             }
         }
     }

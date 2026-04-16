@@ -66,16 +66,26 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
     /// per-command emitted <c>{Command}LastUsedSubscriber</c> after a <c>Confirmed</c> lifecycle
     /// transition (Story 2-2 Decision D28).
     /// </summary>
+    /// <remarks>
+    /// Cancellation observed mid-loop may leave storage partially updated (some properties hold the
+    /// new value, others retain stale values) — there is no transactional rollback because
+    /// <c>IStorageService</c> exposes no batch API. The next pre-fill resolves field-by-field via
+    /// the chain so an inconsistent snapshot still produces a usable form. Adopters who require
+    /// atomic write semantics should not rely on this convenience provider.
+    /// </remarks>
     /// <inheritdoc cref="ILastUsedRecorder.RecordAsync{TCommand}"/>
     [UnconditionalSuppressMessage("Trimming", "IL2091:UnrecognizedReflectionPattern", Justification = "Call site is generated subscriber code with concrete TCommand type; trim preservation is the renderer's responsibility.")]
-    public Task RecordAsync<TCommand>(TCommand command) where TCommand : class => Record(command);
+    public Task RecordAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class
+        => Record(command, cancellationToken);
 
-    public async Task Record<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TCommand>(TCommand command) where TCommand : class {
+    public async Task Record<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties)] TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class {
         ArgumentNullException.ThrowIfNull(command);
 
         if (!TryResolveTenantAndUser(out string? tenantId, out string? userId)) {
             return;
         }
+
+        cancellationToken.ThrowIfCancellationRequested();
 
         Type commandType = typeof(TCommand);
         string commandFqn = commandType.FullName ?? commandType.Name;
@@ -95,11 +105,11 @@ public sealed class LastUsedValueProvider : IDerivedValueProvider, ILastUsedReco
 
             object? value = prop.GetValue(command);
             if (value is null) {
-                await _storage.RemoveAsync(key).ConfigureAwait(false);
+                await _storage.RemoveAsync(key, cancellationToken).ConfigureAwait(false);
                 continue;
             }
 
-            await _storage.SetAsync(key, value).ConfigureAwait(false);
+            await _storage.SetAsync(key, value, cancellationToken).ConfigureAwait(false);
         }
     }
 

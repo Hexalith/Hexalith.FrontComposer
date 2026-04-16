@@ -2,26 +2,17 @@ using System.Collections.Immutable;
 
 using Fluxor;
 
-using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
-
-using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 /// <summary>
 /// Pure reducers for <see cref="DataGridNavigationState"/> (Story 2-2 AC7, Decision D30).
-/// LRU cap applied on <see cref="CaptureGridStateAction"/>: when <c>ViewStates.Count</c> exceeds
-/// <see cref="FcShellOptions.DataGridNavCap"/>, the entry with the oldest <c>CapturedAt</c>
-/// is evicted (Decision D33).
+/// LRU cap is carried in <see cref="DataGridNavigationState.Cap"/> (seeded by
+/// <see cref="DataGridNavigationFeature"/> from <c>FcShellOptions.DataGridNavCap</c>) so
+/// reducers remain pure — no mutable process-static (Group D code review W1 resolution).
 /// </summary>
 public static class DataGridNavigationReducers {
-    /// <summary>
-    /// Mutable ambient cap read by <see cref="ReduceCapture"/>. Wired by
-    /// <c>AddHexalithFrontComposer()</c> from <see cref="IOptions{FcShellOptions}"/>. Default 50.
-    /// </summary>
-    public static int Cap { get; set; } = 50;
-
     [ReducerMethod]
     public static DataGridNavigationState ReduceCapture(DataGridNavigationState state, CaptureGridStateAction action) {
         ArgumentNullException.ThrowIfNull(state);
@@ -29,13 +20,20 @@ public static class DataGridNavigationReducers {
 
         ImmutableDictionary<string, GridViewSnapshot> next = state.ViewStates.SetItem(action.ViewKey, action.Snapshot);
 
-        // LRU eviction (Decision D33) — capped per FcShellOptions.DataGridNavCap.
-        int cap = Cap;
+        // LRU eviction (Decision D33) — capped per state.Cap. Clamp to 1 so a bad
+        // upstream configuration never silently drains state.
+        int cap = Math.Max(1, state.Cap);
         while (next.Count > cap) {
             string? oldestKey = null;
             DateTimeOffset oldestAt = DateTimeOffset.MaxValue;
             foreach (KeyValuePair<string, GridViewSnapshot> kvp in next) {
-                if (kvp.Value.CapturedAt < oldestAt) {
+                // Strict less-than keeps the first-seen key on equality; the ordinal tie-break
+                // below makes "first-seen" deterministic across ImmutableDictionary iterations.
+                int compare = kvp.Value.CapturedAt < oldestAt ? -1
+                    : kvp.Value.CapturedAt > oldestAt ? 1
+                    : oldestKey is null ? -1
+                    : StringComparer.Ordinal.Compare(kvp.Key, oldestKey);
+                if (compare < 0) {
                     oldestAt = kvp.Value.CapturedAt;
                     oldestKey = kvp.Key;
                 }
@@ -48,7 +46,7 @@ public static class DataGridNavigationReducers {
             next = next.Remove(oldestKey);
         }
 
-        return new DataGridNavigationState(next);
+        return state with { ViewStates = next };
     }
 
     // Restore is read-side — no state mutation (Decision D30). Story 4.3 effects will read+dispatch downstream.
@@ -63,7 +61,7 @@ public static class DataGridNavigationReducers {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
         return state.ViewStates.ContainsKey(action.ViewKey)
-            ? new DataGridNavigationState(state.ViewStates.Remove(action.ViewKey))
+            ? state with { ViewStates = state.ViewStates.Remove(action.ViewKey) }
             : state;
     }
 
@@ -88,6 +86,6 @@ public static class DataGridNavigationReducers {
             next = next.Remove(key);
         }
 
-        return new DataGridNavigationState(next);
+        return state with { ViewStates = next };
     }
 }

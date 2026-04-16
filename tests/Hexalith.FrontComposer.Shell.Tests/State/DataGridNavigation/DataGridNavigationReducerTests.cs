@@ -126,39 +126,25 @@ public class DataGridNavigationReducerTests {
     // 10. LRU eviction when ViewStates exceeds cap
     [Fact]
     public void CaptureGridStateAction_ExceedsCap_EvictsOldestCapturedAt() {
-        int previousCap = DataGridNavigationReducers.Cap;
-        try {
-            DataGridNavigationReducers.Cap = 2;
-            DateTimeOffset baseT = DateTimeOffset.UtcNow;
-            DataGridNavigationState state = Empty();
-            state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("old", Snap(1, baseT)));
-            state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("mid", Snap(2, baseT.AddSeconds(1))));
-            state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("new", Snap(3, baseT.AddSeconds(2))));
-            state.ViewStates.Count.ShouldBe(2);
-            state.ViewStates.ShouldNotContainKey("old");
-            state.ViewStates.ShouldContainKey("mid");
-            state.ViewStates.ShouldContainKey("new");
-        }
-        finally {
-            DataGridNavigationReducers.Cap = previousCap;
-        }
+        DateTimeOffset baseT = DateTimeOffset.UtcNow;
+        DataGridNavigationState state = new(ImmutableDictionary<string, GridViewSnapshot>.Empty, Cap: 2);
+        state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("old", Snap(1, baseT)));
+        state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("mid", Snap(2, baseT.AddSeconds(1))));
+        state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("new", Snap(3, baseT.AddSeconds(2))));
+        state.ViewStates.Count.ShouldBe(2);
+        state.ViewStates.ShouldNotContainKey("old");
+        state.ViewStates.ShouldContainKey("mid");
+        state.ViewStates.ShouldContainKey("new");
     }
 
-    // 11. Cap configurability — reducer reads the ambient Cap
+    // 11. Cap configurability — the reducer honors the state-embedded cap
     [Fact]
-    public void CaptureGridStateAction_CapConfigurable_RespectsFcShellOptions() {
-        int previousCap = DataGridNavigationReducers.Cap;
-        try {
-            DataGridNavigationReducers.Cap = 1;
-            DateTimeOffset baseT = DateTimeOffset.UtcNow;
-            DataGridNavigationState state = Empty();
-            state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("a", Snap(1, baseT)));
-            state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("b", Snap(2, baseT.AddSeconds(1))));
-            state.ViewStates.Count.ShouldBe(1);
-            state.ViewStates.ShouldContainKey("b");
-        }
-        finally {
-            DataGridNavigationReducers.Cap = previousCap;
-        }
+    public void CaptureGridStateAction_CapConfigurable_RespectsStateCap() {
+        DateTimeOffset baseT = DateTimeOffset.UtcNow;
+        DataGridNavigationState state = new(ImmutableDictionary<string, GridViewSnapshot>.Empty, Cap: 1);
+        state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("a", Snap(1, baseT)));
+        state = DataGridNavigationReducers.ReduceCapture(state, new CaptureGridStateAction("b", Snap(2, baseT.AddSeconds(1))));
+        state.ViewStates.Count.ShouldBe(1);
+        state.ViewStates.ShouldContainKey("b");
     }
 }

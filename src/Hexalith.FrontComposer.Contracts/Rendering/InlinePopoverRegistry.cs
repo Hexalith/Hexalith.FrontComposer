@@ -28,8 +28,12 @@ public sealed class InlinePopoverRegistry {
             try {
                 await previous.ClosePopoverAsync().ConfigureAwait(false);
             }
-            catch {
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception) {
                 // Best-effort close — never block the new popover from opening on a stale handle.
+                // Telemetry hook deferred to the Shell wrapper that injects ILogger (Group C).
             }
         }
     }

@@ -235,6 +235,8 @@ public static class CommandFormEmitter {
     private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor) {
         _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.");
+        _ = sb.AppendLine("        if (_disposed) return;");
         _ = sb.AppendLine("        // State-guard against rapid double-click: only allow submit from terminal or idle state.");
         _ = sb.AppendLine("        // (See code-review 2026-04-15, patch P19.)");
         _ = sb.AppendLine("        var currentState = LifecycleState.Value.State;");
@@ -251,18 +253,19 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        if (BeforeSubmit is not null)");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(false);");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine();
-        _ = sb.AppendLine("        // Cancel + dispose the previous cancellation source before reassignment (patch P12 -- leak fix).");
+        _ = sb.AppendLine("        // Story 2-2 code-review P36 — allocate new CTS BEFORE awaiting BeforeSubmit so disposal can cancel it.");
         _ = sb.AppendLine("        CancellationTokenSource? previous = _cts;");
         _ = sb.AppendLine("        _cts = new CancellationTokenSource();");
         _ = sb.AppendLine("        if (previous is not null)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            try { previous.Cancel(); } catch (ObjectDisposedException) { }");
         _ = sb.AppendLine("            previous.Dispose();");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        if (BeforeSubmit is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(false);");
+        _ = sb.AppendLine("            if (_disposed || _cts.IsCancellationRequested) return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        var correlationId = Guid.NewGuid().ToString();");
@@ -640,6 +643,8 @@ public static class CommandFormEmitter {
     private static void EmitHumanizeHelper(StringBuilder sb) {
         int maxLen = CommandFormTransform.EnumOptionLabelMaxLength;
         _ = sb.AppendLine();
+        // Story 2-2 code-review P38 — char.IsUpper covers non-ASCII uppercase (Ü, Ñ, É).
+        // Story 2-2 code-review P37 — truncate on rune boundary to avoid splitting UTF-16 surrogate pairs.
         _ = sb.AppendLine("    private static string HumanizeEnumLabel(string value)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (string.IsNullOrEmpty(value)) return value;");
@@ -648,14 +653,16 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            char c = value[i];");
         _ = sb.AppendLine("            if (i == 0) { sb.Append(char.ToUpperInvariant(c)); continue; }");
-        _ = sb.AppendLine("            bool isUpper = c >= 'A' && c <= 'Z';");
-        _ = sb.AppendLine("            bool prevIsLower = value[i - 1] >= 'a' && value[i - 1] <= 'z';");
+        _ = sb.AppendLine("            bool isUpper = char.IsUpper(c);");
+        _ = sb.AppendLine("            bool prevIsLower = char.IsLower(value[i - 1]);");
         _ = sb.AppendLine("            if (isUpper && prevIsLower) { sb.Append(' '); sb.Append(c); }");
         _ = sb.AppendLine("            else { sb.Append(c); }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        string label = sb.ToString();");
         _ = sb.AppendLine("        if (label.Length <= " + maxLen + ") return label;");
-        _ = sb.AppendLine("        return label.Substring(0, " + (maxLen - 1) + ") + \"\\u2026\";");
+        _ = sb.AppendLine("        int cutoff = " + (maxLen - 1) + ";");
+        _ = sb.AppendLine("        if (cutoff > 0 && char.IsHighSurrogate(label[cutoff - 1])) { cutoff--; }");
+        _ = sb.AppendLine("        return label.Substring(0, cutoff) + \"\\u2026\";");
         _ = sb.AppendLine("    }");
     }
 

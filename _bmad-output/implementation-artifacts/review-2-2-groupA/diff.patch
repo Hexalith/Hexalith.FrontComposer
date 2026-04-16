@@ -1,0 +1,743 @@
+diff --git a/src/Hexalith.FrontComposer.Contracts/Attributes/IconAttribute.cs b/src/Hexalith.FrontComposer.Contracts/Attributes/IconAttribute.cs
+new file mode 100644
+index 0000000..80574dd
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Attributes/IconAttribute.cs
+@@ -0,0 +1,33 @@
++namespace Hexalith.FrontComposer.Contracts.Attributes;
++
++/// <summary>
++/// Declares the Fluent UI icon rendered by a <see cref="CommandAttribute"/>-annotated type's
++/// generated renderer. Applied at the class level.
++/// </summary>
++/// <remarks>
++/// Icon-name format is the Fluent UI type path fragment (e.g. <c>Regular.Size16.Play</c>,
++/// <c>Regular.Size20.Settings</c>). The source generator emits <c>new Icons.{IconName}()</c>
++/// wrapped in a runtime try/catch that falls back to <c>Regular.Size16.Play</c> and logs
++/// a warning on binding failure (Story 2-2 Decision D34). Parse-time icon-format validation
++/// is deferred to the Epic 9 analyzer.
++/// </remarks>
++[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
++public sealed class IconAttribute : Attribute {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="IconAttribute"/> class.
++    /// </summary>
++    /// <param name="iconName">The Fluent UI icon type path fragment (e.g. <c>Regular.Size16.Play</c>).</param>
++    /// <exception cref="ArgumentException">Thrown when <paramref name="iconName"/> is <see langword="null"/>, empty, or whitespace.</exception>
++    public IconAttribute(string iconName) {
++        if (string.IsNullOrWhiteSpace(iconName)) {
++            throw new ArgumentException("Icon name cannot be null, empty, or whitespace.", nameof(iconName));
++        }
++
++        IconName = iconName;
++    }
++
++    /// <summary>
++    /// Gets the Fluent UI icon type path fragment.
++    /// </summary>
++    public string IconName { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs b/src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs
+index f1486b9..80a91db 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Communication/CommandServiceExtensions.cs
+@@ -40,10 +40,9 @@ public static class CommandServiceExtensions {
+ 
+         if (onLifecycleChange is not null) {
+             throw new NotSupportedException(
+-                $"The registered {nameof(ICommandService)} implementation '{commandService.GetType().FullName}' "
+-                + $"does not implement {nameof(ICommandServiceWithLifecycle)}; Syncing/Confirmed callbacks "
+-                + "would be silently dropped. Register an implementation that supports lifecycle callbacks "
+-                + "or invoke DispatchAsync without the onLifecycleChange argument.");
++                $"The registered {nameof(ICommandService)} does not implement {nameof(ICommandServiceWithLifecycle)}; "
++                + "lifecycle callbacks cannot be forwarded. Register an implementation that supports lifecycle "
++                + "callbacks or invoke DispatchAsync without the onLifecycleChange argument.");
+         }
+ 
+         return commandService.DispatchAsync(command, cancellationToken);
+diff --git a/src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs b/src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs
+new file mode 100644
+index 0000000..3a4b501
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs
+@@ -0,0 +1,60 @@
++using System.ComponentModel.DataAnnotations;
++
++namespace Hexalith.FrontComposer.Contracts;
++
++/// <summary>
++/// Adopter-facing shell options for FrontComposer — themeable defaults consumed by
++/// generated renderers and shell components. Bound via
++/// <c>services.Configure&lt;FcShellOptions&gt;(...)</c>.
++/// </summary>
++/// <remarks>
++/// Bind validation via
++/// <c>services.AddOptions&lt;FcShellOptions&gt;().BindConfiguration("...").ValidateDataAnnotations().ValidateOnStart();</c>
++/// to surface misconfiguration at startup rather than at first use.
++/// </remarks>
++public sealed class FcShellOptions {
++    /// <summary>
++    /// Gets or sets the <c>max-width</c> CSS value for FullPage command renderers' containers
++    /// (Story 2-2 Decision D26). Default: <c>"720px"</c>.
++    /// </summary>
++    /// <remarks>
++    /// Restricted to <c>&lt;number&gt;&lt;unit&gt;</c> form (units: <c>px</c>, <c>em</c>, <c>rem</c>,
++    /// <c>%</c>, <c>vw</c>, <c>vh</c>, <c>ch</c>) because the value is interpolated into a Razor
++    /// <c>style="max-width: {value}; ..."</c> attribute by the generated renderer. The format guard
++    /// blocks CSS injection from misconfigured / hostile sources.
++    /// </remarks>
++    [RegularExpression(
++        @"^\d+(\.\d+)?(px|em|rem|%|vw|vh|ch)$",
++        ErrorMessage = "FullPageFormMaxWidth must match '<number><unit>' where unit is one of: px, em, rem, %, vw, vh, ch.")]
++    public string FullPageFormMaxWidth { get; set; } = "720px";
++
++    /// <summary>
++    /// Gets or sets whether FullPage command renderers embed an inline <c>FluentBreadcrumb</c>
++    /// (Story 2-2 Decision D15). Shell-level breadcrumb rendering lands in Story 3.1;
++    /// until then the embedded fallback is on by default. Default: <see langword="true"/>.
++    /// </summary>
++    public bool EmbeddedBreadcrumb { get; set; } = true;
++
++    /// <summary>
++    /// Gets or sets the LRU cap for per-view <c>DataGridNavigationState</c> snapshots
++    /// (Story 2-2 Decision D33). Reducer evicts the entry with the oldest <c>CapturedAt</c>
++    /// once <c>ViewStates.Count</c> exceeds this cap. Default: 50.
++    /// </summary>
++    /// <remarks>
++    /// Must be at least 1. A value of 0 or negative would cause the reducer to evict every
++    /// snapshot on every Capture, silently destroying all state.
++    /// </remarks>
++    [Range(1, int.MaxValue, ErrorMessage = "DataGridNavCap must be at least 1.")]
++    public int DataGridNavCap { get; set; } = 50;
++
++    /// <summary>
++    /// Gets or sets whether to suppress the dev-mode <c>FluentMessageBar</c> warning rendered by
++    /// <c>LastUsedValueProvider</c> when tenant or user context is missing (Story 2-2 Task 3.5).
++    /// </summary>
++    /// <remarks>
++    /// This option ONLY controls the dev-mode notice. It does NOT disable LastUsed itself —
++    /// per Decision D31 the provider always fails-closed when tenant/user are missing,
++    /// regardless of this flag. Production builds skip the notice entirely.
++    /// </remarks>
++    public bool LastUsedDisabled { get; set; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj b/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
+index b1152b3..3ebdf71 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
++++ b/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
+@@ -3,4 +3,8 @@
+     <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+     <IsTrimmable Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsTrimmable>
+   </PropertyGroup>
++  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
++    <PackageReference Include="System.Collections.Immutable" />
++    <PackageReference Include="System.ComponentModel.Annotations" />
++  </ItemGroup>
+ </Project>
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/CommandRenderMode.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/CommandRenderMode.cs
+new file mode 100644
+index 0000000..d0932d1
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/CommandRenderMode.cs
+@@ -0,0 +1,22 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Command-form rendering mode selected by the generated renderer — either implicitly from the
++/// command's density classification or explicitly via the <c>RenderMode</c> parameter
++/// (Story 2-2 AC5). Orthogonal to <see cref="FcRenderMode"/> which selects the Blazor transport.
++/// </summary>
++/// <remarks>
++/// Numeric values are pinned because they may be persisted (telemetry, user preferences,
++/// snapshot test fixtures); inserting a new mode in source order without an explicit value
++/// would silently shift the persisted meaning of every existing value.
++/// </remarks>
++public enum CommandRenderMode {
++    /// <summary>Button (0 fields) or button + single-field FluentPopover (1 field).</summary>
++    Inline = 0,
++
++    /// <summary>FluentCard with expand-in-row scroll stabilization; hides derivable fields (2–4 fields).</summary>
++    CompactInline = 1,
++
++    /// <summary>Routable Blazor page with breadcrumb + max-width container (5+ fields).</summary>
++    FullPage = 2,
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/DataGridNavigationActions.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/DataGridNavigationActions.cs
+new file mode 100644
+index 0000000..e289dd2
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/DataGridNavigationActions.cs
+@@ -0,0 +1,198 @@
++using System.Collections.Immutable;
++
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Captures the per-view DataGrid state that FullPage command forms restore on return navigation
++/// (Story 2-2 AC7, ADR-015). Carried in <c>DataGridNavigationState</c>.
++/// </summary>
++/// <remarks>
++/// Equality is structural across all fields, including <see cref="Filters"/>. The synthesized
++/// record equality is overridden because <see cref="IImmutableDictionary{TKey, TValue}"/> uses
++/// reference equality by default — without the override, two snapshots with logically identical
++/// filters but different dictionary instances would compare unequal, breaking Fluxor's
++/// duplicate-state-update suppression.
++/// </remarks>
++public sealed record GridViewSnapshot {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="GridViewSnapshot"/> record.
++    /// </summary>
++    /// <param name="scrollTop">Vertical scroll offset of the DataGrid viewport.</param>
++    /// <param name="filters">Active filter values keyed by column name. Must not be null; pass <see cref="ImmutableDictionary{TKey, TValue}.Empty"/> when there are no filters.</param>
++    /// <param name="sortColumn">Column key currently sorted by, or <see langword="null"/> when unsorted.</param>
++    /// <param name="sortDescending">Whether the sort is descending.</param>
++    /// <param name="expandedRowId">Identifier of the expanded row, or <see langword="null"/> when no row is expanded.</param>
++    /// <param name="selectedRowId">Identifier of the selected row, or <see langword="null"/> when no row is selected.</param>
++    /// <param name="capturedAt">UTC timestamp when the snapshot was captured. Used for LRU eviction and expiry pruning. Pass values with offset <see cref="TimeSpan.Zero"/>.</param>
++    /// <exception cref="ArgumentNullException">Thrown when <paramref name="filters"/> is null.</exception>
++    public GridViewSnapshot(
++        double scrollTop,
++        IImmutableDictionary<string, string> filters,
++        string? sortColumn,
++        bool sortDescending,
++        string? expandedRowId,
++        string? selectedRowId,
++        DateTimeOffset capturedAt) {
++        if (filters is null) {
++            throw new ArgumentNullException(nameof(filters));
++        }
++
++        ScrollTop = scrollTop;
++        Filters = filters;
++        SortColumn = sortColumn;
++        SortDescending = sortDescending;
++        ExpandedRowId = expandedRowId;
++        SelectedRowId = selectedRowId;
++        CapturedAt = capturedAt;
++    }
++
++    /// <summary>Gets the vertical scroll offset of the DataGrid viewport.</summary>
++    public double ScrollTop { get; init; }
++
++    /// <summary>Gets the active filter values keyed by column name.</summary>
++    public IImmutableDictionary<string, string> Filters { get; init; }
++
++    /// <summary>Gets the column key currently sorted by, or <see langword="null"/> when unsorted.</summary>
++    public string? SortColumn { get; init; }
++
++    /// <summary>Gets a value indicating whether the sort is descending.</summary>
++    public bool SortDescending { get; init; }
++
++    /// <summary>Gets the identifier of the expanded row, or <see langword="null"/> when no row is expanded.</summary>
++    public string? ExpandedRowId { get; init; }
++
++    /// <summary>Gets the identifier of the selected row, or <see langword="null"/> when no row is selected.</summary>
++    public string? SelectedRowId { get; init; }
++
++    /// <summary>Gets the UTC timestamp when the snapshot was captured.</summary>
++    public DateTimeOffset CapturedAt { get; init; }
++
++    /// <inheritdoc />
++    public bool Equals(GridViewSnapshot? other) {
++        if (other is null) {
++            return false;
++        }
++
++        if (ReferenceEquals(this, other)) {
++            return true;
++        }
++
++        return ScrollTop.Equals(other.ScrollTop)
++            && SortDescending == other.SortDescending
++            && string.Equals(SortColumn, other.SortColumn, StringComparison.Ordinal)
++            && string.Equals(ExpandedRowId, other.ExpandedRowId, StringComparison.Ordinal)
++            && string.Equals(SelectedRowId, other.SelectedRowId, StringComparison.Ordinal)
++            && CapturedAt.Equals(other.CapturedAt)
++            && FiltersEqual(Filters, other.Filters);
++    }
++
++    /// <inheritdoc />
++    public override int GetHashCode() {
++        unchecked {
++            int hash = 17;
++            hash = (hash * 31) + ScrollTop.GetHashCode();
++            hash = (hash * 31) + (SortColumn is null ? 0 : StringComparer.Ordinal.GetHashCode(SortColumn));
++            hash = (hash * 31) + SortDescending.GetHashCode();
++            hash = (hash * 31) + (ExpandedRowId is null ? 0 : StringComparer.Ordinal.GetHashCode(ExpandedRowId));
++            hash = (hash * 31) + (SelectedRowId is null ? 0 : StringComparer.Ordinal.GetHashCode(SelectedRowId));
++            hash = (hash * 31) + CapturedAt.GetHashCode();
++            int filtersHash = 0;
++            foreach (KeyValuePair<string, string> kvp in Filters) {
++                filtersHash ^= (StringComparer.Ordinal.GetHashCode(kvp.Key) * 397) ^ StringComparer.Ordinal.GetHashCode(kvp.Value);
++            }
++
++            hash = (hash * 31) + filtersHash;
++            return hash;
++        }
++    }
++
++    private static bool FiltersEqual(IImmutableDictionary<string, string> left, IImmutableDictionary<string, string> right) {
++        if (ReferenceEquals(left, right)) {
++            return true;
++        }
++
++        if (left.Count != right.Count) {
++            return false;
++        }
++
++        foreach (KeyValuePair<string, string> kvp in left) {
++            if (!right.TryGetValue(kvp.Key, out string? rightValue) || !string.Equals(kvp.Value, rightValue, StringComparison.Ordinal)) {
++                return false;
++            }
++        }
++
++        return true;
++    }
++}
++
++/// <summary>Fluxor action — Epic 4 producer; Story 2-2 reducer.</summary>
++public sealed record CaptureGridStateAction {
++    /// <summary>Initializes a new instance of the <see cref="CaptureGridStateAction"/> record.</summary>
++    /// <param name="viewKey">Stable per-view key that identifies the snapshot bucket.</param>
++    /// <param name="snapshot">The captured grid state.</param>
++    /// <exception cref="ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
++    /// <exception cref="ArgumentNullException">Thrown when <paramref name="snapshot"/> is null.</exception>
++    public CaptureGridStateAction(string viewKey, GridViewSnapshot snapshot) {
++        if (string.IsNullOrWhiteSpace(viewKey)) {
++            throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(viewKey));
++        }
++
++        if (snapshot is null) {
++            throw new ArgumentNullException(nameof(snapshot));
++        }
++
++        ViewKey = viewKey;
++        Snapshot = snapshot;
++    }
++
++    /// <summary>Gets the stable per-view key that identifies the snapshot bucket.</summary>
++    public string ViewKey { get; init; }
++
++    /// <summary>Gets the captured grid state.</summary>
++    public GridViewSnapshot Snapshot { get; init; }
++}
++
++/// <summary>
++/// Story 2-2 renderer dispatches on mount; read-side action (reducer is a pure no-op, D30).
++/// </summary>
++public sealed record RestoreGridStateAction {
++    /// <summary>Initializes a new instance of the <see cref="RestoreGridStateAction"/> record.</summary>
++    /// <param name="viewKey">Stable per-view key that identifies which snapshot to restore.</param>
++    /// <exception cref="ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
++    public RestoreGridStateAction(string viewKey) {
++        if (string.IsNullOrWhiteSpace(viewKey)) {
++            throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(viewKey));
++        }
++
++        ViewKey = viewKey;
++    }
++
++    /// <summary>Gets the stable per-view key that identifies which snapshot to restore.</summary>
++    public string ViewKey { get; init; }
++}
++
++/// <summary>Removes a captured snapshot for a view.</summary>
++public sealed record ClearGridStateAction {
++    /// <summary>Initializes a new instance of the <see cref="ClearGridStateAction"/> record.</summary>
++    /// <param name="viewKey">Stable per-view key whose snapshot should be removed.</param>
++    /// <exception cref="ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
++    public ClearGridStateAction(string viewKey) {
++        if (string.IsNullOrWhiteSpace(viewKey)) {
++            throw new ArgumentException("View key cannot be null, empty, or whitespace.", nameof(viewKey));
++        }
++
++        ViewKey = viewKey;
++    }
++
++    /// <summary>Gets the stable per-view key whose snapshot should be removed.</summary>
++    public string ViewKey { get; init; }
++}
++
++/// <summary>Prunes snapshots whose <see cref="GridViewSnapshot.CapturedAt"/> is strictly before the threshold.</summary>
++/// <remarks>
++/// Pass <see cref="DateTimeOffset"/> values with offset <see cref="TimeSpan.Zero"/> (UTC). The
++/// reducer compares <c>CapturedAt</c> directly; mixing offsets across snapshots and threshold makes
++/// pruning non-deterministic. <c>default(DateTimeOffset)</c> (= MinValue) prunes nothing;
++/// <see cref="DateTimeOffset.MaxValue"/> prunes every snapshot.
++/// </remarks>
++public sealed record PruneExpiredAction(DateTimeOffset Threshold);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ICommandPageContext.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ICommandPageContext.cs
+new file mode 100644
+index 0000000..4b5e781
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ICommandPageContext.cs
+@@ -0,0 +1,24 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Scoped context consumed by generated FullPage command renderers — carries the command's
++/// display identity plus an optional return path for post-submit navigation (Story 2-2 Decision D15).
++/// Shell integration (actual <c>FluentBreadcrumb</c> rendering in <c>FcHeader</c>) is Story 3.1.
++/// </summary>
++public interface ICommandPageContext {
++    /// <summary>Gets the command's TypeName (e.g. <c>ConfigureCounterCommand</c>).</summary>
++    string CommandName { get; }
++
++    /// <summary>Gets the bounded context the command belongs to (e.g. <c>Counter</c>).</summary>
++    string BoundedContext { get; }
++
++    /// <summary>
++    /// Gets the relative URL the renderer should navigate to on successful <c>Confirmed</c>.
++    /// Renderers MUST validate via <see cref="ReturnPathValidator.IsSafeRelativePath(string?)"/>
++    /// before navigation (Story 2-2 Decision D32 — open-redirect defense). Implementations
++    /// SHOULD return a value that already passes the validator; the validator is the single
++    /// source of truth and rejects protocol-relative URLs (<c>//evil.example</c>),
++    /// absolute URLs, and control-character payloads.
++    /// </summary>
++    string? ReturnPath { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/IDerivedValueProvider.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/IDerivedValueProvider.cs
+new file mode 100644
+index 0000000..dc71f99
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/IDerivedValueProvider.cs
+@@ -0,0 +1,28 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Chain-of-responsibility provider that resolves a single derivable command property value
++/// before form submission (Story 2-2 AC6, ADR-014). Providers are registered as an ordered
++/// <see cref="IEnumerable{T}"/> — resolution iterates and takes the first <see cref="DerivedValueResult.HasValue"/>.
++/// </summary>
++/// <remarks>
++/// Built-in providers register in this order (Decision D24):
++/// <c>SystemValueProvider</c> → <c>ProjectionContextProvider</c> → <c>ExplicitDefaultValueProvider</c> →
++/// <c>LastUsedValueProvider</c> → <c>ConstructorDefaultValueProvider</c>. Adopters add providers at the
++/// head of the chain via <c>services.AddDerivedValueProvider&lt;T&gt;()</c>.
++/// </remarks>
++public interface IDerivedValueProvider {
++    /// <summary>
++    /// Resolves a single command property's value.
++    /// </summary>
++    /// <param name="commandType">The command CLR type whose property is being resolved.</param>
++    /// <param name="propertyName">The derivable property's name.</param>
++    /// <param name="projectionContext">Optional row-level projection context; providers may ignore it.</param>
++    /// <param name="ct">Cancellation token.</param>
++    /// <returns>A <see cref="DerivedValueResult"/> with <see cref="DerivedValueResult.HasValue"/> set when the provider resolved a value.</returns>
++    Task<DerivedValueResult> ResolveAsync(
++        Type commandType,
++        string propertyName,
++        ProjectionContext? projectionContext,
++        CancellationToken ct);
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/IInlinePopover.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/IInlinePopover.cs
+new file mode 100644
+index 0000000..6675df1
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/IInlinePopover.cs
+@@ -0,0 +1,10 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Story 2-2 Decision D37 — implemented by generated Inline command renderers so
++/// <c>InlinePopoverRegistry</c> can dismiss a currently-open popover before opening another.
++/// </summary>
++public interface IInlinePopover {
++    /// <summary>Closes the popover and returns focus to its trigger button.</summary>
++    Task ClosePopoverAsync();
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ILastUsedRecorder.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ILastUsedRecorder.cs
+new file mode 100644
+index 0000000..d63eac1
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ILastUsedRecorder.cs
+@@ -0,0 +1,17 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Story 2-2 Decision D28 — abstraction consumed by the generated per-command
++/// <c>{CommandTypeName}LastUsedSubscriber</c> so the subscriber lives in the command's assembly
++/// (domain-pure) without taking a hard reference on Shell. Shell's <c>LastUsedValueProvider</c>
++/// implements this interface.
++/// </summary>
++public interface ILastUsedRecorder {
++    /// <summary>Records the command's public, non-system properties under the current (tenant, user) pair.</summary>
++    /// <typeparam name="TCommand">The command CLR type whose values are being recorded.</typeparam>
++    /// <param name="command">The command instance to record. Implementations MUST throw <see cref="ArgumentNullException"/> when null.</param>
++    /// <param name="cancellationToken">Token observed during the persistence write so circuit teardown / tenant switch can abort an in-flight write.</param>
++    /// <returns>A task that completes when the recording attempt finishes (no-op when the (tenant, user) context is unauthenticated per D31).</returns>
++    Task RecordAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
++        where TCommand : class;
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ILastUsedSubscriberRegistry.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ILastUsedSubscriberRegistry.cs
+new file mode 100644
+index 0000000..ea0ffc7
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ILastUsedSubscriberRegistry.cs
+@@ -0,0 +1,20 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Activates generated per-command last-used subscribers on demand so generated form components
++/// can remain domain-pure and avoid a hard dependency on the Shell assembly.
++/// </summary>
++/// <remarks>
++/// Implementations MUST be thread-safe and idempotent. Two concurrent renders calling
++/// <see cref="Ensure{TSubscriber}"/> for the same subscriber type MUST resolve and subscribe
++/// at most one instance; otherwise the <c>Confirmed</c> lifecycle event would fire twice and
++/// double-write to per-user persistence.
++/// </remarks>
++public interface ILastUsedSubscriberRegistry {
++    /// <summary>
++    /// Ensures the generated subscriber is resolved and subscribed for the current scope.
++    /// Subsequent calls for the same subscriber type are no-ops. Thread-safe.
++    /// </summary>
++    /// <typeparam name="TSubscriber">The generated subscriber type.</typeparam>
++    void Ensure<TSubscriber>() where TSubscriber : class, IDisposable;
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/IUserContextAccessor.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/IUserContextAccessor.cs
+new file mode 100644
+index 0000000..a333a14
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/IUserContextAccessor.cs
+@@ -0,0 +1,31 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Read-only accessor that surfaces the current tenant and user identifiers. Adopters register an
++/// implementation that bridges their authentication stack (e.g. <c>IHttpContextAccessor</c> claims
++/// in Blazor Server, <c>AuthenticationStateProvider</c> in WASM, or a demo stub in the Counter sample).
++/// </summary>
++/// <remarks>
++/// Decision D31 (fail-closed) REQUIRES non-null AND non-whitespace <see cref="TenantId"/> +
++/// <see cref="UserId"/> before <c>LastUsedValueProvider</c> reads or writes. Returning
++/// <see langword="null"/>, an empty string, or a whitespace-only string from this accessor is
++/// the sanctioned way to express "no authenticated context"; the provider then no-ops and
++/// publishes a single dev-mode diagnostic. Implementations MUST treat null, empty, and
++/// whitespace as semantically equivalent — do not return <c>"   "</c> when you mean
++/// "unauthenticated."
++/// </remarks>
++public interface IUserContextAccessor {
++    /// <summary>
++    /// Gets the current tenant identifier. Implementations return <see langword="null"/>, an
++    /// empty string, or whitespace when there is no authenticated tenant context; consumers
++    /// treat all three as "unauthenticated" via <see cref="string.IsNullOrWhiteSpace(string?)"/>.
++    /// </summary>
++    string? TenantId { get; }
++
++    /// <summary>
++    /// Gets the current user identifier. Implementations return <see langword="null"/>, an
++    /// empty string, or whitespace when there is no authenticated user context; consumers
++    /// treat all three as "unauthenticated" via <see cref="string.IsNullOrWhiteSpace(string?)"/>.
++    /// </summary>
++    string? UserId { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/InlinePopoverRegistry.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/InlinePopoverRegistry.cs
+new file mode 100644
+index 0000000..1bff1ad
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/InlinePopoverRegistry.cs
+@@ -0,0 +1,49 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Story 2-2 Decision D37 — enforces the "at most one Inline popover open at a time per circuit"
++/// invariant. When a renderer opens its popover, the registry asks any currently-open popover to close.
++/// Registered as <c>Scoped</c> so each Blazor circuit gets its own instance.
++/// </summary>
++public sealed class InlinePopoverRegistry {
++    private readonly object _gate = new();
++    private IInlinePopover? _currentlyOpen;
++
++    /// <summary>
++    /// Records <paramref name="popover"/> as the newly-open popover after closing any previously
++    /// open one.
++    /// </summary>
++    public async Task OpenAsync(IInlinePopover popover) {
++        if (popover is null) {
++            throw new ArgumentNullException(nameof(popover));
++        }
++
++        IInlinePopover? previous;
++        lock (_gate) {
++            previous = _currentlyOpen;
++            _currentlyOpen = popover;
++        }
++
++        if (previous is not null && !ReferenceEquals(previous, popover)) {
++            try {
++                await previous.ClosePopoverAsync().ConfigureAwait(false);
++            }
++            catch (OperationCanceledException) {
++                throw;
++            }
++            catch (Exception) {
++                // Best-effort close — never block the new popover from opening on a stale handle.
++                // Telemetry hook deferred to the Shell wrapper that injects ILogger (Group C).
++            }
++        }
++    }
++
++    /// <summary>Marks <paramref name="popover"/> as no longer the currently-open popover.</summary>
++    public void Released(IInlinePopover popover) {
++        lock (_gate) {
++            if (ReferenceEquals(_currentlyOpen, popover)) {
++                _currentlyOpen = null;
++            }
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionContext.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionContext.cs
+new file mode 100644
+index 0000000..7cefb51
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionContext.cs
+@@ -0,0 +1,60 @@
++using System.Collections.Immutable;
++
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Cascading parameter carrying row-level projection context down to generated command renderers so
++/// that <c>ProjectionContextProvider</c> can pre-fill derivable fields (Story 2-2 Decision D27).
++/// Host DataGrid rows (Epic 4) cascade this; Story 2-2 renderers tolerate <see langword="null"/>.
++/// </summary>
++public sealed record ProjectionContext {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="ProjectionContext"/> record.
++    /// </summary>
++    /// <param name="projectionTypeFqn">Fully qualified name of the projection type (e.g. <c>Counter.Domain.CounterProjection</c>).</param>
++    /// <param name="boundedContext">Bounded context the projection belongs to.</param>
++    /// <param name="aggregateId">Optional aggregate identifier when the row represents a single entity.</param>
++    /// <param name="fields">Per-column values available for derivable-field lookup, keyed by property name. Must not be null.</param>
++    /// <exception cref="ArgumentException">Thrown when <paramref name="projectionTypeFqn"/> or <paramref name="boundedContext"/> is null, empty, or whitespace.</exception>
++    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fields"/> is null.</exception>
++    public ProjectionContext(
++        string projectionTypeFqn,
++        string boundedContext,
++        string? aggregateId,
++        IImmutableDictionary<string, object?> fields) {
++        if (string.IsNullOrWhiteSpace(projectionTypeFqn)) {
++            throw new ArgumentException("Projection type FQN cannot be null, empty, or whitespace.", nameof(projectionTypeFqn));
++        }
++
++        if (string.IsNullOrWhiteSpace(boundedContext)) {
++            throw new ArgumentException("Bounded context cannot be null, empty, or whitespace.", nameof(boundedContext));
++        }
++
++        if (fields is null) {
++            throw new ArgumentNullException(nameof(fields));
++        }
++
++        ProjectionTypeFqn = projectionTypeFqn;
++        BoundedContext = boundedContext;
++        AggregateId = aggregateId;
++        Fields = fields;
++    }
++
++    /// <summary>Gets the fully qualified name of the projection type.</summary>
++    public string ProjectionTypeFqn { get; init; }
++
++    /// <summary>Gets the bounded context the projection belongs to.</summary>
++    public string BoundedContext { get; init; }
++
++    /// <summary>Gets the optional aggregate identifier when the row represents a single entity.</summary>
++    public string? AggregateId { get; init; }
++
++    /// <summary>
++    /// Gets the per-column values available for derivable-field lookup, keyed by property name.
++    /// </summary>
++    /// <remarks>
++    /// Typed as <see cref="IImmutableDictionary{TKey, TValue}"/> so that snapshots cannot be
++    /// mutated by the producer after cascading; consumers can rely on the contents being stable.
++    /// </remarks>
++    public IImmutableDictionary<string, object?> Fields { get; init; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/DerivedValueResult.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/DerivedValueResult.cs
+new file mode 100644
+index 0000000..35424af
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/DerivedValueResult.cs
+@@ -0,0 +1,12 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Result of a single <see cref="IDerivedValueProvider"/> invocation. When <see cref="HasValue"/>
++/// is <see langword="false"/>, the chain continues to the next provider.
++/// </summary>
++/// <param name="HasValue">Whether this provider resolved a value.</param>
++/// <param name="Value">The resolved value (ignored when <see cref="HasValue"/> is false).</param>
++public readonly record struct DerivedValueResult(bool HasValue, object? Value) {
++    /// <summary>Shared empty sentinel representing "this provider declined".</summary>
++    public static readonly DerivedValueResult None = new(false, null);
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ReturnPathValidator.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ReturnPathValidator.cs
+new file mode 100644
+index 0000000..4780c41
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ReturnPathValidator.cs
+@@ -0,0 +1,64 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Validates <see cref="ICommandPageContext.ReturnPath"/> values against the Story 2-2 D32
++/// open-redirect defense. A return path is safe when it is a relative URL that cannot be
++/// reinterpreted as an absolute URL by the browser or the .NET URI parser.
++/// </summary>
++/// <remarks>
++/// <para>
++/// <see cref="Uri.IsWellFormedUriString(string?, UriKind)"/> with <see cref="UriKind.Relative"/>
++/// alone is INSUFFICIENT — it accepts protocol-relative URLs such as <c>//evil.example</c> which
++/// browsers resolve to <c>https://evil.example</c>. This validator rejects those forms explicitly.
++/// </para>
++/// <para>
++/// The validator is the single source of truth for return-path validation; renderers and any
++/// future page-context implementations MUST funnel through <see cref="IsSafeRelativePath(string?)"/>
++/// rather than re-implementing the check inline.
++/// </para>
++/// </remarks>
++public static class ReturnPathValidator {
++    /// <summary>
++    /// Returns <see langword="true"/> when <paramref name="returnPath"/> is safe to navigate to —
++    /// i.e. it is a non-empty, well-formed relative URL that cannot be reinterpreted as an
++    /// absolute URL.
++    /// </summary>
++    /// <param name="returnPath">Candidate return path. <see langword="null"/>, empty, or whitespace returns <see langword="false"/>.</param>
++    /// <returns><see langword="true"/> when safe; <see langword="false"/> otherwise.</returns>
++    public static bool IsSafeRelativePath(string? returnPath) {
++        if (string.IsNullOrWhiteSpace(returnPath)) {
++            return false;
++        }
++
++        string path = returnPath!;
++
++        // Reject protocol-relative URLs (//host) and backslash variants that some browsers treat
++        // as path separators on Windows-derived parsers.
++        if (path.StartsWith("//", StringComparison.Ordinal)
++            || path.StartsWith("/\\", StringComparison.Ordinal)
++            || path.StartsWith("\\\\", StringComparison.Ordinal)
++            || path.StartsWith("\\/", StringComparison.Ordinal)) {
++            return false;
++        }
++
++        // Reject any form that the URI parser recognizes as absolute (scheme present).
++        if (Uri.TryCreate(path, UriKind.Absolute, out _)) {
++            return false;
++        }
++
++        // Require a leading slash so the value resolves under the application's base path
++        // rather than relative to the current page.
++        if (!path.StartsWith("/", StringComparison.Ordinal)) {
++            return false;
++        }
++
++        // Reject control characters; some terminals / proxies treat them as separators.
++        foreach (char c in path) {
++            if (char.IsControl(c)) {
++                return false;
++            }
++        }
++
++        return Uri.IsWellFormedUriString(path, UriKind.Relative);
++    }
++}

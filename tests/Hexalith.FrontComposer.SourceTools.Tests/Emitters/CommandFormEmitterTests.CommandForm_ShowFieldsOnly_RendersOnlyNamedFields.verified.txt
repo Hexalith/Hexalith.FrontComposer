@@ -143,6 +143,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
     private async Task OnValidSubmitAsync()
     {
+        // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.
+        if (_disposed) return;
         // State-guard against rapid double-click: only allow submit from terminal or idle state.
         // (See code-review 2026-04-15, patch P19.)
         var currentState = LifecycleState.Value.State;
@@ -159,18 +161,19 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             return;
         }
 
-        if (BeforeSubmit is not null)
-        {
-            await BeforeSubmit().ConfigureAwait(false);
-        }
-
-        // Cancel + dispose the previous cancellation source before reassignment (patch P12 -- leak fix).
+        // Story 2-2 code-review P36 — allocate new CTS BEFORE awaiting BeforeSubmit so disposal can cancel it.
         CancellationTokenSource? previous = _cts;
         _cts = new CancellationTokenSource();
         if (previous is not null)
         {
             try { previous.Cancel(); } catch (ObjectDisposedException) { }
             previous.Dispose();
+        }
+
+        if (BeforeSubmit is not null)
+        {
+            await BeforeSubmit().ConfigureAwait(false);
+            if (_disposed || _cts.IsCancellationRequested) return;
         }
 
         var correlationId = Guid.NewGuid().ToString();

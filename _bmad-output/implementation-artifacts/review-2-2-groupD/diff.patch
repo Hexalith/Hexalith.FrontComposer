@@ -1,0 +1,801 @@
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ConstructorDefaultValueProvider.cs b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ConstructorDefaultValueProvider.cs
+new file mode 100644
+index 0000000..a3ce23e
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ConstructorDefaultValueProvider.cs
+@@ -0,0 +1,59 @@
++using System.Collections.Concurrent;
++using System.Diagnostics.CodeAnalysis;
++using System.Reflection;
++
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
++
++/// <summary>
++/// Derived-value provider #5 (final fallback) in the chain (Story 2-2 Decision D24).
++/// Reads the command's property initialization value via <c>new TCommand()</c>, which
++/// captures <c>= defaultValue</c> initializers on auto-properties. Cached per
++/// <c>(Type, string)</c> pair so the reflection/instantiation cost is paid once per property.
++/// </summary>
++public sealed class ConstructorDefaultValueProvider : IDerivedValueProvider {
++    private static readonly ConcurrentDictionary<Type, object?> InstanceCache = new();
++    private static readonly ConcurrentDictionary<(Type, string), object?> ValueCache = new();
++
++    /// <inheritdoc/>
++    [UnconditionalSuppressMessage("Trimming", "IL2067:UnrecognizedReflectionPattern", Justification = "commandType flows from generated code; trim preservation is delegated to the renderer.")]
++    [UnconditionalSuppressMessage("Trimming", "IL2070:UnrecognizedReflectionPattern", Justification = "commandType flows from generated code; trim preservation is delegated to the renderer.")]
++    public Task<DerivedValueResult> ResolveAsync(
++        Type commandType,
++        string propertyName,
++        ProjectionContext? projectionContext,
++        CancellationToken ct) {
++        ArgumentNullException.ThrowIfNull(commandType);
++        ArgumentException.ThrowIfNullOrEmpty(propertyName);
++
++        (Type commandType, string propertyName) key = (commandType, propertyName);
++        if (ValueCache.TryGetValue(key, out object? cached)) {
++            return Task.FromResult(new DerivedValueResult(true, cached));
++        }
++
++#pragma warning disable IL2067 // commandType flows from the generated renderer; trim analysis is delegated to the renderer's call site.
++        object? instance = InstanceCache.GetOrAdd(commandType, static t => {
++            try {
++                return Activator.CreateInstance(t);
++            }
++            catch {
++                return null;
++            }
++        });
++#pragma warning restore IL2067
++
++        if (instance is null) {
++            return Task.FromResult(DerivedValueResult.None);
++        }
++
++        PropertyInfo? prop = commandType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
++        if (prop is null || !prop.CanRead) {
++            return Task.FromResult(DerivedValueResult.None);
++        }
++
++        object? value = prop.GetValue(instance);
++        _ = ValueCache.TryAdd(key, value);
++        return Task.FromResult(new DerivedValueResult(true, value));
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ExplicitDefaultValueProvider.cs b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ExplicitDefaultValueProvider.cs
+new file mode 100644
+index 0000000..bfc298d
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ExplicitDefaultValueProvider.cs
+@@ -0,0 +1,62 @@
++using System.Collections.Concurrent;
++using System.ComponentModel;
++using System.Diagnostics.CodeAnalysis;
++using System.Reflection;
++
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
++
++/// <summary>
++/// Derived-value provider #3 in the chain (Story 2-2 Decision D24): returns the value of
++/// <see cref="System.ComponentModel.DefaultValueAttribute"/> when present on the command's property.
++/// Placed BEFORE <c>LastUsedValueProvider</c> so <c>[DefaultValue]</c> acts as a hard floor for
++/// reset-semantics fields.
++/// </summary>
++public sealed class ExplicitDefaultValueProvider : IDerivedValueProvider {
++    private static readonly ConcurrentDictionary<(Type, string), object?> Cache = new();
++    private static readonly ConcurrentDictionary<(Type, string), bool> HasAttribute = new();
++
++    /// <inheritdoc/>
++    [UnconditionalSuppressMessage("Trimming", "IL2070:UnrecognizedReflectionPattern", Justification = "commandType flows from generated code; trim preservation is the renderer's responsibility.")]
++    public Task<DerivedValueResult> ResolveAsync(
++        Type commandType,
++        string propertyName,
++        ProjectionContext? projectionContext,
++        CancellationToken ct) {
++        ArgumentNullException.ThrowIfNull(commandType);
++        ArgumentException.ThrowIfNullOrEmpty(propertyName);
++
++        (Type commandType, string propertyName) key = (commandType, propertyName);
++
++        bool hasAttr = HasAttribute.GetOrAdd(key, static k => LookupDefaultValueAttribute(k.Item1, k.Item2, out _));
++        if (!hasAttr) {
++            return Task.FromResult(DerivedValueResult.None);
++        }
++
++        object? value = Cache.GetOrAdd(key, static k => {
++            _ = LookupDefaultValueAttribute(k.Item1, k.Item2, out object? value);
++            return value;
++        });
++
++        return Task.FromResult(new DerivedValueResult(true, value));
++    }
++
++    [UnconditionalSuppressMessage("Trimming", "IL2070:UnrecognizedReflectionPattern", Justification = "Delegated to renderer emission point.")]
++    private static bool LookupDefaultValueAttribute(Type commandType, string propertyName, out object? value) {
++        PropertyInfo? prop = commandType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
++        if (prop is null) {
++            value = null;
++            return false;
++        }
++
++        DefaultValueAttribute? attr = prop.GetCustomAttribute<DefaultValueAttribute>(inherit: true);
++        if (attr is null) {
++            value = null;
++            return false;
++        }
++
++        value = attr.Value;
++        return true;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ProjectionContextProvider.cs b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ProjectionContextProvider.cs
+new file mode 100644
+index 0000000..bc077f4
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/ProjectionContextProvider.cs
+@@ -0,0 +1,52 @@
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
++
++/// <summary>
++/// Derived-value provider #2 in the chain (Story 2-2 Decision D24): reads values from the cascading
++/// <see cref="ProjectionContext"/>. Null-tolerant (Decision D27) — when the cascade is absent the
++/// provider declines and the chain continues.
++/// </summary>
++/// <remarks>
++/// Matching rules:
++/// <list type="number">
++///   <item>Exact key match on <see cref="ProjectionContext.Fields"/>.</item>
++///   <item><c>{ProjectionName}Id</c> convention — when the property name ends with <c>"Id"</c> and the stem matches
++///     the projection's short type name, the provider returns <see cref="ProjectionContext.AggregateId"/>.</item>
++/// </list>
++/// </remarks>
++public sealed class ProjectionContextProvider : IDerivedValueProvider {
++    /// <inheritdoc/>
++    public Task<DerivedValueResult> ResolveAsync(
++        Type commandType,
++        string propertyName,
++        ProjectionContext? projectionContext,
++        CancellationToken ct) {
++        ArgumentNullException.ThrowIfNull(commandType);
++        ArgumentException.ThrowIfNullOrEmpty(propertyName);
++
++        if (projectionContext is null) {
++            return Task.FromResult(DerivedValueResult.None);
++        }
++
++        if (projectionContext.Fields.TryGetValue(propertyName, out object? value)) {
++            return Task.FromResult(new DerivedValueResult(true, value));
++        }
++
++        if (!string.IsNullOrEmpty(projectionContext.AggregateId)
++            && propertyName.EndsWith("Id", StringComparison.Ordinal)) {
++            string stem = propertyName.Substring(0, propertyName.Length - 2);
++            string shortName = ShortName(projectionContext.ProjectionTypeFqn);
++            if (string.Equals(stem, shortName, StringComparison.Ordinal)) {
++                return Task.FromResult(new DerivedValueResult(true, projectionContext.AggregateId));
++            }
++        }
++
++        return Task.FromResult(DerivedValueResult.None);
++    }
++
++    private static string ShortName(string fqn) {
++        int dot = fqn.LastIndexOf('.');
++        return dot < 0 ? fqn : fqn.Substring(dot + 1);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/SystemValueProvider.cs b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/SystemValueProvider.cs
+new file mode 100644
+index 0000000..56b592b
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/DerivedValues/SystemValueProvider.cs
+@@ -0,0 +1,41 @@
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
++
++/// <summary>
++/// Derived-value provider #1 in the chain (Story 2-2 Decision D24): supplies infrastructure-owned values
++/// for well-known property names. Reads <c>TenantId</c> / <c>UserId</c> from <see cref="IUserContextAccessor"/>
++/// when available; otherwise falls through so subsequent providers can attempt resolution.
++/// </summary>
++public sealed class SystemValueProvider : IDerivedValueProvider {
++    private readonly IUserContextAccessor? _userContext;
++
++    public SystemValueProvider(IUserContextAccessor? userContext = null) {
++        _userContext = userContext;
++    }
++
++    /// <inheritdoc/>
++    public Task<DerivedValueResult> ResolveAsync(
++        Type commandType,
++        string propertyName,
++        ProjectionContext? projectionContext,
++        CancellationToken ct) {
++        ArgumentNullException.ThrowIfNull(commandType);
++        ArgumentException.ThrowIfNullOrEmpty(propertyName);
++
++        DerivedValueResult result = propertyName switch {
++            "MessageId" => new DerivedValueResult(true, Guid.NewGuid().ToString("N")),
++            "CommandId" => new DerivedValueResult(true, Guid.NewGuid().ToString("N")),
++            "CorrelationId" => new DerivedValueResult(true, Guid.NewGuid().ToString("N")),
++            "Timestamp" or "CreatedAt" or "ModifiedAt" => new DerivedValueResult(true, DateTimeOffset.UtcNow),
++            "TenantId" => FromContext(_userContext?.TenantId),
++            "UserId" => FromContext(_userContext?.UserId),
++            _ => DerivedValueResult.None,
++        };
++
++        return Task.FromResult(result);
++    }
++
++    private static DerivedValueResult FromContext(string? value)
++        => string.IsNullOrWhiteSpace(value) ? DerivedValueResult.None : new DerivedValueResult(true, value);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/FrontComposerStorageKey.cs b/src/Hexalith.FrontComposer.Shell/Services/FrontComposerStorageKey.cs
+new file mode 100644
+index 0000000..1c7de16
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/FrontComposerStorageKey.cs
+@@ -0,0 +1,106 @@
++using System.Globalization;
++using System.Text;
++
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// Builds canonicalized <c>IStorageService</c> keys for Story 2-2's <c>LastUsedValueProvider</c> and
++/// (forward) Story 4.3's <c>DataGridNavigation</c> effects. Decision D39 + fail-closed D31:
++/// <list type="bullet">
++///   <item><c>tenantId</c> — trim → NFC-normalize → URL-encode.</item>
++///   <item><c>userId</c> — trim → NFC-normalize → lowercase when email-shaped → URL-encode.</item>
++///   <item><c>commandTypeFqn</c> + <c>propertyName</c> — verbatim (already C#-legal identifiers).</item>
++/// </list>
++/// Throws <see cref="InvalidOperationException"/> when <c>tenantId</c> or <c>userId</c> is null or
++/// whitespace — NEVER substitutes <c>"anonymous"</c> or empty segments (prevents cross-tenant PII leak).
++/// </summary>
++public static class FrontComposerStorageKey {
++    /// <summary>Key-segment separator. Inside-segment <c>:</c> characters are URL-encoded to <c>%3A</c>.</summary>
++    public const string Separator = ":";
++
++    /// <summary>Feature prefix for LastUsed storage keys.</summary>
++    public const string LastUsedPrefix = "frontcomposer:lastused";
++
++    /// <summary>
++    /// Builds a canonicalized LastUsed key.
++    /// </summary>
++    /// <param name="tenantId">Tenant identifier. Must be non-null, non-whitespace.</param>
++    /// <param name="userId">User identifier (typically email). Must be non-null, non-whitespace.</param>
++    /// <param name="commandTypeFqn">Fully-qualified command type name (verbatim, C#-legal).</param>
++    /// <param name="propertyName">Property name (verbatim, C#-legal).</param>
++    /// <returns>A colon-separated canonical key.</returns>
++    /// <exception cref="InvalidOperationException">When tenant or user is null/whitespace (D31).</exception>
++    /// <exception cref="ArgumentException">When <paramref name="commandTypeFqn"/> or <paramref name="propertyName"/> is null/whitespace.</exception>
++    public static string Build(string? tenantId, string? userId, string commandTypeFqn, string propertyName) {
++        if (string.IsNullOrWhiteSpace(commandTypeFqn)) {
++            throw new ArgumentException("Command type FQN must be non-empty.", nameof(commandTypeFqn));
++        }
++
++        if (string.IsNullOrWhiteSpace(propertyName)) {
++            throw new ArgumentException("Property name must be non-empty.", nameof(propertyName));
++        }
++
++        if (string.IsNullOrWhiteSpace(tenantId)) {
++            throw new InvalidOperationException("TenantId is required — cannot build a LastUsed key without it (Decision D31).");
++        }
++
++        if (string.IsNullOrWhiteSpace(userId)) {
++            throw new InvalidOperationException("UserId is required — cannot build a LastUsed key without it (Decision D31).");
++        }
++
++        string tenantCanon = CanonicalizeTenant(tenantId!);
++        string userCanon = CanonicalizeUser(userId!);
++
++        StringBuilder sb = new();
++        _ = sb.Append(LastUsedPrefix);
++        _ = sb.Append(Separator).Append(tenantCanon);
++        _ = sb.Append(Separator).Append(userCanon);
++        _ = sb.Append(Separator).Append(commandTypeFqn);
++        _ = sb.Append(Separator).Append(propertyName);
++        return sb.ToString();
++    }
++
++    /// <summary>
++    /// Canonicalizes a tenant segment: trim → NFC → URL-encode.
++    /// </summary>
++    public static string CanonicalizeTenant(string raw) {
++        ArgumentNullException.ThrowIfNull(raw);
++        string trimmed = raw.Trim();
++        string normalized = trimmed.Normalize(NormalizationForm.FormC);
++        return Uri.EscapeDataString(normalized);
++    }
++
++    /// <summary>
++    /// Canonicalizes a user segment: trim → NFC → lowercase only when email-shaped → URL-encode.
++    /// </summary>
++    public static string CanonicalizeUser(string raw) {
++        ArgumentNullException.ThrowIfNull(raw);
++        string trimmed = raw.Trim();
++        string normalized = trimmed.Normalize(NormalizationForm.FormC);
++        string canonical = normalized.Contains('@')
++            ? normalized.ToLower(CultureInfo.InvariantCulture)
++            : normalized;
++        return Uri.EscapeDataString(canonical);
++    }
++
++    /// <summary>
++    /// Parses a canonical LastUsed key back into its segments. Round-trip property:
++    /// <c>Parse(Build(t, u, c, p)) == (Canon(t), Canon(u), c, p)</c>.
++    /// </summary>
++    /// <returns>A tuple of the canonicalized parts, or <see langword="null"/> on shape mismatch.</returns>
++    public static (string TenantCanon, string UserCanon, string CommandTypeFqn, string PropertyName)? TryParse(string key) {
++        if (string.IsNullOrEmpty(key) || !key.StartsWith(LastUsedPrefix + Separator, StringComparison.Ordinal)) {
++            return null;
++        }
++
++        // Skip prefix; split the remainder into 4 segments. commandTypeFqn / propertyName are verbatim so they
++        // cannot contain ':' — but tenant/user can (URL-encoded). The shape is deterministic: 4 trailing ':'-separated segments.
++        string remainder = key.Substring(LastUsedPrefix.Length + Separator.Length);
++        string[] parts = remainder.Split(':');
++        if (parts.Length != 4) {
++            return null;
++        }
++
++        return (parts[0], parts[1], parts[2], parts[3]);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/IDiagnosticSink.cs b/src/Hexalith.FrontComposer.Shell/Services/IDiagnosticSink.cs
+new file mode 100644
+index 0000000..6a2df27
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/IDiagnosticSink.cs
+@@ -0,0 +1,75 @@
++using Microsoft.Extensions.Logging;
++
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// Dev-mode diagnostic event surfaced by the shell — consumed by <c>FcDiagnosticsPanel</c> and
++/// forwarded to <see cref="ILogger"/>. Story 2-2 Tasks 3.5/3.5a, surfacing Decision D31
++/// fail-closed conditions (tenant/user missing) in a way that is visible to developers but
++/// never in production.
++/// </summary>
++/// <param name="Code">Short diagnostic code (e.g. <c>"D31"</c>, <c>"D38"</c>).</param>
++/// <param name="Category">Dev-facing category label (e.g. <c>"LastUsed"</c>).</param>
++/// <param name="Message">Human-readable message.</param>
++/// <param name="CapturedAt">UTC timestamp (for the panel's ordering / rate-limit window).</param>
++public sealed record DevDiagnosticEvent(
++    string Code,
++    string Category,
++    string Message,
++    DateTimeOffset CapturedAt);
++
++/// <summary>
++/// Publishes diagnostic events to any subscribed surface (panel + logger).
++/// </summary>
++public interface IDiagnosticSink {
++    /// <summary>Publishes a single event.</summary>
++    void Publish(DevDiagnosticEvent evt);
++
++    /// <summary>Returns the most-recent retained events (newest-first).</summary>
++    IReadOnlyList<DevDiagnosticEvent> RecentEvents { get; }
++}
++
++/// <summary>
++/// In-memory, rate-limited sink for the current circuit. Retains the last N events for the
++/// <c>FcDiagnosticsPanel</c> UI and forwards every event to the shared <see cref="ILogger"/>.
++/// </summary>
++public sealed class InMemoryDiagnosticSink : IDiagnosticSink {
++    private readonly ILogger<InMemoryDiagnosticSink>? _logger;
++    private readonly object _gate = new();
++    private readonly LinkedList<DevDiagnosticEvent> _events = new();
++    private readonly HashSet<string> _seenCodesThisCircuit = new(StringComparer.Ordinal);
++    private readonly int _capacity;
++
++    public InMemoryDiagnosticSink(ILogger<InMemoryDiagnosticSink>? logger = null, int capacity = 32) {
++        _logger = logger;
++        _capacity = capacity > 0 ? capacity : 32;
++    }
++
++    /// <inheritdoc/>
++    public IReadOnlyList<DevDiagnosticEvent> RecentEvents {
++        get {
++            lock (_gate) {
++                return [.. _events];
++            }
++        }
++    }
++
++    /// <inheritdoc/>
++    public void Publish(DevDiagnosticEvent evt) {
++        ArgumentNullException.ThrowIfNull(evt);
++
++        bool firstTime;
++        lock (_gate) {
++            firstTime = _seenCodesThisCircuit.Add(evt.Code);
++            _events.AddFirst(evt);
++            while (_events.Count > _capacity) {
++                _events.RemoveLast();
++            }
++        }
++
++        // Rate-limit duplicate logs to once-per-circuit per code (D31 behavior preserved for prod observability).
++        if (firstTime) {
++            _logger?.LogWarning("[{Code}/{Category}] {Message}", evt.Code, evt.Category, evt.Message);
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/IExpandInRowJSModule.cs b/src/Hexalith.FrontComposer.Shell/Services/IExpandInRowJSModule.cs
+new file mode 100644
+index 0000000..e8d7798
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/IExpandInRowJSModule.cs
+@@ -0,0 +1,56 @@
++using Microsoft.AspNetCore.Components;
++using Microsoft.JSInterop;
++
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// Scoped service caching the <c>fc-expandinrow.js</c> module reference (Story 2-2 Decision D25).
++/// Prevents per-component module re-import and guards against prerender-time JSRuntime unavailability.
++/// </summary>
++public interface IExpandInRowJSModule {
++    /// <summary>
++    /// Initializes the expand-in-row scroll stabilization for <paramref name="element"/>.
++    /// Safe to call during prerender — the module import is skipped when JSInterop is unavailable.
++    /// </summary>
++    Task InitializeAsync(ElementReference element);
++}
++
++/// <inheritdoc/>
++public sealed class ExpandInRowJSModule : IExpandInRowJSModule, IAsyncDisposable {
++    private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js";
++
++    private readonly IJSRuntime _js;
++    private readonly Lazy<Task<IJSObjectReference>> _moduleTask;
++
++    public ExpandInRowJSModule(IJSRuntime js) {
++        _js = js ?? throw new ArgumentNullException(nameof(js));
++        _moduleTask = new Lazy<Task<IJSObjectReference>>(() => _js.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask());
++    }
++
++    /// <inheritdoc/>
++    public async Task InitializeAsync(ElementReference element) {
++        try {
++            IJSObjectReference module = await _moduleTask.Value.ConfigureAwait(false);
++            await module.InvokeVoidAsync("initializeExpandInRow", element).ConfigureAwait(false);
++        }
++        catch (InvalidOperationException) {
++            // Prerender: JSInterop not yet available. Ignored per Decision D25.
++        }
++        catch (JSDisconnectedException) {
++            // Circuit disconnected during init — module is lost with the circuit; benign.
++        }
++    }
++
++    /// <inheritdoc/>
++    public async ValueTask DisposeAsync() {
++        if (_moduleTask.IsValueCreated) {
++            try {
++                IJSObjectReference module = await _moduleTask.Value.ConfigureAwait(false);
++                await module.DisposeAsync().ConfigureAwait(false);
++            }
++            catch {
++                // Disposal is best-effort; circuit teardown may have already torn the JS host down.
++            }
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/LastUsedSubscriberRegistry.cs b/src/Hexalith.FrontComposer.Shell/Services/LastUsedSubscriberRegistry.cs
+new file mode 100644
+index 0000000..eafa908
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/LastUsedSubscriberRegistry.cs
+@@ -0,0 +1,64 @@
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++using Microsoft.Extensions.DependencyInjection;
++
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// Story 2-2 Decision D35 — per-circuit registry that lazily resolves and tracks active
++/// per-command <c>{Command}LastUsedSubscriber</c> instances. Idempotent <see cref="Ensure{T}"/>
++/// prevents hot-reload subscriber accumulation; lazy resolution avoids startup latency on large
++/// command surfaces.
++/// </summary>
++public sealed class LastUsedSubscriberRegistry : ILastUsedSubscriberRegistry, IDisposable {
++    private readonly IServiceProvider _services;
++    private readonly HashSet<Type> _registered = new();
++    private readonly List<IDisposable> _instances = new();
++    private readonly object _gate = new();
++    private bool _disposed;
++
++    public LastUsedSubscriberRegistry(IServiceProvider services) {
++        _services = services ?? throw new ArgumentNullException(nameof(services));
++    }
++
++    /// <summary>
++    /// Resolves the per-command subscriber from DI on first call; subsequent calls are no-ops.
++    /// </summary>
++    /// <typeparam name="TSubscriber">Concrete subscriber type emitted by <c>LastUsedSubscriberEmitter</c>.</typeparam>
++    public void Ensure<TSubscriber>() where TSubscriber : class, IDisposable {
++        if (_disposed) {
++            return;
++        }
++
++        lock (_gate) {
++            if (!_registered.Add(typeof(TSubscriber))) {
++                return;
++            }
++
++            TSubscriber subscriber = _services.GetRequiredService<TSubscriber>();
++            _instances.Add(subscriber);
++        }
++    }
++
++    /// <inheritdoc/>
++    public void Dispose() {
++        lock (_gate) {
++            if (_disposed) {
++                return;
++            }
++
++            _disposed = true;
++            foreach (IDisposable instance in _instances) {
++                try {
++                    instance.Dispose();
++                }
++                catch {
++                    // Subscriber disposal must never throw — circuit teardown is best-effort.
++                }
++            }
++
++            _instances.Clear();
++            _registered.Clear();
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/NullCommandPageContext.cs b/src/Hexalith.FrontComposer.Shell/Services/NullCommandPageContext.cs
+new file mode 100644
+index 0000000..50b3c31
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/NullCommandPageContext.cs
+@@ -0,0 +1,13 @@
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// Default <see cref="ICommandPageContext"/> used when the adopter has not registered a page-level
++/// context. The FullPage renderer tolerates an empty context (D32 navigation falls through to <c>/</c>).
++/// </summary>
++public sealed class NullCommandPageContext : ICommandPageContext {
++    public string CommandName => string.Empty;
++    public string BoundedContext => string.Empty;
++    public string? ReturnPath => null;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/NullUserContextAccessor.cs b/src/Hexalith.FrontComposer.Shell/Services/NullUserContextAccessor.cs
+new file mode 100644
+index 0000000..4f2eaca
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/NullUserContextAccessor.cs
+@@ -0,0 +1,16 @@
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.Services;
++
++/// <summary>
++/// Default accessor returning <see langword="null"/> for both segments. Triggers Decision D31
++/// fail-closed behavior in <c>LastUsedValueProvider</c> until the adopter registers a real
++/// implementation backed by their auth stack.
++/// </summary>
++public sealed class NullUserContextAccessor : IUserContextAccessor {
++    /// <inheritdoc/>
++    public string? TenantId => null;
++
++    /// <inheritdoc/>
++    public string? UserId => null;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationFeature.cs b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationFeature.cs
+new file mode 100644
+index 0000000..9f79511
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationFeature.cs
+@@ -0,0 +1,19 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
++
++/// <summary>
++/// Fluxor feature registration for <see cref="DataGridNavigationState"/> (Story 2-2 ADR-015).
++/// </summary>
++public sealed class DataGridNavigationFeature : Feature<DataGridNavigationState> {
++    /// <inheritdoc/>
++    public override string GetName() => "Hexalith.FrontComposer.Shell.State.DataGridNavigationState";
++
++    /// <inheritdoc/>
++    protected override DataGridNavigationState GetInitialState()
++        => new(ImmutableDictionary<string, GridViewSnapshot>.Empty);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationReducers.cs b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationReducers.cs
+new file mode 100644
+index 0000000..fceb8f1
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationReducers.cs
+@@ -0,0 +1,93 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts;
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++using Microsoft.Extensions.Options;
++
++namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
++
++/// <summary>
++/// Pure reducers for <see cref="DataGridNavigationState"/> (Story 2-2 AC7, Decision D30).
++/// LRU cap applied on <see cref="CaptureGridStateAction"/>: when <c>ViewStates.Count</c> exceeds
++/// <see cref="FcShellOptions.DataGridNavCap"/>, the entry with the oldest <c>CapturedAt</c>
++/// is evicted (Decision D33).
++/// </summary>
++public static class DataGridNavigationReducers {
++    /// <summary>
++    /// Mutable ambient cap read by <see cref="ReduceCapture"/>. Wired by
++    /// <c>AddHexalithFrontComposer()</c> from <see cref="IOptions{FcShellOptions}"/>. Default 50.
++    /// </summary>
++    public static int Cap { get; set; } = 50;
++
++    [ReducerMethod]
++    public static DataGridNavigationState ReduceCapture(DataGridNavigationState state, CaptureGridStateAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++
++        ImmutableDictionary<string, GridViewSnapshot> next = state.ViewStates.SetItem(action.ViewKey, action.Snapshot);
++
++        // LRU eviction (Decision D33) — capped per FcShellOptions.DataGridNavCap.
++        int cap = Cap;
++        while (next.Count > cap) {
++            string? oldestKey = null;
++            DateTimeOffset oldestAt = DateTimeOffset.MaxValue;
++            foreach (KeyValuePair<string, GridViewSnapshot> kvp in next) {
++                if (kvp.Value.CapturedAt < oldestAt) {
++                    oldestAt = kvp.Value.CapturedAt;
++                    oldestKey = kvp.Key;
++                }
++            }
++
++            if (oldestKey is null) {
++                break;
++            }
++
++            next = next.Remove(oldestKey);
++        }
++
++        return new DataGridNavigationState(next);
++    }
++
++    // Restore is read-side — no state mutation (Decision D30). Story 4.3 effects will read+dispatch downstream.
++    [ReducerMethod]
++    public static DataGridNavigationState ReduceRestore(DataGridNavigationState state, RestoreGridStateAction _) {
++        ArgumentNullException.ThrowIfNull(state);
++        return state;
++    }
++
++    [ReducerMethod]
++    public static DataGridNavigationState ReduceClear(DataGridNavigationState state, ClearGridStateAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state.ViewStates.ContainsKey(action.ViewKey)
++            ? new DataGridNavigationState(state.ViewStates.Remove(action.ViewKey))
++            : state;
++    }
++
++    [ReducerMethod]
++    public static DataGridNavigationState ReducePruneExpired(DataGridNavigationState state, PruneExpiredAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++
++        List<string>? toRemove = null;
++        foreach (KeyValuePair<string, GridViewSnapshot> kvp in state.ViewStates) {
++            if (kvp.Value.CapturedAt < action.Threshold) {
++                (toRemove ??= []).Add(kvp.Key);
++            }
++        }
++
++        if (toRemove is null) {
++            return state;
++        }
++
++        ImmutableDictionary<string, GridViewSnapshot> next = state.ViewStates;
++        foreach (string key in toRemove) {
++            next = next.Remove(key);
++        }
++
++        return new DataGridNavigationState(next);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationState.cs b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationState.cs
+new file mode 100644
+index 0000000..f549a59
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationState.cs
+@@ -0,0 +1,14 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
++
++/// <summary>
++/// Fluxor state carrying per-view <see cref="GridViewSnapshot"/>s keyed by
++/// <c>"{commandBoundedContext}:{projectionTypeFqn}"</c>. Story 2-2 ships the reducer-only surface
++/// (Decision D30); persistence and DataGrid capture-side wiring land in Story 4.3.
++/// </summary>
++/// <param name="ViewStates">Immutable map of view-key to captured snapshot.</param>
++public sealed record DataGridNavigationState(
++    ImmutableDictionary<string, GridViewSnapshot> ViewStates);
+diff --git a/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-expandinrow.js b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-expandinrow.js
+new file mode 100644
+index 0000000..e5d11e5
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-expandinrow.js
+@@ -0,0 +1,47 @@
++// Story 2-2 Task 7 — expand-in-row scroll stabilization for CompactInline command renderers.
++// Contract: `initializeExpandInRow(elementRef)` scrolls the element into view and, when the
++// user has NOT requested reduced motion, applies a follow-up requestAnimationFrame measurement
++// to correct for late-arriving layout shifts. Module-scoped import (./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js)
++// avoids global namespace pollution (Decision D11). Module is loaded lazily via
++// `IExpandInRowJSModule` (Decision D25) and disposed on circuit teardown.
++
++/** Focus + scroll-nearest for inline popover close (Story 2-2 — replaces host `eval` interop). */
++export function focusTriggerElementById(elementId) {
++    if (typeof document === 'undefined' || !elementId) {
++        return;
++    }
++    const el = document.getElementById(elementId);
++    if (el) {
++        el.scrollIntoView({ block: 'nearest' });
++        el.focus();
++    }
++}
++
++export function initializeExpandInRow(elementRef) {
++    if (!elementRef) {
++        return;
++    }
++
++    const reduceMotion = typeof window !== 'undefined'
++        && typeof window.matchMedia === 'function'
++        && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
++
++    elementRef.scrollIntoView({
++        block: 'nearest',
++        behavior: reduceMotion ? 'auto' : 'smooth',
++    });
++
++    if (!reduceMotion) {
++        requestAnimationFrame(() => {
++            const rect = elementRef.getBoundingClientRect();
++            if (rect.top < 0) {
++                window.scrollBy({ top: rect.top, behavior: 'smooth' });
++            }
++        });
++    }
++}
++
++// Reserved for v2 multi-expand support; no-op today (Decision D11 forward-compat stub).
++export function collapseExpandInRow(_elementRef) {
++    // Intentionally empty — v1 is single-expand per DataGrid (Story 4.5 enforces).
++}

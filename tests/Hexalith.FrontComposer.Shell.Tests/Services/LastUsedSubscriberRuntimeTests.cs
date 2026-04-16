@@ -263,7 +263,7 @@ public sealed class LastUsedSubscriberRuntimeTests {
     private sealed class TestLastUsedRecorder : ILastUsedRecorder {
         public List<RecordedInvocation> Invocations { get; } = [];
 
-        public Task RecordAsync<TCommand>(TCommand command) where TCommand : class {
+        public Task RecordAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class {
             Invocations.Add(new RecordedInvocation(typeof(TCommand), command));
             return Task.CompletedTask;
         }

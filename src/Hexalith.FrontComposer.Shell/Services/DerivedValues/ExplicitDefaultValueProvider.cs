@@ -14,8 +14,7 @@ namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
 /// reset-semantics fields.
 /// </summary>
 public sealed class ExplicitDefaultValueProvider : IDerivedValueProvider {
-    private static readonly ConcurrentDictionary<(Type, string), object?> Cache = new();
-    private static readonly ConcurrentDictionary<(Type, string), bool> HasAttribute = new();
+    private static readonly ConcurrentDictionary<(Type, string), (bool HasAttribute, object? Value)> Cache = new();
 
     /// <inheritdoc/>
     [UnconditionalSuppressMessage("Trimming", "IL2070:UnrecognizedReflectionPattern", Justification = "commandType flows from generated code; trim preservation is the renderer's responsibility.")]
@@ -26,37 +25,25 @@ public sealed class ExplicitDefaultValueProvider : IDerivedValueProvider {
         CancellationToken ct) {
         ArgumentNullException.ThrowIfNull(commandType);
         ArgumentException.ThrowIfNullOrEmpty(propertyName);
+        ct.ThrowIfCancellationRequested();
 
-        (Type commandType, string propertyName) key = (commandType, propertyName);
+        (bool HasAttribute, object? Value) entry = Cache.GetOrAdd(
+            (commandType, propertyName),
+            static k => LookupDefaultValueAttribute(k.Item1, k.Item2));
 
-        bool hasAttr = HasAttribute.GetOrAdd(key, static k => LookupDefaultValueAttribute(k.Item1, k.Item2, out _));
-        if (!hasAttr) {
-            return Task.FromResult(DerivedValueResult.None);
-        }
-
-        object? value = Cache.GetOrAdd(key, static k => {
-            _ = LookupDefaultValueAttribute(k.Item1, k.Item2, out object? value);
-            return value;
-        });
-
-        return Task.FromResult(new DerivedValueResult(true, value));
+        return Task.FromResult(entry.HasAttribute
+            ? new DerivedValueResult(true, entry.Value)
+            : DerivedValueResult.None);
     }
 
     [UnconditionalSuppressMessage("Trimming", "IL2070:UnrecognizedReflectionPattern", Justification = "Delegated to renderer emission point.")]
-    private static bool LookupDefaultValueAttribute(Type commandType, string propertyName, out object? value) {
+    private static (bool HasAttribute, object? Value) LookupDefaultValueAttribute(Type commandType, string propertyName) {
         PropertyInfo? prop = commandType.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance);
         if (prop is null) {
-            value = null;
-            return false;
+            return (false, null);
         }
 
         DefaultValueAttribute? attr = prop.GetCustomAttribute<DefaultValueAttribute>(inherit: true);
-        if (attr is null) {
-            value = null;
-            return false;
-        }
-
-        value = attr.Value;
-        return true;
+        return attr is null ? (false, null) : (true, attr.Value);
     }
 }

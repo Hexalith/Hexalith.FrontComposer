@@ -100,11 +100,15 @@ public static class CommandFormTransform {
         return StripTrailingCommand(source);
     }
 
+    // Story 2-2 code-review P41/P42 — case-insensitive suffix strip; fall back to original when result is empty.
     private static string StripTrailingCommand(string label) {
         const string suffix = " Command";
-        return label.EndsWith(suffix, StringComparison.Ordinal)
-            ? label.Substring(0, label.Length - suffix.Length)
-            : label;
+        if (!label.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)) {
+            return label;
+        }
+
+        string stripped = label.Substring(0, label.Length - suffix.Length);
+        return string.IsNullOrWhiteSpace(stripped) ? label : stripped;
     }
 
     /// <summary>

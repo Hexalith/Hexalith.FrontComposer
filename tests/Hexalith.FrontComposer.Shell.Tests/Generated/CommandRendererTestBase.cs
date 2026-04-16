@@ -81,6 +81,6 @@ public abstract class CommandRendererTestBase : BunitContext {
     }
 
     private sealed class NullLastUsedRecorder : ILastUsedRecorder {
-        public Task RecordAsync<TCommand>(TCommand command) where TCommand : class => Task.CompletedTask;
+        public Task RecordAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default) where TCommand : class => Task.CompletedTask;
     }
 }

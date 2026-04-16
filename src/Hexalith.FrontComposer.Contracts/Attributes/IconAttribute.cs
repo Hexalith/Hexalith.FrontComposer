@@ -17,7 +17,12 @@ public sealed class IconAttribute : Attribute {
     /// Initializes a new instance of the <see cref="IconAttribute"/> class.
     /// </summary>
     /// <param name="iconName">The Fluent UI icon type path fragment (e.g. <c>Regular.Size16.Play</c>).</param>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="iconName"/> is <see langword="null"/>, empty, or whitespace.</exception>
     public IconAttribute(string iconName) {
+        if (string.IsNullOrWhiteSpace(iconName)) {
+            throw new ArgumentException("Icon name cannot be null, empty, or whitespace.", nameof(iconName));
+        }
+
         IconName = iconName;
     }
 
