@@ -1,3 +1,5 @@
+using System.Linq;
+
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Storage;
@@ -52,6 +54,16 @@ public class FluxorRegistrationTests {
 
         // Act & Assert
         _ = provider.GetService<IStore>().ShouldNotBeNull();
+    }
+
+    [Fact]
+    public void Fluxor_AssemblyScan_NoDuplicateRegistration() {
+        ServiceCollection services = new();
+
+        _ = services.AddLogging();
+        _ = services.AddHexalithFrontComposer();
+
+        services.Count(d => d.ServiceType == typeof(IStore)).ShouldBe(1);
     }
 
     private static ServiceProvider BuildProvider() {

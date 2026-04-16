@@ -19,7 +19,7 @@ public class CommandFormTransformTests {
     [InlineData("DateTime", FormFieldTypeCategory.DatePicker)]
     [InlineData("DateTimeOffset", FormFieldTypeCategory.DatePicker)]
     [InlineData("DateOnly", FormFieldTypeCategory.DatePicker)]
-    [InlineData("TimeOnly", FormFieldTypeCategory.TextInput)]
+    [InlineData("TimeOnly", FormFieldTypeCategory.TimeInput)]
     [InlineData("Enum", FormFieldTypeCategory.Select)]
     [InlineData("Guid", FormFieldTypeCategory.MonospaceText)]
     public void Transform_MapsTypeCategory(string typeName, FormFieldTypeCategory expected) {
@@ -61,13 +61,15 @@ public class CommandFormTransformTests {
         result.Fields.Single().StaticLabel.ShouldBe("Customer Name");
     }
 
+    // Story 2-2 Decision D23: button label is the humanized type name with trailing " Command" stripped
+    // (display-only); the legacy "Send X" prefix has been removed for UX consistency across all density modes.
     [Fact]
     public void Transform_ButtonLabel_SimpleCommandName() {
         CommandModel command = BuildCommand(typeName: "Foo");
 
         CommandFormModel result = CommandFormTransform.Transform(command);
 
-        result.ButtonLabel.ShouldBe("Send Foo");
+        result.ButtonLabel.ShouldBe("Foo");
     }
 
     [Fact]
@@ -76,7 +78,8 @@ public class CommandFormTransformTests {
 
         CommandFormModel result = CommandFormTransform.Transform(command);
 
-        result.ButtonLabel.ShouldBe("Send Increment Counter Command");
+        // " Command" suffix stripped for display per Decision D23.
+        result.ButtonLabel.ShouldBe("Increment Counter");
     }
 
     [Fact]
@@ -85,7 +88,7 @@ public class CommandFormTransformTests {
 
         CommandFormModel result = CommandFormTransform.Transform(command);
 
-        result.ButtonLabel.ShouldBe("Send Place Order");
+        result.ButtonLabel.ShouldBe("Place Order");
     }
 
     [Fact]

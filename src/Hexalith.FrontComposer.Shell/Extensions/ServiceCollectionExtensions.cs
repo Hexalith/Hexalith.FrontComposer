@@ -4,16 +4,21 @@ using System.Reflection;
 using Fluxor;
 using Fluxor.DependencyInjection;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.DerivedValues;
+using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
 
@@ -39,6 +44,11 @@ public static class ServiceCollectionExtensions {
         var commandGroups = new Dictionary<string, CommandGroup>(StringComparer.Ordinal);
 
         foreach (Type type in domainAssembly.GetExportedTypes()) {
+            if (type.Name.EndsWith("LastUsedSubscriber", StringComparison.Ordinal)
+                && typeof(IDisposable).IsAssignableFrom(type)) {
+                services.TryAdd(ServiceDescriptor.Scoped(type, type));
+            }
+
             if (!type.Name.EndsWith("Registration", StringComparison.Ordinal)) {
                 CollectCommandRegistration(type, markerContext, commandGroups);
                 continue;
@@ -116,7 +126,73 @@ public static class ServiceCollectionExtensions {
         services.TryAddScoped<ICommandService, StubCommandService>();
         _ = services.Configure<StubCommandServiceOptions>(_ => { });
 
+        // Story 2-2 Decision D33 — wire DataGridNav LRU cap from FcShellOptions.
+        // Reducers are static; the ambient Cap is mutated from the options snapshot here.
+        _ = services.AddOptions<FcShellOptions>();
+        _ = services.AddSingleton<IPostConfigureOptions<FcShellOptions>, DataGridNavCapBinder>();
+
+        // Story 2-2 Task 3.5a — dev diagnostic sink (per-circuit scope).
+        services.TryAddScoped<IDiagnosticSink, InMemoryDiagnosticSink>();
+
+        // Story 2-2 Decision D31 — default fail-closed IUserContextAccessor; adopters replace
+        // this with a real accessor (HTTP-claims / AuthenticationStateProvider / demo stub).
+        services.TryAddScoped<IUserContextAccessor, NullUserContextAccessor>();
+
+        // Story 2-2 Decision D35 — per-circuit subscriber registry (idempotent + lazy).
+        services.TryAddScoped<LastUsedSubscriberRegistry>();
+        services.TryAddScoped<ILastUsedSubscriberRegistry>(sp => sp.GetRequiredService<LastUsedSubscriberRegistry>());
+
+        // Story 2-2 Decision D25 — cached expand-in-row JS module (scoped, lazy import).
+        services.TryAddScoped<IExpandInRowJSModule, ExpandInRowJSModule>();
+
+        // Story 2-2 Decision D37 — at-most-one Inline popover registry (Contracts/Rendering).
+        services.TryAddScoped<Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry>();
+
+        // Default no-op ICommandPageContext — adopter-hosted pages override via scoped registration.
+        services.TryAddScoped<ICommandPageContext, NullCommandPageContext>();
+
+        // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
+        // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.
+        // Registered via AddScoped (scoped per circuit in Blazor Server; per-app in WASM). Providers
+        // with pure state may safely be scoped. Resolution order = registration order.
+        _ = services.AddScoped<IDerivedValueProvider, SystemValueProvider>();
+        _ = services.AddScoped<IDerivedValueProvider, ProjectionContextProvider>();
+        _ = services.AddScoped<IDerivedValueProvider, ExplicitDefaultValueProvider>();
+        _ = services.AddScoped<LastUsedValueProvider>();
+        _ = services.AddScoped<IDerivedValueProvider>(sp => sp.GetRequiredService<LastUsedValueProvider>());
+        _ = services.AddScoped<ILastUsedRecorder>(sp => sp.GetRequiredService<LastUsedValueProvider>());
+        _ = services.AddScoped<IDerivedValueProvider, ConstructorDefaultValueProvider>();
+
         return services;
+    }
+
+    /// <summary>
+    /// Registers a custom <see cref="IDerivedValueProvider"/> at the HEAD of the chain so it wins
+    /// over all built-ins (Story 2-2 ADR-014). Scoped by default; adopter may supply
+    /// <see cref="ServiceLifetime.Singleton"/> for pure providers.
+    /// </summary>
+    public static IServiceCollection AddDerivedValueProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(
+        this IServiceCollection services,
+        ServiceLifetime lifetime = ServiceLifetime.Scoped)
+        where T : class, IDerivedValueProvider {
+        ArgumentNullException.ThrowIfNull(services);
+
+        ServiceDescriptor descriptor = ServiceDescriptor.Describe(typeof(IDerivedValueProvider), typeof(T), lifetime);
+
+        // Prepend so custom providers come first in enumeration order.
+        services.Insert(0, descriptor);
+        return services;
+    }
+
+    /// <summary>
+    /// Binds <see cref="FcShellOptions.DataGridNavCap"/> to the ambient reducer cap
+    /// (Story 2-2 Decision D33). Post-configure fires once options are resolved.
+    /// </summary>
+    private sealed class DataGridNavCapBinder : IPostConfigureOptions<FcShellOptions> {
+        public void PostConfigure(string? name, FcShellOptions options) {
+            ArgumentNullException.ThrowIfNull(options);
+            DataGridNavigationReducers.Cap = options.DataGridNavCap;
+        }
     }
 
     private static void CollectCommandRegistration(

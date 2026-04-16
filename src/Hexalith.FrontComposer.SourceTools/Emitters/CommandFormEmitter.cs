@@ -39,6 +39,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("using Fluxor;");
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Communication;");
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Lifecycle;");
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Rendering;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Forms;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
@@ -65,8 +66,24 @@ public static class CommandFormEmitter {
 
         _ = sb.AppendLine("    [Parameter] public " + commandFqn + "? InitialValue { get; set; }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016: when true, derivable fields are not rendered (renderer pre-fills them).</summary>");
+        _ = sb.AppendLine("    [Parameter] public bool DerivableFieldsHidden { get; set; }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016: when non-null, only fields whose property name is in the set are rendered.</summary>");
+        _ = sb.AppendLine("    [Parameter] public string[]? ShowFieldsOnly { get; set; }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016: invoked after the form dispatches ConfirmedAction so the renderer can close popovers / navigate.</summary>");
+        _ = sb.AppendLine("    [Parameter] public EventCallback OnConfirmed { get; set; }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016 / Decision D36: renderer registers this callback on first render so the 0-field Inline button can synthesize a submit.</summary>");
+        _ = sb.AppendLine("    [Parameter] public Action<Action>? RegisterExternalSubmit { get; set; }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016: renderer hook invoked immediately before dispatch so derivable values can be refreshed per submit.</summary>");
+        _ = sb.AppendLine("    [Parameter] public Func<Task>? BeforeSubmit { get; set; }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    [Inject] private IState<" + fluxor.StateName + "> LifecycleState { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IDispatcher Dispatcher { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ICommandService CommandService { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + componentName + ">? Logger { get; set; }");
@@ -75,6 +92,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    private EditContext? _editContext;");
         _ = sb.AppendLine("    private CancellationTokenSource? _cts;");
         _ = sb.AppendLine("    private bool _disposed;");
+        _ = sb.AppendLine("    private bool _externalSubmitRegistered;");
+        _ = sb.AppendLine("    private string? _submittedCorrelationId;");
         _ = sb.AppendLine("    /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>");
         _ = sb.AppendLine("    public bool IsDirty { get; private set; }");
         _ = sb.AppendLine();
@@ -92,11 +111,46 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) { IsDirty = true; }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e) => InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("    private CommandLifecycleState _previousLifecycleState = CommandLifecycleState.Idle;");
+        _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e) {");
+        _ = sb.AppendLine("        // Story 2-2 ADR-016: surface Confirmed transition to the renderer via OnConfirmed callback.");
+        _ = sb.AppendLine("        // Guard by correlation id so sibling forms of the same command type do not react to");
+        _ = sb.AppendLine("        // another instance's successful submit.");
+        _ = sb.AppendLine("        var current = LifecycleState.Value.State;");
+        _ = sb.AppendLine("        var currentCorrelationId = LifecycleState.Value.CorrelationId;");
+        _ = sb.AppendLine("        if (current == CommandLifecycleState.Confirmed");
+        _ = sb.AppendLine("            && _previousLifecycleState != CommandLifecycleState.Confirmed");
+        _ = sb.AppendLine("            && OnConfirmed.HasDelegate");
+        _ = sb.AppendLine("            && !string.IsNullOrEmpty(_submittedCorrelationId)");
+        _ = sb.AppendLine("            && string.Equals(currentCorrelationId, _submittedCorrelationId, StringComparison.Ordinal)) {");
+        _ = sb.AppendLine("            _ = OnConfirmed.InvokeAsync(null);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        _previousLifecycleState = current;");
+        _ = sb.AppendLine("        InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    /// <summary>Resolves a field label via <see cref=\"IStringLocalizer\"/>, falling back to the compile-time label.</summary>");
-        _ = sb.AppendLine("    private string ResolveLabel(string propertyName, string staticLabel)");
+        _ = sb.AppendLine("    /// <inheritdoc />");
+        _ = sb.AppendLine("    protected override void OnAfterRender(bool firstRender) {");
+        _ = sb.AppendLine("        if (firstRender && !_externalSubmitRegistered && RegisterExternalSubmit is not null) {");
+        _ = sb.AppendLine("            _externalSubmitRegistered = true;");
+        _ = sb.AppendLine("            // Story 2-2 ADR-016 rule 6 + Decision D36 — supply the renderer with a synthetic-submit invoker.");
+        _ = sb.AppendLine("            RegisterExternalSubmit(() => _ = OnValidSubmitAsync());");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>");
+        _ = sb.AppendLine("    /// Resolves a field label following the AC3 precedence: an explicit");
+        _ = sb.AppendLine("    /// <c>[Display(Name)]</c> wins, otherwise the runtime <see cref=\"IStringLocalizer\"/>");
+        _ = sb.AppendLine("    /// is consulted, and finally the humanized compile-time label is used as a fallback.");
+        _ = sb.AppendLine("    /// Patch 2026-04-16 P-09 (precedence) + P-04 (narrow catch).");
+        _ = sb.AppendLine("    /// </summary>");
+        _ = sb.AppendLine("    private string ResolveLabel(string propertyName, string staticLabel, bool hasExplicitDisplay)");
         _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (hasExplicitDisplay)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return staticLabel;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        try");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            var localized = Localizer[propertyName];");
@@ -105,11 +159,22 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                return localized.Value;");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        catch { /* localizer failures are non-fatal. */ }");
+        _ = sb.AppendLine("        catch (Exception ex) when (ex is not OperationCanceledException)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            // Localizer misconfiguration (missing resource manager, culture load failure) is non-fatal.");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        return staticLabel;");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static bool IsDerivableField(string propertyName) => propertyName switch");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        \"MessageId\" or \"CommandId\" or \"CorrelationId\" or \"TenantId\" or \"UserId\" or \"Timestamp\" or \"CreatedAt\" or \"ModifiedAt\" => true,");
+        _ = sb.AppendLine("        _ => false,");
+        _ = sb.AppendLine("    };");
+        _ = sb.AppendLine();
 
+        EmitClientParseErrorHelper(sb, form);
         EmitSubmitMethod(sb, form, fluxor);
         EmitDispose(sb);
         EmitBuildRenderTree(sb, form, fluxor, escapedButtonLabel);
@@ -136,6 +201,37 @@ public static class CommandFormEmitter {
         }
     }
 
+    private static void EmitClientParseErrorHelper(StringBuilder sb, CommandFormModel form) {
+        _ = sb.AppendLine("    private bool HasClientParseErrors()");
+        _ = sb.AppendLine("    {");
+
+        string[] parseErrorFields = [.. form.Fields
+            .Where(field => field.TypeCategory is FormFieldTypeCategory.NumberInput or FormFieldTypeCategory.DecimalInput)
+            .Select(field => field.PropertyName)];
+
+        if (parseErrorFields.Length == 0) {
+            _ = sb.AppendLine("        return false;");
+        }
+        else {
+            _ = sb.Append("        return ");
+            for (int i = 0; i < parseErrorFields.Length; i++) {
+                if (i > 0) {
+                    _ = sb.AppendLine();
+                    _ = sb.Append("            || ");
+                }
+
+                _ = sb.Append("!string.IsNullOrEmpty(_")
+                    .Append(parseErrorFields[i])
+                    .Append("ParseError)");
+            }
+
+            _ = sb.AppendLine(";");
+        }
+
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+    }
+
     private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor) {
         _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
         _ = sb.AppendLine("    {");
@@ -149,7 +245,18 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        // Cancel + dispose the previous CTS before reassignment (patch P12 -- leak fix).");
+        _ = sb.AppendLine("        if (HasClientParseErrors())");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _editContext?.NotifyValidationStateChanged();");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        if (BeforeSubmit is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(false);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Cancel + dispose the previous cancellation source before reassignment (patch P12 -- leak fix).");
         _ = sb.AppendLine("        CancellationTokenSource? previous = _cts;");
         _ = sb.AppendLine("        _cts = new CancellationTokenSource();");
         _ = sb.AppendLine("        if (previous is not null)");
@@ -159,7 +266,11 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        var correlationId = Guid.NewGuid().ToString();");
+        _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
         _ = sb.AppendLine("        var cts = _cts;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Story 2-2 D35 — lazily activate the generated subscriber before the first SubmittedAction dispatch.");
+        _ = sb.AppendLine("        LastUsedSubscriberRegistry.Ensure<" + form.TypeName + "LastUsedSubscriber>();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".SubmittedAction(correlationId, _model));");
         _ = sb.AppendLine("        await InvokeAsync(StateHasChanged);");
@@ -201,7 +312,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            if (!_disposed)");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                // Submit was cancelled without disposal -- reset lifecycle so the user can retry (patch P11).");
-        _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction());");
+        _ = sb.AppendLine("                // Patch 2026-04-16 P-11: carry the submit correlation so sibling forms ignore this reset.");
+        _ = sb.AppendLine("                Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".ResetToIdleAction(correlationId));");
         _ = sb.AppendLine("            }");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("    }");
@@ -235,8 +347,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        builder.OpenElement(seq++, \"div\");");
         _ = sb.AppendLine("        // AC3 density: Comfortable by default (patch P13).");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", \"fc-command-form fc-density-comfortable\");");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"style\", \"max-width: 720px; margin: 0 auto;\");");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", \"Send " + EscapeString(form.TypeName) + " command form\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", \"" + escapedButtonLabel + " command form\");");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        builder.OpenComponent<EditForm>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"EditContext\", _editContext);");
@@ -288,13 +399,18 @@ public static class CommandFormEmitter {
         string propertyName = field.PropertyName;
         string staticLabel = EscapeString(field.StaticLabel);
         string isRequired = field.IsRequired ? "true" : "false";
+        string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
 
         _ = sb.AppendLine();
         _ = sb.AppendLine("            // Field: " + propertyName);
+        // Story 2-2 ADR-016: ShowFieldsOnly gate. When non-null, render only fields in the set.
+        _ = sb.AppendLine("            if ((!DerivableFieldsHidden || !IsDerivableField(\"" + propertyName + "\"))");
+        _ = sb.AppendLine("                && (ShowFieldsOnly is null || System.Array.IndexOf(ShowFieldsOnly, \"" + propertyName + "\") >= 0))");
+        _ = sb.AppendLine("            {");
 
         switch (field.TypeCategory) {
             case FormFieldTypeCategory.TextInput:
-                EmitTextInput(sb, propertyName, staticLabel, isRequired, inputType: null, monospace: false);
+                EmitTextInput(sb, propertyName, staticLabel, isRequired, hasExplicitDisplay, field.IsNullable, inputType: null, placeholder: null, monospace: false);
                 break;
             case FormFieldTypeCategory.NumberInput:
                 EmitNumericInput(sb, field, decimalMode: false);
@@ -303,7 +419,7 @@ public static class CommandFormEmitter {
                 EmitNumericInput(sb, field, decimalMode: true);
                 break;
             case FormFieldTypeCategory.Switch:
-                EmitSwitch(sb, propertyName, staticLabel);
+                EmitSwitch(sb, propertyName, staticLabel, hasExplicitDisplay);
                 break;
             case FormFieldTypeCategory.DatePicker:
                 EmitDatePicker(sb, field);
@@ -312,22 +428,46 @@ public static class CommandFormEmitter {
                 EmitEnumSelect(sb, field);
                 break;
             case FormFieldTypeCategory.MonospaceText:
-                EmitTextInput(sb, propertyName, staticLabel, isRequired, inputType: null, monospace: true);
+                EmitTextInput(sb, propertyName, staticLabel, isRequired, hasExplicitDisplay, field.IsNullable, inputType: null, placeholder: null, monospace: true);
+                break;
+            case FormFieldTypeCategory.TimeInput:
+                // Task 3B.1: TimeOnly renders as FluentTextInput with TextInputType.Time + HH:mm placeholder (patch 2026-04-16 P-06).
+                EmitTextInput(sb, propertyName, staticLabel, isRequired, hasExplicitDisplay, field.IsNullable, inputType: "Time", placeholder: "HH:mm", monospace: false);
                 break;
             case FormFieldTypeCategory.Placeholder:
                 EmitPlaceholder(sb, field);
                 break;
         }
+
+        _ = sb.AppendLine("            }");
     }
 
-    private static void EmitTextInput(StringBuilder sb, string propertyName, string staticLabel, string isRequired, string? inputType, bool monospace) {
+    private static void EmitTextInput(
+        StringBuilder sb,
+        string propertyName,
+        string staticLabel,
+        string isRequired,
+        string hasExplicitDisplay,
+        bool isNullable,
+        string? inputType,
+        string? placeholder,
+        bool monospace) {
+        // Patch 2026-04-16 P-07: preserve null for nullable string? fields so `[Required]` semantics stay intact.
+        string valueAssignment = isNullable
+            ? "_model." + propertyName + " = v"
+            : "_model." + propertyName + " = v ?? string.Empty";
+
         _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => _model." + propertyName + " = v ?? string.Empty));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => " + valueAssignment + "));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
         if (inputType is not null) {
             _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType." + inputType + ");");
+        }
+
+        if (placeholder is not null) {
+            _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Placeholder\", \"" + EscapeString(placeholder) + "\");");
         }
 
         if (monospace) {
@@ -341,11 +481,12 @@ public static class CommandFormEmitter {
         string propertyName = field.PropertyName;
         string staticLabel = EscapeString(field.StaticLabel);
         string isRequired = field.IsRequired ? "true" : "false";
+        string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
 
         _ = sb.AppendLine("            __b.OpenComponent<FluentTextInput>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _" + propertyName + "String ?? _model." + propertyName + ".ToString(CultureInfo.CurrentCulture));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<string?>(this, v => On" + propertyName + "Changed(v)));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Required\", " + isRequired + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TextInputType\", TextInputType.Number);");
         if (decimalMode) {
@@ -360,17 +501,18 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
-    private static void EmitSwitch(StringBuilder sb, string propertyName, string staticLabel) {
+    private static void EmitSwitch(StringBuilder sb, string propertyName, string staticLabel, string hasExplicitDisplay) {
         _ = sb.AppendLine("            __b.OpenComponent<FluentSwitch>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<bool>(this, v => _model." + propertyName + " = v));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
     private static void EmitDatePicker(StringBuilder sb, FormFieldModel field) {
         string propertyName = field.PropertyName;
         string staticLabel = EscapeString(field.StaticLabel);
+        string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
         string valueType = field.TypeName switch {
             "DateTime" => "DateTime",
             "DateTimeOffset" => "DateTimeOffset",
@@ -383,20 +525,21 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.OpenComponent<FluentDatePicker<" + genericArg + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + genericArg + ">(this, v => _model." + propertyName + " = v));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
 
     private static void EmitEnumSelect(StringBuilder sb, FormFieldModel field) {
         string propertyName = field.PropertyName;
         string staticLabel = EscapeString(field.StaticLabel);
+        string hasExplicitDisplay = field.HasExplicitDisplayName ? "true" : "false";
         string enumFqn = field.EnumFullyQualifiedName ?? "object";
 
         _ = sb.AppendLine("            __b.OpenComponent<FluentSelect<" + enumFqn + ", " + enumFqn + ">>(cseq++);");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Items\", (System.Collections.Generic.IEnumerable<" + enumFqn + ">)System.Enum.GetValues<" + enumFqn + ">());");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Value\", _model." + propertyName + ");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ValueChanged\", EventCallback.Factory.Create<" + enumFqn + ">(this, v => _model." + propertyName + " = v));");
-        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\"));");
+        _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Label\", ResolveLabel(\"" + propertyName + "\", \"" + staticLabel + "\", " + hasExplicitDisplay + "));");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"OptionText\", (Func<" + enumFqn + ", string>)(e => HumanizeEnumLabel(e.ToString() ?? string.Empty)));");
         _ = sb.AppendLine("            __b.CloseComponent();");
     }
@@ -516,11 +659,11 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    }");
     }
 
-    private static string EscapeString(string value) => value
-        .Replace("\\", "\\\\")
-        .Replace("\"", "\\\"")
-        .Replace("\n", "\\n")
-        .Replace("\r", "\\r")
-        .Replace("\t", "\\t")
-        .Replace("\0", "\\0");
+    /// <summary>
+    /// Escapes a string for embedding in a C# double-quoted literal. Delegates to Roslyn's
+    /// <see cref="Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(string, bool)"/>
+    /// so Unicode control characters, lone surrogates, and all the standard escape sequences
+    /// are handled correctly. Patch 2026-04-16 P-05.
+    /// </summary>
+    private static string EscapeString(string value) => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value, quote: false);
 }

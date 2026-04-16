@@ -39,11 +39,13 @@ public static class CommandServiceExtensions {
         }
 
         if (onLifecycleChange is not null) {
+            // Patch 2026-04-16 P-08: do not surface the concrete implementation's FullName in the
+            // exception message (info leak in multi-tenant deployments where the registered service
+            // may be per-tenant). The exception type itself and the interface names are sufficient.
             throw new NotSupportedException(
-                $"The registered {nameof(ICommandService)} implementation '{commandService.GetType().FullName}' "
-                + $"does not implement {nameof(ICommandServiceWithLifecycle)}; Syncing/Confirmed callbacks "
-                + "would be silently dropped. Register an implementation that supports lifecycle callbacks "
-                + "or invoke DispatchAsync without the onLifecycleChange argument.");
+                $"The registered {nameof(ICommandService)} does not implement {nameof(ICommandServiceWithLifecycle)}; "
+                + "lifecycle callbacks cannot be forwarded. Register an implementation that supports lifecycle "
+                + "callbacks or invoke DispatchAsync without the onLifecycleChange argument.");
         }
 
         return commandService.DispatchAsync(command, cancellationToken);

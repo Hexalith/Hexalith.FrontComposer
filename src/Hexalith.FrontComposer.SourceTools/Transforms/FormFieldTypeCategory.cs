@@ -30,6 +30,12 @@ public enum FormFieldTypeCategory {
     /// <summary><c>FluentTextInput</c> styled with a monospace CSS class for identifier values (Guid, ULID).</summary>
     MonospaceText,
 
+    /// <summary>
+    /// <c>FluentTextInput</c> with <c>TextInputType.Time</c> and an <c>HH:mm</c> placeholder,
+    /// mapped from <see cref="System.TimeOnly"/>. Task 3B.1. Patch 2026-04-16 P-06.
+    /// </summary>
+    TimeInput,
+
     /// <summary><c>FcFieldPlaceholder</c> indicating the field requires a custom renderer.</summary>
     Placeholder,
 }

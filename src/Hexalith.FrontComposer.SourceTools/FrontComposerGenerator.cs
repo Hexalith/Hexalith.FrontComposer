@@ -82,6 +82,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 CommandFluxorModel fluxorModel = CommandFluxorTransform.Transform(result.Model);
                 CommandFormModel formModel = CommandFormTransform.Transform(result.Model);
                 RegistrationModel registrationModel = RegistrationModelTransform.TransformCommand(result.Model);
+                CommandRendererModel rendererModel = CommandRendererTransform.Transform(result.Model, fluxorModel);
 
                 // Suffix with ".Command" segment so command-pipeline hints never collide with
                 // projection-pipeline hints when a type carries both attributes.
@@ -91,6 +92,14 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 spc.AddSource(hintPrefix + "Actions.g.cs", CommandFluxorActionsEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "LifecycleFeature.g.cs", CommandFluxorFeatureEmitter.Emit(fluxorModel));
                 spc.AddSource(hintPrefix + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
+
+                // Story 2-2 Task 8: density-driven renderer + per-command LastUsed subscriber +
+                // (conditional) routable FullPage page.
+                spc.AddSource(hintPrefix + "Renderer.g.razor.cs", CommandRendererEmitter.Emit(rendererModel));
+                spc.AddSource(hintPrefix + "LastUsedSubscriber.g.cs", LastUsedSubscriberEmitter.Emit(fluxorModel));
+                if (result.Model.Density == Hexalith.FrontComposer.SourceTools.Parsing.CommandDensity.FullPage) {
+                    spc.AddSource(hintPrefix + "Page.g.razor.cs", CommandPageEmitter.Emit(rendererModel));
+                }
             }
         });
     }
@@ -108,6 +117,11 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1007" => severity == "Error" ? CreateError(id, "Command has too many non-derivable properties") : DiagnosticDescriptors.CommandTooManyProperties,
         "HFC1008" => DiagnosticDescriptors.CommandFlagsEnumProperty,
         "HFC1009" => DiagnosticDescriptors.CommandMissingParameterlessCtor,
+        "HFC1011" => DiagnosticDescriptors.CommandTooManyTotalProperties,
+        "HFC1012" => DiagnosticDescriptors.DefaultValueTypeMismatch,
+        "HFC1014" => DiagnosticDescriptors.NestedCommandUnsupported,
+        "HFC1015" => DiagnosticDescriptors.RenderModeIncompatibleWithDensity,
+        "HFC1016" => DiagnosticDescriptors.CommandPropertyNotWritable,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

@@ -1,4 +1,8 @@
-<Router AppAssembly="typeof(Program).Assembly">
+@using Counter.Domain
+
+@* Source-generated command pages (e.g. ConfigureCounterCommandPage) live in Counter.Domain — include them in route discovery. *@
+<Router AppAssembly="typeof(Program).Assembly"
+        AdditionalAssemblies="new[] { typeof(IncrementCommand).Assembly }">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

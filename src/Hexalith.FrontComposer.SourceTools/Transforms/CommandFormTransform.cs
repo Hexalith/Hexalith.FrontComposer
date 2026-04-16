@@ -42,6 +42,7 @@ public static class CommandFormTransform {
 
     private static FormFieldModel MapField(PropertyModel property) {
         FormFieldTypeCategory category = MapCategory(property);
+        bool hasExplicitDisplay = !string.IsNullOrEmpty(property.DisplayName);
         string staticLabel = ResolveLabel(property);
         bool isRequired = !property.IsNullable && !property.IsUnsupported;
 
@@ -52,7 +53,8 @@ public static class CommandFormTransform {
             staticLabel,
             property.IsNullable,
             isRequired,
-            property.EnumFullyQualifiedName);
+            property.EnumFullyQualifiedName,
+            hasExplicitDisplay);
     }
 
     private static FormFieldTypeCategory MapCategory(PropertyModel property) {
@@ -66,7 +68,8 @@ public static class CommandFormTransform {
             "Decimal" or "Double" or "Single" => FormFieldTypeCategory.DecimalInput,
             "Boolean" => FormFieldTypeCategory.Switch,
             "DateTime" or "DateTimeOffset" or "DateOnly" => FormFieldTypeCategory.DatePicker,
-            "TimeOnly" => FormFieldTypeCategory.TextInput,
+            // Task 3B.1: TimeOnly renders as FluentTextInput with TextInputType.Time + HH:mm placeholder (patch 2026-04-16 P-06).
+            "TimeOnly" => FormFieldTypeCategory.TimeInput,
             "Enum" => FormFieldTypeCategory.Select,
             "Guid" => FormFieldTypeCategory.MonospaceText,
             _ => FormFieldTypeCategory.Placeholder,
@@ -82,13 +85,26 @@ public static class CommandFormTransform {
         return string.IsNullOrEmpty(humanized) ? property.Name : humanized!;
     }
 
+    /// <summary>
+    /// Story 2-2 Decision D23 — button label is the humanized command type-name with trailing
+    /// " Command" stripped (display-only). Replaces the prior "Send X" prefix in ALL modes
+    /// for UX consistency.
+    /// </summary>
     private static string BuildButtonLabel(CommandModel model) {
         if (!string.IsNullOrEmpty(model.DisplayName)) {
-            return "Send " + model.DisplayName;
+            return StripTrailingCommand(model.DisplayName!);
         }
 
         string? humanized = CamelCaseHumanizer.Humanize(model.TypeName);
-        return "Send " + (string.IsNullOrEmpty(humanized) ? model.TypeName : humanized);
+        string source = string.IsNullOrEmpty(humanized) ? model.TypeName : humanized!;
+        return StripTrailingCommand(source);
+    }
+
+    private static string StripTrailingCommand(string label) {
+        const string suffix = " Command";
+        return label.EndsWith(suffix, StringComparison.Ordinal)
+            ? label.Substring(0, label.Length - suffix.Length)
+            : label;
     }
 
     /// <summary>

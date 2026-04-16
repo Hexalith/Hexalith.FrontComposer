@@ -87,10 +87,16 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine("            ? state");
         _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Rejected, Error = action.Reason, Resolution = action.Resolution };");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    /// <summary>Resets lifecycle state to Idle (used after rejection to allow retry).</summary>");
+        _ = sb.AppendLine("    /// <summary>");
+        _ = sb.AppendLine("    /// Resets lifecycle state to Idle (used after rejection to allow retry, or on form disposal).");
+        _ = sb.AppendLine("    /// Guarded by CorrelationId so concurrent form instances sharing this feature state do not");
+        _ = sb.AppendLine("    /// wipe each other's in-flight submissions. Patch 2026-04-16 P-11.");
+        _ = sb.AppendLine("    /// </summary>");
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnResetToIdle(" + state + " state, " + actions + ".ResetToIdleAction action)");
-        _ = sb.AppendLine("        => new(CommandLifecycleState.Idle, null, null, null, null);");
+        _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
+        _ = sb.AppendLine("            ? state");
+        _ = sb.AppendLine("            : new(CommandLifecycleState.Idle, null, null, null, null);");
         _ = sb.AppendLine("}");
 
         return sb.ToString();

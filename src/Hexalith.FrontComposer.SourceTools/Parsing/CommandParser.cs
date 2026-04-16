@@ -28,12 +28,17 @@ public static class CommandParser {
     private const string BoundedContextAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.BoundedContextAttribute";
     private const string DerivedFromAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.DerivedFromAttribute";
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
+    private const string IconAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.IconAttribute";
+    private const string DefaultValueAttributeName = "System.ComponentModel.DefaultValueAttribute";
 
     /// <summary>Warning threshold for non-derivable property count.</summary>
     public const int NonDerivableWarningThreshold = 30;
 
     /// <summary>Hard error threshold for non-derivable property count (DoS mitigation).</summary>
     public const int NonDerivableErrorThreshold = 100;
+
+    /// <summary>Hard error threshold for TOTAL property count — Story 2-2 HFC1011 (DoS mitigation).</summary>
+    public const int TotalPropertyHardLimit = 200;
 
     private static readonly EquatableArray<DiagnosticInfo> EmptyDiagnostics = new(ImmutableArray<DiagnosticInfo>.Empty);
     private static readonly CommandParseResult EmptyResult = new(null, EmptyDiagnostics);
@@ -63,6 +68,24 @@ public static class CommandParser {
 
         ValidateTypeKind(typeSymbol, targetNode, diagnostics, filePath, linePos);
 
+        // HFC1014: nested [Command] types are unsupported (Story 2-2 Task 1.3b). A command's ContainingSymbol
+        // must be a namespace, not a class/struct/record. Emit early and halt parsing — nested generation would
+        // break the route-emission invariant {namespace.{CommandTypeName}Page} if the class lived inside another.
+        if (typeSymbol.ContainingType is not null) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1014",
+                string.Format(
+                    "[Command] type '{0}' is nested inside '{1}'. Command types must be top-level within a namespace.",
+                    typeSymbol.Name,
+                    typeSymbol.ContainingType.ToDisplayString()),
+                "Error",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+
+            return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
+        }
+
         if (ct.IsCancellationRequested) {
             return EmptyResult;
         }
@@ -91,6 +114,7 @@ public static class CommandParser {
 
         string? boundedContext = ParseBoundedContext(typeSymbol, out string? boundedContextDisplayLabel);
         string? displayName = ParseDisplayAttribute(typeSymbol);
+        string? iconName = ParseIconAttribute(typeSymbol);
 
         if (ct.IsCancellationRequested) {
             return EmptyResult;
@@ -101,7 +125,10 @@ public static class CommandParser {
         ImmutableArray<PropertyModel>.Builder derivableBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
         ImmutableArray<PropertyModel>.Builder nonDerivableBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
 
-        HashSet<string> seenNames = new(StringComparer.Ordinal);
+        // Case-insensitive dedup + MessageId lookup (patch 2026-04-16 P-02): a property named
+        // `messageId` satisfies the runtime MessageId contract, so HFC1006 must not fire on casing alone.
+        HashSet<string> seenNames = new(StringComparer.OrdinalIgnoreCase);
+        List<IPropertySymbol> nonDerivableSymbols = new();
         INamedTypeSymbol? currentType = typeSymbol;
         while (currentType is not null && currentType.SpecialType != SpecialType.System_Object) {
             foreach (ISymbol member in currentType.GetMembers()) {
@@ -127,6 +154,7 @@ public static class CommandParser {
                 }
 
                 PropertyModel property = AttributeParser.ParsePropertyForCommand(propertySymbol, typeName, diagnostics, filePath);
+                ValidateDefaultValueType(propertySymbol, diagnostics, filePath);
                 allBuilder.Add(property);
 
                 bool isDerivable = IsDerivableProperty(propertySymbol);
@@ -135,18 +163,79 @@ public static class CommandParser {
                 }
                 else {
                     nonDerivableBuilder.Add(property);
+                    nonDerivableSymbols.Add(propertySymbol);
                 }
             }
 
             currentType = currentType.BaseType;
         }
 
-        // Check MessageId presence (HFC1006).
-        if (!seenNames.Contains("MessageId")) {
+        // Check MessageId presence (HFC1006). Also walk AllInterfaces so an interface-declared
+        // `MessageId` (potentially with a default implementation) satisfies the contract (patch 2026-04-16 P-03).
+        bool hasMessageId = seenNames.Contains("MessageId");
+        if (!hasMessageId) {
+            foreach (INamedTypeSymbol iface in typeSymbol.AllInterfaces) {
+                foreach (ISymbol interfaceMember in iface.GetMembers("MessageId")) {
+                    if (interfaceMember is IPropertySymbol { IsStatic: false, IsIndexer: false }) {
+                        hasMessageId = true;
+                        break;
+                    }
+                }
+
+                if (hasMessageId) {
+                    break;
+                }
+            }
+        }
+
+        if (!hasMessageId) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1006",
                 string.Format("[Command] type '{0}' is missing a 'MessageId' property. Add a string MessageId property (or inherit from a base record that provides it) so commands can be correlated end-to-end.", typeName),
                 "Warning",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+        }
+
+        // HFC1016: non-derivable property must be writable via `_model.X = v`. Read-only or
+        // init-only setters fail to compile at adopter side even when HFC1009 passes (init-only
+        // records still have an implicit parameterless ctor). Patch 2026-04-16 P-01.
+        foreach (IPropertySymbol prop in nonDerivableSymbols) {
+            IMethodSymbol? setter = prop.SetMethod;
+            bool isWritable = setter is { DeclaredAccessibility: Accessibility.Public, IsInitOnly: false };
+            if (!isWritable) {
+                string kind = setter is null
+                    ? "has no public setter"
+                    : setter.IsInitOnly
+                        ? "is declared with an 'init' accessor"
+                        : "has a non-public setter";
+
+                diagnostics.Add(new DiagnosticInfo(
+                    "HFC1016",
+                    string.Format(
+                        "[Command] type '{0}' property '{1}' {2}. The generated form binds input controls via '_model.{1} = value', which requires a public writable setter. Change the property to '{{ get; set; }}' or mark it with [DerivedFrom].",
+                        typeName,
+                        prop.Name,
+                        kind),
+                    "Error",
+                    filePath,
+                    linePos.Line,
+                    linePos.Character));
+            }
+        }
+
+        // HFC1011: hard error when total (derivable + non-derivable) public property count exceeds 200 — Story 2-2 Task 1.3a, Red-team RT-5.
+        int totalCount = allBuilder.Count;
+        if (totalCount > TotalPropertyHardLimit) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1011",
+                string.Format(
+                    "[Command] type '{0}' has {1} total public properties, exceeding the hard limit of {2}. Split the command into smaller aggregates.",
+                    typeName,
+                    totalCount,
+                    TotalPropertyHardLimit),
+                "Error",
                 filePath,
                 linePos.Line,
                 linePos.Character));
@@ -180,7 +269,8 @@ public static class CommandParser {
             displayName,
             new EquatableArray<PropertyModel>(allBuilder.ToImmutable()),
             new EquatableArray<PropertyModel>(derivableBuilder.ToImmutable()),
-            new EquatableArray<PropertyModel>(nonDerivableBuilder.ToImmutable()));
+            new EquatableArray<PropertyModel>(nonDerivableBuilder.ToImmutable()),
+            iconName);
 
         return new CommandParseResult(
             model,
@@ -341,4 +431,95 @@ public static class CommandParser {
 
         return null;
     }
+
+    /// <summary>
+    /// Resolves the <c>[Icon(IconName)]</c> attribute value when declared on the command type.
+    /// Format validation is deferred to runtime (Story 2-2 Decision D34).
+    /// </summary>
+    private static string? ParseIconAttribute(INamedTypeSymbol typeSymbol) {
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == IconAttributeName
+                && attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is string iconName
+                && !string.IsNullOrWhiteSpace(iconName)) {
+                return iconName;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// HFC1012: emits a parse-time error when a property's <c>[DefaultValue(x)]</c> argument's runtime type is not
+    /// assignable to the decorated property's declared type (Story 2-2 Task 1.3c, Chaos CM-1).
+    /// Uses Roslyn's <see cref="TypedConstant"/> type to compare against the property type; nullable wrappers unwrapped.
+    /// </summary>
+    private static void ValidateDefaultValueType(IPropertySymbol propertySymbol, List<DiagnosticInfo> diagnostics, string filePath) {
+        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() != DefaultValueAttributeName) {
+                continue;
+            }
+
+            if (attr.ConstructorArguments.Length == 0) {
+                continue;
+            }
+
+            ITypeSymbol propertyType = propertySymbol.Type;
+            // Unwrap Nullable<T> for comparison.
+            if (propertyType is INamedTypeSymbol named && named.IsGenericType && named.ConstructedFrom.SpecialType == SpecialType.System_Nullable_T) {
+                propertyType = named.TypeArguments[0];
+            }
+
+            bool assignable;
+            string actualTypeDisplay;
+            if (attr.AttributeConstructor?.Parameters is { Length: 2 } parameters
+                && parameters[0].Type.ToDisplayString() == "System.Type"
+                && parameters[1].Type.SpecialType == SpecialType.System_String
+                && attr.ConstructorArguments[0].Value is ITypeSymbol declaredDefaultType) {
+                assignable = IsDefaultValueTypeAssignable(declaredDefaultType, propertyType);
+                actualTypeDisplay = declaredDefaultType.ToDisplayString();
+            }
+            else {
+                TypedConstant arg = attr.ConstructorArguments[0];
+
+                // Null is always assignable (reference / nullable types); skip the check.
+                if (arg.IsNull) {
+                    continue;
+                }
+
+                ITypeSymbol? argType = arg.Type;
+                if (argType is null) {
+                    continue;
+                }
+
+                assignable = IsDefaultValueTypeAssignable(argType, propertyType);
+                actualTypeDisplay = argType.ToDisplayString();
+            }
+
+            if (!assignable) {
+                AttributeSyntax? attrSyntax = attr.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax;
+                Microsoft.CodeAnalysis.Text.LinePosition linePos = attrSyntax?.GetLocation().GetLineSpan().StartLinePosition ?? default;
+                diagnostics.Add(new DiagnosticInfo(
+                    "HFC1012",
+                    string.Format(
+                        "Property '{0}.{1}' has [DefaultValue] of type '{2}' which is not assignable to the property type '{3}'.",
+                        propertySymbol.ContainingType?.Name ?? "?",
+                        propertySymbol.Name,
+                        actualTypeDisplay,
+                        propertySymbol.Type.ToDisplayString()),
+                    "Error",
+                    filePath,
+                    linePos.Line,
+                    linePos.Character));
+            }
+        }
+    }
+
+    private static bool IsDefaultValueTypeAssignable(ITypeSymbol candidateType, ITypeSymbol propertyType)
+        => SymbolEqualityComparer.Default.Equals(candidateType, propertyType)
+            || (candidateType.SpecialType == SpecialType.System_Int32
+                && (propertyType.SpecialType is SpecialType.System_Int64
+                    or SpecialType.System_Double
+                    or SpecialType.System_Single
+                    or SpecialType.System_Decimal));
 }

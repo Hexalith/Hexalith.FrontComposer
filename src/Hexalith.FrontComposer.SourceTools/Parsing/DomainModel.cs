@@ -69,6 +69,21 @@ public sealed class DomainModel : IEquatable<DomainModel> {
 }
 
 /// <summary>
+/// Classifies a command's rendering density based on its non-derivable property count
+/// (Story 2-2 Decision D3). Computed at parse time and carried on <see cref="CommandModel"/>.
+/// </summary>
+public enum CommandDensity {
+    /// <summary>0 or 1 non-derivable fields — renders as a FluentButton (optionally with a single-field FluentPopover).</summary>
+    Inline,
+
+    /// <summary>2 to 4 non-derivable fields — renders inside a FluentCard with expand-in-row scroll stabilization.</summary>
+    CompactInline,
+
+    /// <summary>5 or more non-derivable fields — renders as a routable FullPage component.</summary>
+    FullPage,
+}
+
+/// <summary>
 /// Intermediate representation of a [Command]-annotated type, produced by the
 /// Parse stage. Pure data -- no Roslyn symbol references. The property collection
 /// is split into derivable (infrastructure-sourced, hidden from the form) and
@@ -83,7 +98,8 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         string? displayName,
         EquatableArray<PropertyModel> properties,
         EquatableArray<PropertyModel> derivableProperties,
-        EquatableArray<PropertyModel> nonDerivableProperties) {
+        EquatableArray<PropertyModel> nonDerivableProperties,
+        string? iconName = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -92,6 +108,24 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         Properties = properties;
         DerivableProperties = derivableProperties;
         NonDerivableProperties = nonDerivableProperties;
+        IconName = iconName;
+        Density = ComputeDensity(nonDerivableProperties.Count);
+    }
+
+    /// <summary>
+    /// Computes density from non-derivable property count (Story 2-2 AC1, Decision D3).
+    /// Boundaries are specification-locked: count ≤ 1 → Inline; 2..4 → CompactInline; ≥ 5 → FullPage.
+    /// </summary>
+    public static CommandDensity ComputeDensity(int nonDerivableCount) {
+        if (nonDerivableCount <= 1) {
+            return CommandDensity.Inline;
+        }
+
+        if (nonDerivableCount <= 4) {
+            return CommandDensity.CompactInline;
+        }
+
+        return CommandDensity.FullPage;
     }
 
     public string TypeName { get; }
@@ -110,6 +144,18 @@ public sealed class CommandModel : IEquatable<CommandModel> {
 
     public EquatableArray<PropertyModel> NonDerivableProperties { get; }
 
+    /// <summary>
+    /// Gets the Fluent UI icon type-path fragment sourced from <c>[Icon(IconName)]</c>, or <see langword="null"/>
+    /// when the attribute is absent. Format validation is deferred to runtime (Story 2-2 Decision D34).
+    /// </summary>
+    public string? IconName { get; }
+
+    /// <summary>
+    /// Gets the density classification derived from <see cref="NonDerivableProperties"/>'s length
+    /// (Story 2-2 AC1, Decision D3). Participates in equality (ADR-009).
+    /// </summary>
+    public CommandDensity Density { get; }
+
     public bool Equals(CommandModel? other) {
         if (other is null) {
             return false;
@@ -126,7 +172,9 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             && DisplayName == other.DisplayName
             && Properties == other.Properties
             && DerivableProperties == other.DerivableProperties
-            && NonDerivableProperties == other.NonDerivableProperties;
+            && NonDerivableProperties == other.NonDerivableProperties
+            && IconName == other.IconName
+            && Density == other.Density;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandModel);
@@ -142,6 +190,8 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             hash = (hash * 31) + Properties.GetHashCode();
             hash = (hash * 31) + DerivableProperties.GetHashCode();
             hash = (hash * 31) + NonDerivableProperties.GetHashCode();
+            hash = (hash * 31) + (IconName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + Density.GetHashCode();
             return hash;
         }
     }

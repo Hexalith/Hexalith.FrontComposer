@@ -1,33 +1,59 @@
 @page "/counter"
 @implements IDisposable
+@using Counter.Domain
+
+<PageTitle>Counter sample</PageTitle>
 @inject IState<Counter.Domain.CounterProjectionState> CounterState
 
 <h1>Counter</h1>
 
-<div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
-    <section class="command-section">
-        <Counter.Domain.IncrementCommandForm />
-    </section>
-    <section class="data-section">
-        @if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
-        {
-            <Counter.Domain.CounterProjectionView />
-        }
-        else
-        {
-            <FluentStack Orientation="Orientation.Vertical"
-                         HorizontalAlignment="HorizontalAlignment.Center"
-                         VerticalAlignment="VerticalAlignment.Center"
-                         Style="padding: 32px; gap: 12px; text-align: center;">
-                <FluentText Size="TextSize.Size400" Weight="TextWeight.Semibold">
-                    No counter data yet. Send your first Increment Counter command.
-                </FluentText>
-            </FluentStack>
-        }
-    </section>
-</div>
+<CascadingValue Value="_demoContext">
+    <div class="page-container" style="display: flex; flex-direction: column; gap: 24px;">
+        <section class="command-section">
+            <h2>Compact inline (3 fields)</h2>
+            <BatchIncrementCommandRenderer />
+        </section>
+        <section class="inline-section">
+            <h2>Inline + popover (1 field)</h2>
+            <IncrementCommandRenderer />
+        </section>
+        <section class="fullpage-section">
+            <h2>Full-page command (5 fields)</h2>
+            <p role="note" style="padding: 12px; background: var(--neutral-fill-subtle-rest); border-left: 4px solid var(--accent-fill-rest);">
+                Navigation state persistence (scroll, filter, sort across FullPage round-trip) lands in Story 4.3.
+                The current demo proves routing + breadcrumb return only.
+            </p>
+            <a href="/commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter&amp;projectionTypeFqn=Counter.Domain.CounterProjection">Configure Counter</a>
+        </section>
+        <section class="data-section">
+            @if (CounterState.Value.IsLoading || CounterState.Value.Items?.Count > 0)
+            {
+                <CounterProjectionView />
+            }
+            else
+            {
+                <FluentStack Orientation="Orientation.Vertical"
+                             HorizontalAlignment="HorizontalAlignment.Center"
+                             VerticalAlignment="VerticalAlignment.Center"
+                             Style="padding: 32px; gap: 12px; text-align: center;">
+                    <FluentText Size="TextSize.Size400" Weight="TextWeight.Semibold">
+                        No counter data yet. Send your first Increment Counter command.
+                    </FluentText>
+                </FluentStack>
+            }
+        </section>
+    </div>
+</CascadingValue>
 
 @code {
+    // Story 2-2 Decision D27 — manual CascadingValue to exercise ProjectionContextProvider
+    // pre-fill without Epic 4's DataGrid row cascade. Demo-only.
+    private readonly Hexalith.FrontComposer.Contracts.Rendering.ProjectionContext _demoContext = new(
+        ProjectionTypeFqn: "Counter.Domain.CounterProjection",
+        BoundedContext: "Counter",
+        AggregateId: "counter-demo-1",
+        Fields: new Dictionary<string, object?> { ["TenantId"] = "counter-demo" });
+
     protected override void OnInitialized()
     {
         CounterState.StateChanged += OnStateChanged;

@@ -18,7 +18,7 @@ internal static class CompilationHelper {
 
         // Add runtime assemblies needed for netcoreapp compilation
         string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.Collections.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll"];
+        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.Collections.dll", "System.Collections.Concurrent.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll", "System.Private.Uri.dll"];
         foreach (string dll in additionalDlls) {
             string path = Path.Combine(runtimeDir, dll);
             if (File.Exists(path)) {
@@ -38,6 +38,13 @@ internal static class CompilationHelper {
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Localization.IStringLocalizer<>)); // Localization
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Logging.ILogger<>));            // Logging
         TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid<>));   // FluentUI
+        // Story 2-2: generated renderer + subscriber pull in these ASP.NET / Extensions types.
+        TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Options.IOptions<>));            // Options
+        TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.DependencyInjection.IServiceCollection)); // DI
+        TryAddAssemblyRef(refs, typeof(Microsoft.JSInterop.IJSRuntime));                     // JSInterop
+        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.RouteAttribute));     // Routing
+        // System.Collections.Concurrent explicit ref (ConcurrentDictionary<,>).
+        TryAddAssemblyRef(refs, typeof(System.Collections.Concurrent.ConcurrentDictionary<,>));
 
         return refs.ToArray();
     }

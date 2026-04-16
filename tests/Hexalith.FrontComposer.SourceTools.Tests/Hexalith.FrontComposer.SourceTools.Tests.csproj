@@ -17,6 +17,7 @@
     <PackageReference Include="Verify.XunitV3" />
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+    <PackageReference Include="FsCheck.Xunit.v3" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

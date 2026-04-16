@@ -110,4 +110,69 @@ public static class DiagnosticDescriptors {
         isEnabledByDefault: true);
 
     // HFC1010 reserved — "Full restart required for this change type" (not yet implemented; requires analyzer, not generator — see docs/hot-reload-guide.md)
+
+    /// <summary>
+    /// HFC1011: [Command] type exceeds the hard 200-property limit (DoS mitigation for Story 2-2).
+    /// Total public-property count (derivable + non-derivable) greater than 200 is rejected.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandTooManyTotalProperties = new(
+        id: "HFC1011",
+        title: "Command exceeds 200-property hard limit",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1012: <c>[DefaultValue(x)]</c> argument type is not assignable to the decorated property's type.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DefaultValueTypeMismatch = new(
+        id: "HFC1012",
+        title: "[DefaultValue] value type does not match property type",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    // HFC1013 reserved — previously proposed "BaseName collision" diagnostic was cut (Story 2-2 R2 Trim) after Decision D22 reverted to full {CommandTypeName} naming.
+
+    /// <summary>
+    /// HFC1014: Nested <c>[Command]</c> types are unsupported. Command types must be top-level within a namespace.
+    /// </summary>
+    public static readonly DiagnosticDescriptor NestedCommandUnsupported = new(
+        id: "HFC1014",
+        title: "Nested [Command] type is unsupported",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1015: <c>RenderMode</c> parameter is incompatible with the command density
+    /// (e.g. <c>CommandRenderMode.Inline</c> on a 5-field command). Runtime warning log
+    /// in Story 2-2; analyzer emission deferred to Epic 9. (Renumbered from originally-proposed
+    /// HFC1008 to avoid collision with <see cref="CommandFlagsEnumProperty"/>.)
+    /// </summary>
+    public static readonly DiagnosticDescriptor RenderModeIncompatibleWithDensity = new(
+        id: "HFC1015",
+        title: "RenderMode incompatible with command density",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1016: A non-derivable property on a <c>[Command]</c> type is read-only or init-only.
+    /// The generated form binds input controls via <c>_model.Property = value</c>, which requires
+    /// a writable instance setter. Records with positional parameters (which become init-only)
+    /// or hand-authored <c>{ get; init; }</c> / <c>{ get; }</c> properties fail to compile.
+    /// Change to <c>{ get; set; }</c> or mark the property with <c>[DerivedFrom]</c>.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandPropertyNotWritable = new(
+        id: "HFC1016",
+        title: "Command non-derivable property is read-only or init-only",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

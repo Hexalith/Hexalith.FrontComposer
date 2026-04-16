@@ -1,0 +1,17 @@
+{
+  "name": "endtoend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "run-story-2-2-e2e.cjs",
+  "scripts": {
+    "story2.2:e2e": "node ./run-story-2-2-e2e.cjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@axe-core/playwright": "^4.11.1",
+    "playwright": "^1.59.1"
+  }
+}

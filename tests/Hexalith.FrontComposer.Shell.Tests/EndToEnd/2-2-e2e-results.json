@@ -1,0 +1,200 @@
+[
+  {
+    "scenario": "S1 Inline render",
+    "status": "pass",
+    "evidence": {
+      "screenshot": "evidence/s1-inline-render.png",
+      "domSelectors": [
+        "section.inline-section",
+        "fluent-button:has-text(\"Increment\")",
+        "fluent-button#fc-trigger-{guid} (Increment trigger)",
+        "div.fluent-card div.fc-expand-in-row (Batch Increment Compact)",
+        "a[href*='/commands/Counter/ConfigureCounterCommand'] (Configure Counter FullPage link)"
+      ],
+      "consoleMatches": [
+        "no HFC1015 warning observed (verified Session D + E)"
+      ]
+    },
+    "durationMs": 291
+  },
+  {
+    "scenario": "S2 Inline popover open/close",
+    "status": "partial",
+    "evidence": {
+      "screenshot": "evidence/s2-inline-popover-open-close.png",
+      "domSelectors": [
+        "section.inline-section",
+        ".fc-popover (visible after click)",
+        "Click on Increment toggles fluent-popover-b[opened='true'] for the matching anchor (PASS)",
+        "Click on Cancel button toggles fluent-popover-b[opened='false'] (PASS)"
+      ],
+      "consoleMatches": [
+        "no exception logs"
+      ],
+      "notes": "Session E refinement: Escape key does NOT close the popover via the renderer's onkeydown=HandleEscape handler. The Blazor onkeydown event does not propagate from inside the FluentPopover web-component boundary to the Blazor handler. The Cancel button (which calls ClosePopoverAsync directly) does close the popover, so the close path itself is sound; only the Escape wiring is gapped. Tracked in deferred-work.md."
+    },
+    "durationMs": 515
+  },
+  {
+    "scenario": "S3 Inline popover submit",
+    "status": "partial",
+    "evidence": {
+      "screenshot": "evidence/s3-inline-popover-submit.png",
+      "domSelectors": [
+        "Type 5 in popover Amount field, click Increment submit button — submit fires (Blazor click handler invoked)"
+      ],
+      "consoleMatches": [
+        "no HFC1015, no InvalidOperationException"
+      ],
+      "notes": "Session E observation: Form submit dispatches SubmittedAction (verified earlier in bUnit Renderer_OneField_PopoverSubmit_InnerFormDispatchesSubmittedAction). However the popover does NOT auto-close on Confirmed — fluent-popover-b stays opened='true' after submit. The renderer's OnConfirmedAsync calls ClosePopoverAsync, but the Form's OnConfirmed callback may not fire on the Counter sample lifecycle path. Tracked in deferred-work.md as a Counter-sample auto-close wiring follow-up. (Prior session marked this 'skipped' citing headless flakiness; the real issue is the auto-close wiring.)"
+    },
+    "durationMs": 0
+  },
+  {
+    "scenario": "S4 Compact inline render",
+    "status": "pass",
+    "evidence": {
+      "screenshot": "evidence/s4-compact-inline-render.png",
+      "domSelectors": [
+        "section.command-section .fc-expand-in-row",
+        "div.fc-expand-in-row > div.fluent-card[appearance='outline'][shadow='small']",
+        "form within .fc-expand-in-row aria-label='Batch Increment command form'",
+        "fluent-text-input fields for Amount, Note, EffectiveDate"
+      ],
+      "consoleMatches": [
+        "fc-expandinrow.js initializeExpandInRow invocation expected on first render (verified by bUnit Renderer_CompactInline_InitializesJsModuleOnFirstRender)"
+      ]
+    },
+    "durationMs": 119
+  },
+  {
+    "scenario": "S5 Compact inline last-used prefill",
+    "status": "fail",
+    "evidence": {
+      "screenshot": "evidence/s5-compact-inline-last-used-prefill.png",
+      "domSelectors": [
+        "After submitting Amount=7 from Inline popover then navigating /domain → /counter and re-opening popover, Amount field still shows constructor default '1' (NOT '7')."
+      ],
+      "consoleMatches": [
+        "no D31 tenant-guard warning observed (DemoUserContextAccessor wired correctly)"
+      ],
+      "notes": "Session E observation: LastUsed prefill is not taking effect end-to-end in the Counter sample. The bUnit-side LastUsed coverage in DerivedValueProviderChainTests + LastUsedSubscriberRuntimeTests + LastUsedSubscriberEmitterTests passes, so the contract is sound; the integration in the Counter sample needs tracing — likely Confirmed never reaches the subscriber, OR the subscriber Ensure<T> is not invoked early enough on the popover submit path. Tracked as a post-2-2 follow-up. (Prior session marked this 'skipped' citing unit-test coverage; the actual integration is broken.)"
+    },
+    "durationMs": 0
+  },
+  {
+    "scenario": "S6 FullPage route",
+    "status": "pass",
+    "evidence": {
+      "screenshot": "evidence/s6-fullpage-route.png",
+      "domSelectors": [
+        "Navigation to /commands/Counter/ConfigureCounterCommand?returnPath=%2Fcounter",
+        "document.title = 'Configure Counter'",
+        "nav[aria-label='breadcrumb'] textContent = 'Counter > Configure Counter'",
+        "breadcrumb a[href='/counter']",
+        "form[aria-label='Configure Counter command form'] with 5 fluent-text-input fields"
+      ],
+      "consoleMatches": [
+        "no 404, no routing warning"
+      ]
+    },
+    "durationMs": 118
+  },
+  {
+    "scenario": "S7 FullPage ReturnPath safe (D32)",
+    "status": "pass",
+    "evidence": {
+      "screenshot": "evidence/s7-fullpage-returnpath-safe.png",
+      "domSelectors": [
+        "Navigation to /commands/Counter/ConfigureCounterCommand?returnPath=https%3A%2F%2Fevil.com",
+        "breadcrumb a[href='/'] (NOT 'https://evil.com') — D32 IsValidRelativeReturnPath rejected the absolute URL"
+      ],
+      "consoleMatches": [
+        "D32 log emitted on subsequent navigation (covered by bUnit Renderer_FullPage_InvalidReturnPath_FallsBackToHomeBreadcrumb test)"
+      ],
+      "notes": "Session E elevated from 'skipped' to 'pass' — direct browser navigation confirms breadcrumb falls back to '/' when the query carries an absolute URL."
+    },
+    "durationMs": 1200
+  },
+  {
+    "scenario": "A11Y Inline page",
+    "status": "pass",
+    "evidence": {
+      "screenshot": "evidence/a11y-inline-page.png",
+      "domSelectors": [
+        "section.inline-section",
+        "section.command-section",
+        "section.data-section"
+      ],
+      "consoleMatches": [
+        "axe:0 serious/critical violations"
+      ]
+    },
+    "durationMs": 387
+  },
+  {
+    "scenario": "A11Y Compact page",
+    "status": "pass",
+    "evidence": {
+      "screenshot": "evidence/a11y-compact-page.png",
+      "domSelectors": [
+        "section.command-section .fc-expand-in-row"
+      ],
+      "consoleMatches": [
+        "axe:0 serious/critical violations"
+      ]
+    },
+    "durationMs": 368
+  },
+  {
+    "scenario": "A11Y FullPage route",
+    "status": "pass",
+    "evidence": {
+      "screenshot": "evidence/a11y-fullpage-route.png",
+      "domSelectors": [
+        "nav[aria-label=\"breadcrumb\"]",
+        "form"
+      ],
+      "consoleMatches": [
+        "axe:0 serious/critical violations"
+      ]
+    },
+    "durationMs": 332
+  },
+  {
+    "scenario": "S8 Hot-reload density flip",
+    "status": "skipped",
+    "evidence": {
+      "domSelectors": [],
+      "consoleMatches": [
+        "blocked: local browser harness does not orchestrate dotnet watch file mutation safely; generator-side density flip is covered by SourceTools integration tests"
+      ]
+    },
+    "durationMs": 0
+  },
+  {
+    "scenario": "S9 D31 dev-mode warning",
+    "status": "pass",
+    "evidence": {
+      "domSelectors": [
+        "<FcDiagnosticsPanel /> on /counter does NOT show 'LastUsed persistence disabled' message bar — Counter.Web wires DemoUserContextAccessor (counter-demo / demo-user) so D31 fail-closed path is not triggered. Inverse-pass: warning correctly stays silent when tenant + user are set."
+      ],
+      "consoleMatches": [
+        "no D31 rate-limited warning logged"
+      ],
+      "notes": "Session E elevated from 'skipped' to 'pass' — observed silent diagnostic panel on /counter under DemoUserContextAccessor wiring."
+    },
+    "durationMs": 1500
+  },
+  {
+    "scenario": "S10 D38 interleaved submit correlation",
+    "status": "skipped",
+    "evidence": {
+      "domSelectors": [],
+      "consoleMatches": [
+        "blocked: sample page does not expose a clean multi-submit harness for correlation race automation yet; D38 contract is exhaustively covered by LastUsedSubscriberRuntimeTests (T-race-1, T-race-2, T-orphan, T-dispose, T-cap)"
+      ]
+    },
+    "durationMs": 0
+  }
+]

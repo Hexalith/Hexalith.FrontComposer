@@ -4,7 +4,9 @@ using Bunit;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -33,6 +35,12 @@ public abstract class GeneratedComponentTestBase : BunitContext {
             o.ConfirmDelayMs = 0;
         });
         _ = Services.AddScoped<ICommandService, StubCommandService>();
+
+        // Story 2-2 — renderers resolve these from DI.
+        _ = Services.AddOptions<FcShellOptions>();
+        _ = Services.AddScoped<InlinePopoverRegistry>();
+        _ = Services.AddScoped<ILastUsedSubscriberRegistry, NoopLastUsedSubscriberRegistry>();
+        _ = Services.AddScoped<ICommandPageContext, NullCommandPageContext>();
     }
 
     protected async Task InitializeStoreAsync() {
@@ -43,5 +51,10 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         IStore store = Services.GetRequiredService<IStore>();
         await store.InitializeAsync().ConfigureAwait(false);
         _storeInitialized = true;
+    }
+
+    private sealed class NoopLastUsedSubscriberRegistry : ILastUsedSubscriberRegistry {
+        public void Ensure<TSubscriber>() where TSubscriber : class, IDisposable {
+        }
     }
 }

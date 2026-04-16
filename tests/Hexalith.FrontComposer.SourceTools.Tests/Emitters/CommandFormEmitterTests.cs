@@ -113,6 +113,24 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_SubmitEnsuresLastUsedSubscriberBeforeSubmittedDispatch() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        int ensureIndex = source.IndexOf(
+            "LastUsedSubscriberRegistry.Ensure<IncrementCommandLastUsedSubscriber>();",
+            StringComparison.Ordinal);
+        int dispatchIndex = source.IndexOf(
+            "Dispatcher.Dispatch(new IncrementCommandActions.SubmittedAction(correlationId, _model));",
+            StringComparison.Ordinal);
+
+        ensureIndex.ShouldBeGreaterThanOrEqualTo(0);
+        dispatchIndex.ShouldBeGreaterThan(ensureIndex);
+    }
+
+    [Fact]
     public void Emit_IncludesCancellationTokenSourceDisposal() {
         CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
@@ -126,7 +144,7 @@ public class CommandFormEmitterTests {
         CommandFormModel form = BuildForm(System.Array.Empty<FormFieldModel>());
         string source = CommandFormEmitter.Emit(form, BuildFluxor());
 
-        source.ShouldContain("private string ResolveLabel(string propertyName, string staticLabel)");
+        source.ShouldContain("private string ResolveLabel(string propertyName, string staticLabel, bool hasExplicitDisplay)");
         source.ShouldContain("Localizer[propertyName]");
     }
 
@@ -156,6 +174,51 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_SubmitBlocksWhenClientParseErrorsExist() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("if (HasClientParseErrors())");
+        source.ShouldContain("_editContext?.NotifyValidationStateChanged();");
+    }
+
+    [Fact]
+    public void Emit_OnConfirmedIsGuardedBySubmittedCorrelationId() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("private string? _submittedCorrelationId;");
+        source.ShouldContain("string.Equals(currentCorrelationId, _submittedCorrelationId, StringComparison.Ordinal)");
+        source.ShouldContain("_submittedCorrelationId = correlationId;");
+    }
+
+    [Fact]
+    public void Emit_FormRootDoesNotHardcodeMaxWidth() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldNotContain("max-width: 720px");
+    }
+
+    [Fact]
+    public void Emit_InvokesBeforeSubmitHookWhenProvided() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("[Parameter] public Func<Task>? BeforeSubmit { get; set; }");
+        source.ShouldContain("if (BeforeSubmit is not null)");
+        source.ShouldContain("await BeforeSubmit().ConfigureAwait(false);");
+    }
+
+    [Fact]
     public void Emit_EndToEnd_FromParsedCommand_CompilesSuccessfully() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CommandParseResult parse = CompilationHelper.ParseCommand(CommandTestSources.MultiFieldCommand, "TestDomain.PlaceOrderCommand");
@@ -167,5 +230,27 @@ public class CommandFormEmitterTests {
 
         Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
         tree.GetDiagnostics(ct).ShouldBeEmpty();
+    }
+
+    [Fact]
+    public Task CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("TenantId", "String", FormFieldTypeCategory.TextInput, "Tenant Id", false, true, null),
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+        return Verify(source);
+    }
+
+    [Fact]
+    public Task CommandForm_ShowFieldsOnly_RendersOnlyNamedFields() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+            new FormFieldModel("Note", "String", FormFieldTypeCategory.TextInput, "Note", true, false, null),
+        ]);
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+        return Verify(source);
     }
 }

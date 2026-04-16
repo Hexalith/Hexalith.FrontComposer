@@ -13,7 +13,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         string staticLabel,
         bool isNullable,
         bool isRequired,
-        string? enumFullyQualifiedName) {
+        string? enumFullyQualifiedName,
+        bool hasExplicitDisplayName = false) {
         PropertyName = propertyName;
         TypeName = typeName;
         TypeCategory = typeCategory;
@@ -21,6 +22,7 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
         IsNullable = isNullable;
         IsRequired = isRequired;
         EnumFullyQualifiedName = enumFullyQualifiedName;
+        HasExplicitDisplayName = hasExplicitDisplayName;
     }
 
     /// <summary>Gets the .NET property name (e.g., <c>Amount</c>).</summary>
@@ -53,6 +55,15 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
     /// </summary>
     public string? EnumFullyQualifiedName { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether <see cref="StaticLabel"/> came from an explicit
+    /// <c>[Display(Name = "...")]</c> attribute. When <see langword="true"/>, AC3
+    /// mandates that the emitted <c>ResolveLabel</c> helper return the static label
+    /// directly, bypassing the runtime <see cref="IStringLocalizer"/> lookup.
+    /// Patch 2026-04-16 P-09.
+    /// </summary>
+    public bool HasExplicitDisplayName { get; }
+
     public bool Equals(FormFieldModel? other) {
         if (other is null) {
             return false;
@@ -68,7 +79,8 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             && StaticLabel == other.StaticLabel
             && IsNullable == other.IsNullable
             && IsRequired == other.IsRequired
-            && EnumFullyQualifiedName == other.EnumFullyQualifiedName;
+            && EnumFullyQualifiedName == other.EnumFullyQualifiedName
+            && HasExplicitDisplayName == other.HasExplicitDisplayName;
     }
 
     public override bool Equals(object? obj) => Equals(obj as FormFieldModel);
@@ -83,6 +95,7 @@ public sealed class FormFieldModel : IEquatable<FormFieldModel> {
             hash = (hash * 31) + IsNullable.GetHashCode();
             hash = (hash * 31) + IsRequired.GetHashCode();
             hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + HasExplicitDisplayName.GetHashCode();
             return hash;
         }
     }

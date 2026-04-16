@@ -137,7 +137,9 @@ public partial class SubmitOrderCommand
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Id == "HFC1001").ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(4, "Command-only compilations should emit form, actions, lifecycle feature, and registration sources");
+        // Story 2-2 expanded the command-pipeline emission: form, actions, lifecycle feature, registration,
+        // density-driven renderer, and LastUsed subscriber — 6 trees for non-FullPage densities.
+        result.GeneratedTrees.Length.ShouldBe(6, "Command-only compilations should emit form, actions, lifecycle feature, registration, renderer, and LastUsed subscriber sources");
 
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
             result.GeneratedTrees.ToArray());
@@ -356,4 +358,143 @@ public partial class AllUnsupportedProjection
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ShouldBeEmpty("Generated code with zero columns should still compile");
     }
+
+    [Fact]
+    public void RunGenerators_ZeroFieldCommand_EmitsInlineRendererWithoutPage() {
+        VerifyCommandArtifacts(
+            CommandTestSources.EmptyCommand,
+            "TestDomain.EmptyCommand",
+            expectedTreeCount: 6,
+            shouldEmitPage: false);
+    }
+
+    [Fact]
+    public void RunGenerators_OneFieldCommand_EmitsInlineRendererWithoutPage() {
+        VerifyCommandArtifacts(
+            CommandTestSources.SingleStringFieldCommand,
+            "TestDomain.SetNameCommand",
+            expectedTreeCount: 6,
+            shouldEmitPage: false);
+    }
+
+    [Fact]
+    public void RunGenerators_TwoFieldCommand_EmitsCompactRendererWithoutPage() {
+        VerifyCommandArtifacts(
+            TwoFieldCommandSource,
+            "TestDomain.TwoFieldCommand",
+            expectedTreeCount: 6,
+            shouldEmitPage: false);
+    }
+
+    [Fact]
+    public void RunGenerators_FiveFieldCommand_EmitsFullPageRendererAndPage() {
+        VerifyCommandArtifacts(
+            CommandTestSources.MultiFieldCommand,
+            "TestDomain.PlaceOrderCommand",
+            expectedTreeCount: 7,
+            shouldEmitPage: true);
+    }
+
+    [Fact]
+    public void RunGenerators_FiveFieldCommand_PageInfersRestoreViewKeyFromQuery() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(CommandTestSources.MultiFieldCommand);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        SyntaxTree pageTree = result.GeneratedTrees
+            .Single(t => System.IO.Path.GetFileName(t.FilePath).Contains("CommandPage.g.razor.cs", StringComparison.Ordinal));
+        string pageSource = pageTree.GetText(ct).ToString();
+
+        pageSource.ShouldContain("InferReturnViewKeyFromReferrer");
+        pageSource.ShouldContain("projectionTypeFqn");
+        pageSource.ShouldContain("NavigationManager.ToAbsoluteUri(NavigationManager.Uri)");
+        pageSource.ShouldContain("OpenComponent<PageTitle>");
+    }
+
+    [Fact]
+    public void RunGenerators_RenderModeOverride_HostComponentCompilesAgainstGeneratedRenderer() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(
+            [TwoFieldCommandSource, RenderModeOverrideHostSource]);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty("A consumer should be able to compile against a generated renderer with RenderMode override.");
+    }
+
+    private static void VerifyCommandArtifacts(
+        string source,
+        string metadataName,
+        int expectedTreeCount,
+        bool shouldEmitPage) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
+        result.GeneratedTrees.Length.ShouldBe(expectedTreeCount);
+
+        string typeName = metadataName.Split('.').Last();
+        string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
+        fileNames.ShouldContain($"TestDomain.{typeName}.CommandRenderer.g.razor.cs");
+        fileNames.ShouldContain($"TestDomain.{typeName}.CommandLastUsedSubscriber.g.cs");
+
+        if (shouldEmitPage) {
+            fileNames.ShouldContain($"TestDomain.{typeName}.CommandPage.g.razor.cs");
+        }
+        else {
+            fileNames.ShouldNotContain($"TestDomain.{typeName}.CommandPage.g.razor.cs");
+        }
+
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeEmpty($"Generated command artifacts for {metadataName} should compile without errors.");
+    }
+
+    private const string TwoFieldCommandSource = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+public class TwoFieldCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public int Amount { get; set; }
+}";
+
+    private const string RenderModeOverrideHostSource = @"
+using Hexalith.FrontComposer.Contracts.Rendering;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
+
+namespace TestDomain;
+
+public sealed class RenderModeOverrideHost : ComponentBase
+{
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        builder.OpenComponent<TwoFieldCommandRenderer>(0);
+        builder.AddAttribute(1, ""RenderMode"", CommandRenderMode.FullPage);
+        builder.CloseComponent();
+    }
+}";
 }

@@ -9,6 +9,11 @@
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
   </ItemGroup>
 
+  <ItemGroup Label="Runtime">
+    <!-- System.Collections.Immutable is ONLY needed on netstandard2.0 — net10.0 carries it in-box. -->
+    <PackageVersion Include="System.Collections.Immutable" Version="9.0.0" />
+  </ItemGroup>
+
   <ItemGroup Label="Blazor">
     <!-- Fluent UI v5 RC2 available on public NuGet (Path 1 from story spec).
          ADR-003: build on v5 RC, pin exact version. -->
