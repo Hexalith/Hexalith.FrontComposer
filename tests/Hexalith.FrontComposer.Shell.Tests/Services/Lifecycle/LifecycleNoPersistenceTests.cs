@@ -2,8 +2,6 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
-using Microsoft.Extensions.Options;
-
 using NSubstitute;
 
 using Shouldly;
@@ -26,7 +24,7 @@ public class LifecycleNoPersistenceTests {
             .When(s => s.GetAsync<object?>(Arg.Any<string>(), Arg.Any<CancellationToken>()))
             .Do(_ => throw new InvalidOperationException("lifecycle state must not read storage"));
 
-        using LifecycleStateService service = new(Options.Create(new LifecycleOptions()));
+        using LifecycleStateService service = new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions()));
 
         Should.NotThrow(() => {
             service.Transition("c1", CommandLifecycleState.Submitting);

@@ -1,8 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
-using Microsoft.Extensions.Options;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
@@ -14,7 +12,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
 public class LifecycleStateServiceTests {
     private static LifecycleStateService Create(int cacheCap = 1024) {
         return new LifecycleStateService(
-            Options.Create(new LifecycleOptions { MessageIdCacheCapacity = cacheCap }));
+            Microsoft.Extensions.Options.Options.Create(new LifecycleOptions { MessageIdCacheCapacity = cacheCap }));
     }
 
     // ----- Task 4.9 — Behavioural (6 tests) ---------------------------------

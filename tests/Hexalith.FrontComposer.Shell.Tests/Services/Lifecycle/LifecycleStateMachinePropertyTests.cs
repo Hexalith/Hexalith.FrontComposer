@@ -4,8 +4,6 @@ using FsCheck.Xunit;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
-using Microsoft.Extensions.Options;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
@@ -15,7 +13,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
 /// </summary>
 public class LifecycleStateMachinePropertyTests {
     private static LifecycleStateService Create(int cap = 1024) =>
-        new(Options.Create(new LifecycleOptions { MessageIdCacheCapacity = cap }));
+        new(Microsoft.Extensions.Options.Options.Create(new LifecycleOptions { MessageIdCacheCapacity = cap }));
 
     private static readonly CommandLifecycleState[] AllStates = [
         CommandLifecycleState.Idle,

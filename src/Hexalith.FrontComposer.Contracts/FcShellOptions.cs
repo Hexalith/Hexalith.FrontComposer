@@ -57,4 +57,33 @@ public sealed class FcShellOptions {
     /// regardless of this flag. Production builds skip the notice entirely.
     /// </remarks>
     public bool LastUsedDisabled { get; set; }
+
+    /// <summary>
+    /// Threshold (ms) before <c>FcLifecycleWrapper</c> applies the <c>.fc-lifecycle-pulse</c>
+    /// animation. A Confirmed transition arriving within this window never fires the pulse
+    /// (UX-DR48 brand-signal fusion). Story 2-4 Decision D12 / NFR11.
+    /// </summary>
+    [Range(50, 2_000, ErrorMessage = "SyncPulseThresholdMs must be between 50 and 2000.")]
+    public int SyncPulseThresholdMs { get; set; } = 300;
+
+    /// <summary>
+    /// Threshold (ms) at which <c>FcLifecycleWrapper</c> renders the localized "Still syncing…"
+    /// <c>FluentBadge</c> beneath the wrapped form. Story 2-4 Decision D12 / NFR13.
+    /// </summary>
+    [Range(500, 10_000, ErrorMessage = "StillSyncingThresholdMs must be between 500 and 10000.")]
+    public int StillSyncingThresholdMs { get; set; } = 2_000;
+
+    /// <summary>
+    /// Threshold (ms) at which <c>FcLifecycleWrapper</c> escalates to the action-prompt
+    /// <c>FluentMessageBar</c> offering manual refresh recovery. Story 2-4 Decision D12 / NFR14.
+    /// </summary>
+    [Range(5_000, 60_000, ErrorMessage = "TimeoutActionThresholdMs must be between 5000 and 60000.")]
+    public int TimeoutActionThresholdMs { get; set; } = 10_000;
+
+    /// <summary>
+    /// Duration (ms) the Confirmed <c>FluentMessageBar</c> remains visible before auto-dismiss.
+    /// Story 2-4 Decision D12 / AC6.
+    /// </summary>
+    [Range(1_000, 30_000, ErrorMessage = "ConfirmedToastDurationMs must be between 1000 and 30000.")]
+    public int ConfirmedToastDurationMs { get; set; } = 5_000;
 }

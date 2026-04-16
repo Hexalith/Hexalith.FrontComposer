@@ -29,8 +29,12 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
     private readonly ConcurrentDictionary<string, LifecycleEntry> _entries = new(StringComparer.Ordinal);
 
-    private readonly ConcurrentDictionary<string, ImmutableList<Subscription>> _subs =
-        new(StringComparer.Ordinal);
+    /// <summary>
+    /// Per-correlation subscriber lists (Decision D6). Mutated only via
+    /// <see cref="ImmutableInterlocked"/> so concurrent Subscribe/Dispose races cannot lose updates.
+    /// </summary>
+    private ImmutableDictionary<string, ImmutableList<Subscription>> _subs =
+        ImmutableDictionary<string, ImmutableList<Subscription>>.Empty.WithComparers(StringComparer.Ordinal);
 
     private readonly ConcurrentDictionary<string, byte> _seenMessageIds = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<string> _seenOrder = new();
@@ -91,11 +95,11 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
         Subscription subscription = new(correlationId, onTransition);
 
-        _ = _subs.AddOrUpdate(
+        _ = ImmutableInterlocked.AddOrUpdate(
+            ref _subs,
             correlationId,
-            static (_, sub) => ImmutableList.Create(sub),
-            static (_, existing, sub) => existing.Add(sub),
-            subscription);
+            _ => ImmutableList.Create(subscription),
+            (_, existing) => existing.Add(subscription));
 
         if (_entries.TryGetValue(correlationId, out LifecycleEntry? entry)) {
             CommandLifecycleState current;
@@ -277,7 +281,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
     }
 
     private void InvokeSubscribers(string correlationId, CommandLifecycleTransition transition) {
-        if (!_subs.TryGetValue(correlationId, out ImmutableList<Subscription>? snapshot) || snapshot.Count == 0) {
+        ImmutableDictionary<string, ImmutableList<Subscription>> subs = _subs;
+        if (!subs.TryGetValue(correlationId, out ImmutableList<Subscription>? snapshot) || snapshot.Count == 0) {
             return;
         }
 
@@ -354,7 +359,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         }
 
         _entries.Clear();
-        _subs.Clear();
+        _subs = ImmutableDictionary<string, ImmutableList<Subscription>>.Empty.WithComparers(StringComparer.Ordinal);
         _seenMessageIds.Clear();
         while (_seenOrder.TryDequeue(out _)) { }
     }
@@ -401,10 +406,18 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
 
             Volatile.Write(ref _subscription.Disposed, 1);
 
-            _ = _service._subs.AddOrUpdate(
-                _subscription.CorrelationId,
-                static (_, _) => ImmutableList<Subscription>.Empty,
-                static (_, existing, sub) => existing.Remove(sub),
+            _ = ImmutableInterlocked.Update(
+                ref _service._subs,
+                static (dict, sub) => {
+                    if (!dict.TryGetValue(sub.CorrelationId, out ImmutableList<Subscription>? list)) {
+                        return dict;
+                    }
+
+                    ImmutableList<Subscription> next = list.Remove(sub);
+                    return next.IsEmpty
+                        ? dict.Remove(sub.CorrelationId)
+                        : dict.SetItem(sub.CorrelationId, next);
+                },
                 _subscription);
         }
     }

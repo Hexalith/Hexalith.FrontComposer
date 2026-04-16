@@ -1,6 +1,6 @@
 # Story 2.3: Command Lifecycle State Management
 
-Status: review
+Status: done
 
 ---
 
@@ -193,7 +193,7 @@ USER    FORM (2-1)    CommandService     LifecycleBridge.g.cs    ILifecycleState
  |          |              |                    |                        |-- OutcomeNotifications++ (=1)   |
  |          |              |                    |                        |-- push Confirmed transition ->  |
  |          |              |                    |                        |                                |-- render success
- |          |              |                    |                        |-- keep entry (grace=5min)       |
+ |          |              |                    |                        |-- retain entry until scope dispose (D9 / ADR-019 — no timer prune) |
 
 IDEMPOTENT REPLAY PATH (Epic 5 reconnect, landing Story 5-4 but probed here):
  |          |              |-- [reconnect replays the same Confirmed] -- bridge fwd ->                    |
@@ -201,12 +201,12 @@ IDEMPOTENT REPLAY PATH (Epic 5 reconnect, landing Story 5-4 but probed here):
  |          |              |                    |                        |-- IdempotencyResolved=true     |
  |          |              |                    |                        |-- DROP (no second outcome -- FR30)
 
-DUPLICATE MessageId DIFFERENT CorrelationId (FR36 true duplicate):
+DUPLICATE MessageId DIFFERENT CorrelationId (Decision D10 — detection-only, never synthesis):
  |          |              |-- [new submit, same MsgId, new CorrId] ---- bridge fwd ->                    |
  |          |              |                    |                        |-- seenMessageIds.Contains("01HXYZ") == true
- |          |              |                    |                        |-- CorrelationId new → synthesize terminal entry
- |          |              |                    |                        |-- push Confirmed with IdempotencyResolved=true
- |          |              |                    |                        |-- HFC2005 log (duplicate MsgId)
+ |          |              |                    |                        |-- HFC2005 log (duplicate MsgId across CorrelationIds)
+ |          |              |                    |                        |-- fresh LifecycleEntry — normal Submitting→… progression (no terminal pre-fill from cache)
+ |          |              |                    |                        |-- IdempotencyResolved only on same-CorrelationId terminal replay (D8), not here
 
 ERROR PATH:
  |          |              |-- throw CommandRejectedException(reason, resolution) -----> |               |
@@ -895,6 +895,11 @@ These are cross-story deferrals intentionally out of scope for Story 2-3. QA sho
   - Scenario 2: Configure command rejection (temporarily configure stub `SimulateRejection=true`) → observe Submitted → Rejected, `IdempotencyResolved=false`
   - Scenario 3: Rapid double-click (race between submit disable and click) → assert only one CorrelationId enters Confirmed, no second outcome
   - Emit `2-3-e2e-results.json` with machine-readable predicates per scenario. Store under `_bmad-output/test-artifacts/`.
+
+### Review Findings
+
+- [x] [Review][Patch] Per-correlation subscriber list should use `ImmutableInterlocked` for `_subs` mutations (Decision D6 / Task 4 pseudocode) — **Fixed 2026-04-16:** `_subs` is now an `ImmutableDictionary<string, ImmutableList<Subscription>>` field updated via `ImmutableInterlocked.AddOrUpdate` / `ImmutableInterlocked.Update` (subscribe + unsubscribe). [`LifecycleStateService.cs`]
+- [x] [Review][Defer→fixed] Task 4 ASCII flowchart — **aligned 2026-04-16** with Decision D10 (duplicate cross-CorrelationId: HFC2005 + fresh entry, no synthesis). Terminal row also updated: scope dispose retention replaces obsolete “grace=5min”.
 
 ---
 
