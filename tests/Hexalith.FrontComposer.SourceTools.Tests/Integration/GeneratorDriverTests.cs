@@ -137,9 +137,10 @@ public partial class SubmitOrderCommand
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Id == "HFC1001").ShouldBeEmpty();
-        // Story 2-2 expanded the command-pipeline emission: form, actions, lifecycle feature, registration,
-        // density-driven renderer, and LastUsed subscriber — 6 trees for non-FullPage densities.
-        result.GeneratedTrees.Length.ShouldBe(6, "Command-only compilations should emit form, actions, lifecycle feature, registration, renderer, and LastUsed subscriber sources");
+        // Story 2-3 expanded command-pipeline emission: form, actions, lifecycle feature, registration,
+        // density-driven renderer, LastUsed subscriber, and per-command lifecycle bridge — 7 trees for
+        // non-FullPage densities.
+        result.GeneratedTrees.Length.ShouldBe(7, "Command-only compilations should emit form, actions, lifecycle feature, registration, renderer, LastUsed subscriber, and lifecycle bridge sources");
 
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
             result.GeneratedTrees.ToArray());
@@ -364,7 +365,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             CommandTestSources.EmptyCommand,
             "TestDomain.EmptyCommand",
-            expectedTreeCount: 6,
+            expectedTreeCount: 7,
             shouldEmitPage: false);
     }
 
@@ -373,7 +374,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             CommandTestSources.SingleStringFieldCommand,
             "TestDomain.SetNameCommand",
-            expectedTreeCount: 6,
+            expectedTreeCount: 7,
             shouldEmitPage: false);
     }
 
@@ -382,7 +383,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             TwoFieldCommandSource,
             "TestDomain.TwoFieldCommand",
-            expectedTreeCount: 6,
+            expectedTreeCount: 7,
             shouldEmitPage: false);
     }
 
@@ -391,7 +392,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             CommandTestSources.MultiFieldCommand,
             "TestDomain.PlaceOrderCommand",
-            expectedTreeCount: 7,
+            expectedTreeCount: 8,
             shouldEmitPage: true);
     }
 
@@ -454,6 +455,7 @@ public partial class AllUnsupportedProjection
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
         fileNames.ShouldContain($"TestDomain.{typeName}.CommandRenderer.g.razor.cs");
         fileNames.ShouldContain($"TestDomain.{typeName}.CommandLastUsedSubscriber.g.cs");
+        fileNames.ShouldContain($"TestDomain.{typeName}.CommandLifecycleBridge.g.cs");
 
         if (shouldEmitPage) {
             fileNames.ShouldContain($"TestDomain.{typeName}.CommandPage.g.razor.cs");

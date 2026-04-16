@@ -47,6 +47,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private IState<IncrementCommandLifecycleState> LifecycleState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
     [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;
+    [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;
     [Inject] private ICommandService CommandService { get; set; } = default!;
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
     [Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }
@@ -180,6 +181,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         _submittedCorrelationId = correlationId;
         var cts = _cts;
 
+        // Story 2-3 D5 — lazily activate the lifecycle bridge so ILifecycleStateService receives
+        // the typed Fluxor actions. Idempotent + per-circuit; mirrors Story 2-2 D35.
+        LifecycleBridgeRegistry.Ensure<IncrementCommandLifecycleBridge>();
         // Story 2-2 D35 — lazily activate the generated subscriber before the first SubmittedAction dispatch.
         LastUsedSubscriberRegistry.Ensure<IncrementCommandLastUsedSubscriber>();
 

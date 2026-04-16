@@ -116,6 +116,24 @@ public class CommandDensityTests {
         result.Diagnostics.Any(d => d.Id == "HFC1012" && d.Severity == "Error").ShouldBeTrue();
     }
 
+    // 8. HFC1017 — generic [Command] is rejected with Error (Story 2-3 Hindsight H9).
+    [Fact]
+    public void HFC1017_RejectsGenericCommand() {
+        string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [Command]
+            public class GenericCommand<T> {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+        CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.GenericCommand`1");
+        result.Model.ShouldBeNull();
+        result.Diagnostics.Any(d => d.Id == "HFC1017" && d.Severity == "Error").ShouldBeTrue();
+    }
+
     // 7. HFC1014 — nested [Command] is rejected with Error.
     [Fact]
     public void HFC1014_RejectsNestedCommand() {

@@ -6,8 +6,10 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -41,6 +43,13 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         _ = Services.AddScoped<InlinePopoverRegistry>();
         _ = Services.AddScoped<ILastUsedSubscriberRegistry, NoopLastUsedSubscriberRegistry>();
         _ = Services.AddScoped<ICommandPageContext, NullCommandPageContext>();
+
+        // Story 2-3 — generated forms resolve ILifecycleBridgeRegistry + IUlidFactory; stub out so bUnit tests
+        // don't activate the actual bridge (which requires a fully-wired Fluxor subscriber).
+        _ = Services.AddScoped<ILifecycleBridgeRegistry, NoopLifecycleBridgeRegistry>();
+        _ = Services.AddSingleton<IUlidFactory, UlidFactory>();
+        _ = Services.AddOptions<LifecycleOptions>();
+        _ = Services.AddScoped<ILifecycleStateService, LifecycleStateService>();
     }
 
     protected async Task InitializeStoreAsync() {
@@ -55,6 +64,11 @@ public abstract class GeneratedComponentTestBase : BunitContext {
 
     private sealed class NoopLastUsedSubscriberRegistry : ILastUsedSubscriberRegistry {
         public void Ensure<TSubscriber>() where TSubscriber : class, IDisposable {
+        }
+    }
+
+    private sealed class NoopLifecycleBridgeRegistry : ILifecycleBridgeRegistry {
+        public void Ensure<TBridge>() where TBridge : class, IDisposable {
         }
     }
 }

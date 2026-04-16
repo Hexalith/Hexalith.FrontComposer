@@ -4,9 +4,11 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -47,6 +49,14 @@ public abstract class CommandRendererTestBase : BunitContext {
         _ = Services.AddScoped<LastUsedSubscriberRegistry>();
         _ = Services.AddScoped<ILastUsedSubscriberRegistry>(sp => sp.GetRequiredService<LastUsedSubscriberRegistry>());
         _ = Services.AddScoped<ILastUsedRecorder, NullLastUsedRecorder>();
+
+        // Story 2-3 — generated forms resolve ILifecycleBridgeRegistry + IUlidFactory; full wire-up so
+        // submits flow through the real service and tests can inspect lifecycle state when needed.
+        _ = Services.AddOptions<LifecycleOptions>();
+        _ = Services.AddSingleton<IUlidFactory, UlidFactory>();
+        _ = Services.AddScoped<ILifecycleStateService, LifecycleStateService>();
+        _ = Services.AddScoped<LifecycleBridgeRegistry>();
+        _ = Services.AddScoped<ILifecycleBridgeRegistry>(sp => sp.GetRequiredService<LifecycleBridgeRegistry>());
 
         Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => _userContext));
         Services.Replace(ServiceDescriptor.Scoped<ICommandPageContext>(_ => _pageContext));

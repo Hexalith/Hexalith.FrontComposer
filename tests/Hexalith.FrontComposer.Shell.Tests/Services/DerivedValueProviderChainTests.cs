@@ -50,7 +50,7 @@ public class DerivedValueProviderChainTests {
     // 1. SystemValueProvider — positive
     [Fact]
     public async Task System_Positive_ResolvesMessageId() {
-        var p = new SystemValueProvider(new NullUserContextAccessor());
+        var p = new SystemValueProvider(new NullUserContextAccessor(), new Hexalith.FrontComposer.Shell.Services.Lifecycle.UlidFactory());
         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "MessageId", null, TestContext.Current.CancellationToken);
         r.HasValue.ShouldBeTrue();
         r.Value.ShouldBeOfType<string>().ShouldNotBeNullOrWhiteSpace();
@@ -59,7 +59,7 @@ public class DerivedValueProviderChainTests {
     // 2. SystemValueProvider — miss (unknown property name)
     [Fact]
     public async Task System_Miss_UnknownProperty_ReturnsNone() {
-        var p = new SystemValueProvider(new NullUserContextAccessor());
+        var p = new SystemValueProvider(new NullUserContextAccessor(), new Hexalith.FrontComposer.Shell.Services.Lifecycle.UlidFactory());
         DerivedValueResult r = await p.ResolveAsync(typeof(TestCommand), "UnknownProperty", null, TestContext.Current.CancellationToken);
         r.HasValue.ShouldBeFalse();
     }
@@ -145,7 +145,7 @@ public class DerivedValueProviderChainTests {
     public async Task ChainOrder_SystemBeatsProjectionContext_ForMessageId() {
         var ctx = new ProjectionContext("X.Y.Z", "BC", null, ImmutableDictionary.CreateRange<string, object?>(new Dictionary<string, object?> { ["MessageId"] = "from-projection" }));
         DerivedValueResult result = await ResolveChain("MessageId", ctx,
-            new SystemValueProvider(new NullUserContextAccessor()),
+            new SystemValueProvider(new NullUserContextAccessor(), new Hexalith.FrontComposer.Shell.Services.Lifecycle.UlidFactory()),
             new ProjectionContextProvider());
         // System provides a fresh GUID; projection's value must be ignored.
         result.Value.ShouldNotBe("from-projection");

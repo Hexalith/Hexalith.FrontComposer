@@ -245,13 +245,15 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                 int prior = Interlocked.CompareExchange(ref entry.OutcomeNotifications, 1, 0);
                 isTerminalFirstEntry = prior == 0;
                 idempotencyResolved = !isTerminalFirstEntry;
+                // Decision D8 — duplicate terminal for same CorrelationId is silently absorbed
+                // (no second outcome notification). FR30 "≤1 user-visible outcome" invariant.
+                dropped = prior != 0 && previous == newState;
             }
             else {
                 isTerminalFirstEntry = false;
                 idempotencyResolved = false;
+                dropped = false;
             }
-
-            dropped = false;
         }
 
         if (dropped) {
