@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
@@ -19,6 +20,7 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
 
@@ -118,6 +120,10 @@ public static class ServiceCollectionExtensions {
     /// <param name="services">The service collection to configure.</param>
     /// <param name="configureFluxor">Optional callback to configure additional Fluxor options (e.g., scan consumer assemblies).</param>
     /// <returns>The service collection for chaining.</returns>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:RequiresUnreferencedCode",
+        Justification = "Story 2-4 FcShellOptions is a single concrete type with preserved properties; DataAnnotations validation stays trim-safe.")]
     public static IServiceCollection AddHexalithFrontComposer(
         this IServiceCollection services,
         Action<FluxorOptions>? configureFluxor = null) {
@@ -136,7 +142,15 @@ public static class ServiceCollectionExtensions {
         // Story 2-2 Decision D33 — DataGridNav LRU cap is seeded from FcShellOptions.DataGridNavCap
         // into DataGridNavigationState.Cap by DataGridNavigationFeature at first state construction
         // (Group D code review W1 resolution — no mutable process-static).
-        _ = services.AddOptions<FcShellOptions>();
+        // Story 2-4 Task 3.2 / 3.4 — layer ordered-threshold validator AFTER [Range] annotations.
+        _ = services.AddOptions<FcShellOptions>()
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+        services.TryAddSingleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>();
+
+        // Story 2-4 — TimeProvider is required by FcLifecycleWrapper + LifecycleThresholdTimer.
+        // Register the system provider if the adopter has not already.
+        services.TryAddSingleton(TimeProvider.System);
 
         // Story 2-2 Task 3.5a — dev diagnostic sink (per-circuit scope).
         services.TryAddScoped<IDiagnosticSink, InMemoryDiagnosticSink>();

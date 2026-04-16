@@ -1,0 +1,51 @@
+/* Story 2-4 scoped CSS for FcLifecycleWrapper.
+   Decisions D9, D10, D11. UX spec §1690 zero-override commitment honored —
+   only the wrapper's own structural rules + sync-pulse keyframes + reduced-motion
+   media query. No Fluent UI design token overrides. */
+
+.fc-lifecycle-wrapper {
+    position: relative;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    border-radius: var(--control-corner-radius, 4px);
+}
+
+/* D10 — outline-color-only pulse keeps descendant focus rings (UX-DR49) untouched. */
+.fc-lifecycle-pulse {
+    animation: fc-lifecycle-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes fc-lifecycle-pulse {
+    0%, 100% {
+        outline-color: transparent;
+    }
+
+    50% {
+        outline-color: var(--accent-fill-rest, currentColor);
+    }
+}
+
+/* D11 / AC8 — respect user motion preference. Static outline replaces keyframe. */
+@media (prefers-reduced-motion: reduce) {
+    .fc-lifecycle-pulse {
+        animation: none;
+        outline: 2px solid var(--accent-fill-rest, currentColor);
+    }
+}
+
+.fc-lifecycle-still-syncing {
+    margin-top: var(--design-unit, 0.5rem);
+    display: inline-block;
+}
+
+.fc-lifecycle-live {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

@@ -7,6 +7,10 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <!-- Story 2-4 D20 — consumer domains with [Command]-annotated types must reference the Shell
+         so generated `.g.cs` can resolve Hexalith.FrontComposer.Shell.Components.Lifecycle.FcLifecycleWrapper.
+         Same pattern as the existing Microsoft.FluentUI.AspNetCore.Components runtime reference. -->
+    <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
     <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="false"

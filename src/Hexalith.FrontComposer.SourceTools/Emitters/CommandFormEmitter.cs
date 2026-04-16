@@ -46,6 +46,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("using Microsoft.Extensions.Localization;");
         _ = sb.AppendLine("using Microsoft.Extensions.Logging;");
         _ = sb.AppendLine("using Microsoft.FluentUI.AspNetCore.Components;");
+        // Story 2-4 D21 — emitter-written using so FcLifecycleWrapper resolves in the generated .g.cs
+        // without relying on _Imports.razor (which source generators do not consult).
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Shell.Components.Lifecycle;");
         _ = sb.AppendLine();
 
         bool hasNamespace = !string.IsNullOrEmpty(form.Namespace);
@@ -356,9 +359,17 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", \"fc-command-form fc-density-comfortable\");");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"aria-label\", \"" + escapedButtonLabel + " command form\");");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        builder.OpenComponent<EditForm>(seq++);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"EditContext\", _editContext);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OnValidSubmit\", EventCallback.Factory.Create<EditContext>(this, _ => OnValidSubmitAsync()));");
+        // Story 2-4 ADR-020 / Task 4.1b — wrap the EditForm in FcLifecycleWrapper so lifecycle
+        // feedback (spinner, pulse, still-syncing, action prompt, confirmed/rejected message bar)
+        // renders around every generated form without service-locator plumbing.
+        _ = sb.AppendLine("        builder.OpenComponent<FcLifecycleWrapper>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CorrelationId\", _submittedCorrelationId);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__wrap =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            int wseq = 0;");
+        _ = sb.AppendLine("            __wrap.OpenComponent<EditForm>(wseq++);");
+        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"EditContext\", _editContext);");
+        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"OnValidSubmit\", EventCallback.Factory.Create<EditContext>(this, _ => OnValidSubmitAsync()));");
         _ = sb.AppendLine("        RenderFragment<EditContext> formBody = _ => (RenderFragment)(__b =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int cseq = 0;");
@@ -395,7 +406,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            __b.CloseComponent();");
         _ = sb.AppendLine("        });");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", formBody);");
+        _ = sb.AppendLine("            __wrap.AddAttribute(wseq++, \"ChildContent\", formBody);");
+        _ = sb.AppendLine("            __wrap.CloseComponent();");
+        _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine("        builder.CloseElement();");
         _ = sb.AppendLine("    }");

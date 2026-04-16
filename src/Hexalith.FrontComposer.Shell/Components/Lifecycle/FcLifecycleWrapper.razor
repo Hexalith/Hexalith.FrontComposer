@@ -1,7 +1,95 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Lifecycle
+@using Hexalith.FrontComposer.Contracts.Lifecycle
+@using Microsoft.FluentUI.AspNetCore.Components
 
-@* TDD RED-phase stub for Story 2-4. Task 2.1 replaces this with the full lifecycle-aware template. *@
-
-<div class="fc-lifecycle-wrapper">
+<div class="fc-lifecycle-wrapper @PulseClass()">
     @ChildContent
+
+    @if (!string.IsNullOrEmpty(Announcement)) {
+        <div role="@AriaRole" aria-live="@AriaLive" data-fc-phase="@DataPhase" class="fc-lifecycle-live">
+            @Announcement
+        </div>
+    }
+
+    @if (_state.Current is CommandLifecycleState.Syncing
+            && _state.TimerPhase is LifecycleTimerPhase.StillSyncing) {
+        <FluentBadge Appearance="BadgeAppearance.Filled"
+                     Color="BadgeColor.Informative"
+                     class="fc-lifecycle-still-syncing">Still syncing…</FluentBadge>
+    }
+
+    @if (_state.Current is CommandLifecycleState.Syncing
+            && _state.TimerPhase is LifecycleTimerPhase.ActionPrompt) {
+        <FluentMessageBar Intent="MessageBarIntent.Warning"
+                         Title="Action needed: the system hasn't confirmed your submission"
+                         AllowDismiss="false"
+                         data-testid="fc-action-prompt">
+            <ChildContent>
+                You can wait, or start over from a fresh page.
+            </ChildContent>
+            <ActionsTemplate>
+                <FluentButton Appearance="ButtonAppearance.Primary"
+                              Size="ButtonSize.Small"
+                              data-testid="fc-refresh-action"
+                              @onclick="OnStartOverClicked">Start over</FluentButton>
+            </ActionsTemplate>
+        </FluentMessageBar>
+    }
+
+    @if (_state.Current is CommandLifecycleState.Confirmed) {
+        <FluentMessageBar Intent="MessageBarIntent.Success"
+                         Title="Submission confirmed"
+                         AllowDismiss="true"
+                         data-testid="fc-confirmed">
+        </FluentMessageBar>
+    }
+
+    @if (_state.Current is CommandLifecycleState.Rejected) {
+        <FluentMessageBar Intent="MessageBarIntent.Error"
+                         Title="Submission rejected"
+                         AllowDismiss="true"
+                         data-testid="fc-rejected">
+            <ChildContent>
+                @(RejectionMessage ?? "The command was rejected. Please review your input and try again.")
+            </ChildContent>
+        </FluentMessageBar>
+    }
 </div>
+
+@code {
+    private string PulseClass() =>
+        _state.Current is CommandLifecycleState.Syncing
+            && _state.TimerPhase is LifecycleTimerPhase.Pulse or LifecycleTimerPhase.StillSyncing
+                ? "fc-lifecycle-pulse"
+                : string.Empty;
+
+    private string Announcement => _state.Current switch {
+        CommandLifecycleState.Submitting => "Submitting…",
+        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "Still syncing…",
+        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "The system hasn't confirmed your submission. You can wait or start over.",
+        CommandLifecycleState.Confirmed => "Submission confirmed",
+        CommandLifecycleState.Rejected => "Submission rejected",
+        _ => string.Empty,
+    };
+
+    private string AriaRole => _state.Current switch {
+        CommandLifecycleState.Rejected => "alert",
+        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "alert",
+        _ => "status",
+    };
+
+    private string AriaLive => _state.Current switch {
+        CommandLifecycleState.Rejected => "assertive",
+        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "assertive",
+        _ => "polite",
+    };
+
+    private string DataPhase => _state.Current switch {
+        CommandLifecycleState.Submitting => "submitting",
+        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "still-syncing",
+        CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "action-prompt",
+        CommandLifecycleState.Confirmed => "confirmed",
+        CommandLifecycleState.Rejected => "rejected",
+        _ => "idle",
+    };
+}
