@@ -100,6 +100,12 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 if (result.Model.Density == Hexalith.FrontComposer.SourceTools.Parsing.CommandDensity.FullPage) {
                     spc.AddSource(hintPrefix + "Page.g.razor.cs", CommandPageEmitter.Emit(rendererModel));
                 }
+
+                // Story 2-3 Decision D4/D16: per-command lifecycle bridge — forwards Fluxor actions
+                // to ILifecycleStateService so cross-command correlation-keyed consumers (Story 2-4
+                // FcLifecycleWrapper) can subscribe to a single service instead of reflecting over
+                // N generated features.
+                spc.AddSource(hintPrefix + "LifecycleBridge.g.cs", CommandLifecycleBridgeEmitter.Emit(fluxorModel));
             }
         });
     }
@@ -122,6 +128,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1014" => DiagnosticDescriptors.NestedCommandUnsupported,
         "HFC1015" => DiagnosticDescriptors.RenderModeIncompatibleWithDensity,
         "HFC1016" => DiagnosticDescriptors.CommandPropertyNotWritable,
+        "HFC1017" => DiagnosticDescriptors.CommandTypeIsGeneric,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

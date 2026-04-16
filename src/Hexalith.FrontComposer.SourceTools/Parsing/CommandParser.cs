@@ -86,6 +86,24 @@ public static class CommandParser {
             return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
         }
 
+        // HFC1017 (Story 2-3 Hindsight H9): generic [Command] types are unsupported. The per-command
+        // lifecycle bridge emits one hint per command type; a generic command would collide on hint-name
+        // across specialisations and cannot be uniformly subscribed via IActionSubscriber.SubscribeToAction<T>.
+        if (typeSymbol.IsGenericType && typeSymbol.TypeParameters.Length > 0) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1017",
+                string.Format(
+                    "[Command] type '{0}' is generic (arity {1}). Command types must not be generic; specialize or remove the type parameters.",
+                    typeSymbol.Name,
+                    typeSymbol.TypeParameters.Length),
+                "Error",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+
+            return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
+        }
+
         if (ct.IsCancellationRequested) {
             return EmptyResult;
         }

@@ -15,6 +15,9 @@
     <!-- System.ComponentModel.Annotations is ONLY needed on netstandard2.0 — net10.0 carries it in-box.
          Used by FcShellOptions for [Range] / [RegularExpression] validation. -->
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
+    <!-- Story 2-3 Decision D3: ULID generation for MessageId idempotency (FR36/NFR45).
+         Story spec pinned 1.7.4; nuget.org published 1.7.3 — latest stable at implementation time. -->
+    <PackageVersion Include="NUlid" Version="1.7.3" />
   </ItemGroup>
 
   <ItemGroup Label="Blazor">

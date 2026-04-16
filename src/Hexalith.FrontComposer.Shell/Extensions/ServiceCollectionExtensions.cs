@@ -7,12 +7,14 @@ using Fluxor.DependencyInjection;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +45,13 @@ public static class ServiceCollectionExtensions {
 
         foreach (Type type in domainAssembly.GetExportedTypes()) {
             if (type.Name.EndsWith("LastUsedSubscriber", StringComparison.Ordinal)
+                && typeof(IDisposable).IsAssignableFrom(type)) {
+                services.TryAdd(ServiceDescriptor.Scoped(type, type));
+            }
+
+            // Story 2-3 Decision D5 — auto-register per-command {Command}LifecycleBridge types discovered
+            // in the domain assembly so LifecycleBridgeRegistry.Ensure<T>() can resolve them via DI.
+            if (type.Name.EndsWith("LifecycleBridge", StringComparison.Ordinal)
                 && typeof(IDisposable).IsAssignableFrom(type)) {
                 services.TryAdd(ServiceDescriptor.Scoped(type, type));
             }
@@ -139,6 +148,19 @@ public static class ServiceCollectionExtensions {
         // Story 2-2 Decision D35 — per-circuit subscriber registry (idempotent + lazy).
         services.TryAddScoped<LastUsedSubscriberRegistry>();
         services.TryAddScoped<ILastUsedSubscriberRegistry>(sp => sp.GetRequiredService<LastUsedSubscriberRegistry>());
+
+        // Story 2-3 Decision D2/D3 — ULID factory (Singleton; NUlid wrapper is stateless).
+        services.TryAddSingleton<IUlidFactory, UlidFactory>();
+
+        // Story 2-3 — options binding for LifecycleOptions (Chaos CM7 defensive wire-up).
+        _ = services.AddOptions<LifecycleOptions>();
+
+        // Story 2-3 Decision D12 — scoped lifecycle state service (per-circuit / per-user).
+        services.TryAddScoped<ILifecycleStateService, LifecycleStateService>();
+
+        // Story 2-3 Decision D5 — per-circuit bridge registry (idempotent + lazy; mirrors D35 pattern).
+        services.TryAddScoped<LifecycleBridgeRegistry>();
+        services.TryAddScoped<ILifecycleBridgeRegistry>(sp => sp.GetRequiredService<LifecycleBridgeRegistry>());
 
         // Story 2-2 Decision D25 — cached expand-in-row JS module (scoped, lazy import).
         services.TryAddScoped<IExpandInRowJSModule, ExpandInRowJSModule>();

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 
 namespace Hexalith.FrontComposer.Shell.Services.DerivedValues;
@@ -22,10 +23,15 @@ public sealed class SystemValueProvider : IDerivedValueProvider {
     private static readonly ConcurrentDictionary<(Type, string), Type?> PropertyTypeCache = new();
 
     private readonly IUserContextAccessor _userContext;
+    private readonly IUlidFactory _ulidFactory;
     private readonly IDiagnosticSink? _diagnostics;
 
-    public SystemValueProvider(IUserContextAccessor userContext, IDiagnosticSink? diagnostics = null) {
+    public SystemValueProvider(
+        IUserContextAccessor userContext,
+        IUlidFactory ulidFactory,
+        IDiagnosticSink? diagnostics = null) {
         _userContext = userContext ?? throw new ArgumentNullException(nameof(userContext));
+        _ulidFactory = ulidFactory ?? throw new ArgumentNullException(nameof(ulidFactory));
         _diagnostics = diagnostics;
     }
 
@@ -42,7 +48,8 @@ public sealed class SystemValueProvider : IDerivedValueProvider {
         Type? propertyType = ResolvePropertyType(commandType, propertyName);
 
         DerivedValueResult result = propertyName switch {
-            "MessageId" or "CommandId" or "CorrelationId" => new DerivedValueResult(true, NewId(propertyType)),
+            "MessageId" => new DerivedValueResult(true, NewUlid(propertyType)),
+            "CommandId" or "CorrelationId" => new DerivedValueResult(true, NewId(propertyType)),
             "Timestamp" or "CreatedAt" or "ModifiedAt" => new DerivedValueResult(true, NowFor(propertyType)),
             "TenantId" => FromContext(_userContext.TenantId, "TenantId"),
             "UserId" => FromContext(_userContext.UserId, "UserId"),
@@ -81,6 +88,20 @@ public sealed class SystemValueProvider : IDerivedValueProvider {
         }
 
         return Guid.NewGuid().ToString("N");
+    }
+
+    /// <summary>
+    /// Generates a fresh ULID MessageId via <see cref="IUlidFactory"/> (Story 2-3 Decision D2 — MessageId
+    /// is ULID, not Guid). For Guid-typed properties the provider still returns a Guid (dev convenience);
+    /// a subsequent story will normalise MessageId properties to <c>string</c>.
+    /// </summary>
+    private object NewUlid(Type? propertyType) {
+        Type effective = Nullable.GetUnderlyingType(propertyType ?? typeof(string)) ?? propertyType ?? typeof(string);
+        if (effective == typeof(Guid)) {
+            return Guid.NewGuid();
+        }
+
+        return _ulidFactory.NewUlid();
     }
 
     /// <summary>

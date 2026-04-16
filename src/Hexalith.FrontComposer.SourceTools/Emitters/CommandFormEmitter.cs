@@ -84,6 +84,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    [Inject] private IState<" + fluxor.StateName + "> LifecycleState { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IDispatcher Dispatcher { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ICommandService CommandService { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + componentName + ">? Logger { get; set; }");
@@ -272,6 +273,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
         _ = sb.AppendLine("        var cts = _cts;");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Story 2-3 D5 — lazily activate the lifecycle bridge so ILifecycleStateService receives");
+        _ = sb.AppendLine("        // the typed Fluxor actions. Idempotent + per-circuit; mirrors Story 2-2 D35.");
+        _ = sb.AppendLine("        LifecycleBridgeRegistry.Ensure<" + form.TypeName + "LifecycleBridge>();");
         _ = sb.AppendLine("        // Story 2-2 D35 — lazily activate the generated subscriber before the first SubmittedAction dispatch.");
         _ = sb.AppendLine("        LastUsedSubscriberRegistry.Ensure<" + form.TypeName + "LastUsedSubscriber>();");
         _ = sb.AppendLine();

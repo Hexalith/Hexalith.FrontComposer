@@ -17,3 +17,4 @@ HFC1012 | HexalithFrontComposer | Error   | [DefaultValue] value type does not m
 HFC1014 | HexalithFrontComposer | Error   | Nested [Command] type is unsupported
 HFC1015 | HexalithFrontComposer | Warning | RenderMode incompatible with command density
 HFC1016 | HexalithFrontComposer | Error   | Command non-derivable property is read-only or init-only
+HFC1017 | HexalithFrontComposer | Error   | Command type is generic (unsupported; specialize or remove type parameters)

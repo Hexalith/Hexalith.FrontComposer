@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.Options;
 
@@ -10,7 +11,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services;
 
 public class StubCommandServiceTests {
     private static StubCommandService BuildService(StubCommandServiceOptions options) {
-        return new StubCommandService(new OptionsSnapshotStub(options));
+        return new StubCommandService(new OptionsSnapshotStub(options), new UlidFactory());
     }
 
     private static StubCommandServiceOptions ZeroDelays() => new() {

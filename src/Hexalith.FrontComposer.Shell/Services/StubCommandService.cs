@@ -19,11 +19,16 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// </remarks>
 public sealed class StubCommandService : ICommandServiceWithLifecycle {
     private readonly IOptionsSnapshot<StubCommandServiceOptions> _options;
+    private readonly IUlidFactory _ulidFactory;
     private readonly ILogger<StubCommandService> _logger;
 
     /// <summary>Initializes a new instance of the <see cref="StubCommandService"/> class.</summary>
-    public StubCommandService(IOptionsSnapshot<StubCommandServiceOptions> options, ILogger<StubCommandService>? logger = null) {
+    public StubCommandService(
+        IOptionsSnapshot<StubCommandServiceOptions> options,
+        IUlidFactory ulidFactory,
+        ILogger<StubCommandService>? logger = null) {
         _options = options ?? throw new ArgumentNullException(nameof(options));
+        _ulidFactory = ulidFactory ?? throw new ArgumentNullException(nameof(ulidFactory));
         _logger = logger ?? NullLogger<StubCommandService>.Instance;
     }
 
@@ -52,7 +57,7 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
                 opts.RejectionResolution ?? "Adjust input and retry");
         }
 
-        string messageId = Guid.NewGuid().ToString();
+        string messageId = _ulidFactory.NewUlid();
 
         // Fire-and-forget continuation. We observe the task via ContinueWith so an unhandled
         // exception inside the user-supplied onLifecycleChange (e.g., disposed Fluxor dispatcher)

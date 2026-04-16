@@ -175,4 +175,19 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1017: Generic <c>[Command]</c> type is unsupported (Story 2-3 Hindsight H9).
+    /// The per-command lifecycle bridge emitter generates one hint per command type; a generic
+    /// command would collide on hint-name across specialisations and cannot be uniformly
+    /// subscribed via <c>IActionSubscriber.SubscribeToAction&lt;T&gt;</c>. Specialise the type or
+    /// remove the type parameters.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandTypeIsGeneric = new(
+        id: "HFC1017",
+        title: "Command type is generic",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }
