@@ -58,6 +58,9 @@ public abstract class CommandRendererTestBase : BunitContext {
         _ = Services.AddScoped<LifecycleBridgeRegistry>();
         _ = Services.AddScoped<ILifecycleBridgeRegistry>(sp => sp.GetRequiredService<LifecycleBridgeRegistry>());
 
+        // Story 2-4 — FcLifecycleWrapper (wrapping every generated form) injects TimeProvider.
+        _ = Services.AddSingleton(TimeProvider.System);
+
         Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => _userContext));
         Services.Replace(ServiceDescriptor.Scoped<ICommandPageContext>(_ => _pageContext));
     }

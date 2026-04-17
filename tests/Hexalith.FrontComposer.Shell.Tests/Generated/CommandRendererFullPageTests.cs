@@ -23,6 +23,16 @@ public sealed class CommandRendererFullPageTests : CommandRendererTestBase {
     }
 
     [Fact]
+    public async Task Renderer_FullPage_WrapsEditFormInFcLifecycleWrapper() {
+        PageContext.ReturnPath = "/counter";
+        await InitializeStoreAsync();
+
+        IRenderedComponent<FiveFieldFullPageCommandRenderer> cut = Render<FiveFieldFullPageCommandRenderer>();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("fc-lifecycle-wrapper", Case.Insensitive));
+    }
+
+    [Fact]
     public async Task Renderer_FullPage_InvalidReturnPath_FallsBackToHomeBreadcrumb() {
         PageContext.ReturnPath = "https://evil.example/path";
         await InitializeStoreAsync();

@@ -1,45 +1,47 @@
 using System.ComponentModel.DataAnnotations;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Options;
+
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Options;
 
 /// <summary>
-/// TDD RED-phase options-validation tests for Story 2-4 Task 3.1 / 3.2. The default values
-/// must satisfy the ordered-threshold invariant (Pulse &lt; StillSyncing &lt; TimeoutAction)
-/// and each <see cref="RangeAttribute"/> must reject out-of-bound values.
+/// Story 2-4 Task 3.1 / 3.2 — options-validation tests. Default values satisfy the ordered-threshold
+/// invariant (Pulse &lt; StillSyncing &lt; TimeoutAction); each <see cref="RangeAttribute"/> rejects
+/// out-of-bound values.
 /// </summary>
 public sealed class FcShellOptionsValidationTests {
-    [Fact(Skip = "TDD RED — Story 2-4 Task 3.1: default threshold values must satisfy the ordered validator (300 < 2000 < 10000).")]
+    [Fact]
     public void Defaults_satisfy_ordered_thresholds_validator() {
         FcShellOptions options = new();
 
         options.SyncPulseThresholdMs.ShouldBeLessThan(options.StillSyncingThresholdMs);
         options.StillSyncingThresholdMs.ShouldBeLessThan(options.TimeoutActionThresholdMs);
 
-        List<ValidationResult> results = ValidateDataAnnotations(options);
-        results.ShouldBeEmpty();
+        ValidateDataAnnotations(options).ShouldBeEmpty();
+        new FcShellOptionsThresholdValidator().Validate(null, options).Succeeded.ShouldBeTrue();
     }
 
-    [Fact(Skip = "TDD RED — Story 2-4 Task 3.2: FcShellOptionsThresholdValidator rejects SyncPulse >= StillSyncing with a clear error message.")]
+    [Fact]
     public void SyncPulse_gte_StillSyncing_fails_validation_with_clear_message() {
         FcShellOptions options = new() {
             SyncPulseThresholdMs = 2_000,
-            StillSyncingThresholdMs = 2_000, // violation: must be strictly less than.
+            StillSyncingThresholdMs = 2_000,
             TimeoutActionThresholdMs = 10_000,
         };
 
-        Microsoft.Extensions.Options.IValidateOptions<FcShellOptions> validator = ResolveThresholdValidator();
-        Microsoft.Extensions.Options.ValidateOptionsResult result = validator.Validate(null, options);
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
 
         result.Failed.ShouldBeTrue();
         result.FailureMessage.ShouldContain("SyncPulseThresholdMs", Case.Insensitive);
         result.FailureMessage.ShouldContain("StillSyncingThresholdMs", Case.Insensitive);
     }
 
-    [Theory(Skip = "TDD RED — Story 2-4 Task 3.1: [Range] annotations enforce min/max bounds on each new threshold property.")]
+    [Theory]
     [InlineData(nameof(FcShellOptions.SyncPulseThresholdMs), 49)]
     [InlineData(nameof(FcShellOptions.SyncPulseThresholdMs), 2_001)]
     [InlineData(nameof(FcShellOptions.StillSyncingThresholdMs), 499)]
@@ -62,28 +64,5 @@ public sealed class FcShellOptionsValidationTests {
         List<ValidationResult> results = [];
         _ = Validator.TryValidateObject(instance, ctx, results, validateAllProperties: true);
         return results;
-    }
-
-    private static Microsoft.Extensions.Options.IValidateOptions<FcShellOptions> ResolveThresholdValidator() {
-        // Task 3.2 creates FcShellOptionsThresholdValidator in Hexalith.FrontComposer.Shell.Options.
-        // Test locates it via reflection so this test file does not hard-code the concrete
-        // namespace path; if the type moves during implementation the test still finds it as long
-        // as it is the registered IValidateOptions<FcShellOptions>.
-        Type? validatorType = AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(a => SafeGetTypes(a))
-            .FirstOrDefault(t =>
-                typeof(Microsoft.Extensions.Options.IValidateOptions<FcShellOptions>).IsAssignableFrom(t)
-                && !t.IsAbstract);
-
-        validatorType.ShouldNotBeNull("Task 3.2 must ship an IValidateOptions<FcShellOptions> implementation.");
-        return (Microsoft.Extensions.Options.IValidateOptions<FcShellOptions>)Activator.CreateInstance(validatorType!)!;
-    }
-
-    private static IEnumerable<Type> SafeGetTypes(System.Reflection.Assembly a) {
-        try {
-            return a.GetTypes();
-        } catch (System.Reflection.ReflectionTypeLoadException ex) {
-            return ex.Types.Where(t => t is not null)!;
-        }
     }
 }

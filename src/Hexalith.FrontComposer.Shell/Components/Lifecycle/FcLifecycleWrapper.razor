@@ -31,7 +31,7 @@
                 <FluentButton Appearance="ButtonAppearance.Primary"
                               Size="ButtonSize.Small"
                               data-testid="fc-refresh-action"
-                              @onclick="OnStartOverClicked">Start over</FluentButton>
+                              OnClick="OnStartOverClicked">Start over</FluentButton>
             </ActionsTemplate>
         </FluentMessageBar>
     }
@@ -59,7 +59,7 @@
 @code {
     private string PulseClass() =>
         _state.Current is CommandLifecycleState.Syncing
-            && _state.TimerPhase is LifecycleTimerPhase.Pulse or LifecycleTimerPhase.StillSyncing
+            && _state.TimerPhase is LifecycleTimerPhase.Pulse
                 ? "fc-lifecycle-pulse"
                 : string.Empty;
 

@@ -3,11 +3,13 @@ using Bunit;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
+using Hexalith.FrontComposer.Shell.Options;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -16,11 +18,11 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 
 /// <summary>
 /// Shared bUnit base for the Story 2-4 <see cref="FcLifecycleWrapper"/> test surfaces.
-/// Registers FluentUI, localization, <see cref="TimeProvider"/>, a fake
+/// Registers FluentUI, localization, a deterministic <see cref="FakeTimeProvider"/>, a fake
 /// <see cref="NavigationManager"/>, and exposes helpers for pushing transitions.
 /// </summary>
 public abstract class LifecycleWrapperTestBase : BunitContext {
-    private const string DefaultCorrelationId = "corr-test-001";
+    protected const string DefaultCorrelationId = "corr-test-001";
 
     protected LifecycleWrapperTestBase() {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -28,11 +30,13 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
         _ = Services.AddLocalization();
         _ = Services.AddLogging();
         _ = Services.AddOptions<FcShellOptions>();
+        Services.TryAddSingleton<IValidateOptions<FcShellOptions>, FcShellOptionsThresholdValidator>();
         _ = Services.AddSingleton<NavigationManager>(_ => new TestNavigationManager());
         FakeTime = new FakeTimeProvider(new DateTimeOffset(2026, 4, 16, 12, 0, 0, TimeSpan.Zero));
         _ = Services.AddSingleton<TimeProvider>(FakeTime);
     }
 
+    /// <summary>The fake clock that drives both <c>GetUtcNow()</c> and registered <c>ITimer</c> callbacks.</summary>
     protected FakeTimeProvider FakeTime { get; }
 
     protected void RegisterLifecycleService(ILifecycleStateService service) {
@@ -99,18 +103,8 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
         return (cut, push, FakeTime);
     }
 
-    protected sealed class FakeTimeProvider : TimeProvider {
-        private DateTimeOffset _utcNow;
-
-        public FakeTimeProvider(DateTimeOffset utcNow) => _utcNow = utcNow;
-
-        public override DateTimeOffset GetUtcNow() => _utcNow;
-
-        public void Advance(TimeSpan by) => _utcNow = _utcNow.Add(by);
-    }
-
     protected sealed class TestNavigationManager : NavigationManager {
-        public TestNavigationManager() => Initialize("https://localhost/", "https://localhost/");
+        public TestNavigationManager() => Initialize("https://localhost/", "https://localhost/test");
 
         public (string Uri, bool ForceLoad)? LastNavigateCall { get; private set; }
 

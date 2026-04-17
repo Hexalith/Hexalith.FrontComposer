@@ -33,6 +33,17 @@ public sealed class CommandRendererCompactInlineTests : CommandRendererTestBase 
     }
 
     [Fact]
+    public async Task Renderer_CompactInline_WrapsEditFormInFcLifecycleWrapper() {
+        BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
+        module.SetupVoid("initializeExpandInRow", _ => true);
+        await InitializeStoreAsync();
+
+        IRenderedComponent<TwoFieldCompactCommandRenderer> cut = Render<TwoFieldCompactCommandRenderer>();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("fc-lifecycle-wrapper", Case.Insensitive));
+    }
+
+    [Fact]
     public async Task Renderer_CompactInline_FieldOrder_MatchesStory21FieldOrder() {
         BunitJSModuleInterop module = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-expandinrow.js");
         module.SetupVoid("initializeExpandInRow", _ => true);

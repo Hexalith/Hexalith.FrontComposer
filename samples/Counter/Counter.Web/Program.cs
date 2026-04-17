@@ -1,6 +1,7 @@
 using Counter.Domain;
 using Counter.Web;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
@@ -21,6 +22,11 @@ builder.Services.AddLocalization();
 builder.Services.AddHexalithFrontComposer(
     o => o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly));
 builder.Services.AddHexalithDomain<CounterDomain>();
+
+// Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune
+// lifecycle thresholds (SyncPulseThresholdMs, StillSyncingThresholdMs, TimeoutActionThresholdMs,
+// ConfirmedToastDurationMs) and pre-existing shell-form options per-deployment without code changes.
+builder.Services.Configure<FcShellOptions>(builder.Configuration.GetSection("Hexalith:Shell"));
 
 // Story 2-2 Task 9.4 — demo user context so LastUsed pre-fill works end-to-end without real auth.
 // Production adopters replace this with a real accessor (OIDC claims via Story 7.1).

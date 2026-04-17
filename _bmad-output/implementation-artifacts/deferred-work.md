@@ -161,6 +161,12 @@ These two defects sit in the Counter-sample lifecycle wiring — the generated e
 - **[LOW] `DevDiagnosticEvent.Message` verbatim forward to `ILogger`** — structured logging mitigates; raw-text sinks could be tricked by CRLF injection. Parallels Group C DEF9 `NavigateToReturnPath`. **Defer target:** Epic 9 log-audit pass.
 - **[LOW] Document `focusTriggerElementById` in D11's module contract (from P60)** — JS module currently exports two functions: `initializeExpandInRow` (documented in D11) and `focusTriggerElementById` (used by `CommandRendererEmitter.ClosePopoverAsync` per Group C DEF4 cross-reference). The second function is undocumented in D11's module-contract table. Spec-only patch: add `focusTriggerElementById(elementId: string): void` with the scroll-then-focus ordering guarantee. **Defer target:** spec update on D11 module contract, no code change.
 
+## Deferred from: code review of story 2-4-fclifecyclewrapper-visual-lifecycle-feedback.md (2026-04-17)
+
+- ~~**HFC2102 reserved but unused**~~ — **Resolved 2026-04-17:** `FcLifecycleWrapper.OnPhaseChangedFromTimer` logs `LogDebug` with `HFC2102_ThresholdTimerOffUiThread` before `InvokeAsync` (documents thread-pool → Blazor marshal).
+- ~~**Story task checkboxes vs delivered work**~~ — **Resolved 2026-04-17:** Note under story Tasks / Subtasks clarifies checkboxes are historical spec authoring; shipped scope is in Dev Agent Record / Completion Notes.
+- ~~**FsCheck property suite (Task 5.2b)**~~ — **Resolved 2026-04-17:** `tests/.../LifecycleThresholdTimerPropertyTests.cs` — three properties (monotonic phase under random advances; final anchor vs fresh timer; pure elapsed buckets vs `CurrentPhase`).
+
 ## Deferred from: code review of 2-3-command-lifecycle-state-management.md (2026-04-16)
 
 - ~~**Task 4 ASCII flowchart vs Decision D10**~~ — **Resolved 2026-04-16** in `2-3-command-lifecycle-state-management.md`: DUPLICATE cross-CorrelationId branch now matches detection-only / fresh entry; terminal retention line no longer references dropped grace window.

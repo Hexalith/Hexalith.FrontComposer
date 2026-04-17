@@ -56,6 +56,17 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
     }
 
     [Fact]
+    public async Task Renderer_OneField_PopoverFormIsWrappedInFcLifecycleWrapper() {
+        await InitializeStoreAsync();
+
+        IRenderedComponent<OneFieldInlineCommandRenderer> cut = Render<OneFieldInlineCommandRenderer>();
+        cut.WaitForAssertion(() => _ = cut.Find("fluent-button"));
+        cut.Find("fluent-button").Click();
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("fc-lifecycle-wrapper", Case.Insensitive));
+    }
+
+    [Fact]
     public async Task Renderer_Inline_UsesSecondaryAppearance() {
         await InitializeStoreAsync();
 

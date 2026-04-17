@@ -187,6 +187,11 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             return;
         }
 
+        // HFC2102 — timer callback runs on the thread pool; render updates must go through InvokeAsync.
+        Logger.LogDebug(
+            "{Diag} Threshold timer phase update received off the UI thread; marshaling render work via InvokeAsync.",
+            FcDiagnosticIds.HFC2102_ThresholdTimerOffUiThread);
+
         _ = InvokeAsync(() => {
             // Ignore tick-driven changes once we've reached a terminal display state.
             if (_state.Current is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected) {
