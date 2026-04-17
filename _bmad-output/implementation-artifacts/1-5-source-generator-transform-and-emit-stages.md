@@ -540,12 +540,12 @@ Recent commits (relevant patterns):
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/epics.md#Epic-1, Story 1.5] -- Full story spec, BDD acceptance criteria
+- [Source: _bmad-output/planning-artifacts/epics/epic-1-project-scaffolding-first-auto-generated-view.md#Story 1.5] -- Full story spec, BDD acceptance criteria
 - [Source: _bmad-output/planning-artifacts/architecture.md#ADR-004] -- Three-stage pipeline architecture
 - [Source: _bmad-output/planning-artifacts/architecture.md#ADR-008] -- Fluxor state shape convention
-- [Source: _bmad-output/planning-artifacts/epics.md#UX-DR21] -- Label resolution chain
-- [Source: _bmad-output/planning-artifacts/epics.md#UX-DR35] -- Data formatting rules
-- [Source: _bmad-output/planning-artifacts/epics.md#UX-DR65] -- Null handling (em dash)
+- [Source: _bmad-output/planning-artifacts/epics/requirements-inventory.md#UX-DR21] -- Label resolution chain
+- [Source: _bmad-output/planning-artifacts/epics/requirements-inventory.md#UX-DR35] -- Data formatting rules
+- [Source: _bmad-output/planning-artifacts/epics/requirements-inventory.md#UX-DR65] -- Null handling (em dash)
 - [Source: _bmad-output/implementation-artifacts/1-4-source-generator-parse-stage.md] -- Parse stage implementation (predecessor)
 - [Source: _bmad-output/implementation-artifacts/1-3-fluxor-state-management-foundation.md] -- Fluxor patterns to target
 - [Source: src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs:42-46] -- Placeholder to replace

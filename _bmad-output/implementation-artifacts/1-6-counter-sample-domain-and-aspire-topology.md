@@ -360,10 +360,10 @@ Counter sample is intentionally minimal. Post-W1, the shipped project template w
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/epics.md - Epic 1, Story 1.6 section]
+- [Source: _bmad-output/planning-artifacts/epics/epic-1-project-scaffolding-first-auto-generated-view.md - Epic 1, Story 1.6 section]
 - [Source: _bmad-output/planning-artifacts/architecture.md - W1/W2 project structure, Aspire topology, Fluxor patterns]
-- [Source: _bmad-output/planning-artifacts/prd.md - FR2, FR3, FR6, FR13, FR38, FR62; NFR8, NFR10, NFR82, NFR83]
-- [Source: _bmad-output/planning-artifacts/ux-design-specification.md - UX-DR14, UX-DR21, UX-DR23, UX-DR27, UX-DR35, UX-DR56, UX-DR65]
+- [Source: _bmad-output/planning-artifacts/prd/functional-requirements.md - FR2, FR3, FR6, FR13, FR38, FR62; _bmad-output/planning-artifacts/prd/non-functional-requirements.md - NFR8, NFR10, NFR82, NFR83]
+- [Source: _bmad-output/planning-artifacts/epics/requirements-inventory.md - UX-DR14, UX-DR21, UX-DR23, UX-DR27, UX-DR35, UX-DR56, UX-DR65]
 - [Source: _bmad-output/implementation-artifacts/1-5-source-generator-transform-and-emit-stages.md - Generator pipeline, test patterns, code patterns]
 
 ## Dev Agent Record

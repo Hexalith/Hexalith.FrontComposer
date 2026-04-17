@@ -372,15 +372,15 @@ After implementation, verify:
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/epics.md — Epic 1, Story 1.1]
+- [Source: _bmad-output/planning-artifacts/epics/epic-1-project-scaffolding-first-auto-generated-view.md — Epic 1, Story 1.1]
 - [Source: _bmad-output/planning-artifacts/architecture.md — ADR-001 through ADR-007]
 - [Source: _bmad-output/planning-artifacts/architecture.md — MSBuild Constraints section]
 - [Source: _bmad-output/planning-artifacts/architecture.md — v0.1 Solution Structure]
 - [Source: _bmad-output/planning-artifacts/architecture.md — Package Dependency Graph]
 - [Source: _bmad-output/planning-artifacts/architecture.md — Naming Conventions]
-- [Source: _bmad-output/planning-artifacts/prd.md — Solution Structure & Package Family]
-- [Source: _bmad-output/planning-artifacts/prd.md — Language & Runtime Matrix]
-- [Source: _bmad-output/planning-artifacts/prd.md — Build Infrastructure & CI/CD Requirements]
+- [Source: _bmad-output/planning-artifacts/prd/index.md — Solution Structure & Package Family]
+- [Source: _bmad-output/planning-artifacts/prd/index.md — Language & Runtime Matrix]
+- [Source: _bmad-output/planning-artifacts/prd/index.md — Build Infrastructure & CI/CD Requirements]
 - [Source: Hexalith.EventStore/.editorconfig — Code style baseline]
 - [Source: Hexalith.EventStore/Directory.Packages.props — Package version reference]
 - [Source: Hexalith.EventStore/global.json — SDK version reference]

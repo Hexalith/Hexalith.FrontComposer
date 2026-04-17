@@ -221,7 +221,7 @@ HFC1010 is **reserved as comment + table row** (no `DiagnosticDescriptor` field)
 
 ### Source Documents
 
-Architecture ADR-003 (Fluent UI contingency), ADR-004 (IR pipeline), epics.md (Story 1.8), prd.md (FR70, NFR8, NFR10), ux-design-specification.md (UX-DR61), deferred-work.md (caching edge case).
+Architecture ADR-003 (Fluent UI contingency), ADR-004 (IR pipeline), epics/epic-1-project-scaffolding-first-auto-generated-view.md (Story 1.8), prd/functional-requirements.md (FR70), prd/non-functional-requirements.md (NFR8, NFR10), epics/requirements-inventory.md (UX-DR61), deferred-work.md (caching edge case).
 
 ## Dev Agent Record
 

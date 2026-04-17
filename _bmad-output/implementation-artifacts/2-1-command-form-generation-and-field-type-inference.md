@@ -860,10 +860,10 @@ New files summarized:
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/epics.md -- Epic 2, Story 2.1]
+- [Source: _bmad-output/planning-artifacts/epics/epic-2-command-submission-lifecycle-feedback.md -- Epic 2, Story 2.1]
 - [Source: _bmad-output/planning-artifacts/architecture.md -- ADR-004, ADR-008, Fluxor naming, SourceTools structure, Package boundaries]
-- [Source: _bmad-output/planning-artifacts/prd.md -- FR1, FR6, FR8, FR9, NFRs]
-- [Source: _bmad-output/planning-artifacts/ux-design-specification.md -- Data Formatting section, Form Layout section, Density Strategy section, Label Resolution, IFluentField, Error Recovery section]
+- [Source: _bmad-output/planning-artifacts/prd/functional-requirements.md -- FR1, FR6, FR8, FR9; _bmad-output/planning-artifacts/prd/non-functional-requirements.md -- NFRs]
+- [Source: _bmad-output/planning-artifacts/ux-design-specification/ux-consistency-patterns.md -- Data Formatting section; _bmad-output/planning-artifacts/ux-design-specification/visual-design-foundation.md -- Density Strategy section; _bmad-output/planning-artifacts/ux-design-specification/index.md -- Form Layout section, Label Resolution, IFluentField, Error Recovery section]
 - [Source: _bmad-output/implementation-artifacts/1-5-source-generator-transform-and-emit-stages.md -- Transform/Emit patterns, CorrelationId gap, sealed class IR pattern, EscapeString helper]
 - [Source: _bmad-output/implementation-artifacts/1-6-counter-sample-domain-and-aspire-topology.md -- Fluxor single-scan, assembly scanning]
 - [Source: _bmad-output/implementation-artifacts/1-7-ci-pipeline-and-semantic-release.md -- CI conventions]

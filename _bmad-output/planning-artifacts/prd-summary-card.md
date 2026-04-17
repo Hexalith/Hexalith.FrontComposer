@@ -1,6 +1,6 @@
 # PRD Summary Card — Hexalith.FrontComposer
 
-**Date:** 2026-04-11 | **Author:** Jerome | **Full PRD:** [prd.md](prd.md)
+**Date:** 2026-04-11 | **Author:** Jerome | **Full PRD:** [prd/index.md](prd/index.md)
 
 ## What It Is
 

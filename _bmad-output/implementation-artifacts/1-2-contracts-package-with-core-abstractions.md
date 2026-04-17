@@ -550,10 +550,10 @@ After implementation, verify from repo root:
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/epics.md] -- Story 1.2 acceptance criteria, dependency chain
+- [Source: _bmad-output/planning-artifacts/epics/epic-1-project-scaffolding-first-auto-generated-view.md] -- Story 1.2 acceptance criteria, dependency chain
 - [Source: _bmad-output/planning-artifacts/architecture.md] -- ADR-001 (multi-targeting), package boundaries, interface skeletons, namespace hierarchy, folder structure
-- [Source: _bmad-output/planning-artifacts/prd.md] -- FR3, FR6, FR13, 8 headline packages, IStorageService 5 methods, command lifecycle states
-- [Source: _bmad-output/planning-artifacts/ux-design-specification.md] -- DensityLevel values, FcRenderMode, badge slots, lifecycle states, Fc naming convention
+- [Source: _bmad-output/planning-artifacts/prd/functional-requirements.md] -- FR3, FR6, FR13, 8 headline packages, IStorageService 5 methods, command lifecycle states
+- [Source: _bmad-output/planning-artifacts/ux-design-specification/index.md] -- DensityLevel values, FcRenderMode, badge slots, lifecycle states, Fc naming convention
 - [Source: _bmad-output/implementation-artifacts/1-1-solution-structure-and-build-infrastructure.md] -- MSBuild isolation, build quality gates, code style, project reference patterns
 
 ## Change Log

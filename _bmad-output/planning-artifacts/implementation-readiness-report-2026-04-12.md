@@ -13,10 +13,10 @@
 
 | Type | Primary File | Size |
 |------|-------------|------|
-| PRD | prd.md | 176 KB |
+| PRD | prd/index.md | 176 KB |
 | Architecture | architecture.md | 95 KB |
-| Epics & Stories | epics.md | 195 KB |
-| UX Design | ux-design-specification.md | 227 KB |
+| Epics & Stories | epics/index.md | 195 KB |
+| UX Design | ux-design-specification/index.md | 227 KB |
 
 ### Supplementary Documents
 
@@ -192,7 +192,7 @@ No missing FR coverage detected. All 82 FRs are mapped to epics.
 
 ### UX Document Status
 
-**Found**: ux-design-specification.md (227 KB, 2,578+ lines, 14 steps completed)
+**Found**: ux-design-specification/index.md (227 KB, 2,578+ lines, 14 steps completed)
 
 ### UX-PRD Alignment
 

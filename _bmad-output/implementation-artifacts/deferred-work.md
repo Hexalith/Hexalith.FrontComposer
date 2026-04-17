@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of tasks-subtasks.md (story 2-5) (2026-04-17)
+
+- **Planning monolith paths and external bookmarks** — Replacing single-file `_bmad-output/planning-artifacts/prd.md`, `epics.md`, `ux-design-specification.md`, and research monoliths with sharded folders can break external deep links and old citations until referrers are updated. Tracked as deferral from review; no runtime code change required.
+
+- **HFC2103 diagnostic ID naming vs wrapper bypass log branch** — `FcFormAbandonmentGuard` logs `HFC2103` when yielding for `WrapperInitiatedNavigation`; the constant name emphasizes Submitting-only suppression. Low-risk clarity follow-up, not a functional defect.
+
 ## Deferred from: code review of story files 1-3/1-4/1-5/1-6/1-7 (2026-04-14)
 
 - **DisplayLabel unsupported end-to-end** — `BoundedContextAttribute` has no `DisplayLabel` property; parser, IR, and transform all lack support. Story 1-5 review finding acknowledged. No current story owns the fix.
@@ -89,7 +95,7 @@ The Counter sample E2E run (Aspire MCP + Claude browser, refining the Playwright
 
 These two defects sit in the Counter-sample lifecycle wiring — the generated emitters and bUnit-tested unit contracts are sound. Story 2-2 ships with these as known gaps; they're appropriate for a fast-follow patch story (or rolling into Story 2-4 lifecycle work which already touches the Confirmed transition).
 
-## Deferred from: code review of story 2-2-action-density-rules-and-rendering-modes.md (2026-04-16)
+## Deferred from: code review of story 2-2-action-density-rules-and-rendering-modes/index.md (2026-04-16)
 
 - **Renderer init `LogInformation` volume** — Generated renderers log `Rendering {CommandType} in {Mode} (density=…)` at Information level on every `OnInitializedAsync`. Low-risk noise in production; consider `LogDebug` or a shell option gate (tracked as low priority in Story 2-2 review findings).
 
@@ -161,12 +167,12 @@ These two defects sit in the Counter-sample lifecycle wiring — the generated e
 - **[LOW] `DevDiagnosticEvent.Message` verbatim forward to `ILogger`** — structured logging mitigates; raw-text sinks could be tricked by CRLF injection. Parallels Group C DEF9 `NavigateToReturnPath`. **Defer target:** Epic 9 log-audit pass.
 - **[LOW] Document `focusTriggerElementById` in D11's module contract (from P60)** — JS module currently exports two functions: `initializeExpandInRow` (documented in D11) and `focusTriggerElementById` (used by `CommandRendererEmitter.ClosePopoverAsync` per Group C DEF4 cross-reference). The second function is undocumented in D11's module-contract table. Spec-only patch: add `focusTriggerElementById(elementId: string): void` with the scroll-then-focus ordering guarantee. **Defer target:** spec update on D11 module contract, no code change.
 
-## Deferred from: code review of story 2-4-fclifecyclewrapper-visual-lifecycle-feedback.md (2026-04-17)
+## Deferred from: code review of story 2-4-fclifecyclewrapper-visual-lifecycle-feedback/index.md (2026-04-17)
 
 - ~~**HFC2102 reserved but unused**~~ — **Resolved 2026-04-17:** `FcLifecycleWrapper.OnPhaseChangedFromTimer` logs `LogDebug` with `HFC2102_ThresholdTimerOffUiThread` before `InvokeAsync` (documents thread-pool → Blazor marshal).
 - ~~**Story task checkboxes vs delivered work**~~ — **Resolved 2026-04-17:** Note under story Tasks / Subtasks clarifies checkboxes are historical spec authoring; shipped scope is in Dev Agent Record / Completion Notes.
 - ~~**FsCheck property suite (Task 5.2b)**~~ — **Resolved 2026-04-17:** `tests/.../LifecycleThresholdTimerPropertyTests.cs` — three properties (monotonic phase under random advances; final anchor vs fresh timer; pure elapsed buckets vs `CurrentPhase`).
 
-## Deferred from: code review of 2-3-command-lifecycle-state-management.md (2026-04-16)
+## Deferred from: code review of 2-3-command-lifecycle-state-management/index.md (2026-04-16)
 
-- ~~**Task 4 ASCII flowchart vs Decision D10**~~ — **Resolved 2026-04-16** in `2-3-command-lifecycle-state-management.md`: DUPLICATE cross-CorrelationId branch now matches detection-only / fresh entry; terminal retention line no longer references dropped grace window.
+- ~~**Task 4 ASCII flowchart vs Decision D10**~~ — **Resolved 2026-04-16** in `2-3-command-lifecycle-state-management/index.md`: DUPLICATE cross-CorrelationId branch now matches detection-only / fresh entry; terminal retention line no longer references dropped grace window.

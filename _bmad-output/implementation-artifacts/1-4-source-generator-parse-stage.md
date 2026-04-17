@@ -506,13 +506,13 @@ Roslyn source generators only see the current compilation. The EventStore domain
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/epics.md#Epic 1, Story 1.4]
+- [Source: _bmad-output/planning-artifacts/epics/epic-1-project-scaffolding-first-auto-generated-view.md#Story 1.4]
 - [Source: _bmad-output/planning-artifacts/architecture.md#ADR-004 Source Generator IR Pattern]
 - [Source: _bmad-output/planning-artifacts/architecture.md#Decision 8: Auto-Discovery Mechanism]
 - [Source: _bmad-output/planning-artifacts/architecture.md#SourceTools Project Structure]
 - [Source: _bmad-output/planning-artifacts/architecture.md#Diagnostic Policy]
-- [Source: _bmad-output/planning-artifacts/prd.md#Source Generator Performance]
-- [Source: _bmad-output/planning-artifacts/ux-design-specification.md#Auto-Generation Boundary Protocol]
+- [Source: _bmad-output/planning-artifacts/prd/index.md#Source Generator Performance]
+- [Source: _bmad-output/planning-artifacts/ux-design-specification/desired-emotional-response.md#Auto-Generation Boundary Protocol]
 - [Source: _bmad-output/implementation-artifacts/1-3-fluxor-state-management-foundation.md#Dev Notes]
 
 ### Dependencies

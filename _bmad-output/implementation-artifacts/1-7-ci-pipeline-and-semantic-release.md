@@ -206,9 +206,9 @@ Copy these from EventStore's `ci.yml` (the story says "mirror" but these are eas
 
 ### References
 
-- [Source: _bmad-output/planning-artifacts/epics.md - Epic 1, Story 1.7]
+- [Source: _bmad-output/planning-artifacts/epics/epic-1-project-scaffolding-first-auto-generated-view.md - Epic 1, Story 1.7]
 - [Source: _bmad-output/planning-artifacts/architecture.md - CI/CD Pipeline Specifications, W1 CI Gates]
-- [Source: _bmad-output/planning-artifacts/prd.md - NFR64, NFR65, NFR68, NFR70, NFR75, FR74]
+- [Source: _bmad-output/planning-artifacts/prd/non-functional-requirements.md - NFR64, NFR65, NFR68, NFR70, NFR75; _bmad-output/planning-artifacts/prd/functional-requirements.md - FR74]
 - [Source: Hexalith.EventStore/.github/workflows/ - Reference CI/release workflow patterns]
 - [Source: Hexalith.EventStore/package.json, .releaserc.json, commitlint.config.mjs - Reference configs]
 

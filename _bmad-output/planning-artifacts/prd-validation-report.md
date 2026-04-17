@@ -1,5 +1,5 @@
 ---
-validationTarget: '_bmad-output/planning-artifacts/prd.md'
+validationTarget: '_bmad-output/planning-artifacts/prd/index.md'
 validationDate: '2026-04-12'
 inputDocuments:
   - _bmad-output/A-Product-Brief/project-brief.md
@@ -12,8 +12,8 @@ inputDocuments:
   - _bmad-output/planning-artifacts/research/domain-dotnet-modular-frameworks-event-sourcing-research-2026-04-11.md
   - _bmad-output/planning-artifacts/research/domain-event-sourcing-ecosystem-adoption-trends-research-2026-04-11.md
   - _bmad-output/planning-artifacts/research/domain-microfrontend-composition-patterns-research-2026-04-11.md
-  - _bmad-output/planning-artifacts/research/domain-model-driven-ui-generation-research-2026-04-11.md
-  - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/planning-artifacts/research/domain-model-driven-ui-generation-research-2026-04-11/index.md
+  - _bmad-output/planning-artifacts/ux-design-specification/index.md
 validationStepsCompleted:
   - step-v-01-discovery
   - step-v-02-format-detection
@@ -35,12 +35,12 @@ overallStatus: Pass
 
 # PRD Validation Report
 
-**PRD Being Validated:** _bmad-output/planning-artifacts/prd.md
+**PRD Being Validated:** _bmad-output/planning-artifacts/prd/index.md
 **Validation Date:** 2026-04-12
 
 ## Input Documents
 
-- PRD: prd.md
+- PRD: prd/index.md
 - Product Brief: project-brief.md
 - Content Language: content-language.md
 - Inspiration Analysis: inspiration-analysis.md
@@ -51,8 +51,8 @@ overallStatus: Pass
 - Research: domain-dotnet-modular-frameworks-event-sourcing-research-2026-04-11.md
 - Research: domain-event-sourcing-ecosystem-adoption-trends-research-2026-04-11.md
 - Research: domain-microfrontend-composition-patterns-research-2026-04-11.md
-- Research: domain-model-driven-ui-generation-research-2026-04-11.md
-- UX Spec: ux-design-specification.md
+- Research: research/domain-model-driven-ui-generation-research-2026-04-11/index.md
+- UX Spec: ux-design-specification/index.md
 
 ## Validation Findings
 

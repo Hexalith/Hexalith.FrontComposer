@@ -29,16 +29,16 @@ partyModeFindings:
     - Barry (Quick Flow Solo Dev) — v0.1/v1/v1.x partitioning, 10-12 components realistic for v1, 5-6 for v0.1, defer multi-tenancy/caching/observability/resilience
 inputDocuments:
   - _bmad-output/A-Product-Brief/project-brief.md
-  - _bmad-output/planning-artifacts/prd.md
+  - _bmad-output/planning-artifacts/prd/index.md
   - _bmad-output/planning-artifacts/prd-summary-card.md
   - _bmad-output/planning-artifacts/prd-validation-report.md
-  - _bmad-output/planning-artifacts/ux-design-specification.md
+  - _bmad-output/planning-artifacts/ux-design-specification/index.md
   - _bmad-output/planning-artifacts/research/technical-fluentui-blazor-v5-research-2026-04-06.md
   - _bmad-output/planning-artifacts/research/technical-hexalith-eventstore-front-ui-communication-research-2026-04-06.md
   - _bmad-output/planning-artifacts/research/domain-dotnet-modular-frameworks-event-sourcing-research-2026-04-11.md
   - _bmad-output/planning-artifacts/research/domain-event-sourcing-ecosystem-adoption-trends-research-2026-04-11.md
   - _bmad-output/planning-artifacts/research/domain-microfrontend-composition-patterns-research-2026-04-11.md
-  - _bmad-output/planning-artifacts/research/domain-model-driven-ui-generation-research-2026-04-11.md
+  - _bmad-output/planning-artifacts/research/domain-model-driven-ui-generation-research-2026-04-11/index.md
 workflowType: 'architecture'
 project_name: 'Hexalith.FrontComposer'
 user_name: 'Jerome'
