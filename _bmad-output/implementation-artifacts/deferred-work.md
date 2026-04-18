@@ -1,5 +1,29 @@
 # Deferred Work
 
+## Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)
+
+- **Null `EditContext` on first render (guard arm window)** — theoretical exposure is a single render cycle (microseconds) during which user cannot realistically type; `FcFormAbandonmentGuard.OnParametersSet` re-subscribes when `EditContext` becomes non-null on the next render. No observed bug. Revisit if users report missed abandonment warnings on fast keyboards. `CommandRendererEmitter.cs` / `FcFormAbandonmentGuard.razor.cs`
+
+- **`OnEditContextReady` fire-and-forget task** — `_ = eventCallback.InvokeAsync(...)` is the idiomatic Blazor pattern; exceptions surface via Blazor's error boundary. Changing this deviates from convention for theoretical benefit only. `CommandFormEmitter.cs`
+
+- **Destructive renderer emitter snapshot coverage** — `CommandRendererEmitterTests` never passes `isDestructive: true`; `DestructiveBeforeSubmitAsync`, `_dialogOpen`, and `IDialogService` injection have no snapshot. Authoring the snapshots requires a destructive command test model + 8+ rendering permutations. Significant scoping work; track as a dedicated snapshot-hardening pass. `tests/.../CommandRendererEmitterTests.cs`
+
+- **`OnFormEditContextReady` double render cycle** — `EventCallback` re-renders on completion; the additional `InvokeAsync(StateHasChanged)` is redundant. Cosmetic, no correctness impact. `CommandRendererEmitter.cs` emitted `OnFormEditContextReady`
+
+- **`ScheduleIdempotentDismiss`/`ScheduleConfirmedDismiss` structural duplication** — two methods share the same timer/dispose pattern; divergence risk on future changes. Maintenance-only, not a bug. `FcLifecycleWrapper.razor.cs`
+
+- **`LifecycleUiState.Idle` C# default property values** — static singleton relies on language defaults for `bool`/`DateTimeOffset?`/`string?`; future property additions may silently default without an explicit entry. No bug today. `LifecycleUiState.cs`
+
+- **`DestructiveNamePattern` `RegexOptions.Compiled` in source generator** — anti-pattern in Roslyn generators; prefer `[GeneratedRegex]`. Low priority, no correctness impact. `CommandParser.cs`
+
+- **`FormAbandonmentThresholdSeconds` unit inconsistency** — mixed seconds/milliseconds naming across `FcShellOptions`; intentional per design docs; no overflow at current `[Range(5,600)]` bounds. `FcShellOptionsThresholdValidator.cs`
+
+- **`DestructiveNamePattern` regex digit-prefix gap** — class names like `Delete2Items` are not matched; HFC1020 is Info severity so impact is advisory only. `CommandParser.cs`
+
+- **`BuildFcLifecycleRejectionCopy` trailing period from `reason` field** — `reason + ". " + resolution` may produce "Reason.  Resolution." if `reason` already ends with a period. Cosmetic. `CommandFormEmitter.cs`
+
+- **`OnFirstEdit` re-mount arm gap** — guard unsubscribes `OnFieldChanged` after first fire; if the same `EditContext` reference is reused across mounts the guard never re-arms. Emitter creates a fresh `EditContext` in `OnInitialized` making exact reuse unlikely in practice. `FcFormAbandonmentGuard.razor.cs`
+
 ## Deferred from: code review of tasks-subtasks.md (story 2-5) (2026-04-17)
 
 - **Planning monolith paths and external bookmarks** — Replacing single-file `_bmad-output/planning-artifacts/prd.md`, `epics.md`, `ux-design-specification.md`, and research monoliths with sharded folders can break external deep links and old citations until referrers are updated. Tracked as deferral from review; no runtime code change required.

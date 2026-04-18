@@ -1,6 +1,6 @@
 # Story
 
-Status: in-progress
+Status: done
 
 As a business user,
 I want domain-specific rejection messages that tell me what went wrong, destructive action confirmation dialogs that prevent accidents, and form abandonment protection that saves my work,

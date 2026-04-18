@@ -1,0 +1,28 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<FluentDialogBody>
+    <TitleTemplate>
+        @(Title ?? string.Empty)
+    </TitleTemplate>
+    <ChildContent>
+        <div class="fc-destructive-dialog-body"
+             tabindex="-1"
+             @onkeydown="HandleKeyDownAsync"
+             data-testid="fc-destructive-dialog">
+            @(Body ?? string.Empty)
+        </div>
+    </ChildContent>
+    <ActionTemplate>
+        <FluentButton OnClick="OnCancelAsync"
+                      Appearance="ButtonAppearance.Outline"
+                      AutoFocus="true"
+                      Class="fc-destructive-cancel"
+                      data-testid="fc-destructive-cancel">Cancel</FluentButton>
+        <FluentButton OnClick="OnConfirmAsync"
+                      Appearance="ButtonAppearance.Primary"
+                      Class="fc-destructive-confirm"
+                      data-testid="fc-destructive-confirm">@(DestructiveLabel ?? "Confirm")</FluentButton>
+    </ActionTemplate>
+</FluentDialogBody>

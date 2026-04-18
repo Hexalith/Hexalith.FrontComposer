@@ -86,4 +86,26 @@ public sealed class FcShellOptions {
     /// </summary>
     [Range(1_000, 30_000, ErrorMessage = "ConfirmedToastDurationMs must be between 1000 and 30000.")]
     public int ConfirmedToastDurationMs { get; set; } = 5_000;
+
+    /// <summary>
+    /// Threshold (seconds, NOT ms) at which <c>FcFormAbandonmentGuard</c> starts protecting
+    /// full-page forms from accidental navigation loss. Timer anchors on the first
+    /// <c>EditContext.OnFieldChanged</c> — mounting without editing never arms the guard.
+    /// Story 2-5 Decision D6 / D10 / AC6.
+    /// </summary>
+    /// <remarks>
+    /// Unit intentionally differs from the millisecond thresholds above: epics §1050 spec
+    /// uses "30 seconds" verbatim, so the options surface exposes seconds to keep adopter
+    /// configuration copy-paste-matching the spec.
+    /// </remarks>
+    [Range(5, 600, ErrorMessage = "FormAbandonmentThresholdSeconds must be between 5 and 600.")]
+    public int FormAbandonmentThresholdSeconds { get; set; } = 30;
+
+    /// <summary>
+    /// Duration (ms) the idempotent Info <c>FluentMessageBar</c> remains visible before
+    /// auto-dismiss (Story 2-5 Decision D6 / AC2). Default 5000 ms — Sally review #2 raised from
+    /// 3000 so <c>aria-live="polite"</c> screen-reader queue delay does not cut users off mid-read.
+    /// </summary>
+    [Range(1_000, 30_000, ErrorMessage = "IdempotentInfoToastDurationMs must be between 1000 and 30000.")]
+    public int IdempotentInfoToastDurationMs { get; set; } = 5_000;
 }

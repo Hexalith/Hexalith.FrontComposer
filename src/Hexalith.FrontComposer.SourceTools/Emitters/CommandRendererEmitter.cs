@@ -38,12 +38,15 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Communication;");
         _ = sb.AppendLine("using Hexalith.FrontComposer.Contracts.Rendering;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
+        _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Forms;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Web;");
         _ = sb.AppendLine("using Microsoft.FluentUI.AspNetCore.Components;");
         _ = sb.AppendLine("using Microsoft.Extensions.Logging;");
         _ = sb.AppendLine("using Microsoft.Extensions.Options;");
         _ = sb.AppendLine("using Microsoft.JSInterop;");
+        // Story 2-5 Task 6.1 — emitted usings so FcDestructiveConfirmationDialog + FcFormAbandonmentGuard resolve.
+        _ = sb.AppendLine("using Hexalith.FrontComposer.Shell.Components.Forms;");
         _ = sb.AppendLine();
 
         bool hasNamespace = !string.IsNullOrEmpty(model.Namespace);
@@ -78,10 +81,20 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    [Inject] private ILogger<" + rendererName + ">? Logger { get; set; }");
         _ = sb.AppendLine("    [Inject] private ICommandPageContext PageContext { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IState<" + lifecycleStateTypeFqn + "> _lifecycleState { get; set; } = default!;");
+        if (model.IsDestructive) {
+            // Story 2-5 Task 6.1 — destructive commands open a FluentDialog via IDialogService (D11).
+            _ = sb.AppendLine("    [Inject] private IDialogService DialogService { get; set; } = default!;");
+        }
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private CommandRenderMode _effectiveMode;");
         _ = sb.AppendLine("    private bool _popoverOpen;");
         _ = sb.AppendLine("    private ElementReference _compactCardRef;");
+        if (model.IsDestructive) {
+            // Story 2-5 D24 + Winston #2 — dialog-lifetime flag prevents double-click dispatch.
+            _ = sb.AppendLine("    private bool _dialogOpen;");
+        }
+        // Story 2-5 Task 5.3 / Task 6.1 — expose EditContext to FcFormAbandonmentGuard via OnEditContextReady.
+        _ = sb.AppendLine("    private EditContext? _formEditContext;");
         // Story 2-2 code-review D12 — stable id derived from command type FullName for SSR/interactive consistency.
         string stableTriggerId = "fc-trigger-" + SanitizeCssId(model.CommandFullyQualifiedName);
         _ = sb.AppendLine("    private readonly string _triggerButtonId = \"" + stableTriggerId + "\";");
@@ -247,6 +260,57 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("        _ = InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        // Story 2-5 Task 5.3 / Task 6.1 — capture the form's EditContext for abandonment-guard
+        // binding + (for destructive commands) ensuring D24 validation before the dialog opens.
+        _ = sb.AppendLine("    private void OnFormEditContextReady(EditContext context)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        _formEditContext = context;");
+        _ = sb.AppendLine("        _ = InvokeAsync(StateHasChanged);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+
+        if (model.IsDestructive) {
+            string title = !string.IsNullOrEmpty(model.DestructiveConfirmTitle)
+                ? EscapeString(model.DestructiveConfirmTitle!)
+                : EscapeString(model.DisplayLabel) + "?";
+            string body = !string.IsNullOrEmpty(model.DestructiveConfirmBody)
+                ? EscapeString(model.DestructiveConfirmBody!)
+                : "This action cannot be undone.";
+
+            // Story 2-5 D2 / D11 / D24 — gating lives in BeforeSubmit so the form's OnValidSubmit
+            // has already validated (D24 satisfied: if invalid, OnInvalidSubmit fires and we never
+            // reach here). The dialog opens, and cancel → throw OperationCanceledException → the
+            // form's existing catch resets lifecycle state to Idle via ResetToIdleAction (P-11).
+            // Review 2026-04-17 P11 — _dialogOpen is set BEFORE any async work so a rapid
+            // double-click during RefreshDerivedValuesBeforeSubmitAsync cannot open a second dialog.
+            // Review 2026-04-17 P8 — no ConfigureAwait(false) on Blazor UI paths; continuations
+            // must resume on the component's sync context.
+            _ = sb.AppendLine("    private async Task DestructiveBeforeSubmitAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (_dialogOpen) throw new OperationCanceledException(\"Destructive dialog already open.\");");
+            _ = sb.AppendLine("        _dialogOpen = true;");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await RefreshDerivedValuesBeforeSubmitAsync();");
+            _ = sb.AppendLine("            var dialogRef = await DialogService.ShowDialogAsync<FcDestructiveConfirmationDialog>(options =>");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Title), \"" + title + "\");");
+            _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.Body), \"" + body + "\");");
+            _ = sb.AppendLine("                options.Parameters.Add(nameof(FcDestructiveConfirmationDialog.DestructiveLabel), \"" + EscapeString(model.DisplayLabel) + "\");");
+            _ = sb.AppendLine("            });");
+            _ = sb.AppendLine("            var result = await dialogRef.Result;");
+            _ = sb.AppendLine("            if (result.Cancelled)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                throw new OperationCanceledException(\"User cancelled destructive confirmation.\");");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        finally");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _dialogOpen = false;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+        }
 
         _ = sb.AppendLine("    private Task OnZeroFieldClickAsync()");
         _ = sb.AppendLine("    {");
@@ -399,6 +463,12 @@ public static class CommandRendererEmitter {
         string formFqn = string.IsNullOrEmpty(model.Namespace) ? model.FormComponentName : model.Namespace + "." + model.FormComponentName;
         int nonDerivableCount = model.NonDerivablePropertyNames.Count;
         string firstFieldName = nonDerivableCount >= 1 ? EscapeString(model.NonDerivablePropertyNames[0]) : "";
+        // Story 2-5 Task 6.1 — destructive commands route BeforeSubmit through DestructiveBeforeSubmitAsync
+        // which opens the confirmation dialog. Non-destructive commands keep the default (derived-values
+        // refresh only).
+        string beforeSubmitFunc = model.IsDestructive
+            ? "(Func<Task>)DestructiveBeforeSubmitAsync"
+            : "(Func<Task>)RefreshDerivedValuesBeforeSubmitAsync";
 
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
@@ -424,8 +494,9 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.OpenComponent<" + formFqn + ">(seq++);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"InitialValue\", _prefilledModel);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"RegisterExternalSubmit\", (Action<Action>)OnFormRegisteredExternalSubmit);");
-            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"BeforeSubmit\", " + beforeSubmitFunc + ");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
             _ = sb.AppendLine("                builder.CloseComponent();");
             _ = sb.AppendLine("                builder.CloseElement();");
         }
@@ -453,8 +524,9 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                    __popover.OpenComponent<" + formFqn + ">(pseq++);");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"InitialValue\", _prefilledModel);");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"ShowFieldsOnly\", new[] { \"" + firstFieldName + "\" });");
-            _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);");
+            _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"BeforeSubmit\", " + beforeSubmitFunc + ");");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");
+            _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
             _ = sb.AppendLine("                    __popover.CloseComponent();");
             _ = sb.AppendLine("                    __popover.OpenComponent<FluentButton>(pseq++);");
             _ = sb.AppendLine("                    __popover.AddAttribute(pseq++, \"Type\", ButtonType.Button);");
@@ -486,8 +558,9 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                    __card.OpenComponent<" + formFqn + ">(cseq++);");
         _ = sb.AppendLine("                    __card.AddAttribute(cseq++, \"InitialValue\", _prefilledModel);");
         _ = sb.AppendLine("                    __card.AddAttribute(cseq++, \"DerivableFieldsHidden\", true);");
-        _ = sb.AppendLine("                    __card.AddAttribute(cseq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);");
+        _ = sb.AppendLine("                    __card.AddAttribute(cseq++, \"BeforeSubmit\", " + beforeSubmitFunc + ");");
         _ = sb.AppendLine("                    __card.AddAttribute(cseq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");
+        _ = sb.AppendLine("                    __card.AddAttribute(cseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
         _ = sb.AppendLine("                    __card.CloseComponent();");
         _ = sb.AppendLine("                }));");
         _ = sb.AppendLine("                builder.CloseComponent();");
@@ -516,10 +589,20 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("                    builder.AddContent(seq++, \" > " + displayLabelEscaped + "\");");
         _ = sb.AppendLine("                    builder.CloseElement();");
         _ = sb.AppendLine("                }");
-        _ = sb.AppendLine("                builder.OpenComponent<" + formFqn + ">(seq++);");
-        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"InitialValue\", _prefilledModel);");
-        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"BeforeSubmit\", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);");
-        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");
+        // Story 2-5 D19 / Task 6.1 — FullPage forms wrap their body in FcFormAbandonmentGuard.
+        _ = sb.AppendLine("                builder.OpenComponent<FcFormAbandonmentGuard>(seq++);");
+        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"CorrelationId\", _lifecycleState.Value.CorrelationId ?? string.Empty);");
+        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"EditContext\", _formEditContext);");
+        _ = sb.AppendLine("                builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__guard =>");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    int gseq = 0;");
+        _ = sb.AppendLine("                    __guard.OpenComponent<" + formFqn + ">(gseq++);");
+        _ = sb.AppendLine("                    __guard.AddAttribute(gseq++, \"InitialValue\", _prefilledModel);");
+        _ = sb.AppendLine("                    __guard.AddAttribute(gseq++, \"BeforeSubmit\", " + beforeSubmitFunc + ");");
+        _ = sb.AppendLine("                    __guard.AddAttribute(gseq++, \"OnConfirmed\", EventCallback.Factory.Create(this, OnConfirmedAsync));");
+        _ = sb.AppendLine("                    __guard.AddAttribute(gseq++, \"OnEditContextReady\", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));");
+        _ = sb.AppendLine("                    __guard.CloseComponent();");
+        _ = sb.AppendLine("                }));");
         _ = sb.AppendLine("                builder.CloseComponent();");
         _ = sb.AppendLine("                builder.CloseElement();");
         _ = sb.AppendLine("                break;");

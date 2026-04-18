@@ -21,7 +21,10 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
         string formComponentName,
         string actionsWrapperName,
         string stateName,
-        string subscriberTypeName) {
+        string subscriberTypeName,
+        bool isDestructive = false,
+        string? destructiveConfirmTitle = null,
+        string? destructiveConfirmBody = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -36,6 +39,9 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
         ActionsWrapperName = actionsWrapperName;
         StateName = stateName;
         SubscriberTypeName = subscriberTypeName;
+        IsDestructive = isDestructive;
+        DestructiveConfirmTitle = destructiveConfirmTitle;
+        DestructiveConfirmBody = destructiveConfirmBody;
     }
 
     public string TypeName { get; }
@@ -70,6 +76,15 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
     /// <summary>Name of the generated <c>{TypeName}LastUsedSubscriber</c> (Decision D28).</summary>
     public string SubscriberTypeName { get; }
 
+    /// <summary>Story 2-5 D1 — true when the command is annotated <c>[Destructive]</c>.</summary>
+    public bool IsDestructive { get; }
+
+    /// <summary>Story 2-5 D1 — optional <c>[Destructive(ConfirmationTitle)]</c> override; null → <c>{DisplayLabel}?</c> fallback.</summary>
+    public string? DestructiveConfirmTitle { get; }
+
+    /// <summary>Story 2-5 D1 — optional <c>[Destructive(ConfirmationBody)]</c> override; null → localized default body.</summary>
+    public string? DestructiveConfirmBody { get; }
+
     public bool Equals(CommandRendererModel? other) {
         if (other is null) {
             return false;
@@ -92,7 +107,10 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
             && FormComponentName == other.FormComponentName
             && ActionsWrapperName == other.ActionsWrapperName
             && StateName == other.StateName
-            && SubscriberTypeName == other.SubscriberTypeName;
+            && SubscriberTypeName == other.SubscriberTypeName
+            && IsDestructive == other.IsDestructive
+            && DestructiveConfirmTitle == other.DestructiveConfirmTitle
+            && DestructiveConfirmBody == other.DestructiveConfirmBody;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandRendererModel);
@@ -114,6 +132,9 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
             hash = (hash * 31) + (ActionsWrapperName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (StateName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (SubscriberTypeName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + IsDestructive.GetHashCode();
+            hash = (hash * 31) + (DestructiveConfirmTitle?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (DestructiveConfirmBody?.GetHashCode() ?? 0);
             return hash;
         }
     }

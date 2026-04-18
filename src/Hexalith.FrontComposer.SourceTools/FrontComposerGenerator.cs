@@ -129,6 +129,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1015" => DiagnosticDescriptors.RenderModeIncompatibleWithDensity,
         "HFC1016" => DiagnosticDescriptors.CommandPropertyNotWritable,
         "HFC1017" => DiagnosticDescriptors.CommandTypeIsGeneric,
+        "HFC1020" => DiagnosticDescriptors.DestructiveNamePatternMissingAttribute,
+        "HFC1021" => DiagnosticDescriptors.DestructiveCommandHasZeroFields,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

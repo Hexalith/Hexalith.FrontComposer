@@ -17,4 +17,18 @@ public static class FcDiagnosticIds {
 
     /// <summary>Wrapper threshold timer fired outside the UI-thread context.</summary>
     public const string HFC2102_ThresholdTimerOffUiThread = "HFC2102";
+
+    /// <summary>
+    /// Form abandonment guard suppressed its warning bar because the lifecycle state
+    /// is Submitting (or the wrapper flagged its own Start-over navigation). Story 2-5 D13.
+    /// Information severity — this is expected suppression, not anomaly.
+    /// </summary>
+    public const string HFC2103_AbandonmentDuringSubmitting = "HFC2103";
+
+    /// <summary>
+    /// Wrapper rendered the idempotent Info bar (Story 2-5 D3 / AC2). Logged so adopters
+    /// can measure frequency and calibrate copy; CorrelationId is redacted to its first 8
+    /// characters + ellipsis (Story 2-4 RT-4 — not a cryptographic hash).
+    /// </summary>
+    public const string HFC2104_IdempotentInfoBarRendered = "HFC2104";
 }

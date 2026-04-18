@@ -190,4 +190,34 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1020: Command whose name matches a destructive verb pattern
+    /// (<c>Delete*</c> / <c>Remove*</c> / <c>Purge*</c> / <c>Erase*</c> / <c>Drop*</c> /
+    /// <c>Truncate*</c> / <c>Wipe*</c>) is missing the <c>[Destructive]</c> attribute.
+    /// Story 2-5 Decision D20 / ADR-026. Info severity in v0.1 to prevent Day-1 adoption
+    /// blockers for codebases with pre-existing non-destructive <c>Remove*</c> / <c>Delete*</c>
+    /// commands; promotion to Warning + suppression escape hatch ship in Story 9-4.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DestructiveNamePatternMissingAttribute = new(
+        id: "HFC1020",
+        title: "Command appears destructive by name but is missing [Destructive] attribute",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1021: <c>[Destructive]</c> command has zero non-derivable properties, so it would
+    /// render as a 0-field Inline button. Destructive commands must require at least one
+    /// non-derivable field (UX-DR36 — danger never inline on DataGrid rows). Story 2-5
+    /// Decision D1 / AC4.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DestructiveCommandHasZeroFields = new(
+        id: "HFC1021",
+        title: "Destructive command must have at least one non-derivable property",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

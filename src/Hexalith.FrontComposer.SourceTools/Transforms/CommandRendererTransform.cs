@@ -49,7 +49,10 @@ public static class CommandRendererTransform {
             formComponentName: model.TypeName + "Form",
             actionsWrapperName: fluxor.ActionsWrapperName,
             stateName: fluxor.StateName,
-            subscriberTypeName: model.TypeName + "LastUsedSubscriber");
+            subscriberTypeName: model.TypeName + "LastUsedSubscriber",
+            isDestructive: model.IsDestructive,
+            destructiveConfirmTitle: model.DestructiveConfirmTitle,
+            destructiveConfirmBody: model.DestructiveConfirmBody);
     }
 
     private static string BuildDisplayLabel(CommandModel model) {

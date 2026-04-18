@@ -30,6 +30,18 @@ public static class CommandParser {
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
     private const string IconAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.IconAttribute";
     private const string DefaultValueAttributeName = "System.ComponentModel.DefaultValueAttribute";
+    private const string DestructiveAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.DestructiveAttribute";
+
+    /// <summary>
+    /// Story 2-5 D20 / ADR-026 — commands whose TypeName matches this pattern AND lack
+    /// <c>[Destructive]</c> surface <c>HFC1020</c>. Prefixes cover the common destructive
+    /// verbs plus the expanded set added after Red Team Attack-2 (<c>Erase</c>/<c>Drop</c>/
+    /// <c>Truncate</c>/<c>Wipe</c>) to close name-heuristic false negatives.
+    /// </summary>
+    private static readonly System.Text.RegularExpressions.Regex DestructiveNamePattern =
+        new(
+            @"^(Delete|Remove|Purge|Erase|Drop|Truncate|Wipe)(?:[A-Z]|Command$)",
+            System.Text.RegularExpressions.RegexOptions.CultureInvariant | System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>Warning threshold for non-derivable property count.</summary>
     public const int NonDerivableWarningThreshold = 30;
@@ -133,6 +145,26 @@ public static class CommandParser {
         string? boundedContext = ParseBoundedContext(typeSymbol, out string? boundedContextDisplayLabel);
         string? displayName = ParseDisplayAttribute(typeSymbol);
         string? iconName = ParseIconAttribute(typeSymbol);
+        // Story 2-5 Task 2.2 — parse [Destructive] opt-in marker + optional confirmation copy overrides.
+        bool isDestructive = ParseDestructiveAttribute(
+            typeSymbol,
+            out string? destructiveConfirmTitle,
+            out string? destructiveConfirmBody);
+
+        // Story 2-5 D20 / HFC1020 (Info) — name-heuristic guardrail: command matches destructive verb pattern
+        // but lacks [Destructive]. Info severity in v0.1 to prevent Day-1 adoption blockers (promotion to
+        // Warning + [SuppressHFC1020] ship in Story 9-4).
+        if (!isDestructive && DestructiveNamePattern.IsMatch(typeSymbol.Name)) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1020",
+                string.Format(
+                    "Command '{0}' appears destructive by name but is missing [Destructive] attribute. Add [Destructive] or rename the command.",
+                    typeSymbol.Name),
+                "Info",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+        }
 
         if (ct.IsCancellationRequested) {
             return EmptyResult;
@@ -260,6 +292,24 @@ public static class CommandParser {
         }
 
         int nonDerivableCount = nonDerivableBuilder.Count;
+
+        // Story 2-5 D1 / AC4 / HFC1021 — [Destructive] commands must have at least one non-derivable field
+        // so the emitted renderer can open the destructive confirmation dialog (destructive never renders as
+        // 0-field Inline button per UX-DR36).
+        if (isDestructive && nonDerivableCount == 0) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1021",
+                string.Format(
+                    "Destructive command '{0}' must have at least one non-derivable property (destructive commands cannot render as inline buttons).",
+                    typeName),
+                "Error",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+
+            return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
+        }
+
         if (nonDerivableCount > NonDerivableErrorThreshold) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1007",
@@ -288,7 +338,10 @@ public static class CommandParser {
             new EquatableArray<PropertyModel>(allBuilder.ToImmutable()),
             new EquatableArray<PropertyModel>(derivableBuilder.ToImmutable()),
             new EquatableArray<PropertyModel>(nonDerivableBuilder.ToImmutable()),
-            iconName);
+            iconName,
+            isDestructive,
+            destructiveConfirmTitle,
+            destructiveConfirmBody);
 
         return new CommandParseResult(
             model,
@@ -448,6 +501,41 @@ public static class CommandParser {
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Story 2-5 Task 2.2 — resolves <c>[Destructive]</c> (with optional named args
+    /// <c>ConfirmationTitle</c> / <c>ConfirmationBody</c>) when declared on the command type.
+    /// </summary>
+    private static bool ParseDestructiveAttribute(
+        INamedTypeSymbol typeSymbol,
+        out string? confirmationTitle,
+        out string? confirmationBody) {
+        confirmationTitle = null;
+        confirmationBody = null;
+
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() != DestructiveAttributeName) {
+                continue;
+            }
+
+            foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
+                if (namedArg.Key == "ConfirmationTitle"
+                    && namedArg.Value.Value is string title
+                    && !string.IsNullOrWhiteSpace(title)) {
+                    confirmationTitle = title;
+                }
+                else if (namedArg.Key == "ConfirmationBody"
+                    && namedArg.Value.Value is string body
+                    && !string.IsNullOrWhiteSpace(body)) {
+                    confirmationBody = body;
+                }
+            }
+
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

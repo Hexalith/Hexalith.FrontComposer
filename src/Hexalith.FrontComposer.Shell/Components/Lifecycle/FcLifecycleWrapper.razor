@@ -1,7 +1,12 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Lifecycle
 @using Hexalith.FrontComposer.Contracts.Lifecycle
+@using Microsoft.AspNetCore.Components
 @using Microsoft.FluentUI.AspNetCore.Components
 
+@* Review 2026-04-17 P3 — CascadingValue wired so FcFormAbandonmentGuard can yield during
+   wrapper-initiated Start-over navigation. Today `OnStartOverClicked` uses forceLoad:true
+   which bypasses NavigationLock anyway, but the cascade is correct defense-in-depth. *@
+<CascadingValue Name="WrapperInitiatedNavigation" Value="_wrapperInitiatedNavigation" IsFixed="false">
 <div class="fc-lifecycle-wrapper @PulseClass()">
     @ChildContent
 
@@ -36,7 +41,7 @@
         </FluentMessageBar>
     }
 
-    @if (_state.Current is CommandLifecycleState.Confirmed) {
+    @if (_state.Current is CommandLifecycleState.Confirmed && !_state.IsIdempotent) {
         <FluentMessageBar Intent="MessageBarIntent.Success"
                          Title="Submission confirmed"
                          AllowDismiss="true"
@@ -44,9 +49,20 @@
         </FluentMessageBar>
     }
 
+    @if (_state.Current is CommandLifecycleState.Confirmed && _state.IsIdempotent) {
+        <FluentMessageBar Intent="MessageBarIntent.Info"
+                         Title="Already confirmed"
+                         AllowDismiss="true"
+                         data-testid="fc-idempotent">
+            <ChildContent>
+                @(IdempotentInfoMessage ?? "This was already confirmed — no action needed.")
+            </ChildContent>
+        </FluentMessageBar>
+    }
+
     @if (_state.Current is CommandLifecycleState.Rejected) {
         <FluentMessageBar Intent="MessageBarIntent.Error"
-                         Title="Submission rejected"
+                         Title="@ResolveRejectionTitle()"
                          AllowDismiss="true"
                          data-testid="fc-rejected">
             <ChildContent>
@@ -55,8 +71,13 @@
         </FluentMessageBar>
     }
 </div>
+</CascadingValue>
 
 @code {
+    private string ResolveRejectionTitle()
+        // Review 2026-04-17 P14 — IsNullOrEmpty already narrows to non-null; no `!` needed.
+        => string.IsNullOrEmpty(RejectionTitle) ? "Submission rejected" : RejectionTitle;
+
     private string PulseClass() =>
         _state.Current is CommandLifecycleState.Syncing
             && _state.TimerPhase is LifecycleTimerPhase.Pulse
@@ -67,6 +88,9 @@
         CommandLifecycleState.Submitting => "Submitting…",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "Still syncing…",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "The system hasn't confirmed your submission. You can wait or start over.",
+        // Review 2026-04-17 P12 — when an adopter supplies IdempotentInfoMessage, screen readers
+        // announce that copy rather than the hardcoded "Already confirmed" (matches the visible body).
+        CommandLifecycleState.Confirmed when _state.IsIdempotent => IdempotentInfoMessage ?? "Already confirmed",
         CommandLifecycleState.Confirmed => "Submission confirmed",
         CommandLifecycleState.Rejected => "Submission rejected",
         _ => string.Empty,
@@ -88,6 +112,7 @@
         CommandLifecycleState.Submitting => "submitting",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "still-syncing",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "action-prompt",
+        CommandLifecycleState.Confirmed when _state.IsIdempotent => "confirmed-idempotent",
         CommandLifecycleState.Confirmed => "confirmed",
         CommandLifecycleState.Rejected => "rejected",
         _ => "idle",

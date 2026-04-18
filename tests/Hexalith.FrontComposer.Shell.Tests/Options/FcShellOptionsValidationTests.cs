@@ -27,6 +27,35 @@ public sealed class FcShellOptionsValidationTests {
     }
 
     [Fact]
+    public void FormAbandonment_must_exceed_StillSyncing() {
+        // Story 2-5 D6 cross-property invariant #1: abandonment window must not fire before still-syncing visible.
+        FcShellOptions options = new() {
+            FormAbandonmentThresholdSeconds = 2, // 2000 ms == StillSyncingThresholdMs default
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("FormAbandonmentThresholdSeconds", Case.Insensitive);
+        result.FailureMessage.ShouldContain("StillSyncingThresholdMs", Case.Insensitive);
+    }
+
+    [Fact]
+    public void Idempotent_toast_must_not_exceed_ConfirmedToast() {
+        // Story 2-5 D6 cross-property invariant #2: Info dismisses no later than Success.
+        FcShellOptions options = new() {
+            ConfirmedToastDurationMs = 3_000,
+            IdempotentInfoToastDurationMs = 5_000,
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("IdempotentInfoToastDurationMs", Case.Insensitive);
+        result.FailureMessage.ShouldContain("ConfirmedToastDurationMs", Case.Insensitive);
+    }
+
+    [Fact]
     public void SyncPulse_gte_StillSyncing_fails_validation_with_clear_message() {
         FcShellOptions options = new() {
             SyncPulseThresholdMs = 2_000,
@@ -50,6 +79,10 @@ public sealed class FcShellOptionsValidationTests {
     [InlineData(nameof(FcShellOptions.TimeoutActionThresholdMs), 60_001)]
     [InlineData(nameof(FcShellOptions.ConfirmedToastDurationMs), 999)]
     [InlineData(nameof(FcShellOptions.ConfirmedToastDurationMs), 30_001)]
+    [InlineData(nameof(FcShellOptions.FormAbandonmentThresholdSeconds), 4)]
+    [InlineData(nameof(FcShellOptions.FormAbandonmentThresholdSeconds), 601)]
+    [InlineData(nameof(FcShellOptions.IdempotentInfoToastDurationMs), 999)]
+    [InlineData(nameof(FcShellOptions.IdempotentInfoToastDurationMs), 30_001)]
     public void Range_annotations_enforce_min_max_bounds_on_each_threshold_property(string propertyName, int outOfRangeValue) {
         FcShellOptions options = new();
         typeof(FcShellOptions).GetProperty(propertyName)!.SetValue(options, outOfRangeValue);

@@ -84,6 +84,9 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    /// <summary>Story 2-2 ADR-016: renderer hook invoked immediately before dispatch so derivable values can be refreshed per submit.</summary>");
         _ = sb.AppendLine("    [Parameter] public Func<Task>? BeforeSubmit { get; set; }");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-5 Task 5.3: fired once after the form's EditContext is constructed so the renderer can wire validation gates and abandonment protection.</summary>");
+        _ = sb.AppendLine("    [Parameter] public EventCallback<EditContext> OnEditContextReady { get; set; }");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("    [Inject] private IState<" + fluxor.StateName + "> LifecycleState { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IDispatcher Dispatcher { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;");
@@ -111,6 +114,8 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        _editContext = new EditContext(_model);");
         _ = sb.AppendLine("        _editContext.OnFieldChanged += OnEditContextFieldChanged;");
         _ = sb.AppendLine("        LifecycleState.StateChanged += OnStateChanged;");
+        _ = sb.AppendLine("        // Story 2-5 Task 5.3 — surface the EditContext to the renderer so it can wire D24 validation + abandonment guard.");
+        _ = sb.AppendLine("        if (OnEditContextReady.HasDelegate) { _ = OnEditContextReady.InvokeAsync(_editContext); }");
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) { IsDirty = true; }");
@@ -182,6 +187,7 @@ public static class CommandFormEmitter {
         EmitSubmitMethod(sb, form, fluxor);
         EmitDispose(sb);
         EmitBuildRenderTree(sb, form, fluxor, escapedButtonLabel);
+        EmitRejectionCopyHelpers(sb, escapedButtonLabel);
         EmitNumericConverters(sb, form);
 
         _ = sb.AppendLine("}");
@@ -364,6 +370,10 @@ public static class CommandFormEmitter {
         // renders around every generated form without service-locator plumbing.
         _ = sb.AppendLine("        builder.OpenComponent<FcLifecycleWrapper>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CorrelationId\", _submittedCorrelationId);");
+        // Story 2-5 Task 5.2 + D4 — emitted attributes forward rejection copy + domain-language title
+        // computed from the Fluxor feature state's RejectionReason/RejectionResolution fields.
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RejectionMessage\", BuildFcLifecycleRejectionCopy());");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RejectionTitle\", BuildFcLifecycleRejectionTitle());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__wrap =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int wseq = 0;");
@@ -572,6 +582,33 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"FieldName\", \"" + EscapeString(propertyName) + "\");");
         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"TypeName\", \"" + typeName + "\");");
         _ = sb.AppendLine("            __b.CloseComponent();");
+    }
+
+    /// <summary>
+    /// Story 2-5 Task 5.2 — emits helper methods that forward the Fluxor feature state's rejection
+    /// copy to <c>FcLifecycleWrapper.RejectionMessage</c> / <c>RejectionTitle</c>. Plain-text join
+    /// (never <c>MarkupString</c>) preserves the D14 XSS invariant.
+    /// </summary>
+    private static void EmitRejectionCopyHelpers(StringBuilder sb, string escapedButtonLabel) {
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-5 D4 — joins Fluxor-state Reason + Resolution with '. ' separator; null outside Rejected.</summary>");
+        _ = sb.AppendLine("    private string? BuildFcLifecycleRejectionCopy()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (LifecycleState.Value.State != CommandLifecycleState.Rejected) return null;");
+        _ = sb.AppendLine("        var reason = LifecycleState.Value.RejectionReason;");
+        _ = sb.AppendLine("        var resolution = LifecycleState.Value.RejectionResolution;");
+        _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(resolution)) return null;");
+        _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(resolution)) return reason;");
+        _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(reason)) return resolution;");
+        _ = sb.AppendLine("        return reason + \". \" + resolution;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 2-5 D4 — domain-language rejection title ('{DisplayLabel} failed'); null outside Rejected.</summary>");
+        _ = sb.AppendLine("    private string? BuildFcLifecycleRejectionTitle()");
+        _ = sb.AppendLine("        => LifecycleState.Value.State == CommandLifecycleState.Rejected");
+        _ = sb.AppendLine("           ? \"" + escapedButtonLabel + " failed\"");
+        _ = sb.AppendLine("           : null;");
+        _ = sb.AppendLine();
     }
 
     private static void EmitNumericConverters(StringBuilder sb, CommandFormModel form) {

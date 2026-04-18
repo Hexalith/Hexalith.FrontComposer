@@ -1,0 +1,4 @@
+/* Story 2-5 UX-DR57 — layout-only, defer all color/typography to Fluent theme tokens. */
+.fc-form-abandonment-warning {
+    margin-bottom: 12px;
+}

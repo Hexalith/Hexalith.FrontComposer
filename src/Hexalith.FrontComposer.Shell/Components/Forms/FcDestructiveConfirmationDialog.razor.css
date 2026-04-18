@@ -1,0 +1,13 @@
+/* Story 2-5 UX-DR57 — layout-only, defer color tokens to Fluent theme where possible. */
+.fc-destructive-dialog-body {
+    padding: 4px 0;
+    outline: none;
+}
+
+/* Story 2-5 D11 — destructive button uses Fluent's danger palette (CSS custom properties
+   Fluent emits for the `Error` role). Keeps the Primary-appearance pill shape; only color differs. */
+::deep .fc-destructive-confirm {
+    --button-fill-primary: var(--error-background, #d13438);
+    --button-fill-primary-hover: var(--error-background-hover, #a4262c);
+    --button-foreground-primary: var(--error-foreground-on-color, #ffffff);
+}

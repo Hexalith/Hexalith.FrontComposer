@@ -22,6 +22,10 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private LifecycleUiState _state = LifecycleUiState.Idle;
     private int _disposed;
 
+    // Review 2026-04-17 P3 — cascaded as WrapperInitiatedNavigation so FcFormAbandonmentGuard
+    // can bypass its warning when the wrapper itself triggers a Start-over navigation.
+    private bool _wrapperInitiatedNavigation;
+
     /// <summary>Gets or sets the correlation identifier this wrapper tracks. Story 2-4 D1 — string, not Guid.</summary>
     [Parameter]
     [EditorRequired]
@@ -31,9 +35,24 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
-    /// <summary>Gets or sets the optional domain-specific rejection copy. Story 2-5 will populate; null → generic fallback (D22 XSS: rendered as plain text, never MarkupString).</summary>
+    /// <summary>Gets or sets the optional domain-specific rejection copy. Story 2-5 populates; null → generic fallback (D22 XSS: rendered as plain text, never MarkupString).</summary>
     [Parameter]
     public string? RejectionMessage { get; set; }
+
+    /// <summary>
+    /// Story 2-5 D4 / D17 — optional domain-language rejection title (e.g., "Approval failed").
+    /// Null → falls back to Story 2-4's localized "Submission rejected". Plain text only per D14.
+    /// </summary>
+    [Parameter]
+    public string? RejectionTitle { get; set; }
+
+    /// <summary>
+    /// Story 2-5 D3 / D7 / D17 — optional adopter-supplied idempotent Info copy override.
+    /// Null → framework default "This was already confirmed — no action needed." (AC2 front-loaded
+    /// reassurance — safe under both cross-user and self-reconnect replay contexts). Plain text only per D14.
+    /// </summary>
+    [Parameter]
+    public string? IdempotentInfoMessage { get; set; }
 
     [Inject]
     private ILifecycleStateService LifecycleService { get; set; } = default!;
@@ -121,7 +140,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             Logger.LogWarning(
                 "{Diag} — FcLifecycleWrapper received transition for unexpected CorrelationId={Cid}",
                 FcDiagnosticIds.HFC2100_UnknownCorrelationId,
-                HashForLog(transition.CorrelationId));
+                RedactForLog(transition.CorrelationId));
             return;
         }
 
@@ -129,7 +148,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             Logger.LogInformation(
                 "{Diag} — idempotency-resolved transition observed for CorrelationId={Cid}",
                 FcDiagnosticIds.HFC2101_IdempotencyResolvedObserved,
-                HashForLog(transition.CorrelationId));
+                RedactForLog(transition.CorrelationId));
         }
 
         _ = InvokeAsync(() => {
@@ -140,7 +159,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     private void ApplyTransition(CommandLifecycleTransition transition) {
         LifecycleTimerPhase phase = _timer?.CurrentPhase ?? LifecycleTimerPhase.NoPulse;
-        LifecycleUiState next = LifecycleUiState.From(transition, phase, RejectionMessage);
+        LifecycleUiState next = LifecycleUiState.From(transition, phase, RejectionMessage, RejectionTitle);
 
         switch (transition.NewState) {
             case CommandLifecycleState.Acknowledged:
@@ -154,11 +173,32 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
             case CommandLifecycleState.Confirmed:
                 _timer?.EnterTerminal();
-                ScheduleConfirmedDismiss();
-                next = next with {
-                    TimerPhase = LifecycleTimerPhase.Terminal,
-                    ConfirmedDismissAt = Time.GetUtcNow().AddMilliseconds(ShellOptions.CurrentValue.ConfirmedToastDurationMs),
-                };
+                if (next.IsIdempotent) {
+                    // Story 2-5 D3 / AC2 — idempotent outcome schedules Info-bar dismiss at the
+                    // IdempotentInfoToastDurationMs threshold, not ConfirmedToastDurationMs.
+                    int durationMs = ShellOptions.CurrentValue.IdempotentInfoToastDurationMs;
+                    DateTimeOffset dismissAt = transition.LastTransitionAt.AddMilliseconds(durationMs);
+                    ScheduleIdempotentDismiss(transition.LastTransitionAt, durationMs);
+                    next = next with {
+                        TimerPhase = LifecycleTimerPhase.Terminal,
+                        IdempotentDismissAt = dismissAt,
+                    };
+
+                    Logger.LogInformation(
+                        "{Diag} FcLifecycleWrapper rendered idempotent Info bar. CorrelationId={Cid}",
+                        FcDiagnosticIds.HFC2104_IdempotentInfoBarRendered,
+                        RedactForLog(transition.CorrelationId));
+                }
+                else {
+                    int confirmedMs = ShellOptions.CurrentValue.ConfirmedToastDurationMs;
+                    DateTimeOffset confirmedDismissAt = transition.LastTransitionAt.AddMilliseconds(confirmedMs);
+                    ScheduleConfirmedDismiss(transition.LastTransitionAt, confirmedMs);
+                    next = next with {
+                        TimerPhase = LifecycleTimerPhase.Terminal,
+                        ConfirmedDismissAt = confirmedDismissAt,
+                    };
+                }
+
                 break;
 
             case CommandLifecycleState.Rejected:
@@ -202,24 +242,58 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         });
     }
 
-    private void ScheduleConfirmedDismiss() {
+    private void ScheduleConfirmedDismiss(DateTimeOffset transitionLastAtUtc, int durationMs) {
         CancelDismissTimer();
-        int durationMs = ShellOptions.CurrentValue.ConfirmedToastDurationMs;
+        TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
         _dismissTimer = Time.CreateTimer(
             _ => {
                 if (_disposed != 0) {
                     return;
                 }
                 _ = InvokeAsync(() => {
-                    if (_state.Current == CommandLifecycleState.Confirmed) {
+                    // Review 2026-04-17 P10 — guard mirrors ScheduleIdempotentDismiss: only dismiss
+                    // when we are STILL in the non-idempotent Confirmed branch. Rapid transitions
+                    // that flip between idempotent/non-idempotent otherwise risk the wrong timer
+                    // dismissing the wrong bar.
+                    if (_state.Current == CommandLifecycleState.Confirmed && !_state.IsIdempotent) {
                         _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
                         StateHasChanged();
                     }
                 });
             },
             state: null,
-            dueTime: TimeSpan.FromMilliseconds(durationMs),
+            dueTime: due,
             period: Timeout.InfiniteTimeSpan);
+    }
+
+    private void ScheduleIdempotentDismiss(DateTimeOffset transitionLastAtUtc, int durationMs) {
+        CancelDismissTimer();
+        TimeSpan due = ComputeDueTimeFromTransitionAnchor(transitionLastAtUtc, durationMs);
+        _dismissTimer = Time.CreateTimer(
+            _ => {
+                if (_disposed != 0) {
+                    return;
+                }
+                _ = InvokeAsync(() => {
+                    if (_state.Current == CommandLifecycleState.Confirmed && _state.IsIdempotent) {
+                        _state = LifecycleUiState.Idle with { LastTransitionAt = _state.LastTransitionAt };
+                        StateHasChanged();
+                    }
+                });
+            },
+            state: null,
+            dueTime: due,
+            period: Timeout.InfiniteTimeSpan);
+    }
+
+    /// <summary>
+    /// AC2 — timer fires at <paramref name="transitionLastAtUtc"/> + duration, not at wall-clock
+    /// handler time, so dismiss aligns with the lifecycle anchor when the UI thread is delayed.
+    /// </summary>
+    private TimeSpan ComputeDueTimeFromTransitionAnchor(DateTimeOffset transitionLastAtUtc, int durationMs) {
+        DateTimeOffset fireAt = transitionLastAtUtc.AddMilliseconds(durationMs);
+        TimeSpan due = fireAt - Time.GetUtcNow();
+        return due <= TimeSpan.Zero ? TimeSpan.Zero : due;
     }
 
     private void CancelDismissTimer() {
@@ -229,7 +303,18 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     private void OnStartOverClicked() {
         // ADR-022 — page reload is the minimum-viable recovery.
-        Nav.NavigateTo(Nav.Uri, forceLoad: true);
+        // Review 2026-04-17 P3 — flag the wrapper-initiated nav so FcFormAbandonmentGuard's
+        // CascadingParameter bypass fires. forceLoad:true bypasses NavigationLock anyway (full
+        // document reload), but flipping the flag first makes the defense correct under any
+        // future non-forceLoad Start-over variant.
+        _wrapperInitiatedNavigation = true;
+        try {
+            Nav.NavigateTo(Nav.Uri, forceLoad: true);
+        }
+        catch {
+            _wrapperInitiatedNavigation = false;
+            throw;
+        }
     }
 
     /// <inheritdoc />
@@ -247,6 +332,8 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         return ValueTask.CompletedTask;
     }
 
-    private static string HashForLog(string correlationId)
+    // Review 2026-04-17 — "hash" is a misnomer: this is a prefix-redaction helper, not a cryptographic hash.
+    // Renamed from HashForLog so the name matches the behavior (first 8 chars + ellipsis).
+    private static string RedactForLog(string correlationId)
         => correlationId.Length <= 8 ? correlationId : string.Concat(correlationId.AsSpan(0, 8), "…");
 }

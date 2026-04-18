@@ -1,5 +1,5 @@
 # generated: 2026-04-12
-# last_updated: 2026-04-17 (story 2-5 context created — rejection UX + destructive confirmation dialog + form abandonment; 23 decisions, 3 ADRs, 9 ACs, 12 known gaps. 2-5 → ready-for-dev.)
+# last_updated: 2026-04-17 (story 2-5: done — bmad-code-review full adversarial pass: 13 patches applied, 5 decisions resolved in spec, 11 deferred; regression green 553/2-skipped.)
 # project: Hexalith.FrontComposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: 2026-04-17 (story 2-5 context created — comprehensive spec for rejection + destructive confirmation + form abandonment. 2-5 → ready-for-dev.)
+last_updated: "2026-04-17 (story 2-5: done; bmad-code-review full adversarial pass closed out 13 patches and 5 decisions; 11 findings deferred; regression green 553/2-skipped.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -60,12 +60,12 @@ development_status:
   2-2-action-density-rules-and-rendering-modes: done
   2-3-command-lifecycle-state-management: done
   2-4-fclifecyclewrapper-visual-lifecycle-feedback: done
-  2-5-command-rejection-confirmation-and-form-protection: ready-for-dev
+  2-5-command-rejection-confirmation-and-form-protection: done
   epic-2-retrospective: optional
 
   # Epic 3: Composition Shell & Navigation Experience
-  epic-3: backlog
-  3-1-shell-layout-theme-and-typography: backlog
+  epic-3: in-progress
+  3-1-shell-layout-theme-and-typography: ready-for-dev
   3-2-sidebar-navigation-and-responsive-behavior: backlog
   3-3-display-density-and-user-settings: backlog
   3-4-fccommandpalette-and-keyboard-shortcuts: backlog

@@ -99,7 +99,10 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         EquatableArray<PropertyModel> properties,
         EquatableArray<PropertyModel> derivableProperties,
         EquatableArray<PropertyModel> nonDerivableProperties,
-        string? iconName = null) {
+        string? iconName = null,
+        bool isDestructive = false,
+        string? destructiveConfirmTitle = null,
+        string? destructiveConfirmBody = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -109,6 +112,9 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         DerivableProperties = derivableProperties;
         NonDerivableProperties = nonDerivableProperties;
         IconName = iconName;
+        IsDestructive = isDestructive;
+        DestructiveConfirmTitle = destructiveConfirmTitle;
+        DestructiveConfirmBody = destructiveConfirmBody;
         Density = ComputeDensity(nonDerivableProperties.Count);
     }
 
@@ -156,6 +162,18 @@ public sealed class CommandModel : IEquatable<CommandModel> {
     /// </summary>
     public CommandDensity Density { get; }
 
+    /// <summary>
+    /// Gets a value indicating whether the command is annotated <c>[Destructive]</c>
+    /// (Story 2-5 D1 / ADR-026). Drives renderer confirmation gating (D2) and HFC1021 validation.
+    /// </summary>
+    public bool IsDestructive { get; }
+
+    /// <summary>Gets the optional <c>[Destructive(ConfirmationTitle)]</c> override; null → renderer falls back to <c>{DisplayLabel}?</c>.</summary>
+    public string? DestructiveConfirmTitle { get; }
+
+    /// <summary>Gets the optional <c>[Destructive(ConfirmationBody)]</c> override; null → renderer uses localized "This action cannot be undone.".</summary>
+    public string? DestructiveConfirmBody { get; }
+
     public bool Equals(CommandModel? other) {
         if (other is null) {
             return false;
@@ -174,7 +192,10 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             && DerivableProperties == other.DerivableProperties
             && NonDerivableProperties == other.NonDerivableProperties
             && IconName == other.IconName
-            && Density == other.Density;
+            && Density == other.Density
+            && IsDestructive == other.IsDestructive
+            && DestructiveConfirmTitle == other.DestructiveConfirmTitle
+            && DestructiveConfirmBody == other.DestructiveConfirmBody;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandModel);
@@ -192,6 +213,9 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             hash = (hash * 31) + NonDerivableProperties.GetHashCode();
             hash = (hash * 31) + (IconName?.GetHashCode() ?? 0);
             hash = (hash * 31) + Density.GetHashCode();
+            hash = (hash * 31) + IsDestructive.GetHashCode();
+            hash = (hash * 31) + (DestructiveConfirmTitle?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (DestructiveConfirmBody?.GetHashCode() ?? 0);
             return hash;
         }
     }

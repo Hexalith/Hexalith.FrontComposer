@@ -27,14 +27,16 @@ public static class CommandFluxorFeatureEmitter {
             _ = sb.AppendLine();
         }
 
-        // State record
+        // State record. Story 2-5 Task 5.2b (ADR-026 alignment) — field rename
+        // Error → RejectionReason, Resolution → RejectionResolution so the framework-emitted
+        // feature state aligns with the adopter-side StubCommandServiceOptions naming.
         _ = sb.AppendLine("/// <summary>Fluxor lifecycle state for <see cref=\"" + model.TypeName + "\"/>.</summary>");
         _ = sb.AppendLine("public sealed record " + model.StateName + "(");
         _ = sb.AppendLine("    CommandLifecycleState State,");
         _ = sb.AppendLine("    string? CorrelationId,");
         _ = sb.AppendLine("    string? MessageId,");
-        _ = sb.AppendLine("    string? Error,");
-        _ = sb.AppendLine("    string? Resolution);");
+        _ = sb.AppendLine("    string? RejectionReason,");
+        _ = sb.AppendLine("    string? RejectionResolution);");
         _ = sb.AppendLine();
 
         // Feature class
@@ -59,7 +61,7 @@ public static class CommandFluxorFeatureEmitter {
 
         _ = sb.AppendLine("    [Fluxor.ReducerMethod]");
         _ = sb.AppendLine("    public static " + state + " OnSubmitted(" + state + " state, " + actions + ".SubmittedAction action)");
-        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Submitting, CorrelationId = action.CorrelationId, Error = null, Resolution = null };");
+        _ = sb.AppendLine("        => state with { State = CommandLifecycleState.Submitting, CorrelationId = action.CorrelationId, RejectionReason = null, RejectionResolution = null };");
         _ = sb.AppendLine();
         // CorrelationId guard prevents stale in-flight callbacks from a prior submit from overwriting
         // the state of a new submit (see code-review 2026-04-15, patch P2).
@@ -85,7 +87,7 @@ public static class CommandFluxorFeatureEmitter {
         _ = sb.AppendLine("    public static " + state + " OnRejected(" + state + " state, " + actions + ".RejectedAction action)");
         _ = sb.AppendLine("        => state.CorrelationId != action.CorrelationId");
         _ = sb.AppendLine("            ? state");
-        _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Rejected, Error = action.Reason, Resolution = action.Resolution };");
+        _ = sb.AppendLine("            : state with { State = CommandLifecycleState.Rejected, RejectionReason = action.Reason, RejectionResolution = action.Resolution };");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>");
         _ = sb.AppendLine("    /// Resets lifecycle state to Idle (used after rejection to allow retry, or on form disposal).");

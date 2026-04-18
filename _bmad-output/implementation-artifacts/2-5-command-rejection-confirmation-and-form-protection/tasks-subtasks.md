@@ -83,9 +83,9 @@
 
 ### Review Findings
 
-- [ ] [Review][Decision] Resolve authority drift between `acceptance-criteria.md` and shipped behavior — **AC8** requires `HFC1020` at **Warning** severity and `TreatWarningsAsErrors` failure; implementation, `DiagnosticDescriptors`, `AnalyzerReleases.Unshipped.md`, and `CommandParserDestructiveTests` use **Info** (see `CommandParser.cs` HFC1020 emission and `Parse_DeleteNamed_WithoutAttribute_EmitsHFC1020Info`). Either revise AC8 / ADR-026 text to ratify Info + Story 9-4 promotion, or raise severity to Warning and add suppression UX.
+- [x] [Review][Decision] Resolve authority drift between `acceptance-criteria.md` and shipped behavior — **Resolved 2026-04-17:** AC8 prose revised to ratify Info severity + expanded verb regex (`Delete|Remove|Purge|Erase|Drop|Truncate|Wipe`) per binding decision **D20**. TreatWarningsAsErrors does NOT fail on HFC1020 Info in v0.1 (deliberate gradient to avoid Day-1 adoption block); Warning promotion + `[SuppressHFC1020]` escape hatch forward-referenced to Story 9-4. Code, `DiagnosticDescriptors`, `AnalyzerReleases.Unshipped.md`, and `CommandParserDestructiveTests` are authoritative and unchanged.
 
-- [ ] [Review][Decision] Resolve **AC6** vs **D13** on abandonment suppression — `acceptance-criteria.md` states the warning is suppressed when lifecycle state is **Submitting or Syncing**; `FcFormAbandonmentGuard` (`HandleNavigationChangingAsync`) suppresses only **Submitting**, and `tasks-subtasks.md` documents Syncing as still intercepting. Pick one canonical rule and align AC6 text or guard logic.
+- [x] [Review][Decision] Resolve **AC6** vs **D13** on abandonment suppression — **Resolved 2026-04-17:** AC6 prose narrowed to "suppress ONLY when `Submitting`" per binding decision **D13** (revised post-Sally #6 ActionPrompt edge). Added explicit clauses: (a) `Syncing` (including `Syncing` with `TimerPhase=ActionPrompt`) FIRES normally; (b) `WrapperInitiatedNavigation` cascade suppresses wrapper's Start-over flow. `FcFormAbandonmentGuard.HandleNavigationChangingAsync` (L128-137) and `FcDiagnosticIds.HFC2103_AbandonmentDuringSubmitting` (Information severity) are authoritative and unchanged.
 
 - [x] [Review][Patch] Idempotent Confirmed live-region copy mismatch [`FcLifecycleWrapper.razor` `Announcement` / `DataPhase`] — **Fixed 2026-04-17:** idempotent `Confirmed` announces `"Already confirmed"` and uses `data-fc-phase="confirmed-idempotent"`.
 
@@ -98,5 +98,83 @@
 - [x] [Review][Defer] Large planning-artifact file moves/deletes — pre-existing consumers of monolithic `_bmad-output/planning-artifacts/*.md` paths may break until references update; not introduced by Story 2-5 runtime code.
 
 - [x] [Review][Defer] `HFC2103_AbandonmentDuringSubmitting` names “Submitting” but is also used for wrapper-initiated navigation bypass — logging ID semantics only; clarify in a later cleanup.
+
+### Review Findings (2026-04-17 — bmad-code-review workflow)
+
+- [x] [Review][Patch] **AC2 prose vs shipped defaults** — **Fixed 2026-04-17:** AC2 prose updated to "default **5000 ms** per Sally #2" (was 3000 ms).
+
+- [x] [Review][Patch] **AC2 "hashed CorrelationId" vs logging** — **Fixed 2026-04-17:** `HashForLog` renamed to `RedactForLog` in `FcLifecycleWrapper.razor.cs` + `FcFormAbandonmentGuard.razor.cs`; XML comment on `HFC2104_IdempotentInfoBarRendered` revised to "redacted to first 8 chars + ellipsis (not a cryptographic hash)"; AC2 prose updated accordingly.
+
+- [x] [Review][Patch] **`ConfigureAwait(false)` in Blazor UI handlers** — **Fixed 2026-04-17:** Removed `ConfigureAwait(false)` from all awaits in `FcDestructiveConfirmationDialog.razor.cs` + `FcFormAbandonmentGuard.razor.cs` + emitted `DestructiveBeforeSubmitAsync`. Added `#pragma warning disable CA2007` at the top of each affected file with a comment explaining that Blazor UI handlers must resume on the sync context.
+
+- [x] [Review][Patch] **AC6 MessageBar field mapping** — **Fixed 2026-04-17:** AC6 prose updated to explicitly reconcile with the shipped Fluent v5 rc.2 MessageBar API ("Title" + "ChildContent" roles clarified). Code unchanged.
+
+### Review Findings (2026-04-17 — bmad-code-review full adversarial pass)
+
+#### Decision-Needed
+
+- [x] [Review][Decision] **AC3 `AutoFocus` Blazor property vs `data-autofocus` HTML attribute** — **Resolved 2026-04-17 (patch):** Fluent UI Blazor v5 rc.2's `FluentButton.AutoFocus="true"` renders the standard HTML `autofocus` attribute, which Fluent's dialog focus manager honours for Enter-safety. AC3 + AC7 prose updated to reflect this API (replaced `data-autofocus` references with `AutoFocus="true"`).
+
+- [x] [Review][Decision] **AC1 null fallback copy vs spec join format** — **Resolved 2026-04-17 (patch spec):** AC1 amended with an explicit graceful-degradation clause — when both `reason` and `resolution` are null/whitespace, the wrapper falls back to a localized generic MessageBar body rather than rendering empty. Code unchanged.
+
+- [x] [Review][Decision] **AC7 `IconStart` on "Stay on form" Primary button** — **Resolved 2026-04-17 (patch spec):** AC7 now explicitly scopes the `IconStart` requirement to **Primary buttons emitted by `CommandRendererEmitter`**; shell-level components like `FcFormAbandonmentGuard` are out of scope because they have no command metadata for `ResolveIcon()`. Guard code unchanged.
+
+- [x] [Review][Decision] **AC9 CorrelationId origin on retry — `Guid.NewGuid()` vs `ResetToIdleAction` path** — **Resolved 2026-04-17 (patch spec):** AC9 clarified — `Guid.NewGuid()` at the top of `OnValidSubmitAsync` IS the P-11 pattern (each submit acquires a fresh CorrelationId). The separate `ResetToIdleAction` dispatch inside the `catch (OperationCanceledException)` block handles dialog-cancel, not every retry. Code unchanged.
+
+- [x] [Review][Decision] **`OperationCanceledException` catch path in emitted form** — **Verified 2026-04-17 (dismiss):** `CommandFormEmitter.cs:325-332` already emits an explicit `catch (OperationCanceledException)` block that dispatches `ResetToIdleAction(correlationId)`. The dev agent's task notes were correct; no change needed.
+
+#### Patch — High
+
+- [x] [Review][Defer] **[HIGH] Null `EditContext` on first render disarms abandonment guard** — **Deferred 2026-04-17:** the theoretical exposure window is a single render cycle (microseconds) during which the user cannot realistically type; `FcFormAbandonmentGuard.OnParametersSet` re-subscribes when `EditContext` becomes non-null on the next render. No observed bug. Tracked in `deferred-work.md`.
+
+- [x] [Review][Defer] **[HIGH] `OnEditContextReady` callback task discarded — exceptions silently swallowed** — **Deferred 2026-04-17:** `_ = eventCallback.InvokeAsync(...)` is the idiomatic Blazor pattern; exceptions surface via Blazor's error boundary. Changing this deviates from convention for theoretical benefit. Tracked in `deferred-work.md`.
+
+- [x] [Review][Patch] **[HIGH] `WrapperInitiatedNavigation` `CascadingValue` never emitted by `FcLifecycleWrapper`** — **Fixed 2026-04-17:** `FcLifecycleWrapper.razor` now wraps its content in `<CascadingValue Name="WrapperInitiatedNavigation" Value="_wrapperInitiatedNavigation" IsFixed="false">`; `OnStartOverClicked` sets the flag before `NavigateTo` (inside a try/catch that clears it on failure). Note that `forceLoad: true` still bypasses `NavigationLock` in browsers — the cascade is defense-in-depth against any future non-forceLoad Start-over variant.
+
+- [x] [Review][Patch] **[HIGH] `_isLeaving` try/finally resets to `false` before Blazor Server processes async nav event** — **Fixed 2026-04-17:** `OnLeaveClickedAsync` now sets `_isLeaving = true` and DOES NOT clear it in a finally; the flag is consumed on the next `HandleNavigationChangingAsync` entry (which clears it after observing). On exception the catch clears it. This works correctly under both synchronous (WebAssembly) and asynchronous (Server) nav pipelines. New test `Leave_click_navigates_and_flag_survives_until_nav_event_is_observed` covers the semantics.
+
+- [x] [Review][Patch] **[HIGH] `HandleNavigationChangingAsync` calls `StateHasChanged()` directly — threading violation in Blazor Server** — **Fixed 2026-04-17:** the method is now `async Task` and calls `await InvokeAsync(StateHasChanged)`. Return statements changed from `Task.CompletedTask` → bare `return;`.
+
+- [x] [Review][Patch] **[HIGH] `OnConfirmAsync` — no try/finally around `Dialog.CloseAsync`** — **Fixed 2026-04-17:** `OnConfirmAsync` and `InvokeCancelAsync` now wrap the `OnConfirm`/`OnCancel` callback invocation in `try/finally` with `Dialog.CloseAsync`/`CancelAsync` in the finally block — a throwing callback cannot leave the `IDialogInstance` open.
+
+- [x] [Review][Defer] **[HIGH] Zero snapshot coverage for destructive renderer emitter output** — **Deferred 2026-04-17:** the emitted destructive path was patched (ConfigureAwait removal + `_dialogOpen` ordering), but authoring a new destructive emitter snapshot requires setting up a destructive command model + test harness + verifying 8+ rendering permutations. Significant scoping work; tracked in `deferred-work.md` for a dedicated snapshot-hardening pass.
+
+#### Patch — Medium
+
+- [x] [Review][Patch] **[MEDIUM] `ConfigureAwait(false)` also in emitted `DestructiveBeforeSubmitAsync`** — **Fixed 2026-04-17:** `CommandRendererEmitter.cs` emits the destructive method without `.ConfigureAwait(false)` on `ShowDialogAsync` / `dialogRef.Result` / `RefreshDerivedValuesBeforeSubmitAsync`; continuations now stay on the Blazor sync context.
+
+- [x] [Review][Patch] **[MEDIUM] `OnLeaveClickedAsync` missing `StateHasChanged()` after clearing warning** — **Fixed 2026-04-17:** `StateHasChanged()` now called after setting `_isLeaving = true` + clearing warning/target, so the warning bar disappears immediately even if nav is slow or fails.
+
+- [x] [Review][Patch] **[MEDIUM] `ScheduleConfirmedDismiss` callback missing `!_state.IsIdempotent` guard** — **Fixed 2026-04-17:** callback predicate now reads `_state.Current == CommandLifecycleState.Confirmed && !_state.IsIdempotent` — mirrors the `ScheduleIdempotentDismiss` asymmetry and avoids cross-timer dismiss on rapid transitions.
+
+- [x] [Review][Patch] **[MEDIUM] `DestructiveBeforeSubmitAsync` double-click race before `_dialogOpen` guard** — **Fixed 2026-04-17:** the emitted method now sets `_dialogOpen = true` BEFORE `await RefreshDerivedValuesBeforeSubmitAsync()` — a rapid double-click during the async refresh is caught by the guard.
+
+- [x] [Review][Patch] **[MEDIUM] AC2 live-region announces hardcoded "Already confirmed", not custom `IdempotentInfoMessage`** — **Fixed 2026-04-17:** `FcLifecycleWrapper.razor`'s `Announcement` switch now reads `IdempotentInfoMessage ?? "Already confirmed"` so the live region announces the visible copy. AC2 prose updated accordingly.
+
+- [x] [Review][Patch] **[MEDIUM] "Leave anyway" uses `Appearance=Default` instead of `Secondary`** — **Fixed 2026-04-17:** changed to `Appearance=ButtonAppearance.Outline` (the v5 rc.2 secondary-like mapping — matches the Cancel-button decision from the earlier review pass). AC6 prose updated.
+
+#### Patch — Low
+
+- [x] [Review][Patch] **[LOW] `RejectionTitle!` null-forgiving operator redundant after `IsNullOrEmpty` guard** — **Fixed 2026-04-17:** rewritten as `string.IsNullOrEmpty(RejectionTitle) ? "Submission rejected" : RejectionTitle` — no `!` needed since the true branch has already narrowed.
+
+- [x] [Review][Patch] **[LOW] AC3/AC7 prose — update to document Fluent v5 button appearance mapping** — **Fixed 2026-04-17:** AC3 + AC7 prose now document the Fluent v5 rc.2 mapping explicitly ("Outline = secondary-like, Primary + `fc-destructive-confirm` CSS class = danger palette") with a prominent API-surface note naming the v5 `ButtonAppearance` enum values that are actually available.
+
+#### Defer
+
+- [x] [Review][Defer] `OnFormEditContextReady` fires `InvokeAsync(StateHasChanged)` — `EventCallback` already re-renders on completion; double render cycle, no correctness impact — deferred `CommandRendererEmitter.cs` emitted `OnFormEditContextReady`
+
+- [x] [Review][Defer] `ScheduleIdempotentDismiss` / `ScheduleConfirmedDismiss` structural duplication — maintenance trap only, no bug today — deferred `FcLifecycleWrapper.razor.cs`
+
+- [x] [Review][Defer] `LifecycleUiState.Idle` relies on C# default property values — future property additions may silently default without explicit entry in singleton — deferred [`LifecycleUiState.cs`]
+
+- [x] [Review][Defer] `DestructiveNamePattern` uses `RegexOptions.Compiled` in source generator — prefer `[GeneratedRegex]`; low priority — deferred [`CommandParser.cs`]
+
+- [x] [Review][Defer] `FormAbandonmentThresholdSeconds` unit inconsistency (seconds vs Ms siblings) — intentional per docs; no overflow at current `[Range(5,600)]` bounds — deferred [`FcShellOptionsThresholdValidator.cs`]
+
+- [x] [Review][Defer] `DestructiveNamePattern` regex misses digit-prefixed names (e.g., `Delete2Items`) — HFC1020 is Info severity; narrow gap — deferred [`CommandParser.cs`]
+
+- [x] [Review][Defer] `BuildFcLifecycleRejectionCopy` trailing period from `reason` field not stripped before “. “ + resolution concatenation — cosmetic — deferred [`CommandFormEmitter.cs`]
+
+- [x] [Review][Defer] `OnFirstEdit` unsubscribes after first fire; re-mounts passing same `EditContext` reference never re-arm guard — emitter creates fresh `EditContext` in `OnInitialized` making exact reuse unlikely — deferred [`FcFormAbandonmentGuard.razor.cs`]
 
 ---

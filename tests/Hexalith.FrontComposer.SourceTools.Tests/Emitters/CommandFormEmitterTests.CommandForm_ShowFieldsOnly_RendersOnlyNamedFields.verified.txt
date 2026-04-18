@@ -45,6 +45,9 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     /// <summary>Story 2-2 ADR-016: renderer hook invoked immediately before dispatch so derivable values can be refreshed per submit.</summary>
     [Parameter] public Func<Task>? BeforeSubmit { get; set; }
 
+    /// <summary>Story 2-5 Task 5.3: fired once after the form's EditContext is constructed so the renderer can wire validation gates and abandonment protection.</summary>
+    [Parameter] public EventCallback<EditContext> OnEditContextReady { get; set; }
+
     [Inject] private IState<IncrementCommandLifecycleState> LifecycleState { get; set; } = default!;
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
     [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;
@@ -72,6 +75,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         _editContext = new EditContext(_model);
         _editContext.OnFieldChanged += OnEditContextFieldChanged;
         LifecycleState.StateChanged += OnStateChanged;
+        // Story 2-5 Task 5.3 — surface the EditContext to the renderer so it can wire D24 validation + abandonment guard.
+        if (OnEditContextReady.HasDelegate) { _ = OnEditContextReady.InvokeAsync(_editContext); }
     }
 
     private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) { IsDirty = true; }
@@ -261,6 +266,8 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
         builder.OpenComponent<FcLifecycleWrapper>(seq++);
         builder.AddAttribute(seq++, "CorrelationId", _submittedCorrelationId);
+        builder.AddAttribute(seq++, "RejectionMessage", BuildFcLifecycleRejectionCopy());
+        builder.AddAttribute(seq++, "RejectionTitle", BuildFcLifecycleRejectionTitle());
         builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__wrap =>
         {
             int wseq = 0;
@@ -333,6 +340,25 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         builder.CloseComponent();
         builder.CloseElement();
     }
+
+
+    /// <summary>Story 2-5 D4 — joins Fluxor-state Reason + Resolution with '. ' separator; null outside Rejected.</summary>
+    private string? BuildFcLifecycleRejectionCopy()
+    {
+        if (LifecycleState.Value.State != CommandLifecycleState.Rejected) return null;
+        var reason = LifecycleState.Value.RejectionReason;
+        var resolution = LifecycleState.Value.RejectionResolution;
+        if (string.IsNullOrWhiteSpace(reason) && string.IsNullOrWhiteSpace(resolution)) return null;
+        if (string.IsNullOrWhiteSpace(resolution)) return reason;
+        if (string.IsNullOrWhiteSpace(reason)) return resolution;
+        return reason + ". " + resolution;
+    }
+
+    /// <summary>Story 2-5 D4 — domain-language rejection title ('{DisplayLabel} failed'); null outside Rejected.</summary>
+    private string? BuildFcLifecycleRejectionTitle()
+        => LifecycleState.Value.State == CommandLifecycleState.Rejected
+           ? "Send IncrementCommand failed"
+           : null;
 
 
     private void OnAmountChanged(string? value)

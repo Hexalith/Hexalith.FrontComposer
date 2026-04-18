@@ -13,12 +13,14 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
+using Hexalith.FrontComposer.Shell.Components.Forms;
 
 namespace Demo.Domain;
 
@@ -43,6 +45,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     private CommandRenderMode _effectiveMode;
     private bool _popoverOpen;
     private ElementReference _compactCardRef;
+    private EditContext? _formEditContext;
     private readonly string _triggerButtonId = "fc-trigger-Demo-Domain-DemoCommand";
     private Action? _externalSubmit;
     private IJSObjectReference? _expandInRowModule;
@@ -190,6 +193,12 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
     private void OnFormRegisteredExternalSubmit(Action submit)
     {
         _externalSubmit = submit;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFormEditContextReady(EditContext context)
+    {
+        _formEditContext = context;
         _ = InvokeAsync(StateHasChanged);
     }
 
@@ -354,6 +363,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                     __popover.AddAttribute(pseq++, "ShowFieldsOnly", new[] { "Field0" });
                     __popover.AddAttribute(pseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
                     __popover.AddAttribute(pseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __popover.AddAttribute(pseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                     __popover.CloseComponent();
                     __popover.OpenComponent<FluentButton>(pseq++);
                     __popover.AddAttribute(pseq++, "Type", ButtonType.Button);
@@ -384,6 +394,7 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                     __card.AddAttribute(cseq++, "DerivableFieldsHidden", true);
                     __card.AddAttribute(cseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
                     __card.AddAttribute(cseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __card.AddAttribute(cseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
                     __card.CloseComponent();
                 }));
                 builder.CloseComponent();
@@ -411,10 +422,19 @@ public partial class DemoCommandRenderer : ComponentBase, IInlinePopover
                     builder.AddContent(seq++, " > Demo");
                     builder.CloseElement();
                 }
-                builder.OpenComponent<Demo.Domain.DemoCommandForm>(seq++);
-                builder.AddAttribute(seq++, "InitialValue", _prefilledModel);
-                builder.AddAttribute(seq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
-                builder.AddAttribute(seq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                builder.OpenComponent<FcFormAbandonmentGuard>(seq++);
+                builder.AddAttribute(seq++, "CorrelationId", _lifecycleState.Value.CorrelationId ?? string.Empty);
+                builder.AddAttribute(seq++, "EditContext", _formEditContext);
+                builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__guard =>
+                {
+                    int gseq = 0;
+                    __guard.OpenComponent<Demo.Domain.DemoCommandForm>(gseq++);
+                    __guard.AddAttribute(gseq++, "InitialValue", _prefilledModel);
+                    __guard.AddAttribute(gseq++, "BeforeSubmit", (Func<Task>)RefreshDerivedValuesBeforeSubmitAsync);
+                    __guard.AddAttribute(gseq++, "OnConfirmed", EventCallback.Factory.Create(this, OnConfirmedAsync));
+                    __guard.AddAttribute(gseq++, "OnEditContextReady", EventCallback.Factory.Create<EditContext>(this, OnFormEditContextReady));
+                    __guard.CloseComponent();
+                }));
                 builder.CloseComponent();
                 builder.CloseElement();
                 break;

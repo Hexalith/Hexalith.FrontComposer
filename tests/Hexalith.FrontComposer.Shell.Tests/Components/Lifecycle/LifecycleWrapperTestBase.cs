@@ -76,7 +76,10 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
             .AddChildContent("<span class='child-content-marker'>child</span>"));
     }
 
-    protected (IRenderedComponent<FcLifecycleWrapper> Cut, Action<CommandLifecycleTransition> Push) RenderWrapperWithLiveService(string? rejectionMessage = null) {
+    protected (IRenderedComponent<FcLifecycleWrapper> Cut, Action<CommandLifecycleTransition> Push) RenderWrapperWithLiveService(
+        string? rejectionMessage = null,
+        string? rejectionTitle = null,
+        string? idempotentInfoMessage = null) {
         ILifecycleStateService service = Substitute.For<ILifecycleStateService>();
         Action<CommandLifecycleTransition>? captured = null;
         _ = service.Subscribe(Arg.Any<string>(), Arg.Do<Action<CommandLifecycleTransition>>(cb => captured = cb))
@@ -86,6 +89,8 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
         IRenderedComponent<FcLifecycleWrapper> cut = Render<FcLifecycleWrapper>(p => p
             .Add(c => c.CorrelationId, DefaultCorrelationId)
             .Add(c => c.RejectionMessage, rejectionMessage)
+            .Add(c => c.RejectionTitle, rejectionTitle)
+            .Add(c => c.IdempotentInfoMessage, idempotentInfoMessage)
             .AddChildContent("<span class='child-content-marker'>child</span>"));
 
         void Push(CommandLifecycleTransition transition) {
