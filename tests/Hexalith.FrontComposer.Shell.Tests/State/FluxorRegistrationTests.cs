@@ -8,6 +8,7 @@ using Hexalith.FrontComposer.Shell.State.Density;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Shouldly;
 
@@ -70,6 +71,8 @@ public class FluxorRegistrationTests {
         ServiceCollection services = new();
         _ = services.AddLogging();
         _ = services.AddHexalithFrontComposer();
+        // LocalStorageService requires IJSRuntime; test hosts swap in InMemoryStorageService.
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
         return services.BuildServiceProvider();
     }
 }

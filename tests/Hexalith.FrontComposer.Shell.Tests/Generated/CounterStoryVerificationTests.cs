@@ -9,39 +9,50 @@ using Counter.Web.Components.Pages;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
+
+using NSubstitute;
 
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
-public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
+public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
+{
 
     public CounterStoryVerificationTests()
-        : base(typeof(CounterProjection).Assembly, typeof(StatusProjection).Assembly) {
+        : base(typeof(CounterProjection).Assembly, typeof(StatusProjection).Assembly)
+    {
     }
 
     [Fact]
-    public async Task CounterPage_EmptyState_RendersStoryMessage() {
+    public async Task CounterPage_EmptyState_RendersStoryMessage()
+    {
         await InitializeStoreAsync();
 
         IRenderedComponent<CounterPage> cut = Render<CounterPage>();
 
-        await cut.WaitForAssertionAsync(() => {
+        await cut.WaitForAssertionAsync(() =>
+        {
             cut.Markup.ShouldContain("No counter data yet. Send your first Increment Counter command.");
             cut.Markup.ShouldContain("Increment Counter");
         });
     }
 
     [Fact]
-    public async Task CounterProjectionState_LoadActions_UpdateFluxorStateAndRegistryManifest() {
+    public async Task CounterProjectionState_LoadActions_UpdateFluxorStateAndRegistryManifest()
+    {
         ServiceCollection services = new();
         _ = services.AddFluentUIComponents();
+        services.Replace(ServiceDescriptor.Scoped<IThemeService>(_ => Substitute.For<IThemeService>()));
         _ = services.AddHexalithFrontComposer(o => o.ScanAssemblies(typeof(CounterProjection).Assembly));
         _ = services.AddHexalithDomain<CounterDomain>();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IStore store = provider.GetRequiredService<IStore>();
@@ -76,7 +87,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     }
 
     [Fact]
-    public async Task CounterProjectionView_LoadedState_RendersColumnsAndFormatting() {
+    public async Task CounterProjectionView_LoadedState_RendersColumnsAndFormatting()
+    {
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
@@ -95,7 +107,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
         IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
 
-        await cut.WaitForAssertionAsync(() => {
+        await cut.WaitForAssertionAsync(() =>
+        {
             string markup = cut.Markup;
             markup.IndexOf("Id", StringComparison.Ordinal).ShouldBeLessThan(markup.IndexOf("Count", StringComparison.Ordinal));
             markup.IndexOf("Count", StringComparison.Ordinal).ShouldBeLessThan(markup.IndexOf("Last Updated", StringComparison.Ordinal));
@@ -108,7 +121,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
     }
 
     [Fact]
-    public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot() {
+    public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot()
+    {
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
@@ -122,7 +136,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
 
         IRenderedComponent<StatusProjectionView> cut = Render<StatusProjectionView>();
 
-        await cut.WaitForAssertionAsync(() => {
+        await cut.WaitForAssertionAsync(() =>
+        {
             cut.Markup.ShouldContain("Yes");
             cut.Markup.ShouldContain("No");
             cut.Markup.ShouldContain("—");
@@ -131,24 +146,28 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase {
         _ = await Verify(NormalizeGridMarkup(cut.Markup));
     }
 
-    private static string NormalizeGridMarkup(string markup) {
+    private static string NormalizeGridMarkup(string markup)
+    {
         string normalized = Regex.Replace(markup, "\\s+id=\"[^\"]+\"", string.Empty);
         normalized = Regex.Replace(normalized, "\\s+blazor:[^=]+=\"[^\"]*\"", string.Empty);
         return normalized.Replace("\r\n", "\n");
     }
 
-    private sealed class CultureScope : IDisposable {
+    private sealed class CultureScope : IDisposable
+    {
         private readonly CultureInfo _originalCulture;
         private readonly CultureInfo _originalUICulture;
 
-        public CultureScope(CultureInfo culture) {
+        public CultureScope(CultureInfo culture)
+        {
             _originalCulture = CultureInfo.CurrentCulture;
             _originalUICulture = CultureInfo.CurrentUICulture;
             CultureInfo.CurrentCulture = culture;
             CultureInfo.CurrentUICulture = culture;
         }
 
-        public void Dispose() {
+        public void Dispose()
+        {
             CultureInfo.CurrentCulture = _originalCulture;
             CultureInfo.CurrentUICulture = _originalUICulture;
         }

@@ -3,6 +3,7 @@ using Bunit;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
@@ -13,11 +14,17 @@ using NSubstitute;
 namespace Hexalith.FrontComposer.Shell.Tests;
 
 /// <summary>
-/// Base test class that pre-configures Fluxor, storage, and override registry for bUnit tests.
-/// The Fluxor store is initialized during construction, and <see cref="InitializeStoreAsync"/>
-/// remains safe to call when a test wants explicit sequencing.
+/// Base test class that pre-configures Fluxor, storage, a stub <see cref="IUserContextAccessor"/>,
+/// and the override registry for bUnit tests. The Fluxor store is initialized during construction,
+/// and <see cref="InitializeStoreAsync"/> remains safe to call when a test wants explicit sequencing.
 /// </summary>
 public abstract class FrontComposerTestBase : BunitContext {
+    /// <summary>Tenant segment used by the test-scoped <see cref="IUserContextAccessor"/>.</summary>
+    public const string TestTenantId = "test-tenant";
+
+    /// <summary>User segment used by the test-scoped <see cref="IUserContextAccessor"/>.</summary>
+    public const string TestUserId = "test-user";
+
     private bool _storeInitialized;
 
     /// <summary>
@@ -26,7 +33,13 @@ public abstract class FrontComposerTestBase : BunitContext {
     /// </summary>
     protected FrontComposerTestBase() {
         _ = Services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly));
-        _ = Services.AddSingleton<IStorageService, InMemoryStorageService>();
+        _ = Services.AddScoped<IStorageService, InMemoryStorageService>();
+        _ = Services.AddScoped<IUserContextAccessor>(_ => {
+            IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+            accessor.TenantId.Returns(TestTenantId);
+            accessor.UserId.Returns(TestUserId);
+            return accessor;
+        });
         _ = Services.AddSingleton(Substitute.For<IOverrideRegistry>());
         _ = Services.AddLogging();
         InitializeStoreAsync().GetAwaiter().GetResult();

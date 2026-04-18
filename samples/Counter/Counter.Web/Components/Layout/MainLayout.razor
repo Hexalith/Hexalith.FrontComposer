@@ -1,18 +1,13 @@
 @inherits LayoutComponentBase
+@using Hexalith.FrontComposer.Shell.Components.Layout
 @inject IFrontComposerRegistry Registry
-@inject IThemeService ThemeService
 
-<FluentLayout>
-    <FluentLayoutItem Area="@LayoutArea.Header">
-        <FluentStack VerticalAlignment="VerticalAlignment.Center">
-            <FluentLayoutHamburger />
-            <FluentText Weight="TextWeight.Bold" Size="TextSize.Size400">
-                Hexalith FrontComposer
-            </FluentText>
-        </FluentStack>
-    </FluentLayoutItem>
+@* Story 3-1 Task 9.1 — collapsed to FrontComposerShell. Adopter-authored FluentNav passes
+   through the Navigation slot per D25 (preserves Counter.Web shop-window quality across the
+   3-1 / 3-2 sprint gap; Story 3-2 replaces with the framework-owned sidebar). *@
 
-    <FluentLayoutItem Area="@LayoutArea.Navigation" Width="240px">
+<FrontComposerShell>
+    <Navigation>
         <FluentNav Padding="@Padding.All2" Style="height: 100%;">
             @foreach (var manifest in Registry.GetManifests())
             {
@@ -21,31 +16,6 @@
                 </FluentNavItem>
             }
         </FluentNav>
-    </FluentLayoutItem>
-
-    <FluentLayoutItem Area="@LayoutArea.Content" Padding="@Padding.All3">
-        @Body
-    </FluentLayoutItem>
-
-    <FluentLayoutItem Area="@LayoutArea.Footer">
-        Hexalith FrontComposer &copy; @DateTime.Now.Year
-    </FluentLayoutItem>
-</FluentLayout>
-
-<FluentProviders />
-<Fluxor.Blazor.Web.StoreInitializer />
-
-@code {
-    private bool _themeApplied;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (!firstRender || _themeApplied)
-        {
-            return;
-        }
-
-        _themeApplied = true;
-        await ThemeService.SetThemeAsync(new ThemeSettings("#0097A7", 0, 0, ThemeMode.System, true));
-    }
-}
+    </Navigation>
+    <ChildContent>@Body</ChildContent>
+</FrontComposerShell>

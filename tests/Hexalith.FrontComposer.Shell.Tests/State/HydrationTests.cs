@@ -22,7 +22,7 @@ public class HydrationTests : FrontComposerTestBase {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         IStorageService storage = Services.GetRequiredService<IStorageService>();
-        await storage.SetAsync("default:anonymous:density", DensityLevel.Compact, ct);
+        await storage.SetAsync($"{TestTenantId}:{TestUserId}:density", DensityLevel.Compact, ct);
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         IState<FrontComposerDensityState> densityState = Services.GetRequiredService<IState<FrontComposerDensityState>>();
@@ -56,7 +56,7 @@ public class HydrationTests : FrontComposerTestBase {
         // Arrange — pre-seed storage before store init
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         IStorageService storage = Services.GetRequiredService<IStorageService>();
-        await storage.SetAsync("default:anonymous:theme", ThemeValue.Dark, ct);
+        await storage.SetAsync($"{TestTenantId}:{TestUserId}:theme", ThemeValue.Dark, ct);
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         IState<FrontComposerThemeState> themeState = Services.GetRequiredService<IState<FrontComposerThemeState>>();

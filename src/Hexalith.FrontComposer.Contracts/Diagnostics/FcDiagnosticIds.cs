@@ -31,4 +31,18 @@ public static class FcDiagnosticIds {
     /// characters + ellipsis (Story 2-4 RT-4 — not a cryptographic hash).
     /// </summary>
     public const string HFC2104_IdempotentInfoBarRendered = "HFC2104";
+
+    /// <summary>
+    /// Theme or density effect short-circuited persistence because <c>IUserContextAccessor</c>
+    /// returned null / empty / whitespace for tenant or user (Story 3-1 D8 / ADR-029). Information
+    /// severity — expected when <c>NullUserContextAccessor</c> is the registered default and no
+    /// real accessor has been supplied yet. Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2105_StoragePersistenceSkipped = "HFC2105";
+
+    /// <summary>
+    /// Theme effect hydrated with no stored value on app init (Story 3-1 D8 / AC3). Information
+    /// severity — first-visit baseline, feature defaults apply. Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2106_ThemeHydrationEmpty = "HFC2106";
 }

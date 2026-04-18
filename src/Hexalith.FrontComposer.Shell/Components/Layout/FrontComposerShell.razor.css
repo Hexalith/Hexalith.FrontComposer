@@ -1,0 +1,16 @@
+/* Story 3-1 Task 5.1 / Task 7.1 — scoped CSS declaring the six semantic color slots (D13 / AC4)
+    and overriding the Fluent UI v5 default --layout-header-height (44 px) to the AC1-mandated
+    48 px. Consumed by generated renderers + FcLifecycleWrapper via var(--fc-color-*) references.
+
+    The shell wrapper carries the dynamic --accent-base-color inline so the scoped variables bind to
+    an actual rendered DOM element and cascade through the layout tree. */
+
+.fc-shell-root {
+    --layout-header-height: 48px;
+    --fc-color-accent: var(--accent-base-color);
+    --fc-color-neutral: var(--colorNeutralForeground1);
+    --fc-color-success: var(--colorStatusSuccessForeground1);
+    --fc-color-warning: var(--colorStatusWarningForeground1);
+    --fc-color-danger: var(--colorStatusDangerForeground1);
+    --fc-color-info: var(--colorStatusInfoForeground1);
+}

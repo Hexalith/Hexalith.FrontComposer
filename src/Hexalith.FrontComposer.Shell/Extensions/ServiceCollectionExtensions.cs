@@ -1,4 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.Reflection;
 
 using Fluxor;
@@ -11,6 +12,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
@@ -18,8 +20,11 @@ using Hexalith.FrontComposer.Shell.Services.DerivedValues;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.Extensions;
@@ -27,7 +32,8 @@ namespace Hexalith.FrontComposer.Shell.Extensions;
 /// <summary>
 /// Extension methods for registering FrontComposer Shell services.
 /// </summary>
-public static class ServiceCollectionExtensions {
+public static class ServiceCollectionExtensions
+{
 
     /// <summary>
     /// Discovers and registers generated domain registration classes from the assembly containing <typeparamref name="T"/>.
@@ -40,25 +46,30 @@ public static class ServiceCollectionExtensions {
     /// <returns>The service collection for chaining.</returns>
     [RequiresUnreferencedCode("Domain discovery uses reflection to scan assembly types at runtime.")]
     public static IServiceCollection AddHexalithDomain<T>(this IServiceCollection services)
-        where T : class {
+        where T : class
+    {
         Assembly domainAssembly = typeof(T).Assembly;
         BoundedContextAttribute? markerContext = typeof(T).GetCustomAttribute<BoundedContextAttribute>();
         var commandGroups = new Dictionary<string, CommandGroup>(StringComparer.Ordinal);
 
-        foreach (Type type in domainAssembly.GetExportedTypes()) {
+        foreach (Type type in domainAssembly.GetExportedTypes())
+        {
             if (type.Name.EndsWith("LastUsedSubscriber", StringComparison.Ordinal)
-                && typeof(IDisposable).IsAssignableFrom(type)) {
+                && typeof(IDisposable).IsAssignableFrom(type))
+            {
                 services.TryAdd(ServiceDescriptor.Scoped(type, type));
             }
 
             // Story 2-3 Decision D5 — auto-register per-command {Command}LifecycleBridge types discovered
             // in the domain assembly so LifecycleBridgeRegistry.Ensure<T>() can resolve them via DI.
             if (type.Name.EndsWith("LifecycleBridge", StringComparison.Ordinal)
-                && typeof(IDisposable).IsAssignableFrom(type)) {
+                && typeof(IDisposable).IsAssignableFrom(type))
+            {
                 services.TryAdd(ServiceDescriptor.Scoped(type, type));
             }
 
-            if (!type.Name.EndsWith("Registration", StringComparison.Ordinal)) {
+            if (!type.Name.EndsWith("Registration", StringComparison.Ordinal))
+            {
                 CollectCommandRegistration(type, markerContext, commandGroups);
                 continue;
             }
@@ -71,10 +82,12 @@ public static class ServiceCollectionExtensions {
                 [typeof(IFrontComposerRegistry)],
                 null);
 
-            if (hasManifest && registerMethod is not null) {
+            if (hasManifest && registerMethod is not null)
+            {
                 _ = services.AddSingleton(new DomainRegistrationAction(registerMethod));
             }
-            else if (hasManifest || registerMethod is not null) {
+            else if (hasManifest || registerMethod is not null)
+            {
                 _ = services.AddSingleton(new DomainRegistrationWarning(
                     type.FullName ?? type.Name,
                     hasManifest,
@@ -84,7 +97,8 @@ public static class ServiceCollectionExtensions {
             CollectCommandRegistration(type, markerContext, commandGroups);
         }
 
-        foreach ((string boundedContext, CommandGroup group) in commandGroups) {
+        foreach ((string boundedContext, CommandGroup group) in commandGroups)
+        {
             DomainManifest manifest = new(
                 group.DisplayName ?? boundedContext,
                 boundedContext,
@@ -100,9 +114,9 @@ public static class ServiceCollectionExtensions {
     /// <summary>
     /// Registers Fluxor state management, storage services, and all FrontComposer Shell dependencies.
     /// <para>
-    /// <b>Important:</b> The consuming application must place
-    /// <c>&lt;Fluxor.Blazor.Web.StoreInitializer /&gt;</c> in its root layout component.
-    /// The Shell is a Razor Class Library and cannot place it automatically.
+    /// <b>Important:</b> <c>FrontComposerShell</c> now owns the
+    /// <c>&lt;Fluxor.Blazor.Web.StoreInitializer /&gt;</c> placement. Adopters should render
+    /// the shell from their layout instead of mounting a second initializer manually.
     /// </para>
     /// </summary>
     /// <remarks>
@@ -113,8 +127,8 @@ public static class ServiceCollectionExtensions {
     /// <para>
     /// Adopters must call <c>services.AddLocalization()</c> themselves when they use
     /// <see cref="Microsoft.Extensions.Localization.IStringLocalizer{T}"/> for command-form
-    /// labels. Shell no longer pulls in the ASP.NET Core shared framework automatically so
-    /// non-web consumers are not forced to carry it.
+    /// labels. <see cref="AddHexalithFrontComposerQuickstart"/> is available for hosts that want
+    /// the framework-owned localization defaults in a single fluent call.
     /// </para>
     /// </remarks>
     /// <param name="services">The service collection to configure.</param>
@@ -126,13 +140,24 @@ public static class ServiceCollectionExtensions {
         Justification = "Story 2-4 FcShellOptions is a single concrete type with preserved properties; DataAnnotations validation stays trim-safe.")]
     public static IServiceCollection AddHexalithFrontComposer(
         this IServiceCollection services,
-        Action<FluxorOptions>? configureFluxor = null) {
+        Action<FluxorOptions>? configureFluxor = null)
+    {
         _ = services.AddLogging();
-        _ = services.AddFluxor(o => {
+        _ = services.AddFluxor(o =>
+        {
             _ = o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);
             configureFluxor?.Invoke(o);
         });
-        _ = services.AddSingleton<IStorageService, InMemoryStorageService>();
+        // Story 3-1 ADR-030 — IStorageService moves from Singleton to Scoped. RemoveAll
+        // guarantees no stale descriptor survives even if an adopter pre-registered, then
+        // AddScoped (not TryAddScoped — we want the registration to be authoritative) installs
+        // LocalStorageService as the default for both Blazor Server and WASM hosts. Test hosts
+        // override with InMemoryStorageService via services.Replace.
+        // Breaking lifetime change — ships as v0.2.0-preview. Adopters with Singleton captures
+        // must migrate to Scoped or capture IServiceScopeFactory; Counter.Web enables
+        // ValidateScopes = true on its host builder so future regressions fail at boot.
+        services.RemoveAll<IStorageService>();
+        _ = services.AddScoped<IStorageService, LocalStorageService>();
         _ = services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
 
         // Default stub command service (ADR-010). Adopters replace it via Story 5.1's AddHexalithEventStore().
@@ -189,7 +214,8 @@ public static class ServiceCollectionExtensions {
         ServiceDescriptor? offendingPopoverRegistry = services.FirstOrDefault(
             d => d.ServiceType == typeof(Hexalith.FrontComposer.Contracts.Rendering.InlinePopoverRegistry)
                 && d.Lifetime != ServiceLifetime.Scoped);
-        if (offendingPopoverRegistry is not null) {
+        if (offendingPopoverRegistry is not null)
+        {
             throw new InvalidOperationException(
                 $"InlinePopoverRegistry must be registered as Scoped (found: {offendingPopoverRegistry.Lifetime}). "
                 + "Singleton or Transient registration would cross-leak popovers between user circuits.");
@@ -216,6 +242,85 @@ public static class ServiceCollectionExtensions {
     }
 
     /// <summary>
+    /// Chains Shell request-localization defaults into the adopter's DI pipeline (Story 3-1
+    /// D24 / AC7). Adopters are expected to have called <c>services.AddLocalization()</c> before
+    /// this — the framework deliberately does NOT double-add <see cref="AddLocalization"/> so
+    /// adopters retain authoritative control over <see cref="Microsoft.Extensions.Localization.LocalizationOptions"/>.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// <c>FcShellResources</c>'s resx files are picked up by the default ASP.NET Core resource
+    /// convention (resx BaseName == typeof(T).FullName). Register a different <see cref="IStringLocalizer{T}"/>
+    /// implementation via <c>services.Replace</c> if you need to swap sources (e.g. a database-backed
+    /// localizer for an enterprise whitelabel deployment).
+    /// </para>
+    /// <para>
+    /// Use the fluent chain:
+    /// <code>
+    /// services.AddLocalization()
+    ///         .AddHexalithShellLocalization()
+    ///         .AddHexalithFrontComposer();
+    /// </code>
+    /// Or use the <see cref="AddHexalithFrontComposerQuickstart"/> sugar for a one-line setup.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configure">Optional request-localization customization hook.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddHexalithShellLocalization(
+        this IServiceCollection services,
+        Action<RequestLocalizationOptions>? configure = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton<IConfigureOptions<RequestLocalizationOptions>, ShellRequestLocalizationOptionsSetup>());
+        if (configure is not null)
+        {
+            _ = services.Configure(configure);
+        }
+
+        return services;
+    }
+
+    /// <summary>
+    /// Opt-IN sugar that chains <c>services.AddLocalization()</c> + <see cref="AddHexalithShellLocalization"/>
+    /// + <see cref="AddHexalithFrontComposer"/> into a single call (Story 3-1 D28). Intended for
+    /// first-time adopters: the granular 3-call path stays the non-deprecated primary API.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Idempotent against duplicate <c>AddLocalization()</c> calls per ASP.NET Core conventions —
+    /// the underlying registration uses <c>TryAdd</c> internally so calling it twice is a no-op.
+    /// </para>
+    /// <para>
+    /// Pair with <c>builder.Host.UseDefaultServiceProvider(o =&gt; o.ValidateScopes = true)</c>
+    /// so Singleton-captures of <see cref="IStorageService"/> (now Scoped per ADR-030) fail at
+    /// boot instead of leaking a single circuit's writes across tenants.
+    /// </para>
+    /// </remarks>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="configureFluxor">Optional Fluxor configuration (assembly scans etc.).</param>
+    /// <param name="configureLocalization">Optional request-localization customization hook.</param>
+    /// <returns>The service collection for chaining.</returns>
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:RequiresUnreferencedCode",
+        Justification = "Quickstart delegates to AddHexalithFrontComposer, which is separately annotated.")]
+    public static IServiceCollection AddHexalithFrontComposerQuickstart(
+        this IServiceCollection services,
+        Action<FluxorOptions>? configureFluxor = null,
+        Action<RequestLocalizationOptions>? configureLocalization = null)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        // AddLocalization is idempotent (TryAdd under the hood), so chaining it here never collides
+        // with an adopter's own call.
+        _ = services.AddLocalization();
+        _ = AddHexalithShellLocalization(services, configureLocalization);
+        _ = AddHexalithFrontComposer(services, configureFluxor);
+        return services;
+    }
+
+    /// <summary>
     /// Registers a custom <see cref="IDerivedValueProvider"/> at the HEAD of the chain so it wins
     /// over all built-ins (Story 2-2 ADR-014). Scoped by default; adopter may supply
     /// <see cref="ServiceLifetime.Singleton"/> for pure providers.
@@ -223,7 +328,8 @@ public static class ServiceCollectionExtensions {
     public static IServiceCollection AddDerivedValueProvider<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] T>(
         this IServiceCollection services,
         ServiceLifetime lifetime = ServiceLifetime.Scoped)
-        where T : class, IDerivedValueProvider {
+        where T : class, IDerivedValueProvider
+    {
         ArgumentNullException.ThrowIfNull(services);
 
         ServiceDescriptor descriptor = ServiceDescriptor.Describe(typeof(IDerivedValueProvider), typeof(T), lifetime);
@@ -236,32 +342,39 @@ public static class ServiceCollectionExtensions {
     private static void CollectCommandRegistration(
         Type type,
         BoundedContextAttribute? markerContext,
-        Dictionary<string, CommandGroup> commandGroups) {
-        if (type.GetCustomAttribute<CommandAttribute>() is null) {
+        Dictionary<string, CommandGroup> commandGroups)
+    {
+        if (type.GetCustomAttribute<CommandAttribute>() is null)
+        {
             return;
         }
 
         BoundedContextAttribute? commandContext = type.GetCustomAttribute<BoundedContextAttribute>();
         string? boundedContext = commandContext?.Name ?? markerContext?.Name;
-        if (string.IsNullOrWhiteSpace(boundedContext)) {
+        if (string.IsNullOrWhiteSpace(boundedContext))
+        {
             return;
         }
 
-        if (!commandGroups.TryGetValue(boundedContext, out CommandGroup? group)) {
+        if (!commandGroups.TryGetValue(boundedContext, out CommandGroup? group))
+        {
             group = new CommandGroup(commandContext?.DisplayLabel ?? markerContext?.DisplayLabel);
             commandGroups[boundedContext] = group;
         }
 
         string commandTypeName = type.FullName ?? type.Name;
-        if (!group.Commands.Contains(commandTypeName)) {
+        if (!group.Commands.Contains(commandTypeName))
+        {
             group.Commands.Add(commandTypeName);
         }
     }
 
     private static bool HasStaticManifestMember(
-            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type) {
+            [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicProperties | DynamicallyAccessedMemberTypes.PublicFields)] Type type)
+    {
         PropertyInfo? prop = type.GetProperty("Manifest", BindingFlags.Public | BindingFlags.Static);
-        if (prop is not null && prop.PropertyType == typeof(DomainManifest)) {
+        if (prop is not null && prop.PropertyType == typeof(DomainManifest))
+        {
             return true;
         }
 
@@ -269,11 +382,31 @@ public static class ServiceCollectionExtensions {
         return field is not null && field.FieldType == typeof(DomainManifest);
     }
 
-    private sealed class CommandGroup {
+    private sealed class CommandGroup
+    {
 
         public CommandGroup(string? displayName) => DisplayName = displayName;
 
         public List<string> Commands { get; } = [];
         public string? DisplayName { get; }
+    }
+
+    private sealed class ShellRequestLocalizationOptionsSetup(IOptions<FcShellOptions> shellOptions)
+        : IConfigureOptions<RequestLocalizationOptions>
+    {
+
+        public void Configure(RequestLocalizationOptions options)
+        {
+            ArgumentNullException.ThrowIfNull(options);
+
+            FcShellOptions shell = shellOptions.Value;
+            CultureInfo defaultCulture = new(shell.DefaultCulture);
+            IReadOnlyList<string> configuredCultures = shell.SupportedCultures;
+            List<CultureInfo> supportedCultures = [.. configuredCultures.Select(static culture => new CultureInfo(culture))];
+
+            options.DefaultRequestCulture = new RequestCulture(defaultCulture);
+            options.SupportedCultures = supportedCultures;
+            options.SupportedUICultures = supportedCultures;
+        }
     }
 }

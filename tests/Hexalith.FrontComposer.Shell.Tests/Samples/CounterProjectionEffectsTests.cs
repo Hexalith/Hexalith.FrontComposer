@@ -3,9 +3,11 @@ using Counter.Web;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Shouldly;
 
@@ -19,6 +21,7 @@ public sealed class CounterProjectionEffectsTests {
         _ = services.AddHexalithFrontComposer(
             o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
         _ = services.AddHexalithDomain<CounterDomain>();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IStore store = provider.GetRequiredService<IStore>();
@@ -63,6 +66,7 @@ public sealed class CounterProjectionEffectsTests {
         _ = services.AddHexalithFrontComposer(
             o => o.ScanAssemblies(typeof(CounterProjection).Assembly, typeof(CounterProjectionEffects).Assembly));
         _ = services.AddHexalithDomain<CounterDomain>();
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
 
         using ServiceProvider provider = services.BuildServiceProvider();
         IStore store = provider.GetRequiredService<IStore>();

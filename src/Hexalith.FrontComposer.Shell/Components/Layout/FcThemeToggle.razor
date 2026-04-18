@@ -1,0 +1,32 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.Theme
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-1 D5 / D7 / D22 — Light/Dark/System theme toggle. Dispatches ThemeChangedAction
+   (single writer per D7); the effect handles persistence + IThemeService.SetThemeAsync.
+   Decorative icons (D5) are deferred — Fluent UI v5 RC2 ships without a v5-compatible Icons
+   package; the toggle labels carry the full accessible meaning so the UX still satisfies AC3. *@
+
+<FluentMenu>
+    <FluentMenuButton Appearance="ButtonAppearance.Subtle" Title="@Localizer["ThemeToggleAriaLabel"].Value">
+        <span class="fc-sr-only">@GetAccessibleLabel()</span>
+        <span aria-hidden="true">@Localizer[GetCurrentLabelKey()].Value</span>
+    </FluentMenuButton>
+    <FluentMenuList>
+        <FluentMenuItem @onclick="@(() => SelectThemeAsync(ThemeValue.Light))"
+                        aria-label="@Localizer["ThemeLightLabel"].Value">
+            @Localizer["ThemeLightLabel"].Value
+        </FluentMenuItem>
+        <FluentMenuItem @onclick="@(() => SelectThemeAsync(ThemeValue.Dark))"
+                        aria-label="@Localizer["ThemeDarkLabel"].Value">
+            @Localizer["ThemeDarkLabel"].Value
+        </FluentMenuItem>
+        <FluentMenuItem @onclick="@(() => SelectThemeAsync(ThemeValue.System))"
+                        aria-label="@Localizer["ThemeSystemLabel"].Value">
+            @Localizer["ThemeSystemLabel"].Value
+        </FluentMenuItem>
+    </FluentMenuList>
+</FluentMenu>

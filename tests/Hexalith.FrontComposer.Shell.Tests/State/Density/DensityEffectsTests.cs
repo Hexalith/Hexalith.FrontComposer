@@ -19,6 +19,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// Unit tests for <see cref="DensityEffects"/>.
 /// </summary>
 public class DensityEffectsTests {
+    private const string TestTenant = "tenant-a";
+    private const string TestUser = "user-1";
 
     [Fact]
     public async Task DispatchDensityChanged_StorageServiceThrows_StoreStillUpdatesState() {
@@ -47,11 +49,11 @@ public class DensityEffectsTests {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
-        string key = StorageKeys.BuildKey(StorageKeys.DefaultTenantId, StorageKeys.DefaultUserId, "density");
+        string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
         await storage.SetAsync(key, DensityLevel.Compact, ct);
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, logger);
+        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
         var action = new AppInitializedAction("corr-init");
 
         // Act
@@ -68,7 +70,7 @@ public class DensityEffectsTests {
         var storage = new InMemoryStorageService();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, logger);
+        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
         var action = new AppInitializedAction("corr-init");
 
         // Act
@@ -85,9 +87,9 @@ public class DensityEffectsTests {
         var storage = new InMemoryStorageService();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, logger);
+        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
         var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
-        string key = StorageKeys.BuildKey(StorageKeys.DefaultTenantId, StorageKeys.DefaultUserId, "density");
+        string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
 
         // Act
         await sut.HandleDensityChanged(action, dispatcher);
@@ -105,7 +107,7 @@ public class DensityEffectsTests {
             .ThrowsAsync(new InvalidOperationException("Storage failure"));
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, logger);
+        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
         var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
 
         // Act — should not throw
@@ -113,18 +115,26 @@ public class DensityEffectsTests {
 
         // Assert — logger was called
         logger.ReceivedWithAnyArgs(1).Log(
-            default,
+            LogLevel.Warning,
             default,
             default!,
             default,
             default!);
     }
 
+    private static IUserContextAccessor StubAccessor(string? tenantId, string? userId) {
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(tenantId);
+        accessor.UserId.Returns(userId);
+        return accessor;
+    }
+
     private static ServiceProvider BuildProvider(IStorageService storage) {
         ServiceCollection services = new();
         _ = services.AddLogging();
         _ = services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerDensityState).Assembly));
-        _ = services.AddSingleton(storage);
+        _ = services.AddScoped(_ => storage);
+        _ = services.AddScoped(_ => StubAccessor(TestTenant, TestUser));
         return services.BuildServiceProvider();
     }
 

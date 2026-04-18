@@ -1,0 +1,63 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@implements IAsyncDisposable
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-1 D3 / AC1 — framework-owned shell composition point. Adopters wrap @Body via
+   <FrontComposerShell>@Body</FrontComposerShell> in their MainLayout.razor. FluentProviders and
+   Fluxor.Blazor.Web.StoreInitializer live inside this component so adopters do not need to
+   remember them separately. Placeholder Ctrl+K / Settings triggers are INTENTIONALLY absent per
+   D26 / ADR-032 — Stories 3-3 and 3-4 add them when their features ship.
+
+   The header max-width of 48 px is enforced via BOTH the FluentLayoutItem Height parameter AND
+   the --layout-header-height CSS custom property override in FrontComposerShell.razor.css so the
+   spec AC holds regardless of Fluent UI's internal precedence rules. *@
+
+<div class="fc-shell-root" style="--accent-base-color: @AccentColor;">
+    <FluentLayout>
+        <FluentLayoutItem Area="@LayoutArea.Header" Height="48px">
+            <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
+                         HorizontalAlignment="HorizontalAlignment.SpaceBetween" Style="height: 48px; padding: 0 12px;">
+                <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center">
+                    @HeaderStart
+                    <FluentText Size="@Typography.AppTitle.Size" Weight="@Typography.AppTitle.Weight"
+                                As="@Typography.AppTitle.Tag">
+                        @(AppTitle ?? Localizer["AppTitle"].Value)
+                    </FluentText>
+                </FluentStack>
+                <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center">
+                    <FcThemeToggle />
+                    @HeaderEnd
+                </FluentStack>
+            </FluentStack>
+        </FluentLayoutItem>
+
+        @if (Navigation is not null)
+        {
+            <FluentLayoutItem Area="@LayoutArea.Navigation" Width="220px">
+                @Navigation
+            </FluentLayoutItem>
+        }
+
+        <FluentLayoutItem Area="@LayoutArea.Content" Padding="@Padding.All3">
+            <FcSystemThemeWatcher />
+            @ChildContent
+        </FluentLayoutItem>
+
+        <FluentLayoutItem Area="@LayoutArea.Footer">
+            @if (Footer is not null)
+            {
+                @Footer
+            }
+            else
+            {
+                @Localizer["FooterCopyright", DateTime.Now.Year].Value
+            }
+        </FluentLayoutItem>
+    </FluentLayout>
+
+    <FluentProviders />
+    <Fluxor.Blazor.Web.StoreInitializer />
+</div>

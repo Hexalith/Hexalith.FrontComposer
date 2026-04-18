@@ -108,4 +108,40 @@ public sealed class FcShellOptions {
     /// </summary>
     [Range(1_000, 30_000, ErrorMessage = "IdempotentInfoToastDurationMs must be between 1000 and 30000.")]
     public int IdempotentInfoToastDurationMs { get; set; } = 5_000;
+
+    /// <summary>
+    /// Accent color applied via <c>IThemeService.SetThemeAsync(ThemeSettings)</c> (Story 3-1 D1,
+    /// AC2). Default <c>#0097A7</c>. Must be a 6-digit hex (case-insensitive) — named colors
+    /// (<c>teal</c>), <c>rgb()</c>/<c>hsl()</c> syntax, and 8-hex alpha forms are rejected at
+    /// startup so the value can be interpolated safely into a style block.
+    /// </summary>
+    [RegularExpression(
+        @"^#[0-9A-Fa-f]{6}$",
+        ErrorMessage = "AccentColor must be a 6-digit hex color like '#0097A7'.")]
+    public string AccentColor { get; set; } = "#0097A7";
+
+    /// <summary>
+    /// LRU cap for <c>LocalStorageService</c> entries (Story 3-1 D15 / AC6). Default 500.
+    /// Keep under 10 000 so the eviction scan (<c>OrderBy</c> over the last-access timestamps)
+    /// stays O(n) with a small n.
+    /// </summary>
+    [Range(50, 10_000, ErrorMessage = "LocalStorageMaxEntries must be between 50 and 10000.")]
+    public int LocalStorageMaxEntries { get; set; } = 500;
+
+    /// <summary>
+    /// Default UI culture (Story 3-1 D14 / AC7). Default <c>en</c>. BCP-47-lite format:
+    /// two-letter language code optionally followed by <c>-CC</c> region code (e.g.
+    /// <c>en</c>, <c>en-US</c>, <c>fr</c>, <c>fr-CA</c>).
+    /// </summary>
+    [RegularExpression(
+        @"^[a-z]{2}(-[A-Z]{2})?$",
+        ErrorMessage = "DefaultCulture must be a BCP-47 language tag like 'en' or 'en-US'.")]
+    public string DefaultCulture { get; set; } = "en";
+
+    /// <summary>
+    /// Cultures <c>AddHexalithShellLocalization</c> advertises to ASP.NET Core's request
+    /// localization pipeline (Story 3-1 D14 / AC7). Default <c>["en", "fr"]</c>. Must include
+    /// <see cref="DefaultCulture"/>; the threshold validator enforces that cross-property invariant.
+    /// </summary>
+    public IReadOnlyList<string> SupportedCultures { get; set; } = ["en", "fr"];
 }

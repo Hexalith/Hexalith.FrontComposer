@@ -4,15 +4,14 @@ namespace Hexalith.FrontComposer.Shell.State;
 /// Builds storage keys for persisted Fluxor state features.
 /// Keys follow the pattern documented in <see cref="Contracts.Storage.IStorageService"/>.
 /// </summary>
+/// <remarks>
+/// Story 3-1 D8 / ADR-029 removed the <c>DefaultTenantId</c> / <c>DefaultUserId</c>
+/// placeholder constants. Callers MUST resolve non-null, non-whitespace tenant and user
+/// identifiers from <c>IUserContextAccessor</c> and short-circuit (logging <c>HFC2105</c>)
+/// when the accessor returns null / empty / whitespace. Passing a static "default"/"anonymous"
+/// string is a cross-tenant bleed risk and is forbidden framework-wide.
+/// </remarks>
 public static class StorageKeys {
-    // TODO: Replace with ITenantContext/IUserContext when authentication is implemented (Epic 7)
-
-    /// <summary>Placeholder tenant identifier used before multi-tenancy is enabled.</summary>
-    public const string DefaultTenantId = "default";
-
-    /// <summary>Placeholder user identifier used before authentication is enabled.</summary>
-    public const string DefaultUserId = "anonymous";
-
     /// <summary>3-segment key for simple features (theme, density, nav).</summary>
     /// <param name="tenantId">The tenant identifier.</param>
     /// <param name="userId">The user identifier.</param>

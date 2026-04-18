@@ -1,0 +1,15 @@
+CSS Slots
+--fc-color-accent = var(--accent-base-color)
+--fc-color-neutral = var(--colorNeutralForeground1)
+--fc-color-success = var(--colorStatusSuccessForeground1)
+--fc-color-warning = var(--colorStatusWarningForeground1)
+--fc-color-danger = var(--colorStatusDangerForeground1)
+--fc-color-info = var(--colorStatusInfoForeground1)
+
+Lifecycle Mapping
+Idle = Neutral
+Submitting = Accent
+Acknowledged = Neutral
+Syncing = Accent
+Confirmed = Success
+Rejected = Danger

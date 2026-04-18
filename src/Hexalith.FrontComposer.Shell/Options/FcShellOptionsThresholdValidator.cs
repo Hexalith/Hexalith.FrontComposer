@@ -40,6 +40,15 @@ public sealed class FcShellOptionsThresholdValidator : IValidateOptions<FcShellO
             (failures ??= []).Add($"FcShellOptions.IdempotentInfoToastDurationMs ({options.IdempotentInfoToastDurationMs}) must not exceed ConfirmedToastDurationMs ({options.ConfirmedToastDurationMs}); the idempotent Info bar must dismiss no later than the Success bar.");
         }
 
+        // Story 3-1 D14 / AC7 — SupportedCultures must include DefaultCulture, otherwise request
+        // localization silently falls back to the invariant culture and our EN/FR resource files
+        // never resolve. Non-OrdinalIgnoreCase (plain Ordinal) so "en" and "EN" are distinct — BCP-47
+        // convention uses lowercase language tags which the RegularExpression on DefaultCulture enforces.
+        if (options.SupportedCultures is not null
+            && !options.SupportedCultures.Contains(options.DefaultCulture, StringComparer.Ordinal)) {
+            (failures ??= []).Add($"FcShellOptions.SupportedCultures must include DefaultCulture ('{options.DefaultCulture}'); currently contains [{string.Join(", ", options.SupportedCultures)}].");
+        }
+
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

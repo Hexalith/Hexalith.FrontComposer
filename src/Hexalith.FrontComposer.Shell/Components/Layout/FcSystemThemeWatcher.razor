@@ -1,0 +1,7 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@implements IAsyncDisposable
+
+@* Story 3-1 D10 / D23 / AC3 — zero-DOM headless component. Subscribes to
+   prefers-color-scheme via fc-prefers-color-scheme.js module on first render; dispatches via
+   IThemeService.SetThemeAsync only when FrontComposerThemeState.CurrentTheme == System. The
+   Fluxor state value stays System; only Fluent UI's rendered variant flips with the OS. *@

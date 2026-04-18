@@ -12,26 +12,35 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
+
+using NSubstitute;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
-public abstract class GeneratedComponentTestBase : BunitContext {
+public abstract class GeneratedComponentTestBase : BunitContext
+{
     private bool _storeInitialized;
 
-    protected GeneratedComponentTestBase(params Assembly[] scanAssemblies) {
+    protected GeneratedComponentTestBase(params Assembly[] scanAssemblies)
+    {
         JSInterop.Mode = JSRuntimeMode.Loose;
         _ = Services.AddFluentUIComponents();
+        Services.Replace(ServiceDescriptor.Scoped<IThemeService>(_ => Substitute.For<IThemeService>()));
         _ = Services.AddLogging();
         _ = Services.AddLocalization();
-        _ = Services.AddFluxor(o => {
-            foreach (Assembly assembly in scanAssemblies) {
+        _ = Services.AddFluxor(o =>
+        {
+            foreach (Assembly assembly in scanAssemblies)
+            {
                 _ = o.ScanAssemblies(assembly);
             }
         });
 
         // Zero-delay stub so bUnit tests stay deterministic under CI load.
-        _ = Services.Configure<StubCommandServiceOptions>(o => {
+        _ = Services.Configure<StubCommandServiceOptions>(o =>
+        {
             o.AcknowledgeDelayMs = 0;
             o.SyncingDelayMs = 0;
             o.ConfirmDelayMs = 0;
@@ -56,8 +65,10 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         _ = Services.AddSingleton(TimeProvider.System);
     }
 
-    protected async Task InitializeStoreAsync() {
-        if (_storeInitialized) {
+    protected async Task InitializeStoreAsync()
+    {
+        if (_storeInitialized)
+        {
             return;
         }
 
@@ -66,13 +77,17 @@ public abstract class GeneratedComponentTestBase : BunitContext {
         _storeInitialized = true;
     }
 
-    private sealed class NoopLastUsedSubscriberRegistry : ILastUsedSubscriberRegistry {
-        public void Ensure<TSubscriber>() where TSubscriber : class, IDisposable {
+    private sealed class NoopLastUsedSubscriberRegistry : ILastUsedSubscriberRegistry
+    {
+        public void Ensure<TSubscriber>() where TSubscriber : class, IDisposable
+        {
         }
     }
 
-    private sealed class NoopLifecycleBridgeRegistry : ILifecycleBridgeRegistry {
-        public void Ensure<TBridge>() where TBridge : class, IDisposable {
+    private sealed class NoopLifecycleBridgeRegistry : ILifecycleBridgeRegistry
+    {
+        public void Ensure<TBridge>() where TBridge : class, IDisposable
+        {
         }
     }
 }

@@ -6,6 +6,7 @@ using Counter.Domain;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
 
@@ -234,6 +235,9 @@ public sealed class LastUsedSubscriberRuntimeTests {
         }
 
         services.Replace(ServiceDescriptor.Scoped<ILastUsedRecorder>(_ => recorder));
+        // Story 3-1 ADR-030 — IStorageService default is now LocalStorageService (IJSRuntime-backed).
+        // Test hosts swap in InMemoryStorageService.
+        services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
         _ = services.AddSingleton<TimeProvider>(clock);
         configure?.Invoke(services);
 

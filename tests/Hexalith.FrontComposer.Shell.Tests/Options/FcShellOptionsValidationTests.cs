@@ -92,6 +92,91 @@ public sealed class FcShellOptionsValidationTests {
         results.ShouldContain(r => r.MemberNames.Contains(propertyName));
     }
 
+    // ---- Story 3-1 Task 10.8 ----
+
+    [Theory]
+    [InlineData("#0097A7")]
+    [InlineData("#512BD4")]
+    [InlineData("#abcdef")]
+    [InlineData("#FFFFFF")]
+    public void AccentColor_valid_hex_values_pass_annotation(string hex) {
+        FcShellOptions options = new() { AccentColor = hex };
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+        results.ShouldNotContain(r => r.MemberNames.Contains(nameof(FcShellOptions.AccentColor)));
+    }
+
+    [Theory]
+    [InlineData("teal")]
+    [InlineData("rgb(0, 151, 167)")]
+    [InlineData("#GGG")]
+    [InlineData("#09A7")]
+    [InlineData("#0097A7AA")]
+    public void AccentColor_invalid_values_fail_annotation(string hex) {
+        FcShellOptions options = new() { AccentColor = hex };
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+        results.ShouldContain(r => r.MemberNames.Contains(nameof(FcShellOptions.AccentColor)));
+    }
+
+    [Theory]
+    [InlineData(49)]
+    [InlineData(10_001)]
+    public void LocalStorageMaxEntries_out_of_range_fails_annotation(int value) {
+        FcShellOptions options = new() { LocalStorageMaxEntries = value };
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+        results.ShouldContain(r => r.MemberNames.Contains(nameof(FcShellOptions.LocalStorageMaxEntries)));
+    }
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("fr")]
+    [InlineData("en-US")]
+    [InlineData("fr-CA")]
+    public void DefaultCulture_valid_bcp47_values_pass_annotation(string culture) {
+        FcShellOptions options = new() {
+            DefaultCulture = culture,
+            SupportedCultures = [culture],
+        };
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+        results.ShouldNotContain(r => r.MemberNames.Contains(nameof(FcShellOptions.DefaultCulture)));
+    }
+
+    [Theory]
+    [InlineData("English")]
+    [InlineData("EN")]
+    [InlineData("e")]
+    [InlineData("en_US")]
+    public void DefaultCulture_invalid_values_fail_annotation(string culture) {
+        FcShellOptions options = new() { DefaultCulture = culture };
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+        results.ShouldContain(r => r.MemberNames.Contains(nameof(FcShellOptions.DefaultCulture)));
+    }
+
+    [Fact]
+    public void SupportedCultures_must_include_DefaultCulture() {
+        FcShellOptions options = new() {
+            DefaultCulture = "en",
+            SupportedCultures = ["fr"],
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("SupportedCultures", Case.Insensitive);
+        result.FailureMessage.ShouldContain("DefaultCulture", Case.Insensitive);
+    }
+
+    [Fact]
+    public void SupportedCultures_containing_DefaultCulture_passes_validator() {
+        FcShellOptions options = new() {
+            DefaultCulture = "en",
+            SupportedCultures = ["en", "fr"],
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Succeeded.ShouldBeTrue();
+    }
+
     private static List<ValidationResult> ValidateDataAnnotations(object instance) {
         ValidationContext ctx = new(instance);
         List<ValidationResult> results = [];

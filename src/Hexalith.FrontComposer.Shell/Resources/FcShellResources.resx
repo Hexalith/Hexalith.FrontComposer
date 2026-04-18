@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <!--
+    Story 3-1 Task 8.1 (D12 / AC7) — EN default resources for the shell. Keys MUST have a
+    matching entry in FcShellResources.fr.resx; the parity test CanonicalKeysHaveFrenchCounterparts
+    enforces this in CI. New keys land here first, then in the FR satellite.
+  -->
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <data name="AppTitle" xml:space="preserve">
+    <value>Hexalith FrontComposer</value>
+    <comment>Default product name displayed in the shell header (D19 — proper noun, no translation).</comment>
+  </data>
+  <data name="ThemeToggleAriaLabel" xml:space="preserve">
+    <value>Change theme</value>
+  </data>
+  <data name="ThemeLightLabel" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="ThemeDarkLabel" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="ThemeSystemLabel" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="CommandPaletteTriggerAriaLabel" xml:space="preserve">
+    <value>Open command palette (Ctrl+K)</value>
+    <comment>Seeded for Story 3-4; the placeholder button is hidden in 3-1 per D26 / ADR-032.</comment>
+  </data>
+  <data name="SettingsTriggerAriaLabel" xml:space="preserve">
+    <value>Open settings</value>
+    <comment>Seeded for Story 3-3; the placeholder button is hidden in 3-1 per D26 / ADR-032.</comment>
+  </data>
+  <data name="SkipToContentLabel" xml:space="preserve">
+    <value>Skip to content</value>
+  </data>
+  <data name="FooterCopyright" xml:space="preserve">
+    <value>Hexalith FrontComposer © {0}</value>
+    <comment>Default footer copyright line; {0} is the current year.</comment>
+  </data>
+
+  <!-- Story 2-4 lifecycle labels (G2 backfill) — 2-4's FcLifecycleWrapper uses inline strings
+       today; these keys are seeded for a non-blocking follow-up PR that switches the wrapper
+       to IStringLocalizer. -->
+  <data name="LifecycleSubmittingLabel" xml:space="preserve">
+    <value>Submitting…</value>
+  </data>
+  <data name="LifecycleAcknowledgedLabel" xml:space="preserve">
+    <value>Acknowledged</value>
+  </data>
+  <data name="LifecycleSyncingLabel" xml:space="preserve">
+    <value>Syncing…</value>
+  </data>
+  <data name="LifecycleStillSyncingLabel" xml:space="preserve">
+    <value>Still syncing…</value>
+  </data>
+  <data name="LifecycleConfirmedLabel" xml:space="preserve">
+    <value>Confirmed</value>
+  </data>
+  <data name="LifecycleRejectedLabel" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="LifecycleTimeoutLabel" xml:space="preserve">
+    <value>Request took longer than expected</value>
+  </data>
+</root>

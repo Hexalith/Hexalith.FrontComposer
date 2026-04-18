@@ -4,10 +4,11 @@
     <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <ProjectReference
+      Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
-    <PackageReference Include="Microsoft.Extensions.Options.DataAnnotations" />
     <PackageReference Include="NUlid" />
   </ItemGroup>
 </Project>
