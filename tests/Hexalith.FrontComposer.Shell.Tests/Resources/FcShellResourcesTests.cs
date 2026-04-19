@@ -61,6 +61,56 @@ public sealed class FcShellResourcesTests {
         localizer["AppTitle"].Value.ShouldBe("Hexalith FrontComposer");
     }
 
+    // --- Story 3-2 Task 10.8 (D19) — 5 new navigation ARIA / skip-link resource keys ---
+
+    [Theory]
+    [InlineData("NavMenuAriaLabel", "Primary navigation", "Navigation principale")]
+    [InlineData("HamburgerToggleAriaLabel", "Toggle navigation", "Basculer la navigation")]
+    [InlineData("SkipToNavigationLabel", "Skip to navigation", "Passer à la navigation")]
+    public void NavigationStaticKeysResolveInBothLocales(string key, string enValue, string frValue) {
+        // ATDD RED PHASE — fails at assertion time until Task 8.5 / 8.6 add the keys to
+        // FcShellResources.resx + .fr.resx.
+        ServiceProvider provider = BuildLocalizedProvider();
+        using IServiceScope scope = provider.CreateScope();
+        IStringLocalizer<FcShellResources> localizer = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>();
+
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = new CultureInfo("en");
+            localizer[key].Value.ShouldBe(enValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+
+            CultureInfo.CurrentUICulture = new CultureInfo("fr");
+            localizer[key].Value.ShouldBe(frValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
+    }
+
+    [Theory]
+    [InlineData("NavGroupExpandAriaLabel", "Counter", "Expand Counter", "Développer Counter")]
+    [InlineData("NavGroupCollapseAriaLabel", "Counter", "Collapse Counter", "Réduire Counter")]
+    public void NavigationParameterisedKeysRoundTripArgument(string key, string arg, string enValue, string frValue) {
+        // D19 — NavGroupExpandAriaLabel / NavGroupCollapseAriaLabel use "{0}" placeholder.
+        ServiceProvider provider = BuildLocalizedProvider();
+        using IServiceScope scope = provider.CreateScope();
+        IStringLocalizer<FcShellResources> localizer = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>();
+
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = new CultureInfo("en");
+            localizer[key, arg].Value.ShouldBe(enValue);
+
+            CultureInfo.CurrentUICulture = new CultureInfo("fr");
+            localizer[key, arg].Value.ShouldBe(frValue);
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
+    }
+
     private static ServiceProvider BuildLocalizedProvider() {
         ServiceCollection services = new();
         _ = services.AddLogging();

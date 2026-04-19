@@ -1,5 +1,5 @@
 # generated: 2026-04-12
-# last_updated: 2026-04-18 (story 3-1: done — review fixes landed for localization wiring, theme effect ownership, shell CSS scoping, storage queue semantics, accessible theme-toggle naming, and deferred regression coverage; shell test project 325/2-skipped green.)
+# last_updated: 2026-04-18 (story 3-2: ready-for-dev — framework-owned FrontComposerNavigation sidebar + FcCollapsedNavRail + FcHamburgerToggle + FcLayoutBreakpointWatcher scoped; 22 decisions, 3 ADRs, ~33 tests; auto-populates FrontComposerShell.Navigation from IFrontComposerRegistry; Counter.Web MainLayout collapses to 3 lines per D17.)
 # project: Hexalith.FrontComposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-18 (story 3-1: done — review fixes landed for localization wiring, theme effect ownership, shell CSS scoping, storage queue semantics, accessible theme-toggle naming, and deferred regression coverage; shell test project 325/2-skipped green.)"
+last_updated: "2026-04-18 (story 3-2: ready-for-dev — framework-owned FrontComposerNavigation sidebar + FcCollapsedNavRail + FcHamburgerToggle + FcLayoutBreakpointWatcher scoped; 22 decisions, 3 ADRs, ~33 tests; auto-populates FrontComposerShell.Navigation from IFrontComposerRegistry; Counter.Web MainLayout collapses to 3 lines per D17.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -66,7 +66,7 @@ development_status:
   # Epic 3: Composition Shell & Navigation Experience
   epic-3: in-progress
   3-1-shell-layout-theme-and-typography: done
-  3-2-sidebar-navigation-and-responsive-behavior: backlog
+  3-2-sidebar-navigation-and-responsive-behavior: ready-for-dev
   3-3-display-density-and-user-settings: backlog
   3-4-fccommandpalette-and-keyboard-shortcuts: backlog
   3-5-home-directory-badge-counts-and-new-capability-discovery: backlog

@@ -9,13 +9,18 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 /// <summary>
-/// Story 3-1 parameter surface lock for the framework-owned shell component.
+/// Parameter-surface lock for the framework-owned shell component.
+/// Story 3-1 shipped 6 parameters. Story 3-2 Task 10.9 / D10 adds <c>HeaderCenter</c> as the
+/// single append at index 1 (between HeaderStart and HeaderEnd, mirroring the L→R visual header
+/// layout). Append-only discipline: no rename, retype, removal, or reorder of existing parameters.
 /// </summary>
 public sealed class FrontComposerShellParameterSurfaceTests
 {
     [Fact]
-    public void Parameter_surface_matches_story_3_1_contract()
+    public void Parameter_surface_matches_story_3_2_contract()
     {
+        // ATDD RED PHASE — this array encodes the post-3-2 surface. It will diverge from the
+        // current 6-parameter implementation until Story 3-2 Task 8.4 adds HeaderCenter.
         string[] actual = [..
             typeof(FrontComposerShell)
                 .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly)
@@ -25,6 +30,7 @@ public sealed class FrontComposerShellParameterSurfaceTests
 
         actual.ShouldBe([
             "HeaderStart:RenderFragment",
+            "HeaderCenter:RenderFragment",
             "HeaderEnd:RenderFragment",
             "Navigation:RenderFragment",
             "Footer:RenderFragment",
