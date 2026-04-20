@@ -44,7 +44,10 @@ public partial class FcLayoutBreakpointWatcher : ComponentBase, IAsyncDisposable
     /// <returns>A completed task.</returns>
     [JSInvokable]
     public Task OnViewportTierChangedAsync(int tier) {
-        if (!Enum.IsDefined(typeof(ViewportTier), tier)) {
+        // .NET 10 Enum.IsDefined requires the runtime value to match the enum's underlying type
+        // exactly; ViewportTier is byte-backed, so cast before the check.
+        if (tier < byte.MinValue || tier > byte.MaxValue
+            || !Enum.IsDefined(typeof(ViewportTier), (byte)tier)) {
             Logger.LogWarning("FcLayoutBreakpointWatcher received unknown viewport tier {Tier}; ignoring.", tier);
             return Task.CompletedTask;
         }

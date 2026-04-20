@@ -1,5 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 
+using Hexalith.FrontComposer.Contracts.Rendering;
+
 namespace Hexalith.FrontComposer.Contracts;
 
 /// <summary>
@@ -144,4 +146,20 @@ public sealed class FcShellOptions {
     /// <see cref="DefaultCulture"/>; the threshold validator enforces that cross-property invariant.
     /// </summary>
     public IReadOnlyList<string> SupportedCultures { get; set; } = ["en", "fr"];
+
+    /// <summary>
+    /// Deployment-wide default display density (Story 3-3 D4 / ADR-039 tier 2). <see langword="null"/>
+    /// (default) means "no deployment default — fall through to the UX-spec factory hybrid for the
+    /// surface (tier 3)." Non-null values are validated by <c>EnumDataType</c> through ASP.NET Core's
+    /// built-in annotation pipeline.
+    /// </summary>
+    /// <remarks>
+    /// Tier order in <c>DensityPrecedence.Resolve</c>: (1) viewport tier-force override at
+    /// <c>ViewportTier ≤ Tablet</c> → <c>Comfortable</c> (ADR-040); (2) user preference when non-null;
+    /// (3) <b>this property</b> when non-null; (4) factory hybrid by <c>DensitySurface</c>
+    /// (UX spec §208-214). Adopters typically set this in <c>appsettings.json</c> — e.g. call-center
+    /// deployments ship with <c>"DefaultDensity": "Compact"</c>.
+    /// </remarks>
+    [EnumDataType(typeof(DensityLevel), ErrorMessage = "DefaultDensity must be Compact, Comfortable, or Roomy.")]
+    public DensityLevel? DefaultDensity { get; set; }
 }

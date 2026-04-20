@@ -1,4 +1,5 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.AspNetCore.Components.Web
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Contracts.Rendering
@@ -15,7 +16,11 @@
    symmetrically, FcLayoutBreakpointWatcher mounts alongside FcSystemThemeWatcher, skip-to-navigation
    link renders immediately after Story 3-1's SkipToContent link (AC6 / D16). *@
 
-<div class="fc-shell-root" style="--accent-base-color: @AccentColor;">
+<HeadContent>
+    <link rel="stylesheet" href="@DensityStylesheetPath" />
+</HeadContent>
+
+<div class="fc-shell-root" style="--accent-base-color: @AccentColor;" tabindex="0" @onkeydown="HandleGlobalKeyDown">
     <a class="fc-skip-link" href="#fc-main-content">@Localizer["SkipToContentLabel"].Value</a>
     @if (HasNavigation)
     {
@@ -49,15 +54,21 @@
                     </FluentStack>
                     <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center">
                         <FcThemeToggle />
-                        @HeaderEnd
+                        @if (HeaderEnd is not null)
+                        {
+                            @HeaderEnd
+                        }
+                        else
+                        {
+                            <FcSettingsButton />
+                        }
                     </FluentStack>
                 </FluentStack>
             </FluentLayoutItem>
 
             @if (HasNavigation && !IsSubCompactDesktopViewport)
             {
-                <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@NavigationWidth"
-                                  data-testid="fc-shell-navigation">
+                <FluentLayoutItem Area="@LayoutArea.Navigation" Width="@NavigationWidth" data-testid="fc-shell-navigation">
                     <div id="fc-nav" tabindex="-1">
                         @if (Navigation is not null)
                         {
@@ -74,6 +85,8 @@
             <FluentLayoutItem Area="@LayoutArea.Content" Padding="@Padding.All3">
                 <FcLayoutBreakpointWatcher />
                 <FcSystemThemeWatcher />
+                <FcDensityApplier />
+                <FcDensityAnnouncer />
                 <div id="fc-main-content" tabindex="-1">
                     @ChildContent
                 </div>

@@ -4,13 +4,19 @@ using Fluxor.Blazor.Web.Components;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
+
+// Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
+#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
 
 namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
@@ -136,8 +142,25 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// </summary>
     [Inject] private IFrontComposerRegistry Registry { get; set; } = default!;
 
+    /// <summary>
+    /// Injected dialog service — shared between <see cref="FcSettingsButton"/> and the Ctrl+,
+    /// inline handler on the shell root (Story 3-3 D11 / D16).
+    /// </summary>
+    [Inject] private IDialogService DialogService { get; set; } = default!;
+
+    /// <summary>Injected shell resources localizer — resolves the settings dialog title.</summary>
+    [Inject] private IStringLocalizer<FcShellResources> ShellLocalizer { get; set; } = default!;
+
+    /// <summary>Injected navigation manager used to resolve static web asset URLs against the app base path.</summary>
+    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
     /// <summary>Accent color projected into the inline <c>:root</c> style block (AC2).</summary>
     protected string AccentColor => Options.Value.AccentColor;
+
+    /// <summary>Global stylesheet that owns the body density cascade + shared screen-reader-only helper.</summary>
+    protected string DensityStylesheetPath => NavigationManager
+        .ToAbsoluteUri("_content/Hexalith.FrontComposer.Shell/css/fc-density.css")
+        .ToString();
 
     /// <summary>
     /// Whether the shell should render the Navigation area. Adopter-supplied content always wins;
@@ -171,6 +194,24 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <returns>A task representing the flush.</returns>
     [JSInvokable]
     public Task FlushAsync() => Storage.FlushAsync();
+
+    /// <summary>
+    /// Story 3-3 Task 8.2 (D16 / AC7) — single inline <c>@onkeydown</c> binding on the shell root
+    /// that opens <see cref="FcSettingsDialog"/> on <c>Ctrl+,</c>. Story 3-4 replaces this inline
+    /// binding with <c>IShortcutService.Register("ctrl+,", ...)</c>; the user-visible behaviour is
+    /// unchanged by that migration — this handler becomes a call site for the registered shortcut.
+    /// </summary>
+    /// <param name="e">The keyboard event.</param>
+    /// <returns>A task representing the dialog presentation (or <see cref="Task.CompletedTask"/> when the combo doesn't match).</returns>
+    protected async Task HandleGlobalKeyDown(KeyboardEventArgs e) {
+        ArgumentNullException.ThrowIfNull(e);
+        if (e.Key != "," || !e.CtrlKey || e.ShiftKey || e.AltKey || e.MetaKey) {
+            return;
+        }
+
+        _ = await FcSettingsDialogLauncher
+            .ShowAsync(DialogService, ShellLocalizer["SettingsDialogTitle"].Value);
+    }
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {

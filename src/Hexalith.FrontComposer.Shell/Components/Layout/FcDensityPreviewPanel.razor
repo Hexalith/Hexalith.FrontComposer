@@ -1,0 +1,71 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-3 Task 7.1 (D14; AC2, AC5, AC6) — pure presentational specimen: one DataGrid row, one
+   form field, one nav item. Parameter-driven (no Fluxor subscription) so the preview can show a
+   density different from the currently-applied one. The wrapper carries its own data-fc-density
+   attribute so scoped CSS --fc-spacing-unit resolves locally (ADR-041 local override). The optional
+   badge appears when viewport forcing is active AND the selected density isn't Comfortable
+   (Freya review — eliminates the "three competing truths" cognitive dissonance on Tablet). *@
+
+<div class="fc-density-preview-wrapper">
+    @if (ShowForcedViewportBadge)
+    {
+        <div class="fc-density-preview-badge" role="note" data-testid="fc-density-preview-badge">
+            @Localizer["PreviewOnlyBadgeText"].Value
+        </div>
+    }
+    <div class="fc-density-preview" data-fc-density="@DensityAttribute" data-testid="fc-density-preview">
+        <section>
+            <FluentDataGrid Items="@_previewRowsQuery"
+                            GridTemplateColumns="1fr 2fr 1fr">
+                <PropertyColumn Property="@(r => r.Order)" Title="Order" />
+                <PropertyColumn Property="@(r => r.Customer)" Title="Customer" />
+                <PropertyColumn Property="@(r => r.Status)" Title="Status" />
+            </FluentDataGrid>
+        </section>
+        <section>
+            <FluentTextInput Label="Email"
+                             Placeholder="name@example.com"
+                             Value="sample@acme.com"
+                             ReadOnly="true" />
+        </section>
+        <section>
+            <a class="fc-preview-navitem" href="#" tabindex="-1">Orders</a>
+        </section>
+    </div>
+</div>
+
+@code {
+    /// <summary>The density level to render the specimen at. Drives the local data-fc-density wrapper.</summary>
+    [Parameter, EditorRequired] public DensityLevel Density { get; set; }
+
+    /// <summary>Whether to render the "Preview only — Comfortable is active" overlay badge (D14 amendment).</summary>
+    [Parameter] public bool ShowForcedViewportBadge { get; set; }
+
+    private string DensityAttribute => Density.ToString().ToLowerInvariant();
+
+    private static readonly PreviewRow[] _previewRows =
+    [
+        new PreviewRow("ORD-001", "ACME Inc.", "Pending"),
+        new PreviewRow("ORD-002", "Contoso Ltd.", "Confirmed"),
+    ];
+
+    // FluentDataGrid.Items wants IQueryable<T>. The in-memory path (AsQueryable / EnumerableQuery)
+    // is flagged trim-unsafe because expression rewrites could bind to trimmed Queryable members —
+    // but the grid only enumerates (no expression evaluation on in-memory data), so the suppression
+    // is sound for this concrete PreviewRow specimen.
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:RequiresUnreferencedCode",
+        Justification = "FluentDataGrid only enumerates; no Queryable expression evaluation on this in-memory specimen.")]
+    private static IQueryable<PreviewRow> BuildPreviewRowsQuery() => new EnumerableQuery<PreviewRow>(_previewRows);
+
+    private static readonly IQueryable<PreviewRow> _previewRowsQuery = BuildPreviewRowsQuery();
+
+    private sealed record PreviewRow(string Order, string Customer, string Status);
+}

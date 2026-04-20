@@ -1,6 +1,6 @@
 @implements IDisposable
 
-<p id="density-display">@DensityState.Value.CurrentDensity</p>
+<p id="density-display">@DensityState.Value.EffectiveDensity</p>
 
 @code {
     [Inject] private IState<FrontComposerDensityState> DensityState { get; set; } = default!;

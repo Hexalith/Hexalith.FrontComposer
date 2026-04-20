@@ -34,3 +34,7 @@
     left: 8px;
     top: 8px;
 }
+
+/* Story 3-3 Task 4.4 (D9 / ADR-041 / D20) — the density cascade + shared .fc-sr-only helper live
+    in wwwroot/css/fc-density.css, NOT here. CSS isolation suffixes the body-level density selectors
+    and utility selectors, which makes <body> overrides and aria-live-only helpers unreachable. */

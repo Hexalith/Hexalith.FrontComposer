@@ -1,0 +1,18 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Resources
+@inject Microsoft.Extensions.Localization.IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-3 Task 4.2b (D20) — visually-hidden aria-live region announcing EffectiveDensity
+   transitions to assistive tech. Covers both user-driven changes (radio selection) and
+   viewport-forced changes (Tablet forcing Comfortable). Skip-first-render mirrors WCAG guidance
+   so the page doesn't announce "Density set to Comfortable" on every load. *@
+
+<div role="status"
+     aria-live="polite"
+     aria-atomic="true"
+     class="fc-sr-only">
+    @if (_hasAnnouncement)
+    {
+        @_announcementText
+    }
+</div>

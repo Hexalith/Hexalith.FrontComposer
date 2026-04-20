@@ -1,0 +1,29 @@
+/* Story 3-3 Task 6.3 (D13, D14 amendment, Freya review 2026-04-19) — settings-dialog scoped CSS.
+   Dialog itself is NOT density-driven: the chrome stays consistent regardless of radio selection
+   (the preview panel shows the difference). Heading rhythm is equal across Density / Theme /
+   Preview sections so the theme section doesn't read as an afterthought (Freya review). */
+
+.fc-settings-body {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+}
+
+.fc-settings-body h3 {
+    margin: 0 0 8px;
+    font-size: var(--typeRampBase500FontSize);
+    font-weight: var(--typeRampBase500FontWeight);
+}
+
+.fc-settings-footer-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.fc-settings-footer-helper {
+    font-size: var(--typeRampBase200FontSize);
+    color: var(--colorNeutralForeground3);
+}

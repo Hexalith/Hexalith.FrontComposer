@@ -7,6 +7,8 @@ namespace Hexalith.FrontComposer.Contracts.Storage;
 /// and bUnit testing. Thread-safe via <see cref="ConcurrentDictionary{TKey,TValue}"/>.
 /// </summary>
 public sealed class InMemoryStorageService : IStorageService {
+    private static readonly object NullSentinel = new();
+
     private readonly ConcurrentDictionary<string, object> _store = new();
 
     /// <inheritdoc/>
@@ -18,7 +20,11 @@ public sealed class InMemoryStorageService : IStorageService {
     /// <inheritdoc/>
     public Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) {
         if (_store.TryGetValue(key, out object? value)) {
-            return Task.FromResult<T?>((T)value);
+            if (ReferenceEquals(value, NullSentinel)) {
+                return Task.FromResult<T?>(default);
+            }
+
+            return Task.FromResult((T?)value);
         }
 
         return Task.FromResult<T?>(default);
@@ -40,7 +46,9 @@ public sealed class InMemoryStorageService : IStorageService {
 
     /// <inheritdoc/>
     public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default) {
-        _store[key] = value!;
+        _store[key] = value is null
+            ? NullSentinel
+            : value;
         return Task.CompletedTask;
     }
 }

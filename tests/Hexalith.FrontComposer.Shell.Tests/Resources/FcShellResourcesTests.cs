@@ -105,7 +105,16 @@ public sealed class FcShellResourcesTests {
     [InlineData("DensityForcedByViewportNote",
         "Your device size is forcing Comfortable density. Your preference will re-apply at larger screen sizes.",
         "La taille de votre appareil impose la densité Confortable. Votre préférence s'appliquera de nouveau sur des écrans plus larges.")]
-    [InlineData("ResetToDefaultsLabel", "Reset to defaults", "Réinitialiser")]
+    [InlineData("RestoreDefaultsLabel", "Restore defaults", "Rétablir les paramètres par défaut")]
+    [InlineData("RestoreDefaultsHelperText",
+        "Clears density preference and sets theme to follow system.",
+        "Efface la préférence de densité et règle le thème sur le suivi système.")]
+    [InlineData("PreviewOnlyBadgeText",
+        "Preview only — Comfortable is active.",
+        "Aperçu uniquement — Confortable est actif.")]
+    [InlineData("DensityAnnouncementTemplate",
+        "Density set to {0}.",
+        "Densité réglée sur {0}.")]
     public void SettingsDialogStaticKeysResolveInBothLocales(string key, string enValue, string frValue) {
         // ATDD RED PHASE — fails at assertion time until Task 9.1 / 9.2 add the keys to
         // FcShellResources.resx + .fr.resx.

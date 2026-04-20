@@ -82,8 +82,8 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
 
         IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
 
-        // Click "Reset to defaults" footer button.
-        cut.Find("button[data-testid=\"fc-settings-reset\"]").Click();
+        // Click "Reset to defaults" footer button (FluentButton renders as <fluent-button>).
+        cut.Find("[data-testid=\"fc-settings-reset\"]").Click();
 
         cut.WaitForAssertion(() =>
         {
@@ -100,35 +100,53 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
     [Fact]
     public void RendersForcedDensityNoteAtTabletWhenUserPrefersCompact()
     {
-        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
+        try
+        {
+            IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
-        // Seed Tablet viewport so DensityEffects.HandleViewportTierChanged forces Comfortable.
-        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Tablet));
-        // User prefers Compact — but forcing is active.
-        dispatcher.Dispatch(new UserPreferenceChangedAction("c1", DensityLevel.Compact, DensityLevel.Comfortable));
+            // Seed Tablet viewport so DensityEffects.HandleViewportTierChanged forces Comfortable.
+            dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Tablet));
+            // User prefers Compact — but forcing is active.
+            dispatcher.Dispatch(new UserPreferenceChangedAction("c1", DensityLevel.Compact, DensityLevel.Comfortable));
 
-        IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+            IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
 
-        cut.WaitForAssertion(() =>
-            cut.Markup.ShouldContain(
-                "Your device size is forcing Comfortable density",
-                Case.Sensitive,
-                "ADR-040 — settings dialog must surface the forcing-by-viewport reason."));
+            cut.WaitForAssertion(() =>
+                cut.Markup.ShouldContain(
+                    "Your device size is forcing Comfortable density",
+                    Case.Sensitive,
+                    "ADR-040 — settings dialog must surface the forcing-by-viewport reason."));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]
     public void NoForcedNoteAtDesktop()
     {
-        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
-        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
-        dispatcher.Dispatch(new UserPreferenceChangedAction("c1", DensityLevel.Compact, DensityLevel.Compact));
+        System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
+        try
+        {
+            IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+            dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
+            dispatcher.Dispatch(new UserPreferenceChangedAction("c1", DensityLevel.Compact, DensityLevel.Compact));
 
-        IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+            IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
 
-        cut.WaitForAssertion(() =>
-            cut.Markup.ShouldNotContain(
-                "Your device size is forcing",
-                Case.Sensitive,
-                "Forced-note must be absent when EffectiveDensity matches the user's choice."));
+            cut.WaitForAssertion(() =>
+                cut.Markup.ShouldNotContain(
+                    "Your device size is forcing",
+                    Case.Sensitive,
+                    "Forced-note must be absent when EffectiveDensity matches the user's choice."));
+        }
+        finally
+        {
+            System.Globalization.CultureInfo.CurrentUICulture = previous;
+        }
     }
 }

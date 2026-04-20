@@ -28,14 +28,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// Unit tests for the rewritten <see cref="DensityEffects"/> (Story 3-3 Task 3).
 /// Covers user-preference persistence, viewport-driven recompute, and hydrate dispatch.
 /// </summary>
-public class DensityEffectsTests
-{
+public class DensityEffectsTests {
     private const string TestTenant = "tenant-a";
     private const string TestUser = "user-1";
 
     [Fact]
-    public async Task HandleAppInitialized_StorageContainsValue_DispatchesDensityHydrated()
-    {
+    public async Task HandleAppInitialized_StorageContainsValue_DispatchesDensityHydrated() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();
@@ -46,7 +44,7 @@ public class DensityEffectsTests
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
 
-        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options);
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, FakeDensityState());
 
         // Act
         await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
@@ -55,21 +53,93 @@ public class DensityEffectsTests
         dispatcher.Received(1).Dispatch(
             Arg.Is<DensityHydratedAction>(a =>
                 a.UserPreference == DensityLevel.Compact &&
-                a.NewEffective == DensityLevel.Compact));
+                a.NewEffective == DensityLevel.Comfortable));
     }
 
     [Fact]
-    public async Task HandleViewportTierChanged_DispatchesEffectiveDensityRecomputed()
-    {
-        // D7 — cross-feature handler re-resolves and emits an intra-feature recompute action.
-        InMemoryStorageService storage = new();
+    public async Task HandleAppInitialized_NoStoredValue_DispatchesBootstrapHydrateForLaterRecompute() {
+        string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
+        IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetKeysAsync(key, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<string>>([]));
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        // Navigation state exposes Desktop initially; the action carries the new tier (Tablet).
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions { DefaultDensity = DensityLevel.Roomy });
+
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, FakeDensityState());
+
+        await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
+
+        dispatcher.Received(1).Dispatch(
+            Arg.Is<DensityHydratedAction>(a =>
+                a.UserPreference == null &&
+                a.NewEffective == DensityLevel.Comfortable));
+    }
+
+    [Fact]
+    public async Task HandleAppInitialized_StoredNull_DispatchesHydratedNull() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        InMemoryStorageService storage = new();
+        string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
+        await storage.SetAsync<DensityLevel?>(key, null, ct);
+        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
 
-        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options);
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, FakeDensityState());
+
+        await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
+
+        dispatcher.Received(1).Dispatch(
+            Arg.Is<DensityHydratedAction>(a =>
+                a.UserPreference == null &&
+                a.NewEffective == DensityLevel.Comfortable));
+    }
+
+    [Fact]
+    public async Task HandleAppInitialized_LegacyStringPayload_MigratesAndDispatchesDensityHydrated() {
+        string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
+        IStorageService storage = Substitute.For<IStorageService>();
+        storage.GetKeysAsync(key, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<IReadOnlyList<string>>([key]));
+        storage.GetAsync<DensityLevel?>(key, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<DensityLevel?>(null));
+        storage.GetAsync<string>(key, Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult<string?>(DensityLevel.Compact.ToString()));
+        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
+
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, FakeDensityState());
+
+        await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
+
+        await storage.Received(1).SetAsync<DensityLevel?>(key, DensityLevel.Compact, Arg.Any<CancellationToken>());
+        dispatcher.Received(1).Dispatch(
+            Arg.Is<DensityHydratedAction>(a =>
+                a.UserPreference == DensityLevel.Compact &&
+                a.NewEffective == DensityLevel.Comfortable));
+    }
+
+    [Fact]
+    public async Task HandleViewportTierChanged_DispatchesEffectiveDensityRecomputed() {
+        // D7 — cross-feature handler re-resolves and emits an intra-feature recompute action when
+        // the computed density differs from the current EffectiveDensity. Pre-seed UserPreference =
+        // Compact so the Desktop-baseline resolves to Compact; moving to Tablet then forces
+        // Comfortable and the dispatch fires.
+        InMemoryStorageService storage = new();
+        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
+        IState<FrontComposerDensityState> densityState = FakeDensityState(
+            userPreference: DensityLevel.Compact,
+            effective: DensityLevel.Compact);
+
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, densityState);
 
         await sut.HandleViewportTierChanged(new ViewportTierChangedAction(ViewportTier.Tablet), dispatcher);
 
@@ -78,8 +148,7 @@ public class DensityEffectsTests
     }
 
     [Fact]
-    public async Task HandleUserPreferenceChanged_PersistsToStorage()
-    {
+    public async Task HandleUserPreferenceChanged_PersistsToStorage() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         InMemoryStorageService storage = new();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
@@ -87,7 +156,7 @@ public class DensityEffectsTests
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
 
-        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options);
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options, FakeDensityState());
 
         await sut.HandleUserPreferenceChanged(
             new UserPreferenceChangedAction("c1", DensityLevel.Roomy, DensityLevel.Roomy),
@@ -98,21 +167,27 @@ public class DensityEffectsTests
         stored.ShouldBe(DensityLevel.Roomy);
     }
 
-    private static IUserContextAccessor StubAccessor(string? tenantId, string? userId)
-    {
+    private static IUserContextAccessor StubAccessor(string? tenantId, string? userId) {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(tenantId);
         accessor.UserId.Returns(userId);
         return accessor;
     }
 
-    private static IState<FrontComposerNavigationState> FakeNavState(ViewportTier tier)
-    {
+    private static IState<FrontComposerNavigationState> FakeNavState(ViewportTier tier) {
         IState<FrontComposerNavigationState> state = Substitute.For<IState<FrontComposerNavigationState>>();
         state.Value.Returns(new FrontComposerNavigationState(
             SidebarCollapsed: false,
             CollapsedGroups: System.Collections.Immutable.ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
             CurrentViewport: tier));
+        return state;
+    }
+
+    private static IState<FrontComposerDensityState> FakeDensityState(
+        DensityLevel? userPreference = null,
+        DensityLevel effective = DensityLevel.Comfortable) {
+        IState<FrontComposerDensityState> state = Substitute.For<IState<FrontComposerDensityState>>();
+        state.Value.Returns(new FrontComposerDensityState(userPreference, effective));
         return state;
     }
 }

@@ -1,0 +1,17 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-3 Task 5.1 (D11; AC7) — stealth FluentButton that opens FcSettingsDialog via
+   IDialogService directly (no Fluxor action — D11 rationale). Retires the Story 3-1 D26
+   compile-away placeholder via Story 3-2 D8-style HeaderEnd auto-populate. *@
+
+<FluentButton Appearance="@ButtonAppearance.Subtle"
+              Title="@Localizer["SettingsTriggerAriaLabel"].Value"
+              aria-label="@Localizer["SettingsTriggerAriaLabel"].Value"
+              data-testid="fc-settings-button"
+              OnClick="OpenDialogAsync">
+    <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Settings())" />
+</FluentButton>

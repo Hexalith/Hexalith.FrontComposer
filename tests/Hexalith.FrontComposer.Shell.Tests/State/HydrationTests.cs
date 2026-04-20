@@ -31,8 +31,9 @@ public class HydrationTests : FrontComposerTestBase {
         dispatcher.Dispatch(new AppInitializedAction("hydrate-3"));
         await Task.Delay(100, ct);
 
-        // Assert
-        densityState.Value.CurrentDensity.ShouldBe(DensityLevel.Compact);
+        // Assert — bootstrap caps placeholder Desktop to Comfortable until the breakpoint watcher
+        // emits the measured tier, preventing an initial mobile/desktop mismatch.
+        densityState.Value.EffectiveDensity.ShouldBe(DensityLevel.Comfortable);
     }
 
     [Fact]
@@ -48,7 +49,7 @@ public class HydrationTests : FrontComposerTestBase {
         await Task.Delay(100, ct);
 
         // Assert
-        densityState.Value.CurrentDensity.ShouldBe(DensityLevel.Comfortable);
+        densityState.Value.EffectiveDensity.ShouldBe(DensityLevel.Comfortable);
     }
 
     [Fact]

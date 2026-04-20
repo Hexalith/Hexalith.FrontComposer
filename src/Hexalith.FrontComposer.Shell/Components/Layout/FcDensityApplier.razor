@@ -1,0 +1,8 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@implements IAsyncDisposable
+
+@* Story 3-3 Task 4.2 (D10; AC6) — zero-DOM headless component. Subscribes to the Fluxor
+   FrontComposerDensityState via IStateSelection<FrontComposerDensityState, DensityLevel> projecting
+   EffectiveDensity; imports fc-density.js lazily on first render and invokes setDensity() on every
+   change so <body data-fc-density> stays in lockstep with Fluxor. Fire-and-forget JS interop — a
+   missed update is self-healing on next dispatch. *@

@@ -47,7 +47,8 @@ public sealed class DensityEffectsScopeTests
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
 
-        DensityEffects sut = new(storage, accessor, logger, navState, options);
+        IState<FrontComposerDensityState> densityState = FakeDensityState();
+        DensityEffects sut = new(storage, accessor, logger, navState, options, densityState);
 
         await sut.HandleUserPreferenceChanged(
             new UserPreferenceChangedAction("c1", DensityLevel.Roomy, DensityLevel.Roomy),
@@ -160,7 +161,7 @@ public sealed class DensityEffectsScopeTests
                 Substitute.For<IDispatcher>()]);
             if (task is Task t)
             {
-                await t;
+                await t.ConfigureAwait(true);
             }
         }
 
@@ -218,7 +219,8 @@ public sealed class DensityEffectsScopeTests
     {
         IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
         IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
-        return new DensityEffects(storage, accessor, logger, navState, options);
+        IState<FrontComposerDensityState> densityState = FakeDensityState();
+        return new DensityEffects(storage, accessor, logger, navState, options, densityState);
     }
 
     private static IState<FrontComposerNavigationState> FakeNavState(ViewportTier tier)
@@ -228,6 +230,15 @@ public sealed class DensityEffectsScopeTests
             SidebarCollapsed: false,
             CollapsedGroups: ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
             CurrentViewport: tier));
+        return state;
+    }
+
+    private static IState<FrontComposerDensityState> FakeDensityState(
+        DensityLevel? userPreference = null,
+        DensityLevel effective = DensityLevel.Comfortable)
+    {
+        IState<FrontComposerDensityState> state = Substitute.For<IState<FrontComposerDensityState>>();
+        state.Value.Returns(new FrontComposerDensityState(userPreference, effective));
         return state;
     }
 

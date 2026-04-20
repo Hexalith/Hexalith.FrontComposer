@@ -1,6 +1,6 @@
 # Story 3.3: Display Density & User Settings
 
-Status: ready-for-dev *(20 binding decisions + 3 ADRs; post-party-mode-review 2026-04-19 amendments applied — Freya/Winston/Murat findings integrated; see [Critical Decisions](./critical-decisions-read-first-do-not-revisit.md) D13/D14/D17/D20 for the Reviewer-flagged changes and [Known Gaps](./known-gaps-explicit-not-bugs.md) G15 for the Roslyn-analyzer tech-debt row)*
+Status: review *(Implementation landed 2026-04-20 via `/bmad-dev-story` — 20 binding decisions + 3 ADRs delivered. 442/444 tests pass (2 skipped E2E). Zero warnings in Release. Ready for code-review handoff.)*
 
 ## Table of Contents
 

@@ -98,4 +98,48 @@
   <data name="SkipToNavigationLabel" xml:space="preserve">
     <value>Passer à la navigation</value>
   </data>
+
+  <!-- Story 3-3 Task 9.2 (D17) — 13 clés paramètres/densité (FR). -->
+  <data name="SettingsDialogTitle" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+  <data name="SettingsDialogCloseAriaLabel" xml:space="preserve">
+    <value>Fermer les paramètres</value>
+  </data>
+  <data name="DensitySectionLabel" xml:space="preserve">
+    <value>Densité d'affichage</value>
+  </data>
+  <data name="DensityCompactLabel" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="DensityComfortableLabel" xml:space="preserve">
+    <value>Confortable</value>
+  </data>
+  <data name="DensityRoomyLabel" xml:space="preserve">
+    <value>Spacieux</value>
+  </data>
+  <data name="ThemeSectionLabel" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="DensityPreviewHeading" xml:space="preserve">
+    <value>Aperçu</value>
+  </data>
+  <data name="CtrlCommaShortcutHint" xml:space="preserve">
+    <value>Ctrl+, pour ouvrir les paramètres</value>
+  </data>
+  <data name="DensityForcedByViewportNote" xml:space="preserve">
+    <value>La taille de votre appareil impose la densité Confortable. Votre préférence s'appliquera de nouveau sur des écrans plus larges.</value>
+  </data>
+  <data name="RestoreDefaultsLabel" xml:space="preserve">
+    <value>Rétablir les paramètres par défaut</value>
+  </data>
+  <data name="RestoreDefaultsHelperText" xml:space="preserve">
+    <value>Efface la préférence de densité et règle le thème sur le suivi système.</value>
+  </data>
+  <data name="PreviewOnlyBadgeText" xml:space="preserve">
+    <value>Aperçu uniquement — Confortable est actif.</value>
+  </data>
+  <data name="DensityAnnouncementTemplate" xml:space="preserve">
+    <value>Densité réglée sur {0}.</value>
+  </data>
 </root>

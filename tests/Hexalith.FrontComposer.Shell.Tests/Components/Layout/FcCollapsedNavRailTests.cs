@@ -133,7 +133,7 @@ public sealed class FcCollapsedNavRailTests : LayoutComponentTestBase {
         Services.GetRequiredService<IDispatcher>().Dispatch(new SidebarToggledAction("c-setup"));
         state.Value.SidebarCollapsed.ShouldBeTrue();
 
-        IRenderedFragment host = Render(builder => {
+        var host = Render(builder => {
             builder.OpenComponent<CascadingValue<LayoutHamburgerCoordinator>>(0);
             builder.AddAttribute(1, nameof(CascadingValue<LayoutHamburgerCoordinator>.Value), coordinator);
             builder.AddAttribute(2, nameof(CascadingValue<LayoutHamburgerCoordinator>.IsFixed), true);

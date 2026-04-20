@@ -75,6 +75,6 @@ public sealed class FcDensityApplierTests : LayoutComponentTestBase
         IRenderedComponent<FcDensityApplier> cut = Render<FcDensityApplier>();
 
         // No throws — IAsyncDisposable contract honoured (D10 + Story 3-1 FcSystemThemeWatcher pattern).
-        await Should.NotThrowAsync(async () => await cut.Instance.DisposeAsync());
+        await Should.NotThrowAsync(async () => await cut.Instance.DisposeAsync().ConfigureAwait(false));
     }
 }

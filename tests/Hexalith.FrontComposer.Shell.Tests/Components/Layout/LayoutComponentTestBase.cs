@@ -20,19 +20,17 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// <summary>
 /// Shared bUnit setup for Story 3-1 shell layout component tests.
 /// </summary>
-public abstract class LayoutComponentTestBase : BunitContext
-{
+public abstract class LayoutComponentTestBase : BunitContext {
     private bool _storeInitialized;
 
-    protected LayoutComponentTestBase()
-    {
+    protected LayoutComponentTestBase() {
         JSInterop.Mode = JSRuntimeMode.Loose;
+        MarkupSanitizedOptions.ThrowOnUnsafe = false;
         _ = Services.AddLogging();
         _ = Services.AddFluentUIComponents();
         _ = Services.AddHexalithFrontComposerQuickstart();
         Services.Replace(ServiceDescriptor.Scoped<IStorageService, InMemoryStorageService>());
-        Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ =>
-        {
+        Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => {
             IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
             accessor.TenantId.Returns("test-tenant");
             accessor.UserId.Returns("test-user");
@@ -72,10 +70,8 @@ public abstract class LayoutComponentTestBase : BunitContext
     /// constructor (after all replaces) so the store is wired with the final service graph.
     /// Idempotent; safe to call multiple times.
     /// </summary>
-    protected void EnsureStoreInitialized()
-    {
-        if (_storeInitialized)
-        {
+    protected void EnsureStoreInitialized() {
+        if (_storeInitialized) {
             return;
         }
 
@@ -84,8 +80,7 @@ public abstract class LayoutComponentTestBase : BunitContext
         store.InitializeAsync().GetAwaiter().GetResult();
     }
 
-    protected void DispatchTheme(ThemeValue theme)
-    {
+    protected void DispatchTheme(ThemeValue theme) {
         EnsureStoreInitialized();
         Services.GetRequiredService<IDispatcher>().Dispatch(new ThemeChangedAction("test-correlation", theme));
     }

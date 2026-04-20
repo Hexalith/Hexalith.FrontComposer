@@ -1,0 +1,36 @@
+/* Story 3-3 Task 7.2 (D14) — specimen container + overlay badge. All spacing consumes
+   var(--fc-spacing-unit) so the same markup rendered at Compact/Comfortable/Roomy visibly
+   differs. Zero Fluent UI overrides — badge styling uses Fluent UI design tokens. */
+
+.fc-density-preview-wrapper {
+    position: relative;
+}
+
+.fc-density-preview-badge {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+    z-index: 1;
+    padding: 2px 8px;
+    background: var(--colorPaletteYellowBackground1);
+    color: var(--colorPaletteYellowForeground1);
+    border-radius: 4px;
+    font-size: var(--typeRampBase200FontSize);
+    font-weight: var(--fontWeightSemibold);
+}
+
+.fc-density-preview {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--fc-spacing-unit) * 2);
+    padding: calc(var(--fc-spacing-unit) * 3);
+    border: 1px solid var(--colorNeutralStroke1);
+    border-radius: 4px;
+}
+
+.fc-preview-navitem {
+    display: block;
+    padding: calc(var(--fc-spacing-unit) * 2);
+    color: var(--fc-color-accent);
+    text-decoration: none;
+}

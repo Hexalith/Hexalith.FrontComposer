@@ -109,4 +109,55 @@
   <data name="SkipToNavigationLabel" xml:space="preserve">
     <value>Skip to navigation</value>
   </data>
+
+  <!-- Story 3-3 Task 9.1 (D17 / AC2 / AC4 / AC7) — 13 settings/density keys (11 spec-time + 2 new
+       for Restore helper text + preview badge + 1 renamed Reset→Restore per D13 Freya review, plus
+       DensityAnnouncementTemplate per D20). Existing SettingsTriggerAriaLabel (seeded in 3-1) is
+       reused verbatim. CanonicalKeysHaveFrenchCounterparts enforces FR parity. -->
+  <data name="SettingsDialogTitle" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="SettingsDialogCloseAriaLabel" xml:space="preserve">
+    <value>Close settings</value>
+  </data>
+  <data name="DensitySectionLabel" xml:space="preserve">
+    <value>Display density</value>
+  </data>
+  <data name="DensityCompactLabel" xml:space="preserve">
+    <value>Compact</value>
+  </data>
+  <data name="DensityComfortableLabel" xml:space="preserve">
+    <value>Comfortable</value>
+  </data>
+  <data name="DensityRoomyLabel" xml:space="preserve">
+    <value>Roomy</value>
+  </data>
+  <data name="ThemeSectionLabel" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="DensityPreviewHeading" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="CtrlCommaShortcutHint" xml:space="preserve">
+    <value>Ctrl+, to open settings</value>
+  </data>
+  <data name="DensityForcedByViewportNote" xml:space="preserve">
+    <value>Your device size is forcing Comfortable density. Your preference will re-apply at larger screen sizes.</value>
+  </data>
+  <data name="RestoreDefaultsLabel" xml:space="preserve">
+    <value>Restore defaults</value>
+    <comment>D13 amendment 2026-04-19 (Freya review) — renamed from ResetToDefaultsLabel. "Restore" is honest/plural; "Reset" reads as destructive/irreversible.</comment>
+  </data>
+  <data name="RestoreDefaultsHelperText" xml:space="preserve">
+    <value>Clears density preference and sets theme to follow system.</value>
+    <comment>D13 addition 2026-04-19 (Freya review) — transparency defuses the two-concerns-one-click hesitation.</comment>
+  </data>
+  <data name="PreviewOnlyBadgeText" xml:space="preserve">
+    <value>Preview only — Comfortable is active.</value>
+    <comment>D14 addition 2026-04-19 (Freya review) — removes the "three competing truths" cognitive dissonance at Tablet.</comment>
+  </data>
+  <data name="DensityAnnouncementTemplate" xml:space="preserve">
+    <value>Density set to {0}.</value>
+    <comment>D20 addition 2026-04-19 — aria-live announcer template; {0} is the localized density level.</comment>
+  </data>
 </root>

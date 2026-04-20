@@ -9,8 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
 
-using NSubstitute;
-
 using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
@@ -20,36 +18,42 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// with the Settings icon + aria-label; click invokes <see cref="IDialogService.ShowDialogAsync{T}"/>
 /// with a 480 px modal (D11 + D13).
 /// </summary>
-public sealed class FcSettingsButtonTests : LayoutComponentTestBase
-{
+public sealed class FcSettingsButtonTests : LayoutComponentTestBase {
     [Fact]
-    public void RendersFluentButtonWithSettingsIconAndAriaLabel()
-    {
-        IRenderedComponent<FcSettingsButton> cut = Render<FcSettingsButton>();
+    public void RendersFluentButtonWithSettingsIconAndAriaLabel() {
+        System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
+        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
+        try {
+            IRenderedComponent<FcSettingsButton> cut = Render<FcSettingsButton>();
 
-        cut.WaitForAssertion(() =>
-        {
-            // FluentButton with Stealth appearance — D11.
-            cut.Markup.ShouldContain("appearance=\"stealth\"", Case.Insensitive);
-            // The aria-label resolves through the Story 3-1 reused resource key.
-            cut.Markup.ShouldContain("Open settings", Case.Sensitive);
-        });
+            cut.WaitForAssertion(() => {
+                // FluentButton stealth appearance — D11. Fluent UI v5 rc2 maps the "stealth"
+                // concept to the Subtle appearance slot (no dedicated Stealth enum value).
+                cut.Markup.ShouldContain("appearance=\"subtle\"", Case.Insensitive);
+                // The aria-label resolves through the Story 3-1 reused resource key.
+                cut.Markup.ShouldContain("Open settings", Case.Sensitive);
+            });
+        }
+        finally {
+            System.Globalization.CultureInfo.CurrentUICulture = previous;
+        }
     }
 
     [Fact]
-    public async Task ClickOpensSettingsDialog()
-    {
-        // Replace the Fluent UI registered IDialogService with an NSubstitute mock so we can
-        // assert ShowDialogAsync was invoked.
-        IDialogService dialogService = Substitute.For<IDialogService>();
-        Services.Replace(ServiceDescriptor.Scoped(_ => dialogService));
+    public async Task ClickOpensSettingsDialog() {
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
 
         IRenderedComponent<FcSettingsButton> cut = Render<FcSettingsButton>();
-        await cut.Find("button").ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
 
-        cut.WaitForAssertion(() =>
-            dialogService.ReceivedCalls()
-                .Any(c => c.GetMethodInfo().Name.StartsWith("ShowDialogAsync", StringComparison.Ordinal))
-                .ShouldBeTrue("FcSettingsButton.OnClick must call IDialogService.ShowDialogAsync (D11)."));
+        await cut.Find("[data-testid=\"fc-settings-button\"]")
+            .ClickAsync(new Microsoft.AspNetCore.Components.Web.MouseEventArgs());
+
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        dialogService.LastDialogType.ShouldBe(typeof(FcSettingsDialog));
+        dialogService.LastOptions.ShouldNotBeNull();
+        dialogService.LastOptions!.Modal.ShouldBe(true);
+        dialogService.LastOptions.Width.ShouldBe("480px");
+        string.IsNullOrWhiteSpace(dialogService.LastOptions.Header.Title).ShouldBeFalse();
     }
 }

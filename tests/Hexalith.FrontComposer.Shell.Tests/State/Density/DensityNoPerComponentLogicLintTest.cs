@@ -14,12 +14,11 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 /// for the literals <c>--fc-density</c> and <c>data-fc-density</c>; each occurrence
 /// must live in one of the approved owners or the test fails.
 /// </summary>
-public sealed class DensityNoPerComponentLogicLintTest
-{
+public sealed class DensityNoPerComponentLogicLintTest {
     private static readonly string[] _approvedFileSuffixes =
     [
-        "Components\\Layout\\FrontComposerShell.razor.css",
-        "Components/Layout/FrontComposerShell.razor.css",
+        "wwwroot\\css\\fc-density.css",
+        "wwwroot/css/fc-density.css",
         "Components\\Layout\\FcDensityApplier.razor",
         "Components/Layout/FcDensityApplier.razor",
         "Components\\Layout\\FcDensityApplier.razor.cs",
@@ -35,8 +34,7 @@ public sealed class DensityNoPerComponentLogicLintTest
     ];
 
     [Fact]
-    public void SearchesSrcForRogueDensityVars()
-    {
+    public void SearchesSrcForRogueDensityVars() {
         DirectoryInfo? shellDir = LocateShellSourceDirectory();
         shellDir.ShouldNotBeNull("Could not locate src/Hexalith.FrontComposer.Shell from the test working directory.");
 
@@ -50,36 +48,30 @@ public sealed class DensityNoPerComponentLogicLintTest
                 (f.Extension is ".cs" or ".razor" or ".css" or ".js"));
 
         List<string> rogueOccurrences = [];
-        foreach (FileInfo file in files)
-        {
+        foreach (FileInfo file in files) {
             string content = File.ReadAllText(file.FullName);
             if (!content.Contains("--fc-density", StringComparison.Ordinal) &&
-                !content.Contains("data-fc-density", StringComparison.Ordinal))
-            {
+                !content.Contains("data-fc-density", StringComparison.Ordinal)) {
                 continue;
             }
 
             bool isApproved = _approvedFileSuffixes.Any(suffix =>
                 file.FullName.EndsWith(suffix, StringComparison.OrdinalIgnoreCase));
-            if (!isApproved)
-            {
+            if (!isApproved) {
                 rogueOccurrences.Add(file.FullName);
             }
         }
 
         rogueOccurrences.ShouldBeEmpty(
-            "ADR-041: --fc-density / data-fc-density must live ONLY in FrontComposerShell.razor.css, " +
+            "ADR-041: --fc-density / data-fc-density must live ONLY in wwwroot/css/fc-density.css, " +
             "FcDensityApplier, FcDensityPreviewPanel, or wwwroot/js/fc-density.js.");
     }
 
-    private static DirectoryInfo? LocateShellSourceDirectory()
-    {
+    private static DirectoryInfo? LocateShellSourceDirectory() {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        while (dir is not null)
-        {
+        while (dir is not null) {
             string candidate = Path.Combine(dir.FullName, "src", "Hexalith.FrontComposer.Shell");
-            if (Directory.Exists(candidate))
-            {
+            if (Directory.Exists(candidate)) {
                 return new DirectoryInfo(candidate);
             }
 

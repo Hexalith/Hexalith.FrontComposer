@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -170,9 +171,53 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         });
     }
 
-    // Story 3-3 Task 10.10 ATDD RED tests (FcSettingsButton / IDialogService / Ctrl+,) moved out
-    // of Story 3-2 PR per code-review round 2 (2026-04-19); they will be re-introduced as part of
-    // Story 3-3 when the supporting production code lands.
+    // Story 3-3 Task 10.10 (D12 / D16 / AC7) — HeaderEnd auto-populate + Ctrl+, wiring.
+
+    [Fact]
+    public void AutoRendersSettingsButtonWhenHeaderEndIsNull() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            _ = cut.FindComponent<FcSettingsButton>();
+        });
+    }
+
+    [Fact]
+    public void AdopterSuppliedHeaderEndWins() {
+        RenderFragment custom = builder => builder.AddMarkupContent(0, "<span data-testid=\"adopter-header-end\">Custom</span>");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .Add(c => c.HeaderEnd, custom)
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("adopter-header-end");
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
+                () => cut.FindComponent<FcSettingsButton>(),
+                "Adopter-supplied HeaderEnd fragment must suppress the framework-owned FcSettingsButton (D12).");
+        });
+    }
+
+    [Fact]
+    public async Task CtrlCommaOpensSettingsDialogFromShellRoot() {
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        await cut.Find(".fc-shell-root").TriggerEventAsync(
+            "onkeydown",
+            new KeyboardEventArgs { Key = ",", CtrlKey = true });
+
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        dialogService.LastDialogType.ShouldBe(typeof(FcSettingsDialog));
+        dialogService.LastOptions.ShouldNotBeNull();
+        dialogService.LastOptions!.Modal.ShouldBe(true);
+        dialogService.LastOptions.Width.ShouldBe("480px");
+        string.IsNullOrWhiteSpace(dialogService.LastOptions.Header.Title).ShouldBeFalse();
+    }
 
     // --- Code-review round 2 (2026-04-19) AC5 regression — Navigation pane hidden at Tablet/Phone ---
 

@@ -1,0 +1,60 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.Density
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-3 Task 6.1 (D13, D14, D15, D17; AC2, AC4, AC5) — settings dialog with density radio,
+   embedded FcThemeToggle, live preview panel, and a "Reset to defaults" footer button. No
+   Apply/Cancel — changes are live per epic AC §126. Opens via IDialogService.ShowDialogAsync
+   (dispatched by FcSettingsButton and the Ctrl+, handler on FrontComposerShell). *@
+
+<FluentDialogBody>
+    <TitleTemplate>
+        @Localizer["SettingsDialogTitle"].Value
+    </TitleTemplate>
+    <ChildContent>
+        <div class="fc-settings-body" data-testid="fc-settings-dialog">
+            <h3 id="fc-density-section">@Localizer["DensitySectionLabel"].Value</h3>
+            <FluentRadioGroup Value="@SelectedDensity"
+                              ValueChanged="@((DensityLevel v) => SelectedDensity = v)"
+                              TValue="DensityLevel"
+                              Name="fc-density-select"
+                              aria-labelledby="fc-density-section">
+                <FluentRadio Value="@DensityLevel.Compact">@Localizer["DensityCompactLabel"].Value</FluentRadio>
+                <FluentRadio Value="@DensityLevel.Comfortable">@Localizer["DensityComfortableLabel"].Value</FluentRadio>
+                <FluentRadio Value="@DensityLevel.Roomy">@Localizer["DensityRoomyLabel"].Value</FluentRadio>
+            </FluentRadioGroup>
+            @if (IsForcedByViewport)
+            {
+                <FluentMessageBar Intent="MessageBarIntent.Info"
+                                  AllowDismiss="false"
+                                  data-testid="fc-settings-forced-note">
+                    @Localizer["DensityForcedByViewportNote"].Value
+                </FluentMessageBar>
+            }
+
+            <h3 id="fc-theme-section">@Localizer["ThemeSectionLabel"].Value</h3>
+            <FcThemeToggle />
+
+            <h3 id="fc-preview-section">@Localizer["DensityPreviewHeading"].Value</h3>
+            <FcDensityPreviewPanel Density="@SelectedDensity"
+                                   ShowForcedViewportBadge="@(IsForcedByViewport && SelectedDensity != DensityLevel.Comfortable)" />
+        </div>
+    </ChildContent>
+    <ActionTemplate>
+        <div class="fc-settings-footer-stack">
+            <FluentButton Appearance="ButtonAppearance.Outline"
+                          OnClick="RestoreDefaultsAsync"
+                          data-testid="fc-settings-reset">
+                @Localizer["RestoreDefaultsLabel"].Value
+            </FluentButton>
+            <span class="fc-settings-footer-helper">
+                @Localizer["RestoreDefaultsHelperText"].Value
+            </span>
+        </div>
+    </ActionTemplate>
+</FluentDialogBody>

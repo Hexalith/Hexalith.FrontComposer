@@ -1,0 +1,27 @@
+/* Story 3-3 Task 4.4 (D9 / ADR-041 / D20) — density cascade + shared screen-reader helper.
+   This MUST remain a global static web asset because CSS isolation suffixes selectors, which
+   breaks both <body data-fc-density="..."> targeting and reusable utility classes like .fc-sr-only. */
+
+:root {
+    --fc-spacing-unit: 4px;
+}
+
+body[data-fc-density="compact"] { --fc-spacing-unit: 2px; }
+body[data-fc-density="comfortable"] { --fc-spacing-unit: 4px; }
+body[data-fc-density="roomy"] { --fc-spacing-unit: 6px; }
+
+[data-fc-density="compact"] { --fc-spacing-unit: 2px; }
+[data-fc-density="comfortable"] { --fc-spacing-unit: 4px; }
+[data-fc-density="roomy"] { --fc-spacing-unit: 6px; }
+
+.fc-sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
