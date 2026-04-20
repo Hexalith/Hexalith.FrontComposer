@@ -5,14 +5,10 @@ using Bunit;
 
 using Fluxor;
 
-using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-
-using NSubstitute;
 
 using Shouldly;
 
@@ -20,18 +16,14 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 /// <summary>
 /// Story 3-2 Task 10.3 — FluentLayoutHamburger wrapper.
-/// D8: Visible = CurrentViewport != Desktop || SidebarCollapsed (manual-collapse).
-/// D9: Manual toggle at Desktop dispatches SidebarToggledAction.
+/// D8: Visible = CurrentViewport != Desktop.
+/// D9 amended 2026-04-19: manual Desktop collapse dropped; Desktop has no visible toggle.
 /// </summary>
 public sealed class FcHamburgerToggleTests : LayoutComponentTestBase
 {
-    private readonly IUlidFactory _ulidFactory;
-
     public FcHamburgerToggleTests()
     {
-        _ulidFactory = Substitute.For<IUlidFactory>();
-        _ulidFactory.NewUlid().Returns("01J0TEST0000000000000000000");
-        Services.Replace(ServiceDescriptor.Singleton(_ulidFactory));
+        EnsureStoreInitialized();
     }
 
     [Fact]
@@ -69,42 +61,29 @@ public sealed class FcHamburgerToggleTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void VisibleAtDesktopWhenManuallyCollapsed()
+    public void HiddenAtDesktopEvenWhenSidebarCollapsed()
     {
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
         dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
-        dispatcher.Dispatch(new SidebarToggledAction("c1")); // collapse manually
+        dispatcher.Dispatch(new SidebarToggledAction("c1")); // collapse via hydrated state
 
         IRenderedComponent<FcHamburgerToggle> cut = Render<FcHamburgerToggle>();
 
+        // D9 amended 2026-04-19: Desktop follows persisted SidebarCollapsed without a visible
+        // toggle (AC3 literal: FluentLayoutHamburger.Visible = false at Desktop).
         cut.WaitForAssertion(() =>
-            cut.Instance.IsVisibleForTest.ShouldBeTrue(
-                "Desktop + SidebarCollapsed=true → hamburger is SHOWN (D8 second disjunct)"));
+            cut.Instance.IsVisibleForTest.ShouldBeFalse(
+                "D9 amended 2026-04-19: hamburger toggle stays hidden at Desktop regardless of SidebarCollapsed."));
     }
 
-    [Fact]
-    public void ManualToggleAtDesktopDispatchesSidebarToggled()
-    {
-        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
-        dispatcher.Dispatch(new ViewportTierChangedAction(ViewportTier.Desktop));
-        IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
-        state.Value.SidebarCollapsed.ShouldBeFalse();
-
-        IRenderedComponent<FcHamburgerToggle> cut = Render<FcHamburgerToggle>();
-
-        // Simulate the FluentLayoutHamburger OnOpened(true) callback at Desktop — D9 says this
-        // dispatches SidebarToggledAction only when user is physically acting on Desktop.
-        cut.Instance.OnHamburgerOpenedForTest(opened: true);
-
-        cut.WaitForAssertion(() =>
-            state.Value.SidebarCollapsed.ShouldBeTrue(
-                "Manual toggle at Desktop flips SidebarCollapsed (D9)"));
-    }
+    // REMOVED 2026-04-19 (code-review round 2): `ManualToggleAtDesktopDispatchesSidebarToggled`
+    // asserted the Desktop-side OnHamburgerOpened dispatch path. D9 was narrowed via the
+    // D9-2026-04-19 addendum to "manual toggle applies at CompactDesktop / Tablet / Phone only;
+    // Desktop has no visible manual-collapse affordance". The Desktop dispatch branch is removed
+    // from FcHamburgerToggle; this test is obsolete.
 
     // REMOVED 2026-04-19 (test-review F2): `ViewportDrivenVisibilityDoesNotDispatchToggle` was
     // asserting a guard behavior ("at non-Desktop tiers, OnHamburgerOpened must not dispatch
-    // SidebarToggledAction") that is not stated in D9, D7, or AC4/AC5. D9 describes the Desktop-side
-    // dispatch only; the non-Desktop behavior of FluentLayoutHamburger.OnOpened is spec-ambiguous.
-    // If the guard IS intended, raise a spec-change proposal to amend D9 with an explicit
-    // "only when CurrentViewport == Desktop" clause, then re-add the test.
+    // SidebarToggledAction") that is not stated in D9, D7, or AC4/AC5. Superseded by the D9
+    // amendment above which removes Desktop dispatch entirely.
 }

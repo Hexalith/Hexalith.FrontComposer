@@ -1,6 +1,6 @@
 # Story 3.2: Sidebar Navigation & Responsive Behavior
 
-Status: ready-for-dev
+Status: done
 
 ## Table of Contents
 

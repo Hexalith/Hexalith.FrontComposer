@@ -22,6 +22,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// </summary>
 public abstract class LayoutComponentTestBase : BunitContext
 {
+    private bool _storeInitialized;
+
     protected LayoutComponentTestBase()
     {
         JSInterop.Mode = JSRuntimeMode.Loose;
@@ -48,7 +50,10 @@ public abstract class LayoutComponentTestBase : BunitContext
         PrefersColorSchemeSubscription = PrefersColorSchemeModule.SetupModule("subscribe", _ => true);
         _ = PrefersColorSchemeModule.SetupVoid("unsubscribe", _ => true).SetVoidResult();
 
-        InitializeStoreAsync().GetAwaiter().GetResult();
+        // Story 3-2 Task 10 — Do NOT initialize the Fluxor store here. bUnit locks the service
+        // container on first service resolution, which blocks derived tests from
+        // Services.Replace(registry) / Services.Replace(ulidFactory) calls in their own
+        // constructors. Store initialization happens on-demand from Render<T>() via EnsureStoreInitialized.
     }
 
     protected IThemeService ThemeService { get; }
@@ -61,12 +66,27 @@ public abstract class LayoutComponentTestBase : BunitContext
 
     protected BunitJSModuleInterop PrefersColorSchemeSubscription { get; }
 
-    protected void DispatchTheme(ThemeValue theme)
-        => Services.GetRequiredService<IDispatcher>().Dispatch(new ThemeChangedAction("test-correlation", theme));
-
-    private async Task InitializeStoreAsync()
+    /// <summary>
+    /// Initializes the Fluxor store exactly once per test context. Derived tests that call
+    /// <c>Services.Replace(...)</c> in their own constructor MUST invoke this at the end of the
+    /// constructor (after all replaces) so the store is wired with the final service graph.
+    /// Idempotent; safe to call multiple times.
+    /// </summary>
+    protected void EnsureStoreInitialized()
     {
+        if (_storeInitialized)
+        {
+            return;
+        }
+
+        _storeInitialized = true;
         IStore store = Services.GetRequiredService<IStore>();
-        await store.InitializeAsync().ConfigureAwait(false);
+        store.InitializeAsync().GetAwaiter().GetResult();
+    }
+
+    protected void DispatchTheme(ThemeValue theme)
+    {
+        EnsureStoreInitialized();
+        Services.GetRequiredService<IDispatcher>().Dispatch(new ThemeChangedAction("test-correlation", theme));
     }
 }

@@ -45,4 +45,12 @@ public static class FcDiagnosticIds {
     /// severity — first-visit baseline, feature defaults apply. Runtime-only (no analyzer emission).
     /// </summary>
     public const string HFC2106_ThemeHydrationEmpty = "HFC2106";
+
+    /// <summary>
+    /// Navigation effect hydrated with no stored value on app init, or the stored blob was
+    /// unreadable (Story 3-2 D15 amended). Information severity — feature defaults apply. The
+    /// <c>Reason</c> payload distinguishes <c>Empty</c> (no blob) vs <c>Corrupt</c> (deserialization /
+    /// shape failure). Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2107_NavigationHydrationEmpty = "HFC2107";
 }

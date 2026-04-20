@@ -177,6 +177,22 @@ public sealed class FcShellOptionsValidationTests {
         result.Succeeded.ShouldBeTrue();
     }
 
+    // --- Story 3-3 Task 10.2 (D4 / AC1) ---
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Compact)]
+    [InlineData(Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable)]
+    [InlineData(Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Roomy)]
+    public void DefaultDensity_AcceptsNullOrAnyEnumValue(Hexalith.FrontComposer.Contracts.Rendering.DensityLevel? value) {
+        // ATDD RED PHASE — fails at compile until Task 1.1 adds the FcShellOptions.DefaultDensity property.
+        FcShellOptions options = new() { DefaultDensity = value };
+
+        List<ValidationResult> results = ValidateDataAnnotations(options);
+
+        results.ShouldNotContain(r => r.MemberNames.Contains(nameof(FcShellOptions.DefaultDensity)));
+    }
+
     private static List<ValidationResult> ValidateDataAnnotations(object instance) {
         ValidationContext ctx = new(instance);
         List<ValidationResult> results = [];

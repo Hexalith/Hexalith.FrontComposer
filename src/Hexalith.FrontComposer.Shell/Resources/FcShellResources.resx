@@ -95,4 +95,18 @@
   <data name="LifecycleTimeoutLabel" xml:space="preserve">
     <value>Request took longer than expected</value>
   </data>
+
+  <!-- Story 3-2 Task 8.5 (D19 amended 2026-04-19) — navigation ARIA / skip-link resource keys.
+       3 keys (was 5): NavGroupExpandAriaLabel / NavGroupCollapseAriaLabel removed per code-review
+       round 2 Task 0.2a fallback — FluentNavCategory v5 does not expose an AriaExpandedLabel /
+       AriaCollapsedLabel seam; Story 10-2 may re-introduce them with a verified seam. -->
+  <data name="NavMenuAriaLabel" xml:space="preserve">
+    <value>Primary navigation</value>
+  </data>
+  <data name="HamburgerToggleAriaLabel" xml:space="preserve">
+    <value>Toggle navigation</value>
+  </data>
+  <data name="SkipToNavigationLabel" xml:space="preserve">
+    <value>Skip to navigation</value>
+  </data>
 </root>

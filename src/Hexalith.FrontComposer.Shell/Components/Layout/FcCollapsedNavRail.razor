@@ -1,0 +1,34 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Registration
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IFrontComposerRegistry Registry
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-2 Task 7 (D13 / AC4) — 48 px vertical icon rail rendered at CompactDesktop and
+   Desktop + manual-collapse. One FluentButton per renderable bounded context wrapped with a
+   FluentTooltip anchored by id. Click dispatches SidebarExpandedAction to restore the full
+   sidebar and, at CompactDesktop, opens the hamburger drawer so the expansion is visible.
+   Default icon is Icons.Regular.Size20.Apps until Story 4-1 ships projection-role-hint-based
+   icons. *@
+
+<div class="fc-collapsed-rail" data-testid="fc-collapsed-rail"
+     role="navigation" aria-label="@Localizer["NavMenuAriaLabel"].Value">
+    @foreach (DomainManifest manifest in Registry.GetManifests().Where(static manifest => manifest.Projections.Count > 0))
+    {
+        string anchorId = $"fc-rail-{manifest.BoundedContext}";
+        @* Accessible name = the visually-hidden <span>; FluentTooltip provides the visual
+           affordance. We intentionally DO NOT set Title/aria-label on the button so screen
+           readers announce the bounded-context name once (from the span), not three times. *@
+        <FluentButton id="@anchorId"
+                      Appearance="@ButtonAppearance.Subtle"
+                      OnClick="@OnRailClicked">
+            <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Apps())" />
+            <span class="fc-visually-hidden">@manifest.Name</span>
+        </FluentButton>
+        <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+            @manifest.Name
+        </FluentTooltip>
+    }
+</div>

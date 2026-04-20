@@ -1,0 +1,8 @@
+/* Story 3-2 Task 6.3 (D13 — zero FluentNav-internal override) — scoped CSS inherits
+   Story 3-1 ADR-034 scoped-bundle filename contract. Only a light host reset; the CompactDesktop
+   rail is its own component (FcCollapsedNavRail), NOT a CSS-hiding trick on FluentNav internals. */
+
+::deep [data-testid="fc-navigation-full"] {
+    display: block;
+    height: 100%;
+}

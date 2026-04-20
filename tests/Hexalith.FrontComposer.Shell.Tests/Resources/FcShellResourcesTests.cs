@@ -61,7 +61,8 @@ public sealed class FcShellResourcesTests {
         localizer["AppTitle"].Value.ShouldBe("Hexalith FrontComposer");
     }
 
-    // --- Story 3-2 Task 10.8 (D19) — 5 new navigation ARIA / skip-link resource keys ---
+    // --- Story 3-2 Task 10.8 (D19 amended 2026-04-19) — 3 navigation ARIA / skip-link resource keys
+    // (was 5). NavGroupExpandAriaLabel / NavGroupCollapseAriaLabel dropped per code-review round 2 ---
 
     [Theory]
     [InlineData("NavMenuAriaLabel", "Primary navigation", "Navigation principale")]
@@ -89,11 +90,25 @@ public sealed class FcShellResourcesTests {
         }
     }
 
+    // --- Story 3-3 Task 10.11 (D17 / AC2 / AC4 / AC7) — 11 new settings/density resource keys ---
+
     [Theory]
-    [InlineData("NavGroupExpandAriaLabel", "Counter", "Expand Counter", "Développer Counter")]
-    [InlineData("NavGroupCollapseAriaLabel", "Counter", "Collapse Counter", "Réduire Counter")]
-    public void NavigationParameterisedKeysRoundTripArgument(string key, string arg, string enValue, string frValue) {
-        // D19 — NavGroupExpandAriaLabel / NavGroupCollapseAriaLabel use "{0}" placeholder.
+    [InlineData("SettingsDialogTitle", "Settings", "Paramètres")]
+    [InlineData("SettingsDialogCloseAriaLabel", "Close settings", "Fermer les paramètres")]
+    [InlineData("DensitySectionLabel", "Display density", "Densité d'affichage")]
+    [InlineData("DensityCompactLabel", "Compact", "Compact")]
+    [InlineData("DensityComfortableLabel", "Comfortable", "Confortable")]
+    [InlineData("DensityRoomyLabel", "Roomy", "Spacieux")]
+    [InlineData("ThemeSectionLabel", "Theme", "Thème")]
+    [InlineData("DensityPreviewHeading", "Preview", "Aperçu")]
+    [InlineData("CtrlCommaShortcutHint", "Ctrl+, to open settings", "Ctrl+, pour ouvrir les paramètres")]
+    [InlineData("DensityForcedByViewportNote",
+        "Your device size is forcing Comfortable density. Your preference will re-apply at larger screen sizes.",
+        "La taille de votre appareil impose la densité Confortable. Votre préférence s'appliquera de nouveau sur des écrans plus larges.")]
+    [InlineData("ResetToDefaultsLabel", "Reset to defaults", "Réinitialiser")]
+    public void SettingsDialogStaticKeysResolveInBothLocales(string key, string enValue, string frValue) {
+        // ATDD RED PHASE — fails at assertion time until Task 9.1 / 9.2 add the keys to
+        // FcShellResources.resx + .fr.resx.
         ServiceProvider provider = BuildLocalizedProvider();
         using IServiceScope scope = provider.CreateScope();
         IStringLocalizer<FcShellResources> localizer = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>();
@@ -101,15 +116,23 @@ public sealed class FcShellResourcesTests {
         CultureInfo previous = CultureInfo.CurrentUICulture;
         try {
             CultureInfo.CurrentUICulture = new CultureInfo("en");
-            localizer[key, arg].Value.ShouldBe(enValue);
+            localizer[key].Value.ShouldBe(enValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
 
             CultureInfo.CurrentUICulture = new CultureInfo("fr");
-            localizer[key, arg].Value.ShouldBe(frValue);
+            localizer[key].Value.ShouldBe(frValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
         }
         finally {
             CultureInfo.CurrentUICulture = previous;
         }
     }
+
+    // D19 amended 2026-04-19 (code-review round 2): `NavigationParameterisedKeysRoundTripArgument`
+    // covering NavGroupExpandAriaLabel / NavGroupCollapseAriaLabel removed. FluentNavCategory v5
+    // does not expose an AriaExpandedLabel / AriaCollapsedLabel seam; the keys were never wired
+    // and were deleted from the resx files. Story 10-2 may re-introduce both the keys and this
+    // theory when a verified seam exists.
 
     private static ServiceProvider BuildLocalizedProvider() {
         ServiceCollection services = new();

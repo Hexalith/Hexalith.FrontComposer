@@ -1,0 +1,47 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Registration
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.Navigation
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
+@inject IFrontComposerRegistry Registry
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-2 Task 6 (D1, D2, D7, D9, D11 / AC1, AC3, AC6) — framework-owned sidebar.
+   At CompactDesktop OR Desktop + SidebarCollapsed we swap to FcCollapsedNavRail (D7 / D9);
+   otherwise we render FluentNav with one FluentNavCategory per manifest whose Projections list
+   is non-empty (D1). Commands are excluded. Nav-item routes follow the D2 convention:
+   /{boundedContext-lowercase}/{projectionTypeName-kebab-case}. *@
+
+@if (ShouldRenderCollapsedRail())
+{
+    <FcCollapsedNavRail />
+}
+else
+{
+    <FluentNav UseIcons="true" data-testid="fc-navigation-full"
+               aria-label="@Localizer["NavMenuAriaLabel"].Value">
+        @foreach (DomainManifest manifest in Registry.GetManifests())
+        {
+            List<string> projections = RenderableProjections(manifest);
+            @if (projections.Count == 0)
+            {
+                continue;
+            }
+
+            <FluentNavCategory Id="@manifest.BoundedContext"
+                               Title="@manifest.Name"
+                               Expanded="@(!IsGroupCollapsed(manifest.BoundedContext))"
+                               ExpandedChanged="@(value => OnGroupExpandedChanged(manifest.BoundedContext, value))"
+                               data-testid="@($"fc-nav-category-{manifest.BoundedContext}")">
+                @foreach (string projectionFqn in projections)
+                {
+                    <FluentNavItem Href="@BuildRoute(manifest.BoundedContext, projectionFqn)">
+                        @ProjectionLabel(projectionFqn)
+                    </FluentNavItem>
+                }
+            </FluentNavCategory>
+        }
+    </FluentNav>
+}

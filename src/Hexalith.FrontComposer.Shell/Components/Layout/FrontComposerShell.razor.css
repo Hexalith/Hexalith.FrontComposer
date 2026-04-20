@@ -14,3 +14,23 @@
     --fc-color-danger: var(--colorStatusDangerForeground1);
     --fc-color-info: var(--colorStatusInfoForeground1);
 }
+
+/* Story 3-2 Task 8.3a (AC6 / D16) — visually-hidden-until-focused skip links for SkipToContent
+   + SkipToNavigation. WCAG 2.4.1 compliant; focus ring inherits Fluent UI's --colorStrokeFocus2
+   via the native :focus-visible default (zero-override invariant). */
+.fc-skip-link {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+    z-index: 9999;
+    padding: 8px 12px;
+    background: var(--colorNeutralBackground1);
+    color: var(--colorNeutralForeground1);
+    text-decoration: none;
+    border: 2px solid var(--colorStrokeFocus2);
+}
+
+.fc-skip-link:focus {
+    left: 8px;
+    top: 8px;
+}

@@ -87,4 +87,15 @@
   <data name="LifecycleTimeoutLabel" xml:space="preserve">
     <value>La requête prend plus de temps que prévu</value>
   </data>
+
+  <!-- Story 3-2 Task 8.6 (D19) — clés ARIA de navigation + lien d'évitement. -->
+  <data name="NavMenuAriaLabel" xml:space="preserve">
+    <value>Navigation principale</value>
+  </data>
+  <data name="HamburgerToggleAriaLabel" xml:space="preserve">
+    <value>Basculer la navigation</value>
+  </data>
+  <data name="SkipToNavigationLabel" xml:space="preserve">
+    <value>Passer à la navigation</value>
+  </data>
 </root>

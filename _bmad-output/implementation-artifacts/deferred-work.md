@@ -1,5 +1,13 @@
 # Deferred Work
 
+## Deferred from: code review of story 3-2-sidebar-navigation-and-responsive-behavior (2026-04-19)
+
+- **Invalid-tier log-spam circuit breaker (DN3 promoted to defer)** — `FcLayoutBreakpointWatcher.OnViewportTierChangedAsync` logs `LogWarning` for every out-of-range tier dispatched from `fc-layout-breakpoints.js`. A misbehaving JS module could flood logs. Deferred because: pre-existing defensive pattern, no observed incident, and the unbounded warning stream preserves operator visibility for legitimate regressions. Revisit if telemetry dashboards show excessive warning rate. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor.cs:28`
+
+- **Drawer-open state not reconciled on Tablet→Desktop viewport transitions** — the drawer UI hides because `FcHamburgerToggle.IsVisible` flips false on the transition, but no effect clears the in-flight drawer-open state. Cosmetic; no incorrect data exposed to the user. Revisit if UX receives reports of "ghost drawer" on rapid resize. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor.cs`
+
+- **`InvalidTierIsIgnored` test relies on bUnit loose-JS coercion** — `subscribe` mock returns `true` which bUnit coerces (and the subsequent cast-to-`IJSObjectReference` exception is silently swallowed by the C# catch block). The passing assertion (`CurrentViewport == Desktop` after a `999` dispatch) is therefore a side-effect of the failed subscribe path rather than a clean assertion of the invalid-tier-rejection guard. Test-quality improvement only. `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcLayoutBreakpointWatcherTests.cs`
+
 ## Deferred from: code review of story 2-5 full adversarial pass (2026-04-17)
 
 - **Null `EditContext` on first render (guard arm window)** — theoretical exposure is a single render cycle (microseconds) during which user cannot realistically type; `FcFormAbandonmentGuard.OnParametersSet` re-subscribes when `EditContext` becomes non-null on the next render. No observed bug. Revisit if users report missed abandonment warnings on fast keyboards. `CommandRendererEmitter.cs` / `FcFormAbandonmentGuard.razor.cs`

@@ -4,6 +4,7 @@ using Fluxor.Blazor.Web;
 
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,16 +22,13 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 /// Story 3-2 Task 10.10 adds the Navigation auto-populate path (D18 / ADR-035) and the
 /// adopter-supplied override path.
 /// </summary>
-public sealed class FrontComposerShellTests : LayoutComponentTestBase
-{
+public sealed class FrontComposerShellTests : LayoutComponentTestBase {
     [Fact]
-    public void Renders_shell_chrome_and_omits_navigation_when_not_provided()
-    {
+    public void Renders_shell_chrome_and_omits_navigation_when_not_provided() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("fc-shell-root");
             cut.Markup.ShouldContain("Hexalith FrontComposer");
             cut.Markup.ShouldContain(DateTime.Now.Year.ToString(), Case.Sensitive);
@@ -43,16 +41,14 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void Renders_navigation_slot_when_provided()
-    {
+    public void Renders_navigation_slot_when_provided() {
         RenderFragment navigation = builder => builder.AddMarkupContent(0, "<nav>Navigation rail</nav>");
 
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .Add(c => c.Navigation, navigation)
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("Navigation rail");
             cut.Markup.ShouldContain("220px");
 
@@ -62,8 +58,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase
     }
 
     [Fact]
-    public void Applies_theme_once_on_first_render()
-    {
+    public void Applies_theme_once_on_first_render() {
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
@@ -75,8 +70,7 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase
     // --- Story 3-2 Task 10.10 — ADR-035 / D18 auto-populate + override ---
 
     [Fact]
-    public void AutoRendersNavigationWhenSlotIsNullAndRegistryNonEmpty()
-    {
+    public void AutoRendersNavigationWhenSlotIsNullAndRegistryNonEmpty() {
         // ATDD RED PHASE — fails until Task 8.3/8.4 wire the auto-populate render block
         // into FrontComposerShell.razor and inject IFrontComposerRegistry.
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
@@ -88,16 +82,35 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             _ = cut.FindComponent<FrontComposerNavigation>();
             cut.Markup.ShouldContain("220px", Case.Sensitive);
         });
     }
 
     [Fact]
-    public void AdopterSuppliedNavigationFragmentWins()
-    {
+    public void AutoRenderedNavigationUsesRailWidthAtCompactDesktop() {
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        Services.Replace(ServiceDescriptor.Singleton(registry));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        Services.GetRequiredService<Fluxor.IDispatcher>()
+            .Dispatch(new ViewportTierChangedAction(ViewportTier.CompactDesktop));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("48px", Case.Sensitive);
+            cut.Markup.ShouldContain("id=\"fc-nav\"", Case.Sensitive);
+            cut.Markup.ShouldContain("tabindex=\"-1\"", Case.Sensitive);
+        });
+    }
+
+    [Fact]
+    public void AdopterSuppliedNavigationFragmentWins() {
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
         registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
@@ -110,18 +123,16 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase
             .Add(c => c.Navigation, custom)
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain("adopter-nav");
             cut.Markup.ShouldContain("Custom");
             // Framework nav must NOT be rendered when adopter supplies their own fragment.
-            Should.Throw<Bunit.ComponentNotFoundException>(() => cut.FindComponent<FrontComposerNavigation>());
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(() => cut.FindComponent<FrontComposerNavigation>());
         });
     }
 
     [Fact]
-    public void NoNavigationRendersWhenSlotNullAndRegistryEmpty()
-    {
+    public void NoNavigationRendersWhenSlotNullAndRegistryEmpty() {
         // Inherited Story 3-1 AC1 — when registry has zero manifests AND adopter left Navigation null,
         // the Navigation layout area is OMITTED (no 220 px empty column).
         IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
@@ -131,10 +142,64 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase
         IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
             .AddChildContent("<p>Body</p>"));
 
-        cut.WaitForAssertion(() =>
-        {
+        cut.WaitForAssertion(() => {
             cut.Markup.ShouldNotContain("220px", Case.Sensitive);
-            Should.Throw<Bunit.ComponentNotFoundException>(() => cut.FindComponent<FrontComposerNavigation>());
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(() => cut.FindComponent<FrontComposerNavigation>());
+        });
+    }
+
+    [Fact]
+    public void NoNavigationRendersWhenRegistryContainsOnlyCommands() {
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest(
+                Name: "CommandsOnly",
+                BoundedContext: "CommandsOnly",
+                Projections: [],
+                Commands: ["CommandsOnly.Domain.Commands.RunThing"]),
+        ]);
+        Services.Replace(ServiceDescriptor.Singleton(registry));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("data-testid=\"fc-shell-navigation\"", Case.Sensitive);
+            cut.Markup.ShouldNotContain("220px", Case.Sensitive);
+            cut.Markup.ShouldContain("id=\"fc-main-content\" tabindex=\"-1\"", Case.Sensitive);
+        });
+    }
+
+    // Story 3-3 Task 10.10 ATDD RED tests (FcSettingsButton / IDialogService / Ctrl+,) moved out
+    // of Story 3-2 PR per code-review round 2 (2026-04-19); they will be re-introduced as part of
+    // Story 3-3 when the supporting production code lands.
+
+    // --- Code-review round 2 (2026-04-19) AC5 regression — Navigation pane hidden at Tablet/Phone ---
+
+    [Theory]
+    [InlineData(ViewportTier.Tablet)]
+    [InlineData(ViewportTier.Phone)]
+    public void NavigationPaneHiddenAtSubCompactDesktopViewports(ViewportTier tier) {
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        Services.Replace(ServiceDescriptor.Singleton(registry));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        Services.GetRequiredService<Fluxor.IDispatcher>()
+            .Dispatch(new ViewportTierChangedAction(tier));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain(
+                "data-testid=\"fc-shell-navigation\"",
+                Case.Sensitive,
+                $"Navigation pane must be hidden at {tier} — navigation appears only through the hamburger drawer (AC5 / dev-notes §39).");
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
+                () => cut.FindComponent<FrontComposerNavigation>(),
+                $"FrontComposerNavigation must not render at {tier}.");
         });
     }
 }

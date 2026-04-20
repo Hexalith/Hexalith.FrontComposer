@@ -97,3 +97,28 @@
 **Verification:** `NavigationEffectsScopeTests.HydrateDoesNotRePersist` (Task 10.6). The existing `ViewportTierChangedDoesNotTriggerPersist` test continues to apply unchanged.
 
 ---
+
+### D9-2026-04-19 (addendum): Manual Desktop collapse is dropped; Desktop has no visible hamburger toggle
+
+**Context:** Code-review round 2 (2026-04-19) surfaced an unresolved ambiguity between AC3 and the original D9. AC3 mandates `FluentLayoutHamburger.Visible = false` at expanded-Desktop. D9 simultaneously required a user-reachable "manual collapse at Desktop" path via `FcHamburgerToggle.OnHamburgerOpened`. The visibility predicate implemented as `CurrentViewport != Desktop || SidebarCollapsed` hid the toggle at the exact state from which the first collapse would have to originate, leaving the D9 path structurally unreachable.
+
+**Decision:** Narrow D9. `FcHamburgerToggle.IsVisible` becomes `CurrentViewport != Desktop` — the `SidebarCollapsed` disjunct is removed, the `OnHamburgerOpened` Desktop dispatch branch is removed, and the `ManualToggleAtDesktopDispatchesSidebarToggled` test is removed. Desktop follows persisted `SidebarCollapsed` without a visible manual toggle.
+
+**Rationale:**
+- AC3 is literal and non-ambiguous; preserving the AC3 text trumps the D9 "manual Desktop collapse" behavior, which had no user research backing and no UX-spec §-reference.
+- The sticky-collapse round-trip from the original D9 ("Desktop → collapse → resize to CompactDesktop → resize back → rail persists") still holds: `SidebarCollapsed=true` can be established at CompactDesktop via `FcCollapsedNavRail` or the hamburger drawer, persists to storage per D14, and continues to drive `ShouldRenderCollapsedRail()` when the viewport widens back to Desktop.
+- One trigger for the collapsed state (CompactDesktop interaction) is simpler than two and produces the same observable user outcome in every documented scenario.
+- The alternative considered (exposing a dedicated Desktop collapse chevron next to the logo) would add new UI chrome for an edge-case feature and would itself need UX sign-off — out of Story 3-2 scope.
+
+**Consequences:**
+- `FcHamburgerToggle.razor` no longer binds `OnOpened`; the template is a plain `FluentLayoutHamburger` wrapper.
+- `FcHamburgerToggle.razor.cs` drops `IDispatcher` / `IUlidFactory` injections and the `OnHamburgerOpenedForTest` / `OnHamburgerOpened` methods.
+- The existing `VisibleAtDesktopWhenManuallyCollapsed` test is inverted to `HiddenAtDesktopEvenWhenSidebarCollapsed` (same setup, opposite assertion).
+- `ManualToggleAtDesktopDispatchesSidebarToggled` is removed.
+- `FcHamburgerToggle.IsVisible` is now `NavState.Value.CurrentViewport != ViewportTier.Desktop` — a strictly simpler predicate. Test coverage for non-Desktop visibility is preserved by the existing `VisibleAtCompactDesktop` / `VisibleAtTablet` / `VisibleAtPhone` facts.
+- D7 ("viewport-tier → sidebar behaviour table") is unchanged — it already pinned the rail-or-drawer behaviors on viewport tier alone; D9's role was only to wire the optional user-triggered Desktop collapse.
+- Cross-story contract: Story 3-3 (density forced-comfortable at Tablet) and Story 3-5 (badge counts) are unaffected — neither depends on the Desktop manual-collapse path.
+
+**Verification:** `FcHamburgerToggleTests.HiddenAtDesktopEvenWhenSidebarCollapsed` (new); `FcHamburgerToggleTests.VisibleAtCompactDesktop` / `VisibleAtTablet` / `VisibleAtPhone` (unchanged).
+
+---

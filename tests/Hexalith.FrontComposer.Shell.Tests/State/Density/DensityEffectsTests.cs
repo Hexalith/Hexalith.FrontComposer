@@ -1,143 +1,118 @@
+// ATDD RED PHASE — Story 3-3 Task 10.5 (D7, D8; AC3, AC4)
+// Fails at compile until:
+//   Task 2.3 — UserPreferenceChangedAction / DensityHydratedAction / EffectiveDensityRecomputedAction
+//   Task 3.1 — DensityEffects constructor expanded with IState<FrontComposerNavigationState> + IOptions<FcShellOptions>
+//   Task 3.2/3.3 — HandleViewportTierChanged + rewritten HandleAppInitialized
+
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.Density;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using NSubstitute;
-using NSubstitute.ExceptionExtensions;
 
 using Shouldly;
+
+using MsOptions = Microsoft.Extensions.Options.Options;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.Density;
 
 /// <summary>
-/// Unit tests for <see cref="DensityEffects"/>.
+/// Unit tests for the rewritten <see cref="DensityEffects"/> (Story 3-3 Task 3).
+/// Covers user-preference persistence, viewport-driven recompute, and hydrate dispatch.
 /// </summary>
-public class DensityEffectsTests {
+public class DensityEffectsTests
+{
     private const string TestTenant = "tenant-a";
     private const string TestUser = "user-1";
 
     [Fact]
-    public async Task DispatchDensityChanged_StorageServiceThrows_StoreStillUpdatesState() {
-        // Arrange
-        IStorageService storage = Substitute.For<IStorageService>();
-        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Storage failure"));
-
-        using ServiceProvider provider = BuildProvider(storage);
-        IStore store = provider.GetRequiredService<IStore>();
-        await store.InitializeAsync();
-
-        IDispatcher dispatcher = provider.GetRequiredService<IDispatcher>();
-        IState<FrontComposerDensityState> densityState = provider.GetRequiredService<IState<FrontComposerDensityState>>();
-
-        // Act
-        dispatcher.Dispatch(new DensityChangedAction("corr-1", DensityLevel.Compact));
-        WaitFor(() => densityState.Value.CurrentDensity == DensityLevel.Compact).ShouldBeTrue();
-
-        dispatcher.Dispatch(new DensityChangedAction("corr-2", DensityLevel.Roomy));
-        WaitFor(() => densityState.Value.CurrentDensity == DensityLevel.Roomy).ShouldBeTrue();
-    }
-
-    [Fact]
-    public async Task HandleAppInitialized_StorageContainsValue_DispatchesDensityChanged() {
+    public async Task HandleAppInitialized_StorageContainsValue_DispatchesDensityHydrated()
+    {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        var storage = new InMemoryStorageService();
+        InMemoryStorageService storage = new();
         string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
-        await storage.SetAsync(key, DensityLevel.Compact, ct);
+        await storage.SetAsync<DensityLevel?>(key, DensityLevel.Compact, ct);
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
-        var action = new AppInitializedAction("corr-init");
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
+
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options);
 
         // Act
-        await sut.HandleAppInitialized(action, dispatcher);
+        await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
 
-        // Assert
+        // Assert — hydrate path dispatches DensityHydratedAction (NOT the legacy DensityChangedAction).
         dispatcher.Received(1).Dispatch(
-            Arg.Is<DensityChangedAction>(a => a.NewDensity == DensityLevel.Compact && a.CorrelationId == "corr-init"));
+            Arg.Is<DensityHydratedAction>(a =>
+                a.UserPreference == DensityLevel.Compact &&
+                a.NewEffective == DensityLevel.Compact));
     }
 
     [Fact]
-    public async Task HandleAppInitialized_StorageEmpty_DoesNotDispatch() {
-        // Arrange — empty storage, no seeding
-        var storage = new InMemoryStorageService();
+    public async Task HandleViewportTierChanged_DispatchesEffectiveDensityRecomputed()
+    {
+        // D7 — cross-feature handler re-resolves and emits an intra-feature recompute action.
+        InMemoryStorageService storage = new();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
-        var action = new AppInitializedAction("corr-init");
+        // Navigation state exposes Desktop initially; the action carries the new tier (Tablet).
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
 
-        // Act
-        await sut.HandleAppInitialized(action, dispatcher);
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options);
 
-        // Assert — no dispatch because no stored density preference exists
-        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+        await sut.HandleViewportTierChanged(new ViewportTierChangedAction(ViewportTier.Tablet), dispatcher);
+
+        dispatcher.Received(1).Dispatch(
+            Arg.Is<EffectiveDensityRecomputedAction>(a => a.NewEffective == DensityLevel.Comfortable));
     }
 
     [Fact]
-    public async Task HandleDensityChanged_PersistsToStorage() {
-        // Arrange
+    public async Task HandleUserPreferenceChanged_PersistsToStorage()
+    {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
-        var storage = new InMemoryStorageService();
+        InMemoryStorageService storage = new();
         ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
         IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
-        var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
+        IState<FrontComposerNavigationState> navState = FakeNavState(ViewportTier.Desktop);
+        IOptions<FcShellOptions> options = MsOptions.Create(new FcShellOptions());
+
+        DensityEffects sut = new(storage, StubAccessor(TestTenant, TestUser), logger, navState, options);
+
+        await sut.HandleUserPreferenceChanged(
+            new UserPreferenceChangedAction("c1", DensityLevel.Roomy, DensityLevel.Roomy),
+            dispatcher);
+
         string key = StorageKeys.BuildKey(TestTenant, TestUser, "density");
-
-        // Act
-        await sut.HandleDensityChanged(action, dispatcher);
-
-        // Assert
-        object? stored = await storage.GetAsync<object>(key, ct);
-        stored.ShouldBe(DensityLevel.Compact);
+        DensityLevel? stored = await storage.GetAsync<DensityLevel?>(key, ct);
+        stored.ShouldBe(DensityLevel.Roomy);
     }
 
-    [Fact]
-    public async Task HandleDensityChanged_StorageServiceThrows_LogsWarning() {
-        // Arrange
-        IStorageService storage = Substitute.For<IStorageService>();
-        _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<DensityLevel>(), Arg.Any<CancellationToken>())
-            .ThrowsAsync(new InvalidOperationException("Storage failure"));
-        ILogger<DensityEffects> logger = Substitute.For<ILogger<DensityEffects>>();
-        IDispatcher dispatcher = Substitute.For<IDispatcher>();
-        var sut = new DensityEffects(storage, StubAccessor(TestTenant, TestUser), logger);
-        var action = new DensityChangedAction("corr-1", DensityLevel.Compact);
-
-        // Act — should not throw
-        await sut.HandleDensityChanged(action, dispatcher);
-
-        // Assert — logger was called
-        logger.ReceivedWithAnyArgs(1).Log(
-            LogLevel.Warning,
-            default,
-            default!,
-            default,
-            default!);
-    }
-
-    private static IUserContextAccessor StubAccessor(string? tenantId, string? userId) {
+    private static IUserContextAccessor StubAccessor(string? tenantId, string? userId)
+    {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(tenantId);
         accessor.UserId.Returns(userId);
         return accessor;
     }
 
-    private static ServiceProvider BuildProvider(IStorageService storage) {
-        ServiceCollection services = new();
-        _ = services.AddLogging();
-        _ = services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerDensityState).Assembly));
-        _ = services.AddScoped(_ => storage);
-        _ = services.AddScoped(_ => StubAccessor(TestTenant, TestUser));
-        return services.BuildServiceProvider();
+    private static IState<FrontComposerNavigationState> FakeNavState(ViewportTier tier)
+    {
+        IState<FrontComposerNavigationState> state = Substitute.For<IState<FrontComposerNavigationState>>();
+        state.Value.Returns(new FrontComposerNavigationState(
+            SidebarCollapsed: false,
+            CollapsedGroups: System.Collections.Immutable.ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
+            CurrentViewport: tier));
+        return state;
     }
-
-    private static bool WaitFor(Func<bool> condition)
-        => SpinWait.SpinUntil(condition, TimeSpan.FromSeconds(1));
 }

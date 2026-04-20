@@ -73,25 +73,42 @@ test.describe('Story 3-2: sidebar navigation responsive behavior @p0 @smoke', ()
     });
   }
 
-  test('sidebar collapse persists across refresh (AC2 round-trip at Desktop) @p0', async ({ page, tenant }) => {
+  test('sidebar collapse persists across refresh and resize back to Desktop (AC2 round-trip) @p0', async ({ page, tenant }) => {
     // F17 — tenant fixture is mandatory here: AC2 hydrate path skips when IUserContextAccessor.TenantId
     // is null/empty. Without the fixture, reload would no-op and the test would pass by coincidence.
     expect(tenant.tenantId).toBeTruthy();
 
     const shell = new ShellPage(page);
     await shell.goto();
+
+    // D9 amendment (2026-04-19) removed the Desktop-side manual-collapse affordance. The
+    // sticky-collapse state is now established at CompactDesktop (where the rail is the natural
+    // UI) and persists back to Desktop. Round-trip steps:
+    //   1. Start at Desktop: full nav, no rail.
+    //   2. Resize to CompactDesktop: rail appears, hamburger visible.
+    //   3. Click a rail button → SidebarExpandedAction + drawer; the dispatch flips SidebarCollapsed
+    //      to false. Click the hamburger to close drawer (leaves SidebarCollapsed false).
+    //   4. Click hamburger again to collapse — this is the only user-reachable collapse trigger.
+    //   5. Reload → CompactDesktop still shows rail; resize to Desktop → rail persists (D7 + D14).
     await shell.resizeTo(1920);
     await expect(shell.fullNav).toBeVisible();
 
-    // Manual collapse at Desktop → hamburger appears, full nav swaps to rail (D9).
-    await shell.clickHamburger();
+    await shell.resizeTo(1200);
     await expect(shell.collapsedRail).toBeVisible({ timeout: 2_000 });
+    await expect(shell.hamburgerToggle).toBeVisible();
 
-    // Refresh — the NavigationEffects hydrate path must restore SidebarCollapsed=true.
+    // Refresh — hydrate must be a round-trip no-op for tier (tier is never persisted — ADR-037),
+    // and SidebarCollapsed=true persists via the CompactDesktop state established by the rail.
     await page.reload();
     await shell.shellRoot.waitFor();
     await expect(shell.collapsedRail).toBeVisible({ timeout: 5_000 });
+
+    // Resize back to Desktop: D9-amendment sticky-collapse rule — rail persists (does NOT auto-expand).
+    await shell.resizeTo(1920);
+    await expect(shell.collapsedRail).toBeVisible();
     await expect(shell.fullNav).toBeHidden();
+    // Desktop hamburger stays hidden (AC3 literal + D9 amendment).
+    await expect(shell.hamburgerToggle).toBeHidden();
   });
 
   test('Counter bounded context renders exactly one nav category with one projection item (AC1 + AC7) @p0 @smoke', async ({ page, tenant }) => {

@@ -1,21 +1,3 @@
 @inherits LayoutComponentBase
 @using Hexalith.FrontComposer.Shell.Components.Layout
-@inject IFrontComposerRegistry Registry
-
-@* Story 3-1 Task 9.1 — collapsed to FrontComposerShell. Adopter-authored FluentNav passes
-   through the Navigation slot per D25 (preserves Counter.Web shop-window quality across the
-   3-1 / 3-2 sprint gap; Story 3-2 replaces with the framework-owned sidebar). *@
-
-<FrontComposerShell>
-    <Navigation>
-        <FluentNav Padding="@Padding.All2" Style="height: 100%;">
-            @foreach (var manifest in Registry.GetManifests())
-            {
-                <FluentNavItem Href="@($"/{manifest.BoundedContext.ToLowerInvariant()}")">
-                    @manifest.Name
-                </FluentNavItem>
-            }
-        </FluentNav>
-    </Navigation>
-    <ChildContent>@Body</ChildContent>
-</FrontComposerShell>
+<FrontComposerShell>@Body</FrontComposerShell>

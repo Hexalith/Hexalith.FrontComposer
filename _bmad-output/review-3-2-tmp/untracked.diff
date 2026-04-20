@@ -1,0 +1,1061 @@
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor
+new file mode 100644
+index 0000000..2a47c6f
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor
+@@ -0,0 +1,33 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Layout
++@using Hexalith.FrontComposer.Contracts.Registration
++@using Hexalith.FrontComposer.Shell.Resources
++@using Microsoft.Extensions.Localization
++@using Microsoft.FluentUI.AspNetCore.Components
++@inject IFrontComposerRegistry Registry
++@inject IStringLocalizer<FcShellResources> Localizer
++
++@* Story 3-2 Task 7 (D13 / AC4) — 48 px vertical icon rail rendered at CompactDesktop and
++   Desktop + manual-collapse. One FluentButton per renderable bounded context wrapped with a
++   FluentTooltip anchored by id. Click dispatches SidebarExpandedAction to restore the full
++   sidebar and, at CompactDesktop, opens the hamburger drawer so the expansion is visible.
++   Default icon is Icons.Regular.Size20.Apps until Story 4-1 ships projection-role-hint-based
++   icons. *@
++
++<div class="fc-collapsed-rail" data-testid="fc-collapsed-rail"
++     role="navigation" aria-label="@Localizer["NavMenuAriaLabel"].Value">
++    @foreach (DomainManifest manifest in Registry.GetManifests().Where(static manifest => manifest.Projections.Count > 0))
++    {
++        string anchorId = $"fc-rail-{manifest.BoundedContext}";
++        <FluentButton id="@anchorId"
++                      Appearance="@ButtonAppearance.Subtle"
++                      Title="@manifest.Name"
++                      aria-label="@manifest.Name"
++                      OnClick="@OnRailClicked">
++            <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Apps())" />
++            <span class="fc-visually-hidden">@manifest.Name</span>
++        </FluentButton>
++        <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
++            @manifest.Name
++        </FluentTooltip>
++    }
++</div>
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor.cs
+new file mode 100644
+index 0000000..68d45e8
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor.cs
+@@ -0,0 +1,30 @@
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Microsoft.AspNetCore.Components;
++
++namespace Hexalith.FrontComposer.Shell.Components.Layout;
++
++/// <summary>
++/// Code-behind for <see cref="FcCollapsedNavRail"/> (Story 3-2 D13 / AC4).
++/// Click dispatches <see cref="SidebarExpandedAction"/> to restore the full sidebar.
++/// </summary>
++public partial class FcCollapsedNavRail : ComponentBase {
++    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
++
++    [Inject] private IState<FrontComposerNavigationState> NavState { get; set; } = default!;
++
++    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
++
++    [CascadingParameter] private LayoutHamburgerCoordinator? HamburgerCoordinator { get; set; }
++
++    private async Task OnRailClicked() {
++        Dispatcher.Dispatch(new SidebarExpandedAction(UlidFactory.NewUlid()));
++
++        if (NavState.Value.CurrentViewport == ViewportTier.CompactDesktop && HamburgerCoordinator is not null) {
++            await HamburgerCoordinator.ShowAsync().ConfigureAwait(false);
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor.css b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor.css
+new file mode 100644
+index 0000000..ef5e985
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCollapsedNavRail.razor.css
+@@ -0,0 +1,24 @@
++/* Story 3-2 Task 7.3 (D13) — 48 px vertical icon rail for CompactDesktop + Desktop-with-manual-collapse.
++   Scoped CSS inherits Story 3-1 ADR-034 scoped-bundle filename contract ({AssemblyName}.styles.css). */
++
++.fc-collapsed-rail {
++    display: flex;
++    flex-direction: column;
++    width: 48px;
++    padding: 4px 0;
++    gap: 4px;
++    align-items: center;
++    height: 100%;
++}
++
++.fc-visually-hidden {
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    padding: 0;
++    margin: -1px;
++    overflow: hidden;
++    clip: rect(0, 0, 0, 0);
++    white-space: nowrap;
++    border: 0;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor
+new file mode 100644
+index 0000000..1e484fb
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor
+@@ -0,0 +1,17 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Layout
++@using Hexalith.FrontComposer.Shell.Resources
++@using Hexalith.FrontComposer.Shell.State.Navigation
++@using Microsoft.Extensions.Localization
++@using Microsoft.FluentUI.AspNetCore.Components
++@inherits Fluxor.Blazor.Web.Components.FluxorComponent
++@inject IStringLocalizer<FcShellResources> Localizer
++
++@* Story 3-2 Task 8 (D7, D8, D9 / AC4, AC5) — thin FluentLayoutHamburger wrapper whose
++   Visible flag is computed from CurrentViewport + SidebarCollapsed. Lives in FrontComposerShell
++   HeaderStart by default (auto-populated symmetrically to the Navigation slot per D8). *@
++
++<FluentLayoutHamburger Visible="@IsVisible"
++                       @ref="_hamburger"
++                       IconTitle="@Localizer["HamburgerToggleAriaLabel"].Value"
++                       OnOpened="@OnHamburgerOpened"
++                       data-testid="fc-hamburger-toggle" />
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor.cs
+new file mode 100644
+index 0000000..3942024
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcHamburgerToggle.razor.cs
+@@ -0,0 +1,62 @@
++using Fluxor;
++using Fluxor.Blazor.Web.Components;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Microsoft.AspNetCore.Components;
++using Microsoft.FluentUI.AspNetCore.Components;
++
++namespace Hexalith.FrontComposer.Shell.Components.Layout;
++
++/// <summary>
++/// Hamburger toggle wrapping <c>FluentLayoutHamburger</c> (Story 3-2 D7, D8, D9; AC4, AC5).
++/// Visibility derives from <see cref="FrontComposerNavigationState"/>:
++/// shown whenever the viewport is not <see cref="ViewportTier.Desktop"/> OR the user has
++/// manually collapsed the sidebar at Desktop.
++/// </summary>
++public partial class FcHamburgerToggle : FluxorComponent {
++    private FluentLayoutHamburger? _hamburger;
++
++    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
++
++    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
++
++    [Inject] private IState<FrontComposerNavigationState> NavState { get; set; } = default!;
++
++    [CascadingParameter] private LayoutHamburgerCoordinator? HamburgerCoordinator { get; set; }
++
++    /// <summary>
++    /// Computed visibility: shown when viewport is non-Desktop OR user manually collapsed at Desktop.
++    /// Internal hook for bUnit assertions (<c>FcHamburgerToggleTests</c>).
++    /// </summary>
++    internal bool IsVisibleForTest => IsVisible;
++
++    protected override void OnAfterRender(bool firstRender) {
++        base.OnAfterRender(firstRender);
++        HamburgerCoordinator?.Register(_hamburger);
++    }
++
++    private bool IsVisible
++        => NavState.Value.CurrentViewport != ViewportTier.Desktop || NavState.Value.SidebarCollapsed;
++
++    /// <summary>
++    /// Test hook exposing the private handler so
++    /// <c>FcHamburgerToggleTests.ManualToggleAtDesktopDispatchesSidebarToggled</c> can invoke the
++    /// FluentLayoutHamburger <c>OnOpened</c> callback without driving the underlying JS event.
++    /// </summary>
++    /// <param name="opened">Whether the drawer was opened (true) or closed (false).</param>
++    internal void OnHamburgerOpenedForTest(bool opened) {
++        if (opened) {
++            OnHamburgerOpened();
++        }
++    }
++
++    private void OnHamburgerOpened() {
++        // D9: manual toggle at Desktop flips SidebarCollapsed. Non-Desktop tiers rely on
++        // FluentLayoutHamburger's own drawer behavior — no additional dispatch needed.
++        if (NavState.Value.CurrentViewport == ViewportTier.Desktop) {
++            Dispatcher.Dispatch(new SidebarToggledAction(UlidFactory.NewUlid()));
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor
+new file mode 100644
+index 0000000..fe09812
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor
+@@ -0,0 +1,10 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Layout
++@implements IAsyncDisposable
++
++@* Story 3-2 Task 5 (D5 / D6 / ADR-036) — headless watcher. Imports
++   fc-layout-breakpoints.js on first render, subscribes with a DotNetObjectReference, and
++   dispatches ViewportTierChangedAction on every reported tier change (including the initial
++   emission). Module-import failure is caught and degrades gracefully at ViewportTier.Desktop.
++   Renders a zero-height sentinel <span> so bUnit's OnAfterRenderAsync fires reliably (empty
++   RenderTreeBuilder output can be optimised away). *@
++<span class="fc-layout-breakpoint-watcher" hidden aria-hidden="true"></span>
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor.cs
+new file mode 100644
+index 0000000..a221cee
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcLayoutBreakpointWatcher.razor.cs
+@@ -0,0 +1,100 @@
++using Fluxor;
++
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Microsoft.AspNetCore.Components;
++using Microsoft.Extensions.Logging;
++using Microsoft.JSInterop;
++
++namespace Hexalith.FrontComposer.Shell.Components.Layout;
++
++/// <summary>
++/// Headless component that subscribes to <c>fc-layout-breakpoints.js</c> and dispatches
++/// <see cref="ViewportTierChangedAction"/> whenever the browser crosses a breakpoint
++/// (Story 3-2 D5 / D6 / ADR-036).
++/// </summary>
++/// <remarks>
++/// Module-import failure (JSException, HubException, generic Exception) is caught and logged as
++/// Warning; the framework stays usable at the <see cref="ViewportTier.Desktop"/> feature default
++/// (D6 amended 2026-04-19). <see cref="OperationCanceledException"/> on circuit disposal logs at
++/// Debug and swallows silently.
++/// </remarks>
++public partial class FcLayoutBreakpointWatcher : ComponentBase, IAsyncDisposable {
++    private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-layout-breakpoints.js";
++
++    private IJSObjectReference? _module;
++    private IJSObjectReference? _subscription;
++    private DotNetObjectReference<FcLayoutBreakpointWatcher>? _selfRef;
++
++    /// <summary>Injected JS runtime for module import + subscription.</summary>
++    [Inject] private IJSRuntime JS { get; set; } = default!;
++
++    /// <summary>Injected Fluxor dispatcher; fires <see cref="ViewportTierChangedAction"/>.</summary>
++    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
++
++    /// <summary>Injected logger for Warning / Debug diagnostics on module-import failures.</summary>
++    [Inject] private ILogger<FcLayoutBreakpointWatcher> Logger { get; set; } = default!;
++
++    /// <summary>
++    /// [JSInvokable] Callback invoked by <c>fc-layout-breakpoints.js</c> when the viewport tier
++    /// crosses a boundary or on initial subscription emission.
++    /// </summary>
++    /// <param name="tier">The integer tier reported by the JS module (matches <see cref="ViewportTier"/>).</param>
++    /// <returns>A completed task.</returns>
++    [JSInvokable]
++    public Task OnViewportTierChangedAsync(int tier) {
++        if (!Enum.IsDefined(typeof(ViewportTier), tier)) {
++            Logger.LogWarning("FcLayoutBreakpointWatcher received unknown viewport tier {Tier}; ignoring.", tier);
++            return Task.CompletedTask;
++        }
++
++        Dispatcher.Dispatch(new ViewportTierChangedAction((ViewportTier)tier));
++        return Task.CompletedTask;
++    }
++
++    /// <inheritdoc />
++    protected override async Task OnAfterRenderAsync(bool firstRender) {
++        if (!firstRender) {
++            return;
++        }
++
++        // Assign _selfRef BEFORE the import/subscribe call so a mid-subscribe throw still leaves
++        // the DotNetObjectReference disposable from DisposeAsync (D6 amended 2026-04-19).
++        _selfRef = DotNetObjectReference.Create(this);
++        try {
++            _module = await JS.InvokeAsync<IJSObjectReference>("import", ModulePath).ConfigureAwait(false);
++            _subscription = await _module.InvokeAsync<IJSObjectReference>("subscribe", _selfRef).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) {
++            // Circuit disposing mid-import — silent.
++        }
++        catch (Exception ex) {
++            Logger.LogWarning(
++                ex,
++                "FcLayoutBreakpointWatcher subscribe failed; viewport stays at {Default}.",
++                ViewportTier.Desktop);
++        }
++    }
++
++    /// <inheritdoc />
++    public async ValueTask DisposeAsync() {
++        if (_module is not null && _subscription is not null) {
++            try {
++                await _module.InvokeVoidAsync("unsubscribe", _subscription).ConfigureAwait(false);
++            }
++            catch (JSDisconnectedException) { }
++            catch (JSException) { }
++        }
++
++        if (_subscription is not null) {
++            try { await _subscription.DisposeAsync().ConfigureAwait(false); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { }
++        }
++
++        if (_module is not null) {
++            try { await _module.DisposeAsync().ConfigureAwait(false); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { }
++        }
++
++        _selfRef?.Dispose();
++        GC.SuppressFinalize(this);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor
+new file mode 100644
+index 0000000..355dd2a
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor
+@@ -0,0 +1,46 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Layout
++@using Hexalith.FrontComposer.Contracts.Registration
++@using Hexalith.FrontComposer.Shell.Resources
++@using Hexalith.FrontComposer.Shell.State.Navigation
++@using Microsoft.Extensions.Localization
++@using Microsoft.FluentUI.AspNetCore.Components
++@inherits Fluxor.Blazor.Web.Components.FluxorComponent
++@inject IFrontComposerRegistry Registry
++@inject IStringLocalizer<FcShellResources> Localizer
++
++@* Story 3-2 Task 6 (D1, D2, D7, D9, D11 / AC1, AC3, AC6) — framework-owned sidebar.
++   At CompactDesktop OR Desktop + SidebarCollapsed we swap to FcCollapsedNavRail (D7 / D9);
++   otherwise we render FluentNav with one FluentNavCategory per manifest whose Projections list
++   is non-empty (D1). Commands are excluded. Nav-item routes follow the D2 convention:
++   /{boundedContext-lowercase}/{projectionTypeName-kebab-case}. *@
++
++@if (ShouldRenderCollapsedRail())
++{
++    <FcCollapsedNavRail />
++}
++else
++{
++    <FluentNav UseIcons="true" data-testid="fc-navigation-full"
++               aria-label="@Localizer["NavMenuAriaLabel"].Value">
++        @foreach (DomainManifest manifest in Registry.GetManifests())
++        {
++            @if (manifest.Projections.Count == 0)
++            {
++                continue;
++            }
++
++            <FluentNavCategory Id="@manifest.BoundedContext"
++                               Title="@manifest.Name"
++                               Expanded="@(!IsGroupCollapsed(manifest.BoundedContext))"
++                               ExpandedChanged="@(value => OnGroupExpandedChanged(manifest.BoundedContext, value))"
++                               data-testid="@($"fc-nav-category-{manifest.BoundedContext}")">
++                @foreach (string projectionFqn in manifest.Projections)
++                {
++                    <FluentNavItem Href="@BuildRoute(manifest.BoundedContext, projectionFqn)">
++                        @ProjectionLabel(projectionFqn)
++                    </FluentNavItem>
++                }
++            </FluentNavCategory>
++        }
++    </FluentNav>
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor.cs
+new file mode 100644
+index 0000000..507bec1
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor.cs
+@@ -0,0 +1,104 @@
++using System.Text;
++
++using Fluxor;
++using Fluxor.Blazor.Web.Components;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Microsoft.AspNetCore.Components;
++
++namespace Hexalith.FrontComposer.Shell.Components.Layout;
++
++/// <summary>
++/// Framework-owned sidebar composing <c>FluentNavCategory</c> per registered <c>DomainManifest</c>
++/// (Story 3-2 D1, D2, D9, D11, D16; AC1, AC3, AC6).
++/// </summary>
++/// <remarks>
++/// <para>
++/// Subscribes to <see cref="FrontComposerNavigationState"/> via
++/// <see cref="FluxorComponent"/> so viewport-tier and collapsed-groups changes trigger
++/// a minimal re-render.
++/// </para>
++/// <para>
++/// Routes are derived via the convention in <see cref="BuildRoute"/>
++/// (<c>/{boundedContextLowercase}/{projectionTypeKebabCase}</c>). Adopters needing a different
++/// route replace the <c>FrontComposerShell.Navigation</c> slot (ADR-035 override path).
++/// </para>
++/// </remarks>
++public partial class FrontComposerNavigation : FluxorComponent {
++    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
++
++    [Inject] private IState<FrontComposerNavigationState> NavState { get; set; } = default!;
++
++    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
++
++    /// <summary>
++    /// Builds the nav-item <c>Href</c> from the D2 convention:
++    /// <c>/{boundedContextLowercase}/{projectionTypeNameKebabCase}</c>.
++    /// Projection type name = segment after the last <c>.</c> (or whole string if no dot).
++    /// </summary>
++    /// <param name="boundedContext">The bounded-context string (rendered lowercase in the route).</param>
++    /// <param name="projectionFqn">The fully-qualified projection type name.</param>
++    /// <returns>The conventional route.</returns>
++    public static string BuildRoute(string boundedContext, string projectionFqn) {
++        ArgumentException.ThrowIfNullOrEmpty(boundedContext);
++        ArgumentException.ThrowIfNullOrEmpty(projectionFqn);
++        string typeName = LastSegment(projectionFqn);
++        return $"/{boundedContext.ToLowerInvariant()}/{ToKebab(typeName)}";
++    }
++
++    /// <summary>
++    /// Gets the projection type name for display exactly as registered in the manifest.
++    /// </summary>
++    /// <param name="projectionFqn">The fully-qualified projection type name.</param>
++    /// <returns>The projection type name segment after the last dot.</returns>
++    public static string ProjectionLabel(string projectionFqn) {
++        ArgumentException.ThrowIfNullOrEmpty(projectionFqn);
++        return LastSegment(projectionFqn);
++    }
++
++    /// <summary>
++    /// Test hook exposing the private handler so <c>NavGroupToggledDispatchesOnExpandedChange</c>
++    /// can invoke the category callback without driving the FluentNavCategory event pipeline.
++    /// </summary>
++    /// <param name="boundedContext">The bounded context whose category changed.</param>
++    /// <param name="expanded">The new expanded state reported by FluentNavCategory.</param>
++    internal void OnGroupExpandedChangedForTest(string boundedContext, bool expanded)
++        => OnGroupExpandedChanged(boundedContext, expanded);
++
++    private bool ShouldRenderCollapsedRail() {
++        FrontComposerNavigationState snapshot = NavState.Value;
++        return snapshot.CurrentViewport == ViewportTier.CompactDesktop
++            || (snapshot.CurrentViewport == ViewportTier.Desktop && snapshot.SidebarCollapsed);
++    }
++
++    private bool IsGroupCollapsed(string boundedContext)
++        => NavState.Value.CollapsedGroups.TryGetValue(boundedContext, out bool collapsed) && collapsed;
++
++    private void OnGroupExpandedChanged(string boundedContext, bool expanded)
++        => Dispatcher.Dispatch(new NavGroupToggledAction(UlidFactory.NewUlid(), boundedContext, Collapsed: !expanded));
++
++    private static string LastSegment(string fqn) {
++        int lastDot = fqn.LastIndexOf('.');
++        return lastDot < 0 ? fqn : fqn[(lastDot + 1)..];
++    }
++
++    private static string ToKebab(string pascal) {
++        if (string.IsNullOrEmpty(pascal)) {
++            return pascal;
++        }
++
++        StringBuilder sb = new(pascal.Length + 4);
++        for (int i = 0; i < pascal.Length; i++) {
++            char c = pascal[i];
++            if (i > 0 && char.IsUpper(c)) {
++                sb.Append('-');
++            }
++
++            sb.Append(char.ToLowerInvariant(c));
++        }
++
++        return sb.ToString();
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor.css b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor.css
+new file mode 100644
+index 0000000..e5300d3
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor.css
+@@ -0,0 +1,8 @@
++/* Story 3-2 Task 6.3 (D13 — zero FluentNav-internal override) — scoped CSS inherits
++   Story 3-1 ADR-034 scoped-bundle filename contract. Only a light host reset; the CompactDesktop
++   rail is its own component (FcCollapsedNavRail), NOT a CSS-hiding trick on FluentNav internals. */
++
++::deep [data-testid="fc-navigation-full"] {
++    display: block;
++    height: 100%;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/LayoutHamburgerCoordinator.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/LayoutHamburgerCoordinator.cs
+new file mode 100644
+index 0000000..88c6afd
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/LayoutHamburgerCoordinator.cs
+@@ -0,0 +1,26 @@
++using Microsoft.FluentUI.AspNetCore.Components;
++
++namespace Hexalith.FrontComposer.Shell.Components.Layout;
++
++/// <summary>
++/// Coordinates access to the shared <see cref="FluentLayoutHamburger"/> instance rendered by
++/// <see cref="FrontComposerShell"/> so sibling layout components can request the navigation drawer
++/// on responsive tiers without reaching through the DOM.
++/// </summary>
++internal class LayoutHamburgerCoordinator {
++    private FluentLayoutHamburger? _hamburger;
++
++    /// <summary>
++    /// Registers the current hamburger instance.
++    /// </summary>
++    /// <param name="hamburger">The layout hamburger currently rendered by the shell.</param>
++    internal void Register(FluentLayoutHamburger? hamburger)
++        => _hamburger = hamburger;
++
++    /// <summary>
++    /// Opens the navigation drawer when the hamburger is available.
++    /// </summary>
++    /// <returns>A completed task if no hamburger is registered; otherwise the drawer open task.</returns>
++    internal virtual Task ShowAsync()
++        => _hamburger?.ShowAsync() ?? Task.CompletedTask;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/ViewportTier.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/ViewportTier.cs
+new file mode 100644
+index 0000000..638ec33
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/ViewportTier.cs
+@@ -0,0 +1,26 @@
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Viewport size tier derived at runtime by <c>FcLayoutBreakpointWatcher</c> (Story 3-2 D4 / ADR-036).
++/// Integer values are pinned so the <c>fc-layout-breakpoints.js</c> module can send the tier as an
++/// <see cref="int"/> verbatim and C# casts with <c>(ViewportTier)int</c>.
++/// </summary>
++/// <remarks>
++/// Boundaries per UX spec §22-37 (inclusive): Desktop ≥ 1366, CompactDesktop 1024–1365, Tablet 768–1023,
++/// Phone &lt; 768. The ordering lets downstream consumers (Story 3-3 density override) express
++/// tier predicates as <c>tier &gt;= ViewportTier.Tablet</c>. Tier is NEVER persisted (ADR-037).
++/// </remarks>
++public enum ViewportTier : byte
++{
++    /// <summary>Phone viewport: &lt; 768 px.</summary>
++    Phone = 0,
++
++    /// <summary>Tablet viewport: 768–1023 px.</summary>
++    Tablet = 1,
++
++    /// <summary>Compact desktop viewport: 1024–1365 px.</summary>
++    CompactDesktop = 2,
++
++    /// <summary>Full desktop viewport: ≥ 1366 px (feature default).</summary>
++    Desktop = 3,
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs
+new file mode 100644
+index 0000000..c38ca26
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs
+@@ -0,0 +1,14 @@
++using System.Collections.Immutable;
++
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Fluxor state record for the framework-owned sidebar navigation (Story 3-2 D3 / ADR-037).
++/// </summary>
++/// <param name="SidebarCollapsed">Whether the sidebar is collapsed (user preference; persisted).</param>
++/// <param name="CollapsedGroups">Per-bounded-context collapsed flag — sparse map (D11); persisted.</param>
++/// <param name="CurrentViewport">Observed viewport tier — derived at runtime, NEVER persisted (ADR-037).</param>
++public record FrontComposerNavigationState(
++    bool SidebarCollapsed,
++    ImmutableDictionary<string, bool> CollapsedGroups,
++    ViewportTier CurrentViewport);
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationFeature.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationFeature.cs
+new file mode 100644
+index 0000000..ed1d495
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationFeature.cs
+@@ -0,0 +1,22 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Fluxor feature registration for <see cref="FrontComposerNavigationState"/> (Story 3-2 D3).
++/// Default tier is <see cref="ViewportTier.Desktop"/> per UX spec §170 ("new users start expanded").
++/// </summary>
++public sealed class FrontComposerNavigationFeature : Feature<FrontComposerNavigationState>
++{
++    /// <inheritdoc/>
++    public override string GetName() => "FrontComposerNavigation";
++
++    /// <inheritdoc/>
++    protected override FrontComposerNavigationState GetInitialState()
++        => new(
++            SidebarCollapsed: false,
++            CollapsedGroups: ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
++            CurrentViewport: ViewportTier.Desktop);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationActions.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationActions.cs
+new file mode 100644
+index 0000000..3c6a13c
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationActions.cs
+@@ -0,0 +1,46 @@
++using System.Collections.Immutable;
++
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Dispatched when the user manually toggles the sidebar collapsed state (Story 3-2 D9).
++/// Flips <see cref="FrontComposerNavigationState.SidebarCollapsed"/>.
++/// </summary>
++/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
++public sealed record SidebarToggledAction(string CorrelationId);
++
++/// <summary>
++/// Dispatched when the user expands or collapses a single nav category (Story 3-2 D11).
++/// Sparse-by-default: collapsed entries are set, expanded entries are removed from the map.
++/// </summary>
++/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
++/// <param name="BoundedContext">The bounded context key whose category was toggled.</param>
++/// <param name="Collapsed"><see langword="true"/> to collapse; <see langword="false"/> to expand.</param>
++public sealed record NavGroupToggledAction(string CorrelationId, string BoundedContext, bool Collapsed);
++
++/// <summary>
++/// Dispatched when <c>FcLayoutBreakpointWatcher</c> reports a new viewport tier (Story 3-2 D4 / ADR-036).
++/// NEVER triggers persistence (ADR-037).
++/// </summary>
++/// <param name="NewTier">The new observed viewport tier.</param>
++public sealed record ViewportTierChangedAction(ViewportTier NewTier);
++
++/// <summary>
++/// Dispatched when the user clicks a <c>FcCollapsedNavRail</c> button to force the sidebar open
++/// (Story 3-2 D13). Idempotent — always sets <see cref="FrontComposerNavigationState.SidebarCollapsed"/>
++/// to <see langword="false"/>.
++/// </summary>
++/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
++public sealed record SidebarExpandedAction(string CorrelationId);
++
++/// <summary>
++/// Dispatched by <c>NavigationEffects.HandleAppInitialized</c> after loading the persisted blob
++/// (Story 3-2 D15 / ADR-038). Reducer REPLACES <see cref="FrontComposerNavigationState.SidebarCollapsed"/>
++/// and <see cref="FrontComposerNavigationState.CollapsedGroups"/> wholesale.
++/// Does NOT trigger re-persistence (ADR-038).
++/// </summary>
++/// <param name="SidebarCollapsed">The hydrated sidebar collapsed flag.</param>
++/// <param name="CollapsedGroups">The hydrated per-bounded-context collapsed flags.</param>
++public sealed record NavigationHydratedAction(
++    bool SidebarCollapsed,
++    ImmutableDictionary<string, bool> CollapsedGroups);
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs
+new file mode 100644
+index 0000000..7c45315
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs
+@@ -0,0 +1,107 @@
++using Fluxor;
++
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Pure reducers for <see cref="FrontComposerNavigationState"/> (Story 3-2 D3, D11, D13, D14, D15).
++/// </summary>
++public static class NavigationReducers
++{
++    /// <summary>
++    /// Flips <see cref="FrontComposerNavigationState.SidebarCollapsed"/> (Story 3-2 D9).
++    /// </summary>
++    /// <param name="state">The current navigation state.</param>
++    /// <param name="action">The sidebar toggled action.</param>
++    /// <returns>A new state with <c>SidebarCollapsed</c> flipped.</returns>
++    [ReducerMethod]
++    public static FrontComposerNavigationState ReduceSidebarToggled(
++        FrontComposerNavigationState state,
++        SidebarToggledAction action)
++    {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with { SidebarCollapsed = !state.SidebarCollapsed };
++    }
++
++    /// <summary>
++    /// Collapses or expands a single nav group (Story 3-2 D11).
++    /// Sparse-by-default: expansion REMOVES the key so the persisted blob stays minimal.
++    /// </summary>
++    /// <param name="state">The current navigation state.</param>
++    /// <param name="action">The nav-group toggled action.</param>
++    /// <returns>A new state with <c>CollapsedGroups</c> updated.</returns>
++    [ReducerMethod]
++    public static FrontComposerNavigationState ReduceNavGroupToggled(
++        FrontComposerNavigationState state,
++        NavGroupToggledAction action)
++    {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with
++        {
++            CollapsedGroups = action.Collapsed
++                ? state.CollapsedGroups.SetItem(action.BoundedContext, true)
++                : state.CollapsedGroups.Remove(action.BoundedContext),
++        };
++    }
++
++    /// <summary>
++    /// Updates <see cref="FrontComposerNavigationState.CurrentViewport"/>.
++    /// Does NOT mutate <c>SidebarCollapsed</c> or <c>CollapsedGroups</c> (Story 3-2 D14 / ADR-037).
++    /// When the new tier matches the current tier, returns the same state reference so Fluxor's
++    /// <c>IState.StateChanged</c> does not re-notify subscribers (belt-and-suspenders dedup to
++    /// complement the JS-side composed-tier dedup per D6).
++    /// </summary>
++    /// <param name="state">The current navigation state.</param>
++    /// <param name="action">The viewport-tier changed action.</param>
++    /// <returns>A new state with the updated viewport tier, or the same state if unchanged.</returns>
++    [ReducerMethod]
++    public static FrontComposerNavigationState ReduceViewportTierChanged(
++        FrontComposerNavigationState state,
++        ViewportTierChangedAction action)
++    {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state.CurrentViewport == action.NewTier
++            ? state
++            : state with { CurrentViewport = action.NewTier };
++    }
++
++    /// <summary>
++    /// Forces the sidebar expanded (Story 3-2 D13). Idempotent.
++    /// </summary>
++    /// <param name="state">The current navigation state.</param>
++    /// <param name="action">The sidebar-expanded action.</param>
++    /// <returns>A new state with <c>SidebarCollapsed = false</c>.</returns>
++    [ReducerMethod]
++    public static FrontComposerNavigationState ReduceSidebarExpanded(
++        FrontComposerNavigationState state,
++        SidebarExpandedAction action)
++    {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with { SidebarCollapsed = false };
++    }
++
++    /// <summary>
++    /// Replaces <see cref="FrontComposerNavigationState.SidebarCollapsed"/> and
++    /// <see cref="FrontComposerNavigationState.CollapsedGroups"/> wholesale from the hydrated blob
++    /// (Story 3-2 D15). Does NOT touch <c>CurrentViewport</c> (ADR-037).
++    /// </summary>
++    /// <param name="state">The current navigation state.</param>
++    /// <param name="action">The hydrated action carrying the persisted blob contents.</param>
++    /// <returns>A new state with persisted fields replaced.</returns>
++    [ReducerMethod]
++    public static FrontComposerNavigationState ReduceNavigationHydrated(
++        FrontComposerNavigationState state,
++        NavigationHydratedAction action)
++    {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with
++        {
++            SidebarCollapsed = action.SidebarCollapsed,
++            CollapsedGroups = action.CollapsedGroups,
++        };
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs
+new file mode 100644
+index 0000000..bb79efe
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationEffects.cs
+@@ -0,0 +1,191 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Diagnostics;
++using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Contracts.Storage;
++using Hexalith.FrontComposer.Shell.State;
++
++using Microsoft.Extensions.Logging;
++
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Async side effects for navigation state: persistence on change, hydration on app init
++/// (Story 3-2 D12, D14, D15; ADR-037, ADR-038). Mirrors the <c>ThemeEffects</c> / <c>DensityEffects</c>
++/// scope-guard pattern.
++/// </summary>
++/// <remarks>
++/// <para>
++/// <b>Persist triggers (D14 amended):</b> <see cref="SidebarToggledAction"/>,
++/// <see cref="NavGroupToggledAction"/>, <see cref="SidebarExpandedAction"/>.
++/// <see cref="NavigationHydratedAction"/> is INTENTIONALLY excluded (ADR-038 — hydrate is read-only).
++/// <see cref="ViewportTierChangedAction"/> is INTENTIONALLY excluded (ADR-037 — tier is never persisted).
++/// </para>
++/// <para>
++/// <b>Scope guard (D12):</b> null/empty/whitespace <c>TenantId</c> or <c>UserId</c> →
++/// log <see cref="FcDiagnosticIds.HFC2105_StoragePersistenceSkipped"/> at Information and return.
++/// No storage call fires.
++/// </para>
++/// <para>
++/// <b>Error handling (D15 amended 2026-04-19):</b>
++/// <see cref="OperationCanceledException"/> → <c>LogDebug</c> (expected on circuit disposal);
++/// any other <see cref="Exception"/> in persist → log <c>HFC2105</c> at Information with payload;
++/// any other exception in hydrate → log <c>HFC2106</c> at Information with <c>Reason=Corrupt</c>
++/// and skip the hydrate dispatch.
++/// </para>
++/// </remarks>
++/// <param name="storage">The storage service for persisting navigation preferences.</param>
++/// <param name="userContextAccessor">Resolves tenant/user segments for storage key scoping.</param>
++/// <param name="logger">Logger for diagnostics.</param>
++/// <param name="state">The navigation state (read inside persist handlers post-reducer).</param>
++public sealed class NavigationEffects(
++    IStorageService storage,
++    IUserContextAccessor userContextAccessor,
++    ILogger<NavigationEffects> logger,
++    IState<FrontComposerNavigationState> state) {
++    private const string FeatureSegment = "nav";
++
++    /// <summary>
++    /// Hydrates navigation state from storage when the application initializes.
++    /// Dispatches <see cref="NavigationHydratedAction"/> when a blob is found; feature defaults
++    /// apply when the blob is missing, corrupt, or storage throws.
++    /// </summary>
++    /// <param name="action">The app initialized action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher.</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public async Task HandleAppInitialized(AppInitializedAction action, IDispatcher dispatcher) {
++        ArgumentNullException.ThrowIfNull(action);
++        ArgumentNullException.ThrowIfNull(dispatcher);
++        if (!TryResolveScope(out string tenantId, out string userId)) {
++            return;
++        }
++
++        string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
++        NavigationPersistenceBlob? blob;
++        try {
++            blob = await storage.GetAsync<NavigationPersistenceBlob>(key).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) {
++            logger.LogDebug("Navigation hydration cancelled — circuit disposing.");
++            return;
++        }
++        catch (Exception ex) {
++            logger.LogInformation(
++                ex,
++                "{DiagnosticId}: Navigation hydration errored — feature defaults apply. Reason={Reason}.",
++                FcDiagnosticIds.HFC2106_ThemeHydrationEmpty,
++                "Corrupt");
++            return;
++        }
++
++        if (blob is null) {
++            logger.LogInformation(
++                "{DiagnosticId}: Navigation hydration found no stored value — feature defaults apply. Reason={Reason}.",
++                FcDiagnosticIds.HFC2106_ThemeHydrationEmpty,
++                "Empty");
++            return;
++        }
++
++        ImmutableDictionary<string, bool> groups = blob.CollapsedGroups is null
++            ? ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal)
++            : blob.CollapsedGroups.ToImmutableDictionary(StringComparer.Ordinal);
++        dispatcher.Dispatch(new NavigationHydratedAction(blob.SidebarCollapsed, groups));
++    }
++
++    /// <summary>
++    /// Persists navigation state to storage when the user toggles the sidebar (D14 trigger #1).
++    /// </summary>
++    /// <param name="action">The sidebar toggled action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher (unused; required by the Fluxor signature).</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public Task HandleSidebarToggled(SidebarToggledAction action, IDispatcher dispatcher) {
++        ArgumentNullException.ThrowIfNull(action);
++        return PersistAsync();
++    }
++
++    /// <summary>
++    /// Persists navigation state to storage when the user toggles a nav group (D14 trigger #2).
++    /// </summary>
++    /// <param name="action">The nav-group toggled action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher (unused; required by the Fluxor signature).</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public Task HandleNavGroupToggled(NavGroupToggledAction action, IDispatcher dispatcher) {
++        ArgumentNullException.ThrowIfNull(action);
++        return PersistAsync();
++    }
++
++    /// <summary>
++    /// Persists navigation state to storage when the user expands the sidebar via the rail (D14 trigger #3).
++    /// </summary>
++    /// <param name="action">The sidebar-expanded action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher (unused; required by the Fluxor signature).</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public Task HandleSidebarExpanded(SidebarExpandedAction action, IDispatcher dispatcher) {
++        ArgumentNullException.ThrowIfNull(action);
++        return PersistAsync();
++    }
++
++    /// <summary>
++    /// Intentional no-op for <see cref="NavigationHydratedAction"/> (ADR-038 — hydrate is read-only
++    /// from the storage perspective). Exposed publicly so the ADR-038 contract is asserted by
++    /// <c>NavigationEffectsScopeTests.HydrateDoesNotRePersist</c>.
++    /// NOT decorated with <c>[EffectMethod]</c> — Fluxor must NEVER auto-subscribe this to the dispatch pipeline.
++    /// </summary>
++    /// <param name="action">The navigation-hydrated action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher (unused).</param>
++    /// <returns>A completed task.</returns>
++    [System.Diagnostics.CodeAnalysis.SuppressMessage(
++        "Performance",
++        "CA1822:Mark members as static",
++        Justification = "Public instance API contract: ADR-038 exposes HandleNavigationHydrated on NavigationEffects so adopters / tests invoke it symmetrically with the other Handle* persist handlers; marking it static would break that contract.")]
++    public Task HandleNavigationHydrated(NavigationHydratedAction action, IDispatcher dispatcher) {
++        ArgumentNullException.ThrowIfNull(action);
++        return Task.CompletedTask;
++    }
++
++    private async Task PersistAsync() {
++        if (!TryResolveScope(out string tenantId, out string userId)) {
++            return;
++        }
++
++        try {
++            string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
++            FrontComposerNavigationState snapshot = state.Value;
++            Dictionary<string, bool> groups = new(snapshot.CollapsedGroups, StringComparer.Ordinal);
++            NavigationPersistenceBlob blob = new(snapshot.SidebarCollapsed, groups);
++            await storage.SetAsync(key, blob).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) {
++            logger.LogDebug("Navigation persist cancelled — circuit disposing.");
++        }
++        catch (Exception ex) {
++            logger.LogInformation(
++                ex,
++                "{DiagnosticId}: Navigation persistence failed — swallowed (next toggle retries).",
++                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
++        }
++    }
++
++    private bool TryResolveScope(out string tenantId, out string userId) {
++        string? rawTenant = userContextAccessor.TenantId;
++        string? rawUser = userContextAccessor.UserId;
++        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
++            logger.LogInformation(
++                "{DiagnosticId}: Navigation persistence skipped — null/empty/whitespace tenant or user context.",
++                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
++            tenantId = string.Empty;
++            userId = string.Empty;
++            return false;
++        }
++
++        tenantId = rawTenant;
++        userId = rawUser;
++        return true;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationPersistenceBlob.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationPersistenceBlob.cs
+new file mode 100644
+index 0000000..cd8340e
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationPersistenceBlob.cs
+@@ -0,0 +1,17 @@
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Serialisation shape for the navigation persistence blob (Story 3-2 D21).
++/// Uses <see cref="Dictionary{TKey, TValue}"/> (not <see cref="System.Collections.Immutable.ImmutableDictionary{TKey, TValue}"/>)
++/// for <see cref="System.Text.Json.JsonSerializer"/> compatibility without custom converters.
++/// The schema is pinned via <c>NavigationPersistenceSnapshotTests.BlobSchemaLocked</c>.
++/// </summary>
++/// <remarks>
++/// Wire format (JSON): <c>{"SidebarCollapsed":bool, "CollapsedGroups":{bc:bool, ...}}</c>.
++/// <c>CurrentViewport</c> is NEVER serialised (ADR-037).
++/// </remarks>
++/// <param name="SidebarCollapsed">The persisted sidebar collapsed flag.</param>
++/// <param name="CollapsedGroups">The per-bounded-context collapsed flags (sparse-by-default per D11).</param>
++public sealed record NavigationPersistenceBlob(
++    bool SidebarCollapsed,
++    Dictionary<string, bool> CollapsedGroups);
+diff --git a/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-layout-breakpoints.js b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-layout-breakpoints.js
+new file mode 100644
+index 0000000..c278858
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-layout-breakpoints.js
+@@ -0,0 +1,64 @@
++// Story 3-2 Task 4.1 (D5 / D6 / ADR-036) — ES module composing three matchMedia queries into
++// a single ViewportTier integer. Mirrors fc-prefers-color-scheme.js shape (subscribe returns
++// { unsubscribe }, one-shot emission on subscribe). Dedupes composed-tier no-ops per D6.
++
++const QUERIES = {
++    desktop: '(min-width: 1366px)',
++    compact: '(min-width: 1024px)',
++    tablet: '(min-width: 768px)',
++};
++
++function computeTier(desktop, compact, tablet) {
++    if (desktop) return 3; // Desktop
++    if (compact) return 2; // CompactDesktop
++    if (tablet) return 1;  // Tablet
++    return 0;              // Phone
++}
++
++/**
++ * Subscribe to viewport-tier changes derived from three matchMedia queries.
++ * @param {any} dotnetRef - DotNetObjectReference exposing OnViewportTierChangedAsync(int).
++ * @returns {{ unsubscribe: () => void }}
++ */
++export function subscribe(dotnetRef) {
++    if (!dotnetRef) {
++        throw new Error('fc-layout-breakpoints.subscribe: dotnetRef is required.');
++    }
++
++    const mqDesktop = window.matchMedia(QUERIES.desktop);
++    const mqCompact = window.matchMedia(QUERIES.compact);
++    const mqTablet = window.matchMedia(QUERIES.tablet);
++
++    let lastTier = computeTier(mqDesktop.matches, mqCompact.matches, mqTablet.matches);
++    // Emit the initial value once so C# does not need a separate bootstrap round-trip.
++    dotnetRef.invokeMethodAsync('OnViewportTierChangedAsync', lastTier);
++
++    const handler = () => {
++        const tier = computeTier(mqDesktop.matches, mqCompact.matches, mqTablet.matches);
++        if (tier === lastTier) {
++            return; // D6 — dedupe composed-tier no-ops across the three queries.
++        }
++        lastTier = tier;
++        dotnetRef.invokeMethodAsync('OnViewportTierChangedAsync', tier);
++    };
++
++    mqDesktop.addEventListener('change', handler);
++    mqCompact.addEventListener('change', handler);
++    mqTablet.addEventListener('change', handler);
++
++    return {
++        unsubscribe() {
++            mqDesktop.removeEventListener('change', handler);
++            mqCompact.removeEventListener('change', handler);
++            mqTablet.removeEventListener('change', handler);
++        },
++    };
++}
++
++/**
++ * Remove the subscription registered via {@link subscribe}.
++ * @param {{ unsubscribe: () => void } | null | undefined} subscription
++ */
++export function unsubscribe(subscription) {
++    subscription?.unsubscribe();
++}

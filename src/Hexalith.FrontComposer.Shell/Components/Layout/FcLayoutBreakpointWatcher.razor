@@ -1,0 +1,10 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@implements IAsyncDisposable
+
+@* Story 3-2 Task 5 (D5 / D6 / ADR-036) — headless watcher. Imports
+   fc-layout-breakpoints.js on first render, subscribes with a DotNetObjectReference, and
+   dispatches ViewportTierChangedAction on every reported tier change (including the initial
+   emission). Module-import failure is caught and degrades gracefully at ViewportTier.Desktop.
+   Renders a zero-height sentinel <span> so bUnit's OnAfterRenderAsync fires reliably (empty
+   RenderTreeBuilder output can be optimised away). *@
+<span class="fc-layout-breakpoint-watcher" hidden aria-hidden="true"></span>

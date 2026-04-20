@@ -1,0 +1,18 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.Navigation
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-2 Task 8 (D7, D8, D9 amended 2026-04-19 / AC4, AC5) — thin FluentLayoutHamburger wrapper
+   whose Visible flag is computed from CurrentViewport only. Lives in FrontComposerShell HeaderStart
+   by default (auto-populated symmetrically to the Navigation slot per D8). Manual Desktop collapse
+   affordance dropped per D9 addendum — Desktop follows persisted SidebarCollapsed without a visible
+   toggle (AC3 literal: FluentLayoutHamburger.Visible = false at Desktop). *@
+
+<FluentLayoutHamburger Visible="@IsVisible"
+                       @ref="_hamburger"
+                       IconTitle="@Localizer["HamburgerToggleAriaLabel"].Value"
+                       data-testid="fc-hamburger-toggle" />

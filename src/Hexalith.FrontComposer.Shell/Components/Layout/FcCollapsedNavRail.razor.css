@@ -1,0 +1,24 @@
+/* Story 3-2 Task 7.3 (D13) — 48 px vertical icon rail for CompactDesktop + Desktop-with-manual-collapse.
+   Scoped CSS inherits Story 3-1 ADR-034 scoped-bundle filename contract ({AssemblyName}.styles.css). */
+
+.fc-collapsed-rail {
+    display: flex;
+    flex-direction: column;
+    width: 48px;
+    padding: 4px 0;
+    gap: 4px;
+    align-items: center;
+    height: 100%;
+}
+
+.fc-visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}

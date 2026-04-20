@@ -9,6 +9,13 @@
       Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
     <PackageReference Include="NUlid" />
+  </ItemGroup>
+  <!-- Story 3-2 Task 10 — test project accesses the internal *ForTest hooks on the 3-2 layout
+       components (FcHamburgerToggle, FrontComposerNavigation) to drive bUnit assertions without
+       going through the Fluent UI event pipeline. -->
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hexalith.FrontComposer.Shell.Tests" />
   </ItemGroup>
 </Project>
