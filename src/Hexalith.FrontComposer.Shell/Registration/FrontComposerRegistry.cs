@@ -1,3 +1,4 @@
+using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Registration;
 
 using Microsoft.Extensions.Logging;
@@ -8,7 +9,7 @@ namespace Hexalith.FrontComposer.Shell.Registration;
 /// Stores registered domain manifests and navigation groups for runtime composition.
 /// Domain registrations from <see cref="DomainRegistrationAction"/> are applied on construction.
 /// </summary>
-internal sealed class FrontComposerRegistry : IFrontComposerRegistry {
+internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry {
     private readonly List<DomainManifest> _manifests = [];
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
 
@@ -27,6 +28,33 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry {
         foreach (DomainRegistrationAction action in registrationActions) {
             action.Apply(this);
         }
+
+        ValidateManifests();
+    }
+
+    /// <summary>
+    /// Walks every registered manifest and asserts each <see cref="DomainManifest.Commands"/> entry
+    /// has a FullPage route (Story 3-4 D21). Story 9-4 supersedes this with a build-time analyzer
+    /// and an adopter-provided render-mode metadata source that makes the check meaningful.
+    /// </summary>
+    /// <remarks>
+    /// <b>Inert placeholder today (ratified 2026-04-21, DN6):</b> <see cref="HasFullPageRoute"/> returns
+    /// <c>true</c> for every command that appears in any manifest, so this validator cannot throw
+    /// under the current single-source-of-truth. The branch is retained to (a) reserve the diagnostic
+    /// ID, (b) keep the future-compatible code path warm, and (c) pin the validation contract so
+    /// Story 9-4 can harden it without a surface-area change. Revisit when adopter-supplied
+    /// render-mode metadata (e.g., from the Story 2-2 source generator) becomes available.
+    /// </remarks>
+    /// <exception cref="InvalidOperationException">Thrown with <see cref="FcDiagnosticIds.HFC1601_ManifestInvalid"/> when a command has no FullPage route — unreachable today.</exception>
+    private void ValidateManifests() {
+        foreach (DomainManifest manifest in _manifests) {
+            foreach (string command in manifest.Commands) {
+                if (!HasFullPageRoute(command)) {
+                    throw new InvalidOperationException(
+                        $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: command '{command}' in bounded context '{manifest.BoundedContext}' has no FullPage route. Every registered command must emit a FullPage page so the command palette can route to it.");
+                }
+            }
+        }
     }
 
     /// <inheritdoc />
@@ -34,6 +62,24 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry {
 
     /// <inheritdoc />
     public IReadOnlyList<DomainManifest> GetManifests() => _manifests;
+
+    /// <inheritdoc />
+    public bool HasFullPageRoute(string commandTypeName) {
+        // Story 3-4 D21 — until the source generator surfaces real per-command render-mode metadata
+        // (Story 9-4 build-time analyzer), every registered command is assumed to have a FullPage
+        // route. Surface a true response when the command is in any manifest; false otherwise.
+        if (string.IsNullOrWhiteSpace(commandTypeName)) {
+            return false;
+        }
+
+        foreach (DomainManifest manifest in _manifests) {
+            if (manifest.Commands.Contains(commandTypeName, StringComparer.Ordinal)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     /// <inheritdoc />
     public void RegisterDomain(DomainManifest manifest) {

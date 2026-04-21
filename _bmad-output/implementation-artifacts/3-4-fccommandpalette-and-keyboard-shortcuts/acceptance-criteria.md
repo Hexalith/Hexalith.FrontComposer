@@ -4,7 +4,7 @@
 
 ---
 
-## AC1: `IShortcutService` registers `Ctrl+K`, `Ctrl+,`, `g h` at shell level with duplicate-binding conflict detection at registration time (HFC2107 Warning)
+## AC1: `IShortcutService` registers `Ctrl+K`, `Ctrl+,`, `g h` at shell level with duplicate-binding conflict detection at registration time (HFC2108 Information)
 
 **Given** `AddHexalithFrontComposer` is called in `Program.cs`
 **When** `FrontComposerShell.OnAfterRenderAsync(firstRender: true)` fires
@@ -15,7 +15,7 @@
 
 **Given** two `Register` calls supply the same normalised binding
 **When** the second call runs
-**Then** `ILogger` emits `HFC2107_ShortcutConflict` at Information severity with structured fields `{Binding, PreviousDescriptionKey, NewDescriptionKey, CallSiteFile, CallSiteLine}`
+**Then** `ILogger` emits `HFC2108_ShortcutConflict` at Information severity with structured fields `{Binding, PreviousDescriptionKey, NewDescriptionKey, CallSiteFile, CallSiteLine}`
 **And** the second registration REPLACES the first (last-writer-wins per D3)
 **And** `TryInvokeAsync` dispatches to the second handler for all subsequent invocations
 
@@ -24,7 +24,7 @@
 **Then** the disposed handler does NOT fire
 **And** if a replacement registration exists, the replacement fires; otherwise `TryInvokeAsync` returns `false`
 
-**References:** D1, D2, D3, D19; ADR-042. **Tasks:** 1.1, 1.2, 1.3. **Tests:** `ShortcutServiceTests.RegisterThenInvoke_RunsHandler`, `ShortcutServiceTests.DuplicateRegister_LogsHFC2107_LastWriterWins`, `ShortcutServiceTests.DisposedRegistration_NoLongerFires` (Task 10.1, 10.1e).
+**References:** D1, D2, D3, D19; ADR-042. **Tasks:** 1.1, 1.2, 1.3. **Tests:** `ShortcutServiceTests.RegisterThenInvoke_RunsHandler`, `ShortcutServiceTests.DuplicateRegister_LogsHFC2108_LastWriterWins`, `ShortcutServiceTests.DisposedRegistration_NoLongerFires` (Task 10.1, 10.1e).
 
 ---
 

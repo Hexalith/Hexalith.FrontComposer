@@ -1,0 +1,16 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@* Story 3-4 Task 7.1 (D18; AC2) — header palette trigger. Auto-populated by FrontComposerShell
+   ahead of FcSettingsButton when adopter leaves HeaderEnd null. *@
+
+<FluentButton Appearance="@ButtonAppearance.Subtle"
+              Title="@Localizer["PaletteTriggerAriaLabel"].Value"
+              aria-label="@Localizer["PaletteTriggerAriaLabel"].Value"
+              data-testid="fc-palette-trigger"
+              OnClick="OpenAsync">
+    <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Search())" />
+</FluentButton>

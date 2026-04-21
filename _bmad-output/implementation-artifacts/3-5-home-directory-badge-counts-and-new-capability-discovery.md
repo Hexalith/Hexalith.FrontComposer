@@ -1,0 +1,613 @@
+# Story 3.5: Home Directory, Badge Counts & New Capability Discovery
+
+Status: ready-for-dev
+
+> **Epic 3 § 200-251** · **FR21** · **UX-DR10** · **UX-DR13** · **UX-DR52** · **UX-DR69** · **UX-DR70** · **NFR87** · applies lessons **L01, L02, L03, L06, L07, L09, L10**. Closes the `IBadgeCountService` producer seam opened by Story 3-4 ADR-044 / D16 / AC7.
+
+---
+
+## Executive summary (Feynman-level, ~30 sec)
+
+Story 3-5 ships the **producer** side of the badge-count contract Story 3-4 already consumes. Three things land:
+
+1. **`BadgeCountService`** (Shell) — concrete Scoped implementation of the frozen `IBadgeCountService` interface. Counts are populated via (a) a parallel initial fetch over the catalog of ActionQueue-hinted projection types through a new `IActionQueueCountReader` seam, and (b) live deltas piped from `IProjectionChangeNotifier` (existing provisional contract, SignalR wiring lands in Epic 5). Registering the service is the entire hand-off with 3-4 — the palette picks badges up on the next circuit with zero code change.
+2. **`FcHomeDirectory`** (Shell) — the v1 home page: a global "you have N items across M areas" orientation subtitle, urgency-sorted bounded-context cards with per-projection badge counts, a collapsed "Other areas" tail, and three distinct empty-states (all-caught-up / no-microservices / loading skeletons). Wired at `/` and `/home`.
+3. **"New" capability discovery** — a subtle Info-slot badge on nav items for bounded contexts / projections the user has not yet visited, backed by a per-user-per-tenant seen-set persisted through `IStorageService` using the L03 fail-closed scope pattern. New-entries only surface once they have data (empty projections stay invisible, per Epic AC § 244).
+
+The design keeps FR21 satisfied without creating a hard dependency on Epic 5 SignalR infrastructure, holds the decision-budget inside the L06 feature-story cap (≤ 25), and keeps every cross-story seam explicit per L01.
+
+---
+
+## Story
+
+As a business user,
+I want a home page that shows me what needs attention across all domains, with live badge counts and subtle indicators for newly available capabilities,
+so that I can prioritize my work and notice new features without being disrupted by announcements.
+
+**Business value:** Converts FrontComposer from "a generated form pile" to "an operations dashboard". A user arriving at the app knows, within one second and without clicking, which bounded context is demanding attention and which capabilities are new since last visit. This is FR21's entire premise and the payoff that makes Epic 3 worth shipping before Epic 4's DataGrid richness.
+
+---
+
+## Cross-story contract table (L01)
+
+| Contract | Producer | Consumer | Binding |
+|---|---|---|---|
+| `BadgeCountService` concrete implementation of the frozen `IBadgeCountService` interface | 3-5 | 3-4 `FcPaletteResultList` (nullable DI — activates automatically); `FrontComposerNavigation` sidebar nav-item badges (3-5 Task 5); `FcHomeDirectory` cards (3-5 Task 3) | Interface frozen by Story 3-4 ADR-044. 3-5 ships the Scoped implementation — no contract change. Registering via `services.AddScoped<IBadgeCountService, BadgeCountService>()` IS the hand-off. |
+| `IActionQueueProjectionCatalog` interface + `ReflectionActionQueueProjectionCatalog` default implementation | 3-5 | `BadgeCountService.InitializeAsync` (Task 2.3) enumerates the catalog; adopters override via `services.TryAddSingleton<IActionQueueProjectionCatalog, MyCatalog>()` | Interface in `Contracts/Badges/`. Append-only. Default reflects-over-loaded-assemblies for `[ProjectionRole(ProjectionRole.ActionQueue)]`. Adopter override is the extensibility hatch when reflection is undesirable (AOT scenarios, large assembly scan cost). |
+| `IActionQueueCountReader` interface + `NullActionQueueCountReader` default | 3-5 | `BadgeCountService.InitializeAsync` + `HandleProjectionChanged` (Task 2.3, 2.4); Story 5-1 **WILL** ship the real reader backed by EventStore queries | Interface in `Contracts/Badges/`. Default returns 0 for every type (safe fallback — palette + home degrade to zero badges, never throw). `ValueTask<int> GetCountAsync(Type projectionType, CancellationToken ct)` — signature frozen; v2 may add an overload accepting an `IReadOnlyList<Type>` for bulk fetch. |
+| `IProjectionChangeNotifier` subscription (optional, nullable DI) | Story 5-3 (SignalR real producer) / test stubs (now) | 3-5 `BadgeCountService.HandleProjectionChanged` | Contract already exists in `Contracts/Communication/`. 3-5 consumes via `IServiceProvider.GetService<IProjectionChangeNotifier>()` nullable pattern (mirrors 3-4 D16 for `IBadgeCountService` itself). Absent notifier → live updates are silently disabled; initial counts still render. Story 5-3 ships the real notifier. |
+| `FrontComposerCapabilityDiscoveryState` new per-concern Fluxor feature + actions + effects | 3-5 | `FrontComposerNavigation` renders `NewCapabilityBadge` (3-5 Task 4.2); `FcHomeDirectory` renders the same badge atop card headings (3-5 Task 4.4); effect persists the seen-set via `IStorageService` | Per-concern feature (mirrors 3-3 Theme / Density / Navigation / 3-4 CommandPalette). Per L02: reducer + effect + producer + consumer all ship in 3-5 — no dead reducers. |
+| `CapabilityVisitedAction(string capabilityId)` Fluxor action | 3-5 navigation `@onclick` (producer) + `FcHomeDirectory` card click (producer) | `CapabilityDiscoveryEffects.HandleCapabilityVisited` (consumer persists to storage) | Additive action — append-only. Future stories may subscribe via own effects (e.g., Story 9-5 documentation analytics). |
+| Storage key pattern `{tenantId}/{userId}/capability-seen` (L03 fail-closed) | 3-5 | Nobody outside 3-5; isolation guarantee per tenant | Key pattern frozen at v1. Null / empty / whitespace tenant OR user → persistence silently skipped + `HFC2105_StoragePersistenceSkipped` at Information (reused from Story 3-1). |
+| New diagnostic IDs `HFC2112_BadgeInitialFetchFault` (Warning) + `HFC2113_ProjectionTypeUnresolvable` (Information) | 3-5 | Operators / telemetry dashboards; Story 9-4 analyzer will emit higher-severity HFC3xxx at build-time | Diagnostic IDs frozen. Structured payload shape appendable; existing fields frozen. |
+| `/` and `/home` route → `FcHomeDirectory` | 3-5 | Adopter `App.razor` routing already resolves registered `@page` directives; the new `FcHomeRouteView` page registers `@page "/"` + `@page "/home"` | Routes FROZEN for v1. Adopters wanting a different landing page register their own `@page "/"` **after** the shell assembly — Blazor's route-table takes the last winning exact match. |
+| `NewCapabilityBadgeText` + 9 other new resource keys = 10 new × 2 locales = 20 new strings; total shell resource count goes 47 → 57 | 3-5 | Renders inside `FcHomeDirectory` and `FrontComposerNavigation`; EN/FR parity enforced by the existing `CanonicalKeysHaveFrenchCounterparts` test (no change to the test itself) | Append-only to `FcShellResources.resx` + `FcShellResources.fr.resx`. |
+
+---
+
+## Acceptance Criteria
+
+| AC | Given / When / Then | Primary tasks |
+|---|---|---|
+| **AC1** | **Given** `BadgeCountService` is registered as Scoped. **When** the application starts. **Then** the service fetches initial counts via parallel `Task.WhenAll` over the `IActionQueueProjectionCatalog.ActionQueueTypes`, caps the fetch at a 5 s CTS timeout, and publishes each resolved `(Type, count)` via `CountChanged.OnNext`. **And** `TotalActionableItems` equals the sum of resolved counts. **And** on Blazor Server the service is per-circuit; on Blazor WebAssembly the Scoped lifetime degenerates to singleton-per-user (consistent with Epic AC § 213). | T1, T2 |
+| **AC2** | **Given** `IProjectionChangeNotifier` is registered and raises `ProjectionChanged(projectionTypeFullName)`. **When** the notified type is in the ActionQueue catalog. **Then** `BadgeCountService` re-fetches the count for that type via `IActionQueueCountReader.GetCountAsync(type, ct)`, updates `Counts`, and emits a single `BadgeCountChangedArgs(type, newCount)` on `CountChanged`. **And** notifications for non-ActionQueue types are ignored silently. **And** notifications for string type names that fail `Type.GetType()` resolution log `HFC2113_ProjectionTypeUnresolvable` at Information exactly once per distinct string (de-duplicated via a `ConcurrentDictionary<string, byte>` guard). | T2 |
+| **AC3** | **Given** `FcHomeDirectory` renders as the `/` route content. **When** `IBadgeCountService.TotalActionableItems > 0`. **Then** a global subtitle renders: `"Welcome back, {user name}. You have {N} items needing attention across {M} areas."` (sourced from `HomeWelcomeTemplate` + `HomeItemsTemplate` keys). **And** bounded-context cards sort by aggregate badge count descending, ties broken by display-name ascending (ordinal). **And** each card lists every projection in that context with its per-type badge count, or omits the badge when count is 0. **And** zero-urgency contexts (aggregate count == 0) render in a collapsed `<FluentAccordion>` titled `HomeOtherAreasHeading`. | T3 |
+| **AC4a** | **Given** `FcHomeDirectory` **AND** the user has previously visited at least one capability (`SeenCapabilities.Count > 0`, i.e., a *returning* user). **When** `TotalActionableItems == 0` AND `IFrontComposerRegistry.GetManifests()` returns ≥ 1 manifest. **Then** the "All caught up" state renders with the `HomeAllCaughtUpText` key ("All caught up. No items need your attention."), all contexts listed alphabetically, NO urgency subtitle. | T3 |
+| **AC4b** | **Given** `FcHomeDirectory` **AND** the user is a *first-visit* user (`SeenCapabilities.IsEmpty` AND `TotalActionableItems == 0`). **When** ≥ 1 manifest is registered. **Then** a dedicated first-visit state renders with the `HomeFirstVisitText` key ("You're all set up. Items will appear here as teams send work your way.") — distinct from AC4a's "All caught up" copy so a newly-onboarded user does NOT see the same visual as a veteran with no urgency, eliminating the "is it broken?" failure mode surfaced in UX review. Contexts still list alphabetically; NO urgency subtitle. | T3 |
+| **AC5** | **Given** `FcHomeDirectory`. **When** `IFrontComposerRegistry.GetManifests().Count == 0`. **Then** the empty state renders (`HomeNoMicroservicesText` + `HomeGettingStartedLinkText`) pointing to the getting-started guide. | T3 |
+| **AC6** | **Given** `FcHomeDirectory` is mounting for the first time in a circuit and `BadgeCountService` is still resolving initial counts. **When** the component renders. **Then** every bounded-context card renders as `<FluentSkeleton>` placeholders (one per manifest) with `aria-busy="true"`. **And** skeletons are replaced by real cards progressively as each `CountChanged` tick arrives (no all-or-nothing wait). | T3 |
+| **AC7** | **Given** `FcHomeDirectory` is interactive. **When** keyboard navigation is used. **Then** the container carries `role="main"`, each card carries `role="link"` with `aria-label` including the badge count (`"Orders, 3 items pending"` template), and the cards-list container carries `aria-description="Sorted by urgency"` localized via `HomeSortedByUrgencyAriaDescription`. **And** Tab traversal visits cards in urgency order. **And** Enter / Space activates the card and calls `NavigationManager.NavigateTo(projectionRouteUrl)`. | T3 |
+| **AC8** | **Given** a registered bounded context or projection that the current user has not previously visited (i.e., its stable `capabilityId` is not in the seen-set persisted under `{tenantId}/{userId}/capability-seen`). **When** it appears in the sidebar nav AND the `IActionQueueCountReader` reports count > 0 for at least one of its projections. **Then** a subtle `<FluentBadge Appearance="Accent" Intent="Info">` labelled `NewCapabilityBadgeText` renders alongside the nav entry. **And** NO "New" badge surfaces for projections with zero data (empty projections stay invisible in the nav entirely). | T4 |
+| **AC9** | **Given** the user clicks a nav entry carrying the "New" badge. **When** the click fires. **Then** `CapabilityVisitedAction(capabilityId)` is dispatched. **And** the seen-set gains the new `capabilityId` and persists to `IStorageService` under the tenant/user-scoped key. **And** the "New" badge disappears on the next render. **And** the badge does NOT reappear for that capability on subsequent circuits / sessions (verified by re-hydrating the seen-set at app init). | T4 |
+| **AC10** | **Given** sidebar nav-item badge counts. **When** `IBadgeCountService.CountChanged` emits an update for a projection whose type is rendered as a sidebar entry. **Then** the nav item's adjacent `<FluentBadge>` updates in real time without full shell re-render. **And** the command-palette result list (Story 3-4) reflects the same count on its next query (covered by 3-4's existing contract — NO 3-5 code change required in the palette). | T5 |
+| **AC11** | **Given** persistence scope is null, empty, or whitespace for either tenant OR user. **When** ANY seen-set persistence operation is attempted — **both** hydrate (read) and persist (write) paths. **Then** the I/O is silently skipped, `HFC2105_StoragePersistenceSkipped` logs at Information (reused from Story 3-1) with a structured payload identifying `{Direction: "hydrate"|"persist"}` to disambiguate operator logs, the hydrate path dispatches `SeenCapabilitiesHydratedAction(ImmutableHashSet<string>.Empty)` to unblock the render pipeline, the persist path simply returns, and in-memory behavior is unaffected. **And** NO cross-tenant / cross-user data can leak through a shared key in either direction (L03 fail-closed symmetry — the read-side guard is as non-negotiable as the write-side per feedback memory `feedback_tenant_isolation_fail_closed.md`). | T4, T7 |
+| **AC12** | **Given** `BadgeCountService.InitializeAsync` encounters an exception during initial fetch (a single projection's reader throws). **When** the exception propagates to the effect. **Then** `HFC2112_BadgeInitialFetchFault` logs at Warning with structured payload `{ProjectionTypeName, ExceptionType, ExceptionMessage}`, the offending type is excluded from `Counts`, and the remaining projections' counts publish normally. **And** the exception NEVER crashes the shell or the Fluxor error boundary. | T2 |
+| **AC13** | **Given** the shell's French locale. **When** `FcHomeDirectory` renders. **Then** every visible string resolves from `FcShellResources.fr.resx`. **And** the existing `CanonicalKeysHaveFrenchCounterparts` test passes with the new 10 keys added to both files. **And** the two highest-emotional-weight keys (`HomeWelcomeTemplate`, `HomeAllCaughtUpText`) have a native-French-speaker pre-merge review attached to the PR per D19. | T6 |
+
+---
+
+## Critical decisions (READ FIRST — do NOT revisit)
+
+> **20 binding decisions.** Feature-story budget is ≤ 25 (L06) — 3-5 lands at 20/25, leaving a 5-decision buffer for review rounds before Occam/Matrix trimming is required. Raise a spec-change proposal before revisiting any entry.
+
+| # | Decision | Rationale | Consumed by |
+|---|---|---|---|
+| **D1** | **`BadgeCountService` (Shell) is `Scoped`** — per-circuit in Blazor Server, per-user in WASM. Registered via `services.AddScoped<IBadgeCountService, BadgeCountService>()` inside `AddHexalithFrontComposer` in `Extensions/ServiceCollectionExtensions.cs`, placed **immediately after the existing `CommandPaletteEffects` registration** to keep Story-3 concerns grouped (semantic anchor only — do NOT hard-code line numbers, they drift story-to-story). Uses `TryAddScoped` so an adopter that pre-registered a custom implementation wins. | ADR-044 explicitly requires Scoped — a Singleton implementation would leak per-user `CountChanged` subscriptions across circuits and cause `InvalidOperationException` from `StateHasChanged` calls into disposed render trees. The `TryAdd` pattern preserves the adopter extensibility hatch documented in 3-4's interface XML-doc. | T1, T7; AC1 |
+| **D2** | **`IActionQueueProjectionCatalog` is a new contract** in `Contracts/Badges/`: `public interface IActionQueueProjectionCatalog { IReadOnlyList<Type> ActionQueueTypes { get; } }`. Default `ReflectionActionQueueProjectionCatalog` in `Shell/Badges/` takes an **injected `IEnumerable<Assembly>` in its constructor** (default registration supplies `AppDomain.CurrentDomain.GetAssemblies()` via a factory lambda), filters to `IsClass && !IsAbstract && GetCustomAttribute<ProjectionRoleAttribute>()?.Role == ProjectionRole.ActionQueue`, caches the result in a `Lazy<IReadOnlyList<Type>>` for idempotency. **Cache semantics are first-call-wins for the lifetime of the Singleton registration** — an adopter lazy-loading a bounded-context assembly **after** the first `ActionQueueTypes` read will NOT see new types until service-container rebuild. This is an acknowledged constraint of reflection-based discovery (adopters with post-boot assembly loading override with a dynamic source-generated catalog via the TryAddSingleton override path below, or in the test fixture by passing an explicit `IEnumerable<Assembly>`). Registered `TryAddSingleton` — catalog is stateless within that lifetime and benefits from cache-once reuse across circuits. Adopter override path: `services.TryAddSingleton<IActionQueueProjectionCatalog, MyCatalog>()` **before** `AddHexalithFrontComposer` wins (TryAdd no-ops over existing). | Two separate contracts (catalog + reader — D3) cleanly split "which projections qualify" from "what are their counts". Merging into one `IBadgeSource` would couple two concerns and force adopters who only want to override one axis to re-implement both. Constructor-injected assembly list makes the reflection implementation **unit-testable in isolation** — test fixture passes a synthetic assembly list without needing `AppDomain` manipulation, eliminating cross-test leakage under parallel xUnit collections (Murat's risk #4 closed at the source). Reflection default is ergonomic for Counter.Web + trim-tolerant hosts; AOT hosts override with a source-generated catalog (Story 9-1 territory — tracked as Known Gap G22). `[DynamicallyAccessedMembers]` annotation NOT required because the catalog enumerates types, not members. Rejected additional: (e) rescan on every read — defeats the Singleton caching rationale and makes hot-path reads unpredictable; (f) explicit `RefreshAsync()` method — widens the contract without a concrete adopter demanding it. | T1, T2; AC1, AC2 |
+| **D3** | **`IActionQueueCountReader` is a new contract** in `Contracts/Badges/`: `public interface IActionQueueCountReader { ValueTask<int> GetCountAsync(Type projectionType, CancellationToken cancellationToken); }`. Default `NullActionQueueCountReader` returns `ValueTask.FromResult(0)` for every type. Registered `TryAddScoped` in `AddHexalithFrontComposer`. Story 5-1's `AddHexalithEventStore()` (referenced in `ServiceCollectionExtensions.cs` line 167 existing comment) **MUST** register a real reader at Scoped lifetime that satisfies the contract. | The `ValueTask` return type matches the expected hot-path: an EventStore-backed reader usually has an async network call but can return synchronously on cache hit. Cancellation token propagates the 5 s umbrella timeout (D4) into the per-type fetch. The `NullActionQueueCountReader` default means the Counter.Web sample + test harnesses boot without EventStore — FR21 is met at zero adopters (home renders the "All caught up" state). Rejected alternatives: (a) return `Task<int>` — gives up the ValueTask perf win without benefit; (b) return `int?` with null == unknown — makes the merge logic in `BadgeCountService` ambiguous; unknown vs zero both render as "no badge" visually, so conflating them via `0` is simpler. | T1, T2; AC1, AC2, AC12 |
+| **D4** | **Initial fetch runs inside a Fluxor effect** `CapabilityDiscoveryEffects.HandleAppInitializedForBadges` (separate from the existing nav / theme / density hydration effects so test isolation stays clean). The effect resolves `IActionQueueProjectionCatalog.ActionQueueTypes`, creates one linked `CancellationTokenSource` with `TimeSpan.FromSeconds(5)` **via the injected `TimeProvider`** (`TimeProvider.CreateCancellationTokenSource(TimeSpan.FromSeconds(5))` on the nullable-linked source), fans out `var tasks = types.Select(t => FetchOneAsync(t, cts.Token)).ToArray(); await Task.WhenAll(tasks);`, then dispatches `BadgeCountsSeededAction(ImmutableDictionary<Type,int>)`. `BadgeCountService` also takes `TimeProvider` in its ctor (`TimeProvider.System` by default) so unit tests can substitute `Microsoft.Extensions.Time.Testing.FakeTimeProvider` and assert timeout behavior deterministically without `Task.Delay(5000)` in the test fixture. Per-type failures are caught inside `FetchOneAsync`, logged as `HFC2112_BadgeInitialFetchFault` at Warning, and excluded from the result — the outer `Task.WhenAll` never sees a faulted task, so the effect never crashes. The reducer for `BadgeCountsSeededAction` assigns a new `FrontComposerCapabilityDiscoveryState` record with the seeded counts; a small bridge publishes them through `BadgeCountService._subject.OnNext(...)` for each type. **Fluxor effect dispatches, service publishes** — same pattern as Story 3-4 D8 (reducers stay pure, effects do the work). | `Task.WhenAll` with a single shared CTS is the standard .NET fan-out pattern. `TimeProvider` (BCL since .NET 8) is the current idiomatic time abstraction — injection closes Amelia's un-testable-as-written concern and keeps the 5s assertion fast-and-deterministic under `FakeTimeProvider`. The 5 s timeout is generous for an EventStore warm-fetch but far below the shell's first-interactive target (NFR29 sub-300 ms) because the fetch runs non-blocking — the shell renders skeletons immediately (AC6) and populates as counts land. Per-type try/catch inside `FetchOneAsync` is load-bearing: one misconfigured reader must not take down the whole badge system. Rejected: (a) block shell render on fetch completion — violates progressive-rendering AC6; (b) rely on `ConfigureAwait(false)` in a synchronous constructor — bUnit + Blazor Server lifecycle hooks run on the sync context, constructor fire-and-forget is a fragility factory; (c) single CTS per-type timeout of 2 s — forces EventStore cold-start failures to silently succeed as zero-count (misleading); (d) use `Task.Delay(5000)` in tests — banned by the test-flake budget; real-time assertions are the #1 flake source in the existing test suite. | T2, T7; AC1, AC6, AC12 |
+| **D5** | **`BadgeCountService` internal count store is `ImmutableDictionary<Type, int>`** assigned through `Interlocked.Exchange<ImmutableDictionary<Type, int>>(ref _counts, next)`. `Counts` property returns `_counts` directly (immutable). `CountChanged` is a **privately-held** `System.Reactive.Subjects.Subject<BadgeCountChangedArgs>` (`_subject`) exposed publicly ONLY as `IObservable<BadgeCountChangedArgs>` via `_subject.AsObservable()` — consumers MUST NOT be able to downcast and call `OnNext` / `OnError` / `OnCompleted` on the producer's subject. `Subscribe(observer)` delegates to the observable-view's subscribe. `TotalActionableItems` is computed on read as `_counts.Values.Sum()` — no cached field (the dictionary is small, N = count of ActionQueue projections, typically < 50). **Package hygiene: `Hexalith.FrontComposer.Shell.csproj` adds an explicit `<PackageReference Include="System.Reactive" />` rather than relying on Fluent UI Blazor v5's transitive pull — if Fluent UI drops the dependency in a minor bump we would break silently.** | Lock-free reads via `Interlocked.Exchange` are the standard pattern for Scoped single-writer services where read frequency vastly exceeds write frequency (palette + home + sidebar all read on each `CountChanged`). The `AsObservable()` wrap is the canonical Rx pattern for producer/consumer isolation — without it, a malicious or buggy consumer could inject phantom `OnNext` events into the badge stream (a genuine blast-radius concern in a Scoped service reused across components). Explicit package reference is Winston's good-hygiene push: the cost is one line of csproj, the benefit is a compile-break instead of a runtime-break if the transitive closure changes. `Subject<T>` is the BCL-supplied multicast `IObservable`. Rejected: (a) `BehaviorSubject<T>` for replay-last — `CountChanged` is a delta stream, not a snapshot stream; subscribers use the `Counts` property for snapshot; (b) hand-rolled `event Action<...>` — no backpressure, no subscription disposal semantics, harder to test; (c) expose `Subject<T>` directly — violates producer/consumer encapsulation. | T1; AC1, AC2, AC10 |
+| **D6** | **Live updates subscribe to `IProjectionChangeNotifier` via nullable DI** (`IServiceProvider.GetService<IProjectionChangeNotifier>()` — same pattern 3-4 D16 uses for `IBadgeCountService` itself). Absent notifier → initial fetch still runs, live deltas are silently unavailable (a reasonable v1 state because Story 5-3 is the real producer). Subscription lives on `BadgeCountService` constructor: when the notifier resolves, hook `_notifier.ProjectionChanged += OnProjectionChanged`; dispose on `IAsyncDisposable.DisposeAsync` via `_notifier.ProjectionChanged -= OnProjectionChanged`. The handler is `private async void OnProjectionChanged(string projectionTypeName)` — `async void` is deliberate here because event handlers cannot be `async Task` and we need to await the count reader; exceptions inside are **always** wrapped in a top-level try/catch and logged as `HFC2112` — **no path permits an exception to escape the handler** (critical because an escaped exception inside `async void` kills the Blazor Server circuit; Murat's P0 concern). **Ordering semantics:** `CountChanged` provides **last-writer-wins per-projection-type** — callers must NOT rely on causal ordering of emissions across different types. Concretely: when two notifications arrive for types A and B in rapid succession, the `OnNext` ordering on the observable is whichever reader resolves first (both handler invocations await independently). Within a single type's update history, `Interlocked.Exchange` + the fact that each `OnProjectionChanged` invocation writes only one type key preserves per-type monotonicity (the last observed `newCount` for type T is always the most recent reader read for T). Consumers that need a totally-ordered stream MUST compose their own sequencer on top. | Nullable DI preserves the "Story 3-5 does not block on Story 5-3" invariant (same invariant 3-4 established for 3-5). `async void` is the one canonical use-case for that modifier (event handler); the alternative (`_ = Task.Run(...)`) is strictly worse because it bypasses Blazor's sync context. Total-ordering would require a single-consumer channel (`Channel<(Type,int)>`) which is a lot of plumbing for a home-page badge — we explicitly take the simpler shape and document the consequence. Rejected: (a) require `IProjectionChangeNotifier` registration — hard-couples Story 3-5 to Story 5-3 ship order; (b) poll the reader on a `PeriodicTimer` — wrong shape (reactive update is free, polling is wasteful); (c) raise a new `FrontComposerBadgeState.UpdateAction` and let an effect do the work — over-engineers what is fundamentally a fire-and-forget event bridge; (d) serialize all reads through a `SemaphoreSlim(1,1)` — imposes total ordering at the cost of head-of-line blocking on slow readers, which is strictly worse UX for the palette/home consumers. | T2; AC2, AC10 |
+| **D7** | **Type resolution from notifier strings** — `IProjectionChangeNotifier.ProjectionChanged` payload is `string projectionTypeName` (a fully-qualified C# type name per its XML-doc). `BadgeCountService` resolves via `Type.GetType(name, throwOnError: false, ignoreCase: false)`. If resolution fails AND the string is not in a `ConcurrentDictionary<string, byte> _unresolvedTypes` guard, log `HFC2113_ProjectionTypeUnresolvable` at Information exactly once, then add to the guard. Resolution succeeds but the resolved type is NOT in `IActionQueueProjectionCatalog.ActionQueueTypes` → silent no-op (expected flow for non-ActionQueue projections that share the notifier). **Dedup scope is the `BadgeCountService` instance (Scoped lifetime) — the `_unresolvedTypes` field is an instance field, NOT a static. This preserves the "log once per distinct type-string" operator contract within a circuit/user lifetime while avoiding cross-test / cross-circuit leakage under parallel xUnit collections and `WebApplicationFactory`-based integration tests.** | `Type.GetType` with `throwOnError: false` is the standard .NET late-bound type lookup; the ConcurrentDictionary de-dup prevents log spam from a mis-registered projection name firing on every SignalR event. Scoping the dedup to the service instance matches the Scoped service lifetime (circuit-scoped in Blazor Server, per-user in WASM) — an operator investigating a production issue still sees one log per circuit per unresolvable string, which is the actionable granularity. Rejected: (a) cache `Dictionary<string, Type>` at catalog build time — makes the catalog responsible for name-string round-tripping (it isn't) and is brittle against assembly-qualified vs. full-name string variations; (b) log every resolution miss — Information-severity spam, operator noise; (c) elevate to Warning — a "notifier produced a string I cannot resolve" is most likely an adopter configuration issue, not a framework bug; (d) static dedup dict — cross-circuit / cross-test leakage, flaky assertion counts. | T2; AC2 |
+| **D8** | **`FrontComposerCapabilityDiscoveryState` is a new per-concern Fluxor feature** in `Shell/State/CapabilityDiscovery/`. State shape: `public record FrontComposerCapabilityDiscoveryState(ImmutableDictionary<Type,int> Counts, ImmutableHashSet<string> SeenCapabilities, CapabilityDiscoveryHydrationState HydrationState)`. Initial state: `(ImmutableDictionary<Type,int>.Empty, ImmutableHashSet<string>.Empty, CapabilityDiscoveryHydrationState.Idle)`. The `Counts` dictionary here is **a mirror for renderers** — it lets `FrontComposerNavigation` + `FcHomeDirectory` read counts via Fluxor's `[Inject] IState<T>` without each subscribing individually to `IBadgeCountService.CountChanged`. The `BadgeCountService` is the source of truth; the state is a projection (writer: `BadgeCountsSeededAction` reducer + `BadgeCountChangedAction` reducer). `SeenCapabilities` is the persisted "New" badge suppressor set. | Per-concern features is the architecture § 527-536 pattern already proven across Theme / Density / Navigation / CommandPalette. Folding into NavigationState would couple two independent persistence lifecycles (nav = sidebar-collapsed bool + collapsed-groups dict; capability discovery = seen-set + counts mirror) — per L02 the producer + consumer must live together, but they don't need to share state with unrelated features. Rejected: (a) extend NavigationState — crosses two concerns; (b) zero state, rerun `IBadgeCountService.CountChanged` subscriptions per-consumer — N consumers × N subscription lifetimes, tricky disposal; (c) a dedicated `BadgeState` feature separate from capability-discovery — the two are read together (a nav-item shows BOTH badge count and New badge) so co-locating is cleaner. | T3, T4, T5; AC3, AC8, AC9, AC10 |
+| **D9** | **Fluxor producer / consumer list (L02 discipline)** — **PRODUCER (3-5):** `FrontComposerNavigation.HandleNavItemClick` dispatches `CapabilityVisitedAction(capabilityId)`; `FcHomeDirectory.HandleCardClick` dispatches the same; `BadgeCountService` bridges reader events to `BadgeCountChangedAction`. **EFFECTS (3-5):** `CapabilityDiscoveryEffects.HandleAppInitialized` (hydrate seen-set from storage, seed counts from `IActionQueueCountReader`); `CapabilityDiscoveryEffects.HandleCapabilityVisited` (persist updated seen-set to storage, L03 fail-closed). **CONSUMERS (3-5):** `FrontComposerNavigation` (renders "New" badge + count badge); `FcHomeDirectory` (renders cards sorted by count). **NO dead reducers** — every action has a producer in 3-5 and every reducer is exercised by at least one test. | L02 requires the feature, its effects, its producers, AND its consumers to all land in one story to prevent "half a state machine — untested reducers rot." Story 3-5 satisfies this by design: nav + home are both 3-5 deliverables. Documented explicitly to make the producer/consumer coverage audit trivial at code review. | T2, T3, T4; AC1, AC8, AC9 |
+| **D10** | **L03 fail-closed on seen-set persistence.** `CapabilityDiscoveryEffects.HandleCapabilityVisited` resolves `IUserContextAccessor.TryGetScope(out tenantId, out userId)` (or inline guard — whichever exists today per nav state precedent). Null, empty, or whitespace on either → `HFC2105_StoragePersistenceSkipped` at Information, effect returns without calling `IStorageService.SetAsync`. Hydrate path mirrors: skip the `GetAsync` if scope is unavailable, dispatch `SeenCapabilitiesHydratedAction(ImmutableHashSet<string>.Empty)`. Storage key: `StorageKeys.BuildKey(tenantId, userId, "capability-seen")` — same `BuildKey` helper used by nav / theme / density / palette-recent stories, ensuring one central fail-closed branch. | Matches nav state's scope-guard (lines 62-64 of `NavigationEffects.cs` per the codebase survey). L03 is mandatory per feedback memory `feedback_tenant_isolation_fail_closed.md` — "never use anonymous/default fallback segments." Information severity aligns with 3-1 / 3-2 / 3-3 / 3-4 precedent — this is a normal anonymous-user flow (pre-login), not an error condition. Rejected: (a) use `""` fallback — leaks cross-tenant; (b) throw — shell bootstraps must be resilient to missing scope; (c) use Warning — false-positive operator noise. | T4, T7; AC11 |
+| **D11** | **Seen-set capability-id schema.** `capabilityId` is a stable string. For bounded contexts the id is `"bc:{BoundedContextName}"` — e.g., `"bc:Counter"`. For projections it is `"proj:{BoundedContextName}:{ProjectionTypeFullName}"` — e.g., `"proj:Counter:Hexalith.Samples.Counter.Projections.CounterProjection"`. Prefixes (`bc:` / `proj:`) are RESERVED for framework; adopters (v1.x extensibility) may introduce their own prefixes but MUST NOT use `bc:` / `proj:`. The seen-set membership is an exact-string match. The full-name-based projection id means renaming a projection type (a breaking domain change anyway) surfaces as "New" again on first post-rename visit — that's the correct user signal. | Stable prefixes + colons are unambiguously parseable and readable in storage dumps. Using the full type name (vs. short name) protects against name collisions between bounded contexts (`Orders.OrderProjection` vs `Commerce.OrderProjection` are distinct). Rejected: (a) GUID-keyed seen-set — requires a map table, complex recovery; (b) combined `{BC}/{Projection}` hierarchy — harder to query/audit; (c) include timestamp in the id — "seen on {date}" is not used anywhere, dead weight. | T4; AC8, AC9 |
+| **D12** | **"New" badge visibility rule.** A capability surfaces a "New" badge in nav / home iff **all** of: (a) its `capabilityId` is NOT in `SeenCapabilities`; (b) its badge count is > 0 (projection-level rule) OR at least one projection within the bounded context has count > 0 (BC-level rule). Rule (b) enforces Epic AC § 244 — "empty projections stay invisible in nav entirely." Projections with zero data do NOT render a nav entry AT ALL, so the "New" badge cannot show on something a user has never seen. Rule (b) is evaluated live via `_counts` (reader-sourced); a projection that transitions 0 → 1 IS the event that gates the nav-entry appearing AND the "New" badge. **BC-vs-projection lifecycle (G25 resolved):** "New" badges track **per-capabilityId** — dismissing the BC-level badge (clicking the BC card header) adds `"bc:{BC}"` to the seen-set but does NOT add any `"proj:{BC}:{Projection}"` ids. Conversely, dismissing a projection entry adds only that `"proj:..."` id. Consequence: a BC whose second projection gains data *after* the user has dismissed the BC-level badge WILL re-surface a projection-level "New" on that specific projection (but not a second BC-level badge). This matches user intuition — "I acknowledged the area, I have not yet seen this specific thing." The BC-level "New" indicator on a card header is rendered iff `"bc:{BC}" ∉ SeenCapabilities` AND at least one of its projections has count > 0. The projection-level "New" on a nav entry is rendered iff `"proj:{BC}:{Type}" ∉ SeenCapabilities` AND that projection's count > 0. Both rules evaluate independently. | Couples "New" badge to "has data" — a user never sees a "New" badge for an empty projection, and never sees an empty projection in nav. The count transition IS the event the badge is tied to. The per-id lifecycle (BC vs. projection tracked separately) resolves Sally's Day-30 concern about "inconsistency reads as bugs" — the user's mental model of "I saw Returns the BC, I have not yet seen the Refund-exceptions projection" is exactly what the seen-set models. Rejected: (a) show "New" on all registered capabilities regardless of data — produces a tsunami of "New" badges for projections the user cannot actually reach yet; (b) compute the rule only at app init — misses live arrivals; (c) fire a toast / notification on 0 → 1 transition — violates the UX commitment to "silent arrival" (desired-emotional-response.md line 113 "disappears after first click"); (d) BC-click dismisses all child projection ids transitively — overwrites the user's fine-grained signal of what they have vs. haven't reviewed. | T4; AC8, AC9 |
+| **D13** | **"New" badge is dismissed on the FIRST click of the nav entry.** `FrontComposerNavigation.@onclick` handler dispatches `CapabilityVisitedAction(capabilityId)` **synchronously before** `NavigationManager.NavigateTo`. The reducer adds `capabilityId` to `SeenCapabilities`; the effect persists async. **Effect-failure contract (Amelia's concern):** when `HandleCapabilityVisited`'s `IStorageService.SetAsync` throws after the user has navigated away, the effect catches the exception, logs `HFC2112_BadgeInitialFetchFault` with structured payload `{CapabilityId, ExceptionType, ExceptionMessage}`, and returns — the exception NEVER propagates, NEVER triggers a UI error boundary, and NEVER blocks the user's destination page from rendering. The in-memory reducer state is already authoritative for the current circuit (the reducer ran synchronously before navigation), so the "New" badge stays dismissed for this session; the only consequence of the write failure is that a subsequent circuit/session may re-surface the "New" badge (acceptable degraded behavior — the user sees the badge twice, which is strictly better than a crashed page). If persistence fails (disk-full / quota-exceeded / private-browsing) the in-memory state already reflects "seen" for this session, matching the 3-1 / 3-2 / 3-3 precedent that UI state changes are authoritative for the current circuit and storage is best-effort. A subsequent same-session re-navigation to the nav item does NOT re-dispatch `CapabilityVisitedAction` because the reducer's duplicate-add is idempotent (`ImmutableHashSet.Add` returns the same instance if already present) and the effect short-circuits. | Synchronous dispatch before navigation ensures the reducer update happens before the destination page's `OnInitialized` — no flash-of-stale-New-badge. Idempotent re-click handling is free via `ImmutableHashSet` semantics. Effect-failure fail-soft matches Story 3-1 / 3-2 / 3-3 storage-is-best-effort precedent — a failed write should never ruin the user's immediate interaction. Rejected: (a) dismiss on hover — accessibility fail (keyboard users); (b) dismiss on destination page render — timing is visible to the user as a badge flicker; (c) add a `DismissAction` separate from `VisitedAction` — two actions for one event is over-specification; (d) surface effect failure as a toast — violates silent-arrival UX and adds a DismissFailure action/reducer for a cosmetic concern; (e) retry persistence on failure — unbounded retry opens a DOS vector against a broken storage layer. | T4; AC9 |
+| **D14** | **Sidebar nav count badge** is rendered by `FrontComposerNavigation` as a `<FluentBadge Appearance="Accent">` next to projection entries when `_counts.TryGetValue(type, out var count) && count > 0`. Live updates via `[Inject] IState<FrontComposerCapabilityDiscoveryState>` — the component subscribes to state changes, NOT directly to `IBadgeCountService.CountChanged`. The Fluxor state + `StateSubscriber` pattern preserves the existing nav component's subscription lifecycle (mirrors Story 3-2 precedent). | Subscribing consumers to the Fluxor state (one subscription per component) instead of to `IBadgeCountService.CountChanged` directly (N subscriptions per component × M consumers) gives us a single publish-to-state bridge + N Fluxor state observers. Cheaper + same-pattern-as-nav precedent. Rejected: (a) each consumer subscribes to `IBadgeCountService.CountChanged` — multiplicative subscription count; (b) re-publish via a CustomEvent on DOM — Blazor anti-pattern. | T5; AC10 |
+| **D15** | **`FcHomeDirectory` renders progressively.** On first render `HydrationState == Idle` (or `Seeding`), the component renders one `<FluentSkeleton>` card per registered manifest with `aria-busy="true"`. As `BadgeCountChangedAction` events roll in (dispatched by the seed effect per-type), the skeleton for the owning bounded-context card is swapped for a real card (count badge + projection entries). The transition is **per-bounded-context** — NOT per-projection — because the urgency-sort requires at least one count to order against. A bounded context with all-zero counts surfaces in the collapsed "Other areas" section only after seeding completes (`HydrationState == Seeded`). | Progressive rendering meets AC6 verbatim and the UX spec's "Cards render immediately with FluentSkeleton placeholders and populate as the service completes initial fetch." Per-bounded-context swap (not per-projection) avoids partial cards during seed; the "Other areas" collapse waits for Seeded so users never see a card bouncing between Urgent and Other during seeding. | T3; AC3, AC6 |
+| **D16** | **Route registration** — a new `FcHomeRouteView.razor` page in `Shell/Components/Pages/` with `@page "/"` and `@page "/home"` directives renders `<FcHomeDirectory />`. The page is a pure routing shim (no logic) — all state is in `FcHomeDirectory`. The page lives in the Shell assembly so adopters who call `AddHexalithFrontComposer()` get the home route for free. An adopter who wants a different landing page registers their own `@page "/"` **in their own assembly scanned after the Shell** — Blazor's route-table takes the last matching exact route (later-scanned assemblies win). | Centralizing the route at the shim page keeps `FcHomeDirectory` a pure component (composable, testable without routing). Blazor's assembly-scan-order-wins semantic is the adopter opt-out mechanism — documented in the XML-doc on `FcHomeRouteView`. Rejected: (a) mount the route directly on `FcHomeDirectory` — couples the component to routing; (b) make the Shell a `_Imports.razor` consumer that re-exports the route — confusing indirection; (c) require every adopter to manually route to `FcHomeDirectory` — degrades the "AddHexalithFrontComposer and go" first-run experience. | T3; AC3-AC6 |
+| **D17** | **Zero-urgency collapsed "Other areas" accordion.** Bounded contexts whose aggregate count == 0 render inside a single `<FluentAccordionItem>` below the urgency-sorted cards, titled `HomeOtherAreasHeading`. The accordion is `collapsed` by default; expanding it reveals the contexts in ordinal-ascending display-name order. When NO contexts are zero-urgency, the accordion does NOT render at all (avoids empty-accordion DOM noise). When ALL contexts are zero-urgency (i.e., AC4 "All caught up"), the entire accordion is absent — contexts render inline alphabetically as primary cards (AC4 rendering path). | Collapsed-by-default matches the UX spec's "listed at the bottom in a collapsed 'Other areas' section." Rendering inline when all are zero-urgency keeps AC4's "caught up" state visually distinct from "urgency-sorted with tail" — a user who has nothing urgent sees a flat alphabetical list, a user with partial urgency sees urgent first + tucked-away accordion. Rejected: (a) always render the accordion even with zero zero-urgency contexts — DOM noise; (b) render zero-urgency as faded inline cards — defeats the purpose of de-prioritizing them visually. | T3; AC3, AC4 |
+| **D18** | **Two new diagnostic IDs reserved in `FcDiagnosticIds.cs`**: `HFC2112_BadgeInitialFetchFault` at Warning (structured payload `{ProjectionTypeName, ExceptionType, ExceptionMessage}`), and `HFC2113_ProjectionTypeUnresolvable` at Information (structured payload `{TypeNameString}`, de-duplicated via the `ConcurrentDictionary<string, byte>` guard per D7). No new analyzer rules (those live in Story 9-4). `AnalyzerReleases.Unshipped.md` entries: add both IDs under their severity categories. | One diagnostic per behavioral category (Story 3-2 D12 / 3-4 D19 precedent). Warning for the fetch fault because it indicates a concrete adopter or framework bug (a reader that throws); Information for the type-unresolvable case because it is almost always an adopter mis-registration (the log message is actionable without escalation). Structured payloads mirror 3-4 D19's call-site-hint convention for operator searchability. | T1, T2, T7; AC2, AC12 |
+| **D19** | **Resource keys — 10 new, EN + FR parity = 20 new strings; total goes 47 → 57 per locale.** New keys: `HomeWelcomeTemplate` ("Welcome back, {0}." / "Bon retour, {0}."), `HomeWelcomeAnonymous` ("Welcome back." / "Bon retour.") **[mandatory — used whenever `AuthenticationState.User.Identity.Name` is null / empty / whitespace; "Welcome back, ." is explicitly forbidden]**, `HomeFirstVisitText` ("You're all set up. Items will appear here as teams send work your way." / "Tout est en place. Les éléments apparaîtront ici au fur et à mesure que vos équipes vous transmettent du travail.") **[used by AC4b to distinguish Day-1 newcomer from returning caught-up user]**, `HomeItemsTemplate` ("You have {0} items needing attention across {1} areas." / "Vous avez {0} éléments nécessitant votre attention réparties sur {1} domaines."), `HomeAllCaughtUpText` ("All caught up. No items need your attention." / "Tout est à jour. Aucun élément ne nécessite votre attention."), `HomeNoMicroservicesText` ("No microservices registered." / "Aucun microservice enregistré."), `HomeGettingStartedLinkText` ("See the getting-started guide." / "Consulter le guide de démarrage."), `HomeOtherAreasHeading` ("Other areas" / "Autres domaines"), `HomeSortedByUrgencyAriaDescription` ("Sorted by urgency" / "Trié par urgence"), `NewCapabilityBadgeText` ("New" / "Nouveau"). All keys carry an inline `<comment>` tag in the `.resx` referencing Story 3-5 + the relevant AC for traceability. **Pre-dev-complete French pass:** the two highest-emotional-weight keys — `HomeWelcomeTemplate` and `HomeAllCaughtUpText` — MUST be reviewed by a native French speaker before merge (not deferred to Story 9-5). The remaining 8 keys stay eligible for the G23 deferral. | Minimal key count matches UX spec wording 1:1; `{0}` / `{1}` placeholders use `string.Format(IStringLocalizer[...].Value, ...)` at call-site (existing shell convention). Promoting `HomeWelcomeAnonymous` from conditional (original D19 "iff tests require it") to mandatory closes a UX hole — anonymous-fallback rendering "Welcome back, ." is the exact kind of polish gap that produces Day-1 screenshots. `HomeFirstVisitText` closes the Day-1 newcomer empty-state trust-collapse identified by UX review. French pre-pass on the two highest-impact keys trades a few minutes of translator time for avoiding a first-impression failure in the francophone pilot. Rejected: (a) defer anonymous fallback — blocks on "will tests require it," which is the wrong gating question; (b) defer French pre-pass entirely — G23 covers the long-tail review but the welcome / caught-up strings are load-bearing for trust on first visit. | T6; AC4a, AC4b, AC13 |
+| **D20** | **Disposal discipline.** `BadgeCountService` implements `IAsyncDisposable`: `DisposeAsync` unsubscribes from `IProjectionChangeNotifier.ProjectionChanged` (if subscribed), calls `_subject.OnCompleted()` to signal subscribers, then `_subject.Dispose()`. Any in-flight `ValueTask<int>` from the reader is cancelled via a service-lifetime CTS. Fluxor effect classes (`CapabilityDiscoveryEffects`) implement `IDisposable` for their own CTS cleanup — mirrors 3-4's `CommandPaletteEffects` disposal pattern. Circuit teardown test (`BadgeCountServiceTests.DisposeAsync_CompletesObservableAndUnsubscribesFromNotifier`) verifies. | Failure to dispose the `Subject` leaks subscribers' references across circuits (a Scoped service's lifetime is circuit-scoped; an un-disposed subject keeps observer references rooted in the effects pipeline). OnCompleted + Dispose is the Rx `IDisposable` contract. Rejected: (a) rely on GC — non-deterministic, test-flaky; (b) ignore disposal — subtle leak; (c) replace `Subject<T>` with a weak-ref event — premature optimization without benefit. | T1, T7; AC1 |
+
+---
+
+## Architecture decision records
+
+### ADR-045 — `IActionQueueProjectionCatalog` and `IActionQueueCountReader` are two separate contracts, NOT one
+
+**Status:** Accepted (Story 3-5).
+
+**Context:** The badge system needs two discrete pieces of information per ActionQueue projection: (a) WHICH types are ActionQueue-role projections (a set), and (b) HOW MANY actionable items exist RIGHT NOW for a given type (a scalar). Three candidate designs: one unified `IBadgeSource` interface carrying both; two separate contracts with TryAdd-Scoped defaults; or a registry-extension path putting the catalog on `IFrontComposerRegistry` and the reader on a separate contract.
+
+**Decision:** Two separate contracts in `Contracts/Badges/` — `IActionQueueProjectionCatalog { IReadOnlyList<Type> ActionQueueTypes { get; } }` and `IActionQueueCountReader { ValueTask<int> GetCountAsync(Type, CancellationToken); }`. Shipped alongside the existing `IBadgeCountService` interface (frozen by 3-4). Default implementations: `ReflectionActionQueueProjectionCatalog` (scans `AppDomain.CurrentDomain.GetAssemblies()` once, cached), `NullActionQueueCountReader` (returns 0 always). Both registered via `TryAddXxx` so adopter overrides win.
+
+**Rejected alternatives:**
+
+- **Unified `IBadgeSource { IReadOnlyList<Type> ActionQueueTypes; ValueTask<int> GetCountAsync(Type); }`.** Couples two concerns that adopters routinely override independently — a host that wants reflection-free catalog (AOT concern) but keeps the default null-reader MUST re-implement both. Separation of concerns keeps the override path granular.
+- **Catalog as a method on `IFrontComposerRegistry`.** Registry's role is compile-time composition of bounded contexts + projections + commands from domain assemblies. Adding a "what's the role of each type?" method widens the registry's charter beyond its 3-responsibility boundary (AddNavGroup, GetManifests, RegisterDomain, HasFullPageRoute). Rejected on single-responsibility grounds.
+- **Catalog inferred inside `BadgeCountService` via reflection, NO dedicated interface.** Works for v1 Counter.Web but offers zero override path for AOT / trimming / custom metadata adopters. Once 3-5 ships with no catalog interface, adding one later is a v2-break for any adopter that has built on top.
+- **Reader returns `Task<IReadOnlyDictionary<Type,int>>` (bulk fetch).** Surfaces less plumbing for the seed effect but forces the reader to know the full catalog (duplicating the catalog concern) OR produce a partial dictionary. Per-type ValueTask lets the effect fan out with `Task.WhenAll` and lets each reader implementation choose its own caching / network strategy.
+
+**Consequences:**
+
+- Adopters override catalog and reader independently — AOT hosts supply a source-generated catalog AND keep the default reader (or vice versa).
+- `NullActionQueueCountReader` means Story 3-5 merges BEFORE Story 5-1 without blocking — Counter.Web sees zero counts, which renders "All caught up" — a graceful degraded experience.
+- Two interfaces = two sets of XML-docs and two unit-test fixtures; the verbosity is the cost of decoupling.
+- Story 5-1's `AddHexalithEventStore()` will register the real `IActionQueueCountReader` at Scoped. The real reader will delegate to EventStore's count-endpoint with ETag caching (Story 5-2).
+- Reflection catalog is safe under default .NET hosts but incompatible with `PublishTrimmed=true`. Tracked as Known Gap **G22** — Story 9-1 (build-time drift detection) will emit a diagnostic when a trim-enabled project depends on the reflection default.
+
+**Verification:** `ReflectionActionQueueProjectionCatalogTests.DiscoversActionQueueProjectionsInLoadedAssemblies`, `ReflectionActionQueueProjectionCatalogTests.CachesResultAcrossRepeatedReads`, `NullActionQueueCountReaderTests.GetCountAsync_ReturnsZeroForAnyType` (Task 7.1–7.2).
+
+---
+
+### ADR-046 — "New" capability discovery uses a per-concern `FrontComposerCapabilityDiscoveryState` Fluxor feature, NOT an extension of `FrontComposerNavigationState`
+
+**Status:** Accepted (Story 3-5).
+
+**Context:** The "New" capability discovery mechanic needs: (a) a seen-set persisted per-tenant/per-user; (b) a real-time count mirror so nav + home can subscribe to one source; (c) an effect to hydrate both on app init; (d) a pair of reducers (seen-set update, count update). Three candidate homes for this state: extend the existing `FrontComposerNavigationState`; introduce a new per-concern feature; use a service + component-local state with no Fluxor involvement.
+
+**Decision:** A new per-concern Fluxor feature `FrontComposerCapabilityDiscoveryState` in `Shell/State/CapabilityDiscovery/` modeled on the Navigation / Theme / Density / CommandPalette per-concern precedent (architecture § 527-536). State shape: `(ImmutableDictionary<Type,int> Counts, ImmutableHashSet<string> SeenCapabilities, CapabilityDiscoveryHydrationState HydrationState)`. Actions: `BadgeCountsSeededAction`, `BadgeCountChangedAction`, `CapabilityVisitedAction`, `SeenCapabilitiesHydratedAction`. Effects in `CapabilityDiscoveryEffects` with `IStorageService` + `IUserContextAccessor` dependencies (fail-closed scope guard per L03).
+
+**Rejected alternatives:**
+
+- **Extend `FrontComposerNavigationState`.** Two unrelated persistence lifecycles collide: nav state persists sidebar-collapsed + collapsed-groups under one key; capability discovery persists a seen-set under a different key. Reducers for one feature would have to guard against mutations from the other, coupling two concerns that change at different cadences.
+- **Component-local state in `FrontComposerNavigation` + `FcHomeDirectory` with no Fluxor.** Two components, two subscription lifecycles, no central source-of-truth — home page sees counts via `IBadgeCountService.CountChanged`, nav sees counts via the same subscription separately, and the seen-set has to be propagated between them via some bus. Fluxor IS that bus in this codebase.
+- **Service-level state (inside `BadgeCountService`) exposed via an observable.** Viable for counts, but the seen-set is a persistence concern + involves storage effects — putting effects inside a DI service mixes concerns (service is reactive to events, effect is event-driven). The Fluxor feature pattern is specifically for this kind of event-sourced UI state.
+- **Store seen-set in `IStorageService` directly with no Fluxor state; components read on render.** Every render re-hydrates — slow, wasteful, no cross-component sharing. Also fails the hydration-at-init pattern established by Theme / Density / Navigation / CommandPalette.
+
+**Consequences:**
+
+- Per-concern feature adds one new reducer class + one effect class + one state record. Code volume: ~4 small files totaling ~300 lines. Test volume: ~15 reducer tests + ~5 effect tests.
+- The feature hydrates on the shared `AppInitializedAction` alongside theme / density / nav / palette — one more effect handler in the chain.
+- Nav + home consume via `[Inject] IState<FrontComposerCapabilityDiscoveryState>` — single subscription per component, auto-dispose on component teardown (Fluxor handles this).
+- Producer / consumer lineup (L02 discipline): PRODUCERS — `FrontComposerNavigation.@onclick` (CapabilityVisitedAction), `FcHomeDirectory.@onclick` (same), `BadgeCountService → BadgeCountChangedAction` bridge; CONSUMERS — `FrontComposerNavigation` (renders badges), `FcHomeDirectory` (renders cards); EFFECTS — `HandleAppInitialized` (hydrate + seed), `HandleCapabilityVisited` (persist).
+- No dead reducers — every action is fired by the test suite with an end-to-end path that asserts on the resulting render.
+
+**Verification:** `CapabilityDiscoveryReducersTests.*` (4 tests — seed / change / visit / hydrate), `CapabilityDiscoveryEffectsTests.*` (3 tests — init hydrate, init seed, visit persist + fail-closed), `FrontComposerNavigationTests.RendersNewBadgeForUnseenCapabilityWithData`, `FcHomeDirectoryTests.RendersNewBadgeAtCardLevel` (Task 7.3, 7.4).
+
+---
+
+### ADR-047 — `BadgeCountService` subscribes to `IProjectionChangeNotifier` via nullable DI; does NOT take a direct SignalR dependency
+
+**Status:** Accepted (Story 3-5).
+
+**Context:** Epic AC § 209-210 + § 246-249 require live badge-count updates from projection update events, with the update source explicitly a SignalR hub. Story 5-3 is the owner of real SignalR wiring. Story 3-5 must either (a) hard-couple to Story 5-3 and block on its ship order; (b) subscribe to an abstraction Story 5-3 will populate; or (c) implement a minimal SignalR client in 3-5 as a holding pattern.
+
+**Decision:** `BadgeCountService` consumes `IProjectionChangeNotifier` — an EXISTING provisional contract in `Contracts/Communication/IProjectionChangeNotifier.cs` — via nullable DI (`IServiceProvider.GetService<IProjectionChangeNotifier>()` in the constructor). When the notifier resolves, the service subscribes to `ProjectionChanged` event; when it doesn't, initial fetch still runs and live updates are unavailable. Story 5-3 WILL ship the real `SignalRProjectionChangeNotifier` implementation; Story 3-5 test suite uses `FakeProjectionChangeNotifier` via `Services.AddSingleton`.
+
+**Rejected alternatives:**
+
+- **Hard-couple to Story 5-3 (inject `HubConnection` directly).** Blocks 3-5 merge on 5-3 merge. Violates the Epic 3 "ships as usable operator shell BEFORE Epic 5 reliability work" intent. Also leaks SignalR implementation details into the Badge service's constructor, making unit tests require a SignalR fixture.
+- **Minimal SignalR client in 3-5 as a holding pattern.** Two SignalR client implementations (3-5 minimal + 5-3 full) is an outright duplication. At 5-3 merge time the 3-5 client would need to be deleted, which is worse than not having one at all.
+- **Polling timer in 3-5 until 5-3 lands.** Wrong shape for the problem — reactive updates are free, polling is wasteful, and would need to be removed at 5-3 merge (churn).
+- **Raise a 3-5-owned abstraction `IBadgeCountChangeSource` and let adopters bridge to SignalR themselves.** Duplicates `IProjectionChangeNotifier` which already exists. Violates DRY + adds a framework concept without adopter payback.
+
+**Consequences:**
+
+- Story 3-5 merges without blocking on Story 5-3. Counter.Web shows initial counts (from `NullActionQueueCountReader` → 0) and no live deltas. At 5-3 merge time, the real notifier AND the real reader both land and badges become live — zero 3-5 code change.
+- `IProjectionChangeNotifier` is currently `event Action<string>?` + `NotifyChanged(string)` — a string-based contract. `BadgeCountService` resolves the string → `Type` via `Type.GetType` (D7 decision), with fail-soft logging for unresolvable strings.
+- The nullable DI pattern mirrors 3-4 D16 / ADR-044 exactly (BadgeCountService → IProjectionChangeNotifier is the same dependency shape as Palette → BadgeCountService). This makes the "optional producer / optional consumer" pattern a repeat-used framework idiom, learnable once.
+- Known Gap **G24** tracks the "strings vs. Type safety" concern — a future evolution of `IProjectionChangeNotifier` to `NotifyChanged(Type)` would require a v2 break; Story 5-3 has the option to propose it.
+
+**Verification:** `BadgeCountServiceTests.SubscribesToNotifierWhenRegistered_UpdatesCountsOnChanged`, `BadgeCountServiceTests.DoesNotSubscribeWhenNotifierAbsent_InitialFetchStillRuns`, `BadgeCountServiceTests.UnresolvableTypeString_LogsHFC2113_OncePerType`, `BadgeCountServiceTests.NonActionQueueTypeString_SilentNoOp` (Task 7.1).
+
+---
+
+## Tasks / Subtasks
+
+**Test count target:** ≈ 60 new tests post-review (20 Contracts + 29 Shell + 11 integration), re-baselined after party-mode findings. Well below the L11 cheat-sheet trigger threshold (≥ 80 tests). Post-3-5 Shell.Tests expected ≈ 630 passing (baseline 572 + ≈ 58 additions net of trims).
+
+### Task 0 — Prereq verification (≤ 15 min)
+
+- [ ] **0.1** Confirm `IBadgeCountService` exists in `Contracts/Badges/IBadgeCountService.cs` with the Story 3-4 frozen signature (Type keys, IObservable stream, int total). If absent / different → HALT and open spec-change proposal.
+- [ ] **0.2** Confirm `BadgeCountChangedArgs(Type ProjectionType, int NewCount)` record exists and is untouched.
+- [ ] **0.3** Confirm `IProjectionChangeNotifier` exists in `Contracts/Communication/` with `event Action<string>? ProjectionChanged` and `void NotifyChanged(string)`. If absent → HALT.
+- [ ] **0.4** Confirm `ProjectionRoleAttribute` + `ProjectionRole` enum exist with `ActionQueue` member. If absent → HALT.
+- [ ] **0.5** Run `dotnet build --warnaserror` on main — MUST be clean before starting.
+- [ ] **0.6** Reserve diagnostic IDs: append `HFC2112` (Warning) and `HFC2113` (Information) to `AnalyzerReleases.Unshipped.md`.
+
+### Task 1 — Contracts + default implementations
+
+Files created:
+
+- `src/Hexalith.FrontComposer.Contracts/Badges/IActionQueueProjectionCatalog.cs`
+- `src/Hexalith.FrontComposer.Contracts/Badges/IActionQueueCountReader.cs`
+
+Files modified:
+
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs` (+2 IDs)
+
+Subtasks:
+
+- [ ] **1.1** Create `IActionQueueProjectionCatalog` contract per D2. XML-doc: "Produces the list of projection runtime types hinted as ActionQueue via `[ProjectionRole(ActionQueue)]`. Adopters override via `services.TryAddSingleton<IActionQueueProjectionCatalog, MyCatalog>()` — TryAdd means adopter-first registration wins." Include `<remarks>` on the AOT/trim consideration + pointer to Known Gap G22.
+- [ ] **1.2** Create `IActionQueueCountReader` contract per D3. XML-doc: "Produces actionable-item counts for ActionQueue-hinted projection types. Story 5-1 ships the EventStore-backed reader; the default `NullActionQueueCountReader` returns 0 for every type, allowing 3-5 to merge before 5-1."
+- [ ] **1.3** Add diagnostic IDs to `FcDiagnosticIds.cs` (Task 0.6 companion):
+  - `public const string HFC2112_BadgeInitialFetchFault = "HFC2112";`
+  - `public const string HFC2113_ProjectionTypeUnresolvable = "HFC2113";`
+  - Include XML-doc on each matching the Story 3-2 D12 / Story 3-4 D19 precedent.
+- [ ] **1.4** Update `AnalyzerReleases.Unshipped.md` — append HFC2112 (Warning) + HFC2113 (Information) with shipping-story pointers.
+- [ ] **1.5** Build Contracts project in isolation — MUST be clean.
+
+### Task 2 — `BadgeCountService` implementation
+
+Files created:
+
+- `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs`
+- `src/Hexalith.FrontComposer.Shell/Badges/ReflectionActionQueueProjectionCatalog.cs`
+- `src/Hexalith.FrontComposer.Shell/Badges/NullActionQueueCountReader.cs`
+
+Files modified:
+
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` (+3 registrations)
+
+Subtasks:
+
+- [ ] **2.1** Implement `ReflectionActionQueueProjectionCatalog` per D2. Constructor: `public ReflectionActionQueueProjectionCatalog(IEnumerable<Assembly> assemblies, ILogger<ReflectionActionQueueProjectionCatalog> logger)` — the assembly list is an explicit dependency for unit-test isolation. Lazy-cached `IReadOnlyList<Type>` computed from `_assemblies.SelectMany(a => SafeGetTypes(a)).Where(t => t.IsClass && !t.IsAbstract && t.GetCustomAttribute<ProjectionRoleAttribute>()?.Role == ProjectionRole.ActionQueue)`. `SafeGetTypes(Assembly a)` wraps `a.GetTypes()` in try/catch, logging + skipping on `ReflectionTypeLoadException` (returns `ex.Types.Where(t => t is not null)!` on partial load). Default registration: `services.TryAddSingleton<IActionQueueProjectionCatalog>(sp => new ReflectionActionQueueProjectionCatalog(AppDomain.CurrentDomain.GetAssemblies(), sp.GetRequiredService<ILogger<ReflectionActionQueueProjectionCatalog>>()))`.
+- [ ] **2.2** Implement `NullActionQueueCountReader` — single-method class returning `ValueTask.FromResult(0)`.
+- [ ] **2.3** Implement `BadgeCountService` per D1, D4, D5, D6, D7, D20:
+  - Constructor takes `IActionQueueProjectionCatalog catalog`, `IActionQueueCountReader reader`, `IServiceProvider serviceProvider` (for nullable notifier resolution), `ILogger<BadgeCountService> logger`, `TimeProvider timeProvider` (inject for deterministic testing per D4 — default registration resolves `TimeProvider.System` if not registered by adopter).
+  - Resolve `IProjectionChangeNotifier? notifier = serviceProvider.GetService<IProjectionChangeNotifier>();` and hook `ProjectionChanged` if non-null.
+  - `_counts` field typed `ImmutableDictionary<Type, int>`, initialized to `.Empty`.
+  - `Counts` property returns `_counts`.
+  - `TotalActionableItems` property returns `_counts.Values.Sum()`.
+  - `CountChanged` exposes `_subject.AsObservable()`.
+  - `InitializeAsync(CancellationToken ct)` method runs per D4: `var cts = CancellationTokenSource.CreateLinkedTokenSource(ct); cts.CancelAfter(TimeSpan.FromSeconds(5)); var tasks = _catalog.ActionQueueTypes.Select(t => FetchOneAsync(t, cts.Token)).ToArray(); await Task.WhenAll(tasks);`
+  - `FetchOneAsync(Type type, CancellationToken ct)`:
+    - try { `int count = await _reader.GetCountAsync(type, ct);` then `UpdateCount(type, count);` }
+    - catch (OperationCanceledException) { silent — expected on dispose / 5s timeout; no log }
+    - catch (Exception ex) { `_logger.LogWarning("{DiagnosticId} ...", FcDiagnosticIds.HFC2112_BadgeInitialFetchFault, type.FullName, ex.GetType().Name, ex.Message);` then return (excludes from counts) }
+  - `UpdateCount(Type type, int newCount)`: builds `var next = _counts.SetItem(type, newCount); Interlocked.Exchange(ref _counts, next); _subject.OnNext(new BadgeCountChangedArgs(type, newCount));`
+  - `OnProjectionChanged(string typeName)` (async void event handler, wrapped in try/catch):
+    - Resolve `Type? t = Type.GetType(typeName, throwOnError: false);`
+    - If null → log HFC2113 once per string via `_unresolvedTypes` guard, return.
+    - If `_catalog.ActionQueueTypes.Contains(t) == false` → silent return.
+    - Else `int count = await _reader.GetCountAsync(t, _lifetimeCts.Token); UpdateCount(t, count);`
+  - `DisposeAsync()`: `if (_notifier is not null) _notifier.ProjectionChanged -= OnProjectionChanged;` then `_lifetimeCts.Cancel(); _lifetimeCts.Dispose();` then `_subject.OnCompleted(); _subject.Dispose();`
+- [ ] **2.4** Register services in `AddHexalithFrontComposer` **immediately after the existing `CommandPaletteEffects` registration** in `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` (do not hard-code a line number — that file churns across stories and line anchors drift; the semantic anchor is the `CommandPaletteEffects` registration added by Story 3-4):
+  ```csharp
+  // Story 3-5 D1/D2/D3 — badge count producer seam. Consumed via nullable DI by Story 3-4's
+  // FcPaletteResultList (activates automatically when this registration lands).
+  services.TryAddSingleton<IActionQueueProjectionCatalog>(sp =>
+      new ReflectionActionQueueProjectionCatalog(
+          AppDomain.CurrentDomain.GetAssemblies(),
+          sp.GetRequiredService<ILogger<ReflectionActionQueueProjectionCatalog>>()));
+  services.TryAddScoped<IActionQueueCountReader, NullActionQueueCountReader>();
+  _ = services.AddScoped<IBadgeCountService, BadgeCountService>();
+  ```
+  The final line is `AddScoped` (NOT `TryAddScoped`) — the 3-5 implementation is authoritative; an adopter who truly wants to replace it uses `services.Replace(...)` per ADR-030 precedent.
+- [ ] **2.5** Build Shell project — MUST be clean.
+
+### Task 3 — `FcHomeDirectory` component + `FcHomeRouteView` page
+
+Files created:
+
+- `src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeDirectory.razor`
+- `src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeDirectory.razor.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/Home/FcHomeDirectory.razor.css`
+- `src/Hexalith.FrontComposer.Shell/Components/Pages/FcHomeRouteView.razor`
+
+Subtasks:
+
+- [ ] **3.1** Create `FcHomeDirectory.razor` + code-behind (`.razor.cs`). Parameters: `[Inject] IFrontComposerRegistry Registry`, `[Inject] IBadgeCountService BadgeCounts`, `[Inject] IState<FrontComposerCapabilityDiscoveryState> DiscoveryState`, `[Inject] IStringLocalizer<FcShellResources> Localizer`, `[Inject] NavigationManager Nav`, `[Inject] IUserContextAccessor UserContext`. `[CascadingParameter] Task<AuthenticationState>? AuthenticationState` (may be null for anonymous / unauthenticated).
+- [ ] **3.2** Render logic per AC3, AC4a, AC4b, AC5, AC6, AC17:
+  - Get `IReadOnlyList<DomainManifest> manifests = Registry.GetManifests();`
+  - If `manifests.Count == 0` → render no-microservices empty state (AC5).
+  - Else if `DiscoveryState.Value.HydrationState != Seeded` → render skeletons per-manifest (AC6).
+  - Else compute `aggregate = manifests.Select(m => (m, count: SumBoundedContextCounts(m))).ToArray();`
+  - If `aggregate.Sum(a => a.count) == 0`:
+    - If `DiscoveryState.Value.SeenCapabilities.IsEmpty` → render first-visit state with `HomeFirstVisitText` + alphabetical manifests (AC4b).
+    - Else → render "All caught up" state with `HomeAllCaughtUpText` + alphabetical manifests (AC4a).
+  - Else render urgency-sorted cards (AC3) + collapsed "Other areas" accordion for zero-count (AC17).
+- [ ] **3.3** Render the welcome subtitle per D19:
+  - Resolve `userName = AuthenticationState?.User?.Identity?.Name` (nullable chain).
+  - If `string.IsNullOrWhiteSpace(userName)` → render `HomeWelcomeAnonymous` ("Welcome back." / "Bon retour."). "Welcome back, ." MUST NOT be producible.
+  - Else render `string.Format(Localizer[HomeWelcomeTemplate].Value, userName)`.
+  - For the items line (only when `TotalActionableItems > 0` — skipped entirely on AC4a/AC4b/AC5 branches): `string.Format(Localizer[HomeItemsTemplate].Value, totalItems, distinctBoundedContextsWithUrgency)` where `{0}` = aggregate actionable items, `{1}` = distinct bounded contexts with count > 0.
+- [ ] **3.4** Create `FcHomeRouteView.razor` per D16 — pure routing shim:
+  ```razor
+  @page "/"
+  @page "/home"
+  @using Hexalith.FrontComposer.Shell.Components.Home
+  <FcHomeDirectory />
+  ```
+  With XML-doc at the top documenting the adopter override path (D16).
+- [ ] **3.5** Accessibility per AC7:
+  - Container `role="main"` with `aria-label` from a new resource key (or reuse `AppTitle`).
+  - Cards carry `role="link"`, `tabindex="0"`, `@onkeydown` Enter/Space triggers `HandleCardClick`.
+  - Card `aria-label` built from per-projection counts.
+  - Cards list container carries `aria-description="{HomeSortedByUrgencyAriaDescription}"`.
+- [ ] **3.6** CSS in `.razor.css` uses Fluent UI tokens only (zero-override strategy per UX-DR26 / ADR-012). Use `display: grid` + `gap` from Fluent spacing tokens.
+
+### Task 4 — Capability discovery feature (Fluxor state + effects)
+
+Files created:
+
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/FrontComposerCapabilityDiscoveryState.cs`
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryReducers.cs`
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryEffects.cs`
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/CapabilityDiscoveryActions.cs`
+
+Files modified:
+
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor[.cs]` (render New badge + dispatch CapabilityVisitedAction)
+
+Subtasks:
+
+- [ ] **4.1** Create `FrontComposerCapabilityDiscoveryState` record per D8 — three fields + `Empty` factory.
+- [ ] **4.2** Create `CapabilityDiscoveryActions.cs` containing `BadgeCountsSeededAction(ImmutableDictionary<Type,int>)`, `BadgeCountChangedAction(Type, int)`, `CapabilityVisitedAction(string capabilityId)`, `SeenCapabilitiesHydratedAction(ImmutableHashSet<string>)`.
+- [ ] **4.3** Create `CapabilityDiscoveryReducers.cs` — four pure static reducers:
+  - Seeded → `state with { Counts = action.Counts, HydrationState = Seeded }`
+  - Changed → `state with { Counts = state.Counts.SetItem(action.Type, action.Count) }`
+  - Visited → `state with { SeenCapabilities = state.SeenCapabilities.Add(action.CapabilityId) }` (idempotent)
+  - Hydrated → `state with { SeenCapabilities = action.SeenCapabilities }`
+- [ ] **4.4** Create `CapabilityDiscoveryEffects.cs` — one class, `IDisposable`, constructor takes `IDispatcher`, `IStorageService`, `IUserContextAccessor`, `IActionQueueProjectionCatalog`, `IActionQueueCountReader`, `IBadgeCountService badgeCountService`, `ILogger<CapabilityDiscoveryEffects>`. Effects:
+  - `HandleAppInitialized` — triggered by the existing `AppInitializedAction` (hydration entry point):
+    - Scope guard via `IUserContextAccessor` → `HFC2105` + short-circuit on fail-closed miss (L03).
+    - Read `{tenantId}/{userId}/capability-seen` via `IStorageService.GetAsync<ImmutableHashSet<string>>`; dispatch `SeenCapabilitiesHydratedAction(...)`.
+    - Trigger `badgeCountService.InitializeAsync(ct)` — the service's internal fetch publishes via `_subject.OnNext`; the effect ALSO subscribes to `badgeCountService.CountChanged` and dispatches `BadgeCountChangedAction` per emission (this is the state-mirror bridge per D8).
+    - After `InitializeAsync` completes, dispatch `BadgeCountsSeededAction(ImmutableDictionary.CreateRange(badgeCountService.Counts))`.
+  - `HandleCapabilityVisited` — triggered by `CapabilityVisitedAction`:
+    - Scope guard via L03.
+    - `var next = state.SeenCapabilities; await storage.SetAsync(key, next, ct);` (fire-and-forget per ADR-030).
+- [ ] **4.5** Update `FrontComposerNavigation.razor[.cs]` — render a `NewCapabilityBadge` component (can be inline markup) next to each nav entry when `!state.SeenCapabilities.Contains(capabilityId) && state.Counts.GetValueOrDefault(projectionType) > 0`. On `@onclick`, dispatch `CapabilityVisitedAction(capabilityId)` BEFORE calling `NavigationManager.NavigateTo` (D13 ordering — synchronous dispatch first).
+- [ ] **4.6** Add `NewCapabilityBadgeText` resource key (D19).
+
+### Task 5 — Sidebar nav count badges
+
+Files modified:
+
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerNavigation.razor[.cs]` (+ count badge render)
+
+Subtasks:
+
+- [ ] **5.1** In the nav component's render logic, alongside each projection nav entry, render `@if (state.Counts.TryGetValue(projectionType, out var count) && count > 0) { <FluentBadge Appearance="Accent">@count</FluentBadge> }`.
+- [ ] **5.2** Ensure state subscription via `[Inject] IState<FrontComposerCapabilityDiscoveryState>` + `StateSubscriber.Subscribe(this, _state)` per Fluxor convention (existing pattern in other shell components).
+
+### Task 6 — Resource keys (EN + FR parity)
+
+Files modified:
+
+- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx` (+10 keys, 47 → 57)
+- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx` (+10 keys, 47 → 57)
+
+Subtasks:
+
+- [ ] **6.1** Append the 10 new `<data name=...>` entries to both files per D19 (including `HomeWelcomeAnonymous` and `HomeFirstVisitText`), each with a `<comment>` tag referencing Story 3-5 + the AC number.
+- [ ] **6.2** French pre-pass per D19: native-speaker review of `HomeWelcomeTemplate` + `HomeAllCaughtUpText` (+ the two new keys `HomeWelcomeAnonymous` and `HomeFirstVisitText` since they are in the same first-impression critical path). Attach reviewer sign-off note to the story PR description.
+- [ ] **6.3** Re-run `FcShellResourcesTests.CanonicalKeysHaveFrenchCounterparts` — MUST pass with the new set (57 per locale).
+
+### Task 7 — Tests
+
+Files created (representative list):
+
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Badges/IActionQueueProjectionCatalogContractTests.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Badges/IActionQueueCountReaderContractTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Badges/ReflectionActionQueueProjectionCatalogTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Badges/NullActionQueueCountReaderTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/CapabilityDiscovery/CapabilityDiscoveryReducersTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/CapabilityDiscovery/CapabilityDiscoveryEffectsTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/CapabilityDiscovery/CapabilityDiscoveryEffectsScopeTests.cs` (L03 fail-closed)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Home/FcHomeDirectoryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerNavigationCapabilityBadgeTests.cs`
+
+Subtasks:
+
+- [ ] **7.1** `BadgeCountServiceTests` — one test per behavioral branch. All tests use `FakeTimeProvider` (Microsoft.Extensions.Time.Testing) per D4 — no `Task.Delay(5000)` in any test in this file:
+  - `InitializeAsync_SeedsAllCatalogTypes_ViaReader`
+  - `InitializeAsync_PerTypeFailure_LogsHFC2112_ExcludesFromCounts`
+  - `InitializeAsync_RespectsFiveSecondTimeout_CatchesOperationCanceled` — `FakeTimeProvider.Advance(TimeSpan.FromSeconds(6))` triggers the CTS deterministically.
+  - `SubscribesToNotifier_WhenRegistered_UpdatesCountsOnChanged`
+  - `DoesNotSubscribeWhenNotifierAbsent_InitialFetchStillRuns`
+  - `UnresolvableTypeString_LogsHFC2113_OncePerType` — asserts the per-instance `_unresolvedTypes` dict stays isolated across distinct service instances (D7).
+  - `NonActionQueueTypeString_SilentNoOp`
+  - `Counts_IsImmutable_RefreshesAtomicallyOnUpdate` — asserts reference-replacement semantics.
+  - `Counts_ConcurrentRefreshes_ObserverAlwaysSeesMonotonicOrAtomicSnapshot` **[new, Murat P0]** — fire 50 `OnProjectionChanged` in parallel across 5 types; subscribe via `ToEnumerable()`; assert: observer never sees a torn read (every emitted `(Type,int)` corresponds to a value that was AT SOME POINT the authoritative count), and per-type monotonicity holds (the last observed value for each type is the last-seeded value).
+  - `OnProjectionChanged_ReaderThrows_DoesNotCrashCircuit_LogsHFC2112` **[new, Murat P0]** — reader stub throws `InvalidOperationException`; assert no exception escapes the async void handler, HFC2112 logged once, `Counts` unchanged for that type.
+  - `InitializeAsync_ConcurrentWithProjectionChanged_FinalStateMatchesLastWriter` **[new, Murat]** — overlap a slow `InitializeAsync` fan-out with a `OnProjectionChanged` event mid-flight; assert final `Counts[type]` = whichever reader invocation resolved last (explicit last-writer-wins per D6).
+  - `CountChanged_EmitsOnceOnFirstSeed_EvenIfCountIsZero` (design decision — consider whether zero-count projections emit; per ADR-045 they do, so the palette badge-guard is the single filter point)
+  - `DisposeAsync_CompletesObservable_UnsubscribesFromNotifier_DisposesCts`
+  - `DisposeAsync_WhileFetchInFlight_CancelsCleanly_NoObserverErrors` **[new, Murat]** — start `InitializeAsync`, dispose mid-fetch, assert subscribers receive `OnCompleted` (not `OnError`) and no unhandled `OperationCanceledException` escapes.
+  - `ObservableSurface_DoesNotExposeSubject` **[new, Winston]** — assert `CountChanged` typeof is `IObservable<T>` and cannot be downcast to `Subject<T>` / `ISubject<T>` from outside the service.
+  - `TotalActionableItems_SumsCurrentCounts`
+- [ ] **7.2** `ReflectionActionQueueProjectionCatalogTests` — per D2 refactor, construct with an explicit `IEnumerable<Assembly>` (no AppDomain dependency in any test):
+  - `Discover_WithInjectedAssemblyList_ReturnsOnlyProvided` **[Murat — test isolation]** — pass exactly one test assembly containing known `[ProjectionRole(ActionQueue)]` fixtures; assert no cross-test assembly bleed into the catalog result.
+  - `CachesResult_OnRepeatedReads_SameInstance` — assert the `Lazy<T>` does not recompute.
+  - `HandlesReflectionTypeLoadException_LogsAndSkipsAssembly_ContinuesWithOthers` — synthetic problematic assembly via a custom `Assembly` fake that throws on `GetTypes()`.
+  - `SkipsAbstractAndInterfaceTypes` — fixture includes an abstract class and an interface with `[ProjectionRole(ActionQueue)]`; assert both filtered out.
+- [ ] **7.3** `CapabilityDiscoveryReducersTests` — 4 reducer tests (one per action), plus a single parameterized `Theory` `ReducerIdempotency_SameActionTwice_ReturnsReferenceEqualState` covering Seeded/Changed/Visited/Hydrated in one test (Murat trim — per-reducer idempotency tests were redundant).
+  - `BadgeCountMirror_SeededFollowedByOnNext_NoLostUpdate` **[new, Murat]** — fire `BadgeCountsSeededAction(dict)` then `BadgeCountChangedAction(type, newCount)` where `type` is already in `dict`; assert final state reflects the Changed value (not lost to the Seeded overwrite). Guards against the seed-vs-notifier race explicitly.
+- [ ] **7.4** `CapabilityDiscoveryEffectsTests` — hydrate-from-storage, seed-after-init, persist-on-visit.
+- [ ] **7.5** `CapabilityDiscoveryEffectsScopeTests` — L03 fail-closed symmetry per AC11, covering BOTH paths (Murat — hydrate-side was under-specified in v1 of the spec):
+  - `PersistEffect_NullTenant_FailsClosed_NoStorageCall_LogsHFC2105_DirectionPersist`
+  - `PersistEffect_NullUser_FailsClosed_NoStorageCall_LogsHFC2105_DirectionPersist`
+  - `PersistEffect_WhitespaceTenant_FailsClosed_NoStorageCall`
+  - `HydrateEffect_NullTenant_FailsClosed_NoGetAsync_DispatchesEmptySeenSet_LogsHFC2105_DirectionHydrate` **[new]**
+  - `HydrateEffect_NullUser_FailsClosed_NoGetAsync_DispatchesEmptySeenSet_LogsHFC2105_DirectionHydrate` **[new]**
+  - `HydrateEffect_WhitespaceUser_FailsClosed_NoGetAsync_DispatchesEmptySeenSet` **[new]**
+  - `HydrateEffect_StorageThrows_DispatchesEmptySeenSet_LogsHFC2112_DoesNotCrash` **[new, D13 parity for hydrate]**
+  - `PersistEffect_StorageThrows_AfterNavigate_LogsHFC2112_InMemoryStateUnchanged` **[new, D13 contract]**
+- [ ] **7.6** `FcHomeDirectoryTests` using bUnit + `LayoutComponentTestBase`:
+  - `RendersNoMicroservicesEmptyState_WhenNoManifestsRegistered` (AC5)
+  - `RendersFirstVisitText_WhenSeenSetEmpty_AndZeroItems` **[new, AC4b]** — asserts `HomeFirstVisitText` renders, NOT `HomeAllCaughtUpText`.
+  - `RendersAllCaughtUp_WhenSeenSetNonEmpty_AndZeroItems` **[updated, AC4a]** — assert `HomeAllCaughtUpText` renders.
+  - `RendersUrgencySortedCards_WhenTotalActionableItemsExceedsZero` (AC3)
+  - `RendersSkeletons_DuringHydration` (AC6)
+  - `CollapsesZeroUrgencyContexts_IntoOtherAreasAccordion` (AC17)
+  - `SkipsOtherAreasAccordion_WhenAllContextsHaveUrgency`
+  - `ActivatesCardViaEnterKey_DispatchesVisitedAction_ThenNavigates`
+  - `WelcomeSubtitle_AnonymousUser_RendersHomeWelcomeAnonymous_NeverRenders_Comma_Dot` **[new, D19]** — assert "Welcome back, ." is impossible with null/empty/whitespace identity name.
+  - `NewBadge_Matrix` **[Theory — Murat trim, collapses three original tests]** — parameterized over (capabilityId seen?, count>0?) to assert the 4-cell matrix: `(unseen, has-data) → badge`, `(seen, has-data) → no badge`, `(unseen, no-data) → no badge (AND no nav entry)`, `(seen, no-data) → no badge (AND no nav entry)`.
+  - `NewBadge_BCLevel_DismissalDoesNotDismissProjectionLevel` **[new, D12 G25 resolution]** — click BC card header → `"bc:X"` added to seen-set; assert `"proj:X:Y"` NOT in seen-set; a projection gaining data later still surfaces its projection-level "New" badge.
+- [ ] **7.7** `FrontComposerNavigationCapabilityBadgeTests` — sidebar badge + New badge rendering + dismiss-on-click.
+- [ ] **7.8** Cross-story contract-integrity integration tests:
+  - `BadgeCountService_IntegrationWithPaletteTests` — mount the FcCommandPalette + register the real `BadgeCountService` with a stub reader → verify badges appear in palette results without 3-4 code change (contract-integrity test for the Story 3-4 consumer seam).
+  - `BadgeCountService_IntegrationWithHomeDirectoryTests` **[new, Murat]** — mount `FcHomeDirectory` + register the real `BadgeCountService` with a stub reader returning canned per-type counts → verify cards sort urgency-desc + badges render + skeletons swap to real cards as `CountChanged` emissions arrive (end-to-end contract-integrity test for the Story 3-5 home consumer seam).
+
+### Task 8 — Aspire MCP verification + regression
+
+- [ ] **8.1** Aspire MCP: launch Counter.Web sample; verify (a) home route `/` renders FcHomeDirectory skeletons then zero-count empty state (NullActionQueueCountReader still registered); (b) nav sidebar does NOT show count badges (zero counts); (c) command palette operates unchanged from 3-4; (d) no new errors or warnings in console logs.
+- [ ] **8.2** Run full test suite: `dotnet test` — MUST pass. Compare test count: 3-4 baseline + ≈55 new tests; pre-3-5 Shell.Tests at 572 passing should grow to ≈625 passing. SourceTools.Tests at 277 untouched.
+- [ ] **8.3** Run `dotnet build --warnaserror` — MUST be clean.
+
+---
+
+## Known gaps (explicit, not bugs) — L10 story-owned deferrals
+
+| Gap | Description | Owner story | Tracked issue / note |
+|---|---|---|---|
+| **G22** | `ReflectionActionQueueProjectionCatalog` is incompatible with `PublishTrimmed=true` hosts. Adopters must override with a source-generated catalog. | **Story 9-1** (build-time drift detection — emit diagnostic when trim-enabled project uses the reflection default) | Matches the L10 discipline of naming the owning story. |
+| **G23** | French translations in `FcShellResources.fr.resx` for 8 of the 10 new Story 3-5 keys are functional-draft; human linguistic review of the long-tail (`HomeItemsTemplate`, `HomeNoMicroservicesText`, `HomeGettingStartedLinkText`, `HomeOtherAreasHeading`, `HomeSortedByUrgencyAriaDescription`, `NewCapabilityBadgeText`, `HomeWelcomeAnonymous`, `HomeFirstVisitText`) is deferred. The two highest-emotional-weight keys (`HomeWelcomeTemplate`, `HomeAllCaughtUpText`) are pre-merge reviewed per D19 (NOT deferred). | **Story 9-5** (Diataxis documentation site — community translation review pass) | The existing `CanonicalKeysHaveFrenchCounterparts` test only enforces key-set parity, not translation quality. |
+| **G24** | `IProjectionChangeNotifier.NotifyChanged(string)` uses a string type name, not a `Type`. Story 3-5 resolves via `Type.GetType` with fail-soft logging. A v2 evolution to `NotifyChanged(Type)` is preferable for type-safety but requires breaking change. | **Story 5-3** (SignalR wiring) — may propose the v2 shape when the real notifier lands. | HFC2113 diagnostic surfaces the resolution failures operators would need to see. |
+| **G26** | `BadgeCountService.InitializeAsync` 5-second timeout is not adopter-configurable. If Story 5-1's EventStore reader is slow (cold network, slow cache warmup), initial counts may show empty for the first fetch window and surface via `HFC2112` timeout logs. | **Story 5-2** (HTTP response handling + ETag caching) — may expose `FcShellOptions.BadgeInitialFetchTimeoutSeconds`. | Current default is generous vs. the sub-300ms first-interactive NFR29 target; fetch runs non-blocking so UX impact is limited. |
+
+---
+
+## Dev notes
+
+### Files touched summary
+
+**Contracts (+5 files):** 2 new interfaces, 2 new contract tests, 1 modified diagnostics file + 1 analyzer-unshipped markdown update.
+
+**Shell (+11 files):** 3 new badge classes (service + default catalog + null reader), 4 new capability-discovery Fluxor files, 1 new home directory component + .cs + .css, 1 new route shim page, 2 modified files (ServiceCollectionExtensions, FrontComposerNavigation).
+
+**Shell Resources (+20 strings):** 10 keys × 2 locales.
+
+**Tests (+10 test files, ~55 tests):** Contracts tests, badge service tests, catalog tests, reducer / effect tests, home directory component tests, navigation integration test.
+
+**Total new files:** ~26. **Modified files:** ~6. **Test files:** ~10.
+
+### Service binding reference (lifetime matrix)
+
+| Service | Lifetime | Default impl | Override path |
+|---|---|---|---|
+| `IBadgeCountService` | **Scoped** | `BadgeCountService` (3-5) | `services.Replace(ServiceDescriptor.Scoped<IBadgeCountService, MyImpl>())` — ADR-030 precedent |
+| `IActionQueueProjectionCatalog` | **Singleton** (TryAdd) | `ReflectionActionQueueProjectionCatalog` (3-5) | `services.TryAddSingleton<IActionQueueProjectionCatalog, MyCatalog>()` before `AddHexalithFrontComposer` |
+| `IActionQueueCountReader` | **Scoped** (TryAdd) | `NullActionQueueCountReader` (3-5 default); `EventStoreActionQueueCountReader` (Story 5-1) | `services.TryAddScoped<IActionQueueCountReader, MyReader>()` before `AddHexalithFrontComposer` |
+| `IProjectionChangeNotifier` | **Scoped** (optional) | None (nullable DI) | Adopter / Story 5-3 registers via `services.AddScoped<IProjectionChangeNotifier, SignalRProjectionChangeNotifier>()` |
+| `CapabilityDiscoveryEffects` | **Scoped** | `CapabilityDiscoveryEffects` (3-5) | Fluxor-discovered; not adopter-overrideable (internal implementation detail) |
+
+### Storage key schema
+
+- **Seen-capabilities set:** `{tenantId}/{userId}/capability-seen` → serialized `ImmutableHashSet<string>` as JSON string array. L03 fail-closed on missing scope.
+- **Format example:** `tenant-acme/user-jerome/capability-seen` → `["bc:Counter","proj:Counter:Hexalith.Samples.Counter.Projections.CounterProjection"]`
+
+### Fluxor feature shape (per L02 discipline)
+
+```
+Shell/State/CapabilityDiscovery/
+├── FrontComposerCapabilityDiscoveryState.cs    [state record]
+├── CapabilityDiscoveryActions.cs                [4 action records]
+├── CapabilityDiscoveryReducers.cs               [4 static reducers]
+└── CapabilityDiscoveryEffects.cs                [effect class, 2 handlers + bridge subscription]
+```
+
+**Producer inventory:** `FrontComposerNavigation.@onclick` → `CapabilityVisitedAction`; `FcHomeDirectory.@onclick` → `CapabilityVisitedAction`; `CapabilityDiscoveryEffects` bridge → `BadgeCountsSeededAction` + `BadgeCountChangedAction`.
+
+**Consumer inventory:** `FrontComposerNavigation` renders counts + "New" badge; `FcHomeDirectory` renders urgency cards + "New" badge.
+
+**No dead reducers** — all four reducers are exercised by at least one producer on an end-to-end path with a corresponding test.
+
+### Testing standards
+
+- **Unit reducers:** pure static methods; test with arranged state + action, assert on returned state. No Fluxor infrastructure.
+- **Effects:** xUnit + `Moq` for `IDispatcher` / `IStorageService` / `IUserContextAccessor`. Assert on `Mock.Verify` calls for dispatches + storage I/O.
+- **Service (BadgeCountService):** xUnit + stubs (`StubActionQueueProjectionCatalog`, `StubActionQueueCountReader`, `StubProjectionChangeNotifier`). Assert on `Counts` dictionary + `CountChanged` emissions via `Observable.ToEnumerable()` or `IObserver<T>` mocks.
+- **Components:** bUnit + `LayoutComponentTestBase`. Services stubbed via `Services.AddSingleton` before `EnsureStoreInitialized()`. Assert on `cut.Markup.ShouldContain(...)` (Shouldly) + `cut.FindAll("[role='link']").Count` style DOM queries.
+- **Integration test (palette × badge service):** one test file `BadgeCountService_IntegrationWithPaletteTests.cs` registers the real service + a stub reader that returns canned counts; mounts `FcPaletteResultList`; asserts that badges render. This is the cross-story contract-integrity test.
+
+### Previous-story intelligence (3-4 landing context)
+
+- 3-4 finished with 572/0/2 Shell.Tests (2 skipped — those are the deferred Playwright palette E2E; Story 10-2 owns).
+- 3-4's `CommandPaletteEffects` is registered via `TryAddScoped` — 3-5's `CapabilityDiscoveryEffects` mirrors that.
+- 3-4 renumbered diagnostic IDs HFC2108-HFC2111 to dodge HFC2106/2107 collisions — 3-5 starts fresh at HFC2112 with no collision risk.
+- 3-4 appended `HasFullPageRoute` to `IFrontComposerRegistry` inline (not a new interface) — 3-5 follows the same "append to existing where feasible" preference for registry-level changes, but the new Badge contracts legitimately warrant dedicated interfaces (ADR-045).
+- 3-4 swapped `FluentTextInput` from `FluentSearch` per Fluent UI v5 RC2 surface; 3-5 does NOT use `FluentSearch` at all, so this is irrelevant.
+- 3-4 proved the `Type?` projection pattern in `PaletteResult.ProjectionType` — 3-5 keeps that invariant (BadgeCountChangedArgs already carries `Type`).
+
+### Lessons ledger citations
+
+- **L01** — every cross-story contract is documented explicitly in the Cross-story contract table above.
+- **L02** — Fluxor feature scope lists producer AND consumer AND effect; no dead reducers.
+- **L03** — seen-set persistence fail-closed on missing tenant / user via `HFC2105` (inherited from nav state).
+- **L06** — 20 binding decisions (≤ 25 feature-story budget); 5-decision buffer preserved.
+- **L07** — ≈ 55 tests planned; each decision was weighed for test cost (no defensive decision added without a matching unit test).
+- **L09** — every ADR (three) has ≥ 3 rejected alternatives with trade-off rationale.
+- **L10** — every Known Gap row names an owning story (9-1 / 9-5 / 5-3 / 3.x-v1.x / 5-2), NOT "Epic X".
+
+### References
+
+- **Epic 3, Story 3.5 acceptance criteria:** `_bmad-output/planning-artifacts/epics/epic-3-composition-shell-navigation-experience.md` § 200-251
+- **UX spec FcHomeDirectory section:** `_bmad-output/planning-artifacts/ux-design-specification/component-strategy.md` § 397-430
+- **UX spec IBadgeCountService section:** `_bmad-output/planning-artifacts/ux-design-specification/component-strategy.md` § 42-71
+- **"New" badge UX spec mentions:** `_bmad-output/planning-artifacts/ux-design-specification/desired-emotional-response.md` § 78, § 113, § 143, § 151
+- **Architecture, per-concern Fluxor features precedent:** `_bmad-output/planning-artifacts/architecture.md` § 527-536
+- **Story 3-4 ADR-044 (frozen interface + XML-doc lifetime contract):** `_bmad-output/implementation-artifacts/3-4-fccommandpalette-and-keyboard-shortcuts/architecture-decision-records.md` § 63-89
+- **Story 3-4 D16 (consumer pattern the 3-5 producer must not break):** `_bmad-output/implementation-artifacts/3-4-fccommandpalette-and-keyboard-shortcuts/critical-decisions-read-first-do-not-revisit.md` § D16
+- **Story 3-4 cross-story contract entry:** `_bmad-output/implementation-artifacts/3-4-fccommandpalette-and-keyboard-shortcuts/critical-decisions-read-first-do-not-revisit.md` § cross-story-contract-table (row: `IBadgeCountService consumption via nullable injection`)
+- **Story creation lessons ledger:** `_bmad-output/process-notes/story-creation-lessons.md` (L01-L11)
+- **Epic 3 context:** `_bmad-output/implementation-artifacts/epic-3-context.md`
+
+### Project structure notes
+
+- `src/Hexalith.FrontComposer.Contracts/Badges/` already exists with `IBadgeCountService.cs` + `BadgeCountChangedArgs.cs`. The 2 new contracts (`IActionQueueProjectionCatalog.cs` + `IActionQueueCountReader.cs`) slot in alongside.
+- `src/Hexalith.FrontComposer.Shell/Badges/` is NEW — create the folder for `BadgeCountService.cs`, `ReflectionActionQueueProjectionCatalog.cs`, `NullActionQueueCountReader.cs`.
+- `src/Hexalith.FrontComposer.Shell/State/CapabilityDiscovery/` is NEW — four files total for the Fluxor feature.
+- `src/Hexalith.FrontComposer.Shell/Components/Home/` is NEW — home directory component + CSS.
+- `src/Hexalith.FrontComposer.Shell/Components/Pages/` exists only if Story 3-1 created it for the app shell; if not, create it for `FcHomeRouteView.razor`. Otherwise drop `FcHomeRouteView.razor` in `Shell/Components/Layout/` alongside the shell if the Pages folder is absent.
+- Tests mirror under `tests/Hexalith.FrontComposer.Shell.Tests/` and `tests/Hexalith.FrontComposer.Contracts.Tests/`.
+
+---
+
+## Dev Agent Record
+
+### Agent Model Used
+
+*(dev agent will fill)*
+
+### Debug Log References
+
+*(dev agent will fill)*
+
+### Completion Notes List
+
+*(dev agent will fill)*
+
+### File List
+
+*(dev agent will fill)*
+
+### Change Log
+
+*(dev agent will fill)*
+
+### Review Findings
+
+*(code-review / review agents will fill)*
+
+---
+
+## Review-round adjustments (party-mode, 2026-04-20)
+
+Pre-dev review via BMAD party-mode (Winston + Amelia + Murat + Sally + Bob). 11 findings applied to the spec before dev pickup; 2 deferred with owner + timing noted. Decision budget audit at the end.
+
+### Applied (spec updates in-line above)
+
+| # | Finding | Surfaced by | Landed in | Test-ID impact |
+|---|---|---|---|---|
+| R1 | HFC2113 dedup dict is instance-scoped (not static) to prevent cross-test/cross-circuit leakage | Amelia | D7 + T7.1 `UnresolvableTypeString_LogsHFC2113_OncePerType` assertion reworded | 0 new tests |
+| R2 | `ReflectionActionQueueProjectionCatalog` accepts `IEnumerable<Assembly>` via ctor for test isolation; first-call-wins cache semantics documented | Winston + Murat | D2 + T2.1 + T2.4 registration + T7.2 | +1 test (`Discover_WithInjectedAssemblyList_ReturnsOnlyProvided`) |
+| R3 | `TimeProvider` injected into `BadgeCountService` ctor for deterministic timeout testing; `Task.Delay(5000)` explicitly banned in tests | Amelia + Murat | D4 + T2.3 + T7.1 (`FakeTimeProvider.Advance` note on timeout test) | 0 new, existing test hardened |
+| R4 | `CountChanged` exposed publicly ONLY as `IObservable<T>` via `.AsObservable()`; explicit `System.Reactive` `PackageReference` (no transitive dependency on Fluent UI v5) | Winston + Amelia | D5 + T7.1 `ObservableSurface_DoesNotExposeSubject` | +1 test |
+| R5 | Ordering semantics documented as "last-writer-wins per-projection-type"; async void handler's exception containment is explicit (P0 blocker risk for Blazor Server circuits) | Winston + Murat | D6 + T7.1 (`OnProjectionChanged_ReaderThrows_DoesNotCrashCircuit`, `Counts_ConcurrentRefreshes_ObserverAlwaysSeesMonotonicOrAtomicSnapshot`, `InitializeAsync_ConcurrentWithProjectionChanged_FinalStateMatchesLastWriter`, `DisposeAsync_WhileFetchInFlight_CancelsCleanly`) | +4 tests |
+| R6 | G25 "New" badge BC-vs-projection lifecycle resolved — dismissal is per-capabilityId; BC-level and projection-level badges track independently | Sally | D12 expanded + G25 removed from Known Gaps + T7.3 `BadgeCountMirror_SeededFollowedByOnNext_NoLostUpdate` + T7.6 `NewBadge_BCLevel_DismissalDoesNotDismissProjectionLevel` | +2 tests |
+| R7 | D13 effect-failure after navigation: log HFC2112, reducer state authoritative for session, NEVER block UI, NO retry | Amelia | D13 + T7.5 `PersistEffect_StorageThrows_AfterNavigate_LogsHFC2112_InMemoryStateUnchanged` | +1 test |
+| R8 | Day-1 newcomer vs. returning-caught-up UX split — AC4 becomes AC4a (returning) + AC4b (first visit); `HomeFirstVisitText` + `HomeWelcomeAnonymous` promoted to mandatory keys (10 new keys total, not 8); pre-merge French pass on the two highest-emotional-weight keys | Sally | AC4a / AC4b / D19 / T3.2 / T3.3 / T6.1 / T6.2 + T7.6 `RendersFirstVisitText_WhenSeenSetEmpty_AndZeroItems`, `WelcomeSubtitle_AnonymousUser_RendersHomeWelcomeAnonymous` | +2 tests |
+| R9 | L03 fail-closed symmetry: AC11 extended to cover hydrate path; HFC2105 structured payload carries `{Direction: "hydrate"\|"persist"}`; T7.5 enumerates both directions | Murat | AC11 + T7.5 (4 additional scope tests for hydrate path) | +4 tests |
+| R10 | T2 line-number anchors dropped (`≈ line 241`) — replaced with semantic anchor ("immediately after the existing `CommandPaletteEffects` registration") | Amelia | D1 + T2.4 | 0 tests |
+| R11 | Test-plan trim + restructure: parameterized reducer idempotency `Theory`; `NewBadge_Matrix` theory collapses the original 3-test trio; target recalibrated ≈ 55 → ≈ 60 | Murat | Task 7.3 + Task 7.6 + header blurb above Task 7 | net +~5 tests after trims |
+
+### Deferred (not applied; tracked with explicit owner + timing)
+
+| # | Finding | Surfaced by | Owner + timing | Rationale for deferral |
+|---|---|---|---|---|
+| D-R1 | Explicit AC → Test-ID traceability column in the AC table | Bob | **Story 9-5** (documentation pass) or added ad-hoc during dev-complete PR | AC → task mapping already exists (right-most column); adding a third column risks churning the table during every review round. Cheaper to add post-implementation when test IDs are final. |
+| D-R2 | G23 French full-locale review (8 long-tail keys outside the two pre-merge critical strings) | Sally | **Story 9-5** (community translation review pass) — unchanged | Pre-merge pass covers the two highest-emotional-weight strings (`HomeWelcomeTemplate`, `HomeAllCaughtUpText`) per D19 update; long-tail review stays deferred as originally planned. |
+
+### Decision budget audit (L06)
+
+All 11 applied findings landed as **refinements within existing decisions** (D1, D2, D4, D5, D6, D7, D12, D13, D19) — **no new top-level D-level decisions were added**. Count remains **20 binding decisions**, preserving the 5-decision buffer below the L06 ≤ 25 cap. Known Gaps went from 6 (G22–G26) to 5 (G22, G23, G24, G26, plus G25 resolved by D12 update).
+
+### L07 test-count audit
+
+Net additions: +15 tests / -2 tests (collapsed theories) = +13 net. New target ≈ 60 (from ≈ 55). Distribution: 20 Contracts + 29 Shell + 11 integration. Post-3-5 Shell.Tests projected at ≈ 630 passing. Below L11's 80-test cheat-sheet trigger.
+
+### Orchestrator note on disagreement resolution
+
+Winston's push-back ("three under-argued load-bearing decisions should graduate to dedicated ADRs") vs. Bob's numerical take ("20/25, within cap — structurally ready"). Resolution: rather than promoting D5 / D6 / D2 to ADRs (which would add three rows to the already-long ADR section and consume review bandwidth), the rationales columns were expanded in-place with explicit rejected alternatives. Winston's hygiene concerns (IObservable exposure, package ref, ordering semantics) are now spelled out within the existing decisions — substantively addressed without the budget-row impact of an ADR-48/49/50 triple.
+
+

@@ -160,4 +160,60 @@
     <value>Density set to {0}.</value>
     <comment>D20 addition 2026-04-19 — aria-live announcer template; {0} is the localized density level.</comment>
   </data>
+
+  <!-- Story 3-4 Task 9.1 (D14 / D23 / AC2 / AC5 / AC6) — 14 palette + shortcut keys. The
+       existing CommandPaletteTriggerAriaLabel (seeded in 3-1) is REPLACED by PaletteTriggerAriaLabel.
+       CanonicalKeysHaveFrenchCounterparts enforces FR parity. -->
+  <data name="PaletteTriggerAriaLabel" xml:space="preserve">
+    <value>Open command palette</value>
+    <comment>Story 3-4 D14 — header icon button title + aria-label.</comment>
+  </data>
+  <data name="CommandPaletteTitle" xml:space="preserve">
+    <value>Command palette</value>
+    <comment>Story 3-4 D14 — dialog title + content aria-label.</comment>
+  </data>
+  <data name="PaletteSearchPlaceholder" xml:space="preserve">
+    <value>Search projections, commands, recent… (type ? for shortcuts)</value>
+    <comment>Story 3-4 D14 — palette search input placeholder (FluentTextInput type=Search per spike-notes §3). The "? for shortcuts" hint surfaces D23 alias discoverability.</comment>
+  </data>
+  <data name="PaletteCategoryProjections" xml:space="preserve">
+    <value>Projections</value>
+  </data>
+  <data name="PaletteCategoryCommands" xml:space="preserve">
+    <value>Commands</value>
+  </data>
+  <data name="PaletteCategoryRecent" xml:space="preserve">
+    <value>Recent</value>
+  </data>
+  <data name="PaletteResultCountTemplate" xml:space="preserve">
+    <value>{0} results</value>
+    <comment>Story 3-4 D15 — aria-live region template; {0} is the result count.</comment>
+  </data>
+  <data name="PaletteNoResultsText" xml:space="preserve">
+    <value>No matches found</value>
+    <comment>Story 3-4 D15 — empty-state copy AND aria-live announce text on zero results.</comment>
+  </data>
+  <data name="ShortcutsCategoryLabel" xml:space="preserve">
+    <value>Keyboard shortcuts</value>
+  </data>
+  <data name="PaletteShortcutDescription" xml:space="preserve">
+    <value>Open command palette</value>
+    <comment>Story 3-4 D14 — description column for the Ctrl+K row in the shortcut reference view.</comment>
+  </data>
+  <data name="SettingsShortcutDescription" xml:space="preserve">
+    <value>Open settings</value>
+    <comment>Story 3-4 D14 — description column for the Ctrl+, row in the shortcut reference view.</comment>
+  </data>
+  <data name="HomeShortcutDescription" xml:space="preserve">
+    <value>Go to home</value>
+    <comment>Story 3-4 D14 — description column for the g h chord in the shortcut reference view.</comment>
+  </data>
+  <data name="KeyboardShortcutsCommandLabel" xml:space="preserve">
+    <value>Keyboard Shortcuts</value>
+    <comment>Story 3-4 D23 — synthetic default Commands entry that refills the palette with the shortcut reference view.</comment>
+  </data>
+  <data name="KeyboardShortcutsCommandDescription" xml:space="preserve">
+    <value>View all keyboard shortcuts</value>
+    <comment>Story 3-4 D23 — entry description for the synthetic "Keyboard Shortcuts" commands row.</comment>
+  </data>
 </root>

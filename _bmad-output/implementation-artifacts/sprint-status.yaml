@@ -1,5 +1,5 @@
 # generated: 2026-04-12
-# last_updated: 2026-04-20 (story 3-3: review → done — display-density + user-settings implementation completed, all task/subtask checkboxes closed, and the blocking validation work is now green. Review-finding patches landed for the global density stylesheet move, bootstrap-safe hydrate fallback, legacy string-payload migration, shared settings-dialog launcher contract, JS apply retry behavior, bootstrap-safe initial density resolution, and real behavior dialog-entry tests. `tests/Hexalith.FrontComposer.Shell.Tests` builds cleanly again; the previously hanging settings-entry tests now pass via deterministic `RecordingDialogService`, and the exact changed-test slice passes 10/10. Story 3-4 remains ready-for-dev as the next Epic 3 item.)
+# last_updated: 2026-04-21 (story 3-4: pass-3 bmad-code-review applied 14 of 15 P-series patches + DN5 (re-validation) + P10 + P11 + P12 in one session. P15 WITHDRAWN after verification (Blazor omits null attributes). 7 DN resolutions recorded: DN1=(a) ratify-placeholder + G24 [XML-doc pending]; DN2=(b) NS2.0 restructure [pending]; DN3=(b) require Playwright palette E2E + BenchmarkDotNet PaletteScorerBench before closing [pending]; DN4=(A) ratify 4 deviations in addendum [pending]; DN5=(a) DONE; DN6=(a) OpenGeneration plumbing across state/action/reducer/effect/component/registrar [pending]; DN7=(b) tenant/user snapshot in PaletteScopeChangedAction payload [pending]. `dotnet build --warnaserror` clean; `dotnet test` 905 passing (Contracts 14 / Shell 614 / SourceTools 277; 2 skipped E2E). CommandPaletteEffectsTests fixture gained a TestNavigationManager so the P6 "log-and-early-return on null NavigationManager" contract is exercised without regression. Story status kept as review — DN3 user-gate prevents close until Playwright E2E + BDN ship.)
 # project: Hexalith.FrontComposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-20 (story 3-3: review → done — display-density + user-settings implementation completed, all task/subtask checkboxes closed, and the last blocking review validation is now green. Review-finding fixes landed for the global density stylesheet move, bootstrap-safe hydrate fallback, legacy density payload migration, global screen-reader helper ownership, shared settings-dialog launcher contract, density JS retry behavior, bootstrap-safe initial density resolution, and real dialog-entry behavior coverage. `tests/Hexalith.FrontComposer.Shell.Tests` now builds cleanly again; the previously hanging settings-entry tests pass via the deterministic `RecordingDialogService`, and the exact changed-test slice passes 10/10. Story 3-4 remains ready-for-dev as the next Epic 3 item.)"
+last_updated: "2026-04-21 (story 3-4: in-progress → review after full bmad-code-review re-pass — 3 parallel layers (Blind Hunter + Edge Case Hunter + Acceptance Auditor) surfaced 7 decision-needed + 21 patches + 5 defer + 18 dismissed. All 7 decisions resolved: D24 Interlocked.Exchange ratified; HFC2107→HFC2108 + HFC2108→HFC2109 spec renumber to match shipped code; D21 companion-interface pattern ratified; G20 clarified for TryAddScoped + adopter-AddScoped override path; new G23 added for NFR5 benchmark deferral; DN6 ValidateManifests accepted as inert placeholder with inline rationale; AC1 Warning→Information severity heading fixed. 19 of 21 patches applied clean; 2 reverted on test evidence (BoundedContextRouteParser anchor + IsInternalRoute path-only scheme scan both contradicted established test contracts). `dotnet build --warnaserror` clean; 613 passing / 0 failed / 2 skipped (same count as prior pass).)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -69,8 +69,8 @@ development_status:
   3-1-shell-layout-theme-and-typography: done
   3-2-sidebar-navigation-and-responsive-behavior: done
   3-3-display-density-and-user-settings: done
-  3-4-fccommandpalette-and-keyboard-shortcuts: ready-for-dev
-  3-5-home-directory-badge-counts-and-new-capability-discovery: backlog
+  3-4-fccommandpalette-and-keyboard-shortcuts: review
+  3-5-home-directory-badge-counts-and-new-capability-discovery: ready-for-dev
   3-6-session-persistence-and-context-restoration: backlog
   epic-3-retrospective: optional
 

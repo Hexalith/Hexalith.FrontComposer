@@ -20,7 +20,8 @@
     <link rel="stylesheet" href="@DensityStylesheetPath" />
 </HeadContent>
 
-<div class="fc-shell-root" style="--accent-base-color: @AccentColor;" tabindex="0" @onkeydown="HandleGlobalKeyDown">
+<div class="fc-shell-root" style="--accent-base-color: @AccentColor;" tabindex="0" @ref="_shellRoot"
+     @onkeydown="HandleGlobalKeyDown">
     <a class="fc-skip-link" href="#fc-main-content">@Localizer["SkipToContentLabel"].Value</a>
     @if (HasNavigation)
     {
@@ -60,6 +61,8 @@
                         }
                         else
                         {
+                            @* Story 3-4 D18 — palette trigger first (primary navigation per UX spec §82), then settings. *@
+                            <FcPaletteTriggerButton />
                             <FcSettingsButton />
                         }
                     </FluentStack>

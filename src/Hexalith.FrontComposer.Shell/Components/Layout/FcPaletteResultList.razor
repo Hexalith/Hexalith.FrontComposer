@@ -1,0 +1,189 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using System.Collections.Immutable
+@using Hexalith.FrontComposer.Contracts.Badges
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.CommandPalette
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+@implements IAsyncDisposable
+@inject IStringLocalizer<FcShellResources> Localizer
+@inject IServiceProvider ServiceProvider
+
+@* Story 3-4 Task 6.1 (D14 / D15 / D16 / D18; ADR-044) — categorised listbox rendered as
+   <ul role="listbox"> with <li role="option"> children. IBadgeCountService is consumed via
+   GetService<T> (NOT [Inject]) so absent service yields a null reference and the badge branch is
+   short-circuited — see ADR-044 / D16 anti-regression comment in OnInitialized. *@
+
+<div id="@Id" class="fc-palette-results" data-testid="fc-palette-results">
+    @if (Results.IsEmpty)
+    {
+        <p class="fc-palette-noresults" data-testid="fc-palette-noresults">@Localizer["PaletteNoResultsText"].Value</p>
+    }
+    else
+    {
+        <ul class="fc-palette-listbox" role="listbox" aria-activedescendant="@ActiveDescendantId">
+            @foreach ((PaletteResultCategory category, IReadOnlyList<(PaletteResult Result, int FlatIndex)> rows) in
+        GroupResults(Results))
+            {
+                <li role="none">
+                    <h4 id="@GroupHeadingId(category)" class="fc-palette-group-heading">@CategoryLabel(category)</h4>
+                    <ul role="group" aria-labelledby="@GroupHeadingId(category)">
+                        @foreach ((PaletteResult result, int flatIndex) in rows)
+                        {
+                            <li role="option" id="@ResultElementId(flatIndex)"
+                                aria-selected="@(flatIndex == SelectedIndex ? "true" : null)"
+                                aria-disabled="@(IsInformationalShortcut(result) ? "true" : null)" tabindex="-1"
+                                class="@(flatIndex == SelectedIndex ? "fc-palette-option fc-palette-option-selected" : "fc-palette-option")"
+                                data-testid="fc-palette-option" @onclick="() => HandleOptionClickedAsync(result, flatIndex)">
+                                <span class="fc-palette-option-label">@result.DisplayLabel</span>
+                                @if (result.IsInCurrentContext)
+                                {
+                                    <span class="fc-palette-option-context">(in current context)</span>
+                                }
+                                @if (!string.IsNullOrEmpty(result.DescriptionKey))
+                                {
+                                    <span class="fc-palette-option-hint">@Localizer[result.DescriptionKey!].Value</span>
+                                }
+                                @if (_badgeCounts is not null
+                                    && result.Category == PaletteResultCategory.Projection
+                                    && result.ProjectionType is { } projection
+                                    && _badgeCounts.Counts.TryGetValue(projection, out int count))
+                                {
+                                    @* DN5 (2026-04-21) — spike-notes originally pinned `Appearance.Accent`, but v5 RC2's
+                                       `BadgeAppearance` enum has no `Accent` member; valid values are Filled / Ghost /
+                                       Outline / Tint. `Tint` is the lightest-emphasis option and the closest approximation
+                                       to the "Info" semantic the spec intended. Spike-notes corrected to match reality. *@
+                                    <FluentBadge Appearance="@BadgeAppearance.Tint">@count</FluentBadge>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    /// <summary>The DOM id of the result list root (referenced by the search input's aria-controls).</summary>
+    [Parameter, EditorRequired] public string Id { get; set; } = "fc-palette-results";
+
+    /// <summary>The flat result list — already categorised + ranked by the producer effect.</summary>
+    [Parameter, EditorRequired] public ImmutableArray<PaletteResult> Results { get; set; }
+
+    /// <summary>The currently-selected flat index. Drives <c>aria-activedescendant</c> + the visual highlight.</summary>
+    [Parameter, EditorRequired] public int SelectedIndex { get; set; }
+
+    /// <summary>Fired when the user clicks a result row — carries the flat index.</summary>
+    [Parameter, EditorRequired] public EventCallback<int> OnSelectionChanged { get; set; }
+
+    private IBadgeCountService? _badgeCounts;
+    private IDisposable? _badgeSubscription;
+    private string? ActiveDescendantId
+        => SelectedIndex >= 0 && SelectedIndex < Results.Length
+            ? ResultElementId(SelectedIndex)
+            : null;
+
+    /// <inheritdoc />
+    protected override void OnInitialized()
+    {
+        // ADR-044 / D16 — IBadgeCountService is optional. DO NOT refactor to [Inject] IBadgeCountService?
+        // because Blazor [Inject] resolves via GetRequiredService and will throw when the service is
+        // unregistered (pre-Story-3-5 state). GetService returns null when absent.
+        _badgeCounts = ServiceProvider.GetService<IBadgeCountService>();
+        if (_badgeCounts is not null)
+        {
+            _badgeSubscription = _badgeCounts.CountChanged.Subscribe(new BadgeCountObserver(this));
+        }
+    }
+
+    private bool _disposed;
+
+    /// <inheritdoc />
+    public ValueTask DisposeAsync()
+    {
+        _disposed = true;
+        _badgeSubscription?.Dispose();
+        _badgeSubscription = null;
+        return ValueTask.CompletedTask;
+    }
+
+    private string ResultElementId(int flatIndex) => $"fc-palette-result-{flatIndex}";
+
+    private static bool IsInformationalShortcut(PaletteResult result)
+        => result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl);
+
+    private Task HandleOptionClickedAsync(PaletteResult result, int flatIndex)
+        => IsInformationalShortcut(result)
+            ? Task.CompletedTask
+               : OnSelectionChanged.InvokeAsync(flatIndex);
+
+    private string GroupHeadingId(PaletteResultCategory category)
+        => $"fc-palette-group-{category.ToString().ToLowerInvariant()}";
+
+    private string CategoryLabel(PaletteResultCategory category) => category switch
+    {
+        PaletteResultCategory.Projection => Localizer["PaletteCategoryProjections"].Value,
+        PaletteResultCategory.Command => Localizer["PaletteCategoryCommands"].Value,
+        PaletteResultCategory.Recent => Localizer["PaletteCategoryRecent"].Value,
+        PaletteResultCategory.Shortcut => Localizer["ShortcutsCategoryLabel"].Value,
+        _ => category.ToString(),
+    };
+
+    private static IEnumerable<(PaletteResultCategory Category, IReadOnlyList<(PaletteResult Result, int FlatIndex)> Rows)>
+GroupResults(ImmutableArray<PaletteResult> results)
+    {
+        // Preserve declared category display order (Projection / Command / Recent / Shortcut) AND the
+        // global flat index so aria-activedescendant + SelectedIndex line up regardless of group splits.
+        PaletteResultCategory[] order =
+        [
+            PaletteResultCategory.Projection,
+            PaletteResultCategory.Command,
+            PaletteResultCategory.Recent,
+            PaletteResultCategory.Shortcut,
+        ];
+
+        foreach (PaletteResultCategory category in order)
+        {
+            List<(PaletteResult, int)> rows = [];
+            for (int i = 0; i < results.Length; i++)
+            {
+                if (results[i].Category == category)
+                {
+                    rows.Add((results[i], i));
+                }
+            }
+
+            if (rows.Count > 0)
+            {
+                yield return (category, rows);
+            }
+        }
+    }
+
+    private sealed class BadgeCountObserver(FcPaletteResultList owner) : IObserver<BadgeCountChangedArgs>
+    {
+        public void OnCompleted() { }
+
+        public void OnError(Exception error) { }
+
+        public void OnNext(BadgeCountChangedArgs value)
+        {
+            if (owner._disposed)
+            {
+                return;
+            }
+
+            try
+            {
+                _ = owner.InvokeAsync(owner.StateHasChanged);
+            }
+            catch (ObjectDisposedException)
+            {
+                // Component disposed between _disposed-check and InvokeAsync — race with circuit
+                // teardown. Observable source may still fire until Dispose completes; ignore.
+            }
+        }
+    }
+}

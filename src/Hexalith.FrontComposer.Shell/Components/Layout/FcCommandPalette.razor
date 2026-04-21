@@ -1,0 +1,39 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.CommandPalette
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
+
+@* Story 3-4 Task 5.1 (D11 / D15 / D17 — AC2 / AC5 / AC6).
+   Dialog body opened by IDialogService.ShowDialogAsync<FcCommandPalette>. The dialog frame is
+   provided by FluentDialogBody (Story 3-3 FcSettingsDialog precedent — does NOT implement the
+   generic IDialogContentComponent<TData> interface). *@
+
+<FluentDialogBody>
+    <TitleTemplate>@Localizer["CommandPaletteTitle"].Value</TitleTemplate>
+    <ChildContent>
+        @* P2 (2026-04-21 pass-3): @onkeydown:preventDefault is a render-time boolean, not per-key.
+           The always-true property swallowed Tab, breaking the focus loop. JS module
+           fc-keyboard.js:registerPaletteKeyFilter does per-key preventDefault for Arrow/Enter/Escape
+           and is the single source of truth. *@
+        <div class="fc-palette-root" role="dialog" aria-label="@Localizer["CommandPaletteTitle"].Value"
+             data-testid="fc-palette-root" @ref="_paletteRoot" @onkeydown="HandleKeyDownAsync"
+             @onkeydown:stopPropagation="true">
+            <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync"
+                             TextInputType="TextInputType.Search" Placeholder="@Localizer["PaletteSearchPlaceholder"].Value"
+                             role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-controls="@ResultListId"
+                             aria-activedescendant="@ActiveDescendantId" aria-autocomplete="list" data-testid="fc-palette-search" />
+
+            <FcPaletteResultList Id="@ResultListId" Results="@PaletteState.Value.Results"
+                                 SelectedIndex="@PaletteState.Value.SelectedIndex" OnSelectionChanged="OnSelectionClickedAsync" />
+
+            @* D15 anti-regression — DO NOT refactor to render populated on first tick. AT engines
+               (NVDA, JAWS) announce aria-live changes on DOM mutation, NOT on initial content;
+               rendering populated skips the announce. The two-tick (empty → populated) sequence
+               forces the mutation. Removing this would silently break SR users. *@
+            <div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-palette-live">
+                @_liveRegionText</div>
+            </div>
+        </ChildContent>
+    </FluentDialogBody>

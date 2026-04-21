@@ -143,6 +143,45 @@ public sealed class FcShellResourcesTests {
     // and were deleted from the resx files. Story 10-2 may re-introduce both the keys and this
     // theory when a verified seam exists.
 
+    // --- Story 3-4 Task 10.11 (D14 / D23 / AC2 / AC5 / AC6) — 14 new palette + shortcut keys ---
+
+    [Theory]
+    [InlineData("PaletteTriggerAriaLabel", "Open command palette", "Ouvrir la palette de commandes")]
+    [InlineData("CommandPaletteTitle", "Command palette", "Palette de commandes")]
+    [InlineData("PaletteSearchPlaceholder",
+        "Search projections, commands, recent… (type ? for shortcuts)",
+        "Rechercher projections, commandes, récents… (tapez ? pour raccourcis)")]
+    [InlineData("PaletteCategoryProjections", "Projections", "Projections")]
+    [InlineData("PaletteCategoryCommands", "Commands", "Commandes")]
+    [InlineData("PaletteCategoryRecent", "Recent", "Récents")]
+    [InlineData("PaletteResultCountTemplate", "{0} results", "{0} résultats")]
+    [InlineData("PaletteNoResultsText", "No matches found", "Aucun résultat trouvé")]
+    [InlineData("ShortcutsCategoryLabel", "Keyboard shortcuts", "Raccourcis clavier")]
+    [InlineData("PaletteShortcutDescription", "Open command palette", "Ouvrir la palette de commandes")]
+    [InlineData("SettingsShortcutDescription", "Open settings", "Ouvrir les paramètres")]
+    [InlineData("HomeShortcutDescription", "Go to home", "Aller à l'accueil")]
+    [InlineData("KeyboardShortcutsCommandLabel", "Keyboard Shortcuts", "Raccourcis clavier")]
+    [InlineData("KeyboardShortcutsCommandDescription", "View all keyboard shortcuts", "Voir tous les raccourcis clavier")]
+    public void PaletteAndShortcutKeysResolveInBothLocales(string key, string enValue, string frValue) {
+        ServiceProvider provider = BuildLocalizedProvider();
+        using IServiceScope scope = provider.CreateScope();
+        IStringLocalizer<FcShellResources> localizer = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>();
+
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = new CultureInfo("en");
+            localizer[key].Value.ShouldBe(enValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+
+            CultureInfo.CurrentUICulture = new CultureInfo("fr");
+            localizer[key].Value.ShouldBe(frValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
+    }
+
     private static ServiceProvider BuildLocalizedProvider() {
         ServiceCollection services = new();
         _ = services.AddLogging();

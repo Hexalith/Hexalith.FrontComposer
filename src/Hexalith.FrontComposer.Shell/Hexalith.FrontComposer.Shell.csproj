@@ -18,4 +18,11 @@
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.FrontComposer.Shell.Tests" />
   </ItemGroup>
+  <!-- Story 3-4 P10 (2026-04-21 pass 3) — Story 1-8 G2 discipline. Feeding
+       AnalyzerReleases.Unshipped.md to the compiler via AdditionalFiles lets the
+       RS2008/RS2000 Roslyn release-tracking analyzers validate that every HFC diagnostic
+       emitted from this project has a row. -->
+  <ItemGroup>
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
 </Project>

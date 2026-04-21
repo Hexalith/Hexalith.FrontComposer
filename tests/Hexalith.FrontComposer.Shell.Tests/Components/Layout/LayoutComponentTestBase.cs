@@ -48,6 +48,15 @@ public abstract class LayoutComponentTestBase : BunitContext {
         PrefersColorSchemeSubscription = PrefersColorSchemeModule.SetupModule("subscribe", _ => true);
         _ = PrefersColorSchemeModule.SetupVoid("unsubscribe", _ => true).SetVoidResult();
 
+        KeyboardModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js");
+        _ = KeyboardModule.SetupVoid("focusElement", _ => true).SetVoidResult();
+        _ = KeyboardModule.SetupVoid("registerShellKeyFilter", _ => true).SetVoidResult();
+        _ = KeyboardModule.SetupVoid("registerPaletteKeyFilter", _ => true).SetVoidResult();
+        _ = KeyboardModule.Setup<bool>("isEditableElementActive", _ => true).SetResult(false);
+
+        FocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
+        _ = FocusModule.SetupVoid("focusBodyIfNeeded", _ => true).SetVoidResult();
+
         // Story 3-2 Task 10 — Do NOT initialize the Fluxor store here. bUnit locks the service
         // container on first service resolution, which blocks derived tests from
         // Services.Replace(registry) / Services.Replace(ulidFactory) calls in their own
@@ -63,6 +72,10 @@ public abstract class LayoutComponentTestBase : BunitContext {
     protected BunitJSModuleInterop PrefersColorSchemeModule { get; }
 
     protected BunitJSModuleInterop PrefersColorSchemeSubscription { get; }
+
+    protected BunitJSModuleInterop KeyboardModule { get; }
+
+    protected BunitJSModuleInterop FocusModule { get; }
 
     /// <summary>
     /// Initializes the Fluxor store exactly once per test context. Derived tests that call

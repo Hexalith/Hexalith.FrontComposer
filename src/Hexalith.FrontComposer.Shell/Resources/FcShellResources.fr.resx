@@ -142,4 +142,48 @@
   <data name="DensityAnnouncementTemplate" xml:space="preserve">
     <value>Densité réglée sur {0}.</value>
   </data>
+
+  <!-- Story 3-4 Task 9.2 (D14 / D23) — 14 clés palette + raccourcis (FR). -->
+  <data name="PaletteTriggerAriaLabel" xml:space="preserve">
+    <value>Ouvrir la palette de commandes</value>
+  </data>
+  <data name="CommandPaletteTitle" xml:space="preserve">
+    <value>Palette de commandes</value>
+  </data>
+  <data name="PaletteSearchPlaceholder" xml:space="preserve">
+    <value>Rechercher projections, commandes, récents… (tapez ? pour raccourcis)</value>
+  </data>
+  <data name="PaletteCategoryProjections" xml:space="preserve">
+    <value>Projections</value>
+  </data>
+  <data name="PaletteCategoryCommands" xml:space="preserve">
+    <value>Commandes</value>
+  </data>
+  <data name="PaletteCategoryRecent" xml:space="preserve">
+    <value>Récents</value>
+  </data>
+  <data name="PaletteResultCountTemplate" xml:space="preserve">
+    <value>{0} résultats</value>
+  </data>
+  <data name="PaletteNoResultsText" xml:space="preserve">
+    <value>Aucun résultat trouvé</value>
+  </data>
+  <data name="ShortcutsCategoryLabel" xml:space="preserve">
+    <value>Raccourcis clavier</value>
+  </data>
+  <data name="PaletteShortcutDescription" xml:space="preserve">
+    <value>Ouvrir la palette de commandes</value>
+  </data>
+  <data name="SettingsShortcutDescription" xml:space="preserve">
+    <value>Ouvrir les paramètres</value>
+  </data>
+  <data name="HomeShortcutDescription" xml:space="preserve">
+    <value>Aller à l'accueil</value>
+  </data>
+  <data name="KeyboardShortcutsCommandLabel" xml:space="preserve">
+    <value>Raccourcis clavier</value>
+  </data>
+  <data name="KeyboardShortcutsCommandDescription" xml:space="preserve">
+    <value>Voir tous les raccourcis clavier</value>
+  </data>
 </root>

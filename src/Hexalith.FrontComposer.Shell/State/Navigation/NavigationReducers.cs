@@ -104,4 +104,23 @@ public static class NavigationReducers
             CollapsedGroups = action.CollapsedGroups,
         };
     }
+
+    /// <summary>
+    /// Updates <see cref="FrontComposerNavigationState.CurrentBoundedContext"/> when the route
+    /// changes (Story 3-4 D7). NEVER persisted — derived from <c>NavigationManager.Uri</c>.
+    /// </summary>
+    /// <param name="state">The current navigation state.</param>
+    /// <param name="action">The bounded-context-changed action.</param>
+    /// <returns>A new state when the value changed; the same instance otherwise.</returns>
+    [ReducerMethod]
+    public static FrontComposerNavigationState ReduceBoundedContextChanged(
+        FrontComposerNavigationState state,
+        BoundedContextChangedAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return string.Equals(state.CurrentBoundedContext, action.NewBoundedContext, StringComparison.Ordinal)
+            ? state
+            : state with { CurrentBoundedContext = action.NewBoundedContext };
+    }
 }

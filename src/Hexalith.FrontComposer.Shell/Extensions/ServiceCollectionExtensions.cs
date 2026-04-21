@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 using Hexalith.FrontComposer.Shell.Options;
@@ -18,6 +19,8 @@ using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Shortcuts;
+using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Builder;
@@ -225,6 +228,17 @@ public static class ServiceCollectionExtensions
 
         // Default no-op ICommandPageContext — adopter-hosted pages override via scoped registration.
         services.TryAddScoped<ICommandPageContext, NullCommandPageContext>();
+
+        // Story 3-4 D2 / Task 1.5 — IShortcutService is Scoped (per-circuit / per-user; mirrors
+        // IStorageService ADR-030). The registrar is also Scoped so its idempotency flag (D24) lives
+        // for one circuit's lifetime.
+        services.TryAddScoped<IShortcutService, ShortcutService>();
+        services.TryAddScoped<FrontComposerShortcutRegistrar>();
+
+        // Story 3-4 — CommandPaletteEffects must be discoverable by Fluxor's effect scan AND
+        // available as a concrete instance for IDisposable cleanup on circuit teardown. Scoped per
+        // ADR-030 precedent.
+        services.TryAddScoped<CommandPaletteEffects>();
 
         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.

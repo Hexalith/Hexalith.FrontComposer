@@ -4,7 +4,7 @@
 
 The palette is a `FluentDialog` that opens on `Ctrl+K`. When the user types, the effect waits 150 ms (debounce, cancels-earlier-keystroke), then runs a pure-function fuzzy scorer (`PaletteScorer.Score`) against every projection + command name in the registry. Results are grouped into **Projections / Commands / Recent / Shortcut** categories and rendered as a `role="listbox"`. Pressing Enter navigates to the route (or the generated command form); Escape closes. The recent-route list is 5 entries, persisted per-tenant/user under `{tenantId}:{userId}:palette-recent` with the same fail-closed guard as every other Epic 3 persistence path.
 
-Keyboard shortcuts are owned by a new `IShortcutService` (Contracts-layer interface, Shell-layer impl, Scoped lifetime). Three shortcuts ship at shell level: `Ctrl+K` (palette), `Ctrl+,` (settings — migrated from Story 3-3's inline binding), `g h` (home chord). Duplicate registration logs `HFC2107` Information + last-writer-wins so adopters can deliberately override. Build-time conflict detection is deferred to Story 9-4.
+Keyboard shortcuts are owned by a new `IShortcutService` (Contracts-layer interface, Shell-layer impl, Scoped lifetime). Three shortcuts ship at shell level: `Ctrl+K` (palette), `Ctrl+,` (settings — migrated from Story 3-3's inline binding), `g h` (home chord). Duplicate registration logs `HFC2108` Information + last-writer-wins so adopters can deliberately override. Build-time conflict detection is deferred to Story 9-4.
 
 The `IBadgeCountService` (Story 3-5) appears on projection rows as a `FluentBadge` — but only when the service is registered. 3-4 consumes it via nullable `[Inject]`, so "Story 3-5 not yet shipped" and "Story 3-5 shipped" differ only in whether the badge renders. No shim, no feature flag, no try-catch.
 
@@ -197,12 +197,12 @@ Per MCP `get_component_details("FluentBadge")` (verify in Task 0.3):
 - `src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs` — append `string? CurrentBoundedContext` field (nullable — derived from route) per Task 2.1a.
 - `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx` + `.fr.resx` — 12 new keys.
 - `src/Hexalith.FrontComposer.Shell/ServiceCollectionExtensions.cs` (or whichever file defines `AddHexalithFrontComposer`) — add `services.AddScoped<IShortcutService, ShortcutService>()` + `services.AddScoped<FrontComposerShortcutRegistrar>()`.
-- `src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md` — add `HFC2107_ShortcutConflict` at Information severity.
+- `src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md` — add `HFC2108_ShortcutConflict` at Information severity.
 
 **Created tests (11 files):**
 - `tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutBindingNormalizeTests.cs`
-- `tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/HFC2107ShortcutConflictLogTest.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/HFC2108ShortcutConflictLogTest.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerPropertyTests.cs` (FsCheck)
 - `tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerBench.cs` (BenchmarkDotNet, opt-in)
@@ -238,7 +238,7 @@ No changes to `Contracts/Rendering/`, `SourceTools/`, `EventStore/`, or `Tenants
 ## Build & CI
 
 - `Microsoft.FluentUI.AspNetCore.Components` stays at `5.0.0-rc.2-26098.1` — do NOT bump in this story.
-- `HFC2107_ShortcutConflict` is a new runtime diagnostic ID — AnalyzerReleases.Unshipped.md row required per Story 1-8 G2 discipline.
+- `HFC2108_ShortcutConflict` is a new runtime diagnostic ID — AnalyzerReleases.Unshipped.md row required per Story 1-8 G2 discipline.
 - Scoped CSS emits `{AssemblyName}.styles.css` automatically — `FcCommandPalette.razor.css`, `FcPaletteResultList.razor.css` ride the existing bundle (Story 3-1 ADR-034 filename contract unchanged).
 - No new CI jobs — everything rides `dotnet build` + `dotnet test`.
 - Playwright E2E in Task 10.12 runs via the Story 3-1 / 3-2 / 3-3 harness (Aspire MCP per `memory/feedback_no_manual_validation.md`).
@@ -278,7 +278,7 @@ No changes to `Contracts/Rendering/`, `SourceTools/`, `EventStore/`, or `Tenants
 
 ## Lessons Ledger Citations (from `_bmad-output/process-notes/story-creation-lessons.md`)
 
-- **L01 Cross-story contract clarity** — Cross-story contract table in Critical Decisions names producer and consumer for 9 seams (IShortcutService + ShortcutRegistration + ShortcutBinding, FrontComposerCommandPaletteState shape, PaletteResult + Category enum, PaletteScorer.Score, IBadgeCountService nullable injection, Story 3-3 Ctrl+, migration, HeaderEnd auto-populate extension, RecentRouteVisitedAction (Story 3-6 observation), HFC2107 diagnostic ID (Story 9-4 analyzer)).
+- **L01 Cross-story contract clarity** — Cross-story contract table in Critical Decisions names producer and consumer for 9 seams (IShortcutService + ShortcutRegistration + ShortcutBinding, FrontComposerCommandPaletteState shape, PaletteResult + Category enum, PaletteScorer.Score, IBadgeCountService nullable injection, Story 3-3 Ctrl+, migration, HeaderEnd auto-populate extension, RecentRouteVisitedAction (Story 3-6 observation), HFC2108 diagnostic ID (Story 9-4 analyzer)).
 - **L02 Fluxor feature producer+consumer scope** — `FrontComposerCommandPaletteFeature` PRODUCER stories: 3-4 (this story — new feature, reducers, effects, component subscription). CONSUMER stories: 3-4's own `FcCommandPalette` + `FcPaletteResultList`, Story 3-5 (badge count subscription — inert until 3-5 registers the service), Story 3-6 (may observe `RecentRouteVisitedAction` for session blob updates). Shipping ALL producers + effects in 3-4 (no deferred effects) avoids Story 2-2's "half a state machine" risk.
 - **L03 Tenant/user isolation fail-closed** — D10 inherits Story 3-1 ADR-029 + Story 3-2 ADR-038 patterns verbatim via `TryResolveScope`. Memory feedback `feedback_tenant_isolation_fail_closed.md` honored.
 - **L04 Generated name collision detection** — Not applicable; 3-4 does not extend the source generator.

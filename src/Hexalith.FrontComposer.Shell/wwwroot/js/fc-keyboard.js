@@ -1,0 +1,119 @@
+function isEditableElement(element) {
+    if (!element || !(element instanceof HTMLElement)) {
+        return false;
+    }
+
+    if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
+        return true;
+    }
+
+    if (element.isContentEditable) {
+        return true;
+    }
+
+    return (
+        element.closest(
+            '[contenteditable="true"], [contenteditable=""], [role="textbox"]',
+        ) !== null
+    );
+}
+
+function registerFilter(element, marker, predicate) {
+    if (!element || element[marker]) {
+        return;
+    }
+
+    const handler = (event) => {
+        if (predicate(event)) {
+            event.preventDefault();
+        }
+    };
+
+    element.addEventListener("keydown", handler);
+    element[marker] = handler;
+}
+
+export function focusElement(element) {
+    if (element && typeof element.focus === "function") {
+        element.focus();
+    }
+}
+
+export function isEditableElementActive() {
+    return isEditableElement(document.activeElement);
+}
+
+export function registerShellKeyFilter(element) {
+    if (!element || element.__fcShellKeyFilter) {
+        return;
+    }
+
+    const handler = (event) => {
+        const key = (event.key ?? "").toLowerCase();
+        const hasModifier =
+            event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
+
+        // Modifier-bearing framework shortcuts: prevent browser default AND let Blazor route them.
+        // Accept Ctrl+K/, on Windows+Linux AND Cmd+K/, on macOS — `meta+k` is registered as a
+        // distinct shortcut server-side so Mac Safari/Chrome users aren't sent to the address bar.
+        const isPrimaryMod =
+            (event.ctrlKey && !event.metaKey) ||
+            (event.metaKey && !event.ctrlKey);
+        if (
+            isPrimaryMod &&
+            !event.shiftKey &&
+            !event.altKey &&
+            (key === "k" || key === ",")
+        ) {
+            event.preventDefault();
+            return;
+        }
+
+        // Bare-letter keys targeting an editable element must NEVER reach the Blazor global
+        // router — stopPropagation avoids the circuit round-trip previously paid by
+        // IsEditableElementActiveAsync (DN3).
+        if (
+            !hasModifier &&
+            key.length === 1 &&
+            isEditableElement(event.target)
+        ) {
+            event.stopPropagation();
+        }
+    };
+
+    element.addEventListener("keydown", handler);
+    element.__fcShellKeyFilter = handler;
+}
+
+export function registerPaletteKeyFilter(element) {
+    registerFilter(element, "__fcPaletteKeyFilter", (event) => {
+        const key = event.key ?? "";
+        return (
+            key === "ArrowDown" ||
+            key === "ArrowUp" ||
+            key === "Enter" ||
+            key === "Escape"
+        );
+    });
+}
+
+// P9 (2026-04-21 pass-3): teardown companions for the register* pair so hot-reload and
+// circuit reconnect paths don't accumulate stale handlers on DOM nodes that get re-attached
+// to new Blazor components. Callers invoke these from DisposeAsync via JS interop.
+export function unregisterShellKeyFilter(element) {
+    if (!element || !element.__fcShellKeyFilter) {
+        return;
+    }
+
+    element.removeEventListener("keydown", element.__fcShellKeyFilter);
+    element.__fcShellKeyFilter = null;
+}
+
+export function unregisterPaletteKeyFilter(element) {
+    if (!element || !element.__fcPaletteKeyFilter) {
+        return;
+    }
+
+    element.removeEventListener("keydown", element.__fcPaletteKeyFilter);
+    element.__fcPaletteKeyFilter = null;
+}

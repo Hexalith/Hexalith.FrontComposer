@@ -1,5 +1,7 @@
 using Bunit;
+using Bunit.TestDoubles;
 
+using Fluxor;
 using Fluxor.Blazor.Web;
 
 using Hexalith.FrontComposer.Contracts.Registration;
@@ -246,5 +248,118 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
                 () => cut.FindComponent<FrontComposerNavigation>(),
                 $"FrontComposerNavigation must not render at {tier}.");
         });
+    }
+
+    // --- Story 3-4 Task 10.10 / 10.10a (D5 / D18 / AC2 / AC8) — palette trigger + Ctrl+K wiring ---
+
+    [Fact]
+    public void PaletteTriggerAutoPopulatesAheadOfSettings() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            _ = cut.FindComponent<FcPaletteTriggerButton>();
+            _ = cut.FindComponent<FcSettingsButton>();
+
+            int paletteIndex = cut.Markup.IndexOf("fc-palette-trigger", StringComparison.Ordinal);
+            int settingsIndex = cut.Markup.IndexOf("fc-settings-button", StringComparison.Ordinal);
+
+            paletteIndex.ShouldBeGreaterThanOrEqualTo(0);
+            settingsIndex.ShouldBeGreaterThan(paletteIndex);
+        });
+    }
+
+    // P11 (2026-04-21 pass-3 — Story 3-4 D18 / scope line 35) — adopter-supplied non-null HeaderEnd
+    // must suppress BOTH the auto-populated FcPaletteTriggerButton AND FcSettingsButton, not just one.
+    [Fact]
+    public void AdopterSuppliedHeaderEndSuppressesPaletteTrigger() {
+        RenderFragment custom = builder => builder.AddMarkupContent(0, "<span data-testid=\"adopter-header-end\">Custom</span>");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .Add(c => c.HeaderEnd, custom)
+            .AddChildContent("<p>Body</p>"));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("adopter-header-end");
+            Should.Throw<Bunit.Rendering.ComponentNotFoundException>(
+                () => cut.FindComponent<FcPaletteTriggerButton>(),
+                "Adopter-supplied HeaderEnd fragment must suppress the framework-owned FcPaletteTriggerButton (D18).");
+        });
+    }
+
+    [Fact]
+    public async Task CtrlKOpensPaletteDialogViaShortcutService() {
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        await cut.Find(".fc-shell-root").TriggerEventAsync(
+            "onkeydown",
+            new KeyboardEventArgs { Key = "K", CtrlKey = true });
+
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        dialogService.LastDialogType.ShouldBe(typeof(FcCommandPalette));
+        dialogService.LastOptions!.Modal.ShouldBe(true);
+        dialogService.LastOptions.Width.ShouldBe("600px");
+    }
+
+    [Fact]
+    public async Task BareChordPrefixAlone_DoesNotOpenDialogOrNavigate() {
+        // DN3 resolution (2026-04-21): the D5 text-input guard was moved from the C# shell to
+        // fc-keyboard.js:registerShellKeyFilter (which bUnit does not exercise). At the C# layer
+        // a bare chord-prefix only primes the FSM — no handler fires until the chord completes.
+        // This asserts the "no side effects from a lone prefix key" contract.
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
+
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        string initialUri = navigation.Uri;
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        await cut.Find(".fc-shell-root").TriggerEventAsync(
+            "onkeydown",
+            new KeyboardEventArgs { Key = "g" });
+
+        dialogService.ShowDialogCallCount.ShouldBe(0);
+        navigation.Uri.ShouldBe(initialUri);
+    }
+
+    [Fact]
+    public async Task GHChordNavigatesHomeViaShortcutService() {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/counter/counter-view");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        await cut.Find(".fc-shell-root").TriggerEventAsync(
+            "onkeydown",
+            new KeyboardEventArgs { Key = "g" });
+        await cut.Find(".fc-shell-root").TriggerEventAsync(
+            "onkeydown",
+            new KeyboardEventArgs { Key = "h" });
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/"));
+    }
+
+    [Fact]
+    public void RouteChangesUpdateCurrentBoundedContextInNavigationState() {
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p.AddChildContent("<p>Body</p>"));
+
+        navigation.NavigateTo("/counter/counter-view");
+        cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBe("counter"));
+
+        navigation.NavigateTo("/domain/commerce/submit-order-command");
+        cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBe("commerce"));
+
+        navigation.NavigateTo("/");
+        cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBeNull());
     }
 }

@@ -3,13 +3,16 @@ using Fluxor.Blazor.Web.Components;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.AspNetCore.Components.Routing;
 using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -70,11 +73,15 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 /// </remarks>
 public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private const string BeforeUnloadModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-beforeunload.js";
+    private const string KeyboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js";
 
     private IJSObjectReference? _beforeUnloadModule;
     private IJSObjectReference? _beforeUnloadSubscription;
+    private IJSObjectReference? _keyboardModule;
     private DotNetObjectReference<FrontComposerShell>? _selfRef;
     private bool _themeBootstrapped;
+    private bool _locationTrackingRegistered;
+    private ElementReference _shellRoot;
     private readonly LayoutHamburgerCoordinator _hamburgerCoordinator = new();
 
     /// <summary>
@@ -126,6 +133,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// <summary>Injected Fluxor theme state (for first-render mode resolution).</summary>
     [Inject] private IState<FrontComposerThemeState> ThemeState { get; set; } = default!;
 
+    /// <summary>Injected Fluxor dispatcher used to mirror route changes into navigation state.</summary>
+    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
+
     /// <summary>Injected Fluxor navigation state (for responsive shell width calculation).</summary>
     [Inject] private IState<FrontComposerNavigationState> NavigationState { get; set; } = default!;
 
@@ -142,17 +152,21 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     /// </summary>
     [Inject] private IFrontComposerRegistry Registry { get; set; } = default!;
 
-    /// <summary>
-    /// Injected dialog service — shared between <see cref="FcSettingsButton"/> and the Ctrl+,
-    /// inline handler on the shell root (Story 3-3 D11 / D16).
-    /// </summary>
-    [Inject] private IDialogService DialogService { get; set; } = default!;
-
-    /// <summary>Injected shell resources localizer — resolves the settings dialog title.</summary>
-    [Inject] private IStringLocalizer<FcShellResources> ShellLocalizer { get; set; } = default!;
-
     /// <summary>Injected navigation manager used to resolve static web asset URLs against the app base path.</summary>
     [Inject] private NavigationManager NavigationManager { get; set; } = default!;
+
+    /// <summary>
+    /// Injected shortcut service (Story 3-4 D1). The shell's <c>@onkeydown</c> binding routes every
+    /// global key through this surface; the Story 3-3 inline <c>Ctrl+,</c> branch is RETIRED per
+    /// Story 3-3 D16 / Story 3-4 AC8.
+    /// </summary>
+    [Inject] private IShortcutService Shortcuts { get; set; } = default!;
+
+    /// <summary>
+    /// Injected shell registrar (Story 3-4 Task 1.4 / AC1). Owns the three v1 shell-default
+    /// shortcut registrations (Ctrl+K palette, Ctrl+, settings, g h home).
+    /// </summary>
+    [Inject] private FrontComposerShortcutRegistrar Registrar { get; set; } = default!;
 
     /// <summary>Accent color projected into the inline <c>:root</c> style block (AC2).</summary>
     protected string AccentColor => Options.Value.AccentColor;
@@ -196,21 +210,22 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     public Task FlushAsync() => Storage.FlushAsync();
 
     /// <summary>
-    /// Story 3-3 Task 8.2 (D16 / AC7) — single inline <c>@onkeydown</c> binding on the shell root
-    /// that opens <see cref="FcSettingsDialog"/> on <c>Ctrl+,</c>. Story 3-4 replaces this inline
-    /// binding with <c>IShortcutService.Register("ctrl+,", ...)</c>; the user-visible behaviour is
-    /// unchanged by that migration — this handler becomes a call site for the registered shortcut.
+    /// Story 3-4 Task 8.1 (D5 / AC8) — global keyboard router. Skips bare-letter chord prefixes
+    /// when focus is inside a text input (D5 simpler-rule sketch — modifier-bearing combos still
+    /// fire so <c>Ctrl+K</c> stays global from inside any input). All routing is delegated to
+    /// <see cref="IShortcutService.TryInvokeAsync"/>; the Story 3-3 inline <c>Ctrl+,</c> branch is
+    /// RETIRED per the AC8 migration contract.
     /// </summary>
     /// <param name="e">The keyboard event.</param>
-    /// <returns>A task representing the dialog presentation (or <see cref="Task.CompletedTask"/> when the combo doesn't match).</returns>
+    /// <returns>A task representing the asynchronous dispatch.</returns>
     protected async Task HandleGlobalKeyDown(KeyboardEventArgs e) {
         ArgumentNullException.ThrowIfNull(e);
-        if (e.Key != "," || !e.CtrlKey || e.ShiftKey || e.AltKey || e.MetaKey) {
-            return;
-        }
 
-        _ = await FcSettingsDialogLauncher
-            .ShowAsync(DialogService, ShellLocalizer["SettingsDialogTitle"].Value);
+        // The JS-side filter (`fc-keyboard.js:registerShellKeyFilter`) already suppresses bare-letter
+        // keys that target editable elements before the event reaches Blazor, so we no longer pay a
+        // circuit round-trip to `isEditableElementActive` on every keystroke. Modifier-bearing
+        // shortcuts stay global regardless of focus target.
+        _ = await Shortcuts.TryInvokeAsync(e).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -221,10 +236,19 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
         await ApplyThemeAsync().ConfigureAwait(false);
         await RegisterBeforeUnloadAsync().ConfigureAwait(false);
+        await RegisterKeyboardInteropAsync().ConfigureAwait(false);
+        RegisterLocationTracking();
+        SyncCurrentBoundedContext(NavigationManager.Uri);
+        await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
     }
 
     /// <inheritdoc />
     public new async ValueTask DisposeAsync() {
+        if (_locationTrackingRegistered) {
+            NavigationManager.LocationChanged -= HandleLocationChanged;
+            _locationTrackingRegistered = false;
+        }
+
         if (_beforeUnloadSubscription is not null && _beforeUnloadModule is not null) {
             try {
                 await _beforeUnloadModule.InvokeVoidAsync("unregister", _beforeUnloadSubscription).ConfigureAwait(false);
@@ -240,6 +264,16 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
         if (_beforeUnloadModule is not null) {
             try { await _beforeUnloadModule.DisposeAsync().ConfigureAwait(false); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { }
+        }
+
+        if (_keyboardModule is not null) {
+            // P9 (2026-04-21 pass-3): release the keydown handler attached by registerShellKeyFilter
+            // before dropping the module so hot-reload / reconnect paths don't accumulate stale
+            // handlers on the shell root element.
+            try { await _keyboardModule.InvokeVoidAsync("unregisterShellKeyFilter", _shellRoot).ConfigureAwait(false); }
+            catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
+
+            try { await _keyboardModule.DisposeAsync().ConfigureAwait(false); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { }
         }
 
         _selfRef?.Dispose();
@@ -279,6 +313,71 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             // Non-fatal — persistence still works without the beforeunload guard.
         }
     }
+
+    private async Task RegisterKeyboardInteropAsync() {
+        IJSObjectReference? keyboardModule = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
+        if (keyboardModule is null) {
+            return;
+        }
+
+        try {
+            await keyboardModule.InvokeVoidAsync("registerShellKeyFilter", _shellRoot).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (JSDisconnectedException) { }
+        catch (JSException) {
+            // Non-fatal — shortcut routing still works; only browser-default suppression is skipped.
+        }
+    }
+
+    private async Task<IJSObjectReference?> EnsureKeyboardModuleAsync() {
+        if (_keyboardModule is not null) {
+            return _keyboardModule;
+        }
+
+        try {
+            _keyboardModule = await JS.InvokeAsync<IJSObjectReference>("import", KeyboardModulePath).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) {
+            return null;
+        }
+        catch (JSDisconnectedException) {
+            return null;
+        }
+        catch (JSException) {
+            return null;
+        }
+
+        return _keyboardModule;
+    }
+
+    private void RegisterLocationTracking() {
+        if (_locationTrackingRegistered) {
+            return;
+        }
+
+        _locationTrackingRegistered = true;
+        NavigationManager.LocationChanged += HandleLocationChanged;
+    }
+
+    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
+        try {
+            SyncCurrentBoundedContext(e.Location);
+        }
+        catch (Exception ex) when (ex is ObjectDisposedException or InvalidOperationException) {
+            // An aborted circuit (network disconnect / tab close) may dispose the Fluxor dispatcher
+            // before DisposeAsync runs. Some Fluxor versions throw InvalidOperationException once
+            // the store is disposed; others throw ObjectDisposedException. Detach the handler
+            // defensively so future LocationChanged events do not re-enter a disposed scope.
+            if (_locationTrackingRegistered) {
+                _locationTrackingRegistered = false;
+                NavigationManager.LocationChanged -= HandleLocationChanged;
+            }
+        }
+    }
+
+    private void SyncCurrentBoundedContext(string uri)
+        => Dispatcher.Dispatch(new BoundedContextChangedAction(BoundedContextRouteParser.Parse(uri)));
 
     private bool HasRenderableManifest() {
         foreach (DomainManifest manifest in Registry.GetManifests()) {

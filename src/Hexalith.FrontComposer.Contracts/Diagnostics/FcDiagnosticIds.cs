@@ -9,6 +9,15 @@ namespace Hexalith.FrontComposer.Contracts.Diagnostics;
 /// additional runtime-log codes are allocated in subsequent stories.
 /// </remarks>
 public static class FcDiagnosticIds {
+    /// <summary>
+    /// Registry startup validation (<c>FrontComposerRegistry.ValidateManifests</c>) detected a
+    /// command with no FullPage route (Story 3-4 D21). Thrown as an <see cref="InvalidOperationException"/>
+    /// during service-collection build-up so the application never boots in a state where the palette
+    /// can surface unreachable commands. Story 9-4 layers a compile-time analyzer that short-circuits
+    /// this startup guard.
+    /// </summary>
+    public const string HFC1601_ManifestInvalid = "HFC1601";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 
@@ -53,4 +62,38 @@ public static class FcDiagnosticIds {
     /// shape failure). Runtime-only (no analyzer emission).
     /// </summary>
     public const string HFC2107_NavigationHydrationEmpty = "HFC2107";
+
+    /// <summary>
+    /// Two <c>IShortcutService.Register</c> calls supplied the same normalised binding (Story 3-4 D3 / D19).
+    /// Information severity — last-writer-wins is the documented adopter-override path. The structured
+    /// payload carries <c>{Binding, PreviousDescriptionKey, NewDescriptionKey, PreviousCallSiteFile,
+    /// PreviousCallSiteLine, NewCallSiteFile, NewCallSiteLine}</c> so an operator can identify both
+    /// the overwritten registration and the replacing call site. Build-time
+    /// enforcement is deferred to Story 9-4. Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2108_ShortcutConflict = "HFC2108";
+
+    /// <summary>
+    /// A registered keyboard-shortcut handler threw an exception inside
+    /// <c>IShortcutService.TryInvokeAsync</c> (Story 3-4 D1 handler-exception policy). Warning severity —
+    /// the service caught the exception so it does not bubble to the Blazor error boundary; the
+    /// shortcut is still treated as "fired" (returns <c>true</c>). Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2109_ShortcutHandlerFault = "HFC2109";
+
+    /// <summary>
+    /// <c>IFrontComposerRegistry.GetManifests()</c> threw inside the palette debounced scoring path
+    /// (Story 3-4 ADR-043). Warning severity — palette renders "No matches found" instead of stalling
+    /// in a "Searching…" state. Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2110_PaletteScoringFault = "HFC2110";
+
+    /// <summary>
+    /// Palette recent-route hydrate found no stored value, an unreadable blob, or filtered tampered
+    /// entries (Story 3-4 D10). Information severity — feature defaults apply. The <c>Reason</c>
+    /// payload is one of <c>Empty</c> (no blob), <c>Corrupt</c> (deserialization / shape failure), or
+    /// <c>Tampered</c> (entries failed the <c>IsInternalRoute</c> filter and were dropped). Runtime-only
+    /// (no analyzer emission).
+    /// </summary>
+    public const string HFC2111_PaletteHydrationEmpty = "HFC2111";
 }
