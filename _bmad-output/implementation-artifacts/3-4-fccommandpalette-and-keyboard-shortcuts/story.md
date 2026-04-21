@@ -8,7 +8,7 @@
 
 ## Story Goal (one sentence)
 
-Ship the framework-owned `FcCommandPalette` + `IShortcutService` so `Ctrl+K` anywhere in a Counter.Web-style adopter opens a `FluentDialog`-hosted `FluentSearch` that fuzzy-matches against registered projection names, command names, and recent-route history — categorised into **Projections / Commands / Recent** with sub-100 ms scoring (NFR5), contextual-mode bonus for the current bounded context, `role="listbox"` keyboard navigation, screen-reader result-count announcements, and a `shortcuts` special query surfacing every registered binding — while registering the three v1 shell shortcuts (`Ctrl+K` open-palette, `Ctrl+,` open-settings, `g h` go-home) through a duplicate-conflict-warning (`HFC2108` Information) service that retires the Story 3-3 D16 inline binding.
+Ship the framework-owned `FcCommandPalette` + `IShortcutService` so `Ctrl+K` anywhere in a Counter.Web-style adopter opens a `FluentDialog`-hosted `FluentSearch` that fuzzy-matches against registered projection names, command names, and recent-route history — categorised into **Projections / Commands / Recent** with sub-100 ms scoring (NFR5), contextual-mode bonus for the current bounded context, `role="listbox"` keyboard navigation, screen-reader result-count announcements, and a `shortcuts` special query surfacing every registered binding — while registering the five v1 shell shortcuts (`Ctrl+K` open-palette, `Ctrl+,` open-settings, `g h` go-home, plus Mac-parity `⌘+K` and `⌘+,` per D25 addendum) through a duplicate-conflict-warning (`HFC2108` Information) service that retires the Story 3-3 D16 inline binding.
 
 ## Scope Statement
 

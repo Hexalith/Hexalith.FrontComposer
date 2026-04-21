@@ -1,5 +1,22 @@
 # Deferred Work
 
+## Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)
+
+*Chunk 3 scope: Shortcuts contracts + service + registrar, Registration contracts + registry, FcDiagnosticIds, Routing, Navigation state. Palette UI + scorer + main effects in Chunks 1 & 2 (future sessions).*
+
+- **`IsChordPrefix` linear O(N) scan per bare-letter keystroke** — optimise to a prefix-HashSet maintained at `Register`/`Remove` if the registered-binding count grows. V1 registrar ships 5 bindings; the O(N) scan is a non-issue at that scale. Revisit when adopter-binding count exceeds ~50 or when profiling shows hot-path cost. `src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:IsChordPrefix`
+- **`_pendingGeneration` long overflow after 2^63 chord starts** — theoretical; no real-world trigger.
+- **`NavigateHomeAsync` `JSDisconnectedException` on dead circuit** — Blazor error boundary + the HFC2109 handler-fault catch already absorb; additional `try/catch` is defensive noise.
+- **`OpenSettingsAsync` synchronous throw** — `FcSettingsDialogLauncher` internal wrapping covers the common cases; out-of-scope for chunk-3 hardening.
+- **`FrontComposerRegistry.HasFullPageRoute` duplicate-command ambiguity across manifests** — returning `true` when the same command name appears in two bounded contexts is a build-time governance concern (Story 9-4 analyzer). Runtime routing already disambiguates via `{boundedContext}` segment.
+- **`BoundedContextRouteParser` protocol-relative `//evil/x/y`** — `NavigationManager` does not emit or consume protocol-relative URLs in v1; parser would technically resolve `evil` as BC, but there is no path for such input to arrive. Revisit if an adopter wires a custom navigation source.
+- **`BoundedContextRouteParser` encoded-slash `%2F` in segment** — low-likelihood in practice; `Uri.AbsolutePath` decoding already normalises `%2F` for absolute URIs. Relative paths carry the raw encoding through, but v1 routes are framework-generated and never emit `%2F`.
+- **`BoundedContextRouteParser` Turkish-I (`İ` → `i̇`) casing via `ToLowerInvariant`** — v1 BCs are ASCII only per adopter convention; culture-sensitive BC names arrive with Epic 7 tenant scoping.
+- **`CommandRouteBuilder.KebabCase` non-ASCII / embedded-whitespace / trailing-dot input** — C# PascalCase type names are ASCII letters-only by language rules; inputs violating this are already a compiler error upstream. Guard is unnecessary for in-assembly types.
+- **`CommandRouteBuilder.IsInternalRoute` unicode path separators (U+2044 fullwidth slash, etc.)** — v1 out of scope; Story 9-4 or a dedicated route-safety analyzer.
+- **`CommandRouteBuilder.BuildRoute` URL-reserved characters in segment input** — impossible per C# identifier rules; PascalCase type names cannot contain `/ ? # &` etc.
+- **`_disposed` race in `RegistrationDisposable.Dispose` when owner already disposed** — `TryGetValue` on cleared `ConcurrentDictionary` is benign (returns `false`); no functional impact. The race exists but has no adverse consequence. Revisit only if lifecycle diagnostics need stricter contracts.
+
 ## Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts (2026-04-21)
 
 - **`FrontComposerRegistry` constructor throw on `HFC1601` — latent, tied to Story 9-4** — `ValidateManifests()` runs in the ctor and can throw `InvalidOperationException` on a DI-resolved singleton, which would cascade-fail circuit startup rather than degrade gracefully. Inert today because `HasFullPageRoute` is tautological (see decision DN6). Revisit when Story 9-4 implements real routing-metadata enforcement; consider moving validation to `OnStart` to avoid DI-time fatals. `src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs:~1325`

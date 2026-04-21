@@ -94,13 +94,42 @@ public static class CommandRouteBuilder
             return false;
         }
 
-        if (ContainsEmbeddedScheme(url))
+        // P8 (2026-04-21 pass-4): reject control characters (CR/LF/tab) that can enable header
+        // injection if the URL is later serialised into a Set-Cookie / Location header. Must run
+        // BEFORE Uri.UnescapeDataString so an encoded \r\n (e.g. "%0D%0A") is not decoded into a
+        // real newline and then passed downstream.
+        if (url.AsSpan().IndexOfAny('\r', '\n', '\t') >= 0)
+        {
+            return false;
+        }
+
+        // P7 (2026-04-21 pass-4): decode percent-encoded scheme tokens before the filter so
+        // "/redirect?next=%68ttps://evil.com" (where %68 == 'h') does not slip through the literal
+        // substring check below.
+        string decoded;
+        try
+        {
+            decoded = Uri.UnescapeDataString(url);
+        }
+        catch (UriFormatException)
+        {
+            // Malformed percent encoding — treat as untrusted.
+            return false;
+        }
+
+        if (ContainsEmbeddedScheme(decoded))
+        {
+            return false;
+        }
+
+        // Re-check control chars on the decoded form as well (belt + braces).
+        if (decoded.AsSpan().IndexOfAny('\r', '\n', '\t') >= 0)
         {
             return false;
         }
 
         // Reject Windows-style backslash and absolute URLs (any scheme).
-        if (url.Contains('\\', StringComparison.Ordinal))
+        if (url.Contains('\\', StringComparison.Ordinal) || decoded.Contains('\\', StringComparison.Ordinal))
         {
             return false;
         }

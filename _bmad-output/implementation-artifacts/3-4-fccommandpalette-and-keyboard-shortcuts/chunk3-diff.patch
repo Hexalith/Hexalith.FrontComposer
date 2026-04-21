@@ -1,0 +1,1929 @@
+diff --git a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+index d93cd6d..d43b493 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+@@ -9,6 +9,15 @@ namespace Hexalith.FrontComposer.Contracts.Diagnostics;
+ /// additional runtime-log codes are allocated in subsequent stories.
+ /// </remarks>
+ public static class FcDiagnosticIds {
++    /// <summary>
++    /// Registry startup validation (<c>FrontComposerRegistry.ValidateManifests</c>) detected a
++    /// command with no FullPage route (Story 3-4 D21). Thrown as an <see cref="InvalidOperationException"/>
++    /// during service-collection build-up so the application never boots in a state where the palette
++    /// can surface unreachable commands. Story 9-4 layers a compile-time analyzer that short-circuits
++    /// this startup guard.
++    /// </summary>
++    public const string HFC1601_ManifestInvalid = "HFC1601";
++
+     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
+     public const string HFC2100_UnknownCorrelationId = "HFC2100";
+ 
+@@ -53,4 +62,38 @@ public static class FcDiagnosticIds {
+     /// shape failure). Runtime-only (no analyzer emission).
+     /// </summary>
+     public const string HFC2107_NavigationHydrationEmpty = "HFC2107";
++
++    /// <summary>
++    /// Two <c>IShortcutService.Register</c> calls supplied the same normalised binding (Story 3-4 D3 / D19).
++    /// Information severity — last-writer-wins is the documented adopter-override path. The structured
++    /// payload carries <c>{Binding, PreviousDescriptionKey, NewDescriptionKey, PreviousCallSiteFile,
++    /// PreviousCallSiteLine, NewCallSiteFile, NewCallSiteLine}</c> so an operator can identify both
++    /// the overwritten registration and the replacing call site. Build-time
++    /// enforcement is deferred to Story 9-4. Runtime-only (no analyzer emission).
++    /// </summary>
++    public const string HFC2108_ShortcutConflict = "HFC2108";
++
++    /// <summary>
++    /// A registered keyboard-shortcut handler threw an exception inside
++    /// <c>IShortcutService.TryInvokeAsync</c> (Story 3-4 D1 handler-exception policy). Warning severity —
++    /// the service caught the exception so it does not bubble to the Blazor error boundary; the
++    /// shortcut is still treated as "fired" (returns <c>true</c>). Runtime-only (no analyzer emission).
++    /// </summary>
++    public const string HFC2109_ShortcutHandlerFault = "HFC2109";
++
++    /// <summary>
++    /// <c>IFrontComposerRegistry.GetManifests()</c> threw inside the palette debounced scoring path
++    /// (Story 3-4 ADR-043). Warning severity — palette renders "No matches found" instead of stalling
++    /// in a "Searching…" state. Runtime-only (no analyzer emission).
++    /// </summary>
++    public const string HFC2110_PaletteScoringFault = "HFC2110";
++
++    /// <summary>
++    /// Palette recent-route hydrate found no stored value, an unreadable blob, or filtered tampered
++    /// entries (Story 3-4 D10). Information severity — feature defaults apply. The <c>Reason</c>
++    /// payload is one of <c>Empty</c> (no blob), <c>Corrupt</c> (deserialization / shape failure), or
++    /// <c>Tampered</c> (entries failed the <c>IsInternalRoute</c> filter and were dropped). Runtime-only
++    /// (no analyzer emission).
++    /// </summary>
++    public const string HFC2111_PaletteHydrationEmpty = "HFC2111";
+ }
+diff --git a/src/Hexalith.FrontComposer.Contracts/Registration/FrontComposerRegistryExtensions.cs b/src/Hexalith.FrontComposer.Contracts/Registration/FrontComposerRegistryExtensions.cs
+new file mode 100644
+index 0000000..e1b3916
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Registration/FrontComposerRegistryExtensions.cs
+@@ -0,0 +1,35 @@
++namespace Hexalith.FrontComposer.Contracts.Registration;
++
++/// <summary>
++/// Backward-compatible helpers for <see cref="IFrontComposerRegistry"/>.
++/// </summary>
++public static class FrontComposerRegistryExtensions
++{
++    /// <summary>
++    /// Returns whether a generated FullPage route exists for the given command type
++    /// (Story 3-4 D21 cross-story contract). Used by <c>FcCommandPalette</c> to filter unreachable
++    /// command results out of the search index BEFORE they appear to the user — preventing a 404
++    /// when the user activates a command whose generator did not emit a FullPage page.
++    /// </summary>
++    /// <remarks>
++    /// The extension preserves backward compatibility with pre-3-4 <see cref="IFrontComposerRegistry"/>
++    /// implementers: when the registry also implements <see cref="IFrontComposerFullPageRouteRegistry"/>
++    /// the route-aware answer is used; otherwise the method returns <see langword="true"/> and the
++    /// palette preserves the historical “surface every command” behaviour. Story 9-4 layers a
++    /// build-time analyzer that catches missing FullPage routes independent of this runtime check.
++    /// </remarks>
++    /// <param name="registry">The registry to query.</param>
++    /// <param name="commandTypeName">The fully qualified command type name (e.g., <c>Counter.Domain.IncrementCommand</c>).</param>
++    /// <returns><see langword="true"/> when a FullPage route exists; <see langword="false"/> when the command is unreachable.</returns>
++    public static bool HasFullPageRoute(this IFrontComposerRegistry registry, string commandTypeName)
++    {
++        if (registry is null)
++        {
++            throw new ArgumentNullException(nameof(registry));
++        }
++
++        return registry is IFrontComposerFullPageRouteRegistry routeAware
++            ? routeAware.HasFullPageRoute(commandTypeName)
++            : true;
++    }
++}
+\ No newline at end of file
+diff --git a/src/Hexalith.FrontComposer.Contracts/Registration/IFrontComposerFullPageRouteRegistry.cs b/src/Hexalith.FrontComposer.Contracts/Registration/IFrontComposerFullPageRouteRegistry.cs
+new file mode 100644
+index 0000000..2e5bbc4
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Registration/IFrontComposerFullPageRouteRegistry.cs
+@@ -0,0 +1,21 @@
++namespace Hexalith.FrontComposer.Contracts.Registration;
++
++/// <summary>
++/// Optional companion contract for <see cref="IFrontComposerRegistry"/> implementations that can
++/// answer whether a generated FullPage route exists for a given command type (Story 3-4 D21).
++/// </summary>
++/// <remarks>
++/// Existing <see cref="IFrontComposerRegistry"/> implementers do NOT need to adopt this interface.
++/// Callers should use <see cref="FrontComposerRegistryExtensions.HasFullPageRoute(IFrontComposerRegistry, string)"/>
++/// which falls back to <see langword="true"/> when the registry does not implement this companion
++/// interface — preserving the pre-3-4 behaviour.
++/// </remarks>
++public interface IFrontComposerFullPageRouteRegistry
++{
++    /// <summary>
++    /// Returns whether a generated FullPage route exists for the given command type.
++    /// </summary>
++    /// <param name="commandTypeName">The fully qualified command type name (e.g., <c>Counter.Domain.IncrementCommand</c>).</param>
++    /// <returns><see langword="true"/> when a FullPage route exists; <see langword="false"/> when the command is unreachable.</returns>
++    bool HasFullPageRoute(string commandTypeName);
++}
+\ No newline at end of file
+diff --git a/src/Hexalith.FrontComposer.Contracts/Registration/IFrontComposerRegistry.cs b/src/Hexalith.FrontComposer.Contracts/Registration/IFrontComposerRegistry.cs
+index 9cbca72..526e6d9 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Registration/IFrontComposerRegistry.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Registration/IFrontComposerRegistry.cs
+@@ -5,6 +5,18 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
+ /// against this interface. Story 1.3 may extend composition through companion abstractions
+ /// while keeping this interface stable for existing implementers.
+ /// </summary>
++/// <remarks>
++/// <para>
++/// <b>Companion-interface opt-in for route reachability (Story 3-4 D21 ratified via DN1 2026-04-21):</b>
++/// This interface intentionally does <em>not</em> declare <c>HasFullPageRoute</c>. Consumers that
++/// know which of their commands carry generated FullPage pages should implement the companion
++/// <see cref="IFrontComposerFullPageRouteRegistry"/> so the palette can filter unreachable
++/// commands. Adopters that do NOT implement the companion get the permissive
++/// <see cref="FrontComposerRegistryExtensions.HasFullPageRoute(IFrontComposerRegistry, string)"/>
++/// fallback (<c>true</c> for every command). Story 9-4 adds a build-time analyzer that enforces
++/// companion implementation for any registry type that registers commands.
++/// </para>
++/// </remarks>
+ public interface IFrontComposerRegistry {
+     /// <summary>
+     /// Adds a navigation group entry for a bounded context.
+@@ -24,4 +36,5 @@ public interface IFrontComposerRegistry {
+     /// </summary>
+     /// <param name="manifest">The domain manifest describing the domain.</param>
+     void RegisterDomain(DomainManifest manifest);
++
+ }
+diff --git a/src/Hexalith.FrontComposer.Contracts/Shortcuts/IShortcutService.cs b/src/Hexalith.FrontComposer.Contracts/Shortcuts/IShortcutService.cs
+new file mode 100644
+index 0000000..905458e
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Shortcuts/IShortcutService.cs
+@@ -0,0 +1,61 @@
++#if NET10_0_OR_GREATER
++using System.Runtime.CompilerServices;
++
++using Microsoft.AspNetCore.Components.Web;
++
++namespace Hexalith.FrontComposer.Contracts.Shortcuts;
++
++/// <summary>
++/// Single framework surface for global keyboard-shortcut registration and dispatch
++/// (Story 3-4 D1 / ADR-042). Adopters register additional shortcuts via the same surface so
++/// framework + adopter bindings compete in one arbitration path with deterministic conflict
++/// detection (Story 3-4 D3 — last-writer-wins, <c>HFC2108_ShortcutConflict</c> Information log).
++/// </summary>
++/// <remarks>
++/// <para>
++/// <b>Binding grammar (D1, normalised by <see cref="ShortcutBinding.Normalize(string)"/>):</b>
++/// all-lowercase, modifiers in canonical order <c>ctrl+shift+alt+meta+&lt;key&gt;</c>; bare-chord
++/// <c>g h</c> with exactly one space separating the two keys. Examples: <c>"ctrl+k"</c>,
++/// <c>"ctrl+shift+p"</c>, <c>"g h"</c>. Single-letter bindings without a modifier (<c>"g"</c>)
++/// throw <see cref="ArgumentException"/> at registration — they would fight every text input.
++/// </para>
++/// <para>
++/// <b>Lifetime:</b> implementations are Scoped (per-circuit in Blazor Server, per-user in WASM —
++/// mirrors Story 3-1 <c>IStorageService</c> ADR-030).
++/// </para>
++/// </remarks>
++public interface IShortcutService {
++    /// <summary>
++    /// Registers a keyboard-shortcut handler. Returns an <see cref="IDisposable"/> whose disposal
++    /// removes the registration. Duplicate normalised bindings replace the prior registration
++    /// (last-writer-wins per D3) and emit an <c>HFC2108_ShortcutConflict</c> Information log.
++    /// </summary>
++    /// <param name="binding">The keyboard binding string (will be normalised via <see cref="ShortcutBinding.Normalize(string)"/>).</param>
++    /// <param name="descriptionKey">The resource key resolved by <see cref="Microsoft.Extensions.Localization.IStringLocalizer{T}"/> when the palette renders the "shortcuts" reference view.</param>
++    /// <param name="handler">The async callback invoked when the binding fires.</param>
++    /// <param name="callSiteFile">Compiler-injected caller source file (do NOT pass explicitly).</param>
++    /// <param name="callSiteLine">Compiler-injected caller line number (do NOT pass explicitly).</param>
++    /// <returns>An <see cref="IDisposable"/> that removes the registration on disposal.</returns>
++    IDisposable Register(
++        string binding,
++        string descriptionKey,
++        Func<Task> handler,
++        [CallerFilePath] string callSiteFile = "",
++        [CallerLineNumber] int callSiteLine = 0);
++
++    /// <summary>
++    /// Returns a snapshot of all current registrations.
++    /// </summary>
++    /// <returns>A read-only list of currently registered shortcuts.</returns>
++    IReadOnlyList<ShortcutRegistration> GetRegistrations();
++
++    /// <summary>
++    /// Normalises the incoming keyboard event to a binding string and invokes the matching handler.
++    /// Two-key chords (<c>g h</c>) are tracked with a 1500 ms pending-first-key window
++    /// (<see cref="TimeProvider"/>-driven so tests use <c>FakeTimeProvider</c>).
++    /// </summary>
++    /// <param name="e">The Blazor <see cref="KeyboardEventArgs"/> to normalise + dispatch.</param>
++    /// <returns><see langword="true"/> when a registered handler was invoked; <see langword="false"/> otherwise.</returns>
++    Task<bool> TryInvokeAsync(KeyboardEventArgs e);
++}
++#endif
+diff --git a/src/Hexalith.FrontComposer.Contracts/Shortcuts/ShortcutBinding.cs b/src/Hexalith.FrontComposer.Contracts/Shortcuts/ShortcutBinding.cs
+new file mode 100644
+index 0000000..bc64d42
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Shortcuts/ShortcutBinding.cs
+@@ -0,0 +1,190 @@
++#if NET10_0_OR_GREATER
++using Microsoft.AspNetCore.Components.Web;
++#endif
++
++namespace Hexalith.FrontComposer.Contracts.Shortcuts;
++
++/// <summary>
++/// Pure helpers for normalising keyboard-shortcut bindings (Story 3-4 D1 / D4).
++/// </summary>
++/// <remarks>
++/// <b>Grammar:</b> all-lowercase, modifiers in canonical order <c>ctrl+shift+alt+meta+key</c>;
++/// bare chord <c>g h</c> with exactly one space.
++/// </remarks>
++public static class ShortcutBinding {
++    private static readonly string[] _modifierOrder = ["ctrl", "shift", "alt", "meta"];
++
++    /// <summary>
++    /// Normalises a binding string to the canonical form used by the lookup dictionary.
++    /// </summary>
++    /// <param name="binding">The raw binding string supplied by an adopter or framework call site.</param>
++    /// <returns>The normalised lowercase binding.</returns>
++    /// <exception cref="ArgumentException">Thrown when <paramref name="binding"/> is null / empty / whitespace, an unknown modifier, or a single bare letter without a modifier.</exception>
++    public static string Normalize(string binding) {
++        if (string.IsNullOrWhiteSpace(binding)) {
++            throw new ArgumentException("Binding must be a non-empty, non-whitespace string.", nameof(binding));
++        }
++
++        string trimmed = binding.Trim();
++        foreach (char ch in trimmed) {
++            if (char.IsWhiteSpace(ch) && ch != ' ') {
++                throw new ArgumentException($"Binding may only use ASCII space as the chord separator; got '{binding}'. Tabs, NBSP, and other whitespace characters are rejected.", nameof(binding));
++            }
++        }
++
++        if (trimmed.Contains(' ')) {
++            string[] parts = trimmed.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
++            if (parts.Length != 2) {
++                throw new ArgumentException($"Chord binding must have exactly two parts separated by a single space; got '{binding}'.", nameof(binding));
++            }
++
++            // Chord parts MUST be bare letters. The dispatcher fast-paths modifier-bearing combos
++            // straight to single-key lookup (D4 sub-decision d), so a modifier-bearing chord part
++            // produces an unreachable binding. Reject at registration time.
++            if (parts[0].Contains('+') || parts[1].Contains('+')) {
++                throw new ArgumentException($"Chord parts may not include modifiers ('+'); got '{binding}'. Use a bare chord like 'g h'.", nameof(binding));
++            }
++
++            string first = NormalizeSingleKey(parts[0], allowBareLetter: true);
++            string second = NormalizeSingleKey(parts[1], allowBareLetter: true);
++            return $"{first} {second}";
++        }
++
++        return NormalizeSingleKey(trimmed, allowBareLetter: false);
++    }
++
++    /// <summary>
++    /// Renders a normalised binding (e.g., <c>"ctrl+k"</c>) as a human-readable label
++    /// (e.g., <c>"Ctrl+K"</c>) for the palette's "shortcuts" reference view.
++    /// </summary>
++    /// <param name="normalisedBinding">The normalised binding string.</param>
++    /// <returns>The human-readable label.</returns>
++    public static string FormatLabel(string normalisedBinding) {
++        if (string.IsNullOrWhiteSpace(normalisedBinding)) {
++            throw new ArgumentException("Binding must be a non-empty, non-whitespace string.", nameof(normalisedBinding));
++        }
++
++        if (normalisedBinding.Contains(' ')) {
++            string[] parts = normalisedBinding.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
++            return $"{Capitalise(parts[0])} {Capitalise(parts[1])}";
++        }
++
++        string[] tokens = normalisedBinding.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
++        for (int i = 0; i < tokens.Length; i++) {
++            tokens[i] = Capitalise(tokens[i]);
++        }
++
++        return string.Join("+", tokens);
++    }
++
++#if NET10_0_OR_GREATER
++    /// <summary>
++    /// Builds a normalised binding string from a Blazor <see cref="KeyboardEventArgs"/>. Returns
++    /// <see langword="false"/> when the event is a modifier-only press (Shift / Ctrl / Alt / Meta
++    /// alone) or a key the framework cannot map (e.g., <c>"Unidentified"</c>).
++    /// </summary>
++    /// <param name="e">The keyboard event to convert.</param>
++    /// <param name="binding">The normalised binding string when the conversion succeeds.</param>
++    /// <returns><see langword="true"/> when a non-empty binding was produced; otherwise <see langword="false"/>.</returns>
++    public static bool TryFromKeyboardEvent(KeyboardEventArgs e, out string binding) {
++        ArgumentNullException.ThrowIfNull(e);
++
++        string? key = e.Key;
++        if (string.IsNullOrWhiteSpace(key)) {
++            binding = string.Empty;
++            return false;
++        }
++
++        if (string.Equals(key, "Control", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "Shift", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "Alt", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "Meta", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "AltGraph", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "Dead", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "Process", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "CapsLock", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "NumLock", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "ScrollLock", StringComparison.OrdinalIgnoreCase)
++            || string.Equals(key, "Unidentified", StringComparison.OrdinalIgnoreCase)) {
++            binding = string.Empty;
++            return false;
++        }
++
++        string keyLower = key.ToLowerInvariant();
++        List<string> parts = new(5);
++        if (e.CtrlKey) {
++            parts.Add("ctrl");
++        }
++
++        if (e.ShiftKey) {
++            parts.Add("shift");
++        }
++
++        if (e.AltKey) {
++            parts.Add("alt");
++        }
++
++        if (e.MetaKey) {
++            parts.Add("meta");
++        }
++
++        parts.Add(keyLower);
++        binding = string.Join("+", parts);
++        return true;
++    }
++#endif
++
++    private static string NormalizeSingleKey(string raw, bool allowBareLetter) {
++        if (string.IsNullOrWhiteSpace(raw)) {
++            throw new ArgumentException("Empty key part is not allowed.", nameof(raw));
++        }
++
++        string lower = raw.Trim().ToLowerInvariant();
++        if (!lower.Contains('+')) {
++            if (Array.IndexOf(_modifierOrder, lower) >= 0) {
++                throw new ArgumentException($"Modifier '{lower}' cannot stand alone as a binding.", nameof(raw));
++            }
++
++            if (!allowBareLetter && lower.Length == 1 && char.IsLetter(lower[0])) {
++                throw new ArgumentException($"Single bare letter '{lower}' is not allowed without a modifier (use a chord like 'g h' instead).", nameof(raw));
++            }
++
++            return lower;
++        }
++
++        string[] parts = lower.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
++        if (parts.Length < 2) {
++            throw new ArgumentException($"Modifier+key binding must include at least one modifier and one key; got '{raw}'.", nameof(raw));
++        }
++
++        string keyToken = parts[parts.Length - 1];
++        if (Array.IndexOf(_modifierOrder, keyToken) >= 0) {
++            throw new ArgumentException($"Binding must end with a non-modifier key; got '{raw}'.", nameof(raw));
++        }
++
++        bool[] hasModifier = new bool[_modifierOrder.Length];
++        for (int i = 0; i < parts.Length - 1; i++) {
++            int modIndex = Array.IndexOf(_modifierOrder, parts[i]);
++            if (modIndex < 0) {
++                throw new ArgumentException($"Unknown modifier '{parts[i]}' in binding '{raw}'.", nameof(raw));
++            }
++
++            hasModifier[modIndex] = true;
++        }
++
++        List<string> rebuilt = new(parts.Length);
++        for (int i = 0; i < _modifierOrder.Length; i++) {
++            if (hasModifier[i]) {
++                rebuilt.Add(_modifierOrder[i]);
++            }
++        }
++
++        rebuilt.Add(keyToken);
++        return string.Join("+", rebuilt);
++    }
++
++    private static string Capitalise(string token)
++        => string.IsNullOrEmpty(token)
++            ? token
++            : char.ToUpperInvariant(token[0]) + token.Substring(1);
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Shortcuts/ShortcutRegistration.cs b/src/Hexalith.FrontComposer.Contracts/Shortcuts/ShortcutRegistration.cs
+new file mode 100644
+index 0000000..92c83a1
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Shortcuts/ShortcutRegistration.cs
+@@ -0,0 +1,20 @@
++namespace Hexalith.FrontComposer.Contracts.Shortcuts;
++
++/// <summary>
++/// Public projection of a single keyboard-shortcut registration (Story 3-4 D1 / D14).
++/// </summary>
++/// <remarks>
++/// <para>
++/// <see cref="NormalisedLabel"/> is pre-computed at registration time (e.g., <c>"Ctrl+K"</c> from
++/// the lowercase binding <c>"ctrl+k"</c>) so the palette's "shortcuts" reference view does not
++/// re-derive the human label per render.
++/// </para>
++/// <para>
++/// <see cref="DescriptionKey"/> is a resource key (NOT a literal string) — the palette resolves it
++/// through <see cref="Microsoft.Extensions.Localization.IStringLocalizer{T}"/> per user culture.
++/// </para>
++/// </remarks>
++/// <param name="Binding">The normalised binding string (e.g., <c>"ctrl+k"</c>).</param>
++/// <param name="DescriptionKey">The localisation resource key for the description column.</param>
++/// <param name="NormalisedLabel">The human-readable rendering of the binding (e.g., <c>"Ctrl+K"</c>).</param>
++public sealed record ShortcutRegistration(string Binding, string DescriptionKey, string NormalisedLabel);
+diff --git a/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs b/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
+index 12ff44f..d2754a1 100644
+--- a/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
++++ b/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
+@@ -1,3 +1,4 @@
++using Hexalith.FrontComposer.Contracts.Diagnostics;
+ using Hexalith.FrontComposer.Contracts.Registration;
+ 
+ using Microsoft.Extensions.Logging;
+@@ -8,7 +9,7 @@ namespace Hexalith.FrontComposer.Shell.Registration;
+ /// Stores registered domain manifests and navigation groups for runtime composition.
+ /// Domain registrations from <see cref="DomainRegistrationAction"/> are applied on construction.
+ /// </summary>
+-internal sealed class FrontComposerRegistry : IFrontComposerRegistry {
++internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry {
+     private readonly List<DomainManifest> _manifests = [];
+     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
+ 
+@@ -27,6 +28,33 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry {
+         foreach (DomainRegistrationAction action in registrationActions) {
+             action.Apply(this);
+         }
++
++        ValidateManifests();
++    }
++
++    /// <summary>
++    /// Walks every registered manifest and asserts each <see cref="DomainManifest.Commands"/> entry
++    /// has a FullPage route (Story 3-4 D21). Story 9-4 supersedes this with a build-time analyzer
++    /// and an adopter-provided render-mode metadata source that makes the check meaningful.
++    /// </summary>
++    /// <remarks>
++    /// <b>Inert placeholder today (ratified 2026-04-21, DN6):</b> <see cref="HasFullPageRoute"/> returns
++    /// <c>true</c> for every command that appears in any manifest, so this validator cannot throw
++    /// under the current single-source-of-truth. The branch is retained to (a) reserve the diagnostic
++    /// ID, (b) keep the future-compatible code path warm, and (c) pin the validation contract so
++    /// Story 9-4 can harden it without a surface-area change. Revisit when adopter-supplied
++    /// render-mode metadata (e.g., from the Story 2-2 source generator) becomes available.
++    /// </remarks>
++    /// <exception cref="InvalidOperationException">Thrown with <see cref="FcDiagnosticIds.HFC1601_ManifestInvalid"/> when a command has no FullPage route — unreachable today.</exception>
++    private void ValidateManifests() {
++        foreach (DomainManifest manifest in _manifests) {
++            foreach (string command in manifest.Commands) {
++                if (!HasFullPageRoute(command)) {
++                    throw new InvalidOperationException(
++                        $"{FcDiagnosticIds.HFC1601_ManifestInvalid}: command '{command}' in bounded context '{manifest.BoundedContext}' has no FullPage route. Every registered command must emit a FullPage page so the command palette can route to it.");
++                }
++            }
++        }
+     }
+ 
+     /// <inheritdoc />
+@@ -35,6 +63,24 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry {
+     /// <inheritdoc />
+     public IReadOnlyList<DomainManifest> GetManifests() => _manifests;
+ 
++    /// <inheritdoc />
++    public bool HasFullPageRoute(string commandTypeName) {
++        // Story 3-4 D21 — until the source generator surfaces real per-command render-mode metadata
++        // (Story 9-4 build-time analyzer), every registered command is assumed to have a FullPage
++        // route. Surface a true response when the command is in any manifest; false otherwise.
++        if (string.IsNullOrWhiteSpace(commandTypeName)) {
++            return false;
++        }
++
++        foreach (DomainManifest manifest in _manifests) {
++            if (manifest.Commands.Contains(commandTypeName, StringComparer.Ordinal)) {
++                return true;
++            }
++        }
++
++        return false;
++    }
++
+     /// <inheritdoc />
+     public void RegisterDomain(DomainManifest manifest) {
+         int existingIndex = _manifests.FindIndex(m => string.Equals(m.BoundedContext, manifest.BoundedContext, StringComparison.Ordinal));
+diff --git a/src/Hexalith.FrontComposer.Shell/Routing/CommandRouteBuilder.cs b/src/Hexalith.FrontComposer.Shell/Routing/CommandRouteBuilder.cs
+new file mode 100644
+index 0000000..f776a5b
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Routing/CommandRouteBuilder.cs
+@@ -0,0 +1,128 @@
++using System.Globalization;
++using System.Text;
++
++namespace Hexalith.FrontComposer.Shell.Routing;
++
++/// <summary>
++/// Pure helpers for the canonical command-route URL contract (Story 3-4 D21).
++/// </summary>
++/// <remarks>
++/// Lives under <c>Routing/</c> rather than co-located with <c>ShortcutBinding</c> because kebab
++/// routing is a command-routing concern, NOT a keyboard-shortcut concern (D21 post-elicitation
++/// rationale).
++/// </remarks>
++public static class CommandRouteBuilder
++{
++    /// <summary>
++    /// Converts a PascalCase identifier into kebab-case (lowercase, hyphen-separated).
++    /// </summary>
++    /// <remarks>
++    /// Inserts a hyphen before each uppercase letter that follows a lowercase letter or digit; runs
++    /// of consecutive uppercase letters stay together until a lowercase letter appears (so
++    /// <c>"XMLParser"</c> becomes <c>"xml-parser"</c>). Fully qualified type names are reduced to
++    /// their final segment before kebab-casing.
++    /// </remarks>
++    /// <param name="pascalCase">The input identifier (e.g., <c>"SubmitOrderCommand"</c>).</param>
++    /// <returns>The kebab-cased form (e.g., <c>"submit-order-command"</c>).</returns>
++    public static string KebabCase(string pascalCase)
++    {
++        ArgumentException.ThrowIfNullOrWhiteSpace(pascalCase);
++
++        StringBuilder builder = new(pascalCase.Length + 8);
++        for (int i = 0; i < pascalCase.Length; i++)
++        {
++            char ch = pascalCase[i];
++            if (ch == '.')
++            {
++                // Drop namespace separators — only the type name segment is the URL slug.
++                builder.Clear();
++                continue;
++            }
++
++            if (char.IsUpper(ch))
++            {
++                bool prevIsLower = i > 0 && char.IsLower(pascalCase[i - 1]);
++                bool prevIsDigit = i > 0 && char.IsDigit(pascalCase[i - 1]);
++                bool prevIsUpper = i > 0 && char.IsUpper(pascalCase[i - 1]);
++                bool nextIsLower = i + 1 < pascalCase.Length && char.IsLower(pascalCase[i + 1]);
++                bool boundary = prevIsLower || prevIsDigit || (prevIsUpper && nextIsLower);
++                if (boundary && builder.Length > 0)
++                {
++                    builder.Append('-');
++                }
++
++                builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
++            }
++            else
++            {
++                builder.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
++            }
++        }
++
++        string kebab = builder.ToString();
++        if (string.IsNullOrWhiteSpace(kebab))
++        {
++            throw new ArgumentException($"KebabCase produced an empty slug from '{pascalCase}'.", nameof(pascalCase));
++        }
++
++        return kebab;
++    }
++
++    /// <summary>
++    /// Builds the canonical command route URL.
++    /// </summary>
++    /// <param name="boundedContext">The bounded-context name.</param>
++    /// <param name="commandTypeName">The fully qualified command type name.</param>
++    /// <returns>A URL of the form <c>/domain/{kebab-bc}/{kebab-cmd}</c>.</returns>
++    public static string BuildRoute(string boundedContext, string commandTypeName)
++    {
++        ArgumentException.ThrowIfNullOrWhiteSpace(boundedContext);
++        ArgumentException.ThrowIfNullOrWhiteSpace(commandTypeName);
++        return $"/domain/{KebabCase(boundedContext)}/{KebabCase(commandTypeName)}";
++    }
++
++    /// <summary>
++    /// Returns whether the URL is a safe internal navigation target (Story 3-4 D10 hydrate-time
++    /// route-safety filter).
++    /// </summary>
++    /// <param name="url">Candidate URL string.</param>
++    /// <returns><see langword="true"/> when the URL is a safe internal route; <see langword="false"/> otherwise.</returns>
++    public static bool IsInternalRoute(string? url)
++    {
++        if (string.IsNullOrWhiteSpace(url))
++        {
++            return false;
++        }
++
++        if (ContainsEmbeddedScheme(url))
++        {
++            return false;
++        }
++
++        // Reject Windows-style backslash and absolute URLs (any scheme).
++        if (url.Contains('\\', StringComparison.Ordinal))
++        {
++            return false;
++        }
++
++        // Must start with a single slash.
++        if (!url.StartsWith('/'))
++        {
++            return false;
++        }
++
++        // Reject protocol-relative // prefix.
++        return !url.StartsWith("//", StringComparison.Ordinal);
++    }
++
++    // Open-redirect defence (D10 tampered-URL filter): reject URLs containing any of the known
++    // dangerous scheme tokens, INCLUDING in query or fragment (e.g., /redirect?next=https://evil).
++    // Accepting scheme tokens in query/fragment would let the palette re-hydrate a tampered recent
++    // entry that navigates the user off-origin via a legitimate-looking internal path.
++    private static bool ContainsEmbeddedScheme(string url)
++        => url.Contains("http:", StringComparison.OrdinalIgnoreCase)
++            || url.Contains("https:", StringComparison.OrdinalIgnoreCase)
++            || url.Contains("javascript:", StringComparison.OrdinalIgnoreCase)
++            || url.Contains("data:", StringComparison.OrdinalIgnoreCase)
++            || url.Contains("mailto:", StringComparison.OrdinalIgnoreCase);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs b/src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs
+new file mode 100644
+index 0000000..92594ba
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs
+@@ -0,0 +1,169 @@
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
++using Hexalith.FrontComposer.Shell.Components.Layout;
++using Hexalith.FrontComposer.Shell.Resources;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Microsoft.AspNetCore.Components;
++using Microsoft.Extensions.Localization;
++using Microsoft.FluentUI.AspNetCore.Components;
++
++namespace Hexalith.FrontComposer.Shell.Shortcuts;
++
++/// <summary>
++/// Registers the three v1 shell-default shortcuts on first render of <see cref="FrontComposerShell"/>
++/// (Story 3-4 D1 / D12 / D24 / AC1 / AC8).
++/// </summary>
++/// <remarks>
++/// <para>
++/// <b>Shell defaults:</b>
++/// </para>
++/// <list type="bullet">
++///   <item><description><c>ctrl+k</c> → opens the palette via <c>IDialogService.ShowDialogAsync&lt;FcCommandPalette&gt;</c> after dispatching <see cref="PaletteOpenedAction"/>; idempotent (D12 — no-op when palette already open).</description></item>
++///   <item><description><c>ctrl+,</c> → opens settings via <see cref="FcSettingsDialogLauncher"/> (MIGRATES Story 3-3 D16 inline binding per AC8).</description></item>
++///   <item><description><c>g h</c> → navigates to <c>/</c> via <see cref="NavigationManager"/>.</description></item>
++/// </list>
++/// <para>
++/// <b>D24 idempotency:</b> the <see cref="_registered"/> flag guards against repeated invocation
++/// across bUnit / hot-reload / prerender boot paths so HFC2108 conflict logs are not spammed.
++/// </para>
++/// </remarks>
++public sealed class FrontComposerShortcutRegistrar(
++    IShortcutService shortcuts,
++    IDispatcher dispatcher,
++    IState<FrontComposerCommandPaletteState> paletteState,
++    IDialogService dialogService,
++    NavigationManager navigation,
++    IStringLocalizer<FcShellResources> localizer,
++    IUlidFactory ulidFactory)
++{
++    // Uses `int` + `Interlocked.Exchange` so two concurrent first-render paths (hot-reload
++    // restart, bUnit teardown race) cannot both observe zero and double-register the defaults
++    // (which would then spam HFC2108 conflict logs).
++    private int _registered;
++
++    /// <summary>
++    /// Idempotently registers the three v1 shell shortcuts. Subsequent calls on the same instance
++    /// no-op (D24 guard).
++    /// </summary>
++    /// <returns>A completed task — registration is synchronous; the async signature exists so the shell can <c>await</c> alongside other bootstrap work.</returns>
++    public Task RegisterShellDefaultsAsync()
++    {
++        if (Interlocked.Exchange(ref _registered, 1) == 1)
++        {
++            return Task.CompletedTask;
++        }
++
++        _ = shortcuts.Register(
++            "ctrl+k",
++            "PaletteShortcutDescription",
++            OpenPaletteAsync);
++
++        // Mac `Cmd+K` (event.metaKey) is a separate binding from `ctrl+k` per normalisation, so
++        // the palette must register both to be reachable on macOS. D3 last-writer-wins keeps the
++        // adopter override path intact — an adopter that re-registers `meta+k` after us wins.
++        _ = shortcuts.Register(
++            "meta+k",
++            "PaletteShortcutDescription",
++            OpenPaletteAsync);
++
++        _ = shortcuts.Register(
++            "ctrl+,",
++            "SettingsShortcutDescription",
++            OpenSettingsAsync);
++
++        _ = shortcuts.Register(
++            "meta+,",
++            "SettingsShortcutDescription",
++            OpenSettingsAsync);
++
++        _ = shortcuts.Register(
++            "g h",
++            "HomeShortcutDescription",
++            NavigateHomeAsync);
++
++        return Task.CompletedTask;
++    }
++
++    /// <summary>
++    /// Opens the palette dialog. D12 idempotent guard — uses <see cref="Interlocked.Exchange"/> on
++    /// <see cref="_palettePending"/> so two concurrent <c>Ctrl+K</c> presses can never both observe
++    /// the "not open" state and stack dialog instances. The flag is cleared by the
++    /// <see cref="PaletteClosedAction"/> observer on the component side (and by the catch block
++    /// below for failure paths).
++    /// </summary>
++    /// <returns>A task representing the dialog presentation.</returns>
++    public async Task OpenPaletteAsync()
++    {
++        if (paletteState.Value.IsOpen)
++        {
++            return;
++        }
++
++        // Serialize read-and-open so two near-simultaneous invocations do not both proceed to
++        // ShowDialogAsync.
++        if (Interlocked.Exchange(ref _palettePending, 1) == 1)
++        {
++            return;
++        }
++
++        dispatcher.Dispatch(new PaletteOpenedAction(ulidFactory.NewUlid()));
++
++        try
++        {
++            _ = await dialogService.ShowDialogAsync<FcCommandPalette>(options =>
++            {
++                options.Modal = true;
++                options.Width = "600px";
++                options.Header.Title = localizer["CommandPaletteTitle"].Value;
++            }).ConfigureAwait(false);
++        }
++        catch (Exception ex) when (ex is not OperationCanceledException)
++        {
++            // Narrow the rollback path: OperationCanceledException from a user-initiated close
++            // flows through DisposeAsync which already dispatches PaletteClosedAction. For genuine
++            // failures (JSDisconnectedException, missing registration), guard the compensating
++            // dispatch in case the dispatcher is already disposed during circuit teardown.
++            try
++            {
++                dispatcher.Dispatch(new PaletteClosedAction(ulidFactory.NewUlid()));
++            }
++            catch (ObjectDisposedException)
++            {
++                // Dispatcher tore down alongside the circuit — ignore and let the original
++                // exception propagate for Blazor's error boundary.
++            }
++
++            throw;
++        }
++        finally
++        {
++            _palettePending = 0;
++        }
++    }
++
++    private int _palettePending;
++
++    /// <summary>
++    /// Opens the settings dialog via the shared launcher (Story 3-3 D11 / Story 3-4 AC8).
++    /// </summary>
++    /// <returns>A task representing the dialog presentation.</returns>
++    public async Task OpenSettingsAsync()
++    {
++        _ = await FcSettingsDialogLauncher
++            .ShowAsync(dialogService, localizer["SettingsDialogTitle"].Value)
++            .ConfigureAwait(false);
++    }
++
++    /// <summary>
++    /// Navigates to the application home via <see cref="NavigationManager.NavigateTo(string)"/>.
++    /// </summary>
++    /// <returns>A completed task.</returns>
++    public Task NavigateHomeAsync()
++    {
++        navigation.NavigateTo("/");
++        return Task.CompletedTask;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs b/src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs
+new file mode 100644
+index 0000000..3864df7
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs
+@@ -0,0 +1,327 @@
++using System.Collections.Concurrent;
++using System.Runtime.CompilerServices;
++
++using Hexalith.FrontComposer.Contracts.Diagnostics;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
++
++using Microsoft.AspNetCore.Components.Web;
++using Microsoft.Extensions.Logging;
++
++namespace Hexalith.FrontComposer.Shell.Shortcuts;
++
++/// <summary>
++/// Scoped (per-circuit / per-user) implementation of <see cref="IShortcutService"/> (Story 3-4 D2).
++/// </summary>
++/// <remarks>
++/// <para>
++/// Backing store is a <see cref="ConcurrentDictionary{TKey, TValue}"/> keyed on the normalised
++/// binding so late registrations from background-scheduled adopter code do not race the shell
++/// registrar (D2 rationale).
++/// </para>
++/// <para>
++/// Two-key chord state (D4) is guarded by <see cref="_chordSync"/>; the 1500 ms pending-key timer
++/// is allocated via the injected <see cref="TimeProvider"/> so tests advance virtual time
++/// (<c>FakeTimeProvider</c> per D22) instead of sleeping.
++/// </para>
++/// </remarks>
++public sealed class ShortcutService : IShortcutService, IDisposable
++{
++    private const int ChordTimeoutMilliseconds = 1500;
++
++    private readonly ConcurrentDictionary<string, ShortcutEntry> _entries = new(StringComparer.Ordinal);
++    private readonly TimeProvider _timeProvider;
++    private readonly ILogger<ShortcutService> _logger;
++    private readonly object _chordSync = new();
++
++    private string? _pendingFirstKey;
++    private long _pendingGeneration;
++    private ITimer? _chordTimer;
++    private bool _disposed;
++
++    /// <summary>
++    /// Initialises a new instance of the <see cref="ShortcutService"/> class.
++    /// </summary>
++    /// <param name="timeProvider">Time source used by the chord-timeout timer (D22). When <see langword="null"/> falls back to <see cref="TimeProvider.System"/>.</param>
++    /// <param name="logger">Logger for HFC2108 (conflict) + HFC2109 (handler-fault) diagnostics.</param>
++    public ShortcutService(TimeProvider? timeProvider, ILogger<ShortcutService> logger)
++    {
++        ArgumentNullException.ThrowIfNull(logger);
++        _timeProvider = timeProvider ?? TimeProvider.System;
++        _logger = logger;
++    }
++
++    /// <inheritdoc />
++    public IDisposable Register(
++        string binding,
++        string descriptionKey,
++        Func<Task> handler,
++        [CallerFilePath] string callSiteFile = "",
++        [CallerLineNumber] int callSiteLine = 0)
++    {
++        ArgumentException.ThrowIfNullOrWhiteSpace(binding);
++        ArgumentException.ThrowIfNullOrWhiteSpace(descriptionKey);
++        ArgumentNullException.ThrowIfNull(handler);
++
++        string normalised = ShortcutBinding.Normalize(binding);
++        string label = ShortcutBinding.FormatLabel(normalised);
++        ShortcutEntry entry = new(normalised, descriptionKey, label, handler, callSiteFile, callSiteLine);
++
++        // P4 (2026-04-21 pass-3): atomic add-or-replace. The prior TryGetValue → indexer-assign
++        // sequence was not atomic — two concurrent Register calls on the same binding could both
++        // observe "no existing entry", both assign, and silently drop one registration without
++        // logging HFC2108. AddOrUpdate serialises the compare + replace inside ConcurrentDictionary
++        // so exactly one caller observes the previous entry.
++        ShortcutEntry? previous = null;
++        _ = _entries.AddOrUpdate(
++            normalised,
++            addValueFactory: static (_, newEntry) => newEntry,
++            updateValueFactory: (_, existing, newEntry) =>
++            {
++                previous = existing;
++                return newEntry;
++            },
++            factoryArgument: entry);
++
++        if (previous is not null)
++        {
++            _logger.LogInformation(
++                "{DiagnosticId}: Duplicate shortcut registration replaced. Binding={Binding} PreviousDescriptionKey={PreviousDescriptionKey} NewDescriptionKey={NewDescriptionKey} PreviousCallSiteFile={PreviousCallSiteFile} PreviousCallSiteLine={PreviousCallSiteLine} NewCallSiteFile={NewCallSiteFile} NewCallSiteLine={NewCallSiteLine}",
++                FcDiagnosticIds.HFC2108_ShortcutConflict,
++                normalised,
++                previous.DescriptionKey,
++                descriptionKey,
++                previous.CallSiteFile,
++                previous.CallSiteLine,
++                callSiteFile,
++                callSiteLine);
++        }
++
++        return new RegistrationDisposable(this, entry);
++    }
++
++    /// <inheritdoc />
++    public IReadOnlyList<ShortcutRegistration> GetRegistrations()
++        => [.. _entries.Values
++            .OrderBy(static e => e.Binding, StringComparer.Ordinal)
++            .Select(static e => new ShortcutRegistration(e.Binding, e.DescriptionKey, e.NormalisedLabel))];
++
++    /// <inheritdoc />
++    public async Task<bool> TryInvokeAsync(KeyboardEventArgs e)
++    {
++        ArgumentNullException.ThrowIfNull(e);
++
++        // Post-dispose calls are benign (cleared _entries would miss every lookup), but explicitly
++        // guarding keeps the chord-timer allocation path from racing circuit teardown. The
++        // authoritative check also happens inside `_chordSync` below before any timer allocation.
++        if (_disposed)
++        {
++            return false;
++        }
++
++        // Skip auto-repeat keystrokes — holding a chord-prefix letter like `g` would otherwise
++        // allocate a fresh chord timer per tick, bump the generation, and reset pending state
++        // unpredictably. The first press establishes the pending key; subsequent repeats no-op.
++        if (e.Repeat)
++        {
++            return false;
++        }
++
++        if (!ShortcutBinding.TryFromKeyboardEvent(e, out string binding))
++        {
++            return false;
++        }
++
++        // Fast-path: modifier-bearing combos NEVER form chord continuations (D4 sub-decision d).
++        bool hasModifier = e.CtrlKey || e.ShiftKey || e.AltKey || e.MetaKey;
++        if (hasModifier)
++        {
++            ClearPending();
++            return await TryInvokeBindingAsync(binding).ConfigureAwait(false);
++        }
++
++        // Bare-letter path: chord FSM.
++        string? completed = null;
++        lock (_chordSync)
++        {
++            // Re-check disposed inside the lock — circuit-teardown that flips `_disposed` between
++            // the early guard and here must not be able to allocate a timer on a cleared service.
++            if (_disposed)
++            {
++                return false;
++            }
++
++            if (_pendingFirstKey is { } pending)
++            {
++                string composite = $"{pending} {binding}";
++                if (_entries.ContainsKey(composite))
++                {
++                    completed = composite;
++                    DisposeTimerLocked();
++                    _pendingFirstKey = null;
++                }
++                else
++                {
++                    DisposeTimerLocked();
++                    _pendingFirstKey = null;
++
++                    // Re-evaluate the new key as a fresh single-key lookup. Bare letters cannot be
++                    // single-key bindings (Normalize forbids them), so this only fires if a future
++                    // binding form is added — the lookup is a safe no-op today.
++                }
++            }
++
++            if (completed is null && IsChordPrefix(binding))
++            {
++                long generation = ++_pendingGeneration;
++                _pendingFirstKey = binding;
++                DisposeTimerLocked();
++                _chordTimer = _timeProvider.CreateTimer(
++                    static state =>
++                    {
++                        ChordTimerState timerState = (ChordTimerState)state!;
++                        ShortcutService self = timerState.Owner;
++                        lock (self._chordSync)
++                        {
++                            if (timerState.Generation != self._pendingGeneration)
++                            {
++                                return;
++                            }
++
++                            self._pendingFirstKey = null;
++                            self.DisposeTimerLocked();
++                        }
++                    },
++                    new ChordTimerState(this, generation),
++                    TimeSpan.FromMilliseconds(ChordTimeoutMilliseconds),
++                    Timeout.InfiniteTimeSpan);
++            }
++        }
++
++        if (completed is not null)
++        {
++            return await TryInvokeBindingAsync(completed).ConfigureAwait(false);
++        }
++
++        return false;
++    }
++
++    /// <inheritdoc />
++    public void Dispose()
++    {
++        if (_disposed)
++        {
++            return;
++        }
++
++        _disposed = true;
++        lock (_chordSync)
++        {
++            DisposeTimerLocked();
++            _pendingFirstKey = null;
++        }
++
++        _entries.Clear();
++    }
++
++    private async Task<bool> TryInvokeBindingAsync(string binding)
++    {
++        if (!_entries.TryGetValue(binding, out ShortcutEntry? entry))
++        {
++            return false;
++        }
++
++        try
++        {
++            await entry.Handler().ConfigureAwait(false);
++            return true;
++        }
++        catch (Exception ex)
++        {
++            _logger.LogWarning(
++                ex,
++                "{DiagnosticId}: Registered shortcut handler threw. Binding={Binding} DescriptionKey={DescriptionKey} ExceptionType={ExceptionType} ExceptionMessage={ExceptionMessage}",
++                FcDiagnosticIds.HFC2109_ShortcutHandlerFault,
++                entry.Binding,
++                entry.DescriptionKey,
++                ex.GetType().FullName,
++                ex.Message);
++            return true;
++        }
++    }
++
++    private bool IsChordPrefix(string binding)
++    {
++        string prefix = binding + " ";
++        foreach (string key in _entries.Keys)
++        {
++            if (key.StartsWith(prefix, StringComparison.Ordinal))
++            {
++                return true;
++            }
++        }
++
++        return false;
++    }
++
++    private void ClearPending()
++    {
++        lock (_chordSync)
++        {
++            _pendingFirstKey = null;
++            DisposeTimerLocked();
++        }
++    }
++
++    private void DisposeTimerLocked()
++    {
++        ITimer? timer = _chordTimer;
++        if (timer is null)
++        {
++            return;
++        }
++
++        _chordTimer = null;
++        try
++        {
++            timer.Dispose();
++        }
++        catch (ObjectDisposedException)
++        {
++            // Already disposed by a racing callback — safe to ignore.
++        }
++    }
++
++    private void RemoveIfMatches(ShortcutEntry entry)
++    {
++        // Only remove the binding slot if the live entry is the one being disposed — a replacement
++        // registration must survive disposal of the original (D3 sub-decision: dispose targets the
++        // original entry, not the slot).
++        if (_entries.TryGetValue(entry.Binding, out ShortcutEntry? current) && ReferenceEquals(current, entry))
++        {
++            _ = _entries.TryRemove(entry.Binding, out _);
++        }
++    }
++
++    private sealed record ShortcutEntry(
++        string Binding,
++        string DescriptionKey,
++        string NormalisedLabel,
++        Func<Task> Handler,
++        string CallSiteFile,
++        int CallSiteLine);
++
++    private sealed record ChordTimerState(ShortcutService Owner, long Generation);
++
++    private sealed class RegistrationDisposable(ShortcutService owner, ShortcutEntry entry) : IDisposable
++    {
++        private int _disposed;
++
++        public void Dispose()
++        {
++            if (Interlocked.Exchange(ref _disposed, 1) == 0)
++            {
++                owner.RemoveIfMatches(entry);
++            }
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextChangedAction.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextChangedAction.cs
+new file mode 100644
+index 0000000..79c115b
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextChangedAction.cs
+@@ -0,0 +1,8 @@
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Dispatched when the navigation manager observes a route change that updates the bounded
++/// context (Story 3-4 D7 / Task 2.1a). Drives the palette's contextual scoring bonus.
++/// </summary>
++/// <param name="NewBoundedContext">The new bounded-context segment, or <see langword="null"/> on home / non-domain routes.</param>
++public sealed record BoundedContextChangedAction(string? NewBoundedContext);
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextRouteParser.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextRouteParser.cs
+new file mode 100644
+index 0000000..756ccbe
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/BoundedContextRouteParser.cs
+@@ -0,0 +1,56 @@
++namespace Hexalith.FrontComposer.Shell.State.Navigation;
++
++/// <summary>
++/// Parses the bounded-context segment from the current shell route so contextual palette scoring
++/// can follow browser navigation without persisting the value.
++/// </summary>
++public static class BoundedContextRouteParser
++{
++    /// <summary>
++    /// Extracts the bounded-context route segment from a URI or path.
++    /// </summary>
++    /// <param name="uriOrPath">The absolute URI or app-relative path.</param>
++    /// <returns>
++    /// The bounded-context segment when present; otherwise <see langword="null"/> for home and
++    /// other non-context routes.
++    /// </returns>
++    public static string? Parse(string? uriOrPath)
++    {
++        if (string.IsNullOrWhiteSpace(uriOrPath))
++        {
++            return null;
++        }
++
++        string path = ExtractPath(uriOrPath);
++        if (string.IsNullOrWhiteSpace(path))
++        {
++            return null;
++        }
++
++        int suffixIndex = path.IndexOfAny(['?', '#']);
++        if (suffixIndex >= 0)
++        {
++            path = path[..suffixIndex];
++        }
++
++        string[] segments = [.. path.Split('/', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
++        if (segments.Length == 0)
++        {
++            return null;
++        }
++
++        // Normalise to lowercase so PascalCase vs kebab-case URLs for the same BC don't churn the
++        // navigation-state reducer via Ordinal comparison (edge-hunter DN8 finding).
++        if (string.Equals(segments[0], "domain", StringComparison.OrdinalIgnoreCase))
++        {
++            return segments.Length >= 3 ? segments[1].ToLowerInvariant() : null;
++        }
++
++        return segments.Length >= 2 ? segments[0].ToLowerInvariant() : null;
++    }
++
++    private static string ExtractPath(string uriOrPath)
++        => Uri.TryCreate(uriOrPath, UriKind.Absolute, out Uri? uri)
++            ? uri.AbsolutePath
++            : uriOrPath;
++}
+\ No newline at end of file
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs
+index c38ca26..0c14788 100644
+--- a/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/FrontComposerNavigationState.cs
+@@ -8,7 +8,13 @@ namespace Hexalith.FrontComposer.Shell.State.Navigation;
+ /// <param name="SidebarCollapsed">Whether the sidebar is collapsed (user preference; persisted).</param>
+ /// <param name="CollapsedGroups">Per-bounded-context collapsed flag — sparse map (D11); persisted.</param>
+ /// <param name="CurrentViewport">Observed viewport tier — derived at runtime, NEVER persisted (ADR-037).</param>
++/// <param name="CurrentBoundedContext">
++/// The bounded-context segment of the current route — derived from <c>NavigationManager.Uri</c>
++/// at route-change time, NEVER persisted (Story 3-4 D7 / D8 — drives the palette's contextual
++/// scoring bonus). <see langword="null"/> when on the home route or a non-domain route.
++/// </param>
+ public record FrontComposerNavigationState(
+     bool SidebarCollapsed,
+     ImmutableDictionary<string, bool> CollapsedGroups,
+-    ViewportTier CurrentViewport);
++    ViewportTier CurrentViewport,
++    string? CurrentBoundedContext = null);
+diff --git a/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs
+index 7c45315..7906244 100644
+--- a/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs
++++ b/src/Hexalith.FrontComposer.Shell/State/Navigation/NavigationReducers.cs
+@@ -104,4 +104,23 @@ public static class NavigationReducers
+             CollapsedGroups = action.CollapsedGroups,
+         };
+     }
++
++    /// <summary>
++    /// Updates <see cref="FrontComposerNavigationState.CurrentBoundedContext"/> when the route
++    /// changes (Story 3-4 D7). NEVER persisted — derived from <c>NavigationManager.Uri</c>.
++    /// </summary>
++    /// <param name="state">The current navigation state.</param>
++    /// <param name="action">The bounded-context-changed action.</param>
++    /// <returns>A new state when the value changed; the same instance otherwise.</returns>
++    [ReducerMethod]
++    public static FrontComposerNavigationState ReduceBoundedContextChanged(
++        FrontComposerNavigationState state,
++        BoundedContextChangedAction action)
++    {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return string.Equals(state.CurrentBoundedContext, action.NewBoundedContext, StringComparison.Ordinal)
++            ? state
++            : state with { CurrentBoundedContext = action.NewBoundedContext };
++    }
+ }
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Routing/CommandRouteBuilderTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Routing/CommandRouteBuilderTests.cs
+new file mode 100644
+index 0000000..d4af357
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Routing/CommandRouteBuilderTests.cs
+@@ -0,0 +1,57 @@
++// Story 3-4 Task 10.2 (D21 — AC5) + Task 10.4d (D10 internal-route filter).
++using Hexalith.FrontComposer.Shell.Routing;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Routing;
++
++public class CommandRouteBuilderTests
++{
++    [Theory]
++    [InlineData("SubmitOrderCommand", "submit-order-command")]
++    [InlineData("IncrementCommand", "increment-command")]
++    [InlineData("XMLParser", "xml-parser")]
++    [InlineData("Counter.Domain.IncrementCommand", "increment-command")]
++    public void KebabCase_ProducesExpectedSlug(string input, string expected)
++    {
++        CommandRouteBuilder.KebabCase(input).ShouldBe(expected);
++    }
++
++    [Fact]
++    public void BuildRoute_ProducesCanonicalDomainUrl()
++    {
++        CommandRouteBuilder.BuildRoute("Commerce", "SubmitOrderCommand")
++            .ShouldBe("/domain/commerce/submit-order-command");
++    }
++
++    [Theory]
++    [InlineData("/")]
++    [InlineData("/counter")]
++    [InlineData("/domain/commerce/submit-order")]
++    [InlineData("/path?q=1")]
++    [InlineData("/path#frag")]
++    [InlineData("/calendar/10:30")]
++    [InlineData("/path?at=10:30")]
++    [InlineData("/path#section:2")]
++    public void IsInternalRoute_AcceptsValidInternalUrls(string url)
++    {
++        CommandRouteBuilder.IsInternalRoute(url).ShouldBeTrue();
++    }
++
++    [Theory]
++    [InlineData("//evil.com")]
++    [InlineData("https://evil.com")]
++    [InlineData("mailto:test@example.com")]
++    [InlineData("javascript:alert(1)")]
++    [InlineData("data:text/html,evil")]
++    [InlineData("/redirect?next=https://evil.com")]
++    [InlineData("/page#javascript:alert(1)")]
++    [InlineData("/proxy?payload=data:text/html,evil")]
++    [InlineData("\\\\unc")]
++    [InlineData("")]
++    [InlineData(null)]
++    public void IsInternalRoute_RejectsTamperedOrAbsoluteUrls(string? url)
++    {
++        CommandRouteBuilder.IsInternalRoute(url).ShouldBeFalse();
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/FrontComposerShortcutRegistrarTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/FrontComposerShortcutRegistrarTests.cs
+new file mode 100644
+index 0000000..3e7783d
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/FrontComposerShortcutRegistrarTests.cs
+@@ -0,0 +1,119 @@
++// Story 3-4 Task 10.1f (D24 — AC1).
++#pragma warning disable CA2007
++using System.Collections.Immutable;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
++using Hexalith.FrontComposer.Shell.Resources;
++using Hexalith.FrontComposer.Shell.Shortcuts;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Microsoft.AspNetCore.Components;
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Localization;
++using Microsoft.FluentUI.AspNetCore.Components;
++using Microsoft.JSInterop;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Shortcuts;
++
++public class FrontComposerShortcutRegistrarTests
++{
++    [Fact]
++    public async Task RegisterShellDefaultsAsync_RegistersThreeShellBindings()
++    {
++        IShortcutService shortcuts = Substitute.For<IShortcutService>();
++        FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out _);
++
++        await sut.RegisterShellDefaultsAsync();
++
++        shortcuts.Received(1).Register("ctrl+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
++        shortcuts.Received(1).Register("ctrl+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
++        shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
++    }
++
++    [Fact]
++    public async Task RegisterShellDefaultsAsync_IsIdempotent_WithinSameInstance()
++    {
++        IShortcutService shortcuts = Substitute.For<IShortcutService>();
++        FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out _);
++
++        await sut.RegisterShellDefaultsAsync();
++        await sut.RegisterShellDefaultsAsync();
++        await sut.RegisterShellDefaultsAsync();
++
++        shortcuts.Received(1).Register("ctrl+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
++        shortcuts.Received(1).Register("ctrl+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
++        shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
++    }
++
++    [Fact]
++    public async Task OpenPaletteAsync_WhenDialogOpenFails_DispatchesCloseRollback_AndRethrows()
++    {
++        IShortcutService shortcuts = Substitute.For<IShortcutService>();
++        ThrowingDialogService dialog = new();
++        FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out IDispatcher dispatcher, dialog: dialog);
++
++        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(() => sut.OpenPaletteAsync());
++
++        ex.Message.ShouldBe("dialog failed");
++        dispatcher.Received(1).Dispatch(Arg.Any<PaletteOpenedAction>());
++        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
++    }
++
++    private static FrontComposerShortcutRegistrar BuildRegistrar(
++        IShortcutService shortcuts,
++        out IDispatcher dispatcher,
++        bool isOpen = false,
++        IDialogService? dialog = null)
++    {
++        dispatcher = Substitute.For<IDispatcher>();
++        IState<FrontComposerCommandPaletteState> state = Substitute.For<IState<FrontComposerCommandPaletteState>>();
++        state.Value.Returns(new FrontComposerCommandPaletteState(isOpen, string.Empty,
++            ImmutableArray<PaletteResult>.Empty,
++            ImmutableArray<string>.Empty,
++            0, PaletteLoadState.Idle));
++        dialog ??= new Hexalith.FrontComposer.Shell.Tests.Components.Layout.RecordingDialogService();
++        IStringLocalizer<FcShellResources> loc = new EchoLocalizer();
++        IUlidFactory ulids = Substitute.For<IUlidFactory>();
++        ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
++        NavigationManager nav = new BunitNavigationManager();
++        return new FrontComposerShortcutRegistrar(shortcuts, dispatcher, state, dialog, nav, loc, ulids);
++    }
++
++    private sealed class BunitNavigationManager : NavigationManager
++    {
++        public BunitNavigationManager() => Initialize("https://localhost/", "https://localhost/");
++
++        protected override void NavigateToCore(string uri, bool forceLoad) { }
++    }
++
++    private sealed class ThrowingDialogService : DialogService
++    {
++        public ThrowingDialogService()
++            : base(
++                new ServiceCollection()
++                    .AddSingleton(Substitute.For<IJSRuntime>())
++                    .BuildServiceProvider(),
++                Substitute.For<IFluentLocalizer>())
++        {
++        }
++
++        public override Task<DialogResult> ShowDialogAsync(Type dialogComponent, DialogOptions options)
++            => throw new InvalidOperationException("dialog failed");
++    }
++
++    private sealed class EchoLocalizer : IStringLocalizer<FcShellResources>
++    {
++        public LocalizedString this[string name] => new(name, name);
++
++        public LocalizedString this[string name, params object[] arguments] => new(name, name);
++
++        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures) => [];
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutBindingNormalizeTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutBindingNormalizeTests.cs
+new file mode 100644
+index 0000000..839e0c0
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutBindingNormalizeTests.cs
+@@ -0,0 +1,84 @@
++// Story 3-4 Task 10.2 (D1, D4 — AC1).
++using Hexalith.FrontComposer.Contracts.Shortcuts;
++
++using Microsoft.AspNetCore.Components.Web;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Shortcuts;
++
++public class ShortcutBindingNormalizeTests {
++    [Theory]
++    [InlineData("ctrl+k", "ctrl+k")]
++    [InlineData("CTRL+K", "ctrl+k")]
++    [InlineData("Ctrl+K", "ctrl+k")]
++    [InlineData("SHIFT+CTRL+K", "ctrl+shift+k")]
++    [InlineData("alt+ctrl+shift+meta+k", "ctrl+shift+alt+meta+k")]
++    public void Normalize_LowercasesAndReordersModifiers(string input, string expected) {
++        ShortcutBinding.Normalize(input).ShouldBe(expected);
++    }
++
++    [Theory]
++    [InlineData("g h", "g h")]
++    [InlineData("G H", "g h")]
++    [InlineData("  g   h  ", "g h")]
++    public void Normalize_AcceptsBareChordWithExactSingleSpace(string input, string expected) {
++        ShortcutBinding.Normalize(input).ShouldBe(expected);
++    }
++
++    [Theory]
++    [InlineData("g")]
++    [InlineData("a")]
++    [InlineData("Z")]
++    public void Normalize_RejectsBareSingleLetterWithoutModifier(string input) {
++        Should.Throw<ArgumentException>(() => ShortcutBinding.Normalize(input));
++    }
++
++    [Theory]
++    [InlineData("")]
++    [InlineData(" ")]
++    [InlineData("\t")]
++    public void Normalize_RejectsEmptyOrWhitespace(string input) {
++        Should.Throw<ArgumentException>(() => ShortcutBinding.Normalize(input));
++    }
++
++    [Theory]
++    [InlineData("hyper+k")]
++    [InlineData("ctrl+shift+ctrl")] // last token is a modifier — invalid.
++    public void Normalize_RejectsUnknownModifiersOrInvalidTrailingTokens(string input) {
++        Should.Throw<ArgumentException>(() => ShortcutBinding.Normalize(input));
++    }
++
++    [Fact]
++    public void TryFromKeyboardEvent_BuildsCanonicalLowercaseBinding() {
++        ShortcutBinding.TryFromKeyboardEvent(new KeyboardEventArgs { Key = "K", CtrlKey = true }, out string b)
++            .ShouldBeTrue();
++        b.ShouldBe("ctrl+k");
++    }
++
++    [Fact]
++    public void TryFromKeyboardEvent_ReturnsFalse_ForModifierOnlyPresses() {
++        ShortcutBinding.TryFromKeyboardEvent(new KeyboardEventArgs { Key = "Control", CtrlKey = true }, out _)
++            .ShouldBeFalse();
++        ShortcutBinding.TryFromKeyboardEvent(new KeyboardEventArgs { Key = "Shift", ShiftKey = true }, out _)
++            .ShouldBeFalse();
++    }
++
++    [Fact]
++    public void FormatLabel_ProducesCapitalisedHumanLabel() {
++        ShortcutBinding.FormatLabel("ctrl+k").ShouldBe("Ctrl+K");
++        ShortcutBinding.FormatLabel("ctrl+shift+p").ShouldBe("Ctrl+Shift+P");
++        ShortcutBinding.FormatLabel("g h").ShouldBe("G H");
++    }
++
++    [Theory]
++    [InlineData("ctrl+g ctrl+h")]
++    [InlineData("g ctrl+h")]
++    [InlineData("ctrl+g h")]
++    public void Normalize_RejectsChordPartsWithModifiers(string binding) {
++        // Blind-Hunter / Edge-Hunter finding — the dispatcher fast-paths modifier-bearing combos to
++        // single-key lookup (D4 sub-decision d), so a chord part containing `+` creates a dead
++        // binding. Reject at registration time rather than silently accept.
++        Should.Throw<ArgumentException>(() => ShortcutBinding.Normalize(binding));
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs
+new file mode 100644
+index 0000000..ef9aa2c
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Shortcuts/ShortcutServiceTests.cs
+@@ -0,0 +1,327 @@
++// Story 3-4 Task 10.1 / 10.1c / 10.1d / 10.1g (D1-D4, D22 — AC1).
++using Hexalith.FrontComposer.Contracts.Diagnostics;
++
++using Hexalith.FrontComposer.Shell.Shortcuts;
++
++using Microsoft.AspNetCore.Components.Web;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Time.Testing;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Shortcuts;
++
++public class ShortcutServiceTests
++{
++    private static ShortcutService BuildService(out FakeTimeProvider time, out ILogger<ShortcutService> logger)
++    {
++        time = new FakeTimeProvider();
++        logger = Substitute.For<ILogger<ShortcutService>>();
++        return new ShortcutService(time, logger);
++    }
++
++    [Fact]
++    public async Task RegisterThenInvoke_RunsHandler()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        int hits = 0;
++        sut.Register("ctrl+k", "PaletteShortcutDescription", () => { hits++; return Task.CompletedTask; });
++
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "K", CtrlKey = true });
++
++        fired.ShouldBeTrue();
++        hits.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task DuplicateRegister_LastWriterWins_AndLogsHFC2108()
++    {
++        ShortcutService sut = BuildService(out _, out ILogger<ShortcutService> logger);
++        int firstHits = 0, secondHits = 0;
++        sut.Register("ctrl+k", "FirstDescription", () => { firstHits++; return Task.CompletedTask; });
++        sut.Register("ctrl+k", "SecondDescription", () => { secondHits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "k", CtrlKey = true });
++
++        firstHits.ShouldBe(0);
++        secondHits.ShouldBe(1);
++
++        LoggedEntry entry = GetLogEntries(logger)
++            .Single(e => e.Level == LogLevel.Information && e.Message.Contains(FcDiagnosticIds.HFC2108_ShortcutConflict, StringComparison.Ordinal));
++
++        entry.State["Binding"].ShouldBe("ctrl+k");
++        entry.State["PreviousDescriptionKey"].ShouldBe("FirstDescription");
++        entry.State["NewDescriptionKey"].ShouldBe("SecondDescription");
++        entry.State["PreviousCallSiteFile"].ShouldNotBeNull();
++        entry.State["NewCallSiteFile"].ShouldNotBeNull();
++        entry.State["PreviousCallSiteLine"].ShouldBeOfType<int>().ShouldBeGreaterThan(0);
++        entry.State["NewCallSiteLine"].ShouldBeOfType<int>().ShouldBeGreaterThan(0);
++    }
++
++    [Fact]
++    public async Task DisposedRegistration_DoesNotFire_WhenNoReplacement()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        int hits = 0;
++        IDisposable handle = sut.Register("ctrl+k", "Desc", () => { hits++; return Task.CompletedTask; });
++        handle.Dispose();
++
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "k", CtrlKey = true });
++
++        fired.ShouldBeFalse();
++        hits.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task DisposedOriginal_DoesNotRemoveReplacement()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        int firstHits = 0, secondHits = 0;
++        IDisposable handle = sut.Register("ctrl+k", "First", () => { firstHits++; return Task.CompletedTask; });
++        sut.Register("ctrl+k", "Second", () => { secondHits++; return Task.CompletedTask; });
++        handle.Dispose();
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "k", CtrlKey = true });
++
++        secondHits.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task Chord_GH_FiresWhenSecondKeyArrivesAt1499ms()
++    {
++        ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
++        int hits = 0;
++        sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        time.Advance(TimeSpan.FromMilliseconds(1499));
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
++
++        fired.ShouldBeTrue();
++        hits.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task Chord_GH_DoesNotFireAfter1500ms()
++    {
++        ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
++        int hits = 0;
++        sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        time.Advance(TimeSpan.FromMilliseconds(1501));
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
++
++        hits.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task Chord_NonMatchingSecondKey_ClearsPending_AndDoesNotFire()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        int hits = 0;
++        sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "x" });
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
++
++        hits.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task Chord_RepeatPrefix_OverwritesPending_NewWindowStarts()
++    {
++        ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
++        int hits = 0;
++        sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        time.Advance(TimeSpan.FromMilliseconds(800));
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        time.Advance(TimeSpan.FromMilliseconds(800));
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
++
++        fired.ShouldBeTrue();
++        hits.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task ModifierBindingDuringPending_FiresAndClearsPending()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        int chordHits = 0, modifierHits = 0;
++        sut.Register("g h", "HomeShortcutDescription", () => { chordHits++; return Task.CompletedTask; });
++        sut.Register("ctrl+k", "PaletteShortcutDescription", () => { modifierHits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "K", CtrlKey = true });
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
++
++        modifierHits.ShouldBe(1);
++        chordHits.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task TryInvokeAsync_WhenHandlerThrows_LogsHFC2109_AndReturnsTrue()
++    {
++        ShortcutService sut = BuildService(out _, out ILogger<ShortcutService> logger);
++        sut.Register("ctrl+k", "Desc", () => throw new InvalidOperationException("boom"));
++
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "k", CtrlKey = true });
++
++        fired.ShouldBeTrue();
++
++        LoggedEntry entry = GetLogEntries(logger)
++            .Single(e => e.Level == LogLevel.Warning && e.Message.Contains(FcDiagnosticIds.HFC2109_ShortcutHandlerFault, StringComparison.Ordinal));
++
++        entry.Exception.ShouldBeOfType<InvalidOperationException>().Message.ShouldBe("boom");
++        entry.State["Binding"].ShouldBe("ctrl+k");
++        entry.State["DescriptionKey"].ShouldBe("Desc");
++        entry.State["ExceptionType"].ShouldBe(typeof(InvalidOperationException).FullName);
++        entry.State["ExceptionMessage"].ShouldBe("boom");
++    }
++
++    [Fact]
++    public async Task TryInvokeAsync_WhenHandlerThrowsOperationCanceledException_LogsHFC2109_AndReturnsTrue()
++    {
++        ShortcutService sut = BuildService(out _, out ILogger<ShortcutService> logger);
++        sut.Register("ctrl+k", "Desc", () => throw new OperationCanceledException("cancelled"));
++
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "k", CtrlKey = true });
++
++        fired.ShouldBeTrue();
++
++        LoggedEntry entry = GetLogEntries(logger)
++            .Single(e => e.Level == LogLevel.Warning && e.Message.Contains(FcDiagnosticIds.HFC2109_ShortcutHandlerFault, StringComparison.Ordinal));
++
++        entry.Exception.ShouldBeOfType<OperationCanceledException>().Message.ShouldBe("cancelled");
++        entry.State["Binding"].ShouldBe("ctrl+k");
++        entry.State["DescriptionKey"].ShouldBe("Desc");
++        entry.State["ExceptionType"].ShouldBe(typeof(OperationCanceledException).FullName);
++        entry.State["ExceptionMessage"].ShouldBe("cancelled");
++    }
++
++    [Theory]
++    [InlineData(null, "Desc")]
++    [InlineData("", "Desc")]
++    [InlineData("   ", "Desc")]
++    [InlineData("ctrl+k", null)]
++    [InlineData("ctrl+k", "")]
++    [InlineData("ctrl+k", "  ")]
++    public void Register_ThrowsArgumentException_OnNullOrEmptyArguments(string? binding, string? descriptionKey)
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        Should.Throw<ArgumentException>(() => sut.Register(binding!, descriptionKey!, () => Task.CompletedTask));
++    }
++
++    [Fact]
++    public void Register_ThrowsArgumentNullException_OnNullHandler()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        Should.Throw<ArgumentNullException>(() => sut.Register("ctrl+k", "Desc", null!));
++    }
++
++    [Fact]
++    public void GetRegistrations_ReturnsAllCurrentlyRegistered()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        sut.Register("ctrl+k", "PaletteShortcutDescription", () => Task.CompletedTask);
++        sut.Register("ctrl+,", "SettingsShortcutDescription", () => Task.CompletedTask);
++
++        IReadOnlyList<Hexalith.FrontComposer.Contracts.Shortcuts.ShortcutRegistration> regs = sut.GetRegistrations();
++
++        regs.Count.ShouldBe(2);
++        regs.ShouldContain(r => r.Binding == "ctrl+k" && r.NormalisedLabel == "Ctrl+K");
++        regs.ShouldContain(r => r.Binding == "ctrl+,");
++    }
++
++    private static IReadOnlyList<LoggedEntry> GetLogEntries(ILogger<ShortcutService> logger)
++    {
++        List<LoggedEntry> entries = [];
++        foreach (NSubstitute.Core.ICall call in logger.ReceivedCalls())
++        {
++            if (!string.Equals(call.GetMethodInfo().Name, nameof(ILogger.Log), StringComparison.Ordinal))
++            {
++                continue;
++            }
++
++            object?[] args = call.GetArguments();
++            if (args.Length < 5 || args[0] is not LogLevel level)
++            {
++                continue;
++            }
++
++            Dictionary<string, object?> state = new(StringComparer.Ordinal);
++            if (args[2] is IEnumerable<KeyValuePair<string, object?>> kvps)
++            {
++                foreach (KeyValuePair<string, object?> kvp in kvps)
++                {
++                    state[kvp.Key] = kvp.Value;
++                }
++            }
++
++            entries.Add(new LoggedEntry(level, args[2]?.ToString() ?? string.Empty, args[3] as Exception, state));
++        }
++
++        return entries;
++    }
++
++    [Fact]
++    public async Task Chord_RepeatPrefixBeforeTimeout_OverwritesPendingField()
++    {
++        // D4 sub-decision (c): pressing the same prefix twice before timeout keeps only the latest
++        // prefix pending — the second press resets the generation counter.
++        ShortcutService sut = BuildService(out _, out _);
++        int hits = 0;
++        sut.Register("g h", "Home", () => { hits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
++
++        fired.ShouldBeTrue();
++        hits.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task Chord_ModifierBindingDuringPending_FiresAndClearsPending()
++    {
++        // D4 sub-decision (d): a modifier-bearing shortcut pressed during a pending chord must
++        // both fire AND clear the pending first-key (chord does not complete later).
++        ShortcutService sut = BuildService(out _, out _);
++        int gHomeHits = 0;
++        int ctrlKHits = 0;
++        sut.Register("g h", "Home", () => { gHomeHits++; return Task.CompletedTask; });
++        sut.Register("ctrl+k", "Palette", () => { ctrlKHits++; return Task.CompletedTask; });
++
++        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++        bool modifierFired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "k", CtrlKey = true });
++        bool secondKeyFired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
++
++        modifierFired.ShouldBeTrue();
++        ctrlKHits.ShouldBe(1);
++        secondKeyFired.ShouldBeFalse();
++        gHomeHits.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task TryInvokeAsync_AfterDispose_ReturnsFalse_WithoutAllocatingTimer()
++    {
++        ShortcutService sut = BuildService(out _, out _);
++        sut.Register("g h", "Home", () => Task.CompletedTask);
++        sut.Dispose();
++
++        bool fired = await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
++
++        fired.ShouldBeFalse();
++    }
++
++    private sealed record LoggedEntry(
++        LogLevel Level,
++        string Message,
++        Exception? Exception,
++        IReadOnlyDictionary<string, object?> State);
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/Navigation/BoundedContextRouteParserTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/Navigation/BoundedContextRouteParserTests.cs
+new file mode 100644
+index 0000000..e72d92b
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/Navigation/BoundedContextRouteParserTests.cs
+@@ -0,0 +1,21 @@
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
++
++public sealed class BoundedContextRouteParserTests
++{
++    [Theory]
++    [InlineData("/", null)]
++    [InlineData("https://localhost/", null)]
++    [InlineData("/home", null)]
++    [InlineData("/settings", null)]
++    [InlineData("/counter/counter-view", "counter")]
++    [InlineData("https://localhost/counter/counter-view?tab=1#recent", "counter")]
++    [InlineData("/domain/commerce/submit-order-command", "commerce")]
++    [InlineData("https://localhost/domain/commerce/submit-order-command?from=palette", "commerce")]
++    [InlineData("/domain/commerce", null)]
++    public void Parse_ReturnsExpectedBoundedContext(string uriOrPath, string? expected)
++        => BoundedContextRouteParser.Parse(uriOrPath).ShouldBe(expected);
++}
+\ No newline at end of file

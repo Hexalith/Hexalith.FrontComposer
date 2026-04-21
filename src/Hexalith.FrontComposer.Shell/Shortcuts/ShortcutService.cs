@@ -36,7 +36,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
     private string? _pendingFirstKey;
     private long _pendingGeneration;
     private ITimer? _chordTimer;
-    private bool _disposed;
+    private int _disposed;
 
     /// <summary>
     /// Initialises a new instance of the <see cref="ShortcutService"/> class.
@@ -113,7 +113,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         // Post-dispose calls are benign (cleared _entries would miss every lookup), but explicitly
         // guarding keeps the chord-timer allocation path from racing circuit teardown. The
         // authoritative check also happens inside `_chordSync` below before any timer allocation.
-        if (_disposed)
+        if (Volatile.Read(ref _disposed) == 1)
         {
             return false;
         }
@@ -145,7 +145,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         {
             // Re-check disposed inside the lock — circuit-teardown that flips `_disposed` between
             // the early guard and here must not be able to allocate a timer on a cleared service.
-            if (_disposed)
+            if (_disposed == 1)
             {
                 return false;
             }
@@ -208,12 +208,13 @@ public sealed class ShortcutService : IShortcutService, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        if (_disposed)
+        // Atomic — two concurrent Dispose calls (e.g., circuit teardown interleaved with
+        // IAsyncDisposable cascades) cannot both observe zero and double-run the clear path.
+        if (Interlocked.Exchange(ref _disposed, 1) == 1)
         {
             return;
         }
 
-        _disposed = true;
         lock (_chordSync)
         {
             DisposeTimerLocked();
@@ -232,7 +233,15 @@ public sealed class ShortcutService : IShortcutService, IDisposable
 
         try
         {
-            await entry.Handler().ConfigureAwait(false);
+            Task? handlerTask = entry.Handler();
+            if (handlerTask is null)
+            {
+                // Contract: Func<Task> should not return null, but guard to prevent an NRE from
+                // bypassing the HFC2109 handler-fault path. Treat as "handler completed synchronously".
+                return true;
+            }
+
+            await handlerTask.ConfigureAwait(false);
             return true;
         }
         catch (Exception ex)

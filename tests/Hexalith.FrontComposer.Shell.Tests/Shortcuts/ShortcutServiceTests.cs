@@ -118,6 +118,26 @@ public class ShortcutServiceTests
     }
 
     [Fact]
+    public async Task Chord_GH_DoesNotFireExactlyAt1500ms()
+    {
+        // P20 (2026-04-21 pass-4): boundary companion for Chord_GH_FiresWhenSecondKeyArrivesAt1499ms.
+        // The 1499ms test proves sync lookup succeeds when the timer has NOT yet fired; this test
+        // pins the inclusive/exclusive boundary by advancing to exactly 1500ms so the FakeTimeProvider
+        // drains the scheduled callback. Together the three tests (1499 fires / 1500 clears / 1501
+        // no-fire) bracket the timeout semantics deterministically and would fail if the timeout
+        // constant were mis-tuned.
+        ShortcutService sut = BuildService(out FakeTimeProvider time, out _);
+        int hits = 0;
+        sut.Register("g h", "HomeShortcutDescription", () => { hits++; return Task.CompletedTask; });
+
+        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "g" });
+        time.Advance(TimeSpan.FromMilliseconds(1500));
+        await sut.TryInvokeAsync(new KeyboardEventArgs { Key = "h" });
+
+        hits.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task Chord_NonMatchingSecondKey_ClearsPending_AndDoesNotFire()
     {
         ShortcutService sut = BuildService(out _, out _);

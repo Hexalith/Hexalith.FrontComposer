@@ -25,15 +25,20 @@ namespace Hexalith.FrontComposer.Shell.Tests.Shortcuts;
 public class FrontComposerShortcutRegistrarTests
 {
     [Fact]
-    public async Task RegisterShellDefaultsAsync_RegistersThreeShellBindings()
+    public async Task RegisterShellDefaultsAsync_RegistersFiveShellBindings()
     {
+        // P19 (2026-04-21 pass-4): renamed from "RegistersThreeShellBindings" and extended to cover
+        // all five shell defaults, including the D25 Mac-parity meta+k / meta+, bindings that the
+        // previous test silently skipped.
         IShortcutService shortcuts = Substitute.For<IShortcutService>();
         FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out _);
 
         await sut.RegisterShellDefaultsAsync();
 
         shortcuts.Received(1).Register("ctrl+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
+        shortcuts.Received(1).Register("meta+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("ctrl+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
+        shortcuts.Received(1).Register("meta+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
     }
 
@@ -48,8 +53,40 @@ public class FrontComposerShortcutRegistrarTests
         await sut.RegisterShellDefaultsAsync();
 
         shortcuts.Received(1).Register("ctrl+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
+        shortcuts.Received(1).Register("meta+k", "PaletteShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("ctrl+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
+        shortcuts.Received(1).Register("meta+,", "SettingsShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
         shortcuts.Received(1).Register("g h", "HomeShortcutDescription", Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>());
+    }
+
+    [Fact]
+    public async Task RegisterShellDefaultsAsync_RollsBackIdempotencyFlagOnFailure_SoRetryCanSucceed()
+    {
+        // P2 (2026-04-21 pass-4): if a Register call throws, the idempotency flag must reset so a
+        // subsequent first-render pass can retry. Previously _registered stayed at 1 permanently
+        // and the shell was left with a partial binding set.
+        IShortcutService shortcuts = Substitute.For<IShortcutService>();
+        int callCount = 0;
+        shortcuts
+            .When(static x => x.Register(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<Func<Task>>(), Arg.Any<string>(), Arg.Any<int>()))
+            .Do(_ =>
+            {
+                callCount++;
+                if (callCount == 1)
+                {
+                    throw new InvalidOperationException("boom");
+                }
+            });
+
+        FrontComposerShortcutRegistrar sut = BuildRegistrar(shortcuts, out _);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(() => sut.RegisterShellDefaultsAsync());
+
+        // Second call should not be a no-op — the rollback freed the flag.
+        await sut.RegisterShellDefaultsAsync();
+
+        // First attempt made 1 call (threw), second attempt made 5 → total 6.
+        callCount.ShouldBe(6);
     }
 
     [Fact]

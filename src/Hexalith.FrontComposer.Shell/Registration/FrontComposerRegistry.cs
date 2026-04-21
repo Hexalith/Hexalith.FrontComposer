@@ -48,6 +48,14 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
     /// <exception cref="InvalidOperationException">Thrown with <see cref="FcDiagnosticIds.HFC1601_ManifestInvalid"/> when a command has no FullPage route — unreachable today.</exception>
     private void ValidateManifests() {
         foreach (DomainManifest manifest in _manifests) {
+            // Defensive: a custom IFrontComposerRegistry consumer could theoretically register a
+            // DomainManifest with a null Commands collection. The DomainManifest record declares
+            // Commands non-nullable but nothing enforces it at runtime construction paths outside
+            // the source-generator. Skip the manifest rather than NRE the startup validator.
+            if (manifest.Commands is null) {
+                continue;
+            }
+
             foreach (string command in manifest.Commands) {
                 if (!HasFullPageRoute(command)) {
                     throw new InvalidOperationException(

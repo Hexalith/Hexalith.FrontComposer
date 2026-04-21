@@ -33,7 +33,10 @@ public static class ShortcutBinding {
         }
 
         if (trimmed.Contains(' ')) {
-            string[] parts = trimmed.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            // P13 (2026-04-21 pass-4): split WITHOUT RemoveEmptyEntries so multi-space chords like
+            // "g  h" surface as 3 parts and fail the "exactly two parts" check — enforcing the
+            // XML-doc's "exactly one space" contract that RemoveEmptyEntries previously laundered.
+            string[] parts = trimmed.Split(' ');
             if (parts.Length != 2) {
                 throw new ArgumentException($"Chord binding must have exactly two parts separated by a single space; got '{binding}'.", nameof(binding));
             }
@@ -43,6 +46,20 @@ public static class ShortcutBinding {
             // produces an unreachable binding. Reject at registration time.
             if (parts[0].Contains('+') || parts[1].Contains('+')) {
                 throw new ArgumentException($"Chord parts may not include modifiers ('+'); got '{binding}'. Use a bare chord like 'g h'.", nameof(binding));
+            }
+
+            // P11 (2026-04-21 pass-4): chord tokens must be single characters. Multi-char tokens
+            // ("gg hh") can be registered but never dispatched — TryInvokeAsync normalises a single
+            // KeyboardEventArgs.Key to a single-char token.
+            if (parts[0].Length != 1 || parts[1].Length != 1) {
+                throw new ArgumentException($"Chord parts must be single characters; got '{binding}'.", nameof(binding));
+            }
+
+            // P12 (2026-04-21 pass-4): identical chord parts ("g g") are ambiguous with rapid
+            // double-press / auto-repeat; reject to avoid producing bindings users cannot reliably
+            // invoke.
+            if (string.Equals(parts[0], parts[1], StringComparison.OrdinalIgnoreCase)) {
+                throw new ArgumentException($"Chord parts must differ; got '{binding}'.", nameof(binding));
             }
 
             string first = NormalizeSingleKey(parts[0], allowBareLetter: true);
@@ -152,9 +169,18 @@ public static class ShortcutBinding {
             return lower;
         }
 
-        string[] parts = lower.Split(new[] { '+' }, StringSplitOptions.RemoveEmptyEntries);
+        // P10 (2026-04-21 pass-4): split WITHOUT RemoveEmptyEntries so empty tokens ("++k", "+k",
+        // "ctrl++k", "ctrl+") surface as explicit validation errors rather than being laundered
+        // into accidentally-valid bindings.
+        string[] parts = lower.Split('+');
         if (parts.Length < 2) {
             throw new ArgumentException($"Modifier+key binding must include at least one modifier and one key; got '{raw}'.", nameof(raw));
+        }
+
+        foreach (string part in parts) {
+            if (part.Length == 0) {
+                throw new ArgumentException($"Modifier+key binding may not contain empty tokens (e.g. '++'); got '{raw}'.", nameof(raw));
+            }
         }
 
         string keyToken = parts[parts.Length - 1];
@@ -167,6 +193,12 @@ public static class ShortcutBinding {
             int modIndex = Array.IndexOf(_modifierOrder, parts[i]);
             if (modIndex < 0) {
                 throw new ArgumentException($"Unknown modifier '{parts[i]}' in binding '{raw}'.", nameof(raw));
+            }
+
+            // P9 (2026-04-21 pass-4): reject duplicate modifiers ("ctrl+ctrl+k") rather than
+            // silently collapsing them via the idempotent hasModifier set-bit.
+            if (hasModifier[modIndex]) {
+                throw new ArgumentException($"Modifier '{parts[i]}' appears more than once in binding '{raw}'.", nameof(raw));
             }
 
             hasModifier[modIndex] = true;
