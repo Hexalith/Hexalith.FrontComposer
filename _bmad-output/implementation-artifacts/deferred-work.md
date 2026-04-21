@@ -1,5 +1,16 @@
 # Deferred Work
 
+## Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5)
+
+*Chunk 1 scope: palette UI components (FcCommandPalette, FcPaletteResultList, FcPaletteTriggerButton), PaletteScorer, PaletteResult, ProjectionTypeResolver, fc-focus.js, and their bUnit/property tests.*
+
+- **Invalid ARIA listbox structure** — `<ul role="listbox">` contains `<li role="none">` wrapping `<h4>` + nested `<ul role="group">`. WAI-ARIA 1.2 prefers direct `<li role="option">` or direct `<li role="group">` children. Deferred to Story 10-2 a11y pipeline alongside forced-colors / RTL verification. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:25-64`
+- **Task 10.7 bUnit test matrix still at 5 of 9+ shipped** — carried forward from Pass 2/3/4 F-03. Missing: `ArrowDownDispatchesSelectionMoved`, `ArrowUpDispatchesSelectionMoved`, `EnterDispatchesActivation`, `EscapeClosesPalette`, `AriaLiveAnnouncesNoMatchesForEmptyResults`, `FocusManagement_ArrowsKeepFocusOnSearchInput`, `FocusManagement_EscapeRestoresFocusToInvoker`, `FocusManagement_ActivateSentinelDoesNotClosePalette`, `PaletteDismissPaths_AllDispatchPaletteClosedAction`. Landing with the Aspire MCP Playwright matrix follow-up per DN3. `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs`
+- **Plural-unaware `"1 results"` live-region string** — F-14 from Pass 3; v1.x resource polish (ICU message format or separate singular/plural keys). `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs:88`
+- **`NavigationManager.ToAbsoluteUri(targetUrl)` throws on malformed `targetUrl`** — RouteUrls come from the trusted registry; not reachable with realistic data. Revisit if adopter-supplied URLs flow into this path. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs:422`
+- **`StubBadgeService` test stub comparer semantics diverge from production `IBadgeCountService` contract** — production implementation lands with Story 3-5; test stub can be aligned then. `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs:~1293`
+- **Badge `Counts` dictionary concurrent-mutation read race during `OnNext` re-render** — `IBadgeCountService` contract in Contracts does not mandate immutable-snapshot semantics; Story 3-5 picks the concrete implementation and can guarantee either (a) immutable snapshot on `CountChanged` push, or (b) `ConcurrentDictionary` read safety. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:51`
+
 ## Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)
 
 *Chunk 3 scope: Shortcuts contracts + service + registrar, Registration contracts + registry, FcDiagnosticIds, Routing, Navigation state. Palette UI + scorer + main effects in Chunks 1 & 2 (future sessions).*

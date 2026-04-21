@@ -35,7 +35,8 @@ internal static class ProjectionTypeResolver
         Type? resolved = ResolveCore(typeName);
         if (resolved is not null)
         {
-            _cache[typeName] = resolved;
+            // Pass-5 P9 — atomic add preserves the first writer's result under concurrent resolves.
+            _cache.TryAdd(typeName, resolved);
         }
 
         return resolved;
@@ -51,15 +52,34 @@ internal static class ProjectionTypeResolver
         Justification = "Scanning loaded assemblies is only used for the optional badge contract. If trimming removes a projection type, the palette intentionally degrades to no badge rather than failing.")]
     private static Type? ResolveCore(string typeName)
     {
-        Type? resolved = Type.GetType(typeName, throwOnError: false);
+        Type? resolved = null;
+        try
+        {
+            resolved = Type.GetType(typeName, throwOnError: false);
+        }
+        catch (TypeLoadException) { }
+        catch (FileLoadException) { }
+        catch (BadImageFormatException) { }
+
         if (resolved is not null)
         {
             return resolved;
         }
 
-        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
+        // Pass-5 P8 — snapshot to avoid enumerator-modified exceptions when an assembly loads
+        // concurrently during the scan (hot-reload, lazy MEF, dynamic plugin load).
+        Assembly[] snapshot = AppDomain.CurrentDomain.GetAssemblies();
+        foreach (Assembly assembly in snapshot)
         {
-            resolved = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
+            try
+            {
+                resolved = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
+            }
+            catch (TypeLoadException) { continue; }
+            catch (FileLoadException) { continue; }
+            catch (BadImageFormatException) { continue; }
+            catch (NotSupportedException) { continue; } // Dynamic assemblies don't support GetType.
+
             if (resolved is not null)
             {
                 return resolved;

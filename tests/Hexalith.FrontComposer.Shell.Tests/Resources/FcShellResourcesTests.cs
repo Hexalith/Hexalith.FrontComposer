@@ -156,6 +156,7 @@ public sealed class FcShellResourcesTests {
     [InlineData("PaletteCategoryRecent", "Recent", "Récents")]
     [InlineData("PaletteResultCountTemplate", "{0} results", "{0} résultats")]
     [InlineData("PaletteNoResultsText", "No matches found", "Aucun résultat trouvé")]
+    [InlineData("PaletteInCurrentContextSuffix", "(in current context)", "(dans le contexte actuel)")]
     [InlineData("ShortcutsCategoryLabel", "Keyboard shortcuts", "Raccourcis clavier")]
     [InlineData("PaletteShortcutDescription", "Open command palette", "Ouvrir la palette de commandes")]
     [InlineData("SettingsShortcutDescription", "Open settings", "Ouvrir les paramètres")]

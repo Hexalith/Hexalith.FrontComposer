@@ -1,0 +1,1506 @@
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor
+new file mode 100644
+index 0000000..372707c
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor
+@@ -0,0 +1,39 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Layout
++@using Microsoft.AspNetCore.Components.Web
++@using Microsoft.FluentUI.AspNetCore.Components
++@using Hexalith.FrontComposer.Shell.Resources
++@using Hexalith.FrontComposer.Shell.State.CommandPalette
++@inherits Fluxor.Blazor.Web.Components.FluxorComponent
++
++@* Story 3-4 Task 5.1 (D11 / D15 / D17 — AC2 / AC5 / AC6).
++   Dialog body opened by IDialogService.ShowDialogAsync<FcCommandPalette>. The dialog frame is
++   provided by FluentDialogBody (Story 3-3 FcSettingsDialog precedent — does NOT implement the
++   generic IDialogContentComponent<TData> interface). *@
++
++<FluentDialogBody>
++    <TitleTemplate>@Localizer["CommandPaletteTitle"].Value</TitleTemplate>
++    <ChildContent>
++        @* P2 (2026-04-21 pass-3): @onkeydown:preventDefault is a render-time boolean, not per-key.
++           The always-true property swallowed Tab, breaking the focus loop. JS module
++           fc-keyboard.js:registerPaletteKeyFilter does per-key preventDefault for Arrow/Enter/Escape
++           and is the single source of truth. *@
++        <div class="fc-palette-root" role="dialog" aria-label="@Localizer["CommandPaletteTitle"].Value"
++             data-testid="fc-palette-root" @ref="_paletteRoot" @onkeydown="HandleKeyDownAsync"
++             @onkeydown:stopPropagation="true">
++            <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync"
++                             TextInputType="TextInputType.Search" Placeholder="@Localizer["PaletteSearchPlaceholder"].Value"
++                             role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-controls="@ResultListId"
++                             aria-activedescendant="@ActiveDescendantId" aria-autocomplete="list" data-testid="fc-palette-search" />
++
++            <FcPaletteResultList Id="@ResultListId" Results="@PaletteState.Value.Results"
++                                 SelectedIndex="@PaletteState.Value.SelectedIndex" OnSelectionChanged="OnSelectionClickedAsync" />
++
++            @* D15 anti-regression — DO NOT refactor to render populated on first tick. AT engines
++               (NVDA, JAWS) announce aria-live changes on DOM mutation, NOT on initial content;
++               rendering populated skips the announce. The two-tick (empty → populated) sequence
++               forces the mutation. Removing this would silently break SR users. *@
++            <div class="fc-sr-only" role="status" aria-live="polite" aria-atomic="true" data-testid="fc-palette-live">
++                @_liveRegionText</div>
++            </div>
++        </ChildContent>
++    </FluentDialogBody>
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs
+new file mode 100644
+index 0000000..e35a4dd
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.cs
+@@ -0,0 +1,438 @@
++using System.Globalization;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Shell.Resources;
++using Hexalith.FrontComposer.Shell.Routing;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Microsoft.AspNetCore.Components;
++using Microsoft.AspNetCore.Components.Web;
++using Microsoft.Extensions.Localization;
++using Microsoft.FluentUI.AspNetCore.Components;
++using Microsoft.JSInterop;
++
++// Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
++#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
++
++namespace Hexalith.FrontComposer.Shell.Components.Layout;
++
++/// <summary>
++/// Command palette dialog content (Story 3-4 Task 5 — D11 / D15 / D17 / D20 / D23; AC2, AC5, AC6).
++/// </summary>
++/// <remarks>
++/// <para>
++/// <b>Lifecycle:</b> opened via <c>IDialogService.ShowDialogAsync&lt;FcCommandPalette&gt;</c>.
++/// Auto-focuses the search input on first render (AC2 F1).
++/// </para>
++/// <para>
++/// <b>Dismiss-path coherence (D11):</b> every close path eventually dispatches
++/// <see cref="PaletteClosedAction"/>. The keyboard handler dispatches it explicitly for Escape /
++/// Enter / activation; <see cref="DisposeAsync"/> dispatches it as a catch-all for X-button /
++/// backdrop / circuit-disconnect dismisses (wrapped in a guard against
++/// <see cref="ObjectDisposedException"/> on dirty-disconnect circuits).
++/// </para>
++/// <para>
++/// <b>D15 anti-regression:</b> the live region renders empty on first paint and populates on the
++/// next tick via <see cref="OnAfterRenderAsync(bool)"/> so AT engines (NVDA / JAWS) pick up the
++/// DOM mutation as an aria-live announce.
++/// </para>
++/// </remarks>
++public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorComponent, IAsyncDisposable
++{
++    private const string FocusModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js";
++    private const string KeyboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js";
++
++    private FluentTextInput? _searchRef;
++    private string _localQuery = string.Empty;
++    private string _liveRegionText = string.Empty;
++    private bool _explicitlyClosed;
++    private bool _restoreBodyFocusOnDispose;
++    private ElementReference _paletteRoot;
++    private IJSObjectReference? _focusModule;
++    private IJSObjectReference? _keyboardModule;
++
++    /// <summary>
++    /// DOM id shared by the search input's <c>aria-controls</c> and the result list root. Kept as a
++    /// single backing field so overriding one without the other is impossible (P12).
++    /// </summary>
++    private const string ResultListId = "fc-palette-results";
++
++    /// <summary>The dialog instance cascaded by <see cref="IDialogService"/> (null when rendered standalone in tests).</summary>
++    [CascadingParameter] public IDialogInstance? Dialog { get; set; }
++
++    /// <summary>Injected Fluxor state subscription — re-renders on results / selection / IsOpen changes.</summary>
++    [Inject] private IState<FrontComposerCommandPaletteState> PaletteState { get; set; } = default!;
++
++    /// <summary>Injected Fluxor dispatcher.</summary>
++    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
++
++    /// <summary>Injected ULID factory — correlates every dispatched action.</summary>
++    [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
++
++    /// <summary>Injected localizer — resolves the "X results" template at announce time.</summary>
++    [Inject] private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
++
++    /// <summary>Injected JS runtime for focus + browser-default suppression interop.</summary>
++    [Inject] private IJSRuntime JS { get; set; } = default!;
++
++    /// <summary>Injected navigation manager used to detect same-route activations.</summary>
++    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
++
++    private string? ActiveDescendantId
++        => PaletteState.Value.SelectedIndex >= 0 && PaletteState.Value.SelectedIndex < PaletteState.Value.Results.Length
++            ? $"fc-palette-result-{PaletteState.Value.SelectedIndex}"
++            : null;
++
++    /// <inheritdoc />
++    protected override async Task OnAfterRenderAsync(bool firstRender)
++    {
++        if (firstRender)
++        {
++            await RegisterKeyboardInteropAsync().ConfigureAwait(false);
++            await FocusSearchAsync().ConfigureAwait(false);
++
++            // D15 empty-then-populate live-region choreography. DO NOT refactor — see anti-regression
++            // comment in FcCommandPalette.razor for the full rationale.
++            await Task.Yield();
++            _liveRegionText = ComputeLiveRegionText(PaletteState.Value);
++            StateHasChanged();
++            return;
++        }
++
++        // Refresh aria-live text on every later render (results changed, query changed, etc.).
++        string nextText = ComputeLiveRegionText(PaletteState.Value);
++        if (!string.Equals(_liveRegionText, nextText, StringComparison.Ordinal))
++        {
++            _liveRegionText = nextText;
++            StateHasChanged();
++        }
++    }
++
++    /// <summary>Disposes the component, dispatching a catch-all <see cref="PaletteClosedAction"/> per D11.</summary>
++    /// <returns>A value task that completes when disposal finishes.</returns>
++    public new async ValueTask DisposeAsync()
++    {
++        // D11 dismiss-path catch-all — if the dialog was dismissed without going through Escape /
++        // activation (X-button, backdrop click, circuit disconnect), make sure Fluxor still sees a
++        // PaletteClosedAction so a subsequent Ctrl+K can re-open. Wrap in ObjectDisposedException
++        // guard for dirty-disconnect robustness.
++        if (!_explicitlyClosed)
++        {
++            try
++            {
++                Dispatcher.Dispatch(new PaletteClosedAction(UlidFactory.NewUlid()));
++            }
++            catch (ObjectDisposedException)
++            {
++                // Circuit disposed — Fluxor store is gone, nothing to update. Silent by design.
++            }
++            catch (InvalidOperationException)
++            {
++                // Fluxor store disposed ("Store has been disposed") — mirrors the FrontComposerShell
++                // HandleLocationChanged guard. Silent by design.
++            }
++        }
++
++        if (_restoreBodyFocusOnDispose)
++        {
++            await RestoreBodyFocusFallbackAsync().ConfigureAwait(false);
++        }
++
++        if (_focusModule is not null)
++        {
++            try { await _focusModule.DisposeAsync(); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
++        }
++
++        if (_keyboardModule is not null)
++        {
++            // P9 (2026-04-21 pass-3): release the keydown handler attached by
++            // registerPaletteKeyFilter before dropping the module so hot-reload / reconnect paths
++            // don't accumulate stale handlers on the palette root element.
++            try { await _keyboardModule.InvokeVoidAsync("unregisterPaletteKeyFilter", _paletteRoot).ConfigureAwait(false); }
++            catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
++
++            try { await _keyboardModule.DisposeAsync(); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
++        }
++
++        await base.DisposeAsync();
++    }
++
++    private async Task OnQueryChangedAsync(string newQuery)
++    {
++        _localQuery = newQuery ?? string.Empty;
++        Dispatcher.Dispatch(new PaletteQueryChangedAction(UlidFactory.NewUlid(), _localQuery));
++        await Task.CompletedTask;
++    }
++
++    private async Task OnSelectionClickedAsync(int flatIndex)
++    {
++        // P7: snapshot Results once — the debounced results effect can replace PaletteState.Value.Results
++        // between the bounds check and index read, so a second read could return a different row.
++        System.Collections.Immutable.ImmutableArray<PaletteResult> results = PaletteState.Value.Results;
++        if (flatIndex < 0 || flatIndex >= results.Length)
++        {
++            return;
++        }
++
++        PaletteResult result = results[flatIndex];
++        if (IsInformationalShortcut(result))
++        {
++            return;
++        }
++
++        bool isSentinel = string.Equals(
++            result.CommandTypeName,
++            CommandPaletteEffects.KeyboardShortcutsSentinel,
++            StringComparison.Ordinal);
++
++        // Compute the body-focus verdict BEFORE dispatch so the navigation effect can't racily
++        // advance NavigationManager.Uri past the pre-dispatch value we want to compare against.
++        bool restoreFocus = !isSentinel && ShouldRestoreBodyFocusOnDispose(result);
++
++        Dispatcher.Dispatch(new PaletteResultActivatedAction(flatIndex));
++
++        if (!isSentinel)
++        {
++            _restoreBodyFocusOnDispose = restoreFocus;
++            _explicitlyClosed = true;
++            if (Dialog is not null)
++            {
++                await Dialog.CloseAsync();
++            }
++        }
++    }
++
++    private async Task HandleKeyDownAsync(KeyboardEventArgs e)
++    {
++        ArgumentNullException.ThrowIfNull(e);
++        switch (e.Key)
++        {
++            case "Escape":
++                _explicitlyClosed = true;
++                Dispatcher.Dispatch(new PaletteClosedAction(UlidFactory.NewUlid()));
++                if (Dialog is not null)
++                {
++                    await Dialog.CloseAsync();
++                }
++
++                break;
++
++            case "ArrowDown":
++                Dispatcher.Dispatch(new PaletteSelectionMovedAction(+1));
++                break;
++
++            case "ArrowUp":
++                Dispatcher.Dispatch(new PaletteSelectionMovedAction(-1));
++                break;
++
++            case "Enter":
++                // P7: snapshot Results once — see OnSelectionClickedAsync rationale.
++                System.Collections.Immutable.ImmutableArray<PaletteResult> enterResults = PaletteState.Value.Results;
++                int selected = PaletteState.Value.SelectedIndex;
++                if (selected < 0 || selected >= enterResults.Length)
++                {
++                    return;
++                }
++
++                PaletteResult result = enterResults[selected];
++                if (IsInformationalShortcut(result))
++                {
++                    return;
++                }
++
++                bool isSentinel = string.Equals(
++                    result.CommandTypeName,
++                    CommandPaletteEffects.KeyboardShortcutsSentinel,
++                    StringComparison.Ordinal);
++
++                // Compute body-focus verdict BEFORE dispatch (see OnSelectionClickedAsync rationale).
++                bool restoreFocus = !isSentinel && ShouldRestoreBodyFocusOnDispose(result);
++
++                Dispatcher.Dispatch(new PaletteResultActivatedAction(selected));
++                if (!isSentinel)
++                {
++                    _restoreBodyFocusOnDispose = restoreFocus;
++                    _explicitlyClosed = true;
++                    if (Dialog is not null)
++                    {
++                        await Dialog.CloseAsync();
++                    }
++                }
++
++                break;
++
++            default:
++                break;
++        }
++    }
++
++    private async Task RestoreBodyFocusFallbackAsync()
++    {
++        IJSObjectReference? focusModule = await EnsureFocusModuleAsync().ConfigureAwait(false);
++        if (focusModule is null)
++        {
++            return;
++        }
++
++        try
++        {
++            await focusModule.InvokeVoidAsync("focusBodyIfNeeded").ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) { }
++        catch (JSDisconnectedException) { }
++        catch (JSException) { }
++    }
++
++    private async Task RegisterKeyboardInteropAsync()
++    {
++        IJSObjectReference? keyboardModule = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
++        if (keyboardModule is null)
++        {
++            return;
++        }
++
++        try
++        {
++            await keyboardModule.InvokeVoidAsync("registerPaletteKeyFilter", _paletteRoot).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) { }
++        catch (JSDisconnectedException) { }
++        catch (JSException)
++        {
++            // Non-fatal — list navigation still works, but browser-default suppression is skipped.
++        }
++    }
++
++    private async Task FocusSearchAsync()
++    {
++        if (_searchRef is not { Element: { } element })
++        {
++            return;
++        }
++
++        IJSObjectReference? keyboardModule = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
++        if (keyboardModule is not null)
++        {
++            try
++            {
++                await keyboardModule.InvokeVoidAsync("focusElement", element).ConfigureAwait(false);
++                return;
++            }
++            catch (OperationCanceledException) { }
++            catch (JSDisconnectedException) { }
++            catch (JSException) { }
++        }
++
++        try
++        {
++            await element.FocusAsync();
++        }
++        catch (InvalidOperationException)
++        {
++            // ElementReference not attached — happens when called pre-render in some test/JS boot
++            // races. User's first keystroke implicitly re-focuses the input.
++        }
++        catch (JSDisconnectedException)
++        {
++            // Circuit disconnected mid-focus.
++        }
++        catch (JSException)
++        {
++            // JS interop boot race — element.focus() failed non-fatally.
++        }
++    }
++
++    private async Task<IJSObjectReference?> EnsureKeyboardModuleAsync()
++    {
++        if (_keyboardModule is not null)
++        {
++            return _keyboardModule;
++        }
++
++        try
++        {
++            _keyboardModule = await JS.InvokeAsync<IJSObjectReference>("import", KeyboardModulePath).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException)
++        {
++            return null;
++        }
++        catch (JSDisconnectedException)
++        {
++            return null;
++        }
++        catch (JSException)
++        {
++            return null;
++        }
++
++        return _keyboardModule;
++    }
++
++    private async Task<IJSObjectReference?> EnsureFocusModuleAsync()
++    {
++        if (_focusModule is not null)
++        {
++            return _focusModule;
++        }
++
++        try
++        {
++            _focusModule = await JS.InvokeAsync<IJSObjectReference>("import", FocusModulePath).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException)
++        {
++            return null;
++        }
++        catch (JSDisconnectedException)
++        {
++            return null;
++        }
++        catch (JSException)
++        {
++            return null;
++        }
++
++        return _focusModule;
++    }
++
++    private static bool IsInformationalShortcut(PaletteResult result)
++        => result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl);
++
++    private bool ShouldRestoreBodyFocusOnDispose(PaletteResult result)
++    {
++        string? targetUrl = result.Category switch
++        {
++            PaletteResultCategory.Projection or PaletteResultCategory.Recent or PaletteResultCategory.Shortcut => result.RouteUrl,
++            PaletteResultCategory.Command => string.IsNullOrWhiteSpace(result.CommandTypeName)
++                    || string.IsNullOrWhiteSpace(result.BoundedContext)
++                ? null
++                : CommandRouteBuilder.BuildRoute(result.BoundedContext, result.CommandTypeName),
++            _ => null,
++        };
++
++        if (string.IsNullOrWhiteSpace(targetUrl))
++        {
++            return false;
++        }
++
++        Uri current = new(NavigationManager.Uri, UriKind.Absolute);
++        Uri target = NavigationManager.ToAbsoluteUri(targetUrl);
++        return Uri.Compare(
++            current,
++            target,
++            UriComponents.PathAndQuery | UriComponents.Fragment,
++            UriFormat.SafeUnescaped,
++            StringComparison.OrdinalIgnoreCase) == 0;
++    }
++
++    private string ComputeLiveRegionText(FrontComposerCommandPaletteState state)
++        => state.Results.IsEmpty
++            ? Localizer["PaletteNoResultsText"].Value
++            : string.Format(
++                CultureInfo.CurrentCulture,
++                Localizer["PaletteResultCountTemplate"].Value,
++                state.Results.Length);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.css b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.css
+new file mode 100644
+index 0000000..bdf1d4a
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcCommandPalette.razor.css
+@@ -0,0 +1,13 @@
++/* Story 3-4 Task 5.3 — palette dialog body. .fc-sr-only is defined in the Story 3-3 shared
++   stylesheet (FrontComposerShell.razor.css). */
++.fc-palette-root {
++    display: flex;
++    flex-direction: column;
++    gap: calc(var(--fc-spacing-unit, 4px) * 2);
++    padding: calc(var(--fc-spacing-unit, 4px) * 3);
++    min-height: 400px;
++}
++
++.fc-palette-root ::deep fluent-text-input {
++    width: 100%;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor
+new file mode 100644
+index 0000000..28fa588
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor
+@@ -0,0 +1,189 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Layout
++@using System.Collections.Immutable
++@using Hexalith.FrontComposer.Contracts.Badges
++@using Hexalith.FrontComposer.Shell.Resources
++@using Hexalith.FrontComposer.Shell.State.CommandPalette
++@using Microsoft.Extensions.DependencyInjection
++@using Microsoft.Extensions.Localization
++@using Microsoft.FluentUI.AspNetCore.Components
++@implements IAsyncDisposable
++@inject IStringLocalizer<FcShellResources> Localizer
++@inject IServiceProvider ServiceProvider
++
++@* Story 3-4 Task 6.1 (D14 / D15 / D16 / D18; ADR-044) — categorised listbox rendered as
++   <ul role="listbox"> with <li role="option"> children. IBadgeCountService is consumed via
++   GetService<T> (NOT [Inject]) so absent service yields a null reference and the badge branch is
++   short-circuited — see ADR-044 / D16 anti-regression comment in OnInitialized. *@
++
++<div id="@Id" class="fc-palette-results" data-testid="fc-palette-results">
++    @if (Results.IsEmpty)
++    {
++        <p class="fc-palette-noresults" data-testid="fc-palette-noresults">@Localizer["PaletteNoResultsText"].Value</p>
++    }
++    else
++    {
++        <ul class="fc-palette-listbox" role="listbox" aria-activedescendant="@ActiveDescendantId">
++            @foreach ((PaletteResultCategory category, IReadOnlyList<(PaletteResult Result, int FlatIndex)> rows) in
++        GroupResults(Results))
++            {
++                <li role="none">
++                    <h4 id="@GroupHeadingId(category)" class="fc-palette-group-heading">@CategoryLabel(category)</h4>
++                    <ul role="group" aria-labelledby="@GroupHeadingId(category)">
++                        @foreach ((PaletteResult result, int flatIndex) in rows)
++                        {
++                            <li role="option" id="@ResultElementId(flatIndex)"
++                                aria-selected="@(flatIndex == SelectedIndex ? "true" : null)"
++                                aria-disabled="@(IsInformationalShortcut(result) ? "true" : null)" tabindex="-1"
++                                class="@(flatIndex == SelectedIndex ? "fc-palette-option fc-palette-option-selected" : "fc-palette-option")"
++                                data-testid="fc-palette-option" @onclick="() => HandleOptionClickedAsync(result, flatIndex)">
++                                <span class="fc-palette-option-label">@result.DisplayLabel</span>
++                                @if (result.IsInCurrentContext)
++                                {
++                                    <span class="fc-palette-option-context">(in current context)</span>
++                                }
++                                @if (!string.IsNullOrEmpty(result.DescriptionKey))
++                                {
++                                    <span class="fc-palette-option-hint">@Localizer[result.DescriptionKey!].Value</span>
++                                }
++                                @if (_badgeCounts is not null
++                                    && result.Category == PaletteResultCategory.Projection
++                                    && result.ProjectionType is { } projection
++                                    && _badgeCounts.Counts.TryGetValue(projection, out int count))
++                                {
++                                    @* DN5 (2026-04-21) — spike-notes originally pinned `Appearance.Accent`, but v5 RC2's
++                                       `BadgeAppearance` enum has no `Accent` member; valid values are Filled / Ghost /
++                                       Outline / Tint. `Tint` is the lightest-emphasis option and the closest approximation
++                                       to the "Info" semantic the spec intended. Spike-notes corrected to match reality. *@
++                                    <FluentBadge Appearance="@BadgeAppearance.Tint">@count</FluentBadge>
++                                }
++                            </li>
++                        }
++                    </ul>
++                </li>
++            }
++        </ul>
++    }
++</div>
++
++@code {
++    /// <summary>The DOM id of the result list root (referenced by the search input's aria-controls).</summary>
++    [Parameter, EditorRequired] public string Id { get; set; } = "fc-palette-results";
++
++    /// <summary>The flat result list — already categorised + ranked by the producer effect.</summary>
++    [Parameter, EditorRequired] public ImmutableArray<PaletteResult> Results { get; set; }
++
++    /// <summary>The currently-selected flat index. Drives <c>aria-activedescendant</c> + the visual highlight.</summary>
++    [Parameter, EditorRequired] public int SelectedIndex { get; set; }
++
++    /// <summary>Fired when the user clicks a result row — carries the flat index.</summary>
++    [Parameter, EditorRequired] public EventCallback<int> OnSelectionChanged { get; set; }
++
++    private IBadgeCountService? _badgeCounts;
++    private IDisposable? _badgeSubscription;
++    private string? ActiveDescendantId
++        => SelectedIndex >= 0 && SelectedIndex < Results.Length
++            ? ResultElementId(SelectedIndex)
++            : null;
++
++    /// <inheritdoc />
++    protected override void OnInitialized()
++    {
++        // ADR-044 / D16 — IBadgeCountService is optional. DO NOT refactor to [Inject] IBadgeCountService?
++        // because Blazor [Inject] resolves via GetRequiredService and will throw when the service is
++        // unregistered (pre-Story-3-5 state). GetService returns null when absent.
++        _badgeCounts = ServiceProvider.GetService<IBadgeCountService>();
++        if (_badgeCounts is not null)
++        {
++            _badgeSubscription = _badgeCounts.CountChanged.Subscribe(new BadgeCountObserver(this));
++        }
++    }
++
++    private bool _disposed;
++
++    /// <inheritdoc />
++    public ValueTask DisposeAsync()
++    {
++        _disposed = true;
++        _badgeSubscription?.Dispose();
++        _badgeSubscription = null;
++        return ValueTask.CompletedTask;
++    }
++
++    private string ResultElementId(int flatIndex) => $"fc-palette-result-{flatIndex}";
++
++    private static bool IsInformationalShortcut(PaletteResult result)
++        => result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl);
++
++    private Task HandleOptionClickedAsync(PaletteResult result, int flatIndex)
++        => IsInformationalShortcut(result)
++            ? Task.CompletedTask
++               : OnSelectionChanged.InvokeAsync(flatIndex);
++
++    private string GroupHeadingId(PaletteResultCategory category)
++        => $"fc-palette-group-{category.ToString().ToLowerInvariant()}";
++
++    private string CategoryLabel(PaletteResultCategory category) => category switch
++    {
++        PaletteResultCategory.Projection => Localizer["PaletteCategoryProjections"].Value,
++        PaletteResultCategory.Command => Localizer["PaletteCategoryCommands"].Value,
++        PaletteResultCategory.Recent => Localizer["PaletteCategoryRecent"].Value,
++        PaletteResultCategory.Shortcut => Localizer["ShortcutsCategoryLabel"].Value,
++        _ => category.ToString(),
++    };
++
++    private static IEnumerable<(PaletteResultCategory Category, IReadOnlyList<(PaletteResult Result, int FlatIndex)> Rows)>
++GroupResults(ImmutableArray<PaletteResult> results)
++    {
++        // Preserve declared category display order (Projection / Command / Recent / Shortcut) AND the
++        // global flat index so aria-activedescendant + SelectedIndex line up regardless of group splits.
++        PaletteResultCategory[] order =
++        [
++            PaletteResultCategory.Projection,
++            PaletteResultCategory.Command,
++            PaletteResultCategory.Recent,
++            PaletteResultCategory.Shortcut,
++        ];
++
++        foreach (PaletteResultCategory category in order)
++        {
++            List<(PaletteResult, int)> rows = [];
++            for (int i = 0; i < results.Length; i++)
++            {
++                if (results[i].Category == category)
++                {
++                    rows.Add((results[i], i));
++                }
++            }
++
++            if (rows.Count > 0)
++            {
++                yield return (category, rows);
++            }
++        }
++    }
++
++    private sealed class BadgeCountObserver(FcPaletteResultList owner) : IObserver<BadgeCountChangedArgs>
++    {
++        public void OnCompleted() { }
++
++        public void OnError(Exception error) { }
++
++        public void OnNext(BadgeCountChangedArgs value)
++        {
++            if (owner._disposed)
++            {
++                return;
++            }
++
++            try
++            {
++                _ = owner.InvokeAsync(owner.StateHasChanged);
++            }
++            catch (ObjectDisposedException)
++            {
++                // Component disposed between _disposed-check and InvokeAsync — race with circuit
++                // teardown. Observable source may still fire until Dispose completes; ignore.
++            }
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor.css b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor.css
+new file mode 100644
+index 0000000..31c4c6b
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor.css
+@@ -0,0 +1,76 @@
++/* Story 3-4 Task 6.2 (D14 / D15 / D16) — scoped CSS for the categorised listbox.
++   Uses var(--fc-spacing-unit) per ADR-041; falls back to 4 px when adopters do not theme the var. */
++.fc-palette-results {
++    padding: calc(var(--fc-spacing-unit, 4px) * 2);
++}
++
++.fc-palette-listbox {
++    list-style: none;
++    margin: 0;
++    padding: 0;
++}
++
++.fc-palette-listbox > li[role="none"] {
++    margin-bottom: calc(var(--fc-spacing-unit, 4px) * 2);
++}
++
++.fc-palette-group-heading {
++    font-size: 11px;
++    font-weight: 600;
++    text-transform: uppercase;
++    letter-spacing: 0.04em;
++    margin: 0 0 calc(var(--fc-spacing-unit, 4px));
++    color: var(--colorNeutralForeground3, #707070);
++}
++
++.fc-palette-listbox ul[role="group"] {
++    list-style: none;
++    margin: 0;
++    padding: 0;
++}
++
++.fc-palette-option {
++    display: flex;
++    align-items: center;
++    gap: calc(var(--fc-spacing-unit, 4px) * 2);
++    padding: calc(var(--fc-spacing-unit, 4px)) calc(var(--fc-spacing-unit, 4px) * 2);
++    border-radius: 4px;
++    cursor: pointer;
++}
++
++.fc-palette-option:hover {
++    background: var(--colorNeutralBackground2, #f5f5f5);
++}
++
++.fc-palette-option-selected {
++    background: var(--colorNeutralBackground2, #f0f0f0);
++    outline: 2px solid var(--colorBrandStroke1, #0078d4);
++    outline-offset: -2px;
++}
++
++.fc-palette-option[aria-disabled="true"] {
++    cursor: default;
++    opacity: 0.78;
++}
++
++.fc-palette-option-label {
++    flex: 1 1 auto;
++    font-size: 14px;
++}
++
++.fc-palette-option-context {
++    font-size: 11px;
++    color: var(--colorNeutralForeground3, #707070);
++}
++
++.fc-palette-option-hint {
++    font-size: 12px;
++    color: var(--colorNeutralForeground2, #5e5e5e);
++    margin-left: auto;
++}
++
++.fc-palette-noresults {
++    text-align: center;
++    color: var(--colorNeutralForeground3, #707070);
++    margin: calc(var(--fc-spacing-unit, 4px) * 4) 0;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteTriggerButton.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteTriggerButton.razor
+new file mode 100644
+index 0000000..36cf835
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteTriggerButton.razor
+@@ -0,0 +1,16 @@
++@namespace Hexalith.FrontComposer.Shell.Components.Layout
++@using Hexalith.FrontComposer.Shell.Resources
++@using Microsoft.Extensions.Localization
++@using Microsoft.FluentUI.AspNetCore.Components
++@inject IStringLocalizer<FcShellResources> Localizer
++
++@* Story 3-4 Task 7.1 (D18; AC2) — header palette trigger. Auto-populated by FrontComposerShell
++   ahead of FcSettingsButton when adopter leaves HeaderEnd null. *@
++
++<FluentButton Appearance="@ButtonAppearance.Subtle"
++              Title="@Localizer["PaletteTriggerAriaLabel"].Value"
++              aria-label="@Localizer["PaletteTriggerAriaLabel"].Value"
++              data-testid="fc-palette-trigger"
++              OnClick="OpenAsync">
++    <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Search())" />
++</FluentButton>
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteTriggerButton.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteTriggerButton.razor.cs
+new file mode 100644
+index 0000000..f95dc34
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteTriggerButton.razor.cs
+@@ -0,0 +1,20 @@
++using Hexalith.FrontComposer.Shell.Shortcuts;
++
++using Microsoft.AspNetCore.Components;
++
++// Blazor component: awaited tasks must resume on the component's sync context, so ConfigureAwait(false) is the wrong choice here.
++#pragma warning disable CA2007 // Consider calling ConfigureAwait on the awaited task
++
++namespace Hexalith.FrontComposer.Shell.Components.Layout;
++
++/// <summary>
++/// Header palette-trigger icon (Story 3-4 D18 / AC2). Click delegates to
++/// <see cref="FrontComposerShortcutRegistrar.OpenPaletteAsync"/> so the shortcut + click paths
++/// share one entry point (single arbitration source).
++/// </summary>
++public partial class FcPaletteTriggerButton : ComponentBase {
++    /// <summary>Injected shell registrar — exposes the OpenPaletteAsync entry point.</summary>
++    [Inject] private FrontComposerShortcutRegistrar Registrar { get; set; } = default!;
++
++    private Task OpenAsync() => Registrar.OpenPaletteAsync();
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteResult.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteResult.cs
+new file mode 100644
+index 0000000..93fac3e
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteResult.cs
+@@ -0,0 +1,59 @@
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Categorisation for a single <see cref="PaletteResult"/> row (Story 3-4 D14).
++/// Ordinal-stable enum values — append-only per the cross-story contract table.
++/// </summary>
++public enum PaletteResultCategory
++{
++    /// <summary>Projection result (sourced from <see cref="Contracts.Registration.IFrontComposerRegistry"/>).</summary>
++    Projection = 0,
++
++    /// <summary>Command result (sourced from the registry; routes to the generated command form).</summary>
++    Command = 1,
++
++    /// <summary>Recently visited route — sourced from the per-tenant ring buffer (D10).</summary>
++    Recent = 2,
++
++    /// <summary>Keyboard-shortcut reference row (sourced from <see cref="Contracts.Shortcuts.IShortcutService.GetRegistrations"/>).</summary>
++    Shortcut = 3,
++}
++
++/// <summary>
++/// Load-state hint for the palette dialog. Drives the "Searching…" / "Ready" copy in the result
++/// list (Story 3-4 D6 / D8).
++/// </summary>
++public enum PaletteLoadState
++{
++    /// <summary>No active query (first paint, or after close).</summary>
++    Idle = 0,
++
++    /// <summary>Debounce is in flight — the previous results are stale but still shown.</summary>
++    Searching = 1,
++
++    /// <summary>Latest results are live — safe to render.</summary>
++    Ready = 2,
++}
++
++/// <summary>
++/// Single row in the palette result list (Story 3-4 D6 / D14).
++/// </summary>
++/// <param name="Category">The result category.</param>
++/// <param name="DisplayLabel">The human-readable label (already localised).</param>
++/// <param name="BoundedContext">The bounded-context name when applicable; <see cref="string.Empty"/> for synthetic rows.</param>
++/// <param name="RouteUrl">The navigation target URL; <see langword="null"/> for shortcut-reference rows or synthetic entries that refill the palette instead.</param>
++/// <param name="CommandTypeName">The fully qualified command type name (or the <c>"@"</c>-prefixed sentinel for framework-synthetic entries per D23); <see langword="null"/> for non-command rows.</param>
++/// <param name="Score">Pre-computed score from <see cref="PaletteScorer"/> + contextual bonus.</param>
++/// <param name="IsInCurrentContext">Whether the result lives in the current bounded context (drives the inline hint).</param>
++/// <param name="ProjectionType">The projection runtime type when <see cref="Category"/> is <see cref="PaletteResultCategory.Projection"/>; <see langword="null"/> otherwise.</param>
++/// <param name="DescriptionKey">Localisation resource key for the description column (shortcut category); <see langword="null"/> when not applicable.</param>
++public sealed record PaletteResult(
++    PaletteResultCategory Category,
++    string DisplayLabel,
++    string BoundedContext,
++    string? RouteUrl,
++    string? CommandTypeName,
++    int Score,
++    bool IsInCurrentContext,
++    Type? ProjectionType = null,
++    string? DescriptionKey = null);
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteScorer.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteScorer.cs
+new file mode 100644
+index 0000000..1fee53c
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/PaletteScorer.cs
+@@ -0,0 +1,79 @@
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Pure-static three-band fuzzy matcher (Story 3-4 D7 / ADR-043).
++/// </summary>
++/// <remarks>
++/// <para>
++/// <b>Algorithm:</b>
++/// </para>
++/// <list type="bullet">
++///   <item><description>Exact prefix → <c>100 + matchLen × 2</c>.</description></item>
++///   <item><description>Contains substring → <c>50 + matchLen</c>.</description></item>
++///   <item><description>Fuzzy subsequence (query chars appear in order in candidate, not necessarily contiguous) → <c>10 + matched − gaps</c>.</description></item>
++///   <item><description>No match → <c>0</c>.</description></item>
++/// </list>
++/// <para>
++/// The <c>+15</c> contextual bonus (current bounded context) is applied by the EFFECT, NOT inside
++/// this pure scorer — keeps the function dependency-free and unit-testable without DI mocks.
++/// </para>
++/// </remarks>
++public static class PaletteScorer {
++    /// <summary>
++    /// Scores a candidate against a query. Higher is better; zero means no match.
++    /// </summary>
++    /// <param name="query">The user's query (case-insensitive, ordinal compare).</param>
++    /// <param name="candidate">The candidate name (projection or command).</param>
++    /// <returns>The score; <c>0</c> when no match.</returns>
++    public static int Score(string query, string candidate) {
++        if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(candidate)) {
++            return 0;
++        }
++
++        string q = query.ToLowerInvariant();
++        string c = candidate.ToLowerInvariant();
++
++        // Exact prefix.
++        if (c.StartsWith(q, StringComparison.Ordinal)) {
++            return 100 + (q.Length * 2);
++        }
++
++        // Contains substring.
++        if (c.Contains(q, StringComparison.Ordinal)) {
++            return 50 + q.Length;
++        }
++
++        // Fuzzy subsequence — iterate by Rune so emoji / supplementary-plane queries don't
++        // split into independent lo/hi-surrogate matches and produce nonsense scores.
++        int matched = 0;
++        int gaps = 0;
++        int ci = 0;
++        foreach (System.Text.Rune qr in q.EnumerateRunes()) {
++            int found = IndexOfRune(c, qr, ci);
++            if (found < 0) {
++                return 0;
++            }
++
++            gaps += found - ci;
++            ci = found + qr.Utf16SequenceLength;
++            matched++;
++        }
++
++        // Clamp to non-negative: a long-gap subsequence can otherwise return a negative score,
++        // which callers treat as "no match" but is a latent footgun for future consumers.
++        return Math.Max(0, 10 + matched - gaps);
++    }
++
++    private static int IndexOfRune(string source, System.Text.Rune rune, int startIndex) {
++        int i = startIndex;
++        while (i < source.Length) {
++            if (System.Text.Rune.TryGetRuneAt(source, i, out System.Text.Rune here) && here == rune) {
++                return i;
++            }
++
++            i += char.IsHighSurrogate(source[i]) && i + 1 < source.Length ? 2 : 1;
++        }
++
++        return -1;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/ProjectionTypeResolver.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/ProjectionTypeResolver.cs
+new file mode 100644
+index 0000000..20d0c4d
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/ProjectionTypeResolver.cs
+@@ -0,0 +1,71 @@
++using System.Collections.Concurrent;
++using System.Reflection;
++using System.Diagnostics.CodeAnalysis;
++
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Resolves projection type names emitted by the registry into runtime <see cref="Type"/>
++/// instances for the optional badge-count contract.
++/// </summary>
++internal static class ProjectionTypeResolver
++{
++    private static readonly ConcurrentDictionary<string, Type?> _cache = new(StringComparer.Ordinal);
++
++    /// <summary>
++    /// Resolves a projection type name by scanning the already-loaded application assemblies.
++    /// </summary>
++    /// <param name="typeName">The fully qualified projection type name.</param>
++    /// <returns>The resolved runtime type when available; otherwise <see langword="null"/>.</returns>
++    public static Type? Resolve(string? typeName)
++    {
++        if (string.IsNullOrWhiteSpace(typeName))
++        {
++            return null;
++        }
++
++        // Cache only positive resolutions. Negative results must remain re-tryable so
++        // plug-in / lazy-loaded / hot-reloaded adopter assemblies loaded after the first
++        // palette open become visible on the next lookup without a process restart.
++        if (_cache.TryGetValue(typeName, out Type? cached) && cached is not null)
++        {
++            return cached;
++        }
++
++        Type? resolved = ResolveCore(typeName);
++        if (resolved is not null)
++        {
++            _cache[typeName] = resolved;
++        }
++
++        return resolved;
++    }
++
++    [UnconditionalSuppressMessage(
++        "Trimming",
++        "IL2057:Unrecognized value passed to the parameter 'typeName' of method 'System.Type.GetType(String, Boolean)'. It's not possible to guarantee the availability of the target type.",
++        Justification = "Badge lookup is optional and fail-open. The registry emits source-generated projection type names for app-owned types; unresolved names simply produce null and suppress the badge.")]
++    [UnconditionalSuppressMessage(
++        "Trimming",
++        "IL2026:Members attributed with 'RequiresUnreferencedCodeAttribute' require dynamic access otherwise can break functionality when trimming application code.",
++        Justification = "Scanning loaded assemblies is only used for the optional badge contract. If trimming removes a projection type, the palette intentionally degrades to no badge rather than failing.")]
++    private static Type? ResolveCore(string typeName)
++    {
++        Type? resolved = Type.GetType(typeName, throwOnError: false);
++        if (resolved is not null)
++        {
++            return resolved;
++        }
++
++        foreach (Assembly assembly in AppDomain.CurrentDomain.GetAssemblies())
++        {
++            resolved = assembly.GetType(typeName, throwOnError: false, ignoreCase: false);
++            if (resolved is not null)
++            {
++                return resolved;
++            }
++        }
++
++        return null;
++    }
++}
+\ No newline at end of file
+diff --git a/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js
+new file mode 100644
+index 0000000..f048742
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-focus.js
+@@ -0,0 +1,24 @@
++function runAfterDismiss(callback) {
++    if (typeof requestAnimationFrame === "function") {
++        requestAnimationFrame(() => callback());
++        return;
++    }
++
++    setTimeout(callback, 0);
++}
++
++export function focusBodyIfNeeded() {
++    runAfterDismiss(() => {
++        const active = document.activeElement;
++        if (
++            !active ||
++            active === document.body ||
++            !(active instanceof HTMLElement) ||
++            !active.isConnected
++        ) {
++            if (document.body && typeof document.body.focus === "function") {
++                document.body.focus({ preventScroll: true });
++            }
++        }
++    });
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs
+new file mode 100644
+index 0000000..11cb13d
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs
+@@ -0,0 +1,122 @@
++// Story 3-4 Task 10.7 / 10.7b (D11 / D15 / D17 — AC2 / AC5).
++#pragma warning disable CA2007
++using System.Collections.Immutable;
++
++using Bunit;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Shell.Components.Layout;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Microsoft.AspNetCore.Components;
++using Microsoft.AspNetCore.Components.Web;
++using Microsoft.Extensions.DependencyInjection;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
++
++public sealed class FcCommandPaletteTests : LayoutComponentTestBase
++{
++    public FcCommandPaletteTests()
++    {
++        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
++    }
++
++    [Fact]
++    public void RendersDialogBodyWithSearchAndResultRoot()
++    {
++        EnsureStoreInitialized();
++        int invocationsBefore = KeyboardModule.Invocations.Count;
++        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
++
++        cut.Markup.ShouldContain("data-testid=\"fc-palette-root\"");
++        cut.Markup.ShouldContain("data-testid=\"fc-palette-search\"");
++        cut.Markup.ShouldContain("Command palette");
++        cut.Markup.ShouldContain("role=\"dialog\"");
++        cut.Markup.ShouldContain("aria-label=\"Command palette\"");
++
++        cut.WaitForAssertion(() =>
++            KeyboardModule.Invocations.Any(i => i.Identifier == "focusElement" && KeyboardModule.Invocations.Count > invocationsBefore).ShouldBeTrue());
++    }
++
++    [Fact]
++    public void AriaLiveRegion_RendersStatusRoleAndPoliteAtomic()
++    {
++        EnsureStoreInitialized();
++        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
++
++        // The aria-live region exists and is rendered with role="status" + aria-live="polite".
++        cut.Markup.ShouldContain("role=\"status\"");
++        cut.Markup.ShouldContain("aria-live=\"polite\"");
++        cut.Markup.ShouldContain("aria-atomic=\"true\"");
++    }
++
++    [Fact]
++    public void SearchInput_WiresResultsAccessibilityAttributes()
++    {
++        EnsureStoreInitialized();
++        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
++
++        cut.Markup.ShouldContain("aria-controls=\"fc-palette-results\"");
++        cut.Markup.ShouldContain("aria-expanded=\"true\"");
++        cut.Markup.ShouldContain("aria-autocomplete=\"list\"");
++    }
++
++    [Fact]
++    public void LiveRegion_UpdatesWhenResultsChange()
++    {
++        EnsureStoreInitialized();
++        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
++        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
++
++        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
++        dispatcher.Dispatch(new PaletteResultsComputedAction(
++            string.Empty,
++            [new PaletteResult(
++                PaletteResultCategory.Projection,
++                "Counter",
++                "Counter",
++                "/counter/counter-view",
++                null,
++                100,
++                false,
++                typeof(CounterProjectionStub))]));
++
++        cut.WaitForAssertion(() =>
++            cut.Find("[data-testid='fc-palette-live']").TextContent.ShouldBe("1 results"));
++    }
++
++    [Fact]
++    public async Task SamePageActivation_PrimesBodyFocusFallbackOnDispose()
++    {
++        EnsureStoreInitialized();
++        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
++        navigation.NavigateTo("/counter/counter-view");
++
++        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
++        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
++        dispatcher.Dispatch(new PaletteResultsComputedAction(
++            string.Empty,
++            [new PaletteResult(
++                PaletteResultCategory.Projection,
++                "Counter",
++                "Counter",
++                "/counter/counter-view",
++                null,
++                100,
++                false,
++                typeof(CounterProjectionStub))]));
++
++        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
++
++        await cut.InvokeAsync(() =>
++            cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Enter" }));
++        await cut.Instance.DisposeAsync();
++
++        FocusModule.Invocations.Any(i => i.Identifier == "focusBodyIfNeeded").ShouldBeTrue();
++    }
++
++    private sealed class CounterProjectionStub { }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs
+new file mode 100644
+index 0000000..5e17bec
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcPaletteResultListTests.cs
+@@ -0,0 +1,199 @@
++// Story 3-4 Task 10.8 (D14 / D16 / ADR-044 — AC3 / AC5 / AC6 / AC7).
++#pragma warning disable CA2007
++using System.Collections.Immutable;
++
++using Bunit;
++
++using Hexalith.FrontComposer.Contracts.Badges;
++using Hexalith.FrontComposer.Shell.Components.Layout;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.DependencyInjection.Extensions;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
++
++public sealed class FcPaletteResultListTests : LayoutComponentTestBase
++{
++    public FcPaletteResultListTests()
++    {
++        System.Globalization.CultureInfo.CurrentUICulture = new System.Globalization.CultureInfo("en");
++    }
++
++    [Fact]
++    public void RendersAllRegisteredCategoriesWithHeadings()
++    {
++        EnsureStoreInitialized();
++        ImmutableArray<PaletteResult> results = [
++            new(PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter", null, 100, false, typeof(CounterProjectionStub)),
++            new(PaletteResultCategory.Command, "Increment", "Counter", null, "Counter.IncrementCommand", 90, false),
++            new(PaletteResultCategory.Recent, "/orders", "", "/orders", null, 0, false),
++            new(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 0, false, null, "PaletteShortcutDescription"),
++        ];
++
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, results)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => { }));
++
++        cut.Markup.ShouldContain("Projections");
++        cut.Markup.ShouldContain("Commands");
++        cut.Markup.ShouldContain("Recent");
++        cut.Markup.ShouldContain("Keyboard shortcuts");
++    }
++
++    [Fact]
++    public void RendersWithoutBadges_WhenBadgeServiceIsNull()
++    {
++        EnsureStoreInitialized();
++        ImmutableArray<PaletteResult> results = [
++            new(PaletteResultCategory.Projection, "Counter", "Counter", "/c", null, 100, false, typeof(CounterProjectionStub)),
++        ];
++
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, results)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => { }));
++
++        cut.Markup.ShouldNotContain("fluent-badge");
++    }
++
++    [Fact]
++    public void RendersBadges_WhenBadgeServiceIsRegistered_AndProjectionMatches()
++    {
++        Services.AddSingleton<IBadgeCountService>(new StubBadgeService((typeof(CounterProjectionStub), 7)));
++        EnsureStoreInitialized();
++
++        ImmutableArray<PaletteResult> results = [
++            new(PaletteResultCategory.Projection, "Counter", "Counter", "/c", null, 100, false, typeof(CounterProjectionStub)),
++        ];
++
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, results)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => { }));
++
++        cut.Markup.ShouldContain("fluent-badge");
++        cut.Markup.ShouldContain("7");
++    }
++
++    [Fact]
++    public void NoBadgePlaceholder_WhenProjectionTypeNotInCounts()
++    {
++        Services.AddSingleton<IBadgeCountService>(new StubBadgeService());
++        EnsureStoreInitialized();
++
++        ImmutableArray<PaletteResult> results = [
++            new(PaletteResultCategory.Projection, "Counter", "Counter", "/c", null, 100, false, typeof(CounterProjectionStub)),
++        ];
++
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, results)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => { }));
++
++        cut.Markup.ShouldNotContain("fluent-badge");
++    }
++
++    [Fact]
++    public void ShortcutRowsCarryAriaDisabledTrue()
++    {
++        EnsureStoreInitialized();
++        ImmutableArray<PaletteResult> results = [
++            new(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 0, false, null, "PaletteShortcutDescription"),
++        ];
++
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, results)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => { }));
++
++        cut.Markup.ShouldContain("aria-disabled=\"true\"");
++    }
++
++    [Fact]
++    public void SyntheticKeyboardShortcutsEntry_RendersDescriptionHint()
++    {
++        EnsureStoreInitialized();
++        ImmutableArray<PaletteResult> results = [
++            new(PaletteResultCategory.Command, "Keyboard Shortcuts", "", null, CommandPaletteEffects.KeyboardShortcutsSentinel, 1000, false, null, "KeyboardShortcutsCommandDescription"),
++        ];
++
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, results)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => { }));
++
++        cut.Markup.ShouldContain("View all keyboard shortcuts");
++    }
++
++    [Fact]
++    public void InformationalShortcutRowsDoNotInvokeSelectionCallback()
++    {
++        EnsureStoreInitialized();
++        int invocations = 0;
++        ImmutableArray<PaletteResult> results = [
++            new(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 0, false, null, "PaletteShortcutDescription"),
++        ];
++
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, results)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => invocations++));
++
++        Should.Throw<Bunit.MissingEventHandlerException>(() =>
++            cut.Find("[data-testid='fc-palette-option']").Click());
++
++        invocations.ShouldBe(0);
++    }
++
++    [Fact]
++    public void EmptyResults_RendersNoMatchesText()
++    {
++        EnsureStoreInitialized();
++        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
++            .Add(c => c.Id, "fc-palette-results")
++            .Add(c => c.Results, ImmutableArray<PaletteResult>.Empty)
++            .Add(c => c.SelectedIndex, 0)
++            .Add(c => c.OnSelectionChanged, _ => { }));
++
++        cut.Markup.ShouldContain("No matches found");
++    }
++
++    private sealed class StubBadgeService : IBadgeCountService
++    {
++        public StubBadgeService(params (Type Type, int Count)[] entries)
++        {
++            Counts = entries.ToDictionary(e => e.Type, e => e.Count, EqualityComparer<Type>.Default);
++            TotalActionableItems = entries.Sum(e => e.Count);
++            CountChanged = new NoOpObservable();
++        }
++
++        public IReadOnlyDictionary<Type, int> Counts { get; }
++
++        public IObservable<BadgeCountChangedArgs> CountChanged { get; }
++
++        public int TotalActionableItems { get; }
++
++        private sealed class NoOpObservable : IObservable<BadgeCountChangedArgs>
++        {
++            public IDisposable Subscribe(IObserver<BadgeCountChangedArgs> observer) => new NoOpDisposable();
++
++            private sealed class NoOpDisposable : IDisposable
++            {
++                public void Dispose() { }
++            }
++        }
++    }
++
++    private sealed class CounterProjectionStub { }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerPropertyTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerPropertyTests.cs
+new file mode 100644
+index 0000000..7503a7d
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerPropertyTests.cs
+@@ -0,0 +1,25 @@
++// Story 3-4 Task 10.3a (D7 — AC3) — FsCheck property tests.
++using FsCheck.Xunit;
++
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.CommandPalette;
++
++public class PaletteScorerPropertyTests {
++    [Property]
++    public bool ScoreIsDeterministic(string query, string candidate) {
++        int first = PaletteScorer.Score(query ?? string.Empty, candidate ?? string.Empty);
++        int second = PaletteScorer.Score(query ?? string.Empty, candidate ?? string.Empty);
++        return first == second;
++    }
++
++    [Fact]
++    public void ScoreIsMonotonicOnPrefixLength() {
++        // Within the prefix band, longer prefixes score strictly higher.
++        int two = PaletteScorer.Score("co", "Counter");
++        int four = PaletteScorer.Score("coun", "Counter");
++        four.ShouldBeGreaterThan(two);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerTests.cs
+new file mode 100644
+index 0000000..4fa9387
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/PaletteScorerTests.cs
+@@ -0,0 +1,45 @@
++// Story 3-4 Task 10.3 (D7 — AC3).
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.CommandPalette;
++
++public class PaletteScorerTests {
++    [Theory]
++    [InlineData("counter", "CounterProjection")]
++    [InlineData("Counter", "counterprojection")]
++    [InlineData("cou", "CounterProjection")]
++    public void Score_ExactPrefixCaseInsensitive_Returns100Plus(string query, string candidate) {
++        PaletteScorer.Score(query, candidate).ShouldBeGreaterThanOrEqualTo(100);
++    }
++
++    [Theory]
++    [InlineData("ord", "SubmitOrderCommand")]
++    [InlineData("ent", "IncrementCommand")]
++    public void Score_Contains_ReturnsBetween50And100(string query, string candidate) {
++        int score = PaletteScorer.Score(query, candidate);
++        score.ShouldBeGreaterThanOrEqualTo(50);
++        score.ShouldBeLessThan(100);
++    }
++
++    [Theory]
++    [InlineData("smtod", "SubmitOrder")]
++    [InlineData("inccmd", "IncrementCommand")]
++    public void Score_FuzzySubsequence_ReturnsAtLeast10(string query, string candidate) {
++        PaletteScorer.Score(query, candidate).ShouldBeGreaterThanOrEqualTo(1);
++    }
++
++    [Theory]
++    [InlineData("xyz", "CounterProjection")]
++    [InlineData("zzz", "Increment")]
++    public void Score_NoMatch_ReturnsZero(string query, string candidate) {
++        PaletteScorer.Score(query, candidate).ShouldBe(0);
++    }
++
++    [Fact]
++    public void Score_EmptyInputs_ReturnsZero() {
++        PaletteScorer.Score("", "x").ShouldBe(0);
++        PaletteScorer.Score("x", "").ShouldBe(0);
++    }
++}

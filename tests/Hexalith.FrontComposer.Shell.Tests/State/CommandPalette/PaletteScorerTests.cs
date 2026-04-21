@@ -23,10 +23,14 @@ public class PaletteScorerTests {
         score.ShouldBeLessThan(100);
     }
 
+    // Pass-5 P22 (C1-D1 resolution) — when every query rune is found in order (full subsequence),
+    // the scorer floors at 1 even for high-gap inputs so callers can distinguish "real but weak
+    // fuzzy match" from "no match". The name now matches the contract (>= 1, not the old >= 10
+    // misnomer that was never enforced).
     [Theory]
     [InlineData("smtod", "SubmitOrder")]
     [InlineData("inccmd", "IncrementCommand")]
-    public void Score_FuzzySubsequence_ReturnsAtLeast10(string query, string candidate) {
+    public void Score_FuzzySubsequence_WhenFullSubsequence_ReturnsAtLeastOne(string query, string candidate) {
         PaletteScorer.Score(query, candidate).ShouldBeGreaterThanOrEqualTo(1);
     }
 

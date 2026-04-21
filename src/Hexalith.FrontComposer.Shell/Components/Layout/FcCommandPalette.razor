@@ -22,7 +22,7 @@
              @onkeydown:stopPropagation="true">
             <FluentTextInput @ref="_searchRef" Value="@_localQuery" ValueChanged="OnQueryChangedAsync"
                              TextInputType="TextInputType.Search" Placeholder="@Localizer["PaletteSearchPlaceholder"].Value"
-                             role="combobox" aria-haspopup="listbox" aria-expanded="true" aria-controls="@ResultListId"
+                             role="combobox" aria-haspopup="listbox" aria-expanded="@(PaletteState.Value.Results.IsEmpty ? "false" : "true")" aria-controls="@ResultListId"
                              aria-activedescendant="@ActiveDescendantId" aria-autocomplete="list" data-testid="fc-palette-search" />
 
             <FcPaletteResultList Id="@ResultListId" Results="@PaletteState.Value.Results"

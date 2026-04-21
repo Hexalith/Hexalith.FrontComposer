@@ -193,6 +193,10 @@
     <value>No matches found</value>
     <comment>Story 3-4 D15 — empty-state copy AND aria-live announce text on zero results.</comment>
   </data>
+  <data name="PaletteInCurrentContextSuffix" xml:space="preserve">
+    <value>(in current context)</value>
+    <comment>Story 3-4 AC4 — secondary label appended to palette rows in the user's current bounded context. Pass-5 P4 — extracted from markup literal.</comment>
+  </data>
   <data name="ShortcutsCategoryLabel" xml:space="preserve">
     <value>Keyboard shortcuts</value>
   </data>

@@ -49,6 +49,7 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private string _liveRegionText = string.Empty;
     private bool _explicitlyClosed;
     private bool _restoreBodyFocusOnDispose;
+    private bool _disposed;
     private ElementReference _paletteRoot;
     private IJSObjectReference? _focusModule;
     private IJSObjectReference? _keyboardModule;
@@ -96,6 +97,11 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
             // D15 empty-then-populate live-region choreography. DO NOT refactor — see anti-regression
             // comment in FcCommandPalette.razor for the full rationale.
             await Task.Yield();
+            if (_disposed || _explicitlyClosed)
+            {
+                return;
+            }
+
             _liveRegionText = ComputeLiveRegionText(PaletteState.Value);
             StateHasChanged();
             return;
@@ -114,6 +120,8 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     /// <returns>A value task that completes when disposal finishes.</returns>
     public new async ValueTask DisposeAsync()
     {
+        _disposed = true;
+
         // D11 dismiss-path catch-all — if the dialog was dismissed without going through Escape /
         // activation (X-button, backdrop click, circuit disconnect), make sure Fluxor still sees a
         // PaletteClosedAction so a subsequent Ctrl+K can re-open. Wrap in ObjectDisposedException
@@ -159,11 +167,11 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
         await base.DisposeAsync();
     }
 
-    private async Task OnQueryChangedAsync(string newQuery)
+    private Task OnQueryChangedAsync(string newQuery)
     {
         _localQuery = newQuery ?? string.Empty;
         Dispatcher.Dispatch(new PaletteQueryChangedAction(UlidFactory.NewUlid(), _localQuery));
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     private async Task OnSelectionClickedAsync(int flatIndex)
@@ -207,6 +215,15 @@ public partial class FcCommandPalette : Fluxor.Blazor.Web.Components.FluxorCompo
     private async Task HandleKeyDownAsync(KeyboardEventArgs e)
     {
         ArgumentNullException.ThrowIfNull(e);
+
+        // P12 — rapid Escape→Enter on a keyboard-buffered input can dispatch both PaletteClosedAction
+        // and PaletteResultActivatedAction on the same component instance; the second navigation would
+        // race the first close. Bail if the palette was already explicitly dismissed.
+        if (_explicitlyClosed)
+        {
+            return;
+        }
+
         switch (e.Key)
         {
             case "Escape":

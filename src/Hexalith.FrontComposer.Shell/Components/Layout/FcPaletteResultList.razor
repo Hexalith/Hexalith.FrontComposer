@@ -39,7 +39,7 @@
                                 <span class="fc-palette-option-label">@result.DisplayLabel</span>
                                 @if (result.IsInCurrentContext)
                                 {
-                                    <span class="fc-palette-option-context">(in current context)</span>
+                                    <span class="fc-palette-option-context">@Localizer["PaletteInCurrentContextSuffix"].Value</span>
                                 }
                                 @if (!string.IsNullOrEmpty(result.DescriptionKey))
                                 {
@@ -80,6 +80,9 @@
 
     private IBadgeCountService? _badgeCounts;
     private IDisposable? _badgeSubscription;
+    // Pass-5 P5 — observer callback can fire from any thread (Story 3-5's SignalR hub push);
+    // volatile ensures the render-thread's _disposed = true publish is visible to the observer.
+    private volatile bool _disposed;
     private string? ActiveDescendantId
         => SelectedIndex >= 0 && SelectedIndex < Results.Length
             ? ResultElementId(SelectedIndex)
@@ -98,13 +101,19 @@
         }
     }
 
-    private bool _disposed;
-
     /// <inheritdoc />
     public ValueTask DisposeAsync()
     {
         _disposed = true;
-        _badgeSubscription?.Dispose();
+        try
+        {
+            _badgeSubscription?.Dispose();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Observable source already torn down — mirrors FrontComposerShell.HandleLocationChanged guard.
+        }
+
         _badgeSubscription = null;
         return ValueTask.CompletedTask;
     }
