@@ -64,3 +64,19 @@ public sealed record RecentRouteVisitedAction(string Url);
 /// </summary>
 /// <param name="RecentRouteUrls">The persisted (and route-safety-filtered) recent-route list.</param>
 public sealed record PaletteHydratedAction(ImmutableArray<string> RecentRouteUrls);
+
+/// <summary>
+/// Dispatched by <c>CommandPaletteEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> at
+/// the start of the hydrate path (Story 3-6 D19). Reducer flips
+/// <see cref="FrontComposerCommandPaletteState.HydrationState"/> from <see cref="CommandPaletteHydrationState.Idle"/>
+/// to <see cref="CommandPaletteHydrationState.Hydrating"/>. NEVER persisted.
+/// </summary>
+public sealed record PaletteHydratingAction;
+
+/// <summary>
+/// Dispatched by <c>CommandPaletteEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as
+/// the final step of the hydrate path (Story 3-6 D19). Reducer flips
+/// <see cref="FrontComposerCommandPaletteState.HydrationState"/> to <see cref="CommandPaletteHydrationState.Hydrated"/>.
+/// Called on BOTH happy path AND fail-closed path.
+/// </summary>
+public sealed record PaletteHydratedCompletedAction;

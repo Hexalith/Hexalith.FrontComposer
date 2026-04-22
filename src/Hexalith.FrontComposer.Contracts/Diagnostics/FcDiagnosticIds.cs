@@ -56,10 +56,14 @@ public static class FcDiagnosticIds {
     public const string HFC2106_ThemeHydrationEmpty = "HFC2106";
 
     /// <summary>
-    /// Navigation effect hydrated with no stored value on app init, or the stored blob was
-    /// unreadable (Story 3-2 D15 amended). Information severity — feature defaults apply. The
-    /// <c>Reason</c> payload distinguishes <c>Empty</c> (no blob) vs <c>Corrupt</c> (deserialization /
-    /// shape failure). Runtime-only (no analyzer emission).
+    /// Navigation effect hydrated with no stored value on app init, the stored blob was unreadable,
+    /// or the persisted <c>LastActiveRoute</c> was pruned (Story 3-2 D15 amended; Story 3-6 D21).
+    /// Information severity — feature defaults apply. The <c>Reason</c> payload distinguishes
+    /// <c>Empty</c> (no blob), <c>Corrupt</c> (deserialization / shape failure),
+    /// <c>Invalid</c> (stored route failed internal-route / base-path validation → pruned),
+    /// <c>OutOfScope</c> (stored route's bounded context is no longer registered → pruned),
+    /// <c>RegistryFailure</c> (registry enumeration threw — route preserved). Runtime-only
+    /// (no analyzer emission).
     /// </summary>
     public const string HFC2107_NavigationHydrationEmpty = "HFC2107";
 
@@ -117,4 +121,21 @@ public static class FcDiagnosticIds {
     /// The structured payload carries <c>{TypeNameString}</c>. Runtime-only (no analyzer emission).
     /// </summary>
     public const string HFC2113_ProjectionTypeUnresolvable = "HFC2113";
+
+    /// <summary>
+    /// <c>DataGridNavigationEffects</c> hydrate-side observation — either the storage key
+    /// enumeration returned no blob at an expected key (race between <c>GetKeysAsync</c> and
+    /// <c>GetAsync</c>), a blob failed deserialisation, the viewKey's bounded-context is no longer
+    /// registered in <c>IFrontComposerRegistry.GetManifests()</c>, or the registry itself threw
+    /// during the hydrate pass (Story 3-6 D11 / D14 / A9). Information severity — feature defaults
+    /// apply per key, hydrate continues for remaining keys. The <c>Reason</c> payload is one of
+    /// <c>Empty</c> (no blob at key), <c>Corrupt</c> (deserialisation / shape failure — per-key
+    /// try/catch isolation), <c>OutOfScope</c> (viewKey's BC is no longer registered; key is
+    /// pruned via <c>RemoveAsync</c>), or <c>RegistryFailure</c> (registry enumeration threw;
+    /// pruning abandoned for that pass — data preserved). <c>RegistryFailure</c> is deduped
+    /// once-per-hydrate-pass; <c>OutOfScope</c> is deduped once-per-distinct-viewKey via
+    /// instance-scoped <c>ConcurrentDictionary</c> (mirrors Story 3-5 D7 dedup). The structured
+    /// payload carries <c>{ViewKey}</c> when applicable. Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2114_DataGridHydrationEmpty = "HFC2114";
 }

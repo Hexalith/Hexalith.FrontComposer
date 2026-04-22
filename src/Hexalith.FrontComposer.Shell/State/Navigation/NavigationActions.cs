@@ -44,3 +44,51 @@ public sealed record SidebarExpandedAction(string CorrelationId);
 public sealed record NavigationHydratedAction(
     bool SidebarCollapsed,
     ImmutableDictionary<string, bool> CollapsedGroups);
+
+/// <summary>
+/// Dispatched by <c>NavigationEffects.HandleBoundedContextChanged</c> whenever a non-null bounded
+/// context is entered (Story 3-6 D2 / ADR-048). Captures the full route from
+/// <c>NavigationManager.Uri</c> for deep-link fidelity on next boot. Reducer replaces
+/// <see cref="FrontComposerNavigationState.LastActiveRoute"/>; persistence effect writes the
+/// updated blob. Empty / whitespace routes are rejected by the reducer (coerced to null per D1
+/// null-convention).
+/// </summary>
+/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
+/// <param name="Route">The captured route (full URI path + query + fragment), or <see langword="null"/>.</param>
+public sealed record LastActiveRouteChangedAction(string CorrelationId, string? Route);
+
+/// <summary>
+/// Dispatched by <c>NavigationEffects.HandleAppInitialized</c> after reading the persisted blob
+/// (Story 3-6 D1 / ADR-048). Reducer replaces <see cref="FrontComposerNavigationState.LastActiveRoute"/>;
+/// does NOT trigger re-persistence (ADR-038 mirror).
+/// </summary>
+/// <param name="Route">The hydrated last-active route, or <see langword="null"/> when absent.</param>
+public sealed record LastActiveRouteHydratedAction(string? Route);
+
+/// <summary>
+/// Dispatched exactly once per circuit by <c>ScopeFlipObserverEffect</c> via <c>IScopeReadinessGate</c>
+/// when <c>IUserContextAccessor</c> transitions empty → authenticated (Story 3-6 D13 / ADR-049).
+/// Reducer flips <see cref="FrontComposerNavigationState.StorageReady"/> to <see langword="true"/>;
+/// subscriber hydrate effects (Theme, Density, Navigation, CommandPalette, CapabilityDiscovery,
+/// DataGridNavigation) re-run their hydrate path iff their feature's <c>HydrationState</c> is
+/// <c>Idle</c>. Sign-out mid-circuit does NOT reset the flag (ADR-049 load-bearing invariant).
+/// </summary>
+/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
+public sealed record StorageReadyAction(string CorrelationId);
+
+/// <summary>
+/// Dispatched by <c>NavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> at the
+/// start of the hydrate path (Story 3-6 D19). Reducer flips
+/// <see cref="FrontComposerNavigationState.HydrationState"/> from <see cref="NavigationHydrationState.Idle"/>
+/// to <see cref="NavigationHydrationState.Hydrating"/>. NEVER persisted.
+/// </summary>
+public sealed record NavigationHydratingAction;
+
+/// <summary>
+/// Dispatched by <c>NavigationEffects.HandleAppInitialized</c> / <c>HandleStorageReady</c> as the
+/// final step of the hydrate path (Story 3-6 D19). Reducer flips
+/// <see cref="FrontComposerNavigationState.HydrationState"/> to <see cref="NavigationHydrationState.Hydrated"/>.
+/// Called on BOTH happy path AND fail-closed path so subsequent <c>StorageReadyAction</c>
+/// re-triggers hydrate only when the state is still <c>Idle</c>. NEVER persisted.
+/// </summary>
+public sealed record NavigationHydratedCompletedAction;

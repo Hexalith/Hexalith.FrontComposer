@@ -39,10 +39,20 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 /// <see cref="InvalidOperationException"/>.
 /// </para>
 /// </remarks>
-public sealed class LocalStorageService : IStorageService, IAsyncDisposable
-{
+public sealed class LocalStorageService : IStorageService, IAsyncDisposable {
     /// <summary>Internal sentinel key that flags a <see cref="FlushAsync"/> drain request.</summary>
     internal const string SentinelKey = "\0fc-flush\0";
+
+    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault,
+    };
+
+    /// <summary>
+    /// Shared <see cref="JsonSerializerOptions"/> used by every read / write through this service.
+    /// Exposed <c>internal</c> so schema-lock tests pin the actual production wire format rather
+    /// than the default serializer (Story 3-6 Review Finding F-AA-001 / F-BH-003).
+    /// </summary>
+    internal static JsonSerializerOptions SchemaLockJsonOptions => JsonOptions;
 
     private readonly IJSRuntime _js;
     private readonly FcShellOptions _options;
@@ -67,8 +77,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable
         IJSRuntime js,
         IOptions<FcShellOptions> options,
         TimeProvider time,
-        ILogger<LocalStorageService> logger)
-    {
+        ILogger<LocalStorageService> logger) {
         ArgumentNullException.ThrowIfNull(js);
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(time);
@@ -89,25 +98,21 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "IStorageService callers persist Fluxor state records with preserved members (ThemeValue, DensityLevel, DataGridNavigationState); the interface's generic T is the contract authorising the reflective path.")]
-    public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default)
-    {
+    public async Task<T?> GetAsync<T>(string key, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(key);
         string? json = await _js.InvokeAsync<string?>("localStorage.getItem", cancellationToken, key)
             .ConfigureAwait(false);
-        if (json is null)
-        {
+        if (json is null) {
             _ = _lruTimestamps.TryRemove(key, out _);
             return default;
         }
 
         _lruTimestamps[key] = _time.GetUtcNow().UtcTicks;
 
-        try
-        {
-            return JsonSerializer.Deserialize<T>(json);
+        try {
+            return JsonSerializer.Deserialize<T>(json, JsonOptions);
         }
-        catch (JsonException ex)
-        {
+        catch (JsonException ex) {
             _logger.LogWarning(ex, "LocalStorageService: failed to deserialize value for key '{Key}'", key);
             return default;
         }
@@ -118,19 +123,17 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "IStorageService callers persist Fluxor state records with preserved members (ThemeValue, DensityLevel, DataGridNavigationState); the interface's generic T is the contract authorising the reflective path.")]
-    public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default)
-    {
+    public Task SetAsync<T>(string key, T value, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(key);
         _lruTimestamps[key] = _time.GetUtcNow().UtcTicks;
         EvictIfOverCap();
-        string json = JsonSerializer.Serialize(value);
+        string json = JsonSerializer.Serialize(value, JsonOptions);
         _ = _writes.Writer.TryWrite(new PendingWrite(key, json, FlushSignal: null));
         return Task.CompletedTask;
     }
 
     /// <inheritdoc />
-    public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
-    {
+    public Task RemoveAsync(string key, CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(key);
         _ = _lruTimestamps.TryRemove(key, out _);
         _ = _writes.Writer.TryWrite(new PendingWrite(key, SerializedValue: null, FlushSignal: null));
@@ -138,8 +141,7 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<string>> GetKeysAsync(string prefix, CancellationToken cancellationToken = default)
-    {
+    public async Task<IReadOnlyList<string>> GetKeysAsync(string prefix, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(prefix);
         // D16: single round-trip — ask the browser for the full key set and filter on the .NET side.
         string[] keys = await _js.InvokeAsync<string[]>(
@@ -150,16 +152,13 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async Task FlushAsync(CancellationToken cancellationToken = default)
-    {
-        if (Volatile.Read(ref _disposed) != 0)
-        {
+    public async Task FlushAsync(CancellationToken cancellationToken = default) {
+        if (Volatile.Read(ref _disposed) != 0) {
             return;
         }
 
         TaskCompletionSource tcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!_writes.Writer.TryWrite(new PendingWrite(SentinelKey, SerializedValue: null, FlushSignal: tcs)))
-        {
+        if (!_writes.Writer.TryWrite(new PendingWrite(SentinelKey, SerializedValue: null, FlushSignal: tcs))) {
             // Channel already closed (disposal in flight) — treat Flush as a no-op.
             return;
         }
@@ -168,53 +167,42 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable
     }
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        if (Interlocked.Exchange(ref _disposed, 1) != 0)
-        {
+    public async ValueTask DisposeAsync() {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
             return;
         }
 
         _ = _writes.Writer.TryComplete();
-        try
-        {
+        try {
             await _drainTask.ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             // Normal on cancellation.
         }
 
-        try
-        {
+        try {
             await _cts.CancelAsync().ConfigureAwait(false);
         }
-        catch (ObjectDisposedException)
-        {
+        catch (ObjectDisposedException) {
             // Already disposed; safe to ignore.
         }
 
         _cts.Dispose();
     }
 
-    private void EvictIfOverCap()
-    {
+    private void EvictIfOverCap() {
         int cap = _options.LocalStorageMaxEntries;
-        while (_lruTimestamps.Count > cap)
-        {
+        while (_lruTimestamps.Count > cap) {
             string? oldestKey = null;
             long oldestTimestamp = long.MaxValue;
-            foreach (KeyValuePair<string, long> kvp in _lruTimestamps)
-            {
-                if (kvp.Value < oldestTimestamp)
-                {
+            foreach (KeyValuePair<string, long> kvp in _lruTimestamps) {
+                if (kvp.Value < oldestTimestamp) {
                     oldestTimestamp = kvp.Value;
                     oldestKey = kvp.Key;
                 }
             }
 
-            if (oldestKey is null || !_lruTimestamps.TryRemove(oldestKey, out _))
-            {
+            if (oldestKey is null || !_lruTimestamps.TryRemove(oldestKey, out _)) {
                 // Concurrent remove raced us — the dictionary shrank by itself; loop continues.
                 return;
             }
@@ -224,55 +212,43 @@ public sealed class LocalStorageService : IStorageService, IAsyncDisposable
         }
     }
 
-    private async Task DrainLoopAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            await foreach (PendingWrite write in _writes.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false))
-            {
-                try
-                {
-                    if (write.FlushSignal is not null)
-                    {
-                        if (_pendingDrainFailure is not null)
-                        {
+    private async Task DrainLoopAsync(CancellationToken cancellationToken) {
+        try {
+            await foreach (PendingWrite write in _writes.Reader.ReadAllAsync(cancellationToken).ConfigureAwait(false)) {
+                try {
+                    if (write.FlushSignal is not null) {
+                        if (_pendingDrainFailure is not null) {
                             Exception failure = _pendingDrainFailure;
                             _pendingDrainFailure = null;
                             _ = write.FlushSignal.TrySetException(failure);
                         }
-                        else
-                        {
+                        else {
                             _ = write.FlushSignal.TrySetResult();
                         }
 
                         continue;
                     }
 
-                    if (write.SerializedValue is null)
-                    {
+                    if (write.SerializedValue is null) {
                         await _js.InvokeVoidAsync("localStorage.removeItem", cancellationToken, write.Key)
                             .ConfigureAwait(false);
                     }
-                    else
-                    {
+                    else {
                         await _js.InvokeVoidAsync("localStorage.setItem", cancellationToken, write.Key, write.SerializedValue)
                             .ConfigureAwait(false);
                     }
                 }
-                catch (OperationCanceledException)
-                {
+                catch (OperationCanceledException) {
                     throw;
                 }
-                catch (Exception ex)
-                {
+                catch (Exception ex) {
                     _pendingDrainFailure ??= ex;
                     _logger.LogWarning(ex, "LocalStorageService: drain write failed for key '{Key}'", write.Key);
                     write.FlushSignal?.TrySetException(ex);
                 }
             }
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             // Expected on disposal.
         }
     }

@@ -7,6 +7,7 @@ using Fluxor.Blazor.Web;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -361,5 +362,58 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
         navigation.NavigateTo("/");
         cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBeNull());
+    }
+
+    [Fact]
+    public void LateHydratedSessionRoute_RestoresFromHomeAfterHydrationCompletes() {
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest("Counter", "counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        Services.Replace(ServiceDescriptor.Singleton(registry));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new LastActiveRouteHydratedAction("domain/counter/counter-view"));
+        dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/domain/counter/counter-view"));
+    }
+
+    [Fact]
+    public void DeepLinkRoute_IsNotOverriddenByLateSessionRestore() {
+        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        registry.GetManifests().Returns([
+            new DomainManifest("Counter", "counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        Services.Replace(ServiceDescriptor.Singleton(registry));
+
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        navigation.NavigateTo("/settings");
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new LastActiveRouteHydratedAction("domain/counter/counter-view"));
+        dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/settings"));
+    }
+
+    [Fact]
+    public void ExternalSessionRoute_IsRejectedDuringRestore() {
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        dispatcher.Dispatch(new LastActiveRouteHydratedAction("https://evil.example/pwn"));
+        dispatcher.Dispatch(new NavigationHydratedCompletedAction());
+
+        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/"));
     }
 }

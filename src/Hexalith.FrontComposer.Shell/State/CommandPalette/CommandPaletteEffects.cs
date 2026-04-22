@@ -29,9 +29,10 @@ namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
 /// Implements <see cref="IDisposable"/> so the per-dispatch <see cref="CancellationTokenSource"/>
 /// is disposed when the circuit tears down.
 /// </remarks>
-public sealed class CommandPaletteEffects : IDisposable
-{
+public sealed class CommandPaletteEffects : IDisposable {
     private const string FeatureSegment = "palette-recent";
+    private const string DirectionHydrate = "hydrate";
+    private const string DirectionPersist = "persist";
     private const int DebounceMilliseconds = 150;
     private const int TopResultCap = 50;
     private const int ContextualBonus = 15;
@@ -63,8 +64,7 @@ public sealed class CommandPaletteEffects : IDisposable
         IState<FrontComposerNavigationState> navState,
         IState<FrontComposerCommandPaletteState> paletteState,
         ILogger<CommandPaletteEffects> logger,
-        IServiceProvider serviceProvider)
-    {
+        IServiceProvider serviceProvider) {
         ArgumentNullException.ThrowIfNull(navState);
         ArgumentNullException.ThrowIfNull(paletteState);
         ArgumentNullException.ThrowIfNull(logger);
@@ -87,11 +87,9 @@ public sealed class CommandPaletteEffects : IDisposable
     private string NewCorrelationId()
         => TryGetService<IUlidFactory>()?.NewUlid() ?? Guid.NewGuid().ToString("N");
 
-    private string ResolveLocalised(string key, string fallback)
-    {
+    private string ResolveLocalised(string key, string fallback) {
         IStringLocalizer<FcShellResources>? localizer = TryGetService<IStringLocalizer<FcShellResources>>();
-        if (localizer is null)
-        {
+        if (localizer is null) {
             return fallback;
         }
 
@@ -103,14 +101,11 @@ public sealed class CommandPaletteEffects : IDisposable
     // teardown — GetService then throws ObjectDisposedException. Previously only the per-manifest
     // scoring loop guarded exceptions; these accessors were naked. Wrap each resolution so effects
     // observe a null dependency (same shape as "unregistered service") instead of blowing up.
-    private T? TryGetService<T>() where T : class
-    {
-        try
-        {
+    private T? TryGetService<T>() where T : class {
+        try {
             return _serviceProvider.GetService<T>();
         }
-        catch (ObjectDisposedException)
-        {
+        catch (ObjectDisposedException) {
             return null;
         }
     }
@@ -132,55 +127,75 @@ public sealed class CommandPaletteEffects : IDisposable
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     [EffectMethod]
-    public async Task HandleAppInitialized(AppInitializedAction action, IDispatcher dispatcher)
-    {
+    public async Task HandleAppInitialized(AppInitializedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        if (!TryResolveScope(out string tenantId, out string userId))
-        {
+        await HydrateRecentRoutesAsync(dispatcher).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Re-runs hydrate on <see cref="Navigation.StorageReadyAction"/> iff the palette hydration
+    /// state is still <see cref="CommandPaletteHydrationState.Idle"/> (Story 3-6 D19).
+    /// </summary>
+    /// <param name="action">The storage-ready action.</param>
+    /// <param name="dispatcher">The Fluxor dispatcher.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    [EffectMethod]
+    public async Task HandleStorageReady(Navigation.StorageReadyAction action, IDispatcher dispatcher) {
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        if (_paletteState.Value.HydrationState != CommandPaletteHydrationState.Idle) {
             return;
         }
 
+        await HydrateRecentRoutesAsync(dispatcher).ConfigureAwait(false);
+    }
+
+    private async Task HydrateRecentRoutesAsync(IDispatcher dispatcher) {
+        if (!TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+            return;
+        }
+
+        dispatcher.Dispatch(new PaletteHydratingAction());
+
         IStorageService? storage = Storage;
-        if (storage is null)
-        {
+        if (storage is null) {
+            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
 
         string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
         string[]? stored;
-        try
-        {
+        try {
             stored = await storage.GetAsync<string[]>(key).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             _logger.LogDebug("Palette hydration cancelled — circuit disposing.");
+            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Palette hydration errored. Reason={Reason}.",
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 "Corrupt");
+            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
 
-        if (stored is null || stored.Length == 0)
-        {
+        if (stored is null || stored.Length == 0) {
             _logger.LogInformation(
                 "{DiagnosticId}: Palette hydration found no stored value. Reason={Reason}.",
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
                 "Empty");
+            dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
 
         ImmutableArray<string> filtered = [.. stored.Where(CommandRouteBuilder.IsInternalRoute)];
         int rejected = stored.Length - filtered.Length;
-        if (rejected > 0)
-        {
+        if (rejected > 0) {
             _logger.LogInformation(
                 "{DiagnosticId}: {RejectedCount} of {TotalCount} palette recent-route entries rejected. Reason={Reason}.",
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
@@ -191,15 +206,15 @@ public sealed class CommandPaletteEffects : IDisposable
 
         // Cap tampered / schema-drifted blobs at RingBufferCap so untrusted storage contents
         // cannot seed an unbounded in-memory buffer.
-        if (filtered.Length > FrontComposerCommandPaletteState.RingBufferCap)
-        {
+        if (filtered.Length > FrontComposerCommandPaletteState.RingBufferCap) {
             filtered = [.. filtered.Take(FrontComposerCommandPaletteState.RingBufferCap)];
         }
 
-        if (filtered.Length > 0)
-        {
+        if (filtered.Length > 0) {
             dispatcher.Dispatch(new PaletteHydratedAction(filtered));
         }
+
+        dispatcher.Dispatch(new PaletteHydratedCompletedAction());
     }
 
     /// <summary>
@@ -210,8 +225,7 @@ public sealed class CommandPaletteEffects : IDisposable
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     [EffectMethod]
-    public Task HandlePaletteOpened(PaletteOpenedAction action, IDispatcher dispatcher)
-    {
+    public Task HandlePaletteOpened(PaletteOpenedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
 
@@ -226,8 +240,7 @@ public sealed class CommandPaletteEffects : IDisposable
     /// <param name="dispatcher">The Fluxor dispatcher (unused — required by Fluxor signature).</param>
     /// <returns>A completed task.</returns>
     [EffectMethod]
-    public Task HandlePaletteClosed(PaletteClosedAction action, IDispatcher dispatcher)
-    {
+    public Task HandlePaletteClosed(PaletteClosedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         CancelInFlightQuery();
         return Task.CompletedTask;
@@ -242,35 +255,29 @@ public sealed class CommandPaletteEffects : IDisposable
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     [EffectMethod]
-    public async Task HandlePaletteQueryChanged(PaletteQueryChangedAction action, IDispatcher dispatcher)
-    {
+    public async Task HandlePaletteQueryChanged(PaletteQueryChangedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
 
         CancellationTokenSource cts = ReplaceQueryCts();
 
-        try
-        {
+        try {
             await Task.Delay(TimeSpan.FromMilliseconds(DebounceMilliseconds), Time, cts.Token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             return;
         }
 
         string canonical = ResolveShortcutAliasQuery(action.Query).Trim();
 
-        if (string.IsNullOrWhiteSpace(canonical))
-        {
+        if (string.IsNullOrWhiteSpace(canonical)) {
             dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, BuildDefaultResults()));
             return;
         }
 
-        if (string.Equals(canonical, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase))
-        {
+        if (string.Equals(canonical, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase)) {
             IShortcutService? shortcuts = Shortcuts;
-            if (shortcuts is null)
-            {
+            if (shortcuts is null) {
                 dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
                 return;
             }
@@ -297,12 +304,10 @@ public sealed class CommandPaletteEffects : IDisposable
         // Per-manifest try/catch so one malformed manifest (e.g., null/empty BoundedContext) does
         // not blank the entire result set. Registry enumeration itself remains outside-guarded.
         IReadOnlyList<DomainManifest> manifests;
-        try
-        {
+        try {
             manifests = (scoringRegistry?.GetManifests() ?? []).ToList();
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registry enumeration threw during palette scoring — dispatching empty result set.",
@@ -311,23 +316,18 @@ public sealed class CommandPaletteEffects : IDisposable
             return;
         }
 
-        foreach (DomainManifest manifest in manifests)
-        {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(manifest.BoundedContext))
-                {
+        foreach (DomainManifest manifest in manifests) {
+            try {
+                if (string.IsNullOrWhiteSpace(manifest.BoundedContext)) {
                     // Skip manifests with null/empty BoundedContext — BuildRoute would throw and any
                     // generated URL would be invalid. One malformed manifest does not blank the rest.
                     continue;
                 }
 
-                foreach (string projection in manifest.Projections)
-                {
+                foreach (string projection in manifest.Projections) {
                     string label = FrontComposerNavigation.ProjectionLabel(projection);
                     int score = PaletteScorer.Score(canonical, label);
-                    if (score <= 0)
-                    {
+                    if (score <= 0) {
                         continue;
                     }
 
@@ -336,17 +336,14 @@ public sealed class CommandPaletteEffects : IDisposable
                     scored.Add(CreateProjectionResult(manifest, projection, finalScore, inContext));
                 }
 
-                foreach (string command in manifest.Commands)
-                {
+                foreach (string command in manifest.Commands) {
                     string label = ShortName(command);
                     int score = PaletteScorer.Score(canonical, label);
-                    if (score <= 0)
-                    {
+                    if (score <= 0) {
                         continue;
                     }
 
-                    if (scoringRegistry is not null && !scoringRegistry.HasFullPageRoute(command))
-                    {
+                    if (scoringRegistry is not null && !scoringRegistry.HasFullPageRoute(command)) {
                         continue;
                     }
 
@@ -362,8 +359,7 @@ public sealed class CommandPaletteEffects : IDisposable
                         IsInCurrentContext: inContext));
                 }
             }
-            catch (Exception ex)
-            {
+            catch (Exception ex) {
                 _logger.LogWarning(
                     ex,
                     "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette scoring — skipping manifest, keeping other results.",
@@ -373,11 +369,9 @@ public sealed class CommandPaletteEffects : IDisposable
         }
 
         // Recent routes whose URL also scores against the query.
-        foreach (string url in _paletteState.Value.RecentRouteUrls)
-        {
+        foreach (string url in _paletteState.Value.RecentRouteUrls) {
             int score = PaletteScorer.Score(canonical, url);
-            if (score > 0)
-            {
+            if (score > 0) {
                 scored.Add(new PaletteResult(
                     Category: PaletteResultCategory.Recent,
                     DisplayLabel: url,
@@ -397,29 +391,23 @@ public sealed class CommandPaletteEffects : IDisposable
         // the synchronous scoring loop ran, drop the dispatch so a torn-down dispatcher doesn't
         // raise `ObjectDisposedException`. Reducer-level `IsOpen` no-op covers the fast path, but
         // explicit check here also prevents the dispatch round-trip cost.
-        if (!_paletteState.Value.IsOpen)
-        {
+        if (!_paletteState.Value.IsOpen) {
             return;
         }
 
-        try
-        {
+        try {
             dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ranked));
         }
-        catch (ObjectDisposedException)
-        {
+        catch (ObjectDisposedException) {
             // Circuit disposed between stale-guard and dispatch — Fluxor store is gone, safe to ignore.
         }
     }
 
-    private void SafeDispatchClose(IDispatcher dispatcher)
-    {
-        try
-        {
+    private void SafeDispatchClose(IDispatcher dispatcher) {
+        try {
             dispatcher.Dispatch(new PaletteClosedAction(NewCorrelationId()));
         }
-        catch (ObjectDisposedException)
-        {
+        catch (ObjectDisposedException) {
             // Circuit torn down — nothing to close.
         }
     }
@@ -433,33 +421,28 @@ public sealed class CommandPaletteEffects : IDisposable
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
     /// <returns>A completed task.</returns>
     [EffectMethod]
-    public Task HandlePaletteResultActivated(PaletteResultActivatedAction action, IDispatcher dispatcher)
-    {
+    public Task HandlePaletteResultActivated(PaletteResultActivatedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
 
         FrontComposerCommandPaletteState snapshot = _paletteState.Value;
-        if (action.SelectedIndex < 0 || action.SelectedIndex >= snapshot.Results.Length)
-        {
+        if (action.SelectedIndex < 0 || action.SelectedIndex >= snapshot.Results.Length) {
             return Task.CompletedTask;
         }
 
         PaletteResult result = snapshot.Results[action.SelectedIndex];
 
-        if (result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl))
-        {
+        if (result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl)) {
             return Task.CompletedTask;
         }
 
         // D23 sentinel — refill instead of navigating.
-        if (string.Equals(result.CommandTypeName, KeyboardShortcutsSentinel, StringComparison.Ordinal))
-        {
+        if (string.Equals(result.CommandTypeName, KeyboardShortcutsSentinel, StringComparison.Ordinal)) {
             dispatcher.Dispatch(new PaletteQueryChangedAction(NewCorrelationId(), ShortcutsCanonicalQuery));
             return Task.CompletedTask;
         }
 
-        string? targetUrl = result.Category switch
-        {
+        string? targetUrl = result.Category switch {
             PaletteResultCategory.Projection or PaletteResultCategory.Recent or PaletteResultCategory.Shortcut => result.RouteUrl,
             // Guard against a Command result with null/empty CommandTypeName or BoundedContext;
             // BuildRoute's ThrowIfNullOrWhiteSpace would otherwise escalate to an uncaught effect
@@ -469,14 +452,12 @@ public sealed class CommandPaletteEffects : IDisposable
             _ => null,
         };
 
-        if (!string.IsNullOrEmpty(targetUrl))
-        {
+        if (!string.IsNullOrEmpty(targetUrl)) {
             // DN5 (2026-04-21 pass-3): re-validate Recent-category URLs against the open-redirect
             // filter at activation time. IsInternalRoute otherwise runs only at hydrate; any future
             // code path inserting directly into state (bypassing hydrate) would slip past the D10
             // contract. Cheap defence-in-depth — one predicate call on the happy path.
-            if (result.Category == PaletteResultCategory.Recent && !CommandRouteBuilder.IsInternalRoute(targetUrl))
-            {
+            if (result.Category == PaletteResultCategory.Recent && !CommandRouteBuilder.IsInternalRoute(targetUrl)) {
                 _logger.LogInformation(
                     "{DiagnosticId}: Recent-route activation rejected by internal-route filter. Reason={Reason}.",
                     FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
@@ -486,18 +467,15 @@ public sealed class CommandPaletteEffects : IDisposable
             }
 
             NavigationManager? navigation;
-            try
-            {
+            try {
                 navigation = _serviceProvider.GetService<NavigationManager>();
             }
-            catch (ObjectDisposedException)
-            {
+            catch (ObjectDisposedException) {
                 // Scoped provider torn down mid-dispatch — circuit is gone, nothing to do.
                 return Task.CompletedTask;
             }
 
-            if (navigation is null)
-            {
+            if (navigation is null) {
                 // P6 (2026-04-21 pass-3): log when NavigationManager is unresolvable. Prior behaviour
                 // silently closed the palette with no navigation and no diagnostic breadcrumb.
                 _logger.LogWarning(
@@ -512,12 +490,10 @@ public sealed class CommandPaletteEffects : IDisposable
             // may land on a disposed dispatcher and throw `ObjectDisposedException`.
             SafeDispatchClose(dispatcher);
 
-            try
-            {
+            try {
                 navigation.NavigateTo(targetUrl);
             }
-            catch (InvalidOperationException ex)
-            {
+            catch (InvalidOperationException ex) {
                 // P6: NavigateTo throws on invalid / forced-external URLs with hostile shapes. Log
                 // and let the RecentRouteVisitedAction dispatch below be skipped — the user sees the
                 // palette close without navigating, which is the correct behaviour for a rejected URL.
@@ -530,20 +506,16 @@ public sealed class CommandPaletteEffects : IDisposable
 
             // Shortcut-category rows are reference entries — never record them in the recent-route
             // ring buffer, even when they carry a RouteUrl (e.g., g-h with RouteUrl="/").
-            if (result.Category != PaletteResultCategory.Shortcut)
-            {
-                try
-                {
+            if (result.Category != PaletteResultCategory.Shortcut) {
+                try {
                     dispatcher.Dispatch(new RecentRouteVisitedAction(targetUrl));
                 }
-                catch (ObjectDisposedException)
-                {
+                catch (ObjectDisposedException) {
                     // Navigation tore down the circuit synchronously; nothing to persist.
                 }
             }
         }
-        else
-        {
+        else {
             // Informational shortcut row — close anyway so the user lands back at the shell.
             SafeDispatchClose(dispatcher);
         }
@@ -559,33 +531,27 @@ public sealed class CommandPaletteEffects : IDisposable
     /// <param name="dispatcher">The Fluxor dispatcher (unused).</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     [EffectMethod]
-    public async Task HandleRecentRouteVisited(RecentRouteVisitedAction action, IDispatcher dispatcher)
-    {
+    public async Task HandleRecentRouteVisited(RecentRouteVisitedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
-        if (!TryResolveScope(out string tenantId, out string userId))
-        {
+        if (!TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
             return;
         }
 
         IStorageService? persistStorage = Storage;
-        if (persistStorage is null)
-        {
+        if (persistStorage is null) {
             return;
         }
 
-        try
-        {
+        try {
             // The reducer has already updated state.RecentRouteUrls — read the post-reduce snapshot.
             string[] payload = [.. _paletteState.Value.RecentRouteUrls];
             string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
             await persistStorage.SetAsync(key, payload).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
-        {
+        catch (OperationCanceledException) {
             _logger.LogDebug("Palette recent-route persist cancelled — circuit disposing.");
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Palette recent-route persistence failed.",
@@ -606,8 +572,7 @@ public sealed class CommandPaletteEffects : IDisposable
         "Performance",
         "CA1822:Mark members as static",
         Justification = "Public instance API contract — symmetry with the persist handlers per ADR-038.")]
-    public Task HandlePaletteHydrated(PaletteHydratedAction action, IDispatcher dispatcher)
-    {
+    public Task HandlePaletteHydrated(PaletteHydratedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         return Task.CompletedTask;
     }
@@ -622,8 +587,7 @@ public sealed class CommandPaletteEffects : IDisposable
     /// <param name="dispatcher">The Fluxor dispatcher.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
     [EffectMethod]
-    public async Task HandlePaletteScopeChanged(PaletteScopeChangedAction action, IDispatcher dispatcher)
-    {
+    public async Task HandlePaletteScopeChanged(PaletteScopeChangedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
 
@@ -640,18 +604,14 @@ public sealed class CommandPaletteEffects : IDisposable
     /// </summary>
     /// <param name="query">The raw user query.</param>
     /// <returns><c>"shortcuts"</c> when the query is a known alias; otherwise the input unchanged.</returns>
-    public static string ResolveShortcutAliasQuery(string query)
-    {
-        if (string.IsNullOrWhiteSpace(query))
-        {
+    public static string ResolveShortcutAliasQuery(string query) {
+        if (string.IsNullOrWhiteSpace(query)) {
             return query;
         }
 
         string trimmed = query.Trim();
-        foreach (string alias in _shortcutAliases)
-        {
-            if (string.Equals(trimmed, alias, StringComparison.OrdinalIgnoreCase))
-            {
+        foreach (string alias in _shortcutAliases) {
+            if (string.Equals(trimmed, alias, StringComparison.OrdinalIgnoreCase)) {
                 return ShortcutsCanonicalQuery;
             }
         }
@@ -661,22 +621,17 @@ public sealed class CommandPaletteEffects : IDisposable
             : query;
     }
 
-    private ImmutableArray<PaletteResult> BuildDefaultResults()
-    {
+    private ImmutableArray<PaletteResult> BuildDefaultResults() {
         ImmutableArray<PaletteResult>.Builder builder = ImmutableArray.CreateBuilder<PaletteResult>();
         AddShortcutSentinel(builder);
         AddRecentRoutes(builder);
 
         IFrontComposerRegistry? registry = Registry;
-        try
-        {
+        try {
             int projectionCount = 0;
-            foreach (DomainManifest manifest in (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal))
-            {
-                foreach (string projection in manifest.Projections.OrderBy(static p => p, StringComparer.Ordinal))
-                {
-                    if (projectionCount >= 20)
-                    {
+            foreach (DomainManifest manifest in (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal)) {
+                foreach (string projection in manifest.Projections.OrderBy(static p => p, StringComparer.Ordinal)) {
+                    if (projectionCount >= 20) {
                         break;
                     }
 
@@ -684,14 +639,12 @@ public sealed class CommandPaletteEffects : IDisposable
                     projectionCount++;
                 }
 
-                if (projectionCount >= 20)
-                {
+                if (projectionCount >= 20) {
                     break;
                 }
             }
         }
-        catch (Exception ex)
-        {
+        catch (Exception ex) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registry enumeration failed during palette open — falling back to empty projection preview.",
@@ -713,10 +666,8 @@ public sealed class CommandPaletteEffects : IDisposable
             ProjectionType: null,
             DescriptionKey: "KeyboardShortcutsCommandDescription"));
 
-    private void AddRecentRoutes(ImmutableArray<PaletteResult>.Builder builder)
-    {
-        foreach (string url in _paletteState.Value.RecentRouteUrls)
-        {
+    private void AddRecentRoutes(ImmutableArray<PaletteResult>.Builder builder) {
+        foreach (string url in _paletteState.Value.RecentRouteUrls) {
             builder.Add(new PaletteResult(
                 Category: PaletteResultCategory.Recent,
                 DisplayLabel: url,
@@ -728,8 +679,7 @@ public sealed class CommandPaletteEffects : IDisposable
         }
     }
 
-    private static PaletteResult CreateProjectionResult(DomainManifest manifest, string projection, int score, bool isInCurrentContext)
-    {
+    private static PaletteResult CreateProjectionResult(DomainManifest manifest, string projection, int score, bool isInCurrentContext) {
         string label = FrontComposerNavigation.ProjectionLabel(projection);
         return new PaletteResult(
             Category: PaletteResultCategory.Projection,
@@ -748,10 +698,8 @@ public sealed class CommandPaletteEffects : IDisposable
             && string.Equals(boundedContext, currentContext, StringComparison.OrdinalIgnoreCase);
 
     /// <inheritdoc />
-    public void Dispose()
-    {
-        if (_disposed)
-        {
+    public void Dispose() {
+        if (_disposed) {
             return;
         }
 
@@ -759,17 +707,13 @@ public sealed class CommandPaletteEffects : IDisposable
         CancelInFlightQuery();
     }
 
-    private CancellationTokenSource ReplaceQueryCts()
-    {
-        lock (_ctsSync)
-        {
+    private CancellationTokenSource ReplaceQueryCts() {
+        lock (_ctsSync) {
             CancellationTokenSource? previous = _queryCts;
-            try
-            {
+            try {
                 previous?.Cancel();
             }
-            catch (ObjectDisposedException)
-            {
+            catch (ObjectDisposedException) {
                 // Previous CTS already disposed — ignore.
             }
 
@@ -780,23 +724,18 @@ public sealed class CommandPaletteEffects : IDisposable
         }
     }
 
-    private void CancelInFlightQuery()
-    {
-        lock (_ctsSync)
-        {
+    private void CancelInFlightQuery() {
+        lock (_ctsSync) {
             CancellationTokenSource? cts = _queryCts;
-            if (cts is null)
-            {
+            if (cts is null) {
                 return;
             }
 
             _queryCts = null;
-            try
-            {
+            try {
                 cts.Cancel();
             }
-            catch (ObjectDisposedException)
-            {
+            catch (ObjectDisposedException) {
                 // Already disposed by a racing thread — ignore.
             }
 
@@ -804,16 +743,15 @@ public sealed class CommandPaletteEffects : IDisposable
         }
     }
 
-    private bool TryResolveScope(out string tenantId, out string userId)
-    {
+    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
         IUserContextAccessor? accessor = UserContextAccessor;
         string? rawTenant = accessor?.TenantId;
         string? rawUser = accessor?.UserId;
-        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser))
-        {
+        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
             _logger.LogInformation(
-                "{DiagnosticId}: Palette persistence skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
+                "{DiagnosticId}: Palette {Direction} skipped — null/empty/whitespace tenant or user context.",
+                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+                direction);
             tenantId = string.Empty;
             userId = string.Empty;
             return false;
@@ -824,10 +762,8 @@ public sealed class CommandPaletteEffects : IDisposable
         return true;
     }
 
-    private static string ShortName(string fullyQualifiedTypeName)
-    {
-        if (string.IsNullOrEmpty(fullyQualifiedTypeName))
-        {
+    private static string ShortName(string fullyQualifiedTypeName) {
+        if (string.IsNullOrEmpty(fullyQualifiedTypeName)) {
             return fullyQualifiedTypeName;
         }
 

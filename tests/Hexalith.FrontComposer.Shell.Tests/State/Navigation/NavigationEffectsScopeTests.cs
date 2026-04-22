@@ -162,7 +162,7 @@ public sealed class NavigationEffectsScopeTests {
     }
 
     [Fact]
-    public async Task HandleAppInitialized_ValidContextEmptyStorage_DoesNotDispatch() {
+    public async Task HandleAppInitialized_ValidContextEmptyStorage_DispatchesDefaultReset() {
         var storage = new InMemoryStorageService();
         ILogger<NavigationEffects> logger = Substitute.For<ILogger<NavigationEffects>>();
         IUserContextAccessor accessor = MakeAccessor("acme", "alice");
@@ -172,7 +172,14 @@ public sealed class NavigationEffectsScopeTests {
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+        // Story 3-6 Review F-EH-002 / F-EH-012: the empty-storage branch now dispatches the full
+        // reset triple (Hydrating → Hydrated-with-defaults → LastActiveRoute=null → Completed) so
+        // prior in-memory state (from a different user within the same circuit) is cleared rather
+        // than silently leaked. Previous behavior (no Hydrated dispatch) was a cross-user leak.
+        dispatcher.Received(1).Dispatch(Arg.Is<NavigationHydratedAction>(a =>
+            a.SidebarCollapsed == false && a.CollapsedGroups.Count == 0));
+        dispatcher.Received(1).Dispatch(Arg.Is<LastActiveRouteHydratedAction>(a => a.Route == null));
+        dispatcher.Received(1).Dispatch(Arg.Any<NavigationHydratedCompletedAction>());
     }
 
     [Fact]

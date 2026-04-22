@@ -19,11 +19,9 @@ namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.Storage;
 /// <see cref="LocalStorageService"/> using bUnit's JSInterop mock and <c>FakeTimeProvider</c>
 /// for deterministic LRU ordering.
 /// </summary>
-public sealed class LocalStorageServiceTests
-{
+public sealed class LocalStorageServiceTests {
     [Fact]
-    public async Task GetAsync_MissingKey_ReturnsDefault()
-    {
+    public async Task GetAsync_MissingKey_ReturnsDefault() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
 
@@ -34,8 +32,7 @@ public sealed class LocalStorageServiceTests
     }
 
     [Fact]
-    public async Task GetAsync_ExistingKey_DeserializesValue()
-    {
+    public async Task GetAsync_ExistingKey_DeserializesValue() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
         js.SetStoredJson("theme", "\"Dark\"");
@@ -46,8 +43,18 @@ public sealed class LocalStorageServiceTests
     }
 
     [Fact]
-    public async Task RemoveAsync_QueuesDeletionUntilFlush()
-    {
+    public async Task GetAsync_UsesWebJsonOptionsForCamelCasePayload() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        await using LocalStorageService sut = CreateService(out TestJsRuntime js);
+        js.SetStoredJson("payload", "{\"currentTheme\":\"Dark\"}");
+
+        PersistedPayload? result = await sut.GetAsync<PersistedPayload>("payload", ct);
+
+        result.ShouldBe(new PersistedPayload("Dark"));
+    }
+
+    [Fact]
+    public async Task RemoveAsync_QueuesDeletionUntilFlush() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
         TaskCompletionSource removeGate = js.BlockRemoveCalls();
@@ -62,8 +69,7 @@ public sealed class LocalStorageServiceTests
     }
 
     [Fact]
-    public async Task SetAsync_FireAndForget_ReturnsImmediatelyThenDrainsToJs()
-    {
+    public async Task SetAsync_FireAndForget_ReturnsImmediatelyThenDrainsToJs() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
         TaskCompletionSource setGate = js.BlockSetItemCalls();
@@ -78,8 +84,19 @@ public sealed class LocalStorageServiceTests
     }
 
     [Fact]
-    public async Task FlushAsync_DrainsPendingWrites()
-    {
+    public async Task SetAsync_UsesCamelCaseAndOmitsDefaultValues() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        await using LocalStorageService sut = CreateService(out TestJsRuntime js);
+
+        await sut.SetAsync("payload", new PersistedPayload("Dark"), ct);
+        await sut.FlushAsync(ct);
+
+        JsInvocation invocation = js.Invocations.Last(i => i.Identifier == "localStorage.setItem");
+        invocation.Arguments[1].ShouldBe("{\"currentTheme\":\"Dark\"}");
+    }
+
+    [Fact]
+    public async Task FlushAsync_DrainsPendingWrites() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
 
@@ -92,8 +109,7 @@ public sealed class LocalStorageServiceTests
     }
 
     [Fact]
-    public async Task EvictIfOverCap_EvictsOldestEntryByTimestamp()
-    {
+    public async Task EvictIfOverCap_EvictsOldestEntryByTimestamp() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         FakeTimeProvider time = new(new DateTimeOffset(2026, 4, 18, 0, 0, 0, TimeSpan.Zero));
         await using LocalStorageService sut = CreateService(out TestJsRuntime js, maxEntries: 3, time: time);
@@ -114,8 +130,7 @@ public sealed class LocalStorageServiceTests
     }
 
     [Fact]
-    public async Task GetKeysAsync_FiltersByPrefix()
-    {
+    public async Task GetKeysAsync_FiltersByPrefix() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
         js.SetEvalKeys("acme:u1:theme", "acme:u1:density", "other:u1:theme", "acme:u2:theme");
@@ -126,24 +141,21 @@ public sealed class LocalStorageServiceTests
     }
 
     [Fact]
-    public async Task SetAsync_EmptyKey_Throws()
-    {
+    public async Task SetAsync_EmptyKey_Throws() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out _);
         _ = await Should.ThrowAsync<ArgumentException>(async () => await sut.SetAsync("", 1, ct).ConfigureAwait(false));
     }
 
     [Fact]
-    public async Task DisposeAsync_IsSafeToCallMultipleTimes()
-    {
+    public async Task DisposeAsync_IsSafeToCallMultipleTimes() {
         LocalStorageService sut = CreateService(out _);
         await sut.DisposeAsync();
         await sut.DisposeAsync();
     }
 
     [Fact]
-    public async Task FlushAsync_ThrowsWhenEarlierDrainWriteFailed()
-    {
+    public async Task FlushAsync_ThrowsWhenEarlierDrainWriteFailed() {
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         await using LocalStorageService sut = CreateService(out TestJsRuntime js);
         js.SetItemException = new InvalidOperationException("boom");
@@ -157,8 +169,7 @@ public sealed class LocalStorageServiceTests
     private static LocalStorageService CreateService(
         out TestJsRuntime js,
         int maxEntries = 500,
-        FakeTimeProvider? time = null)
-    {
+        FakeTimeProvider? time = null) {
         js = new TestJsRuntime();
         FcShellOptions options = new() { LocalStorageMaxEntries = maxEntries };
         IOptions<FcShellOptions> optionsWrapper = Microsoft.Extensions.Options.Options.Create(options);
@@ -169,8 +180,7 @@ public sealed class LocalStorageServiceTests
             NullLogger<LocalStorageService>.Instance);
     }
 
-    private static int GetTrackedKeyCount(LocalStorageService sut)
-    {
+    private static int GetTrackedKeyCount(LocalStorageService sut) {
         PropertyInfo? property = typeof(LocalStorageService).GetProperty(
             "TrackedKeyCount",
             BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
@@ -179,8 +189,7 @@ public sealed class LocalStorageServiceTests
         return (int)property.GetValue(sut)!;
     }
 
-    private sealed class TestJsRuntime : IJSRuntime
-    {
+    private sealed class TestJsRuntime : IJSRuntime {
         private readonly ConcurrentDictionary<string, string?> _storedJson = new(StringComparer.Ordinal);
         private readonly ConcurrentQueue<JsInvocation> _invocations = new();
 
@@ -207,34 +216,29 @@ public sealed class LocalStorageServiceTests
         public ValueTask<TValue> InvokeAsync<TValue>(string identifier, object?[]? args)
             => InvokeAsync<TValue>(identifier, CancellationToken.None, args);
 
-        public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args)
-        {
+        public async ValueTask<TValue> InvokeAsync<TValue>(string identifier, CancellationToken cancellationToken, object?[]? args) {
             object?[] actualArgs = args ?? [];
             _invocations.Enqueue(new JsInvocation(identifier, actualArgs));
 
-            switch (identifier)
-            {
+            switch (identifier) {
                 case "localStorage.getItem":
                     string key = (string)actualArgs[0]!;
                     _ = _storedJson.TryGetValue(key, out string? json);
                     return (TValue)(object?)json!;
 
                 case "localStorage.setItem":
-                    if (SetItemGate is not null)
-                    {
+                    if (SetItemGate is not null) {
                         await SetItemGate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
                     }
 
-                    if (SetItemException is not null)
-                    {
+                    if (SetItemException is not null) {
                         throw SetItemException;
                     }
 
                     return default!;
 
                 case "localStorage.removeItem":
-                    if (RemoveGate is not null)
-                    {
+                    if (RemoveGate is not null) {
                         await RemoveGate.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
                     }
 
@@ -250,4 +254,6 @@ public sealed class LocalStorageServiceTests
     }
 
     private sealed record JsInvocation(string Identifier, object?[] Arguments);
+
+    private sealed record PersistedPayload(string CurrentTheme, bool SidebarCollapsed = false, int Count = 0);
 }

@@ -41,9 +41,11 @@ public static class BoundedContextRouteParser
 
         // Normalise to lowercase so PascalCase vs kebab-case URLs for the same BC don't churn the
         // navigation-state reducer via Ordinal comparison (edge-hunter DN8 finding).
+        // Accept 2-segment /domain/{bc} landing routes so persist/restore stays symmetric — previous
+        // ≥3 check silently dropped restorations of BC landing pages.
         if (string.Equals(segments[0], "domain", StringComparison.OrdinalIgnoreCase))
         {
-            return segments.Length >= 3 ? segments[1].ToLowerInvariant() : null;
+            return segments.Length >= 2 ? segments[1].ToLowerInvariant() : null;
         }
 
         return segments.Length >= 2 ? segments[0].ToLowerInvariant() : null;

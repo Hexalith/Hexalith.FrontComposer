@@ -49,6 +49,8 @@ public sealed class DensityEffects(
     IOptions<FcShellOptions> options,
     IState<FrontComposerDensityState> densityState) {
     private const string FeatureSegment = "density";
+    private const string DirectionHydrate = "hydrate";
+    private const string DirectionPersist = "persist";
 
     /// <summary>
     /// Hydrates density state from storage when the application initializes. Dispatches
@@ -62,9 +64,33 @@ public sealed class DensityEffects(
     public async Task HandleAppInitialized(AppInitializedAction action, IDispatcher dispatcher) {
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(dispatcher);
-        if (!TryResolveScope(out string tenantId, out string userId)) {
+        await HydrateAsync(dispatcher).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Re-runs hydrate on <see cref="StorageReadyAction"/> iff density hydration state is still
+    /// <see cref="DensityHydrationState.Idle"/> (Story 3-6 D19).
+    /// </summary>
+    /// <param name="action">The storage-ready action.</param>
+    /// <param name="dispatcher">The Fluxor dispatcher.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    [EffectMethod]
+    public async Task HandleStorageReady(StorageReadyAction action, IDispatcher dispatcher) {
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        if (densityState.Value.HydrationState != DensityHydrationState.Idle) {
             return;
         }
+
+        await HydrateAsync(dispatcher).ConfigureAwait(false);
+    }
+
+    private async Task HydrateAsync(IDispatcher dispatcher) {
+        if (!TryResolveScope(out string tenantId, out string userId, DirectionHydrate)) {
+            return;
+        }
+
+        dispatcher.Dispatch(new DensityHydratingAction());
 
         string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
         DensityLevel? stored = null;
@@ -97,6 +123,7 @@ public sealed class DensityEffects(
             GetHydrationTier());
 
         dispatcher.Dispatch(new DensityHydratedAction(stored, resolvedEffective));
+        dispatcher.Dispatch(new DensityHydratedCompletedAction());
     }
 
     /// <summary>
@@ -156,7 +183,7 @@ public sealed class DensityEffects(
     }
 
     private async Task PersistAsync(DensityLevel? value) {
-        if (!TryResolveScope(out string tenantId, out string userId)) {
+        if (!TryResolveScope(out string tenantId, out string userId, DirectionPersist)) {
             return;
         }
 
@@ -175,13 +202,14 @@ public sealed class DensityEffects(
         }
     }
 
-    private bool TryResolveScope(out string tenantId, out string userId) {
+    private bool TryResolveScope(out string tenantId, out string userId, string direction) {
         string? rawTenant = userContextAccessor.TenantId;
         string? rawUser = userContextAccessor.UserId;
         if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
             logger.LogInformation(
-                "{DiagnosticId}: Density persistence skipped — null/empty/whitespace tenant or user context.",
-                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
+                "{DiagnosticId}: Density {Direction} skipped — null/empty/whitespace tenant or user context.",
+                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+                direction);
             tenantId = string.Empty;
             userId = string.Empty;
             return false;

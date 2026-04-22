@@ -3,11 +3,14 @@ using Bunit;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Badges;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
+using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -56,6 +59,18 @@ public abstract class FrontComposerTestBase : BunitContext {
         _ = Services.AddScoped<CapabilityDiscoveryEffects>();
         _ = Services.AddSingleton(TimeProvider.System);
 
+        // Story 3-6 — Fluxor assembly scan picks up ScopeFlipObserverEffect + DataGridNavigationEffects;
+        // their dependencies must be resolvable in the test host.
+        _ = Services.AddScoped<IUlidFactory>(_ => new Hexalith.FrontComposer.Shell.Services.Lifecycle.UlidFactory());
+        _ = Services.AddScoped<IScopeReadinessGate, ScopeReadinessGate>();
+        _ = Services.AddScoped<ScopeFlipObserverEffect>();
+        _ = Services.AddScoped<IFrontComposerRegistry>(_ => {
+            IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+            registry.GetManifests().Returns(Array.Empty<DomainManifest>());
+            return registry;
+        });
+        _ = Services.AddScoped<DataGridNavigationEffects>();
+
         InitializeStoreAsync().GetAwaiter().GetResult();
     }
 
@@ -65,6 +80,8 @@ public abstract class FrontComposerTestBase : BunitContext {
 
     /// <summary>
     /// Initializes the Fluxor store if it has not already been initialized.
+    /// Leaves feature hydration state untouched; tests that need hydration must dispatch the
+    /// corresponding app-lifecycle actions explicitly.
     /// </summary>
     /// <returns>A task representing the asynchronous operation.</returns>
     protected async Task InitializeStoreAsync() {

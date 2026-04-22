@@ -88,4 +88,61 @@ public static class DataGridNavigationReducers {
 
         return state with { ViewStates = next };
     }
+
+    /// <summary>
+    /// Adds the hydrated snapshot into <see cref="DataGridNavigationState.ViewStates"/> iff the
+    /// view-key is absent (Story 3-6 D8 / ADR-050). Present-key = no-op — in-memory state wins
+    /// over storage so a fresher in-circuit capture isn't stomped by a stale cross-tab blob.
+    /// </summary>
+    /// <param name="state">The current DataGrid navigation state.</param>
+    /// <param name="action">The grid-view-hydrated action.</param>
+    /// <returns>A new state with the snapshot inserted when the key was absent; the same state otherwise.</returns>
+    [ReducerMethod]
+    public static DataGridNavigationState ReduceGridViewHydrated(
+        DataGridNavigationState state,
+        GridViewHydratedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.ViewStates.ContainsKey(action.ViewKey)
+            ? state
+            : state with { ViewStates = state.ViewStates.SetItem(action.ViewKey, action.Snapshot) };
+    }
+
+    /// <summary>
+    /// Flips <see cref="DataGridNavigationState.HydrationState"/> from <see cref="DataGridNavigationHydrationState.Idle"/>
+    /// to <see cref="DataGridNavigationHydrationState.Hydrating"/> at the start of the hydrate path
+    /// (Story 3-6 D19 / A7). No-op when already <c>Hydrated</c>.
+    /// </summary>
+    /// <param name="state">The current DataGrid navigation state.</param>
+    /// <param name="action">The hydrating action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrating</c> when transitioning from <c>Idle</c>.</returns>
+    [ReducerMethod]
+    public static DataGridNavigationState ReduceDataGridNavigationHydrating(
+        DataGridNavigationState state,
+        DataGridNavigationHydratingAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == DataGridNavigationHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = DataGridNavigationHydrationState.Hydrating };
+    }
+
+    /// <summary>
+    /// Flips <see cref="DataGridNavigationState.HydrationState"/> to <see cref="DataGridNavigationHydrationState.Hydrated"/>
+    /// at the end of the hydrate path (Story 3-6 D19 / A7). Called on BOTH happy path AND
+    /// fail-closed path.
+    /// </summary>
+    /// <param name="state">The current DataGrid navigation state.</param>
+    /// <param name="action">The hydrated-completed action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrated</c>.</returns>
+    [ReducerMethod]
+    public static DataGridNavigationState ReduceDataGridNavigationHydratedCompleted(
+        DataGridNavigationState state,
+        DataGridNavigationHydratedCompletedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == DataGridNavigationHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = DataGridNavigationHydrationState.Hydrated };
+    }
 }

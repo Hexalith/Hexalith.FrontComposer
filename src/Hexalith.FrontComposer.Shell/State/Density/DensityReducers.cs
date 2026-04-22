@@ -103,4 +103,41 @@ public static class DensityReducers {
             EffectiveDensity = action.NewDensity,
         };
     }
+
+    /// <summary>
+    /// Flips <see cref="FrontComposerDensityState.HydrationState"/> from <see cref="DensityHydrationState.Idle"/>
+    /// to <see cref="DensityHydrationState.Hydrating"/> at the start of the hydrate path
+    /// (Story 3-6 D19). No-op when already <c>Hydrated</c>.
+    /// </summary>
+    /// <param name="state">The current density state.</param>
+    /// <param name="action">The density-hydrating action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrating</c> when transitioning from <c>Idle</c>.</returns>
+    [ReducerMethod]
+    public static FrontComposerDensityState ReduceDensityHydrating(
+        FrontComposerDensityState state,
+        DensityHydratingAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == DensityHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = DensityHydrationState.Hydrating };
+    }
+
+    /// <summary>
+    /// Flips <see cref="FrontComposerDensityState.HydrationState"/> to <see cref="DensityHydrationState.Hydrated"/>
+    /// at the end of the hydrate path (Story 3-6 D19). Called on BOTH happy and fail-closed paths.
+    /// </summary>
+    /// <param name="state">The current density state.</param>
+    /// <param name="action">The density-hydrated-completed action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrated</c>.</returns>
+    [ReducerMethod]
+    public static FrontComposerDensityState ReduceDensityHydratedCompleted(
+        FrontComposerDensityState state,
+        DensityHydratedCompletedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == DensityHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = DensityHydrationState.Hydrated };
+    }
 }

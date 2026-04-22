@@ -24,6 +24,8 @@ using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
+using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.Logging;
@@ -260,6 +262,16 @@ public static class ServiceCollectionExtensions
         // Story 3-5 D9 / ADR-046 — capability-discovery effects mirror CommandPaletteEffects
         // (Scoped per ADR-030; concrete instance held for IDisposable bridge teardown).
         services.TryAddScoped<CapabilityDiscoveryEffects>();
+
+        // Story 3-6 D20 / ADR-049 — IScopeReadinessGate + ScopeFlipObserverEffect (per-circuit
+        // scoped so the Interlocked tiebreaker observes the same "already-dispatched" state
+        // across Fluxor's concurrent effect-handler invocations).
+        services.TryAddScoped<IScopeReadinessGate, ScopeReadinessGate>();
+        services.TryAddScoped<ScopeFlipObserverEffect>();
+
+        // Story 3-6 ADR-050 — DataGrid per-view persistence effects (Scoped; concrete instance
+        // held for IDisposable cleanup of debounce CTSes on circuit teardown).
+        services.TryAddScoped<DataGridNavigationEffects>();
 
         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.

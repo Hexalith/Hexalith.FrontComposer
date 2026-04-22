@@ -98,7 +98,7 @@ public sealed class ThemeEffectsScopeTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_ValidContextEmptyStorage_LogsHFC2106AndDoesNotDispatch()
+    public async Task HandleAppInitialized_ValidContextEmptyStorage_LogsHFC2106AndDoesNotDispatchThemeChanged()
     {
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
@@ -109,7 +109,10 @@ public sealed class ThemeEffectsScopeTests
 
         await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
 
-        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+        // Story 3-6 D19 dispatches ThemeHydratingAction + ThemeHydratedCompletedAction on every
+        // hydrate path (including empty-storage); only ThemeChangedAction should be suppressed
+        // in this case.
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<ThemeChangedAction>());
         AssertLoggedInformation(logger, FcDiagnosticIds.HFC2106_ThemeHydrationEmpty);
     }
 

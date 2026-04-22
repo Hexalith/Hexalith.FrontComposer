@@ -217,4 +217,43 @@ public static class CommandPaletteReducers {
         ArgumentNullException.ThrowIfNull(action);
         return state with { RecentRouteUrls = ImmutableArray<string>.Empty };
     }
+
+    /// <summary>
+    /// Flips <see cref="FrontComposerCommandPaletteState.HydrationState"/> from
+    /// <see cref="CommandPaletteHydrationState.Idle"/> to
+    /// <see cref="CommandPaletteHydrationState.Hydrating"/> at the start of the hydrate path
+    /// (Story 3-6 D19). No-op when already <c>Hydrated</c>.
+    /// </summary>
+    /// <param name="state">The current palette state.</param>
+    /// <param name="action">The palette-hydrating action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrating</c> when transitioning from <c>Idle</c>.</returns>
+    [ReducerMethod]
+    public static FrontComposerCommandPaletteState ReducePaletteHydrating(
+        FrontComposerCommandPaletteState state,
+        PaletteHydratingAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == CommandPaletteHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = CommandPaletteHydrationState.Hydrating };
+    }
+
+    /// <summary>
+    /// Flips <see cref="FrontComposerCommandPaletteState.HydrationState"/> to
+    /// <see cref="CommandPaletteHydrationState.Hydrated"/> at the end of the hydrate path
+    /// (Story 3-6 D19). Called on BOTH happy path AND fail-closed path.
+    /// </summary>
+    /// <param name="state">The current palette state.</param>
+    /// <param name="action">The palette-hydrated-completed action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrated</c>.</returns>
+    [ReducerMethod]
+    public static FrontComposerCommandPaletteState ReducePaletteHydratedCompleted(
+        FrontComposerCommandPaletteState state,
+        PaletteHydratedCompletedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == CommandPaletteHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = CommandPaletteHydrationState.Hydrated };
+    }
 }

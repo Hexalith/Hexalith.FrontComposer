@@ -3,10 +3,10 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 namespace Hexalith.FrontComposer.Shell.State.Density;
 
 /// <summary>
-/// Fluxor state record for the application display density (Story 3-3 D2 — rewindow of the Story 3-1
-/// single-field <c>(CurrentDensity)</c> shape). Two-field record separates the user's explicit choice
-/// from the resolver output so the settings dialog can show "user picked Compact; viewport forced
-/// Comfortable" without needing a per-component re-resolve.
+/// Fluxor state record for the application display density (Story 3-3 D2 / Story 3-6 D19).
+/// Two-field record separates the user's explicit choice from the resolver output so the settings
+/// dialog can show "user picked Compact; viewport forced Comfortable" without a per-component
+/// re-resolve.
 /// </summary>
 /// <param name="UserPreference">
 /// Explicit user choice. <see langword="null"/> means "follow defaults" — the resolver falls through
@@ -19,6 +19,12 @@ namespace Hexalith.FrontComposer.Shell.State.Density;
 /// scoped CSS cascades. NEVER persisted — always recomputed from <see cref="UserPreference"/> +
 /// current options + current viewport tier.
 /// </param>
+/// <param name="HydrationState">
+/// Transient three-state hydration marker (Story 3-6 D19). Initial value <see cref="DensityHydrationState.Idle"/>;
+/// flips <c>Idle → Hydrating → Hydrated</c> via dedicated reducers. NEVER persisted. Re-hydrate
+/// via <c>StorageReadyAction</c> only runs when this is <see cref="DensityHydrationState.Idle"/>.
+/// </param>
 public record FrontComposerDensityState(
     DensityLevel? UserPreference,
-    DensityLevel EffectiveDensity);
+    DensityLevel EffectiveDensity,
+    DensityHydrationState HydrationState = DensityHydrationState.Idle);

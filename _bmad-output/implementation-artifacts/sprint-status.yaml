@@ -1,5 +1,6 @@
 # generated: 2026-04-12
-# last_updated: 2026-04-21 (story 3-4: pass-3 bmad-code-review applied 14 of 15 P-series patches + DN5 (re-validation) + P10 + P11 + P12 in one session. P15 WITHDRAWN after verification (Blazor omits null attributes). 7 DN resolutions recorded: DN1=(a) ratify-placeholder + G24 [XML-doc pending]; DN2=(b) NS2.0 restructure [pending]; DN3=(b) require Playwright palette E2E + BenchmarkDotNet PaletteScorerBench before closing [pending]; DN4=(A) ratify 4 deviations in addendum [pending]; DN5=(a) DONE; DN6=(a) OpenGeneration plumbing across state/action/reducer/effect/component/registrar [pending]; DN7=(b) tenant/user snapshot in PaletteScopeChangedAction payload [pending]. `dotnet build --warnaserror` clean; `dotnet test` 905 passing (Contracts 14 / Shell 614 / SourceTools 277; 2 skipped E2E). CommandPaletteEffectsTests fixture gained a TestNavigationManager so the P6 "log-and-early-return on null NavigationManager" contract is exercised without regression. Story status kept as review — DN3 user-gate prevents close until Playwright E2E + BDN ship.)
+# last_updated: 2026-04-22 (story 4-2 created via bmad-create-story — ships Status Badge System. 15 binding decisions (10-decision L06 buffer remaining), 6 ACs in tabular form, 42-test target (22 Shell + 10 emitter + 8 diagnostic + 2 resource), L01/L04/L06/L07/L11 cheat sheet. Cross-story contract table covers 11 seams: new FcStatusBadge Shell component (Slot/Label/ColumnHeader frozen params) + internal SlotAppearanceTable (BadgeSlot→(BadgeColor,BadgeAppearance) — Accent maps to Brand+Filled, all others map to *+Tint); consumes Story 1-2 BadgeSlot+ProjectionBadgeAttribute contracts unchanged, Story 1-4/1-5 BadgeMappingEntry+ColumnModel.BadgeMappings IR unchanged, Story 4-1 role-dispatch switch unchanged. Upgrades source-generator EmitEnumColumn to branch on badge mappings (zero → unchanged text; partial → mixed switch + HFC1025 Info dedup; full → FcStatusBadge per row). Reserves HFC1025 (Information, partial coverage) + HFC1026 (Warning, color-only badge detected — reserved for Story 10-2 specimen CI, no call site in 4-2). Scope guardrails explicitly exclude filter chips (4-3), virtualization (4-4), expand-in-row (4-5), empty states (4-6), FcDesaturatedBadge optimistic-state (deferred per D11 to backlog 4-7/2-7), Epic 6 custom badge override. Adds 2 EN+FR resource keys (StatusBadgeAriaLabelTemplate with U+00A0 NBSP before colon / StatusBadgeUnknownStateFallback) — 66 → 68 per locale. Known Gaps linked to owning stories (L10).)
+# previous: 2026-04-22 (story 3-6 review-remediation: addressed 9 code-review patch findings. Runtime fixes landed for late-scope hydration retry, session-restore replay, base-relative LastActiveRoute normalization, ScopeReadinessGate empty→ready transition semantics, DataGrid debounce scope re-check + malformed-key pruning, compact LocalStorage JSON, unmasked hydration test setup, and Direction-parity diagnostics. Focused validation green: 82 shell tests passed / 0 failed.)
 # project: Hexalith.FrontComposer
 # project_key: NOKEY
 # tracking_system: file-system
@@ -35,7 +36,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-22 (story 3-5 bmad-code-review → done: 2 decisions resolved (D1 gate-on-expand narrows OnGroupExpandedChanged to only dispatch CapabilityVisitedAction when expanded=true; D2 amends spec D12 to document proj-click implicitly acks BC), 9 patches applied. Badge palette: Filled+Brand for counts / Tint+Informative for New to match AC8/D14 intent within Fluent UI v5 API (no Accent/Intent enums exist). Home card tabindex='0' per Task 3.5. ReflectionCatalog filters open generics + dedupes. NullReader honors pre-cancelled token. BadgeCountService Interlocked.Exchange disposal + IsDisposed Volatile.Read. UpdateCount negative-count guard. 4 Task 7.1 concurrency/timeout tests land with FakeTimeProvider; 6 Task 7.6 home tests land — all behavioural including full AC7 Enter/Space activation. **Refactor:** FcHomeDirectory.RenderCard `RenderFragment = __builder => { ... }` silently dropped @onclick/@onkeydown (bUnit confirmed zero handlers on button); extracted new FcHomeCard child component under Components/Home/ owning the button + badges + projection rows, event bindings now emit properly. HomeCardModel + HomeProjectionRow promoted to public top-level records. Solution build clean with -warnaserror; full test suite 1,004 passing (18 Contracts + 709 Shell + 277 SourceTools) / 0 failed / 2 skipped (pre-existing E2E). USER-GATED items still open: 6.2 French native pre-pass, 7.8 cross-story integration tests, 8.1 Aspire MCP runtime smoke.)"
+last_updated: "2026-04-22 (story 3-6 fresh reviewer pass complete — review → done. 17 patches applied (BC case-mismatch blocker, anon-navigation scope guard, null-blob cross-user reset, Theme OCE completion, session-restore URL-drift guard, 3 new schema/NFR17 tests, /domain/{bc} landing route, colon-in-identity key guard, CapturedAt UTC normalization, HFC2107/HFC2114 doc, AppInit quiet-circuit observer, spec contract row signature). Decisions resolved: D1→(d), D2→(b), D3→(c) ship 3 blocking tests + defer ~33 ADR-verification tests. Full Shell.Tests sweep green: 764 passed / 0 failed / 2 skipped E2E. Previous: story 4-2 ready-for-dev — Status Badge System, 15 binding decisions, 42-test target, HFC1025/HFC1026 reserved.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -65,19 +66,19 @@ development_status:
 
   # Epic 3: Composition Shell & Navigation Experience
   epic-3: in-progress
-  
+
   3-1-shell-layout-theme-and-typography: done
   3-2-sidebar-navigation-and-responsive-behavior: done
   3-3-display-density-and-user-settings: done
   3-4-fccommandpalette-and-keyboard-shortcuts: review
   3-5-home-directory-badge-counts-and-new-capability-discovery: done
-  3-6-session-persistence-and-context-restoration: ready-for-dev
+  3-6-session-persistence-and-context-restoration: done
   epic-3-retrospective: optional
 
   # Epic 4: Rich DataGrid & Projection Interaction
-  epic-4: backlog
-  4-1-projection-role-hints-and-view-rendering: backlog
-  4-2-status-badge-system: backlog
+  epic-4: in-progress
+  4-1-projection-role-hints-and-view-rendering: ready-for-dev
+  4-2-status-badge-system: ready-for-dev
   4-3-datagrid-filtering-sorting-and-search: backlog
   4-4-virtual-scrolling-and-column-prioritization: backlog
   4-5-expand-in-row-detail-and-progressive-disclosure: backlog

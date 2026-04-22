@@ -123,4 +123,106 @@ public static class NavigationReducers
             ? state
             : state with { CurrentBoundedContext = action.NewBoundedContext };
     }
+
+    /// <summary>
+    /// Updates <see cref="FrontComposerNavigationState.LastActiveRoute"/> to the captured route
+    /// (Story 3-6 D1 / D2 / ADR-048). Empty / whitespace routes are coerced to <see langword="null"/>
+    /// so the blob's null-convention stays intact (<c>null</c> = "no prior route"; empty string
+    /// is INVALID per the cross-story contract table).
+    /// </summary>
+    /// <param name="state">The current navigation state.</param>
+    /// <param name="action">The last-active-route-changed action.</param>
+    /// <returns>A new state with the normalised route assigned.</returns>
+    [ReducerMethod]
+    public static FrontComposerNavigationState ReduceLastActiveRouteChanged(
+        FrontComposerNavigationState state,
+        LastActiveRouteChangedAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        string? normalised = string.IsNullOrWhiteSpace(action.Route) ? null : action.Route;
+        return string.Equals(state.LastActiveRoute, normalised, StringComparison.Ordinal)
+            ? state
+            : state with { LastActiveRoute = normalised };
+    }
+
+    /// <summary>
+    /// Replaces <see cref="FrontComposerNavigationState.LastActiveRoute"/> from the hydrated blob
+    /// (Story 3-6 D1 / ADR-048). Does NOT trigger re-persistence (ADR-038 mirror).
+    /// </summary>
+    /// <param name="state">The current navigation state.</param>
+    /// <param name="action">The hydrated action carrying the persisted route (nullable).</param>
+    /// <returns>A new state with the route field replaced.</returns>
+    [ReducerMethod]
+    public static FrontComposerNavigationState ReduceLastActiveRouteHydrated(
+        FrontComposerNavigationState state,
+        LastActiveRouteHydratedAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        string? normalised = string.IsNullOrWhiteSpace(action.Route) ? null : action.Route;
+        return state with { LastActiveRoute = normalised };
+    }
+
+    /// <summary>
+    /// Flips <see cref="FrontComposerNavigationState.StorageReady"/> to <see langword="true"/>
+    /// (Story 3-6 D13 / ADR-049). Idempotent — always safe to set true again. NEVER reset within
+    /// a circuit (ADR-049 load-bearing invariant).
+    /// </summary>
+    /// <param name="state">The current navigation state.</param>
+    /// <param name="action">The storage-ready action.</param>
+    /// <returns>A new state with <c>StorageReady = true</c>.</returns>
+    [ReducerMethod]
+    public static FrontComposerNavigationState ReduceStorageReady(
+        FrontComposerNavigationState state,
+        StorageReadyAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.StorageReady
+            ? state
+            : state with { StorageReady = true };
+    }
+
+    /// <summary>
+    /// Flips <see cref="FrontComposerNavigationState.HydrationState"/> from <see cref="NavigationHydrationState.Idle"/>
+    /// to <see cref="NavigationHydrationState.Hydrating"/> at the start of the hydrate path
+    /// (Story 3-6 D19). Idempotent when already <c>Hydrating</c>; no-op when already <c>Hydrated</c>
+    /// (re-hydrate gate upstream already guards this path).
+    /// </summary>
+    /// <param name="state">The current navigation state.</param>
+    /// <param name="action">The navigation-hydrating action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrating</c> when transitioning from <c>Idle</c>.</returns>
+    [ReducerMethod]
+    public static FrontComposerNavigationState ReduceNavigationHydrating(
+        FrontComposerNavigationState state,
+        NavigationHydratingAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == NavigationHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = NavigationHydrationState.Hydrating };
+    }
+
+    /// <summary>
+    /// Flips <see cref="FrontComposerNavigationState.HydrationState"/> to <see cref="NavigationHydrationState.Hydrated"/>
+    /// at the end of the hydrate path (Story 3-6 D19). Called on BOTH happy path AND fail-closed
+    /// path so subsequent <see cref="StorageReadyAction"/> re-triggers hydrate only when the state
+    /// is still <c>Idle</c>.
+    /// </summary>
+    /// <param name="state">The current navigation state.</param>
+    /// <param name="action">The navigation-hydrated-completed action.</param>
+    /// <returns>A new state with <c>HydrationState = Hydrated</c>.</returns>
+    [ReducerMethod]
+    public static FrontComposerNavigationState ReduceNavigationHydratedCompleted(
+        FrontComposerNavigationState state,
+        NavigationHydratedCompletedAction action)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+        return state.HydrationState == NavigationHydrationState.Hydrated
+            ? state
+            : state with { HydrationState = NavigationHydrationState.Hydrated };
+    }
 }

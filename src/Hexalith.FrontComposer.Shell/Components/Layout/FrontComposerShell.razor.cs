@@ -81,6 +81,8 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private DotNetObjectReference<FrontComposerShell>? _selfRef;
     private bool _themeBootstrapped;
     private bool _locationTrackingRegistered;
+    private bool _sessionRestoreAttempted;
+    private string? _initialRenderUri;
     private ElementReference _shellRoot;
     private readonly LayoutHamburgerCoordinator _hamburgerCoordinator = new();
 
@@ -230,16 +232,101 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
-        if (!firstRender) {
+        if (firstRender) {
+            await ApplyThemeAsync().ConfigureAwait(false);
+            await RegisterBeforeUnloadAsync().ConfigureAwait(false);
+            await RegisterKeyboardInteropAsync().ConfigureAwait(false);
+            RegisterLocationTracking();
+            SyncCurrentBoundedContext(NavigationManager.Uri);
+            await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
+            _initialRenderUri = NavigationManager.Uri;
+        }
+
+        TryRestoreSession();
+    }
+
+    /// <summary>
+    /// Story 3-6 Task 4 / D3 / ADR-048 — one-shot session restoration. If the user landed on the
+    /// home route AND a valid, still-registered <c>LastActiveRoute</c> is in state, navigates to
+    /// it. Guarded by <see cref="_sessionRestoreAttempted"/> so a later hydrate-race or
+    /// <c>StorageReadyAction</c> cannot double-fire.
+    /// </summary>
+    private void TryRestoreSession() {
+        if (_sessionRestoreAttempted) {
             return;
         }
 
-        await ApplyThemeAsync().ConfigureAwait(false);
-        await RegisterBeforeUnloadAsync().ConfigureAwait(false);
-        await RegisterKeyboardInteropAsync().ConfigureAwait(false);
-        RegisterLocationTracking();
-        SyncCurrentBoundedContext(NavigationManager.Uri);
-        await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
+        string currentUri = NavigationManager.Uri;
+        if (!IsOnHomeRoute(currentUri)) {
+            // Deep-link — respect the user's intent.
+            _sessionRestoreAttempted = true;
+            return;
+        }
+
+        // If the URL shifted since first render (user initiated navigation while we were waiting
+        // for hydrate), do not overwrite their click — set the flag and exit.
+        if (_initialRenderUri is not null
+            && !string.Equals(currentUri, _initialRenderUri, StringComparison.Ordinal)) {
+            _sessionRestoreAttempted = true;
+            return;
+        }
+
+        FrontComposerNavigationState snapshot = NavigationState.Value;
+        if (snapshot.HydrationState != NavigationHydrationState.Hydrated) {
+            return;
+        }
+
+        _sessionRestoreAttempted = true;
+        if (!SessionRouteHelper.TryNormalizePersistedRoute(snapshot.LastActiveRoute, NavigationManager, out string candidate)) {
+            return;
+        }
+
+        string? bc = BoundedContextRouteParser.Parse(candidate);
+        if (bc is null || !IsBoundedContextRegistered(bc)) {
+            return;
+        }
+
+        try {
+            NavigationManager.NavigateTo(candidate, forceLoad: false);
+        }
+        catch (InvalidOperationException) {
+            // NavigationManager rejects the target (pre-init or disposed). Fail-silent per D3/D17.
+        }
+    }
+
+    private static bool IsOnHomeRoute(string uri) {
+        if (string.IsNullOrWhiteSpace(uri)) {
+            return false;
+        }
+
+        string path;
+        if (Uri.TryCreate(uri, UriKind.Absolute, out Uri? absolute)) {
+            path = absolute.AbsolutePath;
+        }
+        else {
+            int queryIndex = uri.IndexOfAny(['?', '#']);
+            path = queryIndex >= 0 ? uri[..queryIndex] : uri;
+        }
+
+        path = path.Trim('/');
+        return path.Length == 0 || string.Equals(path, "home", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool IsBoundedContextRegistered(string boundedContext) {
+        try {
+            // BoundedContextRouteParser.Parse lowercases its output; manifests use natural casing.
+            // Case-insensitive comparison so PascalCase manifests match parser output.
+            foreach (DomainManifest manifest in Registry.GetManifests()) {
+                if (string.Equals(manifest.BoundedContext, boundedContext, StringComparison.OrdinalIgnoreCase)) {
+                    return true;
+                }
+            }
+        }
+        catch (Exception) {
+            return false;
+        }
+
+        return false;
     }
 
     /// <inheritdoc />
@@ -271,7 +358,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             // before dropping the module so hot-reload / reconnect paths don't accumulate stale
             // handlers on the shell root element.
             try { await _keyboardModule.InvokeVoidAsync("unregisterShellKeyFilter", _shellRoot).ConfigureAwait(false); }
-            catch (OperationCanceledException) { } catch (JSDisconnectedException) { } catch (JSException) { }
+            catch (OperationCanceledException) { }
+            catch (JSDisconnectedException) { }
+            catch (JSException) { }
 
             try { await _keyboardModule.DisposeAsync().ConfigureAwait(false); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { }
         }

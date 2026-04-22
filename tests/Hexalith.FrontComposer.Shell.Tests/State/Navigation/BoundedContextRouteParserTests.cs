@@ -4,18 +4,21 @@ using Shouldly;
 
 namespace Hexalith.FrontComposer.Shell.Tests.State.Navigation;
 
-public sealed class BoundedContextRouteParserTests
-{
+public sealed class BoundedContextRouteParserTests {
     [Theory]
     [InlineData("/", null)]
     [InlineData("https://localhost/", null)]
     [InlineData("/home", null)]
     [InlineData("/settings", null)]
+    [InlineData("counter/counter-view", "counter")]
     [InlineData("/counter/counter-view", "counter")]
     [InlineData("https://localhost/counter/counter-view?tab=1#recent", "counter")]
+    [InlineData("domain/commerce/submit-order-command", "commerce")]
     [InlineData("/domain/commerce/submit-order-command", "commerce")]
     [InlineData("https://localhost/domain/commerce/submit-order-command?from=palette", "commerce")]
-    [InlineData("/domain/commerce", null)]
+    // Story 3-6 Review F-EH-004: 2-segment /domain/{bc} landing routes resolve to their BC so
+    // persist / restore stays symmetric (previously returned null, asymmetric with capture).
+    [InlineData("/domain/commerce", "commerce")]
     // P21 (2026-04-21 pass-4, C3-D2(a) ratified): lenient first-segment fallback is the documented
     // behaviour per D28 addendum — any non-/domain/ 2+-segment path resolves to its first segment.
     // These cases lock the contract against accidental tightening.

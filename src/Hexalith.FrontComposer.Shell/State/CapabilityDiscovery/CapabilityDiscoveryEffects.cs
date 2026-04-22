@@ -101,6 +101,26 @@ public sealed class CapabilityDiscoveryEffects : IDisposable {
     }
 
     /// <summary>
+    /// Re-runs hydrate on <see cref="Navigation.StorageReadyAction"/> iff the capability
+    /// hydration state is still <see cref="CapabilityDiscoveryHydrationState.Idle"/>
+    /// (Story 3-6 D19 / ADR-049).
+    /// </summary>
+    /// <param name="action">The storage-ready action.</param>
+    /// <param name="dispatcher">The Fluxor dispatcher.</param>
+    /// <returns>A task representing the asynchronous operation.</returns>
+    [EffectMethod]
+    public async Task HandleStorageReady(Navigation.StorageReadyAction action, IDispatcher dispatcher) {
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(dispatcher);
+        if (_state.Value.HydrationState != CapabilityDiscoveryHydrationState.Idle) {
+            return;
+        }
+
+        await HydrateSeenSetAsync(dispatcher).ConfigureAwait(false);
+        await SeedBadgeCountsAsync(dispatcher).ConfigureAwait(false);
+    }
+
+    /// <summary>
     /// Persists the seen-set to storage when a capability is visited (Story 3-5 D9 / D13).
     /// </summary>
     /// <param name="action">The visited action.</param>

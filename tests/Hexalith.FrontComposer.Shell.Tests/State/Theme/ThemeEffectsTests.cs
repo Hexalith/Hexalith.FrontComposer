@@ -22,14 +22,12 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.Theme;
 /// <summary>
 /// Unit tests for <see cref="ThemeEffects"/>.
 /// </summary>
-public class ThemeEffectsTests
-{
+public class ThemeEffectsTests {
     private const string TestTenant = "tenant-a";
     private const string TestUser = "user-1";
 
     [Fact]
-    public async Task DispatchThemeChanged_StorageServiceThrows_StoreStillUpdatesState()
-    {
+    public async Task DispatchThemeChanged_StorageServiceThrows_StoreStillUpdatesState() {
         // Arrange
         IStorageService storage = Substitute.For<IStorageService>();
         _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
@@ -51,8 +49,7 @@ public class ThemeEffectsTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_StorageContainsValue_DispatchesThemeChanged()
-    {
+    public async Task HandleAppInitialized_StorageContainsValue_DispatchesThemeChanged() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
@@ -73,8 +70,7 @@ public class ThemeEffectsTests
     }
 
     [Fact]
-    public async Task HandleAppInitialized_StorageEmpty_DoesNotDispatch()
-    {
+    public async Task HandleAppInitialized_StorageEmpty_DoesNotDispatchThemeChanged() {
         // Arrange — empty storage, no seeding
         var storage = new InMemoryStorageService();
         IThemeService themeService = Substitute.For<IThemeService>();
@@ -86,13 +82,50 @@ public class ThemeEffectsTests
         // Act
         await sut.HandleAppInitialized(action, dispatcher);
 
-        // Assert — no dispatch because no stored theme preference exists
-        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(default!);
+        // Assert — no ThemeChangedAction because no stored theme preference exists.
+        // Story 3-6 D19 adds ThemeHydratingAction + ThemeHydratedCompletedAction dispatches on every
+        // hydrate path (including the empty case) — those are expected and not asserted here.
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<ThemeChangedAction>());
     }
 
     [Fact]
-    public async Task HandleThemeChanged_PersistsToStorage()
-    {
+    public async Task MissingScope_DoesNotCompleteHydrationUntilStorageReadyReplaysWithScope() {
+        CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
+        string? tenant = null;
+        string? user = TestUser;
+        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
+        accessor.TenantId.Returns(_ => tenant);
+        accessor.UserId.Returns(_ => user);
+        var storage = new InMemoryStorageService();
+        await storage.SetAsync(StorageKeys.BuildKey(TestTenant, TestUser, "theme"), ThemeValue.Dark, ct);
+        IThemeService themeService = Substitute.For<IThemeService>();
+        ILogger<ThemeEffects> logger = Substitute.For<ILogger<ThemeEffects>>();
+        IDispatcher dispatcher = Substitute.For<IDispatcher>();
+        IState<FrontComposerThemeState> state = Substitute.For<IState<FrontComposerThemeState>>();
+        state.Value.Returns(new FrontComposerThemeState(ThemeValue.Light));
+        var sut = new ThemeEffects(
+            storage,
+            MsOptions.Create(new Contracts.FcShellOptions()),
+            accessor,
+            logger,
+            themeService,
+            state);
+
+        await sut.HandleAppInitialized(new AppInitializedAction("corr-init"), dispatcher);
+
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<ThemeHydratingAction>());
+        dispatcher.DidNotReceiveWithAnyArgs().Dispatch(Arg.Any<ThemeHydratedCompletedAction>());
+
+        tenant = TestTenant;
+        await sut.HandleStorageReady(new Hexalith.FrontComposer.Shell.State.Navigation.StorageReadyAction("corr-ready"), dispatcher);
+
+        dispatcher.Received(1).Dispatch(Arg.Any<ThemeHydratingAction>());
+        dispatcher.Received(1).Dispatch(Arg.Is<ThemeChangedAction>(a => a.NewTheme == ThemeValue.Dark));
+        dispatcher.Received(1).Dispatch(Arg.Any<ThemeHydratedCompletedAction>());
+    }
+
+    [Fact]
+    public async Task HandleThemeChanged_PersistsToStorage() {
         // Arrange
         CancellationToken ct = Xunit.TestContext.Current.CancellationToken;
         var storage = new InMemoryStorageService();
@@ -112,8 +145,7 @@ public class ThemeEffectsTests
     }
 
     [Fact]
-    public async Task HandleThemeChanged_StorageServiceThrows_LogsWarning()
-    {
+    public async Task HandleThemeChanged_StorageServiceThrows_LogsWarning() {
         // Arrange
         IStorageService storage = Substitute.For<IStorageService>();
         _ = storage.SetAsync(Arg.Any<string>(), Arg.Any<ThemeValue>(), Arg.Any<CancellationToken>())
@@ -136,16 +168,14 @@ public class ThemeEffectsTests
             default!);
     }
 
-    private static IUserContextAccessor StubAccessor(string? tenantId, string? userId)
-    {
+    private static IUserContextAccessor StubAccessor(string? tenantId, string? userId) {
         IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
         accessor.TenantId.Returns(tenantId);
         accessor.UserId.Returns(userId);
         return accessor;
     }
 
-    private static ServiceProvider BuildProvider(IStorageService storage)
-    {
+    private static ServiceProvider BuildProvider(IStorageService storage) {
         ServiceCollection services = new();
         _ = services.AddLogging();
         _ = services.AddFluxor(o => o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly));
@@ -163,11 +193,17 @@ public class ThemeEffectsTests
             Hexalith.FrontComposer.Shell.Badges.BadgeCountService>();
         _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.CapabilityDiscovery.CapabilityDiscoveryEffects>();
         _ = services.AddSingleton(TimeProvider.System);
+        // Story 3-6 — Fluxor scan also picks up ScopeFlipObserverEffect + DataGridNavigationEffects.
+        _ = services.AddScoped<Hexalith.FrontComposer.Contracts.Lifecycle.IUlidFactory>(_ =>
+            new Hexalith.FrontComposer.Shell.Services.Lifecycle.UlidFactory());
+        _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.Navigation.IScopeReadinessGate,
+            Hexalith.FrontComposer.Shell.State.Navigation.ScopeReadinessGate>();
+        _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.Navigation.ScopeFlipObserverEffect>();
+        _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationEffects>();
         return services.BuildServiceProvider();
     }
 
-    private sealed class EmptyActionQueueProjectionCatalog : Hexalith.FrontComposer.Contracts.Badges.IActionQueueProjectionCatalog
-    {
+    private sealed class EmptyActionQueueProjectionCatalog : Hexalith.FrontComposer.Contracts.Badges.IActionQueueProjectionCatalog {
         public IReadOnlyList<Type> ActionQueueTypes { get; } = Array.Empty<Type>();
     }
 

@@ -1,0 +1,384 @@
+# Story 4.2: Status Badge System
+
+Status: ready-for-dev
+
+> **Epic 4 § 58–97** · **FR5** · **UX-DR24** · **UX-DR30** (color never sole signal) · **NFR32** (WCAG AA contrast) · applies lessons **L01, L02, L04, L06, L07, L11**. Consumes the `ProjectionBadgeAttribute` + `BadgeSlot` contract frozen in Story 1-2, the `BadgeMappingEntry`/`ColumnModel.BadgeMappings` IR already populated by Story 1-4/1-5's Parse+Transform pipeline, and the role-dispatch + emit helper seams opened by Story 4-1. Provides the first shipped semantic-color surface for domain state — pluggable into every generated view (Default / ActionQueue / StatusOverview / DetailRecord / Timeline) without touching Story 4-1's role-dispatch switch.
+
+---
+
+## Executive summary (Feynman-level, ~30 sec)
+
+Today an enum column (e.g., `OrderStatus`) in a generated view renders as humanized text — `"Pending"`, `"Approved"` — via the `EmitEnumColumn` path shipped in Story 1-5. Story 1-2 already ships `[ProjectionBadge(BadgeSlot.Warning)]` on enum members; Story 1-4's `AttributeParser.ParseBadgeMappings` already lifts those into `ColumnModel.BadgeMappings`. The IR carries the data; **nothing in the emitter consumes it**. The `RazorEmitter` has a literal `"// TODO: Badge rendering (Story 2.x)"` placeholder (since superseded by Story 4.2 scope).
+
+Story 4.2 **wires `ColumnModel.BadgeMappings` → FluentBadge pill** so enum columns annotated with `[ProjectionBadge]` render a semantic-color pill with a text label — 6 slots, 1:1 mapped to Fluent UI v5's `BadgeColor` enum, universally applied across every role-dispatched body shipped by Story 4-1.
+
+1. **Runtime mapping helper (Shell).** New `FcStatusBadge` Blazor component with parameters `Slot` (`BadgeSlot`, `EditorRequired`), `Label` (`string`, `EditorRequired`), `ColumnHeader` (`string?`, default null — used for `aria-label` context). It resolves `(BadgeColor, BadgeAppearance)` via a frozen slot→appearance table (Neutral/Info/Success/Warning/Danger/Accent → Subtle/Informative/Success/Warning/Danger/Brand, all `Tint` appearance except Accent which uses `Filled`). The component always renders the text label — color is never the sole signal (UX-DR30 commitment #1).
+2. **Emit-stage column dispatch.** `EmitEnumColumn` gains a conditional: when `col.BadgeMappings.Count > 0`, emit `<FcStatusBadge Slot="..." Label="..." />` inside a `PropertyColumn`'s `ChildContent`; otherwise keep the existing `HumanizeEnumLabel` text path. The slot selection is a generated inline switch over enum member names — no runtime reflection into `BadgeMappingEntry` arrays.
+3. **Role-strategy reuse.** Every strategy Story 4-1 emits (`EmitDefaultBody`, `EmitActionQueueBody`, `EmitStatusOverviewBody`, `EmitDetailRecordBody`, `EmitTimelineBody`) routes enum columns through the same `EmitEnumColumn` helper — 4.2's change is one emitter function, six surfaces upgraded automatically. StatusOverview's grouping cell (the `Status` column of the aggregate grid) uses the same `FcStatusBadge` so it reads as a colored chip instead of bare text.
+4. **Diagnostics.** `HFC1025_BadgeSlotFallbackApplied` (Information) fires once per emitted view when any enum column carries `[ProjectionBadge]` on SOME members but not ALL — surfaces the "partial annotation" adopter mistake at build time. `HFC1026_ColorOnlyBadgeDetected` (Warning) is RESERVED for a future CI-layer check; 4-2 does not emit it (FcStatusBadge makes color-only construction unreachable from generated code, but the ID is claimed now so Story 10-2's specimen checker can use it without re-opening the diagnostic table).
+5. **Accessibility contract.** Every `FcStatusBadge` renders `<FluentBadge>{Label}</FluentBadge>` (text always present), `aria-label` = `"{ColumnHeader}: {Label}"` so screen readers announce context + state, not just state. Default Fluent v5 Badge tokens meet WCAG AA for Tint appearance on every slot — no custom CSS, no contrast shim (zero-override per architecture §30).
+6. **Customization escape path.** When 6 slots aren't enough, adopters use Story 6 customization gradient (Annotation → Template → Slot → Full replacement) to supply a custom badge component. The escape path is documented but NOT implemented in 4-2 (it is Epic 6's scope).
+
+The design honors the "capability contract" principle: slot set is permanent, appearance table is frozen, diagnostic IDs are reserved, and the entire feature is one emitter-side conditional + one Shell component. Zero changes to Story 1-2 contracts. Zero changes to Story 4-1's role-dispatch switch. Cross-story seams are explicit (L01), decisions live inside the L06 feature-story cap (≤ 25 — 4-2 targets ~15).
+
+---
+
+## Dev Agent Cheat Sheet (L11)
+
+**Goal (one sentence):** Render `[ProjectionBadge(BadgeSlot.X)]`-annotated enum values as Fluent UI v5 colored badge pills with their text label across every role-dispatched view from Story 4-1, with a frozen 6-slot → Fluent-color mapping, WCAG-AA-compliant Tint appearance, zero CSS customisation, and a reusable `FcStatusBadge` Shell component.
+
+**Files to create:**
+
+| Path | Purpose |
+| --- | --- |
+| `src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusBadge.razor` + `.razor.cs` | Blazor component wrapping `FluentBadge`. Parameters: `Slot` (`BadgeSlot`, `EditorRequired`), `Label` (`string`, `EditorRequired`), `ColumnHeader` (`string?`, default null — used for `aria-label` context). Resolves `(BadgeColor, BadgeAppearance)` via a static `SlotAppearanceTable`. Renders `<FluentBadge>{Label}</FluentBadge>` with `aria-label="{ColumnHeader}: {Label}"` (or `"{Label}"` when header absent). |
+| `src/Hexalith.FrontComposer.Shell/Components/Badges/SlotAppearanceTable.cs` | Internal static readonly mapping `BadgeSlot → (BadgeColor, BadgeAppearance)`. Single source of truth for the 6-slot visual specification. |
+| `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/FcStatusBadgeTests.cs` | bUnit tests: renders label text, renders `aria-label` combining header+label, resolves all 6 slots to their Fluent mapping, handles null/empty label gracefully (renders empty badge — never crashes), `ColumnHeader` null → `aria-label` is label-only. |
+| `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotAppearanceTableTests.cs` | Unit tests: table is exhaustive (`Enum.GetValues<BadgeSlot>()` matches keys), every slot maps to a valid Fluent enum value, Accent → `BadgeColor.Brand` + `Filled`, all others → `Tint`. |
+| `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs` | Snapshot/Verify tests: enum column WITHOUT badge mappings emits `HumanizeEnumLabel` text (unchanged baseline); enum column WITH full mappings emits `FcStatusBadge` column; enum column with PARTIAL mappings emits badges for annotated members + `HumanizeEnumLabel` fallback for unannotated + HFC1025 Information diagnostic; nullable enum column handles null value (no badge rendered — em-dash text). |
+| `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/StatusOverviewBadgeColumnTests.cs` | Verify test: the `Status` cell in a StatusOverview-role projection renders `FcStatusBadge` (not plain text) when `[ProjectionBadge]` annotations exist. Regression gate vs Story 4-1 AC2. |
+
+**Files to extend:**
+
+| Path | Change |
+| --- | --- |
+| `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` | Replace the `"// TODO: Badge rendering (Story 2.x)"` placeholder. Modify `EmitEnumColumn` to branch on `col.BadgeMappings.Count > 0`: full mappings → emit `FcStatusBadge` inside `PropertyColumn.ChildContent`; partial → emit switch that falls back to `HumanizeEnumLabel` for unmapped members; no mappings → existing text path (unchanged). `HumanizeEnumLabel` stays as the label source (enum → human text) in both paths — badges carry the humanized text inside the pill. |
+| `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs` (created by Story 4-1) | `EmitStatusOverviewBody` calls into the same `EmitEnumColumn` for its `Status` cell — no dedicated StatusOverview badge path. If Story 4-1 inlined the Status cell rather than routing through `EmitEnumColumn`, 4-2 extracts a shared `EmitStatusLabelCell(ColumnModel, typeName)` helper used by both Default/Timeline and StatusOverview. |
+| `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` | Add `HFC1025_BadgeSlotFallbackApplied` (Information, per-view de-duplicated). Reserve `HFC1026_ColorOnlyBadgeDetected` (Warning; no call site in 4-2 — reserved for Story 10-2 specimen checker). |
+| `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` | Extend diagnostic switch for HFC1025 (+ HFC1026 reservation — no-op handler). |
+| `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs` | Add XML-doc entries for HFC1025 + HFC1026 (mirror HFC1022/HFC1023 format established by Story 4-1). |
+| `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` | Add rows for HFC1025 (Information) + HFC1026 (Warning, reserved). |
+| `src/Hexalith.FrontComposer.Shell/_Imports.razor` | Add `@using Hexalith.FrontComposer.Shell.Components.Badges` so generated views can reference `FcStatusBadge` without a fully-qualified name. |
+| `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx` + `.fr.resx` | Add 2 new keys: `StatusBadgeAriaLabelTemplate` (EN: `"{0}: {1}"` / FR: `"{0} : {1}"` — mind the French non-breaking space before the colon), `StatusBadgeUnknownStateFallback` (EN: `"Unknown"` / FR: `"Inconnu"` — used if the enum value is outside the declared member set at runtime, should never happen for annotated enums but is the fail-soft path). 66 → 68 per locale. |
+
+**Generated naming rules (L04 preserved):**
+
+- Generator hint prefix unchanged: `{Namespace}.{TypeName}.g.razor.cs`.
+- Emitted class name unchanged: `{TypeName}View : ComponentBase, IDisposable`.
+- Badge rendering inlined into `BuildRenderTree`; no new generated type; no new file per view.
+
+**AC quick index** (one-liner each):
+
+| AC | Intent |
+| --- | --- |
+| AC1 | Enum value with `[ProjectionBadge(Warning)]` renders as `FcStatusBadge` with `BadgeColor.Warning` + `BadgeAppearance.Tint` + text label |
+| AC2 | All 6 slots map to their Fluent UI v5 equivalents per the frozen `SlotAppearanceTable`; Accent uses `Brand` + `Filled` (honours deployment accent override) |
+| AC3 | Enum member with no `[ProjectionBadge]` annotation OR an enum with no mappings at all falls back to `HumanizeEnumLabel` text (unchanged Story 1-5 behaviour); partial annotation emits HFC1025 Information |
+| AC4 | Escape path (Epic 6) documented in Dev Notes — 4-2 does NOT implement custom badge registration |
+| AC5 | Every badge carries its text label (color never sole signal); `aria-label` combines `ColumnHeader: Label`; Fluent v5 default tokens meet WCAG AA contrast for Tint on every slot |
+| AC6 | StatusOverview's Status cell (Story 4-1 AC2) renders `FcStatusBadge` instead of bare text when annotations exist; regression test asserts 4-1 default-path output is unchanged for non-annotated enums |
+
+**Binding contract(s) with predecessor stories:**
+
+- **Story 1-2 contract** frozen: `BadgeSlot` enum (6 members), `ProjectionBadgeAttribute` (single-arg ctor, Field target, `AllowMultiple=false`, `Inherited=false`) — Story 4-2 ONLY consumes; no modification.
+- **Story 1-4 contract** frozen: `AttributeParser.ParseBadgeMappings` already emits `EquatableArray<BadgeMappingEntry>` keyed by enum member name + slot name. Story 4-2 does NOT touch Parse.
+- **Story 1-5 contract** frozen: `ColumnModel.BadgeMappings` already on IR; `TypeCategory.Enum` already routed through `EmitEnumColumn`. Story 4-2's change to `EmitEnumColumn` is append-only — the text fallback path is preserved byte-for-byte for non-annotated enums (regression gate).
+- **Story 4-1 contract** consumed: the per-role `Emit{Strategy}Body` methods dispatch enum columns through `EmitEnumColumn`; 4-2's change propagates to every strategy automatically. Story 4-1's StatusOverview grouping emits a `Status` column via the shared enum-column path (verify T2 exit — if 4-1 inlined the StatusOverview `Status` cell, 4-2 extracts a shared helper per D9 below).
+- **Story 2-2 contract** unchanged: `FcLifecycleWrapper` already uses `FluentBadge` with `BadgeAppearance.Filled`/`BadgeColor.Informative` for its "Still syncing…" pill — not a projection badge surface. Story 4-2 does NOT share the `fc-badge--syncing` desaturation class (UX-spec `FcDesaturatedBadge` optimistic-state class — deferred; see Known Gaps).
+- **Story 3-5 contract** unchanged: `IBadgeCountService` feeds home-card + sidebar nav COUNT badges (numeric `FluentBadge` with `BadgeColor.Brand` / `Appearance.Filled`). Story 4-2's STATUS badges are semantically distinct — they live inside projection rows, not nav chrome. No service dependency, no state coupling.
+
+**Scope guardrails (what NOT to implement in 4-2):**
+
+- ❌ **Filter chips with badge colors** (Story 4.3) — `FluentBadge` toggle chips above the DataGrid for active-filter visualization. 4-2 renders badges INSIDE rows only.
+- ❌ **Virtual scrolling** (Story 4.4) — badge rendering must remain cheap per-row; the row-level switch is declarative and allocation-minimal (one string compare per row, one FluentBadge instance per rendered row). No caching layer.
+- ❌ **Expand-in-row detail badges** (Story 4.5) — the expanded detail view's per-field badges are part of 4.5's scope; 4-2's `FcStatusBadge` is REUSED unchanged by 4.5 (frozen parameter list).
+- ❌ **Empty-state badge rendering** (Story 4.6) — `FcProjectionEmptyPlaceholder` has no badge surface; 4-2 does not modify it.
+- ❌ **Optimistic-state desaturation** (UX-spec `FcDesaturatedBadge`) — the 50% saturation during Syncing lifecycle state. Deferred to a Known Gaps entry; Story 2-4 already ships the lifecycle transition signal, a 4.x follow-up wires it to projection row badges. 4-2 does NOT ship the CSS class.
+- ❌ **Full CI specimen verification** (Story 10-2) — the axe-core + contrast specimen that proves every badge meets WCAG AA across themes / densities / directions. 4-2 ships unit-level contrast assertions (verify Fluent token values); Story 10-2 layers the CI gate.
+- ❌ **Custom badge override path** (Epic 6) — Slot-level or Full-component replacement of `FcStatusBadge`. 4-2 ONLY ships the default surface.
+- ❌ **Flags-enum rendering** — `[Flags]` enums are not supported as badge-carrying columns. 4-2 emits a build-time Warning (reuses existing HFC1008 Flags-enum diagnostic) AND the enum column falls back to plain text. No multi-badge compound rendering in v1.
+- ❌ **Nullable-enum "null as badge"** — a null enum value renders as em-dash text (`"—"`), NOT as a "Null" badge. Null is data-absence, not state. Matches existing Story 1-5 null-column convention.
+- ❌ **New badge slot colors** — the 6-slot palette is FROZEN per UX-DR24. Adopters wanting a 7th slot go through Epic 6 customization, not through PR to `BadgeSlot`.
+
+**Start-here task order:** T1 → T2 → T3 → T4 → T5 → T6 → T7 (sequential; T6 French parity runs after T5 tests gate the resource key set; T7 diagnostics doc pass runs last).
+
+**Test count expectation:** target ≈ 42 new tests (10 SourceTools emitter snapshots + 22 Shell component/mapping tests + 8 Contracts diagnostic + 2 resource parity). Budget matches L07 cost-benefit — no defense-in-depth round proposed new tests that didn't earn ≥ 3.0 in the matrix scoring.
+
+---
+
+## Story
+
+As a business user,
+I want to see color-coded status badges on projection items that communicate state at a glance, with readable text labels and accessible color contrast,
+so that I can scan a DataGrid and instantly identify which items need attention without relying on color alone.
+
+**Business value:** The first semantic-color surface that makes domain state LEGIBLE in FrontComposer's auto-generated views. After 4-1 ships role-dispatched bodies, every generated DataGrid still renders an enum column as humanized text — "Pending" sits next to "Approved" at identical visual weight, and the business user has to READ every cell to triage. After 4-2 lands, "Pending" becomes an amber pill and "Approved" becomes green — scannability is instant, and the UX-DR24 semantic-color contract (PRD §non-functional-requirements commitment) is met for every projection an adopter models without a single line of custom CSS. Accessibility is first-class: the text label is always present, WCAG AA contrast is inherited from Fluent UI v5 tokens, and the `aria-label` names the column + state so screen readers announce "Order status: Pending" instead of "Pending" in isolation.
+
+---
+
+## Cross-story contract table (L01)
+
+| Contract | Producer | Consumer | Binding |
+|---|---|---|---|
+| `FcStatusBadge` Blazor component (new Shell type) | 4-2 | Every generated `{TypeName}View` enum column with `[ProjectionBadge]` annotations; Story 4.5 expand-in-row detail view per-field badges; Story 4.3 filter-chip rendering MAY reuse for active-filter display; Epic 6 Annotation override path points adopters at the component as the default surface | Parameters FROZEN at v1: `Slot` (`BadgeSlot`, `EditorRequired`), `Label` (`string`, `EditorRequired`), `ColumnHeader` (`string?`, default null). Future parameters append-only. Component MUST NOT expose `Color` or `Appearance` parameters — those are resolved internally from `Slot` to preserve the semantic-color contract. |
+| `SlotAppearanceTable` (internal static mapping `BadgeSlot → (BadgeColor, BadgeAppearance)`) | 4-2 | `FcStatusBadge` render path | FROZEN mapping: `Neutral→(Subtle,Tint)`, `Info→(Informative,Tint)`, `Success→(Success,Tint)`, `Warning→(Warning,Tint)`, `Danger→(Danger,Tint)`, `Accent→(Brand,Filled)`. Changing a slot's color or appearance requires a MAJOR version bump (UX-DR24 living-specification discipline per architecture §125-132 `Type ramp mapping`). New slots added to `BadgeSlot` in a future major require a corresponding row — table exhaustiveness enforced by `SlotAppearanceTableTests.TableIsExhaustive`. |
+| `EmitEnumColumn` extension (badge-aware emission) | 4-2 | All Story 4-1 role-strategy bodies via the shared `EmitEnumColumn` helper | Append-only change. Non-annotated enums preserve byte-for-byte the Story 1-5 baseline (regression gate `CounterProjectionApprovalTests` must remain green). Annotated enums emit a NEW block wrapping `FcStatusBadge`. The emit-time decision is made on `col.BadgeMappings.Count > 0`; no runtime branching inside the generated view. |
+| `HFC1025_BadgeSlotFallbackApplied` (Information, build-time) | 4-2 emitter | Operator / telemetry dashboards; Story 9-4 may layer analyzer hardening | Per-view DEDUPED — fires once per projection type when ANY enum column has PARTIAL `[ProjectionBadge]` coverage (some members annotated, others not). Message: `"Enum {enumType} on projection {projectionType} has {N} of {M} members annotated with [ProjectionBadge] — unannotated members render as plain text. Annotate all members or none for consistency."` Structured payload: `{ProjectionType, EnumType, AnnotatedCount, TotalCount, UnannotatedMembers[]}`. Does NOT fire when zero OR all members annotated. |
+| `HFC1026_ColorOnlyBadgeDetected` (Warning, RESERVED) | 4-2 (reserves only; no call site) | Story 10-2 specimen checker when it lands | ID claimed, row in `AnalyzerReleases.Unshipped.md`, XML-doc entry in `FcDiagnosticIds.cs`. 4-2 emits ZERO instances — the component API makes the failure mode unreachable from generated code. Reservation prevents Story 10-2 from re-litigating the diagnostic table entry. |
+| 2 new EN+FR resource keys = 4 new strings; total shell resource count goes 66 → 68 per locale | 4-2 | `FcStatusBadge` `aria-label` template + runtime unknown-state fallback | Append-only to `FcShellResources.resx` + `FcShellResources.fr.resx`. EN/FR parity enforced by `CanonicalKeysHaveFrenchCounterparts`. French non-breaking space before colon in `StatusBadgeAriaLabelTemplate` (`"{0} : {1}"` with U+00A0) per French typographic convention — matches Story 3-1 French copy discipline. |
+| `BadgeSlot` enum (Story 1-2 contract) | 1-2 | 4-2 consumer only | Unchanged. 4-2 does NOT add, remove, rename, or renumber members. If a future story proposes a 7th slot, it requires a new spec-change PR AND a major-version bump (living table discipline). |
+| `ProjectionBadgeAttribute` (Story 1-2 contract) | 1-2 | 4-2 consumer only | Unchanged. Adopter-facing API is stable. |
+| `ColumnModel.BadgeMappings` (Story 1-5 IR field) | 1-5 | 4-2 emitter consumer | Unchanged shape; 4-2 ONLY reads. Deterministic ordering (declaration order of enum members) preserved from Parse stage. |
+| `ProjectionRenderStrategy`-dispatched `Emit{Strategy}Body` helpers (Story 4-1 contract) | 4-1 | 4-2 upgrades behaviour inside `EmitEnumColumn`; strategies unchanged | The switch-expression exhaustiveness discipline (Story 4-1 D5) is preserved — 4-2 does NOT add a new strategy, so no new case needed. |
+| `IBadgeCountService` (Story 3-5 scoped service) | 3-5 | Home-card + sidebar nav (count badges, not status badges) — unchanged by 4-2 | Not consumed by 4-2. Explicit mention in this table to prevent confusion: count badges and status badges are semantically distinct surfaces with distinct producer/consumer wiring. |
+
+---
+
+## Acceptance Criteria
+
+| AC | Given / When / Then | Primary tasks |
+|---|---|---|
+| **AC1** | **Given** an enum property with member `[ProjectionBadge(BadgeSlot.Warning)]` on value `Pending`. **When** the projection renders the column (in any role-dispatched body — Default, ActionQueue, StatusOverview, DetailRecord, Timeline). **Then** the cell renders `<FcStatusBadge Slot="BadgeSlot.Warning" Label="Pending" ColumnHeader="Status" />` which expands to `<FluentBadge Appearance="BadgeAppearance.Tint" Color="BadgeColor.Warning">Pending</FluentBadge>` wrapped with `aria-label="Status: Pending"`. **And** the label text is produced by `HumanizeEnumLabel(x.{property}.ToString())` (unchanged from Story 1-5). **And** the column header remains unchanged (`PropertyColumn<T, string?>.Title` text is `EscapeString(col.Header)` — no badge on the header cell itself). **And** a nullable enum column renders em-dash (`"—"`, U+2014) when the value is null (no badge rendered — null is data-absence, not state; matches Story 1-5 null-column convention). | T2, T3, T4 |
+| **AC2** | **Given** the frozen 6-slot mapping table. **When** each slot resolves via `SlotAppearanceTable`. **Then** the mapping is: `Neutral → (BadgeColor.Subtle, BadgeAppearance.Tint)`, `Info → (BadgeColor.Informative, BadgeAppearance.Tint)`, `Success → (BadgeColor.Success, BadgeAppearance.Tint)`, `Warning → (BadgeColor.Warning, BadgeAppearance.Tint)`, `Danger → (BadgeColor.Danger, BadgeAppearance.Tint)`, `Accent → (BadgeColor.Brand, BadgeAppearance.Filled)`. **And** `SlotAppearanceTableTests.TableIsExhaustive` asserts every member of `Enum.GetValues<BadgeSlot>()` has a table entry (fails compilation if a future slot is added without a corresponding mapping row). **And** the Accent slot uses `Filled` (not `Tint`) because `BadgeColor.Brand` picks up the deployment-overridable accent token (`--accent-base-color`, default teal `#0097A7`) and Tint Brand reads as a muted teal that fails the "Active/Running/Highlighted — rare but attention-grabbing" UX intent from the `visual-design-foundation.md` § Projection status badge mapping table. All other slots use `Tint` for the muted chip appearance that reads as status-reporting rather than primary-action. | T1, T2 |
+| **AC3** | **Given** an enum where SOME members are annotated with `[ProjectionBadge]` and OTHERS are not (e.g., `Pending` has `[ProjectionBadge(Warning)]`, `Approved` has no annotation). **When** the emitter processes the column. **Then** the generated view emits `FcStatusBadge` for annotated values and falls back to `HumanizeEnumLabel` text (no wrapping badge) for unannotated values — rendered inline so a mixed column reads as `[Warning pill: "Pending"] | Approved | [Success pill: "Completed"]`. **And** HFC1025 Information fires once per projection type with payload `{EnumType, AnnotatedCount=2, TotalCount=3, UnannotatedMembers=["Approved"]}`. **Given** an enum where NO member is annotated. **When** the emitter processes the column. **Then** `col.BadgeMappings.Count == 0` — existing Story 1-5 `HumanizeEnumLabel` text path runs unchanged (regression gate). **Given** an enum where ALL members are annotated. **Then** the generated switch is exhaustive and HFC1025 does NOT fire. | T2, T3, T5, T7 |
+| **AC4** | **Given** a developer needs more than 6 status colors OR a slot semantic that doesn't fit the palette (e.g., "Priority: High" color scheme). **When** they look for an escape path. **Then** Dev Notes documents that Epic 6 Annotation-level override (`[SlotOverride(typeof(MyCustomBadge))]`, landing in Story 6-1) OR Slot-level override (Story 6-3) are the supported paths; adopters MUST honor the custom-component accessibility contract (text label always present, WCAG AA contrast, forced-colors mode compliance — mirrors UX-DR31's 6 requirements). **And** 4-2 does NOT implement the override mechanism — the escape path is forward-documented, not forward-implemented. This AC is a DOC check (task T8 — verify Dev Notes references Epic 6 docs correctly), not a code check. | T8 |
+| **AC5** | **Given** any rendered `FcStatusBadge`. **When** a screen reader reads the cell. **Then** it announces `"{ColumnHeader}: {Label}"` (e.g., `"Status: Pending"`) via the `aria-label` attribute — NOT `"Pending"` in isolation. **When** `ColumnHeader` is null (host is rendering the badge outside a DataGrid column — adopter scenario). **Then** `aria-label` falls back to `"{Label}"`. **Given** the frozen appearance table. **When** contrast is measured on every slot×theme combination (light/dark × all 6 slots = 12 test points). **Then** every combination meets WCAG AA: ≥ 4.5:1 for text, ≥ 3:1 for UI components. Contrast is verified at unit level (assert Fluent v5 token values resolve to compliant RGB triples — leverage Fluent's published design-token tables) at T4. Full visual specimen verification across theme × density × direction is Story 10-2 (deferred with L10 story link). **And** UX-DR30 Commitment #1 is honored by construction: the component template renders `{Label}` as its only child content — omitting label at render-time is physically impossible from the component's public API (the `Label` parameter is `EditorRequired` and the razor template references it unconditionally). | T1, T4 |
+| **AC6** | **Given** a projection annotated `[ProjectionRole(ProjectionRole.StatusOverview)]` whose grouped `Status` column resolves to an enum type with `[ProjectionBadge]` mappings (per Story 4-1 D11 deterministic tiebreaker). **When** `{TypeName}View` renders. **Then** the `Status` cell of the aggregate grid renders `FcStatusBadge` with the slot resolved from the group key's enum member name — e.g., a StatusOverview over `OrdersProjection` shows `[Warning pill: "Pending"] | 42`, `[Success pill: "Approved"] | 137`, `[Danger pill: "Rejected"] | 3`. **And** the `Count` column format (`N0`) and the row click-handler (`NavigationManager.NavigateTo(FcProjectionRoutes.StatusFilter(bcRoute, statusValue))` — Story 4-1 D11) are UNCHANGED. **And** when the enum has NO `[ProjectionBadge]` mappings, the `Status` cell falls back to `HumanizeEnumLabel` text (regression gate for Story 4-1 AC2 default behavior). **Given** the Story 4-1 default path (no role attribute). **When** the projection has an enum column with no badge mappings. **Then** `CounterProjectionApprovalTests` remains green (Story 1-5 + 4-1 DoD gate from 4-1 AC5) — no regression introduced by 4-2. | T3, T5 |
+
+---
+
+## Critical decisions (READ FIRST — do NOT revisit)
+
+> **15 binding decisions.** Feature-story budget is ≤ 25 (L06). 4-2 lands at 15/25, leaving a 10-decision buffer for review rounds before Occam / Matrix trimming is required. Raise a spec-change proposal before revisiting any entry.
+
+| # | Decision | Rationale | Consumed by |
+|---|---|---|---|
+| **D1** | **Wrap Fluent's `FluentBadge` in a dedicated `FcStatusBadge` component** — don't emit `<FluentBadge>` inline in the generator. The component lives in `src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusBadge.razor`. Parameters: `Slot` (`BadgeSlot`, EditorRequired), `Label` (`string`, EditorRequired), `ColumnHeader` (`string?`, default null). | A named component is the stable contract point for (a) the semantic-color mapping (internal, single source of truth), (b) the accessibility wrapper (aria-label construction), (c) future optimistic-state desaturation hook (`FcDesaturatedBadge` class — deferred to a 4.x follow-up per Known Gaps), (d) Epic 6 override target (adopters replace `FcStatusBadge` atomically, not individual inline `<FluentBadge>` calls scattered across generated files). Rejected: (a) emit `<FluentBadge>` inline in every generated view — 20 lines per badge × N columns × M views = churn-prone, untestable as a unit, breaks the Epic 6 override story; (b) emit an IRenderFragment returned from a generated helper — Blazor render-fragment composition is less discoverable than a named component, and tooling doesn't index it the same way; (c) skip the wrapper and let adopters target `FluentBadge` via CSS — violates zero-override architecture §30. | T1, T2, T3; AC1, AC4 |
+| **D2** | **Slot → Fluent mapping is a static readonly `FrozenDictionary<BadgeSlot, (BadgeColor, BadgeAppearance)>`** (or equivalent `IReadOnlyDictionary` depending on target framework) in `SlotAppearanceTable.cs`. Mapping: `Neutral→(Subtle,Tint)`, `Info→(Informative,Tint)`, `Success→(Success,Tint)`, `Warning→(Warning,Tint)`, `Danger→(Danger,Tint)`, `Accent→(Brand,Filled)`. | A table is the most compact and testable form for a finite closed-set mapping. `FrozenDictionary` has O(1) lookup and is trim/AOT-safe. Exhaustiveness is trivially testable (`Enum.GetValues<BadgeSlot>()` vs `Keys`). Rejected: (a) switch expression in `FcStatusBadge.razor.cs` body — equally valid but makes "what slot uses which color" harder to eyeball at review time; a table wins for auditability; (b) attribute-based mapping on `BadgeSlot` enum members (`[SlotAppearance(Subtle, Tint)]`) — attribute soup with no runtime advantage; (c) customisable mapping via configuration — contradicts the UX-DR24 "fixed palette" contract. | T1, T2; AC2 |
+| **D3** | **`Accent` slot uses `BadgeAppearance.Filled`; every other slot uses `BadgeAppearance.Tint`.** Accent maps to `BadgeColor.Brand` which picks up the deployment-overridable accent token (default teal `#0097A7` per `visual-design-foundation.md` § Color System). Filled Accent = a saturated chip that reads as "Active/Running/Highlighted" — the UX-spec's reserved "rare but attention-grabbing" intent. Tint Accent = a muted teal that competes with the Info (blue, Tint) treatment and loses the emphatic signal. | The UX-spec table (`visual-design-foundation.md:77-88`) names Accent as "rare" — when it DOES appear it must be unambiguous. `Filled` is the only appearance that preserves that intent without custom CSS. Other slots are plentiful (multiple rows share a color), so `Tint` reads correctly as a status-report rather than a primary-action chip. Rejected: (a) all slots `Tint` — Accent loses emphasis; (b) all slots `Filled` — reads as an action panel, not a status grid (visual-noise regression); (c) caller controls appearance — violates the semantic-color contract. | T1, T2; AC2 |
+| **D4** | **`aria-label` construction is `"{ColumnHeader}: {Label}"` when `ColumnHeader` is non-null, else just `"{Label}"`.** Built inside `FcStatusBadge.razor.cs` via `StatusBadgeAriaLabelTemplate` resource key (EN: `"{0}: {1}"` / FR: `"{0} : {1}"` with U+00A0 non-breaking space before colon per French typography). | Naming the column context turns a bare-state announcement ("Pending") into an actionable one ("Status: Pending"). The caller controls whether to supply the context — library consumers of `FcStatusBadge` outside a DataGrid column skip it and still get a valid label. Resource key is localised so French users don't hear an English "Status". Rejected: (a) always include context and default `ColumnHeader` to `typeof(T).Name` — generates "{TypeName}: {Label}" which is noisy and wrong for column-header scenarios; (b) skip `ColumnHeader` entirely — loses screen-reader context; (c) put the context INSIDE the label (`"Status: Pending"`) — leaks into visible badge text. | T1, T2, T6; AC5 |
+| **D5** | **`EmitEnumColumn` branches on `col.BadgeMappings.Count`: zero → unchanged Story 1-5 text path; all members annotated → single `FcStatusBadge` per row; partial annotation → switch over enum member names with `FcStatusBadge` for annotated members + `HumanizeEnumLabel` text for the rest.** The switch is generated as a Razor `@switch` inside the `PropertyColumn.ChildContent`. | Preserves Story 1-5's regression-critical default path (non-annotated enums unchanged — byte-for-byte snapshot match for `CounterProjectionApprovalTests`). All-annotated is the target happy path. Partial is a real-world adopter state (mid-migration, new enum members added without annotation) — fail-soft text fallback is strictly better than rendering a blank cell or crashing. Rejected: (a) generate the switch in every enum column regardless of coverage — inflates generated code size and slows incremental builds (D12 of Story 1-4 explicitly forbids); (b) require 100% annotation or fail the build — breaks the common-case "add a new member" workflow; (c) always wrap partial-coverage values in `FcStatusBadge` with `Slot=Neutral` fallback — hides the adopter's missing annotation behind a silent Neutral pill; HFC1025 makes it visible. | T2, T3; AC1, AC3 |
+| **D6** | **HFC1025 fires at EMIT stage, once per projection type, when the column has PARTIAL badge coverage.** The generator maintains a `HashSet<string>` of projection-type-names already-warned within the current compilation tick to dedupe. Payload: `{ProjectionType, EnumType, AnnotatedCount, TotalCount, UnannotatedMembers[]}`. Severity: Information (does not block build; matches the UX-DR24 fail-soft philosophy — adopters see the warning in Error List but the build succeeds and the view renders correctly). | A per-view dedupe matches Story 3-5 D7 (instance-scoped `ConcurrentDictionary` dedup for `HFC2113_ProjectionTypeUnresolvable`) and Story 4-1 D10 (per-Transform-instance dedup for HFC1023). Information severity matches HFC1010, HFC1020, HFC1023 precedent — the "FYI" signal for adopter cleanup without blocking CI. Rejected: (a) Warning severity — wrong signal; partial annotation is a valid intentional state during incremental domain modeling; (b) Error severity — blocks builds for what is often an in-flight refactor; (c) per-member fire (one diagnostic per unannotated member) — noise explosion; one roll-up message per projection per compilation is sufficient. | T2, T7; AC3 |
+| **D7** | **HFC1026 is reserved but not emitted in 4-2.** The ID row appears in `AnalyzerReleases.Unshipped.md` as Warning; the XML-doc entry in `FcDiagnosticIds.cs` notes "Reserved for Story 10-2 specimen checker — detects badge rendered without text label in CI. Unreachable from generated code because `FcStatusBadge.Label` is `EditorRequired` and the razor template renders it unconditionally." | Claiming the ID now prevents Story 10-2 from re-litigating the diagnostic table entry when it lands. The reservation also documents the UX-DR30 Commitment #1 enforcement point — 4-2 makes the failure mode unreachable structurally; Story 10-2 layers runtime detection for adopter-authored custom badges (Epic 6 override path). Rejected: (a) skip the reservation and let Story 10-2 add it later — creates a sequencing dependency (10-2 can't land cleanly without the ID, and 4-2 is the natural owning story); (b) emit HFC1026 from 4-2 at a mock call site — wastes generator cycles on a diagnostic that can't actually fire. | T2, T7 |
+| **D8** | **Null nullable-enum value renders as em-dash text (`"—"`, U+2014) — no badge.** Identical to the existing Story 1-5 null-column convention. The generator emits the null check INSIDE `EmitEnumColumn` before the badge-mapping branch: `x.{property}.HasValue ? (badge-rendering code) : "—"`. | Null is data-absence, not a status value. Wrapping null in a "Null" or "Neutral" badge would signal presence-of-state where none exists — a UX lie. Em-dash preserves the Story 1-5 pattern and is already localised implicitly (U+2014 is symbol-language-neutral). Rejected: (a) render `FcStatusBadge` with `Slot=Neutral` and label `"Unknown"` / `"Inconnu"` — misleading (null is not Unknown; Unknown is a domain state); (b) render an empty cell — loses the scannable row structure; (c) require non-nullable enum for badge columns — breaks Story 1-5 contract. | T2, T3; AC1 |
+| **D9** | **StatusOverview's grouped `Status` cell routes through the same `EmitEnumColumn` helper as Default/Timeline.** If Story 4-1 inlined the StatusOverview status cell rather than calling into `EmitEnumColumn`, 4-2 extracts a shared private helper `EmitStatusLabelCell(ColumnModel, typeName)` used by both paths. The contract: given a `ColumnModel` with `TypeCategory == Enum` and a value expression, emit the appropriate badge-or-text rendering. | Single emit path means the "does badge rendering work in StatusOverview?" test is identical to the "does badge rendering work in Default?" test — one code path, one test surface, one mental model. Rejected: (a) duplicate the badge logic in `EmitStatusOverviewBody` — drift-prone; two weeks after 4.2 ships, someone fixes a bug in Default and forgets StatusOverview; (b) introduce a second strategy-agnostic helper that wraps BOTH — overkill for one consumer pair. | T2, T3; AC6 |
+| **D10** | **Flags-enum columns continue to emit plain text** — `[Flags]` detection already fires HFC1008 at Parse stage per Story 1-5; 4-2 does NOT attempt compound-badge rendering. The emitter explicitly checks `col.BadgeMappings.Count > 0 && !propertyType.HasFlagsAttribute` (the Flags info is already carried via Parse diagnostics; 4-2 skips the badge branch if HFC1008 fired for the column). | `[Flags]` semantics (multi-value bitmask) don't fit the 6-slot single-value model — a single `[Flags]` value can set multiple bits, and rendering multiple concurrent badges overloads the visual grammar. Epic 6's Slot-level override is the right customization path. Rejected: (a) render one badge per set bit — explodes visual complexity; (b) pick the highest-priority bit — introduces a hidden priority ordering contract; (c) emit HFC1008 as an Error if a `[Flags]` enum has `[ProjectionBadge]` — aggressive; adopters may have valid modeling reasons, and text fallback is correct. | T2, T3; AC1 |
+| **D11** | **4-2 does NOT ship `FcDesaturatedBadge` or the `fc-badge--syncing` CSS class** for optimistic-state desaturation per UX-spec `component-strategy.md:260-285`. The feature wires a projection row badge to `ILifecycleStateService.Observe(correlationId)` → 50% saturation during Syncing state. Deferred to a Known Gaps entry with an owning story link (L10 discipline). | Optimistic-state rendering requires per-row correlation-id threading through `ProjectionContext` (Story 2-2 cascade), lifecycle observation subscriptions (Story 2-4 service), and a disposal contract on the FluentBadge CSS class. Each piece adds 3-5 decisions and 10-15 tests — the feature deserves its own story, not a tail on 4-2. Rejected: (a) ship the CSS class alone without the subscription — dead code that leaks into the production CSS bundle; (b) ship the full wiring inside 4-2 — triples the scope and blows the L06 decision budget; (c) defer to Epic 5 (SignalR) — wrong owner; the feature is fundamentally a Story 2-x lifecycle extension, not a network/real-time concern. | T7 (Known Gaps doc) |
+| **D12** | **Resource key localisation discipline: French `StatusBadgeAriaLabelTemplate` uses U+00A0 non-breaking space before the colon** (`"{0} : {1}"` — not `"{0}: {1}"`). Both resource keys are bundled into the 8-new-keys-per-story precedent from Story 4-1 D19 (4-1 added 8, 4-2 adds 2 — tapered as 4-2 is narrower). | French typographic convention requires a non-breaking thin space (ideally U+202F) or regular non-breaking space (U+00A0) before double-punctuation marks like `:`, `;`, `?`, `!`. U+00A0 is safer for legacy text rendering; U+202F is the "correct" choice but has rendering inconsistency in older Fluent UI versions. Story 3-5 and 4-1 both adopted U+00A0 — precedent stands. Rejected: (a) ASCII space — reads as a French-typography error to native speakers; (b) U+202F thin space — superior typography but risks rendering regressions; (c) no space — wrong typography. | T6; AC5 |
+| **D13** | **`_Imports.razor` in the Shell project gets `@using Hexalith.FrontComposer.Shell.Components.Badges`** so generated views don't need a fully-qualified `<Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>` reference. The generator emits `<FcStatusBadge ... />` relying on the Shell's `_Imports` being in-scope for any page consuming generated views. | Blazor's `_Imports.razor` is the canonical way to elevate component namespaces. The Shell's imports file already lists `@using Hexalith.FrontComposer.Shell.Components.Layout` (FrontComposerShell) — the Badges namespace is a natural peer. Rejected: (a) fully-qualify the generator's emission — adds ~40 characters per badge emission and tightly couples the generator to the Shell's namespace structure (breaks Architecture §870 "zero-override strategy" by implication — generator knows too much about Shell internals); (b) put `FcStatusBadge` in a new assembly — unnecessary package splitting; (c) emit `@using` inside the generated view — violates the "one input, one output" invariant. | T1 |
+| **D14** | **Label text source is `HumanizeEnumLabel(enumValue.ToString())` — NOT a resource-localised lookup.** Story 1-5 ships `HumanizeEnumLabel` as the canonical enum-to-display-text transformer; 4-2 reuses it verbatim. Resource localisation of enum member labels is NOT in scope — that is Story 6-1 Annotation-level override territory (e.g., `[Display(Name="Approved_fr")]` adopter annotations). | Splitting the label source per label type (badge vs text) would require maintaining two conventions. Matching the non-badge fallback path is strictly better — the same enum renders the same text whether wrapped in a badge or not. Rejected: (a) require `[Display]` annotations on every enum member for localisation — attribute sprawl; (b) emit a resource lookup with the member name as the key — auto-localisation is an Epic 9-5 ICU-localisation concern; (c) ship an ICU-format fallback — scope creep. | T1, T2, T3; AC1 |
+| **D15** | **Test volume budget: 42 tests.** Breakdown: 10 SourceTools emitter snapshots (zero-mappings / all-mappings / partial-mappings / nullable-enum-null / nullable-enum-value / Flags-enum-fallback / StatusOverview-with-badges / StatusOverview-without-badges / regression-baseline-CounterProjection / HFC1025-dedupe), 22 Shell component + table tests (5 FcStatusBadge render assertions × 6 slots + 4 aria-label cases + table exhaustiveness + 3 null/empty edge cases — reduced from 30 in first draft via L07 scoring), 8 Contracts diagnostic assertions (HFC1025 fires / HFC1025 payload shape / HFC1025 per-view dedupe / HFC1025 severity / HFC1026 reservation / HFC1026 no-emit / FcDiagnosticIds XML-doc / AnalyzerReleases.Unshipped row), 2 resource parity (CanonicalKeysHaveFrenchCounterparts adds 2 keys / French NBSP encoding assertion). | Matches Story 4-1's per-surface coverage density (77 tests / 22 decisions ≈ 3.5 tests/decision) at 42/15 ≈ 2.8 — narrower feature, narrower test volume. L07 matrix scoring identified 4 candidate additions in the first draft that fell below 3.0 threshold: (a) cross-theme contrast loop (light+dark) — deferred to Story 10-2 visual specimen; (b) disposed-FcStatusBadge re-render guard — n/a, component is stateless; (c) high-contrast-mode emulation — Story 10-2; (d) RTL badge rendering — Story 10-2. All four are downstream CI concerns, not unit-level concerns. | T5 (count gate) |
+
+---
+
+## Tasks / Subtasks
+
+### T1 — Shell component + mapping table (AC1, AC2, AC4, AC5; ≈ 2h)
+
+- [ ] **T1.1** Create `src/Hexalith.FrontComposer.Shell/Components/Badges/SlotAppearanceTable.cs` with the frozen `BadgeSlot → (BadgeColor, BadgeAppearance)` mapping per D2. Use a static readonly `FrozenDictionary` (or `ImmutableDictionary` if `FrozenDictionary` is unavailable in the TFM).
+- [ ] **T1.2** Create `src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusBadge.razor` + `.razor.cs` with parameters `Slot` (`BadgeSlot`, `EditorRequired`), `Label` (`string`, `EditorRequired`), `ColumnHeader` (`string?`, default null) per D1. Resolve `(BadgeColor, BadgeAppearance)` via `SlotAppearanceTable[Slot]`. Emit `<FluentBadge Appearance="@appearance" Color="@color" aria-label="@ariaLabel">@Label</FluentBadge>`. Build `ariaLabel` via the `StatusBadgeAriaLabelTemplate` resource key when `ColumnHeader` non-null, else fall back to `Label`.
+- [ ] **T1.3** Inject `IStringLocalizer<FcShellResources>` via `[Inject]` — follow the Shell's existing localization pattern (Story 3-1 T10.1 precedent).
+- [ ] **T1.4** Add `@using Hexalith.FrontComposer.Shell.Components.Badges` to `src/Hexalith.FrontComposer.Shell/_Imports.razor` per D13.
+- [ ] **T1.5** Smoke-test the component in a manual scratch page (or existing integration specimen) — render all 6 slots with sample labels, verify visual appearance matches the `visual-design-foundation.md` intent before writing unit tests.
+
+### T2 — Source-generator emit-stage upgrade (AC1, AC2, AC3, AC6; ≈ 3h)
+
+- [ ] **T2.1** Modify `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` `EmitEnumColumn`: branch on `col.BadgeMappings.Count` per D5. Remove the `"// TODO: Badge rendering (Story 2.x)"` placeholder at line 202-203. Ensure byte-for-byte compatibility for zero-mappings path (D8 null handling preserved).
+- [ ] **T2.2** Emit inline Razor switch over enum member names for the all-annotated path (maps member → slot). Use `HumanizeEnumLabel(x.{property}.ToString())` as the label expression per D14.
+- [ ] **T2.3** Emit partial-coverage fallback — unannotated members render via `HumanizeEnumLabel` text (no badge wrapper).
+- [ ] **T2.4** Verify StatusOverview grouped `Status` cell routes through `EmitEnumColumn` per D9; if Story 4-1 inlined the cell, extract shared `EmitStatusLabelCell` helper.
+- [ ] **T2.5** Add `[Flags]`-enum guard per D10 — skip badge branch when the column's property type has `[Flags]` attribute (Story 1-5 HFC1008 diagnostic already surfaces the situation at Parse stage; 4-2 just avoids emitting a broken badge).
+- [ ] **T2.6** Re-run Story 1-5 + Story 4-1 regression suites (`CounterProjectionApprovalTests`, `RazorEmitterDefaultBodyShapeTests`, all Story 4-1 strategy snapshot tests) — expect ZERO diffs in the non-annotated `CounterProjection.Status` baseline. Any diff indicates a regression in the fallback path.
+
+### T3 — Generator diagnostic (AC3, HFC1025; ≈ 1h)
+
+- [ ] **T3.1** Add `HFC1025_BadgeSlotFallbackApplied` descriptor in `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` — Information severity, category `HexalithFrontComposer`, structured payload per D6.
+- [ ] **T3.2** Modify `FrontComposerGenerator.cs` generator pipeline: emit HFC1025 in the per-view emission pass when `col.BadgeMappings.Count` is non-zero AND less than the enum's total member count. Dedupe per-projection-type via `HashSet<string>` carried in the generator context.
+- [ ] **T3.3** Reserve `HFC1026_ColorOnlyBadgeDetected` (Warning, no call site) per D7 — add descriptor and a no-op handler note so the analyzer pipeline acknowledges the reservation.
+- [ ] **T3.4** Update `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs` — add XML-doc entries for HFC1025 + HFC1026 matching the HFC1022/HFC1023 format Story 4-1 established.
+- [ ] **T3.5** Update `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` — add rows for HFC1025 (Information, badge slot partial coverage) and HFC1026 (Warning, reserved for CI contrast check).
+
+### T4 — Shell component unit tests (AC1, AC2, AC5; ≈ 2h)
+
+- [ ] **T4.1** Create `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotAppearanceTableTests.cs` — assert table exhaustiveness (`Enum.GetValues<BadgeSlot>()` keys == table keys), assert Accent maps to `(Brand, Filled)`, assert every other slot maps to `(_, Tint)`, assert no slot maps to `BadgeColor.Severe` or `Important` (semantic-slot discipline — 4-2 does not claim those Fluent tokens).
+- [ ] **T4.2** Create `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/FcStatusBadgeTests.cs` with bUnit:
+  - Render each slot (6 tests) + assert `FluentBadge` Appearance + Color match the table
+  - Render with `ColumnHeader="Status"` + `Label="Pending"` → assert `aria-label="Status: Pending"` (EN) / `"Status : Pending"` with U+00A0 (FR culture)
+  - Render with `ColumnHeader=null` → assert `aria-label="Pending"`
+  - Render with `Label=""` → assert badge renders empty chip (no crash); `aria-label` falls back to `ColumnHeader` or becomes empty
+  - Render with `Label=null` is prevented by `EditorRequired` compile-time contract — no runtime test needed (Razor compiler enforces)
+- [ ] **T4.3** Add contrast assertion — for each slot, assert Fluent's resolved `--colorPaletteFgX` token triple meets WCAG AA (4.5:1) against the badge's Tint background. Use Fluent UI v5's published token values as the reference (link from `component-strategy.md:504-510`); unit-level assertion only — full specimen verification is Story 10-2.
+
+### T5 — Source-generator emitter tests (AC1, AC3, AC6; ≈ 2h)
+
+- [ ] **T5.1** Create `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs`:
+  - Snapshot: enum column with zero mappings → matches Story 1-5 baseline (regression gate)
+  - Snapshot: enum column with all members mapped → emits `FcStatusBadge` per slot via inline switch
+  - Snapshot: enum column with partial mappings → emits badge for annotated + text for unannotated + HFC1025 in diagnostic list
+  - Snapshot: nullable enum column with `HasValue` check preserved per D8
+  - Snapshot: `[Flags]` enum column — badge branch skipped, plain text path + HFC1008 diagnostic
+- [ ] **T5.2** Create `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/StatusOverviewBadgeColumnTests.cs`:
+  - Snapshot: StatusOverview projection with annotated status enum → grouped grid Status cell renders `FcStatusBadge` per D9
+  - Snapshot: StatusOverview with unannotated status enum → grouped grid Status cell renders plain text (Story 4-1 AC2 regression gate)
+  - Navigation-fires assertion — click-handler still dispatches `FcProjectionRoutes.StatusFilter(bcRoute, statusValue)` per Story 4-1 D11 (4-2 doesn't break this)
+- [ ] **T5.3** Update existing Story 1-5 approval baseline tests — expect ZERO diff for `CounterProjectionApprovalTests` (the reference projection has no `[ProjectionBadge]` annotations). If `CounterProjection.Status` gains badges later (Story 1-6 deferred work), baseline regeneration is a deliberate commit.
+
+### T6 — Resource keys (AC5; ≈ 1h)
+
+- [ ] **T6.1** Add 2 new keys to `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx`:
+  - `StatusBadgeAriaLabelTemplate` = `"{0}: {1}"` (EN)
+  - `StatusBadgeUnknownStateFallback` = `"Unknown"` (EN)
+- [ ] **T6.2** Add French translations to `FcShellResources.fr.resx`:
+  - `StatusBadgeAriaLabelTemplate` = `"{0} : {1}"` — U+00A0 non-breaking space before colon per D12
+  - `StatusBadgeUnknownStateFallback` = `"Inconnu"`
+- [ ] **T6.3** Add test assertion — update `FcShellResourcesTests.CanonicalKeysHaveFrenchCounterparts` expected count from 66 to 68 per locale.
+- [ ] **T6.4** Add explicit encoding assertion: read `StatusBadgeAriaLabelTemplate` from the French resource set, assert the byte between `"{0}"` and `":"` is ` `, not a regular space. Guards against a well-meaning-but-wrong code-editor resave that collapses NBSP to ASCII space.
+
+### T7 — Diagnostic + Known Gaps documentation (AC3, AC4; ≈ 1h)
+
+- [ ] **T7.1** Verify `FcDiagnosticIds.cs` XML-doc entries are complete for HFC1025 + HFC1026 per T3.4.
+- [ ] **T7.2** Add Known Gaps entry in the Dev Notes § below for `FcDesaturatedBadge` / optimistic-state desaturation per D11 — owning story link (suggest a 4-7 backlog entry OR Story 2-5 follow-up, per L10 discipline).
+- [ ] **T7.3** Verify `AnalyzerReleases.Unshipped.md` rows are present and correctly formatted (HFC1025 + HFC1026). Run the analyzer release shape linter if configured.
+
+### T8 — Customisation gradient documentation (AC4; ≈ 0.5h)
+
+- [ ] **T8.1** In Dev Notes § References, add links to Epic 6 Annotation-level (Story 6-1) + Slot-level (Story 6-3) override paths as the documented escape for "more than 6 slots" per AC4.
+- [ ] **T8.2** Update the FR5-referenced adopter-facing documentation stub — a sentence in the story notes that the Dev Agent should flag to docs-writer Paige during code review: "Custom badge components must honor the custom-component accessibility contract (text label always present, WCAG AA contrast, forced-colors mode compliance — UX-DR31)."
+
+---
+
+## Dev Notes
+
+### Relevant architecture patterns and constraints
+
+- **Zero-override architecture** (`architecture.md:30`): FrontComposer never patches or forks Fluent UI. `FcStatusBadge` is a THIN wrapper around `FluentBadge` — no custom CSS, no shadow-DOM penetration, no Fluent token override. If a FluentBadge behaviour is wrong in 4-2, the fix is upstream in Fluent UI, not in FrontComposer.
+- **Convention-based rendering** (`architecture.md:493-497`): "A single `ProjectionRenderer<T>` handles all projections using IR metadata (field types, role hints, badge mappings)." 4-2 is the first story to operationalize **badge mappings** in the emit path — role hints landed in 4-1, badge mappings land in 4-2. The sentence is now fully realised.
+- **Deterministic name emission** (Story 1-4 ADR-006 + L04): the generator uses the enum MEMBER NAME verbatim (e.g., `"Pending"`) as the switch-case token. No name transformation, no case-folding, no localisation at the generator layer — localisation happens at render time via `HumanizeEnumLabel` on the already-matched member name.
+- **IR cache stability** (Story 1-4 incremental-build contract): 4-2 does NOT modify `ColumnModel`, `BadgeMappingEntry`, `RazorModel`, or `DomainModel` — all IR types stay byte-stable. The only generator behaviour change is inside `EmitEnumColumn` (pure function of `ColumnModel`), so incremental rebuilds correctly re-emit views whose `BadgeMappings` hash has changed and skip views whose hash is unchanged. Verified indirectly via Story 1-4 cacheability tests (they compare hashes pre/post generator change; any IR byte-drift would fail them).
+- **Circuit-breaker error boundary** (`architecture.md:497`): if `FcStatusBadge` throws during render (shouldn't happen — table lookup is O(1) and EditorRequired guards parameters), the framework's per-projection render error boundary catches and surfaces HFC2001 "Projection failed to render" instead of crashing the Blazor circuit. 4-2 does NOT extend the error boundary — existing infrastructure is sufficient.
+- **Service classification** (`architecture.md:499-506`): `FcStatusBadge` is a STATELESS component — no `ILogger`, no `IServiceProvider`, no mutable fields beyond cascading parameters. Matches the "Domain services: stateless, scoped" rule by precedent (component scope is per-render, stateless within a render pass). HFC1050 analyzer compliance verified at T4.2 (no mutable fields in `.razor.cs`).
+
+### Source tree components to touch
+
+**Create (new files):**
+- `src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusBadge.razor` (~20 lines)
+- `src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusBadge.razor.cs` (~40 lines)
+- `src/Hexalith.FrontComposer.Shell/Components/Badges/SlotAppearanceTable.cs` (~35 lines incl. table)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/FcStatusBadgeTests.cs` (~180 lines; 14 test methods)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotAppearanceTableTests.cs` (~60 lines; 4 test methods)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs` (~280 lines; 6 snapshot tests + support)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/StatusOverviewBadgeColumnTests.cs` (~150 lines; 3 snapshot tests)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1025DiagnosticTests.cs` (~100 lines; 4 test methods)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1026ReservationTests.cs` (~40 lines; 2 test methods)
+
+**Extend (existing files):**
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` — modify `EmitEnumColumn` (~30-line delta, removes TODO line 202-203)
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs` — verify `EmitStatusOverviewBody` routes through `EmitEnumColumn` (likely no change; possible extraction of `EmitStatusLabelCell` per D9)
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` — add HFC1025 + HFC1026 descriptors (~15-line delta)
+- `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` — add HFC1025 emit-stage call + dedupe tracking (~10-line delta)
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs` — add XML-doc constants (~30-line delta; matches HFC1022/HFC1023 format established in 4-1)
+- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` — add 2 rows (Information + Warning)
+- `src/Hexalith.FrontComposer.Shell/_Imports.razor` — 1-line addition (`@using Hexalith.FrontComposer.Shell.Components.Badges`)
+- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx` + `.fr.resx` — 2 new keys per locale (~8-line delta per file)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs` — update expected key count from 66 to 68 (~2-line delta)
+
+### Previous story intelligence (L11)
+
+**Story 4-1 (predecessor; ready-for-dev at 4-2 creation):**
+- Story 4-1 is the direct cross-story producer (role-dispatch + emit helpers). Any 4-1 review feedback that alters `EmitEnumColumn`'s contract MUST be reconciled in T2 before 4-2 lands. The expected integration point (`EmitEnumColumn` in `RazorEmitter.cs`) is stable per 4-1 D5 (switch-expression exhaustiveness preserved).
+- 4-1 establishes the `FcProjection*` naming family (`FcProjectionSubtitle`, `FcProjectionLoadingSkeleton`, `FcProjectionEmptyPlaceholder`). 4-2's `FcStatusBadge` lives under `Components/Badges/`, NOT `Components/Rendering/` where 4-1's components live — the namespacing separates "projection shell primitives" (rendering) from "semantic visual primitives" (badges). Review at T1.1: if 4-1 ends up placing the skeleton/subtitle under a different folder, 4-2 does NOT move Badges.
+- 4-1 D6 introduces `SkeletonLayout` enum + Layout parameter on `FcProjectionLoadingSkeleton` — pattern precedent for future slot-aware badge variants (NOT in 4-2 scope, but informs the component-family design language).
+
+**Story 3-5 (IBadgeCountService producer; done):**
+- The word "badge" in FrontComposer now has TWO distinct meanings: **count badges** (Story 3-5 — numeric indicators on nav items + home cards; `FluentBadge` with `BadgeColor.Brand`/`Appearance.Filled`) and **status badges** (Story 4-2 — semantic-color pills on enum values; `FluentBadge` with slot-driven Color/Appearance). This story's `FcStatusBadge` is unambiguously the second meaning. Do NOT confuse with `IBadgeCountService` (unrelated service).
+- 3-5 D20 disposal discipline (subscription disposal pattern) is NOT needed in 4-2 — `FcStatusBadge` is stateless with no subscriptions.
+- 3-5 D7 HFC2113 deduplication pattern (instance-scoped `ConcurrentDictionary`) is the precedent for HFC1025 per-view dedup in D6 — adapt the pattern; don't re-invent.
+
+**Story 2-4 (ILifecycleStateService consumer; done):**
+- `FcLifecycleWrapper` uses `FluentBadge` with hardcoded `BadgeAppearance.Filled` / `BadgeColor.Informative` for "Still syncing…" — this is a lifecycle-chrome badge, NOT a status badge. 4-2 does NOT touch it.
+- The D11 Known Gaps entry (deferred `FcDesaturatedBadge` / optimistic-state) would wire 2-4's lifecycle transitions to 4-2's `FcStatusBadge` via the 50%-saturation CSS class. A follow-up Story (suggest `4-7-optimistic-status-badge-desaturation` or `2-7-lifecycle-aware-projection-badges`) owns that integration — 4-2 leaves the seam explicit for that future work.
+
+**Story 1-5 (enum column emission producer; done):**
+- `HumanizeEnumLabel` and `Truncate(_, 30)` helpers are emitted once per view into the generated class (lines 77-147 of `RazorEmitter.cs`). 4-2 preserves both — badge labels use `HumanizeEnumLabel` (no truncation — badges render compactly already, and truncation inside a badge looks worse than an ellipsized badge).
+- The em-dash `"—"` null-value convention is preserved in D8.
+- `CounterProjectionApprovalTests` is the critical regression baseline — T2.6 + T5.3 gate on zero-diff for this test. `CounterProjection.Status` is a plain int today (no badge annotations); if future work annotates it, baseline regeneration is intentional, not a 4-2 regression.
+
+### Architecture compliance
+
+- **`AnalyzerReleases` discipline:** Every new diagnostic ID MUST have a row in `AnalyzerReleases.Unshipped.md` before it is referenced in descriptor code (prevents RS2002 analyzer release tracking errors — see `src/Hexalith.FrontComposer.SourceTools.csproj:7` comment). HFC1025 + HFC1026 rows land in T3.5; descriptor references land in T3.1/T3.3. Order matters.
+- **`FcDiagnosticIds.cs` canonical constants:** Runtime-log diagnostics (HFC2xxx) live here WITHOUT analyzer release entries per `FcDiagnosticIds.cs:1-10` comment. Build-time diagnostics (HFC1xxx) require BOTH a descriptor in `DiagnosticDescriptors.cs` AND a row in `AnalyzerReleases.Unshipped.md` AND an XML-doc constant in `FcDiagnosticIds.cs` (the XML-doc constant is optional per Story 4-1's pattern but recommended for documentation). 4-2 follows Story 4-1's precedent of including XML-doc constants.
+- **Nullable value type discipline:** `BadgeSlot?` as a parameter to `FcStatusBadge.Slot` is DISALLOWED — the `Slot` parameter is non-nullable and `EditorRequired`, matching the "state must be known to render a state badge" invariant. If a render-time decision resolves to "unknown slot", the caller emits plain text instead, not a badge with a null slot.
+- **Resource manager + IStringLocalizer dual pattern:** The Shell uses `IStringLocalizer<FcShellResources>` at runtime (injected into components) AND `ResourceManager` at test time (assertion-friendly API for the parity test). Both paths resolve from the same `.resx` files. 4-2's T4.2 uses `IStringLocalizer` inside the component; T6.3/T6.4 use `ResourceManager` for parity assertions.
+
+### Library/framework requirements
+
+- **Fluent UI Blazor v5** (already in dependency closure). `FluentBadge` API used: `Appearance` (`BadgeAppearance` enum, values `Filled`/`Ghost`/`Outline`/`Tint`), `Color` (`BadgeColor` enum, values `Brand`/`Danger`/`Important`/`Informative`/`Severe`/`Subtle`/`Success`/`Warning`). All referenced values are confirmed present in Fluent UI v5 — see `visual-design-foundation.md:50-88` for the token mapping Shell already consumes.
+- **No new NuGet packages.** 4-2 introduces zero external dependencies. Every dependency (Fluent UI Blazor, Blazored.LocalStorage, Fluxor, bUnit, Shouldly, xUnit) is already in the solution's `Directory.Packages.props`.
+- **Target-framework compatibility:** `FcStatusBadge.razor` targets `net9.0` (Shell TFM). `SlotAppearanceTable.cs` likewise. `RazorEmitter.cs` changes target `netstandard2.0` (SourceTools TFM — Roslyn compatibility constraint). `FrozenDictionary` is available in `netstandard2.0` via `System.Collections.Immutable` + `Microsoft.Extensions.Primitives` shims if needed; if compatibility is awkward, fallback to `ImmutableDictionary` (same O(1) lookup characteristics, no API surface difference at the component level — the component is in Shell, not SourceTools, so this is moot).
+
+### File structure requirements
+
+- `FcStatusBadge` lives under `src/Hexalith.FrontComposer.Shell/Components/Badges/` — a new folder under `Components/`. Matches the Shell's established component-namespacing rhythm (`Components/Home/`, `Components/Layout/`, `Components/Lifecycle/`, `Components/Rendering/`, `Components/Forms/`). The new `Badges/` folder opens namespace space for future semantic-visual components (e.g., `FcDesaturatedBadge` when D11's follow-up lands).
+- `SlotAppearanceTable.cs` lives alongside `FcStatusBadge` (same folder, same namespace). Internal class (not `public`) — not part of the Shell's external API surface.
+- Test files mirror source structure: `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/` + `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/` (existing folder).
+
+### Testing standards
+
+- **bUnit** for Shell component tests (matches Story 3-1, 3-4, 3-5, 3-6, 4-1 precedent).
+- **Verify / approval testing** for SourceTools emitter snapshots (matches Story 1-5, 4-1 precedent). Baselines committed under `tests/Hexalith.FrontComposer.SourceTools.Tests/Snapshots/`.
+- **xUnit** + **Shouldly** assertion style throughout.
+- **CSharpGeneratorDriver** for generator invocation in tests (matches `architecture.md:548-553` test-strategy pattern — Fluxor types passed as `MetadataReference.CreateFromFile()`).
+- **WCAG contrast assertion approach:** unit-level check that Fluent v5 token values map to RGB triples meeting the contrast ratios. Full visual specimen runs in Story 10-2's CI job — 4-2 does NOT run Playwright/axe-core.
+- **French locale assertion:** `CanonicalKeysHaveFrenchCounterparts` parity test + explicit NBSP byte check in T6.4 (`StatusBadgeAriaLabelTemplate` must contain ` ` between `{0}` and `:`).
+
+### Project Structure Notes
+
+- **No new projects.** All changes land in existing assemblies (`Shell`, `SourceTools`, `Contracts` — XML-doc only).
+- **No new packaging changes.** NuGet meta-package manifest unchanged; `Hexalith.FrontComposer.Shell` package version bumps on the next release cut, `Hexalith.FrontComposer.SourceTools` likewise. Story 1-7 semantic-release flow handles both.
+- **No csproj changes** beyond the existing `AnalyzerReleases.Unshipped.md` tracking (the `RS2002` suppression comment already documents HFC1010 as a reserved row; HFC1026 becomes a second reserved row — adjust the comment in `src/Hexalith.FrontComposer.SourceTools.csproj:7` to reference both if compile warnings trigger). Assumed unchanged unless `dotnet build` surfaces a new RS2002.
+
+### Known Gaps (L10 discipline — owning story linked)
+
+- **Optimistic-state desaturation (`FcDesaturatedBadge` + `fc-badge--syncing` CSS class).** Per UX-spec `component-strategy.md:260-285`. Deferred per D11 to a future story. Suggested owning story: `4-7-optimistic-status-badge-desaturation` (if Epic 4 gets a 7th slot) OR `2-7-lifecycle-aware-projection-badges` (if it lands in Epic 2 follow-up). Owner story MUST be created as a backlog entry in `sprint-status.yaml` BEFORE 4-2 ships if neither exists at code-review time — discuss with Jerome at Story 4-2 retrospective.
+- **Visual specimen CI verification** (axe-core + contrast + theme × density × direction grid) — Story 10-2 owns. 4-2 ships unit-level contrast assertions only.
+- **Custom badge override (Epic 6 Annotation / Slot / Full replacement paths)** — Story 6-1 (Annotation), Story 6-3 (Slot). 4-2 documents the escape path; does NOT implement it.
+- **RTL rendering verification** — Story 10-2 deferred. Fluent UI v5's `dir="rtl"` propagation is inherited unchanged.
+- **ICU-format enum-label localisation** — Story 9-5. `HumanizeEnumLabel` remains the v1 label source.
+
+### References
+
+- **PRD**:
+  - [Source: _bmad-output/planning-artifacts/prd/functional-requirements.md#FR5] — FR5 canonical capability contract (annotate status enum values, configurable semantic palette)
+  - [Source: _bmad-output/planning-artifacts/prd/non-functional-requirements.md#NFR32] — WCAG AA contrast commitment
+- **Epics**:
+  - [Source: _bmad-output/planning-artifacts/epics/epic-4-rich-datagrid-projection-interaction.md#Story-4.2] — Epic 4 § 58–97 ACs
+  - [Source: _bmad-output/planning-artifacts/epics/requirements-inventory.md#UX-DR24] — 6-slot palette spec + `[ProjectionBadge(BadgeSlot)]` annotation
+  - [Source: _bmad-output/planning-artifacts/epics/requirements-inventory.md#UX-DR30] — WCAG 2.1 AA commitments, #1 "color never sole signal"
+- **UX**:
+  - [Source: _bmad-output/planning-artifacts/ux-design-specification/visual-design-foundation.md#Color-System] — Semantic token mapping table + Projection status badge mapping table
+  - [Source: _bmad-output/planning-artifacts/ux-design-specification/component-strategy.md#FcDesaturatedBadge] — Optimistic-state desaturation spec (deferred per D11)
+  - [Source: _bmad-output/planning-artifacts/ux-design-specification/design-system-foundation.md] — Status indicators → `FluentBadge` mapping line
+- **Architecture**:
+  - [Source: _bmad-output/planning-artifacts/architecture.md#Convention-Based-Rendering] — "IR metadata (field types, role hints, badge mappings)" — 4-2 operationalizes the badge-mappings clause
+  - [Source: _bmad-output/planning-artifacts/architecture.md#Service-Classification] — Stateless-component discipline
+  - [Source: _bmad-output/planning-artifacts/architecture.md#Generator-Diagnostics] — HFC1xxx code allocation pattern
+- **Predecessor stories**:
+  - [Source: _bmad-output/implementation-artifacts/1-2-contracts-package-with-core-abstractions.md] — `BadgeSlot`, `ProjectionBadgeAttribute`, `RenderHints`
+  - [Source: _bmad-output/implementation-artifacts/1-4-source-generator-parse-stage.md] — `AttributeParser.ParseBadgeMappings`, `BadgeMappingEntry`, `ColumnModel.BadgeMappings`
+  - [Source: _bmad-output/implementation-artifacts/1-5-source-generator-transform-and-emit-stages.md] — `EmitEnumColumn`, `HumanizeEnumLabel`, `Truncate`, approval-baseline pattern (`CounterProjectionApprovalTests`)
+  - [Source: _bmad-output/implementation-artifacts/3-5-home-directory-badge-counts-and-new-capability-discovery.md] — `IBadgeCountService` (count badges, NOT status badges), HFC2113 dedup pattern
+  - [Source: _bmad-output/implementation-artifacts/4-1-projection-role-hints-and-view-rendering.md] — Role-dispatch switch, `Emit{Strategy}Body` helpers, HFC1022/HFC1023 format, 22-decision/77-test envelope (4-2 at 15/42 is narrower)
+- **Lessons ledger**:
+  - [Source: _bmad-output/process-notes/story-creation-lessons.md#L01] — Cross-story contract clarity — applied in Cross-story contract table above
+  - [Source: _bmad-output/process-notes/story-creation-lessons.md#L04] — Generated name collision detection — preserved by reusing `FcStatusBadge` component name deterministically
+  - [Source: _bmad-output/process-notes/story-creation-lessons.md#L06] — Decision budget (≤25) — 4-2 at 15/25, 10-decision buffer
+  - [Source: _bmad-output/process-notes/story-creation-lessons.md#L07] — Test cost-benefit — 42 tests, 4 deferred via matrix scoring
+  - [Source: _bmad-output/process-notes/story-creation-lessons.md#L10] — Deferrals specify owning story, not epic — applied in Known Gaps
+  - [Source: _bmad-output/process-notes/story-creation-lessons.md#L11] — Cheat sheet for L11 — present above
+- **Fluent UI Blazor v5** (external):
+  - `FluentBadge` API — confirmed via `mcp__fluent-ui-blazor__get_component_enums` (Appearance + Color enums listed in Executive Summary)
+  - Design token values for contrast verification — `fluent-ui-blazor` documentation + Fluent UI design-system tokens reference
+
+---
+
+## Dev Agent Record
+
+### Agent Model Used
+
+Claude Opus 4.7 (1M context) (story creation — Jerome Piquot, `bmad-create-story` skill, 2026-04-22)
+
+### Debug Log References
+
+### Completion Notes List
+
+### File List

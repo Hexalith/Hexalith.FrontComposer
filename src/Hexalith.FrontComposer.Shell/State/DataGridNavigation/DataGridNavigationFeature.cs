@@ -10,7 +10,8 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 /// <summary>
-/// Fluxor feature registration for <see cref="DataGridNavigationState"/> (Story 2-2 ADR-015).
+/// Fluxor feature registration for <see cref="DataGridNavigationState"/> (Story 2-2 ADR-015 /
+/// Story 3-6 D19 / A7).
 /// Seeds the state's <see cref="DataGridNavigationState.Cap"/> from
 /// <see cref="FcShellOptions.DataGridNavCap"/> at first construction so reducers stay pure
 /// (Group D code review W1 resolution).
@@ -31,5 +32,8 @@ public sealed class DataGridNavigationFeature : Feature<DataGridNavigationState>
 
     /// <inheritdoc/>
     protected override DataGridNavigationState GetInitialState()
-        => new(ImmutableDictionary<string, GridViewSnapshot>.Empty, _cap);
+        => new(
+            ViewStates: ImmutableDictionary<string, GridViewSnapshot>.Empty,
+            Cap: _cap,
+            HydrationState: DataGridNavigationHydrationState.Idle);
 }
