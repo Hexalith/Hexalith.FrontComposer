@@ -1,0 +1,2645 @@
+diff --git a/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj b/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
+index fd67a61..66d052d 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
++++ b/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
+@@ -1,7 +1,8 @@
+ <Project Sdk="Microsoft.NET.Sdk">
+   <PropertyGroup>
+     <TargetFrameworks>net10.0;netstandard2.0</TargetFrameworks>
+-    <IsTrimmable Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsTrimmable>
++    <IsTrimmable
++      Condition="$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'net8.0'))">true</IsTrimmable>
+   </PropertyGroup>
+   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+     <PackageReference Include="System.Collections.Immutable" />
+@@ -14,4 +15,4 @@
+   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+   </ItemGroup>
+-</Project>
++</Project>
+\ No newline at end of file
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor
+index d62e858..2bfad36 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor
+@@ -20,7 +20,8 @@
+     <link rel="stylesheet" href="@DensityStylesheetPath" />
+ </HeadContent>
+ 
+-<div class="fc-shell-root" style="--accent-base-color: @AccentColor;" tabindex="0" @onkeydown="HandleGlobalKeyDown">
++<div class="fc-shell-root" style="--accent-base-color: @AccentColor;" tabindex="0" @ref="_shellRoot"
++     @onkeydown="HandleGlobalKeyDown">
+     <a class="fc-skip-link" href="#fc-main-content">@Localizer["SkipToContentLabel"].Value</a>
+     @if (HasNavigation)
+     {
+@@ -60,6 +61,8 @@
+                         }
+                         else
+                         {
++                            @* Story 3-4 D18 — palette trigger first (primary navigation per UX spec §82), then settings. *@
++                            <FcPaletteTriggerButton />
+                             <FcSettingsButton />
+                         }
+                     </FluentStack>
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs
+index 81e7465..61ba8c4 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs
+@@ -3,13 +3,16 @@ using Fluxor.Blazor.Web.Components;
+ 
+ using Hexalith.FrontComposer.Contracts;
+ using Hexalith.FrontComposer.Contracts.Registration;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
+ using Hexalith.FrontComposer.Contracts.Storage;
+ using Hexalith.FrontComposer.Shell.Resources;
++using Hexalith.FrontComposer.Shell.Shortcuts;
+ using Hexalith.FrontComposer.Shell.State.Navigation;
+ using Hexalith.FrontComposer.Shell.State.Theme;
+ 
+ using Microsoft.AspNetCore.Components;
+ using Microsoft.AspNetCore.Components.Web;
++using Microsoft.AspNetCore.Components.Routing;
+ using Microsoft.Extensions.Localization;
+ using Microsoft.Extensions.Options;
+ using Microsoft.FluentUI.AspNetCore.Components;
+@@ -70,11 +73,15 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
+ /// </remarks>
+ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
+     private const string BeforeUnloadModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-beforeunload.js";
++    private const string KeyboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js";
+ 
+     private IJSObjectReference? _beforeUnloadModule;
+     private IJSObjectReference? _beforeUnloadSubscription;
++    private IJSObjectReference? _keyboardModule;
+     private DotNetObjectReference<FrontComposerShell>? _selfRef;
+     private bool _themeBootstrapped;
++    private bool _locationTrackingRegistered;
++    private ElementReference _shellRoot;
+     private readonly LayoutHamburgerCoordinator _hamburgerCoordinator = new();
+ 
+     /// <summary>
+@@ -126,6 +133,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
+     /// <summary>Injected Fluxor theme state (for first-render mode resolution).</summary>
+     [Inject] private IState<FrontComposerThemeState> ThemeState { get; set; } = default!;
+ 
++    /// <summary>Injected Fluxor dispatcher used to mirror route changes into navigation state.</summary>
++    [Inject] private IDispatcher Dispatcher { get; set; } = default!;
++
+     /// <summary>Injected Fluxor navigation state (for responsive shell width calculation).</summary>
+     [Inject] private IState<FrontComposerNavigationState> NavigationState { get; set; } = default!;
+ 
+@@ -142,17 +152,21 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
+     /// </summary>
+     [Inject] private IFrontComposerRegistry Registry { get; set; } = default!;
+ 
++    /// <summary>Injected navigation manager used to resolve static web asset URLs against the app base path.</summary>
++    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
++
+     /// <summary>
+-    /// Injected dialog service — shared between <see cref="FcSettingsButton"/> and the Ctrl+,
+-    /// inline handler on the shell root (Story 3-3 D11 / D16).
++    /// Injected shortcut service (Story 3-4 D1). The shell's <c>@onkeydown</c> binding routes every
++    /// global key through this surface; the Story 3-3 inline <c>Ctrl+,</c> branch is RETIRED per
++    /// Story 3-3 D16 / Story 3-4 AC8.
+     /// </summary>
+-    [Inject] private IDialogService DialogService { get; set; } = default!;
+-
+-    /// <summary>Injected shell resources localizer — resolves the settings dialog title.</summary>
+-    [Inject] private IStringLocalizer<FcShellResources> ShellLocalizer { get; set; } = default!;
++    [Inject] private IShortcutService Shortcuts { get; set; } = default!;
+ 
+-    /// <summary>Injected navigation manager used to resolve static web asset URLs against the app base path.</summary>
+-    [Inject] private NavigationManager NavigationManager { get; set; } = default!;
++    /// <summary>
++    /// Injected shell registrar (Story 3-4 Task 1.4 / AC1). Owns the three v1 shell-default
++    /// shortcut registrations (Ctrl+K palette, Ctrl+, settings, g h home).
++    /// </summary>
++    [Inject] private FrontComposerShortcutRegistrar Registrar { get; set; } = default!;
+ 
+     /// <summary>Accent color projected into the inline <c>:root</c> style block (AC2).</summary>
+     protected string AccentColor => Options.Value.AccentColor;
+@@ -196,21 +210,22 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
+     public Task FlushAsync() => Storage.FlushAsync();
+ 
+     /// <summary>
+-    /// Story 3-3 Task 8.2 (D16 / AC7) — single inline <c>@onkeydown</c> binding on the shell root
+-    /// that opens <see cref="FcSettingsDialog"/> on <c>Ctrl+,</c>. Story 3-4 replaces this inline
+-    /// binding with <c>IShortcutService.Register("ctrl+,", ...)</c>; the user-visible behaviour is
+-    /// unchanged by that migration — this handler becomes a call site for the registered shortcut.
++    /// Story 3-4 Task 8.1 (D5 / AC8) — global keyboard router. Skips bare-letter chord prefixes
++    /// when focus is inside a text input (D5 simpler-rule sketch — modifier-bearing combos still
++    /// fire so <c>Ctrl+K</c> stays global from inside any input). All routing is delegated to
++    /// <see cref="IShortcutService.TryInvokeAsync"/>; the Story 3-3 inline <c>Ctrl+,</c> branch is
++    /// RETIRED per the AC8 migration contract.
+     /// </summary>
+     /// <param name="e">The keyboard event.</param>
+-    /// <returns>A task representing the dialog presentation (or <see cref="Task.CompletedTask"/> when the combo doesn't match).</returns>
++    /// <returns>A task representing the asynchronous dispatch.</returns>
+     protected async Task HandleGlobalKeyDown(KeyboardEventArgs e) {
+         ArgumentNullException.ThrowIfNull(e);
+-        if (e.Key != "," || !e.CtrlKey || e.ShiftKey || e.AltKey || e.MetaKey) {
+-            return;
+-        }
+ 
+-        _ = await FcSettingsDialogLauncher
+-            .ShowAsync(DialogService, ShellLocalizer["SettingsDialogTitle"].Value);
++        // The JS-side filter (`fc-keyboard.js:registerShellKeyFilter`) already suppresses bare-letter
++        // keys that target editable elements before the event reaches Blazor, so we no longer pay a
++        // circuit round-trip to `isEditableElementActive` on every keystroke. Modifier-bearing
++        // shortcuts stay global regardless of focus target.
++        _ = await Shortcuts.TryInvokeAsync(e).ConfigureAwait(false);
+     }
+ 
+     /// <inheritdoc />
+@@ -221,10 +236,19 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
+ 
+         await ApplyThemeAsync().ConfigureAwait(false);
+         await RegisterBeforeUnloadAsync().ConfigureAwait(false);
++        await RegisterKeyboardInteropAsync().ConfigureAwait(false);
++        RegisterLocationTracking();
++        SyncCurrentBoundedContext(NavigationManager.Uri);
++        await Registrar.RegisterShellDefaultsAsync().ConfigureAwait(false);
+     }
+ 
+     /// <inheritdoc />
+     public new async ValueTask DisposeAsync() {
++        if (_locationTrackingRegistered) {
++            NavigationManager.LocationChanged -= HandleLocationChanged;
++            _locationTrackingRegistered = false;
++        }
++
+         if (_beforeUnloadSubscription is not null && _beforeUnloadModule is not null) {
+             try {
+                 await _beforeUnloadModule.InvokeVoidAsync("unregister", _beforeUnloadSubscription).ConfigureAwait(false);
+@@ -242,6 +266,10 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
+             try { await _beforeUnloadModule.DisposeAsync().ConfigureAwait(false); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { }
+         }
+ 
++        if (_keyboardModule is not null) {
++            try { await _keyboardModule.DisposeAsync().ConfigureAwait(false); } catch (OperationCanceledException) { } catch (JSDisconnectedException) { }
++        }
++
+         _selfRef?.Dispose();
+ 
+         // Delegating via base.DisposeAsync() invokes FluxorComponent.DisposeAsync which unhooks
+@@ -280,6 +308,70 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
+         }
+     }
+ 
++    private async Task RegisterKeyboardInteropAsync() {
++        IJSObjectReference? keyboardModule = await EnsureKeyboardModuleAsync().ConfigureAwait(false);
++        if (keyboardModule is null) {
++            return;
++        }
++
++        try {
++            await keyboardModule.InvokeVoidAsync("registerShellKeyFilter", _shellRoot).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) { }
++        catch (JSDisconnectedException) { }
++        catch (JSException) {
++            // Non-fatal — shortcut routing still works; only browser-default suppression is skipped.
++        }
++    }
++
++    private async Task<IJSObjectReference?> EnsureKeyboardModuleAsync() {
++        if (_keyboardModule is not null) {
++            return _keyboardModule;
++        }
++
++        try {
++            _keyboardModule = await JS.InvokeAsync<IJSObjectReference>("import", KeyboardModulePath).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) {
++            return null;
++        }
++        catch (JSDisconnectedException) {
++            return null;
++        }
++        catch (JSException) {
++            return null;
++        }
++
++        return _keyboardModule;
++    }
++
++    private void RegisterLocationTracking() {
++        if (_locationTrackingRegistered) {
++            return;
++        }
++
++        _locationTrackingRegistered = true;
++        NavigationManager.LocationChanged += HandleLocationChanged;
++    }
++
++    private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
++        try {
++            SyncCurrentBoundedContext(e.Location);
++        }
++        catch (ObjectDisposedException) {
++            // An aborted circuit (network disconnect / tab close) may dispose the Fluxor dispatcher
++            // before DisposeAsync runs. Detach the handler defensively so future LocationChanged
++            // events do not re-enter a disposed scope.
++            if (_locationTrackingRegistered) {
++                _locationTrackingRegistered = false;
++                NavigationManager.LocationChanged -= HandleLocationChanged;
++            }
++        }
++    }
++
++    private void SyncCurrentBoundedContext(string uri)
++        => Dispatcher.Dispatch(new BoundedContextChangedAction(BoundedContextRouteParser.Parse(uri)));
++
+     private bool HasRenderableManifest() {
+         foreach (DomainManifest manifest in Registry.GetManifests()) {
+             if (manifest.Projections.Count > 0) {
+diff --git a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+index 192196a..4641f5f 100644
+--- a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
+ using Hexalith.FrontComposer.Contracts.Lifecycle;
+ using Hexalith.FrontComposer.Contracts.Registration;
+ using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
+ using Hexalith.FrontComposer.Contracts.Storage;
+ using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
+ using Hexalith.FrontComposer.Shell.Options;
+@@ -18,6 +19,8 @@ using Hexalith.FrontComposer.Shell.Registration;
+ using Hexalith.FrontComposer.Shell.Services;
+ using Hexalith.FrontComposer.Shell.Services.DerivedValues;
+ using Hexalith.FrontComposer.Shell.Services.Lifecycle;
++using Hexalith.FrontComposer.Shell.Shortcuts;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
+ using Hexalith.FrontComposer.Shell.State.Theme;
+ 
+ using Microsoft.AspNetCore.Builder;
+@@ -226,6 +229,17 @@ public static class ServiceCollectionExtensions
+         // Default no-op ICommandPageContext — adopter-hosted pages override via scoped registration.
+         services.TryAddScoped<ICommandPageContext, NullCommandPageContext>();
+ 
++        // Story 3-4 D2 / Task 1.5 — IShortcutService is Scoped (per-circuit / per-user; mirrors
++        // IStorageService ADR-030). The registrar is also Scoped so its idempotency flag (D24) lives
++        // for one circuit's lifetime.
++        services.TryAddScoped<IShortcutService, ShortcutService>();
++        services.TryAddScoped<FrontComposerShortcutRegistrar>();
++
++        // Story 3-4 — CommandPaletteEffects must be discoverable by Fluxor's effect scan AND
++        // available as a concrete instance for IDisposable cleanup on circuit teardown. Scoped per
++        // ADR-030 precedent.
++        services.TryAddScoped<CommandPaletteEffects>();
++
+         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
+         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.
+         // Registered via AddScoped (scoped per circuit in Blazor Server; per-app in WASM). Providers
+diff --git a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+index c93b14f..afabaae 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+@@ -142,4 +142,48 @@
+   <data name="DensityAnnouncementTemplate" xml:space="preserve">
+     <value>Densité réglée sur {0}.</value>
+   </data>
++
++  <!-- Story 3-4 Task 9.2 (D14 / D23) — 14 clés palette + raccourcis (FR). -->
++  <data name="PaletteTriggerAriaLabel" xml:space="preserve">
++    <value>Ouvrir la palette de commandes</value>
++  </data>
++  <data name="CommandPaletteTitle" xml:space="preserve">
++    <value>Palette de commandes</value>
++  </data>
++  <data name="PaletteSearchPlaceholder" xml:space="preserve">
++    <value>Rechercher projections, commandes, récents… (tapez ? pour raccourcis)</value>
++  </data>
++  <data name="PaletteCategoryProjections" xml:space="preserve">
++    <value>Projections</value>
++  </data>
++  <data name="PaletteCategoryCommands" xml:space="preserve">
++    <value>Commandes</value>
++  </data>
++  <data name="PaletteCategoryRecent" xml:space="preserve">
++    <value>Récents</value>
++  </data>
++  <data name="PaletteResultCountTemplate" xml:space="preserve">
++    <value>{0} résultats</value>
++  </data>
++  <data name="PaletteNoResultsText" xml:space="preserve">
++    <value>Aucun résultat trouvé</value>
++  </data>
++  <data name="ShortcutsCategoryLabel" xml:space="preserve">
++    <value>Raccourcis clavier</value>
++  </data>
++  <data name="PaletteShortcutDescription" xml:space="preserve">
++    <value>Ouvrir la palette de commandes</value>
++  </data>
++  <data name="SettingsShortcutDescription" xml:space="preserve">
++    <value>Ouvrir les paramètres</value>
++  </data>
++  <data name="HomeShortcutDescription" xml:space="preserve">
++    <value>Aller à l'accueil</value>
++  </data>
++  <data name="KeyboardShortcutsCommandLabel" xml:space="preserve">
++    <value>Raccourcis clavier</value>
++  </data>
++  <data name="KeyboardShortcutsCommandDescription" xml:space="preserve">
++    <value>Voir tous les raccourcis clavier</value>
++  </data>
+ </root>
+diff --git a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+index 6d0d926..f9e0a1a 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+@@ -160,4 +160,60 @@
+     <value>Density set to {0}.</value>
+     <comment>D20 addition 2026-04-19 — aria-live announcer template; {0} is the localized density level.</comment>
+   </data>
++
++  <!-- Story 3-4 Task 9.1 (D14 / D23 / AC2 / AC5 / AC6) — 14 palette + shortcut keys. The
++       existing CommandPaletteTriggerAriaLabel (seeded in 3-1) is REPLACED by PaletteTriggerAriaLabel.
++       CanonicalKeysHaveFrenchCounterparts enforces FR parity. -->
++  <data name="PaletteTriggerAriaLabel" xml:space="preserve">
++    <value>Open command palette</value>
++    <comment>Story 3-4 D14 — header icon button title + aria-label.</comment>
++  </data>
++  <data name="CommandPaletteTitle" xml:space="preserve">
++    <value>Command palette</value>
++    <comment>Story 3-4 D14 — dialog title + content aria-label.</comment>
++  </data>
++  <data name="PaletteSearchPlaceholder" xml:space="preserve">
++    <value>Search projections, commands, recent… (type ? for shortcuts)</value>
++    <comment>Story 3-4 D14 — palette search input placeholder (FluentTextInput type=Search per spike-notes §3). The "? for shortcuts" hint surfaces D23 alias discoverability.</comment>
++  </data>
++  <data name="PaletteCategoryProjections" xml:space="preserve">
++    <value>Projections</value>
++  </data>
++  <data name="PaletteCategoryCommands" xml:space="preserve">
++    <value>Commands</value>
++  </data>
++  <data name="PaletteCategoryRecent" xml:space="preserve">
++    <value>Recent</value>
++  </data>
++  <data name="PaletteResultCountTemplate" xml:space="preserve">
++    <value>{0} results</value>
++    <comment>Story 3-4 D15 — aria-live region template; {0} is the result count.</comment>
++  </data>
++  <data name="PaletteNoResultsText" xml:space="preserve">
++    <value>No matches found</value>
++    <comment>Story 3-4 D15 — empty-state copy AND aria-live announce text on zero results.</comment>
++  </data>
++  <data name="ShortcutsCategoryLabel" xml:space="preserve">
++    <value>Keyboard shortcuts</value>
++  </data>
++  <data name="PaletteShortcutDescription" xml:space="preserve">
++    <value>Open command palette</value>
++    <comment>Story 3-4 D14 — description column for the Ctrl+K row in the shortcut reference view.</comment>
++  </data>
++  <data name="SettingsShortcutDescription" xml:space="preserve">
++    <value>Open settings</value>
++    <comment>Story 3-4 D14 — description column for the Ctrl+, row in the shortcut reference view.</comment>
++  </data>
++  <data name="HomeShortcutDescription" xml:space="preserve">
++    <value>Go to home</value>
++    <comment>Story 3-4 D14 — description column for the g h chord in the shortcut reference view.</comment>
++  </data>
++  <data name="KeyboardShortcutsCommandLabel" xml:space="preserve">
++    <value>Keyboard Shortcuts</value>
++    <comment>Story 3-4 D23 — synthetic default Commands entry that refills the palette with the shortcut reference view.</comment>
++  </data>
++  <data name="KeyboardShortcutsCommandDescription" xml:space="preserve">
++    <value>View all keyboard shortcuts</value>
++    <comment>Story 3-4 D23 — entry description for the synthetic "Keyboard Shortcuts" commands row.</comment>
++  </data>
+ </root>
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/CtrlCommaSingleBindingTest.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/CtrlCommaSingleBindingTest.cs
+deleted file mode 100644
+index 39e0850..0000000
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/CtrlCommaSingleBindingTest.cs
++++ /dev/null
+@@ -1,52 +0,0 @@
+-// Story 3-3 Task 10.10a (Winston review — D16 / AC7).
+-// Pins the Story 3-4 IShortcutService migration contract by asserting exactly ONE inline
+-// @onkeydown binding on .fc-shell-root. Story 3-4 replaces this inline binding with the
+-// service-based registration; the service brings its own conflict-detection invariant, so this
+-// test is intentionally made obsolete at Story 3-4 time.
+-
+-using Shouldly;
+-
+-namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
+-
+-public sealed class CtrlCommaSingleBindingTest
+-{
+-    [Fact]
+-    public void FrontComposerShellRazorHasExactlyOneOnKeyDownBinding()
+-    {
+-        DirectoryInfo? shellDir = LocateShellSourceDirectory();
+-        shellDir.ShouldNotBeNull("Could not locate src/Hexalith.FrontComposer.Shell from the test working directory.");
+-
+-        string razorPath = Path.Combine(shellDir!.FullName, "Components", "Layout", "FrontComposerShell.razor");
+-        File.Exists(razorPath).ShouldBeTrue($"FrontComposerShell.razor not found at {razorPath}.");
+-
+-        string[] lines = File.ReadAllLines(razorPath);
+-        string[] matchingLines = [.. lines.Where(line => line.Contains("@onkeydown=\"HandleGlobalKeyDown\"", StringComparison.Ordinal))];
+-
+-        matchingLines.Length.ShouldBe(
+-            1,
+-            "Story 3-3 D16 invariant: exactly one inline @onkeydown binding on .fc-shell-root. "
+-                + "Story 3-4 replaces this with IShortcutService.Register — do not add additional bindings in 3-3.");
+-
+-        matchingLines[0].ShouldContain(
+-            "fc-shell-root",
+-            Case.Sensitive,
+-            "The single inline @onkeydown binding must stay on the shell root element until Story 3-4 migrates the shortcut to IShortcutService.");
+-    }
+-
+-    private static DirectoryInfo? LocateShellSourceDirectory()
+-    {
+-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
+-        while (dir is not null)
+-        {
+-            string candidate = Path.Combine(dir.FullName, "src", "Hexalith.FrontComposer.Shell");
+-            if (Directory.Exists(candidate))
+-            {
+-                return new DirectoryInfo(candidate);
+-            }
+-
+-            dir = dir.Parent;
+-        }
+-
+-        return null;
+-    }
+-}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs
+index 3ec760d..32c7dd6 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FrontComposerShellTests.cs
+@@ -1,5 +1,7 @@
+ using Bunit;
++using Bunit.TestDoubles;
+ 
++using Fluxor;
+ using Fluxor.Blazor.Web;
+ 
+ using Hexalith.FrontComposer.Contracts.Registration;
+@@ -247,4 +249,99 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
+                 $"FrontComposerNavigation must not render at {tier}.");
+         });
+     }
++
++    // --- Story 3-4 Task 10.10 / 10.10a (D5 / D18 / AC2 / AC8) — palette trigger + Ctrl+K wiring ---
++
++    [Fact]
++    public void PaletteTriggerAutoPopulatesAheadOfSettings() {
++        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
++            .AddChildContent("<p>Body</p>"));
++
++        cut.WaitForAssertion(() => {
++            _ = cut.FindComponent<FcPaletteTriggerButton>();
++            _ = cut.FindComponent<FcSettingsButton>();
++
++            int paletteIndex = cut.Markup.IndexOf("fc-palette-trigger", StringComparison.Ordinal);
++            int settingsIndex = cut.Markup.IndexOf("fc-settings-button", StringComparison.Ordinal);
++
++            paletteIndex.ShouldBeGreaterThanOrEqualTo(0);
++            settingsIndex.ShouldBeGreaterThan(paletteIndex);
++        });
++    }
++
++    [Fact]
++    public async Task CtrlKOpensPaletteDialogViaShortcutService() {
++        RecordingDialogService dialogService = new();
++        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
++
++        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
++            .AddChildContent("<p>Body</p>"));
++
++        await cut.Find(".fc-shell-root").TriggerEventAsync(
++            "onkeydown",
++            new KeyboardEventArgs { Key = "K", CtrlKey = true });
++
++        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
++        dialogService.LastDialogType.ShouldBe(typeof(FcCommandPalette));
++        dialogService.LastOptions!.Modal.ShouldBe(true);
++        dialogService.LastOptions.Width.ShouldBe("600px");
++    }
++
++    [Fact]
++    public async Task BareChordPrefixAlone_DoesNotOpenDialogOrNavigate() {
++        // DN3 resolution (2026-04-21): the D5 text-input guard was moved from the C# shell to
++        // fc-keyboard.js:registerShellKeyFilter (which bUnit does not exercise). At the C# layer
++        // a bare chord-prefix only primes the FSM — no handler fires until the chord completes.
++        // This asserts the "no side effects from a lone prefix key" contract.
++        RecordingDialogService dialogService = new();
++        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
++
++        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
++        string initialUri = navigation.Uri;
++
++        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
++            .AddChildContent("<p>Body</p>"));
++
++        await cut.Find(".fc-shell-root").TriggerEventAsync(
++            "onkeydown",
++            new KeyboardEventArgs { Key = "g" });
++
++        dialogService.ShowDialogCallCount.ShouldBe(0);
++        navigation.Uri.ShouldBe(initialUri);
++    }
++
++    [Fact]
++    public async Task GHChordNavigatesHomeViaShortcutService() {
++        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
++        navigation.NavigateTo("/counter/counter-view");
++
++        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
++            .AddChildContent("<p>Body</p>"));
++
++        await cut.Find(".fc-shell-root").TriggerEventAsync(
++            "onkeydown",
++            new KeyboardEventArgs { Key = "g" });
++        await cut.Find(".fc-shell-root").TriggerEventAsync(
++            "onkeydown",
++            new KeyboardEventArgs { Key = "h" });
++
++        cut.WaitForAssertion(() => navigation.Uri.ShouldEndWith("/"));
++    }
++
++    [Fact]
++    public void RouteChangesUpdateCurrentBoundedContextInNavigationState() {
++        NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
++        IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
++
++        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p.AddChildContent("<p>Body</p>"));
++
++        navigation.NavigateTo("/counter/counter-view");
++        cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBe("counter"));
++
++        navigation.NavigateTo("/domain/commerce/submit-order-command");
++        cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBe("commerce"));
++
++        navigation.NavigateTo("/");
++        cut.WaitForAssertion(() => state.Value.CurrentBoundedContext.ShouldBeNull());
++    }
+ }
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/LayoutComponentTestBase.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/LayoutComponentTestBase.cs
+index a22a58b..b3479cb 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/LayoutComponentTestBase.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/LayoutComponentTestBase.cs
+@@ -48,6 +48,15 @@ public abstract class LayoutComponentTestBase : BunitContext {
+         PrefersColorSchemeSubscription = PrefersColorSchemeModule.SetupModule("subscribe", _ => true);
+         _ = PrefersColorSchemeModule.SetupVoid("unsubscribe", _ => true).SetVoidResult();
+ 
++        KeyboardModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js");
++        _ = KeyboardModule.SetupVoid("focusElement", _ => true).SetVoidResult();
++        _ = KeyboardModule.SetupVoid("registerShellKeyFilter", _ => true).SetVoidResult();
++        _ = KeyboardModule.SetupVoid("registerPaletteKeyFilter", _ => true).SetVoidResult();
++        _ = KeyboardModule.Setup<bool>("isEditableElementActive", _ => true).SetResult(false);
++
++        FocusModule = JSInterop.SetupModule("./_content/Hexalith.FrontComposer.Shell/js/fc-focus.js");
++        _ = FocusModule.SetupVoid("focusBodyIfNeeded", _ => true).SetVoidResult();
++
+         // Story 3-2 Task 10 — Do NOT initialize the Fluxor store here. bUnit locks the service
+         // container on first service resolution, which blocks derived tests from
+         // Services.Replace(registry) / Services.Replace(ulidFactory) calls in their own
+@@ -64,6 +73,10 @@ public abstract class LayoutComponentTestBase : BunitContext {
+ 
+     protected BunitJSModuleInterop PrefersColorSchemeSubscription { get; }
+ 
++    protected BunitJSModuleInterop KeyboardModule { get; }
++
++    protected BunitJSModuleInterop FocusModule { get; }
++
+     /// <summary>
+     /// Initializes the Fluxor store exactly once per test context. Derived tests that call
+     /// <c>Services.Replace(...)</c> in their own constructor MUST invoke this at the end of the
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs
+index 254fdf8..39d153d 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs
+@@ -143,6 +143,45 @@ public sealed class FcShellResourcesTests {
+     // and were deleted from the resx files. Story 10-2 may re-introduce both the keys and this
+     // theory when a verified seam exists.
+ 
++    // --- Story 3-4 Task 10.11 (D14 / D23 / AC2 / AC5 / AC6) — 14 new palette + shortcut keys ---
++
++    [Theory]
++    [InlineData("PaletteTriggerAriaLabel", "Open command palette", "Ouvrir la palette de commandes")]
++    [InlineData("CommandPaletteTitle", "Command palette", "Palette de commandes")]
++    [InlineData("PaletteSearchPlaceholder",
++        "Search projections, commands, recent… (type ? for shortcuts)",
++        "Rechercher projections, commandes, récents… (tapez ? pour raccourcis)")]
++    [InlineData("PaletteCategoryProjections", "Projections", "Projections")]
++    [InlineData("PaletteCategoryCommands", "Commands", "Commandes")]
++    [InlineData("PaletteCategoryRecent", "Recent", "Récents")]
++    [InlineData("PaletteResultCountTemplate", "{0} results", "{0} résultats")]
++    [InlineData("PaletteNoResultsText", "No matches found", "Aucun résultat trouvé")]
++    [InlineData("ShortcutsCategoryLabel", "Keyboard shortcuts", "Raccourcis clavier")]
++    [InlineData("PaletteShortcutDescription", "Open command palette", "Ouvrir la palette de commandes")]
++    [InlineData("SettingsShortcutDescription", "Open settings", "Ouvrir les paramètres")]
++    [InlineData("HomeShortcutDescription", "Go to home", "Aller à l'accueil")]
++    [InlineData("KeyboardShortcutsCommandLabel", "Keyboard Shortcuts", "Raccourcis clavier")]
++    [InlineData("KeyboardShortcutsCommandDescription", "View all keyboard shortcuts", "Voir tous les raccourcis clavier")]
++    public void PaletteAndShortcutKeysResolveInBothLocales(string key, string enValue, string frValue) {
++        ServiceProvider provider = BuildLocalizedProvider();
++        using IServiceScope scope = provider.CreateScope();
++        IStringLocalizer<FcShellResources> localizer = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>();
++
++        CultureInfo previous = CultureInfo.CurrentUICulture;
++        try {
++            CultureInfo.CurrentUICulture = new CultureInfo("en");
++            localizer[key].Value.ShouldBe(enValue);
++            localizer[key].ResourceNotFound.ShouldBeFalse();
++
++            CultureInfo.CurrentUICulture = new CultureInfo("fr");
++            localizer[key].Value.ShouldBe(frValue);
++            localizer[key].ResourceNotFound.ShouldBeFalse();
++        }
++        finally {
++            CultureInfo.CurrentUICulture = previous;
++        }
++    }
++
+     private static ServiceProvider BuildLocalizedProvider() {
+         ServiceCollection services = new();
+         _ = services.AddLogging();
+diff --git a/src/Hexalith.FrontComposer.Contracts/Badges/BadgeCountChangedArgs.cs b/src/Hexalith.FrontComposer.Contracts/Badges/BadgeCountChangedArgs.cs
+new file mode 100644
+index 0000000..8454f9b
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Badges/BadgeCountChangedArgs.cs
+@@ -0,0 +1,8 @@
++namespace Hexalith.FrontComposer.Contracts.Badges;
++
++/// <summary>
++/// Event payload describing a single badge-count change (Story 3-4 ADR-044, Story 3-5 producer).
++/// </summary>
++/// <param name="ProjectionType">The projection runtime type whose count changed.</param>
++/// <param name="NewCount">The new total count of actionable items.</param>
++public sealed record BadgeCountChangedArgs(Type ProjectionType, int NewCount);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Badges/IBadgeCountService.cs b/src/Hexalith.FrontComposer.Contracts/Badges/IBadgeCountService.cs
+new file mode 100644
+index 0000000..85265a2
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Badges/IBadgeCountService.cs
+@@ -0,0 +1,32 @@
++namespace Hexalith.FrontComposer.Contracts.Badges;
++
++/// <summary>
++/// Per-projection actionable-item count surface (Story 3-4 ADR-044 — interface frozen by 3-4;
++/// implementation ships in Story 3-5). Consumed via nullable injection in
++/// <c>FcPaletteResultList</c> so the palette degrades gracefully when Story 3-5 is not yet
++/// installed.
++/// </summary>
++/// <remarks>
++/// Adopters that want badges before Story 3-5 ships can implement this interface and register it
++/// with <c>services.AddScoped&lt;IBadgeCountService, MyImpl&gt;()</c> — the palette picks it up on
++/// the next circuit with no further code change. Implementations MUST register as scoped so the
++/// per-circuit <see cref="CountChanged"/> subscriptions do not leak across users or disposed render
++/// trees.
++/// </remarks>
++public interface IBadgeCountService
++{
++    /// <summary>
++    /// Snapshot of actionable-item counts keyed by projection runtime type.
++    /// </summary>
++    IReadOnlyDictionary<Type, int> Counts { get; }
++
++    /// <summary>
++    /// Reactive stream of count changes — subscribe to refresh badges in real time.
++    /// </summary>
++    IObservable<BadgeCountChangedArgs> CountChanged { get; }
++
++    /// <summary>
++    /// Sum of all <see cref="Counts"/> values — used by Story 3-5's home dashboard summary tile.
++    /// </summary>
++    int TotalActionableItems { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteActions.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteActions.cs
+new file mode 100644
+index 0000000..274f1a8
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteActions.cs
+@@ -0,0 +1,66 @@
++using System.Collections.Immutable;
++
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Dispatched when the palette opens (Ctrl+K, header icon click, or programmatic) (Story 3-4 D6 / D11 / D12).
++/// </summary>
++/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
++public sealed record PaletteOpenedAction(string CorrelationId);
++
++/// <summary>
++/// Dispatched when the palette closes (Escape, X-button, backdrop click, activation, or
++/// circuit-disconnect via <c>FcCommandPalette.DisposeAsync</c>) (Story 3-4 D11 / D20).
++/// </summary>
++/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
++public sealed record PaletteClosedAction(string CorrelationId);
++
++/// <summary>
++/// Dispatched when the user changes the query in the palette search input (Story 3-4 D9).
++/// </summary>
++/// <param name="CorrelationId">ULID correlation identifier for tracing.</param>
++/// <param name="Query">The new query string (raw user input).</param>
++public sealed record PaletteQueryChangedAction(string CorrelationId, string Query);
++
++/// <summary>
++/// Dispatched when the per-user persistence scope (tenant or user) changes within a single
++/// circuit (Story 3-4 DN2 / feedback_tenant_isolation_fail_closed). Clears
++/// <see cref="FrontComposerCommandPaletteState.RecentRouteUrls"/> so the next hydrate repopulates
++/// from the new scope's storage partition.
++/// </summary>
++public sealed record PaletteScopeChangedAction;
++
++/// <summary>
++/// Dispatched by <c>CommandPaletteEffects</c> after the debounce + scoring pass completes
++/// (Story 3-4 D8 / D20). Reducer applies the D20 stale-result guard: refuses assignment when
++/// the palette has closed between dispatch and reduce.
++/// </summary>
++/// <param name="Query">The user's original query (not the alias-canonicalised form).</param>
++/// <param name="Results">The pre-computed ranked result set.</param>
++public sealed record PaletteResultsComputedAction(string Query, ImmutableArray<PaletteResult> Results);
++
++/// <summary>
++/// Dispatched on Arrow Up / Arrow Down inside the palette dialog (Story 3-4 D11 / AC5).
++/// </summary>
++/// <param name="Delta">Selection delta — <c>+1</c> for ArrowDown, <c>-1</c> for ArrowUp.</param>
++public sealed record PaletteSelectionMovedAction(int Delta);
++
++/// <summary>
++/// Dispatched when the user activates the currently-selected result (Enter or click) (Story 3-4 D13 / D23).
++/// </summary>
++/// <param name="SelectedIndex">The flat index into <see cref="FrontComposerCommandPaletteState.Results"/>.</param>
++public sealed record PaletteResultActivatedAction(int SelectedIndex);
++
++/// <summary>
++/// Dispatched after a successful palette activation lands a navigation (Story 3-4 D10 / D13).
++/// Triggers the recent-route ring-buffer persist effect.
++/// </summary>
++/// <param name="Url">The navigated route URL.</param>
++public sealed record RecentRouteVisitedAction(string Url);
++
++/// <summary>
++/// Dispatched by <c>CommandPaletteEffects.HandleAppInitialized</c> after loading the persisted
++/// recent-route ring buffer (Story 3-4 D10). Hydrate is read-only — does NOT trigger re-persistence.
++/// </summary>
++/// <param name="RecentRouteUrls">The persisted (and route-safety-filtered) recent-route list.</param>
++public sealed record PaletteHydratedAction(ImmutableArray<string> RecentRouteUrls);
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs
+new file mode 100644
+index 0000000..69dddf7
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs
+@@ -0,0 +1,722 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Diagnostics;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Contracts.Registration;
++using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
++using Hexalith.FrontComposer.Contracts.Storage;
++using Hexalith.FrontComposer.Shell.Components.Layout;
++using Hexalith.FrontComposer.Shell.Resources;
++using Hexalith.FrontComposer.Shell.Routing;
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Microsoft.AspNetCore.Components;
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Localization;
++using Microsoft.Extensions.Logging;
++
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Async side effects for the command palette: 150 ms debounced fuzzy scoring (D7 / D8 / D9), recent
++/// route ring-buffer persistence with fail-closed scope guard (D10), discoverable shortcuts entry +
++/// alias canonicalisation (D23), stale-result cancellation (D20), and FullPage-route filtering (D21).
++/// </summary>
++/// <remarks>
++/// Implements <see cref="IDisposable"/> so the per-dispatch <see cref="CancellationTokenSource"/>
++/// is disposed when the circuit tears down.
++/// </remarks>
++public sealed class CommandPaletteEffects : IDisposable
++{
++    private const string FeatureSegment = "palette-recent";
++    private const int DebounceMilliseconds = 150;
++    private const int TopResultCap = 50;
++    private const int ContextualBonus = 15;
++
++    private static readonly string[] _shortcutAliases = ["?", "help", "keys", "kb", "shortcut"];
++    private const string ShortcutsCanonicalQuery = "shortcuts";
++
++    /// <summary>Sentinel <c>CommandTypeName</c> for the synthetic "Keyboard Shortcuts" entry (D23).</summary>
++    public const string KeyboardShortcutsSentinel = "@shortcuts";
++
++    private readonly IState<FrontComposerNavigationState> _navState;
++    private readonly IState<FrontComposerCommandPaletteState> _paletteState;
++    private readonly ILogger<CommandPaletteEffects> _logger;
++    private readonly IServiceProvider _serviceProvider;
++
++    private readonly object _ctsSync = new();
++    private CancellationTokenSource? _queryCts;
++    private bool _disposed;
++
++    /// <summary>
++    /// Initialises a new instance of the <see cref="CommandPaletteEffects"/> class.
++    /// </summary>
++    /// <param name="navState">Cross-feature read of the current bounded context for the contextual bonus.</param>
++    /// <param name="paletteState">Intra-feature read of the current results / IsOpen / recent buffer.</param>
++    /// <param name="logger">Logger for HFC2105 / HFC2110 / HFC2111 diagnostics.</param>
++    /// <param name="serviceProvider">Lazy-resolves all non-Fluxor-core dependencies so the effect survives in unit-test fixtures that bypass <c>AddHexalithFrontComposer</c>.</param>
++    public CommandPaletteEffects(
++        IState<FrontComposerNavigationState> navState,
++        IState<FrontComposerCommandPaletteState> paletteState,
++        ILogger<CommandPaletteEffects> logger,
++        IServiceProvider serviceProvider)
++    {
++        ArgumentNullException.ThrowIfNull(navState);
++        ArgumentNullException.ThrowIfNull(paletteState);
++        ArgumentNullException.ThrowIfNull(logger);
++        ArgumentNullException.ThrowIfNull(serviceProvider);
++
++        _navState = navState;
++        _paletteState = paletteState;
++        _logger = logger;
++        _serviceProvider = serviceProvider;
++    }
++
++    private TimeProvider Time => _serviceProvider.GetService<TimeProvider>() ?? TimeProvider.System;
++
++    private string NewCorrelationId()
++        => _serviceProvider.GetService<IUlidFactory>()?.NewUlid() ?? Guid.NewGuid().ToString("N");
++
++    private string ResolveLocalised(string key, string fallback)
++    {
++        IStringLocalizer<FcShellResources>? localizer = _serviceProvider.GetService<IStringLocalizer<FcShellResources>>();
++        if (localizer is null)
++        {
++            return fallback;
++        }
++
++        Microsoft.Extensions.Localization.LocalizedString result = localizer[key];
++        return result.ResourceNotFound ? fallback : result.Value;
++    }
++
++    private IFrontComposerRegistry? Registry => _serviceProvider.GetService<IFrontComposerRegistry>();
++
++    private IShortcutService? Shortcuts => _serviceProvider.GetService<IShortcutService>();
++
++    private IStorageService? Storage => _serviceProvider.GetService<IStorageService>();
++
++    private IUserContextAccessor? UserContextAccessor => _serviceProvider.GetService<IUserContextAccessor>();
++
++    /// <summary>
++    /// Hydrates the recent-route ring buffer from storage on app initialisation. Read-only — does
++    /// NOT trigger re-persistence (ADR-038 mirror). Filters tampered URLs through
++    /// <see cref="CommandRouteBuilder.IsInternalRoute"/> per D10.
++    /// </summary>
++    /// <param name="action">The app-initialised action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher.</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public async Task HandleAppInitialized(AppInitializedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        ArgumentNullException.ThrowIfNull(dispatcher);
++        if (!TryResolveScope(out string tenantId, out string userId))
++        {
++            return;
++        }
++
++        IStorageService? storage = Storage;
++        if (storage is null)
++        {
++            return;
++        }
++
++        string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
++        string[]? stored;
++        try
++        {
++            stored = await storage.GetAsync<string[]>(key).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException)
++        {
++            _logger.LogDebug("Palette hydration cancelled — circuit disposing.");
++            return;
++        }
++        catch (Exception ex)
++        {
++            _logger.LogInformation(
++                ex,
++                "{DiagnosticId}: Palette hydration errored. Reason={Reason}.",
++                FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
++                "Corrupt");
++            return;
++        }
++
++        if (stored is null || stored.Length == 0)
++        {
++            _logger.LogInformation(
++                "{DiagnosticId}: Palette hydration found no stored value. Reason={Reason}.",
++                FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
++                "Empty");
++            return;
++        }
++
++        ImmutableArray<string> filtered = [.. stored.Where(CommandRouteBuilder.IsInternalRoute)];
++        int rejected = stored.Length - filtered.Length;
++        if (rejected > 0)
++        {
++            _logger.LogInformation(
++                "{DiagnosticId}: {RejectedCount} of {TotalCount} palette recent-route entries rejected. Reason={Reason}.",
++                FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
++                rejected,
++                stored.Length,
++                "Tampered");
++        }
++
++        // Cap tampered / schema-drifted blobs at RingBufferCap so untrusted storage contents
++        // cannot seed an unbounded in-memory buffer.
++        if (filtered.Length > FrontComposerCommandPaletteState.RingBufferCap)
++        {
++            filtered = [.. filtered.Take(FrontComposerCommandPaletteState.RingBufferCap)];
++        }
++
++        if (filtered.Length > 0)
++        {
++            dispatcher.Dispatch(new PaletteHydratedAction(filtered));
++        }
++    }
++
++    /// <summary>
++    /// Handles palette open — pre-populates the result list with the synthetic "Keyboard Shortcuts"
++    /// entry (D23), recent routes, and a default top-20 projections preview.
++    /// </summary>
++    /// <param name="action">The palette-opened action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher.</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public Task HandlePaletteOpened(PaletteOpenedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        ArgumentNullException.ThrowIfNull(dispatcher);
++
++        dispatcher.Dispatch(new PaletteResultsComputedAction(string.Empty, BuildDefaultResults()));
++        return Task.CompletedTask;
++    }
++
++    /// <summary>
++    /// Cancels the in-flight debounce when the palette closes (D20 stale-result guard upstream half).
++    /// </summary>
++    /// <param name="action">The palette-closed action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher (unused — required by Fluxor signature).</param>
++    /// <returns>A completed task.</returns>
++    [EffectMethod]
++    public Task HandlePaletteClosed(PaletteClosedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        CancelInFlightQuery();
++        return Task.CompletedTask;
++    }
++
++    /// <summary>
++    /// Debounces 150 ms then either bypasses scoring for the "shortcuts" alias (D23) or runs the
++    /// pure scorer + contextual bonus + top-N pass (D7 / D8). Filters unreachable commands via
++    /// <see cref="IFrontComposerRegistry.HasFullPageRoute"/> (D21).
++    /// </summary>
++    /// <param name="action">The query-changed action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher.</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public async Task HandlePaletteQueryChanged(PaletteQueryChangedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        ArgumentNullException.ThrowIfNull(dispatcher);
++
++        CancellationTokenSource cts = ReplaceQueryCts();
++
++        try
++        {
++            await Task.Delay(TimeSpan.FromMilliseconds(DebounceMilliseconds), Time, cts.Token).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException)
++        {
++            return;
++        }
++
++        string canonical = ResolveShortcutAliasQuery(action.Query).Trim();
++
++        if (string.IsNullOrWhiteSpace(canonical))
++        {
++            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, BuildDefaultResults()));
++            return;
++        }
++
++        if (string.Equals(canonical, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase))
++        {
++            IShortcutService? shortcuts = Shortcuts;
++            if (shortcuts is null)
++            {
++                dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
++                return;
++            }
++
++            ImmutableArray<PaletteResult> shortcutResults = [.. shortcuts.GetRegistrations()
++                .Select(r => new PaletteResult(
++                    Category: PaletteResultCategory.Shortcut,
++                    DisplayLabel: r.NormalisedLabel,
++                    BoundedContext: string.Empty,
++                    RouteUrl: null,
++                    CommandTypeName: null,
++                    Score: 0,
++                    IsInCurrentContext: false,
++                    ProjectionType: null,
++                    DescriptionKey: r.DescriptionKey))];
++            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, shortcutResults));
++            return;
++        }
++
++        string? currentContext = _navState.Value.CurrentBoundedContext;
++        ImmutableArray<PaletteResult>.Builder scored = ImmutableArray.CreateBuilder<PaletteResult>();
++        IFrontComposerRegistry? scoringRegistry = Registry;
++
++        // Per-manifest try/catch so one malformed manifest (e.g., null/empty BoundedContext) does
++        // not blank the entire result set. Registry enumeration itself remains outside-guarded.
++        IReadOnlyList<DomainManifest> manifests;
++        try
++        {
++            manifests = (scoringRegistry?.GetManifests() ?? []).ToList();
++        }
++        catch (Exception ex)
++        {
++            _logger.LogWarning(
++                ex,
++                "{DiagnosticId}: Registry enumeration threw during palette scoring — dispatching empty result set.",
++                FcDiagnosticIds.HFC2110_PaletteScoringFault);
++            dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
++            return;
++        }
++
++        foreach (DomainManifest manifest in manifests)
++        {
++            try
++            {
++                if (string.IsNullOrWhiteSpace(manifest.BoundedContext))
++                {
++                    // Skip manifests with null/empty BoundedContext — BuildRoute would throw and any
++                    // generated URL would be invalid. One malformed manifest does not blank the rest.
++                    continue;
++                }
++
++                foreach (string projection in manifest.Projections)
++                {
++                    string label = FrontComposerNavigation.ProjectionLabel(projection);
++                    int score = PaletteScorer.Score(canonical, label);
++                    if (score <= 0)
++                    {
++                        continue;
++                    }
++
++                    bool inContext = IsInCurrentContext(manifest.BoundedContext, currentContext);
++                    int finalScore = score + (inContext ? ContextualBonus : 0);
++                    scored.Add(CreateProjectionResult(manifest, projection, finalScore, inContext));
++                }
++
++                foreach (string command in manifest.Commands)
++                {
++                    string label = ShortName(command);
++                    int score = PaletteScorer.Score(canonical, label);
++                    if (score <= 0)
++                    {
++                        continue;
++                    }
++
++                    if (scoringRegistry is not null && !scoringRegistry.HasFullPageRoute(command))
++                    {
++                        continue;
++                    }
++
++                    bool inContext = IsInCurrentContext(manifest.BoundedContext, currentContext);
++                    int finalScore = score + (inContext ? ContextualBonus : 0);
++                    scored.Add(new PaletteResult(
++                        Category: PaletteResultCategory.Command,
++                        DisplayLabel: label,
++                        BoundedContext: manifest.BoundedContext,
++                        RouteUrl: null,
++                        CommandTypeName: command,
++                        Score: finalScore,
++                        IsInCurrentContext: inContext));
++                }
++            }
++            catch (Exception ex)
++            {
++                _logger.LogWarning(
++                    ex,
++                    "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette scoring — skipping manifest, keeping other results.",
++                    FcDiagnosticIds.HFC2110_PaletteScoringFault,
++                    manifest.BoundedContext ?? "<unknown>");
++            }
++        }
++
++        // Recent routes whose URL also scores against the query.
++        foreach (string url in _paletteState.Value.RecentRouteUrls)
++        {
++            int score = PaletteScorer.Score(canonical, url);
++            if (score > 0)
++            {
++                scored.Add(new PaletteResult(
++                    Category: PaletteResultCategory.Recent,
++                    DisplayLabel: url,
++                    BoundedContext: string.Empty,
++                    RouteUrl: url,
++                    CommandTypeName: null,
++                    Score: score,
++                    IsInCurrentContext: false));
++            }
++        }
++
++        ImmutableArray<PaletteResult> ranked = [.. scored
++            .OrderByDescending(static r => r.Score)
++            .Take(TopResultCap)];
++
++        dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ranked));
++    }
++
++    /// <summary>
++    /// Routes a result activation to navigation OR (for the D23 sentinel) refills the palette with
++    /// the shortcut reference view. Always closes the palette + records the recent route on a real
++    /// navigation.
++    /// </summary>
++    /// <param name="action">The result-activated action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher.</param>
++    /// <returns>A completed task.</returns>
++    [EffectMethod]
++    public Task HandlePaletteResultActivated(PaletteResultActivatedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        ArgumentNullException.ThrowIfNull(dispatcher);
++
++        FrontComposerCommandPaletteState snapshot = _paletteState.Value;
++        if (action.SelectedIndex < 0 || action.SelectedIndex >= snapshot.Results.Length)
++        {
++            return Task.CompletedTask;
++        }
++
++        PaletteResult result = snapshot.Results[action.SelectedIndex];
++
++        if (result.Category == PaletteResultCategory.Shortcut && string.IsNullOrEmpty(result.RouteUrl))
++        {
++            return Task.CompletedTask;
++        }
++
++        // D23 sentinel — refill instead of navigating.
++        if (string.Equals(result.CommandTypeName, KeyboardShortcutsSentinel, StringComparison.Ordinal))
++        {
++            dispatcher.Dispatch(new PaletteQueryChangedAction(NewCorrelationId(), ShortcutsCanonicalQuery));
++            return Task.CompletedTask;
++        }
++
++        string? targetUrl = result.Category switch
++        {
++            PaletteResultCategory.Projection or PaletteResultCategory.Recent or PaletteResultCategory.Shortcut => result.RouteUrl,
++            // Guard against a Command result with null/empty CommandTypeName or BoundedContext;
++            // BuildRoute's ThrowIfNullOrWhiteSpace would otherwise escalate to an uncaught effect
++            // exception. Fall through to null targetUrl so the palette still closes cleanly.
++            PaletteResultCategory.Command when !string.IsNullOrWhiteSpace(result.BoundedContext) && !string.IsNullOrWhiteSpace(result.CommandTypeName)
++                => CommandRouteBuilder.BuildRoute(result.BoundedContext, result.CommandTypeName),
++            _ => null,
++        };
++
++        if (!string.IsNullOrEmpty(targetUrl))
++        {
++            NavigationManager? navigation = _serviceProvider.GetService<NavigationManager>();
++            navigation?.NavigateTo(targetUrl);
++            dispatcher.Dispatch(new PaletteClosedAction(NewCorrelationId()));
++
++            // Shortcut-category rows are reference entries — never record them in the recent-route
++            // ring buffer, even when they carry a RouteUrl (e.g., g-h with RouteUrl="/").
++            if (result.Category != PaletteResultCategory.Shortcut)
++            {
++                dispatcher.Dispatch(new RecentRouteVisitedAction(targetUrl));
++            }
++        }
++        else
++        {
++            // Informational shortcut row — close anyway so the user lands back at the shell.
++            dispatcher.Dispatch(new PaletteClosedAction(NewCorrelationId()));
++        }
++
++        return Task.CompletedTask;
++    }
++
++    /// <summary>
++    /// Persists the recent-route ring buffer after a successful activation (Story 3-4 D10).
++    /// Fail-closed on missing tenant / user.
++    /// </summary>
++    /// <param name="action">The recent-route-visited action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher (unused).</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public async Task HandleRecentRouteVisited(RecentRouteVisitedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        if (!TryResolveScope(out string tenantId, out string userId))
++        {
++            return;
++        }
++
++        IStorageService? persistStorage = Storage;
++        if (persistStorage is null)
++        {
++            return;
++        }
++
++        try
++        {
++            // The reducer has already updated state.RecentRouteUrls — read the post-reduce snapshot.
++            string[] payload = [.. _paletteState.Value.RecentRouteUrls];
++            string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
++            await persistStorage.SetAsync(key, payload).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException)
++        {
++            _logger.LogDebug("Palette recent-route persist cancelled — circuit disposing.");
++        }
++        catch (Exception ex)
++        {
++            _logger.LogInformation(
++                ex,
++                "{DiagnosticId}: Palette recent-route persistence failed.",
++                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
++        }
++    }
++
++    /// <summary>
++    /// Read-only no-op test seam for <see cref="PaletteHydratedAction"/> (ADR-038 mirror — hydrate
++    /// does NOT re-persist). Intentionally NOT decorated with <c>[EffectMethod]</c>; its existence
++    /// anchors <c>CommandPaletteEffectsScopeTests.HydrateDoesNotRePersist</c>, which asserts that
++    /// calling this entry point never writes to <see cref="IStorageService"/>.
++    /// </summary>
++    /// <param name="action">The hydrated action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher (unused).</param>
++    /// <returns>A completed task.</returns>
++    [System.Diagnostics.CodeAnalysis.SuppressMessage(
++        "Performance",
++        "CA1822:Mark members as static",
++        Justification = "Public instance API contract — symmetry with the persist handlers per ADR-038.")]
++    public Task HandlePaletteHydrated(PaletteHydratedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        return Task.CompletedTask;
++    }
++
++    /// <summary>
++    /// Re-hydrates the palette for a new per-user persistence scope (DN2). The adopter wires this
++    /// by dispatching <see cref="PaletteScopeChangedAction"/> when <see cref="IUserContextAccessor"/>
++    /// surfaces a tenant/user change inside a live circuit. The reducer clears the ring buffer
++    /// ahead of this effect; the effect reads from storage under the new scope's key.
++    /// </summary>
++    /// <param name="action">The scope-changed action.</param>
++    /// <param name="dispatcher">The Fluxor dispatcher.</param>
++    /// <returns>A task representing the asynchronous operation.</returns>
++    [EffectMethod]
++    public async Task HandlePaletteScopeChanged(PaletteScopeChangedAction action, IDispatcher dispatcher)
++    {
++        ArgumentNullException.ThrowIfNull(action);
++        ArgumentNullException.ThrowIfNull(dispatcher);
++        await HandleAppInitialized(new AppInitializedAction(NewCorrelationId()), dispatcher).ConfigureAwait(false);
++    }
++
++    /// <summary>
++    /// Canonicalises the user query through the D23 alias table. Public for unit testing.
++    /// </summary>
++    /// <param name="query">The raw user query.</param>
++    /// <returns><c>"shortcuts"</c> when the query is a known alias; otherwise the input unchanged.</returns>
++    public static string ResolveShortcutAliasQuery(string query)
++    {
++        if (string.IsNullOrWhiteSpace(query))
++        {
++            return query;
++        }
++
++        string trimmed = query.Trim();
++        foreach (string alias in _shortcutAliases)
++        {
++            if (string.Equals(trimmed, alias, StringComparison.OrdinalIgnoreCase))
++            {
++                return ShortcutsCanonicalQuery;
++            }
++        }
++
++        return string.Equals(trimmed, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase)
++            ? ShortcutsCanonicalQuery
++            : query;
++    }
++
++    private ImmutableArray<PaletteResult> BuildDefaultResults()
++    {
++        ImmutableArray<PaletteResult>.Builder builder = ImmutableArray.CreateBuilder<PaletteResult>();
++        AddShortcutSentinel(builder);
++        AddRecentRoutes(builder);
++
++        IFrontComposerRegistry? registry = Registry;
++        try
++        {
++            int projectionCount = 0;
++            foreach (DomainManifest manifest in (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal))
++            {
++                foreach (string projection in manifest.Projections.OrderBy(static p => p, StringComparer.Ordinal))
++                {
++                    if (projectionCount >= 20)
++                    {
++                        break;
++                    }
++
++                    builder.Add(CreateProjectionResult(manifest, projection, 0, isInCurrentContext: false));
++                    projectionCount++;
++                }
++
++                if (projectionCount >= 20)
++                {
++                    break;
++                }
++            }
++        }
++        catch (Exception ex)
++        {
++            _logger.LogWarning(
++                ex,
++                "{DiagnosticId}: Registry enumeration failed during palette open — falling back to empty projection preview.",
++                FcDiagnosticIds.HFC2110_PaletteScoringFault);
++        }
++
++        return builder.ToImmutable();
++    }
++
++    private void AddShortcutSentinel(ImmutableArray<PaletteResult>.Builder builder)
++        => builder.Add(new PaletteResult(
++            Category: PaletteResultCategory.Command,
++            DisplayLabel: ResolveLocalised("KeyboardShortcutsCommandLabel", "Keyboard Shortcuts"),
++            BoundedContext: string.Empty,
++            RouteUrl: null,
++            CommandTypeName: KeyboardShortcutsSentinel,
++            Score: 1000,
++            IsInCurrentContext: false,
++            ProjectionType: null,
++            DescriptionKey: "KeyboardShortcutsCommandDescription"));
++
++    private void AddRecentRoutes(ImmutableArray<PaletteResult>.Builder builder)
++    {
++        foreach (string url in _paletteState.Value.RecentRouteUrls)
++        {
++            builder.Add(new PaletteResult(
++                Category: PaletteResultCategory.Recent,
++                DisplayLabel: url,
++                BoundedContext: string.Empty,
++                RouteUrl: url,
++                CommandTypeName: null,
++                Score: 0,
++                IsInCurrentContext: false));
++        }
++    }
++
++    private static PaletteResult CreateProjectionResult(DomainManifest manifest, string projection, int score, bool isInCurrentContext)
++    {
++        string label = FrontComposerNavigation.ProjectionLabel(projection);
++        return new PaletteResult(
++            Category: PaletteResultCategory.Projection,
++            DisplayLabel: label,
++            BoundedContext: manifest.BoundedContext,
++            RouteUrl: FrontComposerNavigation.BuildRoute(manifest.BoundedContext, projection),
++            CommandTypeName: null,
++            Score: score,
++            IsInCurrentContext: isInCurrentContext,
++            ProjectionType: ProjectionTypeResolver.Resolve(projection));
++    }
++
++    private static bool IsInCurrentContext(string? boundedContext, string? currentContext)
++        => !string.IsNullOrWhiteSpace(currentContext)
++            && !string.IsNullOrWhiteSpace(boundedContext)
++            && string.Equals(boundedContext, currentContext, StringComparison.OrdinalIgnoreCase);
++
++    /// <inheritdoc />
++    public void Dispose()
++    {
++        if (_disposed)
++        {
++            return;
++        }
++
++        _disposed = true;
++        CancelInFlightQuery();
++    }
++
++    private CancellationTokenSource ReplaceQueryCts()
++    {
++        lock (_ctsSync)
++        {
++            CancellationTokenSource? previous = _queryCts;
++            try
++            {
++                previous?.Cancel();
++            }
++            catch (ObjectDisposedException)
++            {
++                // Previous CTS already disposed — ignore.
++            }
++
++            previous?.Dispose();
++            CancellationTokenSource fresh = new();
++            _queryCts = fresh;
++            return fresh;
++        }
++    }
++
++    private void CancelInFlightQuery()
++    {
++        lock (_ctsSync)
++        {
++            CancellationTokenSource? cts = _queryCts;
++            if (cts is null)
++            {
++                return;
++            }
++
++            _queryCts = null;
++            try
++            {
++                cts.Cancel();
++            }
++            catch (ObjectDisposedException)
++            {
++                // Already disposed by a racing thread — ignore.
++            }
++
++            cts.Dispose();
++        }
++    }
++
++    private bool TryResolveScope(out string tenantId, out string userId)
++    {
++        IUserContextAccessor? accessor = UserContextAccessor;
++        string? rawTenant = accessor?.TenantId;
++        string? rawUser = accessor?.UserId;
++        if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser))
++        {
++            _logger.LogInformation(
++                "{DiagnosticId}: Palette persistence skipped — null/empty/whitespace tenant or user context.",
++                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
++            tenantId = string.Empty;
++            userId = string.Empty;
++            return false;
++        }
++
++        tenantId = rawTenant;
++        userId = rawUser;
++        return true;
++    }
++
++    private static string ShortName(string fullyQualifiedTypeName)
++    {
++        if (string.IsNullOrEmpty(fullyQualifiedTypeName))
++        {
++            return fullyQualifiedTypeName;
++        }
++
++        int lastDot = fullyQualifiedTypeName.LastIndexOf('.');
++        return lastDot >= 0 && lastDot + 1 < fullyQualifiedTypeName.Length
++            ? fullyQualifiedTypeName[(lastDot + 1)..]
++            : fullyQualifiedTypeName;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteReducers.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteReducers.cs
+new file mode 100644
+index 0000000..408ea4f
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteReducers.cs
+@@ -0,0 +1,217 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Pure static reducers for <see cref="FrontComposerCommandPaletteState"/> (Story 3-4 D6 / D8 / D11 / D20).
++/// </summary>
++/// <remarks>
++/// Reducers do NOT compute scores — the producer effect pre-resolves
++/// <see cref="PaletteResultsComputedAction.Results"/> before dispatching (D8 — mirrors Story 3-3
++/// ADR-039 purity invariant).
++/// </remarks>
++public static class CommandPaletteReducers {
++    /// <summary>
++    /// Sets <see cref="FrontComposerCommandPaletteState.IsOpen"/> = <see langword="true"/> while
++    /// preserving every other field (queries / results pre-population happen via the effect).
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The palette-opened action.</param>
++    /// <returns>A new state with the dialog open.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteOpened(
++        FrontComposerCommandPaletteState state,
++        PaletteOpenedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with { IsOpen = true, LoadState = PaletteLoadState.Idle };
++    }
++
++    /// <summary>
++    /// Resets <see cref="FrontComposerCommandPaletteState.IsOpen"/> to <see langword="false"/> AND
++    /// clears the in-flight query / result set so a subsequent open starts fresh.
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The palette-closed action.</param>
++    /// <returns>A new state with the dialog closed.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteClosed(
++        FrontComposerCommandPaletteState state,
++        PaletteClosedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with {
++            IsOpen = false,
++            Query = string.Empty,
++            Results = ImmutableArray<PaletteResult>.Empty,
++            SelectedIndex = 0,
++            LoadState = PaletteLoadState.Idle,
++        };
++    }
++
++    /// <summary>
++    /// Records the new query and flips <see cref="FrontComposerCommandPaletteState.LoadState"/> to
++    /// <see cref="PaletteLoadState.Searching"/>.
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The query-changed action.</param>
++    /// <returns>A new state with the query and a Searching load flag.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteQueryChanged(
++        FrontComposerCommandPaletteState state,
++        PaletteQueryChangedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with { Query = action.Query, LoadState = PaletteLoadState.Searching };
++    }
++
++    /// <summary>
++    /// Assigns the pre-computed <see cref="PaletteResultsComputedAction.Results"/>. The D20
++    /// stale-result guard refuses assignments that arrive after the palette closed
++    /// (<see cref="FrontComposerCommandPaletteState.IsOpen"/> is <see langword="false"/>).
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The results-computed action.</param>
++    /// <returns>The new state with results assigned, or the unchanged state when D20 fires.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteResultsComputed(
++        FrontComposerCommandPaletteState state,
++        PaletteResultsComputedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        if (!state.IsOpen) {
++            // D20 — refuse assignments after close so a re-open does not flash stale results.
++            return state;
++        }
++
++        // Stale-computation guard: a late-arriving scoring pass for an earlier query must not
++        // overwrite the result set now bound to a newer query (debounce CTS race).
++        if (!string.Equals(state.Query, action.Query, StringComparison.Ordinal)) {
++            return state;
++        }
++
++        // DN4 — preserve the user's arrow-selection when the new Results still spans it,
++        // instead of hard-resetting to 0 on every query refinement.
++        int preservedIndex = state.Results.IsEmpty
++            ? 0
++            : Math.Clamp(state.SelectedIndex, 0, Math.Max(0, action.Results.Length - 1));
++        if (action.Results.IsEmpty) {
++            preservedIndex = 0;
++        }
++
++        return state with {
++            Results = action.Results,
++            SelectedIndex = preservedIndex,
++            LoadState = PaletteLoadState.Ready,
++        };
++    }
++
++    /// <summary>
++    /// Clamps the selected index to <c>[0, Results.Length - 1]</c>. No-op on empty result set.
++    /// No wrap-around in v1.
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The selection-moved action.</param>
++    /// <returns>A new state with the clamped selected index.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteSelectionMoved(
++        FrontComposerCommandPaletteState state,
++        PaletteSelectionMovedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        if (state.Results.IsEmpty) {
++            return state;
++        }
++
++        int candidate = state.SelectedIndex + action.Delta;
++        int clamped = Math.Clamp(candidate, 0, state.Results.Length - 1);
++        return clamped == state.SelectedIndex
++            ? state
++            : state with { SelectedIndex = clamped };
++    }
++
++    /// <summary>
++    /// Marks an activation (no state mutation today — the effect handles navigation + recent-route
++    /// dispatch). The reducer exists so Fluxor's pipeline observes the action; future state additions
++    /// (e.g., a "last-activated" field) layer here.
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The result-activated action.</param>
++    /// <returns>The state unchanged.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteResultActivated(
++        FrontComposerCommandPaletteState state,
++        PaletteResultActivatedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state;
++    }
++
++    /// <summary>
++    /// Prepends the visited route to the ring buffer (max 5, de-dup on exact string match)
++    /// (Story 3-4 D10).
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The recent-route-visited action.</param>
++    /// <returns>A new state with the ring buffer updated.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReduceRecentRouteVisited(
++        FrontComposerCommandPaletteState state,
++        RecentRouteVisitedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        ImmutableArray<string> updated = state.RecentRouteUrls.Remove(action.Url, StringComparer.Ordinal).Insert(0, action.Url);
++        if (updated.Length > FrontComposerCommandPaletteState.RingBufferCap) {
++            updated = [.. updated.Take(FrontComposerCommandPaletteState.RingBufferCap)];
++        }
++
++        return state with { RecentRouteUrls = updated };
++    }
++
++    /// <summary>
++    /// Replaces <see cref="FrontComposerCommandPaletteState.RecentRouteUrls"/> wholesale from the
++    /// hydrate payload. Does NOT trigger re-persistence (ADR-038 mirror).
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The hydrated action.</param>
++    /// <returns>A new state with the hydrated ring buffer assigned.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteHydrated(
++        FrontComposerCommandPaletteState state,
++        PaletteHydratedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++
++        // Hydrate-vs-first-visit race: if the user activated a palette result before storage
++        // completed, that route is already in state. Do NOT overwrite with the (now-stale)
++        // pre-visit hydrate payload.
++        if (!state.RecentRouteUrls.IsEmpty) {
++            return state;
++        }
++
++        // Cap tampered / schema-drifted blobs at RingBufferCap so the ring buffer invariant
++        // survives untrusted storage contents.
++        ImmutableArray<string> capped = action.RecentRouteUrls.Length > FrontComposerCommandPaletteState.RingBufferCap
++            ? [.. action.RecentRouteUrls.Take(FrontComposerCommandPaletteState.RingBufferCap)]
++            : action.RecentRouteUrls;
++        return state with { RecentRouteUrls = capped };
++    }
++
++    /// <summary>
++    /// Clears per-user state when the persistence scope (tenant/user) changes mid-circuit (DN2).
++    /// The hydrate effect then repopulates from the new scope's storage partition.
++    /// </summary>
++    /// <param name="state">The current palette state.</param>
++    /// <param name="action">The scope-changed action.</param>
++    /// <returns>A new state with the ring buffer cleared.</returns>
++    [ReducerMethod]
++    public static FrontComposerCommandPaletteState ReducePaletteScopeChanged(
++        FrontComposerCommandPaletteState state,
++        PaletteScopeChangedAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        return state with { RecentRouteUrls = ImmutableArray<string>.Empty };
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/FrontComposerCommandPaletteFeature.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/FrontComposerCommandPaletteFeature.cs
+new file mode 100644
+index 0000000..9f16e9c
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/FrontComposerCommandPaletteFeature.cs
+@@ -0,0 +1,24 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Fluxor feature registration for <see cref="FrontComposerCommandPaletteState"/> (Story 3-4 D6).
++/// Initial state: closed, empty query, empty results + recent buffer, selection 0, idle load.
++/// </summary>
++public class FrontComposerCommandPaletteFeature : Feature<FrontComposerCommandPaletteState> {
++    /// <inheritdoc />
++    public override string GetName() => "FrontComposerCommandPalette";
++
++    /// <inheritdoc />
++    protected override FrontComposerCommandPaletteState GetInitialState()
++        => new(
++            IsOpen: false,
++            Query: string.Empty,
++            Results: ImmutableArray<PaletteResult>.Empty,
++            RecentRouteUrls: ImmutableArray<string>.Empty,
++            SelectedIndex: 0,
++            LoadState: PaletteLoadState.Idle);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/FrontComposerCommandPaletteState.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/FrontComposerCommandPaletteState.cs
+new file mode 100644
+index 0000000..2ecc27d
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/FrontComposerCommandPaletteState.cs
+@@ -0,0 +1,35 @@
++using System.Collections.Immutable;
++
++namespace Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++/// <summary>
++/// Fluxor state record for the framework-owned command palette (Story 3-4 D6 / D11 / D12 / D20).
++/// </summary>
++/// <remarks>
++/// <para>
++/// <see cref="IsOpen"/> shadows <c>IDialogService</c>'s internal state for the shortcut-arbitration
++/// path (D12 idempotent open). Every dismiss path eventually flips this back to
++/// <see langword="false"/> via <c>PaletteClosedAction</c> (D11 dismiss-path coherence).
++/// </para>
++/// <para>
++/// <see cref="Results"/> is NEVER persisted; <see cref="RecentRouteUrls"/> IS persisted under
++/// <c>{tenantId}:{userId}:palette-recent</c> (D10).
++/// </para>
++/// </remarks>
++/// <param name="IsOpen">Whether the palette dialog is currently open.</param>
++/// <param name="Query">The current search query (raw user input, not the alias-canonicalised form).</param>
++/// <param name="Results">The current ranked result set.</param>
++/// <param name="RecentRouteUrls">Ring buffer of recently-visited routes (max 5, most-recent-first).</param>
++/// <param name="SelectedIndex">The flat index of the currently-selected result (clamped to <c>[0, Results.Length - 1]</c>).</param>
++/// <param name="LoadState">Whether a debounce is in flight.</param>
++public sealed record FrontComposerCommandPaletteState(
++    bool IsOpen,
++    string Query,
++    ImmutableArray<PaletteResult> Results,
++    ImmutableArray<string> RecentRouteUrls,
++    int SelectedIndex,
++    PaletteLoadState LoadState)
++{
++    /// <summary>Maximum size of the recent-route ring buffer (Story 3-4 D10).</summary>
++    public const int RingBufferCap = 5;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js
+new file mode 100644
+index 0000000..b01259e
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js
+@@ -0,0 +1,94 @@
++function isEditableElement(element) {
++    if (!element || !(element instanceof HTMLElement)) {
++        return false;
++    }
++
++    if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") {
++        return true;
++    }
++
++    if (element.isContentEditable) {
++        return true;
++    }
++
++    return (
++        element.closest(
++            '[contenteditable="true"], [contenteditable=""], [role="textbox"]',
++        ) !== null
++    );
++}
++
++function registerFilter(element, marker, predicate) {
++    if (!element || element[marker]) {
++        return;
++    }
++
++    const handler = (event) => {
++        if (predicate(event)) {
++            event.preventDefault();
++        }
++    };
++
++    element.addEventListener("keydown", handler);
++    element[marker] = handler;
++}
++
++export function focusElement(element) {
++    if (element && typeof element.focus === "function") {
++        element.focus();
++    }
++}
++
++export function isEditableElementActive() {
++    return isEditableElement(document.activeElement);
++}
++
++export function registerShellKeyFilter(element) {
++    if (!element || element.__fcShellKeyFilter) {
++        return;
++    }
++
++    const handler = (event) => {
++        const key = (event.key ?? "").toLowerCase();
++        const hasModifier =
++            event.ctrlKey || event.metaKey || event.shiftKey || event.altKey;
++
++        // Modifier-bearing framework shortcuts: prevent browser default AND let Blazor route them.
++        if (
++            event.ctrlKey &&
++            !event.metaKey &&
++            !event.shiftKey &&
++            !event.altKey &&
++            (key === "k" || key === ",")
++        ) {
++            event.preventDefault();
++            return;
++        }
++
++        // Bare-letter keys targeting an editable element must NEVER reach the Blazor global
++        // router — stopPropagation avoids the circuit round-trip previously paid by
++        // IsEditableElementActiveAsync (DN3).
++        if (
++            !hasModifier &&
++            key.length === 1 &&
++            isEditableElement(event.target)
++        ) {
++            event.stopPropagation();
++        }
++    };
++
++    element.addEventListener("keydown", handler);
++    element.__fcShellKeyFilter = handler;
++}
++
++export function registerPaletteKeyFilter(element) {
++    registerFilter(element, "__fcPaletteKeyFilter", (event) => {
++        const key = event.key ?? "";
++        return (
++            key === "ArrowDown" ||
++            key === "ArrowUp" ||
++            key === "Enter" ||
++            key === "Escape"
++        );
++    });
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsScopeTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsScopeTests.cs
+new file mode 100644
+index 0000000..2017ae9
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsScopeTests.cs
+@@ -0,0 +1,100 @@
++// Story 3-4 Task 10.5 (D10 — fail-closed scope guard).
++#pragma warning disable CA2007
++#pragma warning disable xUnit1051
++using System.Collections.Immutable;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Contracts.Registration;
++using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
++using Hexalith.FrontComposer.Contracts.Storage;
++using Hexalith.FrontComposer.Shell.Shortcuts;
++using Hexalith.FrontComposer.Shell.State;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Time.Testing;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.CommandPalette;
++
++public class CommandPaletteEffectsScopeTests {
++    [Theory]
++    [InlineData(null, "user")]
++    [InlineData("", "user")]
++    [InlineData("   ", "user")]
++    [InlineData("tenant", null)]
++    [InlineData("tenant", "")]
++    [InlineData("tenant", "   ")]
++    public async Task HandleRecentRouteVisited_FailClosed_OnMissingScope(string? tenant, string? user) {
++        IStorageService storage = Substitute.For<IStorageService>();
++        CommandPaletteEffects sut = Build(tenant, user, storage, out IDispatcher dispatcher);
++
++        await sut.HandleRecentRouteVisited(new RecentRouteVisitedAction("/x"), dispatcher);
++
++        await storage.DidNotReceiveWithAnyArgs().SetAsync<string[]>(default!, default!);
++    }
++
++    [Fact]
++    public async Task HandleRecentRouteVisited_PersistsWhenScopeIsValid() {
++        IStorageService storage = Substitute.For<IStorageService>();
++        CommandPaletteEffects sut = Build("tenant-a", "user-1", storage, out IDispatcher dispatcher);
++
++        await sut.HandleRecentRouteVisited(new RecentRouteVisitedAction("/x"), dispatcher);
++
++        await storage.Received().SetAsync(
++            Arg.Is<string>(k => k.StartsWith("tenant-a:user-1:palette-recent", StringComparison.Ordinal)),
++            Arg.Any<string[]>());
++    }
++
++    private static CommandPaletteEffects Build(string? tenant, string? user, IStorageService storage, out IDispatcher dispatcher) {
++        dispatcher = Substitute.For<IDispatcher>();
++        IServiceCollection services = new ServiceCollection();
++        services.AddLogging();
++        FakeTimeProvider time = new();
++        services.AddSingleton<TimeProvider>(time);
++
++        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
++        accessor.TenantId.Returns(tenant);
++        accessor.UserId.Returns(user);
++        services.AddSingleton(accessor);
++        services.AddSingleton(storage);
++
++        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
++        registry.GetManifests().Returns([]);
++        services.AddSingleton(registry);
++
++        services.AddSingleton<IShortcutService>(_ => new ShortcutService(time, Substitute.For<ILogger<ShortcutService>>()));
++        IUlidFactory ulids = Substitute.For<IUlidFactory>();
++        ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
++        services.AddSingleton(ulids);
++
++        IServiceProvider sp = services.BuildServiceProvider();
++
++        IState<FrontComposerCommandPaletteState> paletteState = Substitute.For<IState<FrontComposerCommandPaletteState>>();
++        paletteState.Value.Returns(new FrontComposerCommandPaletteState(
++            IsOpen: true,
++            Query: string.Empty,
++            Results: ImmutableArray<PaletteResult>.Empty,
++            RecentRouteUrls: ["/x"],
++            SelectedIndex: 0,
++            LoadState: PaletteLoadState.Idle));
++
++        IState<FrontComposerNavigationState> navState = Substitute.For<IState<FrontComposerNavigationState>>();
++        navState.Value.Returns(new FrontComposerNavigationState(
++            SidebarCollapsed: false,
++            CollapsedGroups: ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
++            CurrentViewport: ViewportTier.Desktop,
++            CurrentBoundedContext: null));
++
++        return new CommandPaletteEffects(navState, paletteState, Substitute.For<ILogger<CommandPaletteEffects>>(), sp);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs
+new file mode 100644
+index 0000000..84cfafa
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs
+@@ -0,0 +1,375 @@
++// Story 3-4 Task 10.4b / 10.4c (D7 / D8 / D9 / D20 / D21 / D22 / D23 — AC3 / AC4 / AC5 / AC6).
++#pragma warning disable CA2007 // ConfigureAwait — test code
++#pragma warning disable xUnit1051 // CancellationToken — substitute storage does not honour the token
++using System.Collections.Immutable;
++
++using Fluxor;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Contracts.Registration;
++using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Contracts.Shortcuts;
++using Hexalith.FrontComposer.Contracts.Storage;
++using Hexalith.FrontComposer.Shell.Routing;
++using Hexalith.FrontComposer.Shell.Shortcuts;
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++using Hexalith.FrontComposer.Shell.State.Navigation;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Time.Testing;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.CommandPalette;
++
++public class CommandPaletteEffectsTests
++{
++    private const string TestTenant = "tenant-a";
++    private const string TestUser = "user-1";
++
++    [Fact]
++    public async Task ResolveShortcutAliasQuery_AliasesMapToCanonicalShortcuts()
++    {
++        foreach (string alias in new[] { "?", "help", "keys", "kb", "shortcut", "shortcuts", "Help", "KB" })
++        {
++            CommandPaletteEffects.ResolveShortcutAliasQuery(alias).ShouldBe("shortcuts");
++        }
++
++        CommandPaletteEffects.ResolveShortcutAliasQuery("counter").ShouldBe("counter");
++        await Task.CompletedTask;
++    }
++
++    [Fact]
++    public async Task DebounceCancelsEarlierKeystroke()
++    {
++        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out _);
++
++        Task first = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "co"), dispatcher);
++        Task second = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c2", "cou"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await first;
++        await second;
++
++        // Only the second debounce completes (the first was cancelled and swallowed).
++        dispatcher.Received(1).Dispatch(Arg.Any<PaletteResultsComputedAction>());
++    }
++
++    [Fact]
++    public async Task HandlePaletteClosed_CancelsInFlightQuery()
++    {
++        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out _);
++
++        Task query = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "cou"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(50));
++        await sut.HandlePaletteClosed(new PaletteClosedAction("c-close"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(200));
++        await query;
++
++        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteResultsComputedAction>());
++    }
++
++    [Fact]
++    public async Task ShortcutsQuery_BypassesScorer_AndReturnsRegistrations()
++    {
++        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp);
++
++        ShortcutService shortcuts = (ShortcutService)sp.GetRequiredService<IShortcutService>();
++        shortcuts.Register("ctrl+k", "PaletteShortcutDescription", () => Task.CompletedTask);
++        shortcuts.Register("g h", "HomeShortcutDescription", () => Task.CompletedTask);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "shortcuts"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            a.Results.Length == 2
++            && a.Results.All(r => r.Category == PaletteResultCategory.Shortcut)));
++    }
++
++    [Theory]
++    [InlineData("?")]
++    [InlineData("help")]
++    [InlineData("keys")]
++    [InlineData("kb")]
++    [InlineData("shortcut")]
++    public async Task ShortcutAliases_AllProduceShortcutResults(string alias)
++    {
++        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp);
++        ShortcutService shortcuts = (ShortcutService)sp.GetRequiredService<IShortcutService>();
++        shortcuts.Register("ctrl+k", "PaletteShortcutDescription", () => Task.CompletedTask);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", alias), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            a.Results.Length >= 1
++            && a.Results.All(r => r.Category == PaletteResultCategory.Shortcut)));
++    }
++
++    [Fact]
++    public async Task ContextualBonus_AppliesToMatchingBoundedContext()
++    {
++        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp,
++            currentContext: "Counter",
++            manifests: [
++                new DomainManifest("Counter", "Counter", ["Counter.CounterProjection"], []),
++                new DomainManifest("Commerce", "Commerce", ["Commerce.CounterProjection"], []),
++            ]);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "Counter"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a => HasContextualBonus(a)));
++    }
++
++    private static bool HasContextualBonus(PaletteResultsComputedAction action)
++    {
++        PaletteResult? counterRow = action.Results.FirstOrDefault(r => r.BoundedContext == "Counter");
++        PaletteResult? commerceRow = action.Results.FirstOrDefault(r => r.BoundedContext == "Commerce");
++        return counterRow is not null
++            && commerceRow is not null
++            && counterRow.Score - commerceRow.Score == 15;
++    }
++
++    [Fact]
++    public async Task NoContextualBonus_WhenNavigationContextIsNull()
++    {
++        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out IServiceProvider sp,
++            currentContext: null,
++            manifests: [new DomainManifest("Counter", "Counter", ["Counter.CounterProjection"], [])]);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "Counter"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            a.Results.All(r => !r.IsInCurrentContext)));
++    }
++
++    [Fact]
++    public async Task SyntheticKeyboardShortcutsCommandEntry_AppearsInDefaultOpen()
++    {
++        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _);
++
++        await sut.HandlePaletteOpened(new PaletteOpenedAction("c1"), dispatcher);
++
++        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            a.Results.Any(r => r.CommandTypeName == CommandPaletteEffects.KeyboardShortcutsSentinel)));
++    }
++
++    [Fact]
++    public async Task HydrateDoesNotRePersist()
++    {
++        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider sp);
++        IStorageService storage = sp.GetRequiredService<IStorageService>();
++
++        await sut.HandlePaletteHydrated(new PaletteHydratedAction(["/x"]), dispatcher);
++
++        await storage.DidNotReceiveWithAnyArgs().SetAsync<string[]>(default!, default!);
++    }
++
++    [Fact]
++    public async Task HandlePaletteResultActivated_SyntheticEntry_RefillsPaletteWithoutClosing()
++    {
++        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
++            paletteResults: [new PaletteResult(PaletteResultCategory.Command, "Keyboard Shortcuts", "", null, CommandPaletteEffects.KeyboardShortcutsSentinel, 1000, false)]);
++
++        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
++
++        dispatcher.Received(1).Dispatch(Arg.Is<PaletteQueryChangedAction>(q => q.Query == "shortcuts"));
++        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
++    }
++
++    [Fact]
++    public async Task HandlePaletteResultActivated_Command_NavigatesToKebabRoute()
++    {
++        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
++            paletteResults: [new PaletteResult(PaletteResultCategory.Command, "SubmitOrder", "Commerce", null, "Commerce.SubmitOrderCommand", 100, false)]);
++
++        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
++
++        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
++        dispatcher.Received(1).Dispatch(Arg.Is<RecentRouteVisitedAction>(r => r.Url == "/domain/commerce/submit-order-command"));
++    }
++
++    [Fact]
++    public async Task HandlePaletteResultActivated_InformationalShortcut_DoesNotCloseOrNavigate()
++    {
++        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
++            paletteResults: [new PaletteResult(PaletteResultCategory.Shortcut, "Ctrl+K", "", null, null, 0, false, null, "PaletteShortcutDescription")]);
++
++        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
++
++        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
++        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
++    }
++
++    [Fact]
++    public async Task HandlePaletteQueryChanged_BlankQueryRestoresDefaultResults()
++    {
++        CommandPaletteEffects sut = BuildEffects(
++            out FakeTimeProvider time,
++            out IDispatcher dispatcher,
++            out _,
++            manifests: [new DomainManifest("Orders", "Orders", ["Orders.Domain.Projections.OrderLineItemView"], [])],
++            recentRoutes: ["/orders/recent"]);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", string.Empty), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            a.Results.Any(r => r.CommandTypeName == CommandPaletteEffects.KeyboardShortcutsSentinel)
++            && a.Results.Any(r => r.Category == PaletteResultCategory.Recent && r.RouteUrl == "/orders/recent")
++            && a.Results.Any(r => r.Category == PaletteResultCategory.Projection && r.RouteUrl == "/orders/order-line-item-view")));
++    }
++
++    [Fact]
++    public async Task HandlePaletteQueryChanged_ProjectionRoutesUseNavigationConvention()
++    {
++        CommandPaletteEffects sut = BuildEffects(
++            out FakeTimeProvider time,
++            out IDispatcher dispatcher,
++            out _,
++            manifests: [new DomainManifest("Orders", "Orders", ["Orders.Domain.Projections.OrderLineItemView"], [])]);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "LineItem"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            a.Results.Any(r => r.RouteUrl == "/orders/order-line-item-view")));
++    }
++
++    [Fact]
++    public async Task HandlePaletteQueryChanged_FiltersNegativeScores()
++    {
++        CommandPaletteEffects sut = BuildEffects(
++            out FakeTimeProvider time,
++            out IDispatcher dispatcher,
++            out _,
++            manifests: [new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CxxxxxxxxxxxxxxxxxxxxxxxxV"], [])]);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "cv"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a => a.Results.IsEmpty));
++    }
++
++    [Fact]
++    public async Task HandlePaletteQueryChanged_TrimsNonAliasWhitespaceBeforeScoring()
++    {
++        CommandPaletteEffects sut = BuildEffects(
++            out FakeTimeProvider time,
++            out IDispatcher dispatcher,
++            out _,
++            manifests: [new DomainManifest("Orders", "Orders", ["Orders.Domain.Projections.OrderLineItemView"], [])]);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "  LineItem  "), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            a.Results.Any(r => r.RouteUrl == "/orders/order-line-item-view")));
++    }
++
++    [Fact]
++    public async Task HandlePaletteQueryChanged_FiltersUnreachableCommands_ViaHasFullPageRoute()
++    {
++        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry>();
++        registry.GetManifests().Returns([
++            new DomainManifest("Counter", "Counter", [], ["Counter.UnreachableCommand"]),
++        ]);
++        ((IFrontComposerFullPageRouteRegistry)registry).HasFullPageRoute("Counter.UnreachableCommand").Returns(false);
++
++        CommandPaletteEffects sut = BuildEffects(out FakeTimeProvider time, out IDispatcher dispatcher, out _,
++            registry: registry);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "Unreachable"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            !a.Results.Any(r => r.CommandTypeName == "Counter.UnreachableCommand")));
++    }
++
++    private static CommandPaletteEffects BuildEffects(
++        out FakeTimeProvider time,
++        out IDispatcher dispatcher,
++        out IServiceProvider serviceProvider,
++        IFrontComposerRegistry? registry = null,
++        IReadOnlyList<DomainManifest>? manifests = null,
++        IReadOnlyList<PaletteResult>? paletteResults = null,
++        IReadOnlyList<string>? recentRoutes = null,
++        string? currentContext = null)
++    {
++        time = new FakeTimeProvider();
++        dispatcher = Substitute.For<IDispatcher>();
++
++        IServiceCollection services = new ServiceCollection();
++        services.AddLogging();
++
++        IFrontComposerRegistry effectiveRegistry = registry ?? CreateRegistry(manifests);
++        services.AddSingleton(effectiveRegistry);
++
++        FakeTimeProvider tp = time;
++        services.AddSingleton<TimeProvider>(tp);
++        services.AddSingleton<IShortcutService>(_ => new ShortcutService(tp, Substitute.For<ILogger<ShortcutService>>()));
++
++        IUserContextAccessor accessor = Substitute.For<IUserContextAccessor>();
++        accessor.TenantId.Returns(TestTenant);
++        accessor.UserId.Returns(TestUser);
++        services.AddSingleton(accessor);
++
++        IStorageService storage = Substitute.For<IStorageService>();
++        services.AddSingleton(storage);
++
++        IUlidFactory ulids = Substitute.For<IUlidFactory>();
++        ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
++        services.AddSingleton(ulids);
++
++        serviceProvider = services.BuildServiceProvider();
++
++        IState<FrontComposerCommandPaletteState> paletteState = Substitute.For<IState<FrontComposerCommandPaletteState>>();
++        ImmutableArray<PaletteResult> results = paletteResults is null
++            ? ImmutableArray<PaletteResult>.Empty
++            : [.. paletteResults];
++        ImmutableArray<string> recent = recentRoutes is null
++            ? ImmutableArray<string>.Empty
++            : [.. recentRoutes];
++        paletteState.Value.Returns(new FrontComposerCommandPaletteState(
++            IsOpen: true,
++            Query: string.Empty,
++            Results: results,
++            RecentRouteUrls: recent,
++            SelectedIndex: 0,
++            LoadState: PaletteLoadState.Idle));
++
++        IState<FrontComposerNavigationState> navState = Substitute.For<IState<FrontComposerNavigationState>>();
++        navState.Value.Returns(new FrontComposerNavigationState(
++            SidebarCollapsed: false,
++            CollapsedGroups: ImmutableDictionary<string, bool>.Empty.WithComparers(StringComparer.Ordinal),
++            CurrentViewport: ViewportTier.Desktop,
++            CurrentBoundedContext: currentContext));
++
++        return new CommandPaletteEffects(
++            navState,
++            paletteState,
++            Substitute.For<ILogger<CommandPaletteEffects>>(),
++            serviceProvider);
++    }
++
++    private static IFrontComposerRegistry CreateRegistry(IReadOnlyList<DomainManifest>? manifests)
++    {
++        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry>();
++        registry.GetManifests().Returns(manifests ?? []);
++        ((IFrontComposerFullPageRouteRegistry)registry).HasFullPageRoute(Arg.Any<string>()).Returns(true);
++        return registry;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteReducerTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteReducerTests.cs
+new file mode 100644
+index 0000000..6628e13
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteReducerTests.cs
+@@ -0,0 +1,242 @@
++// Story 3-4 Task 10.4 (D6 / D8 / D11 / D20 — AC2 / AC3 / AC5).
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.Shell.State.CommandPalette;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.CommandPalette;
++
++public class CommandPaletteReducerTests {
++    private static FrontComposerCommandPaletteState InitialState(bool isOpen = false)
++        => new(IsOpen: isOpen,
++            Query: string.Empty,
++            Results: ImmutableArray<PaletteResult>.Empty,
++            RecentRouteUrls: ImmutableArray<string>.Empty,
++            SelectedIndex: 0,
++            LoadState: PaletteLoadState.Idle);
++
++    [Fact]
++    public void ReducePaletteOpened_FlipsIsOpenTrue() {
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteOpened(
++            InitialState(),
++            new PaletteOpenedAction("c1"));
++        next.IsOpen.ShouldBeTrue();
++    }
++
++    [Fact]
++    public void ReducePaletteClosed_ResetsTransientFields() {
++        FrontComposerCommandPaletteState s = InitialState(isOpen: true) with {
++            Query = "cou",
++            Results = [new PaletteResult(PaletteResultCategory.Projection, "X", "BC", "/x", null, 100, false)],
++            SelectedIndex = 0,
++        };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteClosed(s, new PaletteClosedAction("c1"));
++
++        next.IsOpen.ShouldBeFalse();
++        next.Query.ShouldBeEmpty();
++        next.Results.IsEmpty.ShouldBeTrue();
++    }
++
++    [Fact]
++    public void ReducePaletteQueryChanged_UpdatesQueryAndFlipsToSearching() {
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteQueryChanged(
++            InitialState(isOpen: true),
++            new PaletteQueryChangedAction("c1", "cou"));
++
++        next.Query.ShouldBe("cou");
++        next.LoadState.ShouldBe(PaletteLoadState.Searching);
++    }
++
++    [Fact]
++    public void ReducePaletteResultsComputed_AssignsResults_WhenPaletteOpen() {
++        ImmutableArray<PaletteResult> results = [new PaletteResult(PaletteResultCategory.Projection, "X", "BC", "/x", null, 100, false)];
++
++        // Post-DN4 guard requires state.Query == action.Query (stale-computation race defence).
++        FrontComposerCommandPaletteState state = InitialState(isOpen: true) with { Query = "cou" };
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteResultsComputed(
++            state,
++            new PaletteResultsComputedAction("cou", results));
++
++        next.Results.Length.ShouldBe(1);
++        next.LoadState.ShouldBe(PaletteLoadState.Ready);
++    }
++
++    [Fact]
++    public void OnPaletteResultsComputed_WhenPaletteClosed_NoOps() {
++        ImmutableArray<PaletteResult> results = [new PaletteResult(PaletteResultCategory.Projection, "X", "BC", "/x", null, 100, false)];
++        FrontComposerCommandPaletteState closed = InitialState(isOpen: false);
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteResultsComputed(
++            closed,
++            new PaletteResultsComputedAction("cou", results));
++
++        next.ShouldBeSameAs(closed);
++    }
++
++    [Fact]
++    public void ReducePaletteSelectionMoved_ClampsToBounds() {
++        ImmutableArray<PaletteResult> results = [
++            new PaletteResult(PaletteResultCategory.Projection, "A", "BC", "/a", null, 100, false),
++            new PaletteResult(PaletteResultCategory.Projection, "B", "BC", "/b", null, 50, false),
++        ];
++        FrontComposerCommandPaletteState s = InitialState(isOpen: true) with { Results = results, SelectedIndex = 1 };
++
++        FrontComposerCommandPaletteState upBeyond = CommandPaletteReducers.ReducePaletteSelectionMoved(s, new PaletteSelectionMovedAction(+5));
++        upBeyond.SelectedIndex.ShouldBe(1); // clamped at last index
++
++        FrontComposerCommandPaletteState downBeyond = CommandPaletteReducers.ReducePaletteSelectionMoved(s with { SelectedIndex = 0 }, new PaletteSelectionMovedAction(-5));
++        downBeyond.SelectedIndex.ShouldBe(0); // clamped at zero
++    }
++
++    [Fact]
++    public void ReducePaletteSelectionMoved_Empty_NoOp() {
++        FrontComposerCommandPaletteState s = InitialState(isOpen: true);
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteSelectionMoved(s, new PaletteSelectionMovedAction(+1));
++        next.ShouldBeSameAs(s);
++    }
++
++    [Fact]
++    public void ReducePaletteHydrated_AssignsRingBuffer() {
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteHydrated(
++            InitialState(),
++            new PaletteHydratedAction(["/counter", "/orders"]));
++
++        next.RecentRouteUrls.Length.ShouldBe(2);
++    }
++
++    [Fact]
++    public void ReduceRecentRouteVisited_PrependsAndCapsAtFive() {
++        FrontComposerCommandPaletteState s = InitialState() with {
++            RecentRouteUrls = ["/a", "/b", "/c", "/d", "/e"],
++        };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReduceRecentRouteVisited(s, new RecentRouteVisitedAction("/f"));
++
++        next.RecentRouteUrls.Length.ShouldBe(5);
++        next.RecentRouteUrls[0].ShouldBe("/f");
++        next.RecentRouteUrls.ShouldNotContain("/e");
++    }
++
++    [Fact]
++    public void ReduceRecentRouteVisited_DeDuplicatesOnExactMatch() {
++        FrontComposerCommandPaletteState s = InitialState() with {
++            RecentRouteUrls = ["/a", "/b", "/c"],
++        };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReduceRecentRouteVisited(s, new RecentRouteVisitedAction("/b"));
++
++        next.RecentRouteUrls.Length.ShouldBe(3);
++        next.RecentRouteUrls[0].ShouldBe("/b");
++    }
++
++    [Fact]
++    public void ReducePaletteResultsComputed_PreservesSelectedIndex_WhenClampableIntoNewResults() {
++        // DN4 — user arrow-selected row 2; new result set still has 4 rows, selection preserved.
++        ImmutableArray<PaletteResult> old = [
++            new PaletteResult(PaletteResultCategory.Projection, "A", "BC", "/a", null, 100, false),
++            new PaletteResult(PaletteResultCategory.Projection, "B", "BC", "/b", null, 90, false),
++            new PaletteResult(PaletteResultCategory.Projection, "C", "BC", "/c", null, 80, false),
++            new PaletteResult(PaletteResultCategory.Projection, "D", "BC", "/d", null, 70, false),
++        ];
++        ImmutableArray<PaletteResult> fresh = [
++            new PaletteResult(PaletteResultCategory.Projection, "A'", "BC", "/a", null, 100, false),
++            new PaletteResult(PaletteResultCategory.Projection, "B'", "BC", "/b", null, 90, false),
++            new PaletteResult(PaletteResultCategory.Projection, "C'", "BC", "/c", null, 80, false),
++            new PaletteResult(PaletteResultCategory.Projection, "D'", "BC", "/d", null, 70, false),
++        ];
++        FrontComposerCommandPaletteState state = InitialState(isOpen: true) with {
++            Query = "same",
++            Results = old,
++            SelectedIndex = 2,
++        };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteResultsComputed(
++            state,
++            new PaletteResultsComputedAction("same", fresh));
++
++        next.SelectedIndex.ShouldBe(2);
++    }
++
++    [Fact]
++    public void ReducePaletteResultsComputed_ClampsSelectedIndex_WhenNewResultsShrink() {
++        ImmutableArray<PaletteResult> old = [
++            new PaletteResult(PaletteResultCategory.Projection, "A", "BC", "/a", null, 100, false),
++            new PaletteResult(PaletteResultCategory.Projection, "B", "BC", "/b", null, 90, false),
++            new PaletteResult(PaletteResultCategory.Projection, "C", "BC", "/c", null, 80, false),
++        ];
++        ImmutableArray<PaletteResult> fresh = [
++            new PaletteResult(PaletteResultCategory.Projection, "A'", "BC", "/a", null, 100, false),
++        ];
++        FrontComposerCommandPaletteState state = InitialState(isOpen: true) with {
++            Query = "same",
++            Results = old,
++            SelectedIndex = 2,
++        };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteResultsComputed(
++            state,
++            new PaletteResultsComputedAction("same", fresh));
++
++        next.SelectedIndex.ShouldBe(0);
++    }
++
++    [Fact]
++    public void ReducePaletteResultsComputed_RejectsStaleQueryResults() {
++        // Debounce CTS race — late-arriving results for query "a" must not land on state now bound
++        // to query "ab".
++        ImmutableArray<PaletteResult> staleResults = [
++            new PaletteResult(PaletteResultCategory.Projection, "A", "BC", "/a", null, 100, false),
++        ];
++        FrontComposerCommandPaletteState state = InitialState(isOpen: true) with { Query = "ab" };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteResultsComputed(
++            state,
++            new PaletteResultsComputedAction("a", staleResults));
++
++        next.ShouldBeSameAs(state);
++    }
++
++    [Fact]
++    public void ReducePaletteHydrated_GuardsAgainstOverwritingRecentRoutes() {
++        // Hydrate-vs-first-visit race — if the user visited a route before storage completed,
++        // do not let the (now-stale) hydrate payload overwrite the just-visited URL.
++        FrontComposerCommandPaletteState state = InitialState() with {
++            RecentRouteUrls = ["/just-visited"],
++        };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteHydrated(
++            state,
++            new PaletteHydratedAction(["/stale-1", "/stale-2"]));
++
++        next.RecentRouteUrls[0].ShouldBe("/just-visited");
++        next.RecentRouteUrls.Length.ShouldBe(1);
++    }
++
++    [Fact]
++    public void ReducePaletteHydrated_CapsAtRingBufferCap_ForTamperedBlobs() {
++        FrontComposerCommandPaletteState state = InitialState();
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteHydrated(
++            state,
++            new PaletteHydratedAction(["/a", "/b", "/c", "/d", "/e", "/f", "/g"]));
++
++        next.RecentRouteUrls.Length.ShouldBe(FrontComposerCommandPaletteState.RingBufferCap);
++    }
++
++    [Fact]
++    public void ReducePaletteScopeChanged_ClearsRecentRouteUrls() {
++        // DN2 — per-user persistence scope changed; in-memory buffer must be cleared before the
++        // hydrate effect repopulates from the new scope's storage partition.
++        FrontComposerCommandPaletteState state = InitialState() with {
++            RecentRouteUrls = ["/user-a-route-1", "/user-a-route-2"],
++        };
++
++        FrontComposerCommandPaletteState next = CommandPaletteReducers.ReducePaletteScopeChanged(
++            state,
++            new PaletteScopeChangedAction());
++
++        next.RecentRouteUrls.IsEmpty.ShouldBeTrue();
++    }
++}
