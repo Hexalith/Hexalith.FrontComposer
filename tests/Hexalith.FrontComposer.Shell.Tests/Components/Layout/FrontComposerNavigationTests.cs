@@ -12,6 +12,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -178,9 +179,11 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
     }
 
     [Fact]
-    public void NavGroupToggledDispatchesOnExpandedChange() {
+    public void NavGroupCollapseDispatchesNavGroupToggledButDoesNotMarkCapabilitySeen() {
         // D11 — dispatches NavGroupToggledAction(correlationId, boundedContext, collapsed)
         // on FluentNavCategory.ExpandedChanged.
+        // D13 (review 2026-04-22) — collapsing is decluttering, not engagement: seen-set MUST
+        // NOT gain the bc:{BC} id on a collapse toggle.
         _registry.GetManifests().Returns([
             new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
         ]);
@@ -190,10 +193,31 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
         // Invoke the internal handler directly — the FluentNavCategory callback wires to this method.
         cut.Instance.OnGroupExpandedChangedForTest(boundedContext: "Counter", expanded: false);
 
-        // Assert dispatcher observed a NavGroupToggledAction with Collapsed=true (since expanded=false).
-        // Using Fluxor's dispatch pipeline means the reducer has now run; we check reducer-observable state.
         IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
+        IState<FrontComposerCapabilityDiscoveryState> discoveryState =
+            Services.GetRequiredService<IState<FrontComposerCapabilityDiscoveryState>>();
         state.Value.CollapsedGroups.ShouldContainKeyAndValue("Counter", true);
+        discoveryState.Value.SeenCapabilities.ShouldNotContain("bc:Counter");
+    }
+
+    [Fact]
+    public void NavGroupExpandMarksCapabilitySeen() {
+        // D13 (review 2026-04-22) — an explicit expand signals category engagement and MUST
+        // dispatch CapabilityVisitedAction(bc:{BC}), dismissing the BC-level "New" badge.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.Instance.OnGroupExpandedChangedForTest(boundedContext: "Counter", expanded: true);
+
+        IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
+        IState<FrontComposerCapabilityDiscoveryState> discoveryState =
+            Services.GetRequiredService<IState<FrontComposerCapabilityDiscoveryState>>();
+        // ReduceNavGroupToggled removes the key when Collapsed=false (expanded is the default).
+        state.Value.CollapsedGroups.ShouldNotContainKey("Counter");
+        discoveryState.Value.SeenCapabilities.ShouldContain("bc:Counter");
     }
 
     [Fact]

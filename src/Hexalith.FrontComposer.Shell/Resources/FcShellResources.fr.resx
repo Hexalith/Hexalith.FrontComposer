@@ -189,4 +189,36 @@
   <data name="KeyboardShortcutsCommandDescription" xml:space="preserve">
     <value>Voir tous les raccourcis clavier</value>
   </data>
+
+  <!-- Story 3-5 D19 — home directory + new-capability discovery (10 keys, mirrors EN). -->
+  <data name="HomeWelcomeTemplate" xml:space="preserve">
+    <value>Bon retour, {0}.</value>
+  </data>
+  <data name="HomeWelcomeAnonymous" xml:space="preserve">
+    <value>Bon retour.</value>
+  </data>
+  <data name="HomeFirstVisitText" xml:space="preserve">
+    <value>Tout est en place. Les éléments apparaîtront ici au fur et à mesure que vos équipes vous transmettent du travail.</value>
+  </data>
+  <data name="HomeItemsTemplate" xml:space="preserve">
+    <value>Vous avez {0} éléments nécessitant votre attention répartis sur {1} domaines.</value>
+  </data>
+  <data name="HomeAllCaughtUpText" xml:space="preserve">
+    <value>Tout est à jour. Aucun élément ne nécessite votre attention.</value>
+  </data>
+  <data name="HomeNoMicroservicesText" xml:space="preserve">
+    <value>Aucun microservice enregistré.</value>
+  </data>
+  <data name="HomeGettingStartedLinkText" xml:space="preserve">
+    <value>Consulter le guide de démarrage.</value>
+  </data>
+  <data name="HomeOtherAreasHeading" xml:space="preserve">
+    <value>Autres domaines</value>
+  </data>
+  <data name="HomeSortedByUrgencyAriaDescription" xml:space="preserve">
+    <value>Trié par urgence</value>
+  </data>
+  <data name="NewCapabilityBadgeText" xml:space="preserve">
+    <value>Nouveau</value>
+  </data>
 </root>

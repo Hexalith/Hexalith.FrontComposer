@@ -1,6 +1,8 @@
 // ATDD RED PHASE — Story 3-2 Task 10.2 (D13; AC4)
 // Fails at compile until Task 7 (FcCollapsedNavRail component) lands.
 
+using System.Collections.Immutable;
+
 using AngleSharp.Dom;
 
 using Bunit;
@@ -10,6 +12,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
@@ -105,6 +108,8 @@ public sealed class FcCollapsedNavRailTests : LayoutComponentTestBase {
         ]);
 
         IRenderedComponent<FcCollapsedNavRail> cut = Render<FcCollapsedNavRail>();
+        IState<FrontComposerCapabilityDiscoveryState> discoveryState =
+            Services.GetRequiredService<IState<FrontComposerCapabilityDiscoveryState>>();
         IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
 
         // Seed state as collapsed, so the click's SidebarExpandedAction produces an observable change.
@@ -119,6 +124,27 @@ public sealed class FcCollapsedNavRailTests : LayoutComponentTestBase {
         // observable state change already proves the SidebarExpandedAction pipeline fired.
         cut.WaitForAssertion(() => state.Value.SidebarCollapsed.ShouldBeFalse(
             "SidebarExpandedAction should flip SidebarCollapsed back to false (D13)"));
+        discoveryState.Value.SeenCapabilities.ShouldContain("bc:Counter");
+    }
+
+    [Fact]
+    public void RendersBadgeAndNewIndicator_WhenBoundedContextHasUrgency() {
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!], Commands: []),
+        ]);
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 3)));
+
+        IRenderedComponent<FcCollapsedNavRail> cut = Render<FcCollapsedNavRail>();
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("data-testid=\"fc-rail-badge-Counter\"");
+            cut.Markup.ShouldContain("data-testid=\"fc-rail-new-Counter\"");
+        });
     }
 
     [Fact]

@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-21 (story 3-4: bmad-code-review pass-4 chunk 3 of 3 (Shortcuts + Navigation + Registry + Routing — 20 files, +1752 lines) applied 21 patches + 3 decision-resolutions + 3 doc-addenda (D25/D26/D27/D28/D29 + G24/G25/G26 + story §scope line 11 amendment). Decisions: C3-D1(a) ratify HFC2110+HFC2111 diagnostic renumber; C3-D2(a) ratify lenient BoundedContextRouteParser first-segment fallback; C3-D3(a) ratify registrar IDisposable-discard pattern. Safety patches: ShortcutService._disposed bool→Interlocked.int, RegisterShellDefaults idempotency-flag rollback on throw, TryInvokeBindingAsync null-Task guard, OpenPaletteAsync catches ALL exceptions (incl. OCE) with compensating dispatch, ValidateManifests null-Commands guard, IsInternalRoute URL-decode + CR/LF/tab rejection. Normalize hardening: reject duplicate modifiers / empty tokens / multi-char chord tokens / identical chord parts / multi-space chord separators (all with new [Theory] tests). P14 dismissed after verification (Normalize actually accepts multi-char keys). Test additions: +19 (RegistrarRollback, Chord1500msBoundary, 4 new Normalize rejection theories, 4 new BoundedContextRouteParser lenient-fallback inline-data). `dotnet build --warnaserror` clean; 924 passing / 0 failed / 2 skipped (up from 905 pre-patch). Story stays review — DN3 Playwright palette E2E + PaletteScorerBench BenchmarkDotNet remain user-gated; next sessions pick up Chunk 1 (PaletteScorerBench lens) then Chunk 2 (Playwright/Chrome-MCP lens).)"
+last_updated: "2026-04-22 (story 3-5 bmad-code-review → done: 2 decisions resolved (D1 gate-on-expand narrows OnGroupExpandedChanged to only dispatch CapabilityVisitedAction when expanded=true; D2 amends spec D12 to document proj-click implicitly acks BC), 9 patches applied. Badge palette: Filled+Brand for counts / Tint+Informative for New to match AC8/D14 intent within Fluent UI v5 API (no Accent/Intent enums exist). Home card tabindex='0' per Task 3.5. ReflectionCatalog filters open generics + dedupes. NullReader honors pre-cancelled token. BadgeCountService Interlocked.Exchange disposal + IsDisposed Volatile.Read. UpdateCount negative-count guard. 4 Task 7.1 concurrency/timeout tests land with FakeTimeProvider; 6 Task 7.6 home tests land — all behavioural including full AC7 Enter/Space activation. **Refactor:** FcHomeDirectory.RenderCard `RenderFragment = __builder => { ... }` silently dropped @onclick/@onkeydown (bUnit confirmed zero handlers on button); extracted new FcHomeCard child component under Components/Home/ owning the button + badges + projection rows, event bindings now emit properly. HomeCardModel + HomeProjectionRow promoted to public top-level records. Solution build clean with -warnaserror; full test suite 1,004 passing (18 Contracts + 709 Shell + 277 SourceTools) / 0 failed / 2 skipped (pre-existing E2E). USER-GATED items still open: 6.2 French native pre-pass, 7.8 cross-story integration tests, 8.1 Aspire MCP runtime smoke.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -70,8 +70,8 @@ development_status:
   3-2-sidebar-navigation-and-responsive-behavior: done
   3-3-display-density-and-user-settings: done
   3-4-fccommandpalette-and-keyboard-shortcuts: review
-  3-5-home-directory-badge-counts-and-new-capability-discovery: ready-for-dev
-  3-6-session-persistence-and-context-restoration: backlog
+  3-5-home-directory-badge-counts-and-new-capability-discovery: done
+  3-6-session-persistence-and-context-restoration: ready-for-dev
   epic-3-retrospective: optional
 
   # Epic 4: Rich DataGrid & Projection Interaction

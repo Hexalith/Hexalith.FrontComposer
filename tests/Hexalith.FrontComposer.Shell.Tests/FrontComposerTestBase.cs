@@ -2,9 +2,12 @@ using Bunit;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -42,7 +45,22 @@ public abstract class FrontComposerTestBase : BunitContext {
         });
         _ = Services.AddSingleton(Substitute.For<IOverrideRegistry>());
         _ = Services.AddLogging();
+
+        // Story 3-5 — Fluxor scans the Shell assembly for [EffectMethod] handlers, which auto-
+        // registers CapabilityDiscoveryEffects. Its constructor needs the badge services even
+        // when the test does not exercise them, so wire them with the null defaults.
+        _ = Services.AddSingleton<IActionQueueProjectionCatalog>(_ =>
+            new EmptyActionQueueProjectionCatalog());
+        _ = Services.AddScoped<IActionQueueCountReader, NullActionQueueCountReader>();
+        _ = Services.AddScoped<IBadgeCountService, BadgeCountService>();
+        _ = Services.AddScoped<CapabilityDiscoveryEffects>();
+        _ = Services.AddSingleton(TimeProvider.System);
+
         InitializeStoreAsync().GetAwaiter().GetResult();
+    }
+
+    private sealed class EmptyActionQueueProjectionCatalog : IActionQueueProjectionCatalog {
+        public IReadOnlyList<Type> ActionQueueTypes { get; } = Array.Empty<Type>();
     }
 
     /// <summary>

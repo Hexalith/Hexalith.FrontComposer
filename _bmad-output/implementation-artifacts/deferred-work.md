@@ -1,8 +1,25 @@
 # Deferred Work
 
+## Deferred from: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22)
+
+- **External native-French sign-off remains required but cannot be completed in-tool** — AC13 / D19 / Task 6.2 still require native-French review for `HomeWelcomeTemplate`, `HomeAllCaughtUpText`, `HomeWelcomeAnonymous`, and `HomeFirstVisitText`. Deferred because this review session cannot supply the external native-language reviewer sign-off; keep it as a merge gate.
+- **`_unresolvedTypes` concurrent dict grows unbounded in `BadgeCountService`** — `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs:57-58,287-301`. Scoped-per-circuit so bounded by circuit lifetime, but revisit once Story 5-3 exposes the real SignalR `IProjectionChangeNotifier` where adversarial type-name strings become reachable.
+- **Duplicate `AppInitializedAction` on Blazor Server prerender + interactive double-fire** — `CapabilityDiscoveryEffects.HandleAppInitialized` runs hydrate + seed twice. Covered by Story 3-6 `StorageReadyAction` + ScopeFlipObserverEffect (ADR-049).
+- **Post-auth scope-flip (anonymous hydrate → authenticated persist) rehydrate missing** — user logs in after anonymous hydrate; persist writes post-login scope without rehydrating. Covered by Story 3-6 ScopeFlipObserverEffect.
+- **Adopter-supplied `IBadgeCountService` not initialized by seed effect** — `CapabilityDiscoveryEffects.SeedBadgeCountsAsync` uses `is BadgeCountService concrete` pattern match. Adopters ship their own init per D1 extensibility hatch.
+- **`BadgeCountService.TotalActionableItems = Sum()` overflow** — theoretical `int` overflow when aggregate exceeds `int.MaxValue`. Unreachable in realistic catalogs (< 50 projections).
+- **`DisposeAsync` calls synchronous `Dispose` and returns completed `ValueTask`** — `BadgeCountService.cs:157-160`. Cosmetic; no async teardown work today.
+- **`_subject.OnCompleted` race with in-flight `OnNext` in `Dispose`** — `BadgeCountService.cs:182-184`. Narrow window; `OnNext` call-site catches `ObjectDisposedException`.
+- **Duplicate FQN in `manifest.Projections` double-counts home card aggregate** — governance concern for adopter manifests; escalate to Story 9-4 build-time analyzer.
+- **`NavigationException` during SSR prerender on home card click** — project-wide prerender-safety pattern; not per-component.
+- **`BadgeCountService.ContainsCatalogType` O(n) linear scan on notifier hot-path** — catalog < 50 types today; add `HashSet<Type>` cache if profiling shows cost.
+- **`IActionQueueProjectionCatalogContractTests` reflection shape assertion brittle** — `GetMembers(DeclaredOnly).Length == 2` relies on getter-accessor reflection detail.
+- **Duplicate `data-testid` / DOM ids when two projection FQNs share a last segment** — current sample + test manifests don't collide; harden id scheme with hash-suffix when first adopter reports a clash.
+- ~~**AC7 behavioural test: home card `@onclick` / `@onkeydown` silently dropped by Razor compiler**~~ — **RESOLVED in the same review session.** Extracted `FcHomeCard` child component (`Components/Home/FcHomeCard.razor` + `.razor.cs`); `@onclick` / `@onkeydown` now emit as proper Blazor event bindings. Behavioural test `ActivatesCardViaEnterKey_DispatchesVisitedAction_ThenNavigates` passes.
+
 ## Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 1 review (2026-04-21 pass 5)
 
-*Chunk 1 scope: palette UI components (FcCommandPalette, FcPaletteResultList, FcPaletteTriggerButton), PaletteScorer, PaletteResult, ProjectionTypeResolver, fc-focus.js, and their bUnit/property tests.*
+_Chunk 1 scope: palette UI components (FcCommandPalette, FcPaletteResultList, FcPaletteTriggerButton), PaletteScorer, PaletteResult, ProjectionTypeResolver, fc-focus.js, and their bUnit/property tests._
 
 - **Invalid ARIA listbox structure** — `<ul role="listbox">` contains `<li role="none">` wrapping `<h4>` + nested `<ul role="group">`. WAI-ARIA 1.2 prefers direct `<li role="option">` or direct `<li role="group">` children. Deferred to Story 10-2 a11y pipeline alongside forced-colors / RTL verification. `src/Hexalith.FrontComposer.Shell/Components/Layout/FcPaletteResultList.razor:25-64`
 - **Task 10.7 bUnit test matrix still at 5 of 9+ shipped** — carried forward from Pass 2/3/4 F-03. Missing: `ArrowDownDispatchesSelectionMoved`, `ArrowUpDispatchesSelectionMoved`, `EnterDispatchesActivation`, `EscapeClosesPalette`, `AriaLiveAnnouncesNoMatchesForEmptyResults`, `FocusManagement_ArrowsKeepFocusOnSearchInput`, `FocusManagement_EscapeRestoresFocusToInvoker`, `FocusManagement_ActivateSentinelDoesNotClosePalette`, `PaletteDismissPaths_AllDispatchPaletteClosedAction`. Landing with the Aspire MCP Playwright matrix follow-up per DN3. `tests/Hexalith.FrontComposer.Shell.Tests/Components/Layout/FcCommandPaletteTests.cs`
@@ -13,7 +30,7 @@
 
 ## Deferred from: code review of story 3-4-fccommandpalette-and-keyboard-shortcuts — Chunk 3 re-review (2026-04-21 pass 4)
 
-*Chunk 3 scope: Shortcuts contracts + service + registrar, Registration contracts + registry, FcDiagnosticIds, Routing, Navigation state. Palette UI + scorer + main effects in Chunks 1 & 2 (future sessions).*
+_Chunk 3 scope: Shortcuts contracts + service + registrar, Registration contracts + registry, FcDiagnosticIds, Routing, Navigation state. Palette UI + scorer + main effects in Chunks 1 & 2 (future sessions)._
 
 - **`IsChordPrefix` linear O(N) scan per bare-letter keystroke** — optimise to a prefix-HashSet maintained at `Register`/`Remove` if the registered-binding count grows. V1 registrar ships 5 bindings; the O(N) scan is a non-issue at that scale. Revisit when adopter-binding count exceeds ~50 or when profiling shows hot-path cost. `src/Hexalith.FrontComposer.Shell/Shortcuts/ShortcutService.cs:IsChordPrefix`
 - **`_pendingGeneration` long overflow after 2^63 chord starts** — theoretical; no real-world trigger.

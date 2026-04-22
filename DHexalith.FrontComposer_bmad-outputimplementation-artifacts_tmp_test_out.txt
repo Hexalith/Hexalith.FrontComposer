@@ -1,0 +1,20 @@
+Build started 22/04/2026 13:38:35.
+Test run for D:\Hexalith.FrontComposer\tests\Hexalith.FrontComposer.Shell.Tests\bin\Debug\net10.0\Hexalith.FrontComposer.Shell.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v3.1.5+1b188a7b0a (64-bit .NET 10.0.7)
+[xUnit.net 00:00:00.13]   Discovering: Hexalith.FrontComposer.Shell.Tests
+[xUnit.net 00:00:00.44]   Discovered:  Hexalith.FrontComposer.Shell.Tests
+[xUnit.net 00:00:00.57]   Starting:    Hexalith.FrontComposer.Shell.Tests
+[xUnit.net 00:00:00.70]   Finished:    Hexalith.FrontComposer.Shell.Tests (ID = 'b5c678abc388bf95db4b76375d22bd8805db9cee9124c6cfa4b3924d7a4a6f08')
+  Passed Hexalith.FrontComposer.Shell.Tests.Badges.BadgeCountServiceTests.InitializeAsync_ConcurrentWithProjectionChanged_FinalStateMatchesLastWriter [73 ms]
+
+Test Run Successful.
+Total tests: 1
+     Passed: 1
+ Total time: 1,0470 Seconds
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.46

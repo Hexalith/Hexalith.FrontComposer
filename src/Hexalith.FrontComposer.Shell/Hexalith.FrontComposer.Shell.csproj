@@ -11,6 +11,9 @@
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
     <PackageReference Include="NUlid" />
+    <!-- Story 3-5 D5 — explicit dependency for BadgeCountService `Subject<T>` +
+         `.AsObservable()` producer/consumer isolation. See Directory.Packages.props note. -->
+    <PackageReference Include="System.Reactive" />
   </ItemGroup>
   <!-- Story 3-2 Task 10 — test project accesses the internal *ForTest hooks on the 3-2 layout
        components (FcHamburgerToggle, FrontComposerNavigation) to drive bUnit assertions without

@@ -1,6 +1,8 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
 @using Hexalith.FrontComposer.Contracts.Registration
+@using Hexalith.FrontComposer.Shell.Badges
 @using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
 @using Hexalith.FrontComposer.Shell.State.Navigation
 @using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
@@ -12,7 +14,12 @@
    At CompactDesktop OR Desktop + SidebarCollapsed we swap to FcCollapsedNavRail (D7 / D9);
    otherwise we render FluentNav with one FluentNavCategory per manifest whose Projections list
    is non-empty (D1). Commands are excluded. Nav-item routes follow the D2 convention:
-   /{boundedContext-lowercase}/{projectionTypeName-kebab-case}. *@
+   /{boundedContext-lowercase}/{projectionTypeName-kebab-case}.
+
+   Story 3-5 Task 5 (D8 / D12 / D13 / D14 / AC8 / AC9 / AC10) — alongside each projection nav entry
+   render a FluentBadge when the IBadgeCountService count > 0, plus a "New" FluentBadge when the
+   capabilityId is not in the seen-set AND the projection has data. Click dispatches
+   CapabilityVisitedAction synchronously (D13 ordering — reducer wins before navigation). *@
 
 @if (ShouldRenderCollapsedRail())
 {
@@ -20,26 +27,59 @@
 }
 else
 {
+    FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
+
     <FluentNav UseIcons="true" data-testid="fc-navigation-full"
                aria-label="@Localizer["NavMenuAriaLabel"].Value">
         @foreach (DomainManifest manifest in Registry.GetManifests())
         {
-            List<string> projections = RenderableProjections(manifest);
+            List<string> projections = VisibleProjections(manifest, discovery.Counts);
             @if (projections.Count == 0)
             {
                 continue;
             }
 
+            string bcCapabilityId = CapabilityIds.ForBoundedContext(manifest.BoundedContext);
+            int aggregateCount = AggregateBoundedContextCount(manifest, discovery.Counts);
+            bool bcShowsNew = !discovery.SeenCapabilities.Contains(bcCapabilityId) && aggregateCount > 0;
+
             <FluentNavCategory Id="@manifest.BoundedContext"
                                Title="@manifest.Name"
                                Expanded="@(!IsGroupCollapsed(manifest.BoundedContext))"
-                               ExpandedChanged="@(value => OnGroupExpandedChanged(manifest.BoundedContext, value))"
+                               ExpandedChanged="@(value => OnGroupExpandedChanged(manifest.BoundedContext, bcCapabilityId, value))"
                                data-testid="@($"fc-nav-category-{manifest.BoundedContext}")">
                 @foreach (string projectionFqn in projections)
                 {
-                    <FluentNavItem Href="@BuildRoute(manifest.BoundedContext, projectionFqn)">
+                    int count = LookupCount(projectionFqn, discovery.Counts);
+                    string projCapabilityId = CapabilityIds.ForProjection(manifest.BoundedContext, projectionFqn);
+                    bool projShowsNew = !discovery.SeenCapabilities.Contains(projCapabilityId) && count > 0;
+
+                    <FluentNavItem Href="@BuildRoute(manifest.BoundedContext, projectionFqn)"
+                                   OnClick="@(_ => HandleNavItemClicked(manifest.BoundedContext, projCapabilityId))">
                         @ProjectionLabel(projectionFqn)
+                        @if (count > 0)
+                        {
+                            <FluentBadge Appearance="@BadgeAppearance.Filled"
+                                         Color="@BadgeColor.Brand"
+                                         data-testid="@($"fc-nav-badge-{manifest.BoundedContext}-{ProjectionLabel(projectionFqn)}")">@count</FluentBadge>
+                        }
+                        @if (projShowsNew)
+                        {
+                            <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                         Color="@BadgeColor.Informative"
+                                         data-testid="@($"fc-nav-new-{manifest.BoundedContext}-{ProjectionLabel(projectionFqn)}")">
+                                @Localizer["NewCapabilityBadgeText"].Value
+                            </FluentBadge>
+                        }
                     </FluentNavItem>
+                }
+                @if (bcShowsNew)
+                {
+                    <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                 Color="@BadgeColor.Informative"
+                                 data-testid="@($"fc-nav-bc-new-{manifest.BoundedContext}")">
+                        @Localizer["NewCapabilityBadgeText"].Value
+                    </FluentBadge>
                 }
             </FluentNavCategory>
         }

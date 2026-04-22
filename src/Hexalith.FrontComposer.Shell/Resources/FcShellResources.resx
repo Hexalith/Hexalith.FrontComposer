@@ -220,4 +220,46 @@
     <value>View all keyboard shortcuts</value>
     <comment>Story 3-4 D23 — entry description for the synthetic "Keyboard Shortcuts" commands row.</comment>
   </data>
+
+  <!-- Story 3-5 D19 — home directory + new-capability discovery (10 keys, mirrors fr.resx). -->
+  <data name="HomeWelcomeTemplate" xml:space="preserve">
+    <value>Welcome back, {0}.</value>
+    <comment>Story 3-5 AC3 / D19 — home greeting placeholder {0} = current user display name. Pre-merge native French review per D19.</comment>
+  </data>
+  <data name="HomeWelcomeAnonymous" xml:space="preserve">
+    <value>Welcome back.</value>
+    <comment>Story 3-5 D19 (mandatory) — fallback when AuthenticationState identity name is null/empty/whitespace. "Welcome back, ." MUST NOT be producible.</comment>
+  </data>
+  <data name="HomeFirstVisitText" xml:space="preserve">
+    <value>You're all set up. Items will appear here as teams send work your way.</value>
+    <comment>Story 3-5 AC4b / D19 — distinct from HomeAllCaughtUpText to avoid the Day-1 newcomer "is it broken?" failure mode.</comment>
+  </data>
+  <data name="HomeItemsTemplate" xml:space="preserve">
+    <value>You have {0} items needing attention across {1} areas.</value>
+    <comment>Story 3-5 AC3 / D19 — placeholders {0} = TotalActionableItems, {1} = distinct bounded contexts with count > 0.</comment>
+  </data>
+  <data name="HomeAllCaughtUpText" xml:space="preserve">
+    <value>All caught up. No items need your attention.</value>
+    <comment>Story 3-5 AC4a / D19 — returning user with zero urgency. Pre-merge native French review per D19.</comment>
+  </data>
+  <data name="HomeNoMicroservicesText" xml:space="preserve">
+    <value>No microservices registered.</value>
+    <comment>Story 3-5 AC5 / D19 — empty state when GetManifests().Count == 0.</comment>
+  </data>
+  <data name="HomeGettingStartedLinkText" xml:space="preserve">
+    <value>See the getting-started guide.</value>
+    <comment>Story 3-5 AC5 / D19 — link text under HomeNoMicroservicesText.</comment>
+  </data>
+  <data name="HomeOtherAreasHeading" xml:space="preserve">
+    <value>Other areas</value>
+    <comment>Story 3-5 AC3 / D17 / D19 — collapsed accordion heading for zero-urgency contexts.</comment>
+  </data>
+  <data name="HomeSortedByUrgencyAriaDescription" xml:space="preserve">
+    <value>Sorted by urgency</value>
+    <comment>Story 3-5 AC7 / D19 — aria-description on the cards-list container.</comment>
+  </data>
+  <data name="NewCapabilityBadgeText" xml:space="preserve">
+    <value>New</value>
+    <comment>Story 3-5 AC8 / D12 / D19 — subtle FluentBadge label next to nav entries / card headers for unseen capabilities with data.</comment>
+  </data>
 </root>

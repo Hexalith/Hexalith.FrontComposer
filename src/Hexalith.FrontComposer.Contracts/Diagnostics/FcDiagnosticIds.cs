@@ -96,4 +96,25 @@ public static class FcDiagnosticIds {
     /// (no analyzer emission).
     /// </summary>
     public const string HFC2111_PaletteHydrationEmpty = "HFC2111";
+
+    /// <summary>
+    /// <c>BadgeCountService</c> encountered an exception during the initial parallel fetch, during
+    /// a per-type re-fetch triggered by <c>IProjectionChangeNotifier</c>, or during seen-capability
+    /// storage persistence (Story 3-5 D12, D13). Warning severity — the offending operation is
+    /// excluded from the result / silently skipped, but the exception never crashes the shell or the
+    /// Fluxor error boundary. The structured payload carries
+    /// <c>{ProjectionTypeName|CapabilityId, ExceptionType, ExceptionMessage}</c> for operator
+    /// correlation. Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2112_BadgeInitialFetchFault = "HFC2112";
+
+    /// <summary>
+    /// <c>BadgeCountService</c> received a <c>IProjectionChangeNotifier.ProjectionChanged</c>
+    /// payload whose string type-name failed <c>Type.GetType(..., throwOnError: false)</c>
+    /// resolution (Story 3-5 D7). Information severity — most commonly an adopter mis-registration
+    /// (assembly-qualified vs. short-name mismatch). De-duplicated per <c>BadgeCountService</c>
+    /// instance (Scoped lifetime) so an operator sees one log per circuit per unresolvable string.
+    /// The structured payload carries <c>{TypeNameString}</c>. Runtime-only (no analyzer emission).
+    /// </summary>
+    public const string HFC2113_ProjectionTypeUnresolvable = "HFC2113";
 }

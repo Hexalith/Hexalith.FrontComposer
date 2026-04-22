@@ -1,0 +1,86 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Home
+@using Hexalith.FrontComposer.Shell.Badges
+@using Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 3-5 Task 3 — per-card render surface extracted from FcHomeDirectory so the Razor
+   compiler emits proper @onclick / @onkeydown event bindings (previous `RenderFragment = __builder =>`
+   lambda dropped them silently). Parent owns the dispatch/navigation via OnActivated. *@
+
+@inject IStringLocalizer<FcShellResources> Localizer
+
+@{
+    string bcCapabilityId = CapabilityIds.ForBoundedContext(Card.Manifest.BoundedContext);
+    bool bcShowsNew = !SeenCapabilities.Contains(bcCapabilityId) && Card.AggregateCount > 0;
+    string ariaLabel = Card.AggregateCount > 0
+        ? $"{Card.Manifest.Name}, {Card.AggregateCount} items pending"
+        : Card.Manifest.Name;
+    bool anyVisibleProjection = Card.ProjectionRows.Any(row => ShouldRenderProjectionRow(row));
+}
+
+<li class="fc-home-card" data-testid="@($"fc-home-card-{Card.Manifest.BoundedContext}")">
+    <button type="button" class="fc-home-card-button"
+            role="link"
+            tabindex="0"
+            aria-label="@ariaLabel"
+            @onclick="HandleClickAsync"
+            @onkeydown="HandleKeydownAsync">
+        <h2 class="fc-home-card-title">
+            @Card.Manifest.Name
+            @if (Card.AggregateCount > 0)
+            {
+                <FluentBadge Appearance="@BadgeAppearance.Filled"
+                             Color="@BadgeColor.Brand"
+                             data-testid="@($"fc-home-card-badge-{Card.Manifest.BoundedContext}")">@Card.AggregateCount</FluentBadge>
+            }
+            @if (bcShowsNew)
+            {
+                <FluentBadge Appearance="@BadgeAppearance.Tint"
+                             Color="@BadgeColor.Informative"
+                             data-testid="@($"fc-home-card-new-{Card.Manifest.BoundedContext}")">
+                    @Localizer["NewCapabilityBadgeText"].Value
+                </FluentBadge>
+            }
+        </h2>
+        @if (anyVisibleProjection)
+        {
+            <ul class="fc-home-card-projections">
+                @foreach (HomeProjectionRow row in Card.ProjectionRows)
+                {
+                    if (!ShouldRenderProjectionRow(row))
+                    {
+                        continue;
+                    }
+
+                    string projCapabilityId = CapabilityIds.ForProjection(Card.Manifest.BoundedContext, row.ProjectionFqn);
+                    string projectionLabel = FrontComposerNavigation.ProjectionLabel(row.ProjectionFqn);
+                    int rowCount = row.Count ?? 0;
+                    bool projShowsNew = !SeenCapabilities.Contains(projCapabilityId) && rowCount > 0;
+
+                    <li class="fc-home-card-projection"
+                        data-testid="@($"fc-home-card-projection-{Card.Manifest.BoundedContext}-{projectionLabel}")">
+                        <span>@projectionLabel</span>
+                        @if (rowCount > 0)
+                        {
+                            <FluentBadge Appearance="@BadgeAppearance.Filled"
+                                         Color="@BadgeColor.Brand"
+                                         data-testid="@($"fc-home-card-projection-badge-{Card.Manifest.BoundedContext}-{projectionLabel}")">@rowCount</FluentBadge>
+                        }
+                        @if (projShowsNew)
+                        {
+                            <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                         Color="@BadgeColor.Informative"
+                                         data-testid="@($"fc-home-card-projection-new-{Card.Manifest.BoundedContext}-{projectionLabel}")">
+                                @Localizer["NewCapabilityBadgeText"].Value
+                            </FluentBadge>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </button>
+</li>

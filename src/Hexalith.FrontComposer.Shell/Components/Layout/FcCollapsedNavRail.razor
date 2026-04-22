@@ -1,8 +1,11 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
 @using Hexalith.FrontComposer.Contracts.Registration
+@using Hexalith.FrontComposer.Shell.Badges
 @using Hexalith.FrontComposer.Shell.Resources
+@using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
 @using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
 @inject IFrontComposerRegistry Registry
 @inject IStringLocalizer<FcShellResources> Localizer
 
@@ -13,22 +16,44 @@
    Default icon is Icons.Regular.Size20.Apps until Story 4-1 ships projection-role-hint-based
    icons. *@
 
-<div class="fc-collapsed-rail" data-testid="fc-collapsed-rail"
-     role="navigation" aria-label="@Localizer["NavMenuAriaLabel"].Value">
-    @foreach (DomainManifest manifest in Registry.GetManifests().Where(static manifest => manifest.Projections.Count > 0))
+<div class="fc-collapsed-rail" data-testid="fc-collapsed-rail" role="navigation"
+     aria-label="@Localizer["NavMenuAriaLabel"].Value">
+    @{
+        FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
+    }
+
+    @foreach (DomainManifest manifest in Registry.GetManifests().Where(static manifest => manifest.Projections.Count >
+    0))
     {
         string anchorId = $"fc-rail-{manifest.BoundedContext}";
+        int aggregateCount = AggregateCount(manifest, discovery.Counts);
+        bool showsNew = !discovery.SeenCapabilities.Contains(CapabilityIds.ForBoundedContext(manifest.BoundedContext))
+            && aggregateCount > 0;
         @* Accessible name = the visually-hidden <span>; FluentTooltip provides the visual
            affordance. We intentionally DO NOT set Title/aria-label on the button so screen
            readers announce the bounded-context name once (from the span), not three times. *@
-        <FluentButton id="@anchorId"
-                      Appearance="@ButtonAppearance.Subtle"
-                      OnClick="@OnRailClicked">
+        <FluentButton id="@anchorId" Appearance="@ButtonAppearance.Subtle"
+                      OnClick="@(_ => OnRailClicked(manifest.BoundedContext))">
             <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Apps())" />
             <span class="fc-visually-hidden">@manifest.Name</span>
-        </FluentButton>
-        <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
-            @manifest.Name
-        </FluentTooltip>
-    }
-</div>
+            @if (aggregateCount > 0)
+            {
+                <FluentBadge Appearance="@BadgeAppearance.Filled"
+                             Color="@BadgeColor.Brand"
+                             data-testid="@($"fc-rail-badge-{manifest.BoundedContext}")">
+                    @aggregateCount</FluentBadge>
+                }
+                @if (showsNew)
+                {
+                    <FluentBadge Appearance="@BadgeAppearance.Tint"
+                                 Color="@BadgeColor.Informative"
+                                 data-testid="@($"fc-rail-new-{manifest.BoundedContext}")">
+                        @Localizer["NewCapabilityBadgeText"].Value
+                    </FluentBadge>
+                }
+            </FluentButton>
+            <FluentTooltip Anchor="@anchorId" Positioning="@Positioning.After" UseTooltipService="false">
+                @manifest.Name
+            </FluentTooltip>
+        }
+    </div>

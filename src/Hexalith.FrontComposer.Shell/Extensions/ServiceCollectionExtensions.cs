@@ -7,12 +7,14 @@ using Fluxor.DependencyInjection;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
+using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
@@ -20,8 +22,11 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.Shortcuts;
+using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Theme;
+
+using Microsoft.Extensions.Logging;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Localization;
@@ -239,6 +244,22 @@ public static class ServiceCollectionExtensions
         // available as a concrete instance for IDisposable cleanup on circuit teardown. Scoped per
         // ADR-030 precedent.
         services.TryAddScoped<CommandPaletteEffects>();
+
+        // Story 3-5 D1 / D2 / D3 — badge count producer seam. Consumed via nullable DI by
+        // Story 3-4's FcPaletteResultList (activates automatically when this registration lands)
+        // and by Story 3-5's FcHomeDirectory + FrontComposerNavigation via Fluxor state.
+        services.TryAddSingleton<IActionQueueProjectionCatalog>(sp =>
+#pragma warning disable IL2026 // RequiresUnreferencedCode — Reflection catalog documented as AOT-incompatible (G22 / Story 9-1 analyzer).
+            new ReflectionActionQueueProjectionCatalog(
+                AppDomain.CurrentDomain.GetAssemblies(),
+                sp.GetRequiredService<ILogger<ReflectionActionQueueProjectionCatalog>>()));
+#pragma warning restore IL2026
+        services.TryAddScoped<IActionQueueCountReader, NullActionQueueCountReader>();
+        _ = services.AddScoped<IBadgeCountService, BadgeCountService>();
+
+        // Story 3-5 D9 / ADR-046 — capability-discovery effects mirror CommandPaletteEffects
+        // (Scoped per ADR-030; concrete instance held for IDisposable bridge teardown).
+        services.TryAddScoped<CapabilityDiscoveryEffects>();
 
         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.

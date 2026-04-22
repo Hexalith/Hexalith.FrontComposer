@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using System.Text;
 
 using Fluxor;
@@ -5,6 +6,9 @@ using Fluxor.Blazor.Web.Components;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
+using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
@@ -31,6 +35,8 @@ public partial class FrontComposerNavigation : FluxorComponent {
     [Inject] private IDispatcher Dispatcher { get; set; } = default!;
 
     [Inject] private IState<FrontComposerNavigationState> NavState { get; set; } = default!;
+
+    [Inject] private IState<FrontComposerCapabilityDiscoveryState> DiscoveryState { get; set; } = default!;
 
     [Inject] private IUlidFactory UlidFactory { get; set; } = default!;
 
@@ -75,13 +81,90 @@ public partial class FrontComposerNavigation : FluxorComponent {
     }
 
     /// <summary>
-    /// Test hook exposing the private handler so <c>NavGroupToggledDispatchesOnExpandedChange</c>
+    /// Returns the projections that should render as nav entries. Story 3-5 AC8 + Epic AC § 244 —
+    /// projections with zero data stay invisible in the sidebar entirely. Until the badge counts
+    /// are seeded (catalog enumerated + reader fan-out completed) the rendering falls back to the
+    /// legacy <see cref="RenderableProjections(DomainManifest)"/> behavior so a fresh circuit does
+    /// not flash an empty sidebar. Resolved projections that are missing from <paramref name="counts"/>
+    /// also stay visible — that path represents a faulted or not-yet-snapshotted count, not proof
+    /// that the projection has zero actionable items.
+    /// </summary>
+    /// <param name="manifest">The source <see cref="DomainManifest"/>.</param>
+    /// <param name="counts">The current per-projection badge counts.</param>
+    /// <returns>The projections to render in the sidebar.</returns>
+    internal static List<string> VisibleProjections(
+        DomainManifest manifest,
+        ImmutableDictionary<Type, int> counts) {
+        ArgumentNullException.ThrowIfNull(manifest);
+        ArgumentNullException.ThrowIfNull(counts);
+
+        // No counts seeded yet → preserve pre-Story-3-5 behavior (show all manifest projections).
+        if (counts.IsEmpty) {
+            return RenderableProjections(manifest);
+        }
+
+        List<string> list = new(manifest.Projections.Count);
+        foreach (string projection in manifest.Projections) {
+            if (string.IsNullOrWhiteSpace(projection)) {
+                continue;
+            }
+
+            // AC8: only surface projections with count > 0 once counts are available. Projections
+            // not present in the catalog (no badge contract) keep showing — they're not actionable
+            // by the badge system.
+            Type? resolved = ProjectionTypeResolver.Resolve(projection);
+            if (resolved is null) {
+                list.Add(projection);
+                continue;
+            }
+
+            if (!counts.TryGetValue(resolved, out int count) || count > 0) {
+                list.Add(projection);
+            }
+        }
+
+        return list;
+    }
+
+    internal static int LookupCount(string projectionFqn, ImmutableDictionary<Type, int> counts) {
+        ArgumentNullException.ThrowIfNull(counts);
+        Type? resolved = ProjectionTypeResolver.Resolve(projectionFqn);
+        return resolved is not null && counts.TryGetValue(resolved, out int count) ? count : 0;
+    }
+
+    internal static int AggregateBoundedContextCount(
+        DomainManifest manifest,
+        ImmutableDictionary<Type, int> counts) {
+        ArgumentNullException.ThrowIfNull(manifest);
+        int total = 0;
+        foreach (string projection in manifest.Projections) {
+            if (string.IsNullOrWhiteSpace(projection)) {
+                continue;
+            }
+
+            total += LookupCount(projection, counts);
+        }
+
+        return total;
+    }
+
+    /// <summary>
+    /// Test hook exposing the private nav-item click handler so tests can drive the dispatch
+    /// without going through the FluentNavItem event pipeline.
+    /// </summary>
+    /// <param name="boundedContext">The bounded context owning the projection.</param>
+    /// <param name="capabilityId">The seen-set capability id.</param>
+    internal void HandleNavItemClickedForTest(string boundedContext, string capabilityId)
+        => HandleNavItemClicked(boundedContext, capabilityId);
+
+    /// <summary>
+    /// Test hook exposing the private handler so the nav-group expand/collapse tests
     /// can invoke the category callback without driving the FluentNavCategory event pipeline.
     /// </summary>
     /// <param name="boundedContext">The bounded context whose category changed.</param>
     /// <param name="expanded">The new expanded state reported by FluentNavCategory.</param>
     internal void OnGroupExpandedChangedForTest(string boundedContext, bool expanded)
-        => OnGroupExpandedChanged(boundedContext, expanded);
+        => OnGroupExpandedChanged(boundedContext, CapabilityIds.ForBoundedContext(boundedContext), expanded);
 
     private bool ShouldRenderCollapsedRail() {
         FrontComposerNavigationState snapshot = NavState.Value;
@@ -92,8 +175,20 @@ public partial class FrontComposerNavigation : FluxorComponent {
     private bool IsGroupCollapsed(string boundedContext)
         => NavState.Value.CollapsedGroups.TryGetValue(boundedContext, out bool collapsed) && collapsed;
 
-    private void OnGroupExpandedChanged(string boundedContext, bool expanded)
-        => Dispatcher.Dispatch(new NavGroupToggledAction(UlidFactory.NewUlid(), boundedContext, Collapsed: !expanded));
+    private void OnGroupExpandedChanged(string boundedContext, string capabilityId, bool expanded) {
+        // D13 (review 2026-04-22): only an explicit expand signals engagement with the category;
+        // collapsing is decluttering and MUST NOT mark the capability as seen.
+        if (expanded) {
+            Dispatcher.Dispatch(new CapabilityVisitedAction(capabilityId));
+        }
+
+        Dispatcher.Dispatch(new NavGroupToggledAction(UlidFactory.NewUlid(), boundedContext, Collapsed: !expanded));
+    }
+
+    private void HandleNavItemClicked(string boundedContext, string capabilityId) {
+        Dispatcher.Dispatch(new CapabilityVisitedAction(CapabilityIds.ForBoundedContext(boundedContext)));
+        Dispatcher.Dispatch(new CapabilityVisitedAction(capabilityId));
+    }
 
     private static string LastSegment(string fqn) {
         int lastDot = fqn.LastIndexOf('.');

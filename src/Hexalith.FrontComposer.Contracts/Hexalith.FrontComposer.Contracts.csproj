@@ -7,6 +7,9 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Collections.Immutable" />
     <PackageReference Include="System.ComponentModel.Annotations" />
+    <!-- Story 3-5 D3 — ValueTask<T> is not in netstandard2.0 in-box; required by
+         IActionQueueCountReader.GetCountAsync. net10.0 carries it via System.Runtime. -->
+    <PackageReference Include="System.Threading.Tasks.Extensions" />
   </ItemGroup>
   <!-- Story 3-1: Typography static class (Rendering/Typography.cs) references Fluent UI v5 enums
        (TextSize, TextWeight, TextTag, TextFont). The Fluent UI package has no netstandard2.0 target,

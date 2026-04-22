@@ -153,7 +153,22 @@ public class ThemeEffectsTests
         _ = services.AddScoped(_ => StubAccessor(TestTenant, TestUser));
         _ = services.AddScoped<IThemeService>(_ => Substitute.For<IThemeService>());
         _ = services.AddOptions<Contracts.FcShellOptions>();
+        // Story 3-5 — CapabilityDiscoveryEffects auto-registers via Fluxor scan; supply the
+        // dependencies it needs even though this test never exercises the badge feature.
+        _ = services.AddSingleton<Hexalith.FrontComposer.Contracts.Badges.IActionQueueProjectionCatalog>(_ =>
+            new EmptyActionQueueProjectionCatalog());
+        _ = services.AddScoped<Hexalith.FrontComposer.Contracts.Badges.IActionQueueCountReader,
+            Hexalith.FrontComposer.Shell.Badges.NullActionQueueCountReader>();
+        _ = services.AddScoped<Hexalith.FrontComposer.Contracts.Badges.IBadgeCountService,
+            Hexalith.FrontComposer.Shell.Badges.BadgeCountService>();
+        _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.CapabilityDiscovery.CapabilityDiscoveryEffects>();
+        _ = services.AddSingleton(TimeProvider.System);
         return services.BuildServiceProvider();
+    }
+
+    private sealed class EmptyActionQueueProjectionCatalog : Hexalith.FrontComposer.Contracts.Badges.IActionQueueProjectionCatalog
+    {
+        public IReadOnlyList<Type> ActionQueueTypes { get; } = Array.Empty<Type>();
     }
 
     private static bool WaitFor(Func<bool> condition)

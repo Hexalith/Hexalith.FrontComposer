@@ -15,6 +15,9 @@
     <!-- System.ComponentModel.Annotations is ONLY needed on netstandard2.0 — net10.0 carries it in-box.
          Used by FcShellOptions for [Range] / [RegularExpression] validation. -->
     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
+    <!-- Story 3-5 D3 — ValueTask<T> is ONLY needed on netstandard2.0 for the IActionQueueCountReader
+         contract; net10.0 carries it in-box. -->
+    <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
     <!-- Story 2-4 Task 3.4 — OptionsBuilder<T>.ValidateDataAnnotations() extension for FcShellOptions. -->
     <PackageVersion Include="Microsoft.Extensions.Options.DataAnnotations" Version="9.0.0" />
     <!-- Story 3-1 Task 8.2 — IStringLocalizer<FcShellResources> + AddLocalization() for the
@@ -24,6 +27,11 @@
     <!-- Story 2-3 Decision D3: ULID generation for MessageId idempotency (FR36/NFR45).
          Story spec pinned 1.7.4; nuget.org published 1.7.3 — latest stable at implementation time. -->
     <PackageVersion Include="NUlid" Version="1.7.3" />
+    <!-- Story 3-5 D5 — explicit dependency on System.Reactive for the BadgeCountService
+         `Subject<T>` + `.AsObservable()` producer/consumer isolation pattern. Declared
+         explicitly (rather than relying on a transitive pull from Fluent UI v5) so a future
+         minor bump cannot silently drop the dependency. -->
+    <PackageVersion Include="System.Reactive" Version="6.0.1" />
   </ItemGroup>
 
   <ItemGroup Label="Blazor">

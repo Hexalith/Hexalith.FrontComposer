@@ -1,0 +1,13 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Pages
+@page "/"
+@page "/home"
+@using Hexalith.FrontComposer.Shell.Components.Home
+
+@*
+    Story 3-5 Task 3.4 / D16 — pure routing shim that mounts <FcHomeDirectory /> at the framework
+    home routes ("/" and "/home"). Adopters wanting a different landing page register their own
+    @page "/" in their own assembly scanned AFTER the shell — Blazor's route table takes the last
+    matching exact route (later-scanned assemblies win).
+*@
+
+<FcHomeDirectory />

@@ -1,0 +1,84 @@
+/* Story 3-5 Task 3.6 (D8 / UX-DR26 / ADR-012) — zero-override strategy: every value comes from
+   Fluent UI v5 design tokens. */
+
+.fc-home-directory {
+    display: flex;
+    flex-direction: column;
+    gap: var(--design-unit-card-gap, calc(var(--design-unit) * 4px));
+    padding: var(--design-unit-card-gap, calc(var(--design-unit) * 4px));
+}
+
+.fc-home-header h1 {
+    font: var(--type-ramp-plus-2-font);
+    margin: 0 0 calc(var(--design-unit) * 1px) 0;
+}
+
+.fc-home-subtitle {
+    font: var(--type-ramp-base-font);
+    color: var(--neutral-foreground-hint);
+    margin: 0;
+}
+
+.fc-home-cards {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: calc(var(--design-unit) * 3px);
+}
+
+.fc-home-card {
+    background: var(--neutral-layer-2);
+    border-radius: calc(var(--corner-radius) * 1px);
+    box-shadow: var(--elevation-shadow-card-rest);
+    transition: box-shadow 120ms ease-out;
+}
+
+.fc-home-card:focus-within,
+.fc-home-card:hover {
+    box-shadow: var(--elevation-shadow-card-hover);
+}
+
+.fc-home-card-button {
+    background: transparent;
+    border: 0;
+    color: inherit;
+    cursor: pointer;
+    display: block;
+    padding: calc(var(--design-unit) * 3px);
+    text-align: left;
+    width: 100%;
+}
+
+.fc-home-card-title {
+    align-items: center;
+    display: flex;
+    font: var(--type-ramp-plus-1-font);
+    gap: calc(var(--design-unit) * 1px);
+    margin: 0 0 calc(var(--design-unit) * 1px) 0;
+}
+
+.fc-home-card-projections {
+    list-style: none;
+    margin: calc(var(--design-unit) * 1px) 0 0 0;
+    padding: 0;
+}
+
+.fc-home-card-projection {
+    align-items: center;
+    display: flex;
+    gap: calc(var(--design-unit) * 1px);
+    padding: calc(var(--design-unit) * 0.5px) 0;
+}
+
+.fc-home-skeletons {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: calc(var(--design-unit) * 3px);
+}
+
+.fc-home-empty {
+    text-align: center;
+    padding: calc(var(--design-unit) * 6px);
+}

@@ -1,0 +1,157 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Home
+@using Hexalith.FrontComposer.Contracts.Registration
+@using Hexalith.FrontComposer.Shell.Badges
+@using Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
+@using Microsoft.FluentUI.AspNetCore.Components
+@inherits Fluxor.Blazor.Web.Components.FluxorComponent
+
+@* Story 3-5 Task 3 (D8 / D15 / D16 / D17 / AC3 / AC4a / AC4b / AC5 / AC6 / AC7) — home directory.
+   Renders one of four states based on (manifest count, hydration, total urgency, seen-set size). *@
+
+<div class="fc-home-directory" role="main" aria-label="@Localizer["AppTitle"].Value" data-testid="fc-home-directory">
+    @{
+        IReadOnlyList<DomainManifest> manifests = Registry.GetManifests();
+        FrontComposerCapabilityDiscoveryState discovery = DiscoveryState.Value;
+    }
+
+    @if (manifests.Count == 0)
+    {
+        <section class="fc-home-empty" data-testid="fc-home-empty-no-microservices">
+            <p>@Localizer["HomeNoMicroservicesText"].Value</p>
+            <p>
+                <a href="@GettingStartedGuideUrl" target="_blank" rel="noreferrer">@Localizer["HomeGettingStartedLinkText"].Value</a>
+            </p>
+        </section>
+    }
+    else if (discovery.HydrationState == CapabilityDiscoveryHydrationState.Idle)
+    {
+        <section class="fc-home-skeletons" data-testid="fc-home-skeletons">
+            @foreach (DomainManifest manifest in manifests)
+            {
+                <FluentSkeleton Width="100%" Height="120px"
+                                aria-busy="true"
+                                data-testid="@($"fc-home-skeleton-{manifest.BoundedContext}")" />
+            }
+        </section>
+    }
+    else
+    {
+        IReadOnlyList<HomeCardModel> aggregated = AggregateManifests(manifests, discovery.Counts);
+        bool isSeeded = discovery.HydrationState == CapabilityDiscoveryHydrationState.Seeded;
+        int totalActionable = 0;
+        int contextsWithUrgency = 0;
+        foreach (HomeCardModel card in aggregated)
+        {
+            totalActionable += card.AggregateCount;
+            if (card.AggregateCount > 0)
+            {
+                contextsWithUrgency++;
+            }
+        }
+
+        <header class="fc-home-header" data-testid="fc-home-header">
+            <h1>@WelcomeText()</h1>
+            @if (totalActionable > 0)
+            {
+                <p class="fc-home-subtitle" data-testid="fc-home-subtitle">
+                    @string.Format(System.Globalization.CultureInfo.CurrentUICulture,
+                        Localizer["HomeItemsTemplate"].Value, totalActionable, contextsWithUrgency)
+                </p>
+            }
+            else if (isSeeded && discovery.SeenCapabilities.IsEmpty)
+            {
+                <p class="fc-home-subtitle" data-testid="fc-home-first-visit">
+                    @Localizer["HomeFirstVisitText"].Value
+                </p>
+            }
+            else if (isSeeded)
+            {
+                <p class="fc-home-subtitle" data-testid="fc-home-all-caught-up">
+                    @Localizer["HomeAllCaughtUpText"].Value
+                </p>
+            }
+        </header>
+
+        @if (!isSeeded)
+        {
+            <ul class="fc-home-cards fc-home-cards-progressive" data-testid="fc-home-cards-progressive"
+                aria-description="@Localizer["HomeSortedByUrgencyAriaDescription"].Value">
+                @foreach (HomeCardModel card in aggregated
+                    .OrderByDescending(static c => c.IsReady)
+                    .ThenByDescending(static c => c.AggregateCount)
+                    .ThenBy(static c => c.Manifest.Name, StringComparer.Ordinal))
+                {
+                    if (card.IsReady)
+                    {
+                        <FcHomeCard Card="card"
+                                SeenCapabilities="discovery.SeenCapabilities"
+                                HydrationState="discovery.HydrationState"
+                                OnActivated="HandleBoundedContextClickAsync" />
+                    }
+                    else
+                    {
+                        <li class="fc-home-card fc-home-card-skeleton"
+                            data-testid="@($"fc-home-card-skeleton-{card.Manifest.BoundedContext}")">
+                            <FluentSkeleton Width="100%" Height="120px"
+                                            aria-busy="true"
+                                            data-testid="@($"fc-home-skeleton-{card.Manifest.BoundedContext}")" />
+                        </li>
+                    }
+                }
+            </ul>
+        }
+        else if (totalActionable == 0)
+        {
+            <ul class="fc-home-cards fc-home-cards-flat" data-testid="fc-home-cards-flat"
+                aria-description="@Localizer["HomeSortedByUrgencyAriaDescription"].Value">
+                @foreach (HomeCardModel card in aggregated.OrderBy(static c => c.Manifest.Name, StringComparer.Ordinal))
+                {
+                    <FcHomeCard Card="card"
+                                SeenCapabilities="discovery.SeenCapabilities"
+                                HydrationState="discovery.HydrationState"
+                                OnActivated="HandleBoundedContextClickAsync" />
+                }
+            </ul>
+        }
+        else
+        {
+            IEnumerable<HomeCardModel> urgent = aggregated
+                .Where(static c => c.AggregateCount > 0)
+                .OrderByDescending(static c => c.AggregateCount)
+                .ThenBy(static c => c.Manifest.Name, StringComparer.Ordinal);
+            IReadOnlyList<HomeCardModel> zeros = [.. aggregated
+                .Where(static c => c.AggregateCount == 0)
+                .OrderBy(static c => c.Manifest.Name, StringComparer.Ordinal)];
+
+            <ul class="fc-home-cards fc-home-cards-urgent" data-testid="fc-home-cards-urgent"
+                aria-description="@Localizer["HomeSortedByUrgencyAriaDescription"].Value">
+                @foreach (HomeCardModel card in urgent)
+                {
+                    <FcHomeCard Card="card"
+                                SeenCapabilities="discovery.SeenCapabilities"
+                                HydrationState="discovery.HydrationState"
+                                OnActivated="HandleBoundedContextClickAsync" />
+                }
+            </ul>
+
+            @if (zeros.Count > 0)
+            {
+                <FluentAccordion data-testid="fc-home-other-areas">
+                    <FluentAccordionItem Heading="@Localizer["HomeOtherAreasHeading"].Value" Expanded="false">
+                        <ul class="fc-home-cards fc-home-cards-other">
+                            @foreach (HomeCardModel card in zeros)
+                            {
+                                <FcHomeCard Card="card"
+                                SeenCapabilities="discovery.SeenCapabilities"
+                                HydrationState="discovery.HydrationState"
+                                OnActivated="HandleBoundedContextClickAsync" />
+                            }
+                        </ul>
+                    </FluentAccordionItem>
+                </FluentAccordion>
+            }
+        }
+    }
+</div>
+
