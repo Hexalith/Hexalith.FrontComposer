@@ -53,10 +53,10 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        if (!ReferenceEquals(_cachedActionQueueSource, state.Items))");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            _cachedActionQueueSource = state.Items;");
-        _ = sb.AppendLine("            _cachedActionQueueItems = " + filteredSource + ";");
+        _ = sb.AppendLine("            _cachedActionQueueItems = " + filteredSource + ".ToList();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        var filteredItems = _cachedActionQueueItems ?? state.Items.AsQueryable();");
+        _ = sb.AppendLine("        var filteredItems = (_cachedActionQueueItems ?? state.Items).AsQueryable();");
         _ = sb.AppendLine();
 
         EmitStandardDataGrid(
@@ -70,8 +70,8 @@ public static class ProjectionRoleBodyEmitter {
     private static string ResolveActionQueueFilteredSource(RazorModel model) {
         string? predicate = RoleBodyHelpers.ResolveWhenStateFilterPredicate(model);
         return predicate is null
-            ? "state.Items.AsQueryable()"
-            : "state.Items.Where(x => " + predicate + ").AsQueryable()";
+            ? "state.Items"
+            : "state.Items.Where(x => " + predicate + ")";
     }
 
     /// <summary>
@@ -191,7 +191,7 @@ public static class ProjectionRoleBodyEmitter {
     public static void EmitTimelineBody(StringBuilder sb, RazorModel model) {
         ColumnModel? orderColumn = RoleBodyHelpers.ResolveFirstDateTimeColumn(model);
         string? orderProp = orderColumn?.PropertyName;
-        string? labelProp = RoleBodyHelpers.ResolveFirstTextProperty(model);
+        ColumnModel? labelColumn = RoleBodyHelpers.ResolveFirstTextColumn(model);
         string? statusProp = RoleBodyHelpers.ResolveStatusEnumProperty(model);
 
         string orderedSource = orderProp is not null
@@ -212,14 +212,11 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                b.OpenElement(rowSeq++, \"div\");");
         _ = sb.AppendLine("                b.AddAttribute(rowSeq++, \"class\", \"fc-timeline-row\");");
         if (orderProp is not null) {
-            _ = sb.AppendLine(
-                orderColumn!.IsNullable
-                    ? "                b.AddContent(rowSeq++, item." + orderProp + ".HasValue ? item." + orderProp + ".Value.ToString(\"g\", CultureInfo.CurrentCulture) : \"\\u2014\");"
-                    : "                b.AddContent(rowSeq++, item." + orderProp + ".ToString(\"g\", CultureInfo.CurrentCulture));");
+            _ = sb.AppendLine("                b.AddContent(rowSeq++, " + FormatValueExpression(orderColumn!, "item") + ");");
             _ = sb.AppendLine("                b.AddMarkupContent(rowSeq++, \" \");");
         }
-        if (labelProp is not null) {
-            _ = sb.AppendLine("                b.AddContent(rowSeq++, item." + labelProp + " ?? \"\\u2014\");");
+        if (labelColumn is not null) {
+            _ = sb.AppendLine("                b.AddContent(rowSeq++, " + FormatValueExpression(labelColumn!, "item") + ");");
             _ = sb.AppendLine("                b.AddMarkupContent(rowSeq++, \" \");");
         }
         if (statusProp is not null) {
@@ -354,7 +351,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + builderName + ".OpenComponent<FluentText>(" + seqName + "++);");
         _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder textBuilder) =>");
         _ = sb.AppendLine(indent + "{");
-        _ = sb.AppendLine(indent + "    textBuilder.AddContent(0, " + FormatDetailValueExpression(col) + ");");
+        _ = sb.AppendLine(indent + "    textBuilder.AddContent(0, " + FormatValueExpression(col, "entity") + ");");
         _ = sb.AppendLine(indent + "}));");
         _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
         _ = sb.AppendLine(indent + builderName + ".CloseElement();");
@@ -384,36 +381,37 @@ public static class ProjectionRoleBodyEmitter {
         return "item." + aggregateIdProperty + ".ToString()";
     }
 
-    private static string FormatDetailValueExpression(ColumnModel col) {
+    private static string FormatValueExpression(ColumnModel col, string instanceName) {
         string formatHint = col.FormatHint ?? string.Empty;
         bool isGuid = formatHint.StartsWith("Truncate:", StringComparison.Ordinal);
+        string propertyAccess = instanceName + "." + col.PropertyName;
         return col.TypeCategory switch {
             TypeCategory.Text when isGuid =>
                 col.IsNullable
-                    ? "entity." + col.PropertyName + ".HasValue ? entity." + col.PropertyName + ".Value.ToString(\"N\") : \"\\u2014\""
-                    : "entity." + col.PropertyName + ".ToString(\"N\")",
+                    ? propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"N\") : \"\\u2014\""
+                    : propertyAccess + ".ToString(\"N\")",
             TypeCategory.Text =>
                 col.IsNullable
-                    ? "entity." + col.PropertyName + " ?? \"\\u2014\""
-                    : "entity." + col.PropertyName,
+                    ? propertyAccess + " ?? \"\\u2014\""
+                    : propertyAccess,
             TypeCategory.Numeric =>
                 col.IsNullable
-                    ? "entity." + col.PropertyName + ".HasValue ? entity." + col.PropertyName + ".Value.ToString(\"" + (col.FormatHint ?? "N0") + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
-                    : "entity." + col.PropertyName + ".ToString(\"" + (col.FormatHint ?? "N0") + "\", CultureInfo.CurrentCulture)",
+                    ? propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + (col.FormatHint ?? "N0") + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
+                    : propertyAccess + ".ToString(\"" + (col.FormatHint ?? "N0") + "\", CultureInfo.CurrentCulture)",
             TypeCategory.Boolean =>
                 col.IsNullable
-                    ? "entity." + col.PropertyName + ".HasValue ? (entity." + col.PropertyName + ".Value ? \"Yes\" : \"No\") : \"\\u2014\""
-                    : "(entity." + col.PropertyName + " ? \"Yes\" : \"No\")",
+                    ? propertyAccess + ".HasValue ? (" + propertyAccess + ".Value ? \"Yes\" : \"No\") : \"\\u2014\""
+                    : "(" + propertyAccess + " ? \"Yes\" : \"No\")",
             TypeCategory.DateTime =>
                 col.IsNullable
-                    ? "entity." + col.PropertyName + ".HasValue ? entity." + col.PropertyName + ".Value.ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
-                    : "entity." + col.PropertyName + ".ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture)",
+                    ? propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
+                    : propertyAccess + ".ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture)",
             TypeCategory.Enum =>
                 col.IsNullable
-                    ? "entity." + col.PropertyName + ".HasValue ? HumanizeEnumLabel(entity." + col.PropertyName + ".Value.ToString()) : \"\\u2014\""
-                    : "HumanizeEnumLabel(entity." + col.PropertyName + ".ToString())",
+                    ? propertyAccess + ".HasValue ? HumanizeEnumLabel(" + propertyAccess + ".Value.ToString()) : \"\\u2014\""
+                    : "HumanizeEnumLabel(" + propertyAccess + ".ToString())",
             TypeCategory.Collection =>
-                "entity." + col.PropertyName + " == null ? \"\\u2014\" : (System.Linq.Enumerable.Count(entity." + col.PropertyName + ").ToString() + \" items\")",
+                propertyAccess + " == null ? \"\\u2014\" : (System.Linq.Enumerable.Count(" + propertyAccess + ").ToString() + \" items\")",
             _ => "\"\\u2014\"",
         };
     }

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -171,6 +172,77 @@ public class RazorModelTransformTests {
 
         result.EntityLabel.ShouldBe("Order");
         result.EntityPluralLabel.ShouldBe("Orders");
+    }
+
+    [Fact]
+    public void Transform_ActionQueueWithoutStatusDriver_EmitsHFC1022WithSourceLocation() {
+        DomainModel model = new(
+            "QueueProjection",
+            "TestDomain",
+            "Orders",
+            null,
+            "ActionQueue",
+            new EquatableArray<PropertyModel>(ImmutableArray.Create(Prop("Name", "String"))),
+            projectionRoleWhenState: "Pending",
+            sourceFilePath: "QueueProjection.cs",
+            sourceLine: 12,
+            sourceColumn: 4);
+
+        List<DiagnosticInfo> diagnostics = [];
+
+        _ = RazorModelTransform.Transform(model, diagnostics);
+
+        diagnostics.Count.ShouldBe(1);
+        diagnostics[0].Id.ShouldBe("HFC1022");
+        diagnostics[0].FilePath.ShouldBe("QueueProjection.cs");
+        diagnostics[0].Line.ShouldBe(12);
+        diagnostics[0].Column.ShouldBe(4);
+        diagnostics[0].Message.ShouldContain("requires an enum status property");
+    }
+
+    [Fact]
+    public void Transform_TimelineWithoutDateDriver_EmitsHFC1022WithSourceLocation() {
+        DomainModel model = new(
+            "TimelineProjection",
+            "TestDomain",
+            "Orders",
+            null,
+            "Timeline",
+            new EquatableArray<PropertyModel>(ImmutableArray.Create(Prop("Name", "String"))),
+            sourceFilePath: "TimelineProjection.cs",
+            sourceLine: 22,
+            sourceColumn: 6);
+
+        List<DiagnosticInfo> diagnostics = [];
+
+        _ = RazorModelTransform.Transform(model, diagnostics);
+
+        diagnostics.Count.ShouldBe(1);
+        diagnostics[0].Id.ShouldBe("HFC1022");
+        diagnostics[0].FilePath.ShouldBe("TimelineProjection.cs");
+        diagnostics[0].Line.ShouldBe(22);
+        diagnostics[0].Column.ShouldBe(6);
+        diagnostics[0].Message.ShouldContain("timeline ordering falls back to declaration order");
+    }
+
+    [Fact]
+    public void Transform_PreservesEnumMemberDeclarationOrderForEmitters() {
+        PropertyModel statusProperty = new(
+            "Status",
+            "Enum",
+            isNullable: false,
+            isUnsupported: false,
+            displayName: null,
+            badgeMappings: _emptyBadges,
+            enumFullyQualifiedName: "TestDomain.OrderStatus",
+            unsupportedTypeFullyQualifiedName: null,
+            enumMemberNames: new EquatableArray<string>(ImmutableArray.Create("Submitted", "Pending")));
+
+        RazorModel result = RazorModelTransform.Transform(Model(statusProperty));
+
+        result.Columns[0].EnumMemberNames.Count.ShouldBe(2);
+        result.Columns[0].EnumMemberNames[0].ShouldBe("Submitted");
+        result.Columns[0].EnumMemberNames[1].ShouldBe("Pending");
     }
 
     [Fact]

@@ -67,9 +67,13 @@ internal static class RoleBodyHelpers {
     /// row label next to the timestamp.
     /// </summary>
     public static string? ResolveFirstTextProperty(RazorModel model) {
+        return ResolveFirstTextColumn(model)?.PropertyName;
+    }
+
+    public static ColumnModel? ResolveFirstTextColumn(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
             if (col.TypeCategory == TypeCategory.Text) {
-                return col.PropertyName;
+                return col;
             }
         }
 

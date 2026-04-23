@@ -1,5 +1,10 @@
+using System.IO;
+
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Tests.Parsing.TestFixtures;
+
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
@@ -127,6 +132,49 @@ public class ProjectionRoleAttributeParserTests {
         ParseResult result = CompilationHelper.ParseProjection(
             TestSources.ActionQueueWithWhenStateProjection,
             "TestDomain.ActionQueueWithWhenStateProjection");
+
+        result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1022");
+    }
+
+    [Fact]
+    public void ReferencedAssemblyEnumMembersValidateWhenState() {
+        CSharpCompilation sharedCompilation = CompilationHelper
+            .CreateCompilation(
+                """
+                namespace Shared;
+
+                public enum ExternalOrderStatus
+                {
+                    Pending,
+                    Submitted,
+                }
+                """)
+            .WithAssemblyName("SharedStatuses");
+
+        using MemoryStream peStream = new();
+        sharedCompilation.Emit(peStream, cancellationToken: TestContext.Current.CancellationToken).Success.ShouldBeTrue();
+
+        MetadataReference sharedReference = MetadataReference.CreateFromImage(peStream.ToArray());
+        CSharpCompilation projectionCompilation = CompilationHelper
+            .CreateCompilation(
+                """
+                using Hexalith.FrontComposer.Contracts.Attributes;
+
+                namespace TestDomain;
+
+                [Projection]
+                [ProjectionRole(ProjectionRole.ActionQueue, WhenState = "Pending")]
+                public partial class ExternalStatusProjection
+                {
+                    public Shared.ExternalOrderStatus Status { get; set; }
+                }
+                """)
+            .WithAssemblyName("ProjectionAssembly")
+            .AddReferences(sharedReference);
+
+        ParseResult result = CompilationHelper.ParseProjection(
+            projectionCompilation,
+            "TestDomain.ExternalStatusProjection");
 
         result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1022");
     }

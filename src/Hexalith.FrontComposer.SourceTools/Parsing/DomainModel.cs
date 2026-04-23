@@ -16,7 +16,10 @@ public sealed class DomainModel : IEquatable<DomainModel> {
         EquatableArray<PropertyModel> properties,
         string? projectionRoleWhenState = null,
         string? displayName = null,
-        string? displayGroupName = null) {
+        string? displayGroupName = null,
+        string? sourceFilePath = null,
+        int sourceLine = -1,
+        int sourceColumn = -1) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -26,6 +29,9 @@ public sealed class DomainModel : IEquatable<DomainModel> {
         ProjectionRoleWhenState = projectionRoleWhenState;
         DisplayName = displayName;
         DisplayGroupName = displayGroupName;
+        SourceFilePath = sourceFilePath ?? string.Empty;
+        SourceLine = sourceLine;
+        SourceColumn = sourceColumn;
     }
 
     public string TypeName { get; }
@@ -39,6 +45,12 @@ public sealed class DomainModel : IEquatable<DomainModel> {
     public string? DisplayName { get; }
 
     public string? DisplayGroupName { get; }
+
+    internal string SourceFilePath { get; }
+
+    internal int SourceLine { get; }
+
+    internal int SourceColumn { get; }
 
     public string? ProjectionRole { get; }
 
@@ -66,6 +78,9 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             && BoundedContextDisplayLabel == other.BoundedContextDisplayLabel
             && DisplayName == other.DisplayName
             && DisplayGroupName == other.DisplayGroupName
+            && SourceFilePath == other.SourceFilePath
+            && SourceLine == other.SourceLine
+            && SourceColumn == other.SourceColumn
             && ProjectionRole == other.ProjectionRole
             && ProjectionRoleWhenState == other.ProjectionRoleWhenState
             && Properties == other.Properties;
@@ -82,6 +97,9 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             hash = (hash * 31) + (BoundedContextDisplayLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DisplayName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DisplayGroupName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (SourceFilePath?.GetHashCode() ?? 0);
+            hash = (hash * 31) + SourceLine.GetHashCode();
+            hash = (hash * 31) + SourceColumn.GetHashCode();
             hash = (hash * 31) + (ProjectionRole?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionRoleWhenState?.GetHashCode() ?? 0);
             hash = (hash * 31) + Properties.GetHashCode();
@@ -297,7 +315,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         string? displayName,
         EquatableArray<BadgeMappingEntry> badgeMappings,
         string? enumFullyQualifiedName = null,
-        string? unsupportedTypeFullyQualifiedName = null) {
+        string? unsupportedTypeFullyQualifiedName = null,
+        EquatableArray<string> enumMemberNames = default) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -306,6 +325,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         BadgeMappings = badgeMappings;
         EnumFullyQualifiedName = enumFullyQualifiedName;
         UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
+        EnumMemberNames = enumMemberNames;
     }
 
     public string Name { get; }
@@ -332,6 +352,13 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     /// </summary>
     public string? UnsupportedTypeFullyQualifiedName { get; }
 
+    /// <summary>
+    /// Gets the enum members in declaration order when <see cref="EnumFullyQualifiedName"/> is set.
+    /// Preserved through Transform so emitters can stabilize status ordering without relying on
+    /// runtime numeric enum values.
+    /// </summary>
+    internal EquatableArray<string> EnumMemberNames { get; }
+
     public bool Equals(PropertyModel? other) {
         if (other is null) {
             return false;
@@ -348,7 +375,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && DisplayName == other.DisplayName
             && BadgeMappings == other.BadgeMappings
             && EnumFullyQualifiedName == other.EnumFullyQualifiedName
-            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName;
+            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName
+            && EnumMemberNames == other.EnumMemberNames;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -364,6 +392,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + BadgeMappings.GetHashCode();
             hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + EnumMemberNames.GetHashCode();
             return hash;
         }
     }

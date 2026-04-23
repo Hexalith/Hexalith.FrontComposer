@@ -110,7 +110,10 @@ public static class AttributeParser {
             parsedProperties,
             projectionRoleWhenState,
             displayName,
-            displayGroupName);
+            displayGroupName,
+            filePath,
+            linePos.Line,
+            linePos.Character);
 
         return new ParseResult(
             model,
@@ -328,8 +331,9 @@ public static class AttributeParser {
 
         // Resolve the enum symbol via the compilation to enumerate members.
         IAssemblySymbol roleAssembly = roleAttribute.AttributeClass!.ContainingAssembly;
-        INamedTypeSymbol? enumType = ResolveTypeAcrossAssemblies(roleAssembly, statusEnumFqn)
-            ?? typeSymbol.ContainingAssembly.GetTypeByMetadataName(statusEnumFqn);
+        INamedTypeSymbol? enumType = typeSymbol.ContainingAssembly.GetTypeByMetadataName(statusEnumFqn)
+            ?? ResolveTypeAcrossAssemblies(typeSymbol.ContainingAssembly, statusEnumFqn)
+            ?? ResolveTypeAcrossAssemblies(roleAssembly, statusEnumFqn);
         if (enumType is null || enumType.TypeKind != TypeKind.Enum) {
             return;
         }
@@ -522,6 +526,7 @@ public static class AttributeParser {
 
         // Parse [ProjectionBadge] from enum fields (if this property is an enum type)
         EquatableArray<BadgeMappingEntry> badgeMappings = ParseBadgeMappings(propertyType, isEnum, diagnostics, filePath);
+        EquatableArray<string> enumMemberNames = GetEnumMemberNames(propertyType, isEnum);
 
         return new PropertyModel(
             propertySymbol.Name,
@@ -531,7 +536,8 @@ public static class AttributeParser {
             displayName,
             badgeMappings,
             enumFqn,
-            unsupportedFqn);
+            unsupportedFqn,
+            enumMemberNames);
     }
 
     private static bool HasFlagsAttribute(ITypeSymbol typeSymbol) {
@@ -630,6 +636,21 @@ public static class AttributeParser {
         }
 
         return new EquatableArray<BadgeMappingEntry>(builder.ToImmutable());
+    }
+
+    private static EquatableArray<string> GetEnumMemberNames(ITypeSymbol propertyType, bool isEnum) {
+        if (!isEnum || propertyType is not INamedTypeSymbol enumType) {
+            return new EquatableArray<string>(ImmutableArray<string>.Empty);
+        }
+
+        ImmutableArray<string>.Builder builder = ImmutableArray.CreateBuilder<string>();
+        foreach (ISymbol member in enumType.GetMembers()) {
+            if (member is IFieldSymbol field && field.HasConstantValue) {
+                builder.Add(field.Name);
+            }
+        }
+
+        return new EquatableArray<string>(builder.ToImmutable());
     }
 
     private static bool IsSupportedEnumType(ITypeSymbol propertyType) => propertyType is INamedTypeSymbol enumType

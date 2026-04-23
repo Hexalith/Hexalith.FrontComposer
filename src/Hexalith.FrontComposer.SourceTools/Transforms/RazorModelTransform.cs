@@ -17,8 +17,8 @@ public static class RazorModelTransform {
     /// </summary>
     /// <param name="model">The domain model IR from the Parse stage.</param>
     /// <param name="diagnostics">
-    /// Appended with any role-mapping diagnostics (<c>HFC1023</c> for Dashboard fallback,
-    /// <c>HFC1024</c> for unknown role values).
+    /// Appended with any role-mapping diagnostics (<c>HFC1022</c> fallback warnings,
+    /// <c>HFC1023</c> for Dashboard fallback, <c>HFC1024</c> for unknown role values).
     /// </param>
     /// <returns>A RazorModel ready for the Emit stage.</returns>
     public static RazorModel Transform(DomainModel model, List<DiagnosticInfo> diagnostics) {
@@ -39,11 +39,14 @@ public static class RazorModelTransform {
                 category,
                 formatHint,
                 property.IsNullable,
-                property.BadgeMappings));
+                property.BadgeMappings,
+                property.EnumMemberNames));
         }
 
+        EquatableArray<ColumnModel> columns = new(columnsBuilder.ToImmutable());
         ProjectionRenderStrategy strategy = MapStrategy(model, diagnostics);
         EquatableArray<string> whenStates = SplitWhenStates(model.ProjectionRoleWhenState);
+        EmitFallbackDiagnostics(model, strategy, columns, whenStates, diagnostics);
         string entityLabel = ResolveEntityLabel(model);
         string entityPluralLabel = ResolveEntityPluralLabel(model, entityLabel);
 
@@ -51,7 +54,7 @@ public static class RazorModelTransform {
             model.TypeName,
             model.Namespace,
             model.BoundedContext,
-            new EquatableArray<ColumnModel>(columnsBuilder.ToImmutable()),
+            columns,
             strategy,
             whenStates,
             entityLabel,
@@ -105,6 +108,36 @@ public static class RazorModelTransform {
         }
 
         return strategy;
+    }
+
+    private static void EmitFallbackDiagnostics(
+        DomainModel model,
+        ProjectionRenderStrategy strategy,
+        EquatableArray<ColumnModel> columns,
+        EquatableArray<string> whenStates,
+        List<DiagnosticInfo> diagnostics) {
+        if (strategy == ProjectionRenderStrategy.ActionQueue
+            && whenStates.Count > 0
+            && ResolveStatusEnumColumn(columns) is null) {
+            diagnostics.Add(CreateTransformDiagnostic(
+                model,
+                "HFC1022",
+                string.Format(
+                    "ProjectionRole.WhenState on {0} requires an enum status property - ActionQueue filtering falls back to the unfiltered item list at runtime.",
+                    model.TypeName),
+                "Warning"));
+        }
+
+        if (strategy == ProjectionRenderStrategy.Timeline
+            && ResolveFirstDateTimeColumn(columns) is null) {
+            diagnostics.Add(CreateTransformDiagnostic(
+                model,
+                "HFC1022",
+                string.Format(
+                    "ProjectionRole Timeline on {0} requires a DateTime/DateTimeOffset/DateOnly/TimeOnly property - timeline ordering falls back to declaration order.",
+                    model.TypeName),
+                "Warning"));
+        }
     }
 
     /// <summary>
@@ -193,4 +226,45 @@ public static class RazorModelTransform {
         => typeName.EndsWith("Projection", StringComparison.Ordinal)
             ? typeName.Substring(0, typeName.Length - "Projection".Length)
             : typeName;
+
+    private static ColumnModel? ResolveStatusEnumColumn(EquatableArray<ColumnModel> columns) {
+        ColumnModel? badgedEnum = null;
+        ColumnModel? firstEnum = null;
+
+        foreach (ColumnModel column in columns) {
+            if (column.TypeCategory != TypeCategory.Enum) {
+                continue;
+            }
+
+            firstEnum ??= column;
+            if (badgedEnum is null && column.BadgeMappings.Count > 0) {
+                badgedEnum = column;
+            }
+        }
+
+        return badgedEnum ?? firstEnum;
+    }
+
+    private static ColumnModel? ResolveFirstDateTimeColumn(EquatableArray<ColumnModel> columns) {
+        foreach (ColumnModel column in columns) {
+            if (column.TypeCategory == TypeCategory.DateTime) {
+                return column;
+            }
+        }
+
+        return null;
+    }
+
+    private static DiagnosticInfo CreateTransformDiagnostic(
+        DomainModel model,
+        string id,
+        string message,
+        string severity)
+        => new(
+            id,
+            message,
+            severity,
+            model.SourceFilePath,
+            model.SourceLine,
+            model.SourceColumn);
 }

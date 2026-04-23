@@ -37,7 +37,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-23 (story 4-4 created via bmad-create-story — ships Virtual Scrolling & Column Prioritization with 22 binding decisions, 7 ACs, 53-test target; see yaml-level comments above for cross-story contract table synopsis.)"
+last_updated: "2026-04-23 (story 4-1 review remediation landed; status remains in-progress pending AC1b visible row actions + T8.4 French pre-pass. Story 4-4 planning metadata retained in yaml comments above.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -78,7 +78,7 @@ development_status:
 
   # Epic 4: Rich DataGrid & Projection Interaction
   epic-4: in-progress
-  4-1-projection-role-hints-and-view-rendering: review
+  4-1-projection-role-hints-and-view-rendering: in-progress
   4-2-status-badge-system: ready-for-dev
   4-3-datagrid-filtering-sorting-and-search: ready-for-dev
   4-4-virtual-scrolling-and-column-prioritization: ready-for-dev

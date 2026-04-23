@@ -11,13 +11,15 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
         TypeCategory typeCategory,
         string? formatHint,
         bool isNullable,
-        EquatableArray<BadgeMappingEntry> badgeMappings) {
+        EquatableArray<BadgeMappingEntry> badgeMappings,
+        EquatableArray<string> enumMemberNames = default) {
         PropertyName = propertyName;
         Header = header;
         TypeCategory = typeCategory;
         FormatHint = formatHint;
         IsNullable = isNullable;
         BadgeMappings = badgeMappings;
+        EnumMemberNames = enumMemberNames;
     }
 
     public string PropertyName { get; }
@@ -31,6 +33,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
     public bool IsNullable { get; }
 
     public EquatableArray<BadgeMappingEntry> BadgeMappings { get; }
+
+    public EquatableArray<string> EnumMemberNames { get; }
 
     public bool Equals(ColumnModel? other) {
         if (other is null) {
@@ -46,7 +50,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             && TypeCategory == other.TypeCategory
             && FormatHint == other.FormatHint
             && IsNullable == other.IsNullable
-            && BadgeMappings == other.BadgeMappings;
+            && BadgeMappings == other.BadgeMappings
+            && EnumMemberNames == other.EnumMemberNames;
     }
 
     public override bool Equals(object? obj) => Equals(obj as ColumnModel);
@@ -60,6 +65,7 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             hash = (hash * 31) + (FormatHint?.GetHashCode() ?? 0);
             hash = (hash * 31) + IsNullable.GetHashCode();
             hash = (hash * 31) + BadgeMappings.GetHashCode();
+            hash = (hash * 31) + EnumMemberNames.GetHashCode();
             return hash;
         }
     }

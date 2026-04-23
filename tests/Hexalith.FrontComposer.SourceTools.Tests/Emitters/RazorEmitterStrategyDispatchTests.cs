@@ -18,6 +18,8 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
 public class RazorEmitterStrategyDispatchTests {
     private static readonly EquatableArray<BadgeMappingEntry> _emptyBadges =
         new(ImmutableArray<BadgeMappingEntry>.Empty);
+    private static readonly EquatableArray<string> _defaultStatusOrder =
+        new(ImmutableArray.Create("Pending", "Submitted", "Approved"));
 
     private static readonly EquatableArray<string> _noWhenStates =
         new(ImmutableArray<string>.Empty);
@@ -32,7 +34,7 @@ public class RazorEmitterStrategyDispatchTests {
             columns: new EquatableArray<ColumnModel>(ImmutableArray.Create(
                 Col("Id", "Id", TypeCategory.Text),
                 Col("Status", "Status", TypeCategory.Enum, "Humanize:30", badges: new EquatableArray<BadgeMappingEntry>(
-                    ImmutableArray.Create(new BadgeMappingEntry("Pending", "Warning")))),
+                    ImmutableArray.Create(new BadgeMappingEntry("Pending", "Warning"))), enumMemberNames: _defaultStatusOrder),
                 Col("Count", "Count", TypeCategory.Numeric, "N0"),
                 Col("CreatedAt", "Created At", TypeCategory.DateTime, "d"))),
             strategy: strategy,
@@ -44,8 +46,9 @@ public class RazorEmitterStrategyDispatchTests {
         TypeCategory category,
         string? formatHint = null,
         bool isNullable = false,
-        EquatableArray<BadgeMappingEntry>? badges = null) =>
-        new ColumnModel(name, header, category, formatHint, isNullable, badges ?? _emptyBadges);
+        EquatableArray<BadgeMappingEntry>? badges = null,
+        EquatableArray<string> enumMemberNames = default) =>
+        new ColumnModel(name, header, category, formatHint, isNullable, badges ?? _emptyBadges, enumMemberNames);
 
     [Theory]
     [InlineData(ProjectionRenderStrategy.Default)]
@@ -85,7 +88,8 @@ public class RazorEmitterStrategyDispatchTests {
     public void ActionQueueStrategyWithoutWhenStateOmitsFilter() {
         string output = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.ActionQueue));
 
-        output.ShouldContain("state.Items.AsQueryable()");
+        output.ShouldContain("_cachedActionQueueItems = state.Items.ToList();");
+        output.ShouldContain("(_cachedActionQueueItems ?? state.Items).AsQueryable()");
         output.ShouldNotContain(".Where(x => x.Status.ToString() ==");
     }
 
@@ -99,6 +103,31 @@ public class RazorEmitterStrategyDispatchTests {
         output.ShouldContain("Navigation.NavigateTo");
         output.ShouldNotContain("FluentDataGrid<dynamic>");
         output.ShouldNotContain("Expression<Func<dynamic");
+    }
+
+    [Fact]
+    public void StatusOverviewStrategyUsesEnumDeclarationOrderTieBreaks() {
+        RazorModel model = new(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col(
+                    "Status",
+                    "Status",
+                    TypeCategory.Enum,
+                    "Humanize:30",
+                    badges: new EquatableArray<BadgeMappingEntry>(ImmutableArray.Create(new BadgeMappingEntry("Submitted", "Warning"))),
+                    enumMemberNames: new EquatableArray<string>(ImmutableArray.Create("Submitted", "Pending"))),
+                Col("CreatedAt", "Created At", TypeCategory.DateTime, "d"))),
+            ProjectionRenderStrategy.StatusOverview,
+            _noWhenStates);
+
+        string output = RazorEmitter.Emit(model);
+
+        output.ShouldContain("\"Submitted\" => 0L");
+        output.ShouldContain("\"Pending\" => 1L");
+        output.ShouldNotContain("Convert.ToInt64");
     }
 
     [Fact]
@@ -142,6 +171,32 @@ public class RazorEmitterStrategyDispatchTests {
         output.ShouldContain("OrderByDescending(x => x.CreatedAt)");
         output.ShouldContain("FluentStack");
         output.ShouldContain("Orientation.Vertical");
+    }
+
+    [Fact]
+    public void TimelineStrategyUsesColumnFormatAndGuidLikeLabelFormatting() {
+        RazorModel model = new(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col("Id", "Id", TypeCategory.Text, "Truncate:8"),
+                Col("OccurredAt", "Occurred At", TypeCategory.DateTime, "t"),
+                Col(
+                    "Status",
+                    "Status",
+                    TypeCategory.Enum,
+                    "Humanize:30",
+                    badges: new EquatableArray<BadgeMappingEntry>(ImmutableArray.Create(new BadgeMappingEntry("Pending", "Warning"))),
+                    enumMemberNames: _defaultStatusOrder))),
+            ProjectionRenderStrategy.Timeline,
+            _noWhenStates);
+
+        string output = RazorEmitter.Emit(model);
+
+        output.ShouldContain("item.OccurredAt.ToString(\"t\", CultureInfo.CurrentCulture)");
+        output.ShouldContain("item.Id.ToString(\"N\")");
+        output.ShouldNotContain("ToString(\"g\", CultureInfo.CurrentCulture)");
     }
 
     [Fact]
@@ -202,7 +257,9 @@ public class RazorEmitterStrategyDispatchTests {
         string output = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.ActionQueue));
 
         output.ShouldContain("ReferenceEquals(_cachedActionQueueSource, state.Items)");
+        output.ShouldContain("private List<OrderProjection>? _cachedActionQueueItems;");
         output.ShouldContain("_cachedActionQueueItems");
+        output.ShouldContain(".ToList();");
         output.ShouldContain("IsDefaultSortColumn");
         output.ShouldContain("InitialSortDirection");
         output.ShouldContain("DataGridSortDirection.Descending");

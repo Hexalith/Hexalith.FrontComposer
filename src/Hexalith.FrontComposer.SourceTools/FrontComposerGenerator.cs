@@ -64,7 +64,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 foreach (DiagnosticInfo diagInfo in transformDiagnostics) {
                     spc.ReportDiagnostic(Diagnostic.Create(
                         GetDescriptor(diagInfo.Id, diagInfo.Severity),
-                        Location.None,
+                        diagInfo.ToLocation(),
                         diagInfo.Message));
                 }
 

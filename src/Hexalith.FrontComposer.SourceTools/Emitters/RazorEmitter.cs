@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 using Hexalith.FrontComposer.SourceTools.Transforms;
@@ -87,16 +88,44 @@ public static class RazorEmitter {
     private static void EmitStrategyMembers(StringBuilder sb, RazorModel model) {
         if (model.Strategy == ProjectionRenderStrategy.ActionQueue) {
             _ = sb.AppendLine("    private object? _cachedActionQueueSource;");
-            _ = sb.AppendLine("    private IQueryable<" + model.TypeName + ">? _cachedActionQueueItems;");
+            _ = sb.AppendLine("    private List<" + model.TypeName + ">? _cachedActionQueueItems;");
             _ = sb.AppendLine();
         }
         else if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
             _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder);");
             _ = sb.AppendLine();
-            _ = sb.AppendLine("    private static long GetEnumSortOrder(Enum? value)");
-            _ = sb.AppendLine("        => value is null ? long.MaxValue : Convert.ToInt64(value, CultureInfo.InvariantCulture);");
-            _ = sb.AppendLine();
+            EmitStatusOverviewSortHelper(sb, model);
         }
+    }
+
+    private static void EmitStatusOverviewSortHelper(StringBuilder sb, RazorModel model) {
+        ColumnModel? statusColumn = RoleBodyHelpers.ResolveStatusEnumColumn(model);
+
+        _ = sb.AppendLine("    private static long GetEnumSortOrder(Enum? value)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (value is null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return long.MaxValue;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+
+        if (statusColumn is not null && statusColumn.EnumMemberNames.Count > 0) {
+            _ = sb.AppendLine("        return value.ToString() switch");
+            _ = sb.AppendLine("        {");
+            for (int i = 0; i < statusColumn.EnumMemberNames.Count; i++) {
+                string memberName = RoleBodyHelpers.EscapeString(statusColumn.EnumMemberNames[i]);
+                _ = sb.AppendLine("            \"" + memberName + "\" => " + i.ToString(CultureInfo.InvariantCulture) + "L,");
+            }
+
+            _ = sb.AppendLine("            _ => long.MaxValue - 1,");
+            _ = sb.AppendLine("        };");
+        }
+        else {
+            _ = sb.AppendLine("        return long.MaxValue - 1;");
+        }
+
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
     }
 
     private static void EmitLifecycleHooks(StringBuilder sb, RazorModel model) {
