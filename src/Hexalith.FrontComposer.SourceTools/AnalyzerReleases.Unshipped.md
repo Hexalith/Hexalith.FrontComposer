@@ -20,3 +20,6 @@ HFC1016 | HexalithFrontComposer | Error   | Command non-derivable property is re
 HFC1017 | HexalithFrontComposer | Error   | Command type is generic (unsupported; specialize or remove type parameters)
 HFC1020 | HexalithFrontComposer | Info | Command appears destructive by name but is missing [Destructive] attribute
 HFC1021 | HexalithFrontComposer | Error   | Destructive command must have at least one non-derivable property
+HFC1022 | HexalithFrontComposer | Warning | ProjectionRole.WhenState references unknown enum member
+HFC1023 | HexalithFrontComposer | Info | Dashboard projection rendering is deferred (renders Default body in v1)
+HFC1024 | HexalithFrontComposer | Warning | Unknown ProjectionRole value (falls back to Default rendering)

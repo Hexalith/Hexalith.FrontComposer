@@ -77,40 +77,78 @@ So that I can debug generation issues and upgrade confidently without manual cod
 ### Story 9.3: IDE Parity & Developer Experience
 
 As a developer,
-I want equivalent development experience across Visual Studio, JetBrains Rider, and VS Code with C# Dev Kit,
-So that I can use my preferred IDE without losing IntelliSense, navigation, or debugging capabilities.
+I want an equivalent development experience across Visual Studio, JetBrains Rider, and VS Code with C# Dev Kit — defined by a conformance matrix, not by any single vendor's feature set,
+So that I can use my preferred IDE without losing IntelliSense, navigation, refactoring, or debugging capabilities, and so "parity" means something testable rather than aspirational.
 
 **Acceptance Criteria:**
 
-**Given** Visual Studio 2026 (reference IDE)
+**Given** the IDE Parity Conformance Matrix
+**When** Story 9.3 is considered complete
+**Then** `docs/ide-parity-matrix.md` is published and lists every capability × IDE × support tier (Must / Should / Out of scope)
+**And** the matrix is the authoritative definition of parity for this story (no prose claim overrides it)
+**And** CI gates on the Must tier rows — a regression in any Must row fails the conformance suite for the affected IDE
+
+**Given** the calibration IDE policy
+**When** parity claims are communicated externally
+**Then** Visual Studio 2026 is named as the *calibration IDE* used to baseline the conformance suite (not as "the reference")
+**And** the conformance matrix — not any single IDE — is the authoritative parity reference
+**And** Mac-only adopters have a first-class path (Rider or VS Code + Dev Kit); VS-for-Windows is not assumed
+
+**Given** the tested IDE version pin list
+**When** v1 ships
+**Then** the following exact versions are part of the conformance suite: Visual Studio ≥ 17.13, JetBrains Rider 2026.1.2 through 2026.2.x, VS Code with C# Dev Kit ≥ the vendor-current minor at v1 freeze
+**And** a vendor-side minor/major bump outside the pinned range auto-files a "conformance revalidation needed" GitHub issue
+**And** the pinned range is published in the parity matrix and updated per release
+
+**Given** the C# Dev Kit prerequisite for VS Code
+**When** VS Code parity is claimed
+**Then** C# Dev Kit is a stated prerequisite (adopters know a Microsoft account / proprietary extension is required)
+**And** OmniSharp (the non-Dev Kit path) is explicitly documented as *unsupported in v1* — not silently broken
+**And** the Dev Kit license implication is called out in the adopter onboarding doc as an acknowledged assumption
+
+**Given** any IDE in the matrix
 **When** a developer works with FrontComposer source-generated types
-**Then** IntelliSense provides completions for generated types and their members
-**And** hover documentation shows XML doc comments from generated code
-**And** go-to-definition navigates to the generated source file
-**And** source generator debugging is supported (breakpoints in generator code)
+**Then** the Must-tier capabilities hold: IntelliSense completions on generated types, hover docs from XML comments, go-to-definition to the generated source file, HFC diagnostic squiggles, solution-wide symbol search includes generated types, and incremental generator performance within the NFR8 500 ms budget
 
-**Given** JetBrains Rider 2026.1+
-**When** a developer works with FrontComposer
-**Then** all capabilities available in Visual Studio are also available in Rider (parity)
-**And** any known Rider-specific limitations are documented
+**Given** any IDE in the matrix
+**When** a developer invokes Should-tier capabilities
+**Then** Find All References crosses the generator boundary (domain symbol ↔ generated usage)
+**And** Rename refactoring is documented as a workflow: edit the domain symbol, let the generator regenerate, and verify the generated Razor/Fluxor output updates — generated files remain read-only by design
+**And** code-fix (analyzer) application, hot reload on domain attribute edits, and generator-host breakpoints are supported per the matrix; any IDE-specific limitations are enumerated, not left to a "may have limitations" clause
 
-**Given** VS Code with C# Dev Kit
-**When** a developer works with FrontComposer
-**Then** IntelliSense, hover documentation, and go-to-definition work for generated types
-**And** source generator debugging may have limitations (documented)
-**And** the experience is sufficient for lightweight-tooling adopters
+**Given** generator debugging
+**When** the audience is the adopter
+**Then** the adopter-facing AC is: breakpoints in generated code (`*.g.razor.cs` / `*.g.cs`) are supported in every IDE on the Must tier
+**When** the audience is the framework contributor
+**Then** contributor-facing generator-host debugging (`Debugger.Launch()` protocol, JIT attach to the generator host) is documented in `CONTRIBUTING.md`, not in this adopter-facing story
 
-**Given** any IDE
-**When** the developer hovers over a framework attribute (e.g., [Projection], [BoundedContext])
-**Then** XML doc comments describe: what the attribute does, what it generates, and a link to documentation
+**Given** a framework attribute (e.g., `[Projection]`, `[BoundedContext]`)
+**When** the developer hovers over it in any IDE in the matrix
+**Then** XML doc comments describe: what the attribute does, what it generates, and a link to the diagnostic/documentation page
+
+**Given** the generator output path contract
+**When** consumers (CLI inspect tools, IDE go-to-definition, adopter build scripts) rely on the location
+**Then** `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs` (and sibling `.g.cs`) is treated as a public contract
+**And** a contract test guards path stability across .NET SDK bumps
+
+**Given** remote and containerized development environments
+**When** a developer works via Remote-SSH, GitHub Codespaces, or Dev Containers
+**Then** at least one end-to-end conformance run executes in a containerized VS Code + Dev Kit environment before v1 ships
+**And** known limitations (e.g., generator debugging in Codespaces) are enumerated in the parity matrix
 
 **Given** CS1591 (missing XML doc comments) enforcement
 **When** the project is pre-v1.0-rc1
-**Then** CS1591 is a warning
+**Then** CS1591 is a warning for all public types
 **When** the project is at or past v1.0-rc1 (API freeze milestone)
-**Then** CS1591 is an error for all types in PublicAPI.Shipped.txt
+**Then** CS1591 is scoped via editorconfig file-globbing to only the files backing `PublicAPI.Shipped.txt` — not a blanket project-wide toggle
+**And** the adopter project template ships this editorconfig so downstream CI does not experience a flag-day break
+**And** non-public API files retain warning (not error) behavior to avoid incidental churn
 
-**References:** FR65, NFR71, NFR92
+**Dependencies:**
+- Blocked on the IDE-specific test fixture infrastructure referenced in architecture §"Generator Diagnostics & DX" (item #11). Story 9.3 cannot ship without this conformance harness.
+- Companion ADR: *ADR-0XX — IDE Parity Conformance Testing* (owns the matrix format, CI gating, and revalidation trigger).
+
+**References:** FR65, NFR8, NFR71, NFR77, NFR92
 
 ---
 

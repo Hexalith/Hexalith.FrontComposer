@@ -13,13 +13,19 @@ public sealed class DomainModel : IEquatable<DomainModel> {
         string? boundedContext,
         string? boundedContextDisplayLabel,
         string? projectionRole,
-        EquatableArray<PropertyModel> properties) {
+        EquatableArray<PropertyModel> properties,
+        string? projectionRoleWhenState = null,
+        string? displayName = null,
+        string? displayGroupName = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
         BoundedContextDisplayLabel = boundedContextDisplayLabel;
         ProjectionRole = projectionRole;
         Properties = properties;
+        ProjectionRoleWhenState = projectionRoleWhenState;
+        DisplayName = displayName;
+        DisplayGroupName = displayGroupName;
     }
 
     public string TypeName { get; }
@@ -30,9 +36,20 @@ public sealed class DomainModel : IEquatable<DomainModel> {
 
     public string? BoundedContextDisplayLabel { get; }
 
+    public string? DisplayName { get; }
+
+    public string? DisplayGroupName { get; }
+
     public string? ProjectionRole { get; }
 
     public EquatableArray<PropertyModel> Properties { get; }
+
+    /// <summary>
+    /// Gets the raw CSV payload of <c>[ProjectionRole(..., WhenState = "A,B")]</c>
+    /// (Story 4-1 D2 / D3). Null means no state filter was specified on the attribute;
+    /// Transform stage owns the CSV split (single canonical parsing rule).
+    /// </summary>
+    public string? ProjectionRoleWhenState { get; }
 
     public bool Equals(DomainModel? other) {
         if (other is null) {
@@ -47,7 +64,10 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             && Namespace == other.Namespace
             && BoundedContext == other.BoundedContext
             && BoundedContextDisplayLabel == other.BoundedContextDisplayLabel
+            && DisplayName == other.DisplayName
+            && DisplayGroupName == other.DisplayGroupName
             && ProjectionRole == other.ProjectionRole
+            && ProjectionRoleWhenState == other.ProjectionRoleWhenState
             && Properties == other.Properties;
     }
 
@@ -60,7 +80,10 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
             hash = (hash * 31) + (BoundedContext?.GetHashCode() ?? 0);
             hash = (hash * 31) + (BoundedContextDisplayLabel?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (DisplayName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (DisplayGroupName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionRole?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (ProjectionRoleWhenState?.GetHashCode() ?? 0);
             hash = (hash * 31) + Properties.GetHashCode();
             return hash;
         }

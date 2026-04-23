@@ -23,6 +23,9 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
     [Inject]
     private IState<OrderProjectionState> OrderProjectionState { get; set; } = default!;
 
+    [Inject]
+    private NavigationManager Navigation { get; set; } = default!;
+
     /// <inheritdoc />
     protected override void OnInitialized()
     {
@@ -117,26 +120,40 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
     protected override void BuildRenderTree(RenderTreeBuilder builder)
     {
         var state = OrderProjectionState.Value;
+        int seq = 0;
+
+        builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(seq++);
+        builder.AddAttribute(seq++, "ProjectionType", typeof(OrderProjection));
+        builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+        builder.AddAttribute(seq++, "WhenState", (string?)null);
+        builder.AddAttribute(seq++, "FallbackCount", state.Items?.Count ?? 0);
+        builder.AddAttribute(seq++, "DistinctStatusCount", (int?)null);
+        builder.AddAttribute(seq++, "EntityLabel", "Order");
+        builder.AddAttribute(seq++, "EntityPluralLabel", "orders");
+        builder.AddAttribute(seq++, "IsLoading", state.IsLoading);
+        builder.CloseComponent();
 
         if (state.IsLoading)
         {
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "fc-loading-skeleton");
-            builder.AddContent(2, "Loading...");
-            builder.CloseElement();
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionLoadingSkeleton>(seq++);
+            builder.AddAttribute(seq++, "ColumnCount", 1);
+            builder.AddAttribute(seq++, "RowCount", 5);
+            builder.AddAttribute(seq++, "Layout", Hexalith.FrontComposer.Shell.Components.Rendering.SkeletonLayout.DataGrid);
+            builder.AddAttribute(seq++, "EntityLabel", "orders");
+            builder.CloseComponent();
             return;
         }
 
         if (state.Items is null || state.Items.Count == 0)
         {
-            builder.OpenElement(3, "div");
-            builder.AddAttribute(4, "class", "fc-empty-state");
-            builder.AddContent(5, "No data available");
-            builder.CloseElement();
+            builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(seq++);
+            builder.AddAttribute(seq++, "ProjectionType", typeof(OrderProjection));
+            builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+            builder.CloseComponent();
             return;
         }
 
-        int seq = 100;
+        seq = 100;
         builder.OpenComponent<FluentDataGrid<OrderProjection>>(seq++);
         builder.AddAttribute(seq++, "Items", state.Items.AsQueryable());
 
@@ -150,8 +167,6 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
             b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.OrderDate.ToString("d", CultureInfo.CurrentCulture)));
             b.CloseComponent();
         }));
-
-        // TODO: Badge rendering (Story 2.x)
 
         builder.CloseComponent();
     }

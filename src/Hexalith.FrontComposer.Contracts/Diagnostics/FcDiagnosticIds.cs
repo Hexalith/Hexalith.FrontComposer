@@ -18,6 +18,31 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1601_ManifestInvalid = "HFC1601";
 
+    /// <summary>
+    /// Build-time Warning: <c>[ProjectionRole(..., WhenState = "...")]</c> references an
+    /// enum member that does not exist on the projection's status-enum type (Story 4-1
+    /// D3 / D17 / AC9). Unknown members flow through to the IR and silently never match
+    /// at runtime. Emitted by the source generator at the attribute's call site.
+    /// </summary>
+    public const string HFC1022_ProjectionWhenStateMemberUnknown = "HFC1022";
+
+    /// <summary>
+    /// Build-time Information: <c>[ProjectionRole(ProjectionRole.Dashboard)]</c> falls back
+    /// to Default DataGrid rendering in v1 (Story 4-1 D16 / D17 / AC10). Dashboard role is
+    /// reserved — full rendering lands in Story 6-3. Emitted once per Dashboard-annotated
+    /// projection per compilation by the <c>IIncrementalGenerator</c> per-input invocation
+    /// model.
+    /// </summary>
+    public const string HFC1023_ProjectionRoleDashboardFallback = "HFC1023";
+
+    /// <summary>
+    /// Build-time Warning: a numeric <c>ProjectionRole</c> value outside the declared enum
+    /// was carried by the <c>[ProjectionRole]</c> attribute — typically the result of an
+    /// unsafe cast such as <c>(ProjectionRole)999</c> (Story 4-1 D15 / D17 / AC7). Renderer
+    /// falls back to Default rendering; build remains green.
+    /// </summary>
+    public const string HFC1024_UnknownProjectionRoleValue = "HFC1024";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

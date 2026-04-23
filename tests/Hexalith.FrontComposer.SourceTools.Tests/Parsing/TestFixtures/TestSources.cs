@@ -218,6 +218,20 @@ public partial class DisplayLabelProjection
     public string Name { get; set; } = string.Empty;
 }";
 
+    internal const string ProjectionDisplayAttributeProjection = @"
+using System.ComponentModel.DataAnnotations;
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Orders"")]
+[Projection]
+[Display(Name = ""Order"", GroupName = ""Orders"")]
+public partial class ProjectionDisplayAttributeProjection
+{
+    public string Name { get; set; } = string.Empty;
+}";
+
     internal const string NullBoundedContextProjection = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 
@@ -329,5 +343,132 @@ public partial class CounterProjection
     public string Id { get; set; } = string.Empty;
     public int Count { get; set; }
     public DateTimeOffset LastUpdated { get; set; }
+}";
+
+    // Story 4-1 T1.6 — WhenState parse fixtures.
+    internal const string ActionQueueWithWhenStateProjection = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Orders"")]
+[Projection]
+[ProjectionRole(ProjectionRole.ActionQueue, WhenState = ""Pending,Submitted"")]
+public partial class ActionQueueWithWhenStateProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public OrderStatus Status { get; set; }
+}
+
+public enum OrderStatus
+{
+    [ProjectionBadge(BadgeSlot.Neutral)]
+    Pending,
+
+    [ProjectionBadge(BadgeSlot.Info)]
+    Submitted,
+
+    [ProjectionBadge(BadgeSlot.Success)]
+    Approved,
+
+    [ProjectionBadge(BadgeSlot.Danger)]
+    Rejected,
+}";
+
+    internal const string WhenStateWithSpacesProjection = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Orders"")]
+[Projection]
+[ProjectionRole(ProjectionRole.ActionQueue, WhenState = "" Pending , Submitted , "")]
+public partial class WhenStateWithSpacesProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public OrderStatusSpaced Status { get; set; }
+}
+
+public enum OrderStatusSpaced
+{
+    Pending,
+    Submitted,
+    Approved,
+}";
+
+    internal const string WhenStateUnknownMemberProjection = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Orders"")]
+[Projection]
+[ProjectionRole(ProjectionRole.ActionQueue, WhenState = ""Pending,Xxxx"")]
+public partial class WhenStateUnknownMemberProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public OrderStatusUnknown Status { get; set; }
+}
+
+public enum OrderStatusUnknown
+{
+    Pending,
+    Submitted,
+    Approved,
+    Rejected,
+}";
+
+    internal const string WhenStateEmptyProjection = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Orders"")]
+[Projection]
+[ProjectionRole(ProjectionRole.ActionQueue, WhenState = """")]
+public partial class WhenStateEmptyProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public OrderStatusEmpty Status { get; set; }
+}
+
+public enum OrderStatusEmpty
+{
+    Pending,
+    Submitted,
+}";
+
+    internal const string WhenStateLargeEnumProjection = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Orders"")]
+[Projection]
+[ProjectionRole(ProjectionRole.ActionQueue, WhenState = ""Unknown"")]
+public partial class WhenStateLargeEnumProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public LargeStatus Status { get; set; }
+}
+
+public enum LargeStatus
+{
+    Alpha, Beta, Gamma, Delta, Epsilon, Zeta, Eta, Theta, Iota, Kappa,
+    Lambda, Mu, Nu, Xi, Omicron,
+}";
+
+    internal const string DashboardRoleProjection = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[BoundedContext(""Metrics"")]
+[Projection]
+[ProjectionRole(ProjectionRole.Dashboard)]
+public partial class DashboardRoleProjection
+{
+    public string Id { get; set; } = string.Empty;
+    public int Count { get; set; }
 }";
 }

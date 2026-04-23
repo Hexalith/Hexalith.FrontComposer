@@ -1,4 +1,4 @@
-
+using System;
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -8,12 +8,20 @@ namespace Hexalith.FrontComposer.SourceTools.Transforms;
 /// Transforms a DomainModel IR into a RazorModel for DataGrid component generation.
 /// </summary>
 public static class RazorModelTransform {
+    private static readonly char[] WhenStateSeparator = [','];
+
     /// <summary>
-    /// Transforms a parsed domain model into a Razor output model.
+    /// Transforms a parsed domain model into a Razor output model with any Transform-stage
+    /// diagnostics collected for caller emission. Story 4-1 T2.3-T2.5 adds role → strategy
+    /// dispatch and HFC1023 / HFC1024 fallbacks.
     /// </summary>
     /// <param name="model">The domain model IR from the Parse stage.</param>
+    /// <param name="diagnostics">
+    /// Appended with any role-mapping diagnostics (<c>HFC1023</c> for Dashboard fallback,
+    /// <c>HFC1024</c> for unknown role values).
+    /// </param>
     /// <returns>A RazorModel ready for the Emit stage.</returns>
-    public static RazorModel Transform(DomainModel model) {
+    public static RazorModel Transform(DomainModel model, List<DiagnosticInfo> diagnostics) {
         ImmutableArray<ColumnModel>.Builder columnsBuilder = ImmutableArray.CreateBuilder<ColumnModel>();
 
         foreach (PropertyModel property in model.Properties) {
@@ -34,11 +42,90 @@ public static class RazorModelTransform {
                 property.BadgeMappings));
         }
 
+        ProjectionRenderStrategy strategy = MapStrategy(model, diagnostics);
+        EquatableArray<string> whenStates = SplitWhenStates(model.ProjectionRoleWhenState);
+        string entityLabel = ResolveEntityLabel(model);
+        string entityPluralLabel = ResolveEntityPluralLabel(model, entityLabel);
+
         return new RazorModel(
             model.TypeName,
             model.Namespace,
             model.BoundedContext,
-            new EquatableArray<ColumnModel>(columnsBuilder.ToImmutable()));
+            new EquatableArray<ColumnModel>(columnsBuilder.ToImmutable()),
+            strategy,
+            whenStates,
+            entityLabel,
+            entityPluralLabel);
+    }
+
+    /// <summary>
+    /// Diagnostics-free overload used by tests and cache-equality assertions; discards
+    /// any Transform-stage HFC1023 / HFC1024 payload.
+    /// </summary>
+    public static RazorModel Transform(DomainModel model) {
+        List<DiagnosticInfo> scratch = [];
+        return Transform(model, scratch);
+    }
+
+    /// <summary>
+    /// Story 4-1 T2.3 / T2.5 — maps the parsed <c>DomainModel.ProjectionRole</c> string
+    /// to the Transform-stage <see cref="ProjectionRenderStrategy"/>. Exhaustive
+    /// switch-expression form with a throwing default arm (ADR-052) so a future role
+    /// added to the enum without a case fails the BUILD loudly rather than silently
+    /// becoming Default. Unknown parsed values (e.g., an unsafe cast numeric) map to
+    /// Default; HFC1024 was already emitted at Parse (see <c>AttributeParser</c>).
+    /// Dashboard emits HFC1023 Information once per compilation per-type (D16 —
+    /// <see cref="IIncrementalGenerator"/> per-input invocation model provides the
+    /// "once per type" guarantee natively).
+    /// </summary>
+    private static ProjectionRenderStrategy MapStrategy(DomainModel model, List<DiagnosticInfo> diagnostics) {
+        string? role = model.ProjectionRole;
+
+        ProjectionRenderStrategy strategy = role switch {
+            null => ProjectionRenderStrategy.Default,
+            "" => ProjectionRenderStrategy.Default,
+            "ActionQueue" => ProjectionRenderStrategy.ActionQueue,
+            "StatusOverview" => ProjectionRenderStrategy.StatusOverview,
+            "DetailRecord" => ProjectionRenderStrategy.DetailRecord,
+            "Timeline" => ProjectionRenderStrategy.Timeline,
+            "Dashboard" => ProjectionRenderStrategy.Dashboard,
+            _ => ProjectionRenderStrategy.Default,
+        };
+
+        if (strategy == ProjectionRenderStrategy.Dashboard) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1023",
+                string.Format(
+                    "Dashboard projection rendering is deferred to Story 6-3 - {0} falls back to Default DataGrid rendering in v1.",
+                    model.TypeName),
+                "Info",
+                string.Empty,
+                0,
+                0));
+        }
+
+        return strategy;
+    }
+
+    /// <summary>
+    /// Story 4-1 T2.4 / D3 — canonical CSV split: trim each entry, drop empties, ordinal
+    /// order preserved. Null/empty input yields an empty array.
+    /// </summary>
+    private static EquatableArray<string> SplitWhenStates(string? raw) {
+        if (string.IsNullOrWhiteSpace(raw)) {
+            return new EquatableArray<string>(ImmutableArray<string>.Empty);
+        }
+
+        string[] tokens = raw!.Split(WhenStateSeparator, StringSplitOptions.RemoveEmptyEntries);
+        ImmutableArray<string>.Builder builder = ImmutableArray.CreateBuilder<string>();
+        foreach (string token in tokens) {
+            string trimmed = token.Trim();
+            if (trimmed.Length > 0) {
+                builder.Add(trimmed);
+            }
+        }
+
+        return new EquatableArray<string>(builder.ToImmutable());
     }
 
     private static TypeCategory MapTypeCategory(string typeName) => typeName switch {
@@ -78,4 +165,32 @@ public static class RazorModelTransform {
         // Priority 3: Raw property name (fallback)
         return property.Name;
     }
+
+    private static string ResolveEntityLabel(DomainModel model) {
+        if (!string.IsNullOrWhiteSpace(model.DisplayName)) {
+            return model.DisplayName!;
+        }
+
+        string baseName = StripProjectionSuffix(model.TypeName);
+        string? humanized = CamelCaseHumanizer.Humanize(baseName);
+        return string.IsNullOrWhiteSpace(humanized) ? baseName : humanized!;
+    }
+
+    private static string ResolveEntityPluralLabel(DomainModel model, string entityLabel) {
+        if (!string.IsNullOrWhiteSpace(model.DisplayGroupName)) {
+            return model.DisplayGroupName!;
+        }
+
+        if (!string.IsNullOrWhiteSpace(model.DisplayName)) {
+            return model.DisplayName!;
+        }
+
+        string plural = entityLabel.ToLowerInvariant();
+        return plural.EndsWith("s", StringComparison.Ordinal) ? plural : plural + "s";
+    }
+
+    private static string StripProjectionSuffix(string typeName)
+        => typeName.EndsWith("Projection", StringComparison.Ordinal)
+            ? typeName.Substring(0, typeName.Length - "Projection".Length)
+            : typeName;
 }

@@ -220,4 +220,45 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1022: <c>[ProjectionRole(..., WhenState = "...")]</c> references an enum member
+    /// that does not exist on the projection's status-enum type (Story 4-1 D3 / D17 / AC9).
+    /// Warning severity — member is passed through to the IR and will silently never match
+    /// at runtime. Fix: correct the typo or remove the invalid member from the CSV.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionWhenStateMemberUnknown = new(
+        id: "HFC1022",
+        title: "ProjectionRole.WhenState references unknown enum member",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1023: <c>[ProjectionRole(ProjectionRole.Dashboard)]</c> falls back to Default
+    /// DataGrid rendering in v1 (Story 4-1 D16 / D17 / AC10). Information severity — feature
+    /// reserved, not broken; full Dashboard rendering deferred to Story 6-3.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionRoleDashboardFallback = new(
+        id: "HFC1023",
+        title: "Dashboard projection rendering is deferred",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1024: <c>[ProjectionRole]</c> attribute carries a numeric role value outside the
+    /// declared <see cref="Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole"/>
+    /// enum (Story 4-1 D15 / D17 / AC7). Warning severity — renderer falls back to Default
+    /// rendering. Fix: correct the unsafe cast at the attribute call site.
+    /// </summary>
+    public static readonly DiagnosticDescriptor UnknownProjectionRoleValue = new(
+        id: "HFC1024",
+        title: "Unknown ProjectionRole value",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

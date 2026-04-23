@@ -4,7 +4,8 @@
     Story 3-1 Task 8.1 (D12 / AC7) — FR satellite. Must mirror every key in FcShellResources.resx.
     Hand-authored French copy (no machine translation) per D12.
   -->
-  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
     <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
     <xsd:element name="root" msdata:IsDataSet="true">
       <xsd:complexType>
@@ -32,10 +33,12 @@
     <value>2.0</value>
   </resheader>
   <resheader name="reader">
-    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0,
+      Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
   <resheader name="writer">
-    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0,
+      Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
   <data name="AppTitle" xml:space="preserve">
@@ -220,5 +223,32 @@
   </data>
   <data name="NewCapabilityBadgeText" xml:space="preserve">
     <value>Nouveau</value>
+  </data>
+  <data name="HomeActionQueueSubtitleTemplate" xml:space="preserve">
+    <value>{0} {1} en attente d'action</value>
+    <comment>Story 4-1 D18 / T8.4 — SHIPPED 2026-04-23 per native-French reviewer (jpiquot@itaneo.com). Singular pluralization issue affects EN+FR equally; ICU lands in Story 9-5.</comment>
+  </data>
+  <data name="HomeStatusOverviewSubtitleTemplate" xml:space="preserve">
+    <value>{0} au total dans {1} statuts</value>
+  </data>
+  <data name="HomeDefaultSubtitleTemplate" xml:space="preserve">
+    <value>{0} {1}</value>
+    <comment>Story 4-1 D18 / T8.4 — SHIPPED 2026-04-23 per native-French reviewer (jpiquot@itaneo.com). Identity template; placeholder order matches French expectations.</comment>
+  </data>
+  <data name="HomeDetailSubtitleTemplate" xml:space="preserve">
+    <value>{0} - aperçu</value>
+  </data>
+  <data name="HomeTimelineSubtitleTemplate" xml:space="preserve">
+    <value>{0} événements</value>
+  </data>
+  <data name="HomeEmptyPlaceholderText" xml:space="preserve">
+    <value>No {0} yet.</value>
+    <comment>Story 4-1 D18 / T8.4 — DEFERRED 2026-04-23 per native-French reviewer (jpiquot@itaneo.com). Identity-pass to English source: gendered+number agreement requires ICU pluralization (`Aucune commande` / `Aucun événement`); Story 9-5 owns the ICU pass. French users see English copy until then. Known Gap G13.</comment>
+  </data>
+  <data name="HomeEmptyPlaceholderAriaLabel" xml:space="preserve">
+    <value>Aucun résultat trouvé pour {0}</value>
+  </data>
+  <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
+    <value>Chargement de {0}</value>
   </data>
 </root>

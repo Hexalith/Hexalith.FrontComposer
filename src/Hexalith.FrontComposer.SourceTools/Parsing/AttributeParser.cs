@@ -62,7 +62,8 @@ public static class AttributeParser {
 
         // Parse attributes on the type
         string? boundedContext = ParseBoundedContext(typeSymbol, diagnostics, filePath, linePos, out string? boundedContextDisplayLabel);
-        string? projectionRole = ParseProjectionRole(typeSymbol, diagnostics, filePath, linePos);
+        string? projectionRole = ParseProjectionRole(typeSymbol, diagnostics, filePath, linePos, out string? projectionRoleWhenState, out AttributeData? roleAttributeData);
+        string? displayName = ParseDisplayAttribute(typeSymbol, out string? displayGroupName);
 
         if (ct.IsCancellationRequested) {
             return EmptyParseResult;
@@ -86,13 +87,30 @@ public static class AttributeParser {
             }
         }
 
+        EquatableArray<PropertyModel> parsedProperties = new(propertiesBuilder.ToImmutable());
+
+        // Story 4-1 T1.4 — validate WhenState CSV against the projection's status-enum type.
+        // Emits HFC1022 per unknown member. Unknown members still flow through to the IR
+        // (fail-soft; runtime string compare silently never matches).
+        ValidateWhenStateAgainstStatusEnum(
+            typeSymbol,
+            projectionRoleWhenState,
+            parsedProperties,
+            roleAttributeData,
+            diagnostics,
+            filePath,
+            linePos);
+
         var model = new DomainModel(
             typeName,
             ns,
             boundedContext,
             boundedContextDisplayLabel,
             projectionRole,
-            new EquatableArray<PropertyModel>(propertiesBuilder.ToImmutable()));
+            parsedProperties,
+            projectionRoleWhenState,
+            displayName,
+            displayGroupName);
 
         return new ParseResult(
             model,
@@ -215,27 +233,175 @@ public static class AttributeParser {
         INamedTypeSymbol typeSymbol,
         List<DiagnosticInfo> diagnostics,
         string filePath,
-        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
+        Microsoft.CodeAnalysis.Text.LinePosition linePos,
+        out string? whenState,
+        out AttributeData? roleAttributeData) {
+        whenState = null;
+        roleAttributeData = null;
         foreach (AttributeData attr in typeSymbol.GetAttributes()) {
             if (attr.AttributeClass?.ToDisplayString() == ProjectionRoleAttributeName) {
+                roleAttributeData = attr;
+
+                // Story 4-1 D2 / T1.3 — extract optional WhenState named argument (init-only).
+                // Empty/whitespace → treated as absent (D3). Explicit null also treated as absent.
+                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
+                    if (namedArg.Key == "WhenState") {
+                        if (namedArg.Value.Value is string raw && !string.IsNullOrWhiteSpace(raw)) {
+                            whenState = raw;
+                        }
+                    }
+                }
+
+                string? parsedRole = null;
                 if (attr.ConstructorArguments.Length > 0) {
                     TypedConstant arg = attr.ConstructorArguments[0];
                     if (arg.Value is int enumValue) {
                         if (TryResolveEnumMemberName(attr.AttributeClass!.ContainingAssembly, ProjectionRoleEnumName, enumValue, out string roleName)) {
-                            return roleName;
+                            parsedRole = roleName;
                         }
+                        else {
+                            // Story 4-1 D15 / T1.5 / AC7 — unknown numeric role value: emit HFC1024
+                            // (Warning), carry the raw int as the role string so Transform falls
+                            // back to Default rendering.
+                            diagnostics.Add(new DiagnosticInfo(
+                                "HFC1024",
+                                string.Format(
+                                    "Unknown ProjectionRole value '{0}' on {1} - falling back to Default rendering.",
+                                    enumValue,
+                                    typeSymbol.Name),
+                                "Warning",
+                                filePath,
+                                linePos.Line,
+                                linePos.Character));
 
-                        diagnostics.Add(new DiagnosticInfo(
-                            "HFC1005",
-                            string.Format("Invalid argument for attribute 'ProjectionRole' on type '{0}': role must be a defined ProjectionRole value", typeSymbol.Name),
-                            "Warning",
-                            filePath,
-                            linePos.Line,
-                            linePos.Character));
+                            parsedRole = enumValue.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                        }
                     }
                 }
 
-                return null;
+                return parsedRole;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Story 4-1 T1.4 / D3 / AC9 — validates the WhenState CSV against the projection's
+    /// status-enum type (first enum property carrying <c>[ProjectionBadge]</c>, else the
+    /// first enum-typed property in declaration order). Unknown members emit HFC1022
+    /// warnings with a "Valid members:" list capped at the first 10 alphabetically (+
+    /// "... and N more") per D17. Unknown members still flow through to the IR.
+    /// </summary>
+    private static void ValidateWhenStateAgainstStatusEnum(
+        INamedTypeSymbol typeSymbol,
+        string? whenState,
+        EquatableArray<PropertyModel> properties,
+        AttributeData? roleAttribute,
+        List<DiagnosticInfo> diagnostics,
+        string filePath,
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
+        if (string.IsNullOrWhiteSpace(whenState)) {
+            return;
+        }
+
+        // Find the status-enum property using D10/D11 tiebreaker: prefer enum-typed property
+        // whose enum type declares any [ProjectionBadge]-annotated member; else first enum
+        // property in declaration order.
+        string? statusEnumFqn = null;
+        foreach (PropertyModel property in properties) {
+            if (property.EnumFullyQualifiedName is null) {
+                continue;
+            }
+
+            if (property.BadgeMappings.Count > 0) {
+                statusEnumFqn = property.EnumFullyQualifiedName;
+                break;
+            }
+
+            statusEnumFqn ??= property.EnumFullyQualifiedName;
+        }
+
+        if (statusEnumFqn is null || roleAttribute?.AttributeClass is null) {
+            return;
+        }
+
+        // Resolve the enum symbol via the compilation to enumerate members.
+        IAssemblySymbol roleAssembly = roleAttribute.AttributeClass!.ContainingAssembly;
+        INamedTypeSymbol? enumType = ResolveTypeAcrossAssemblies(roleAssembly, statusEnumFqn)
+            ?? typeSymbol.ContainingAssembly.GetTypeByMetadataName(statusEnumFqn);
+        if (enumType is null || enumType.TypeKind != TypeKind.Enum) {
+            return;
+        }
+
+        List<string> validMembers = new();
+        foreach (ISymbol member in enumType.GetMembers()) {
+            if (member is IFieldSymbol field && field.HasConstantValue) {
+                validMembers.Add(field.Name);
+            }
+        }
+
+        if (validMembers.Count == 0) {
+            return;
+        }
+
+        HashSet<string> validMemberSet = new(validMembers, StringComparer.Ordinal);
+
+        // Split CSV: trim each entry, drop empties; unknown members emit HFC1022 per member.
+        string[] tokens = whenState!.Split(',');
+        foreach (string raw in tokens) {
+            string trimmed = raw.Trim();
+            if (trimmed.Length == 0) {
+                continue;
+            }
+
+            if (validMemberSet.Contains(trimmed)) {
+                continue;
+            }
+
+            string previewList = FormatValidMemberPreview(validMembers);
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1022",
+                string.Format(
+                    "ProjectionRole.WhenState on {0} references unknown enum member '{1}' - member will be treated as always-no-match at runtime. Valid members: {2}.",
+                    typeSymbol.Name,
+                    trimmed,
+                    previewList),
+                "Warning",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+        }
+    }
+
+    /// <summary>
+    /// Returns the first 10 enum member names in alphabetical order, appending "... and N
+    /// more" when the enum declares more than 10 members (War Room round 3 / D17 cap).
+    /// </summary>
+    private static string FormatValidMemberPreview(List<string> members) {
+        string[] sorted = [.. members];
+        Array.Sort(sorted, StringComparer.Ordinal);
+        if (sorted.Length <= 10) {
+            return string.Join(", ", sorted);
+        }
+
+        int overflow = sorted.Length - 10;
+        string head = string.Join(", ", sorted, 0, 10);
+        return string.Format("{0}, ... and {1} more", head, overflow);
+    }
+
+    private static INamedTypeSymbol? ResolveTypeAcrossAssemblies(IAssemblySymbol seed, string metadataName) {
+        INamedTypeSymbol? resolved = seed.GetTypeByMetadataName(metadataName);
+        if (resolved is not null) {
+            return resolved;
+        }
+
+        foreach (IModuleSymbol module in seed.Modules) {
+            foreach (IAssemblySymbol referenced in module.ReferencedAssemblySymbols) {
+                resolved = referenced.GetTypeByMetadataName(metadataName);
+                if (resolved is not null) {
+                    return resolved;
+                }
             }
         }
 
@@ -388,6 +554,34 @@ public static class AttributeParser {
                     }
                 }
             }
+        }
+
+        return null;
+    }
+
+    private static string? ParseDisplayAttribute(INamedTypeSymbol typeSymbol, out string? groupName) {
+        groupName = null;
+
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() != DisplayAttributeName) {
+                continue;
+            }
+
+            string? displayName = null;
+            foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
+                if (namedArg.Key == "GroupName"
+                    && namedArg.Value.Value is string rawGroupName
+                    && !string.IsNullOrWhiteSpace(rawGroupName)) {
+                    groupName = rawGroupName.Trim();
+                }
+                else if (namedArg.Key == "Name"
+                    && namedArg.Value.Value is string rawDisplayName
+                    && !string.IsNullOrWhiteSpace(rawDisplayName)) {
+                    displayName = rawDisplayName.Trim();
+                }
+            }
+
+            return displayName;
         }
 
         return null;

@@ -159,7 +159,10 @@ public class AttributeParserTests {
     }
 
     [Fact]
-    public void Parse_InvalidProjectionRole_EmitsHFC1005() {
+    public void Parse_InvalidProjectionRole_EmitsHFC1024() {
+        // Story 4-1 D15 / AC7 — an unsafe cast of an out-of-range value to ProjectionRole
+        // now emits HFC1024 (Unknown ProjectionRole value) — split from the old HFC1005
+        // trash-can code per H6. Renderer falls back to Default rendering.
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.InvalidProjectionRoleProjection);
         FrontComposerGenerator generator = new();
@@ -168,7 +171,7 @@ public class AttributeParserTests {
         driver = driver.RunGenerators(compilation, ct);
         GeneratorDriverRunResult result = driver.GetRunResult();
 
-        result.Diagnostics.ShouldContain(d => d.Id == "HFC1005");
+        result.Diagnostics.ShouldContain(d => d.Id == "HFC1024");
     }
 
     [Fact]

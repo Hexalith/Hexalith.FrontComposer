@@ -1,0 +1,24 @@
+.fc-projection-skeleton {
+    padding: 8px 0;
+}
+
+.fc-projection-skeleton-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    padding: 6px 0;
+}
+
+.fc-projection-skeleton-header {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--neutral-stroke-rest, #e0e0e0);
+    margin-bottom: 6px;
+}
+
+.fc-projection-skeleton-card .fc-projection-skeleton-row {
+    padding: 8px 0;
+}
+
+.fc-projection-skeleton-timeline .fc-projection-skeleton-row {
+    padding: 10px 0;
+}

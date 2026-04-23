@@ -156,6 +156,24 @@ public class RazorModelTransformTests {
     }
 
     [Fact]
+    public void Transform_ResolvesProjectionEntityLabels_FromDisplayMetadata() {
+        var model = new DomainModel(
+            "OrderProjection",
+            "MyApp.Orders",
+            "Orders",
+            null,
+            "DetailRecord",
+            new EquatableArray<PropertyModel>(ImmutableArray.Create(Prop("Name", "String"))),
+            displayName: "Order",
+            displayGroupName: "Orders");
+
+        RazorModel result = RazorModelTransform.Transform(model);
+
+        result.EntityLabel.ShouldBe("Order");
+        result.EntityPluralLabel.ShouldBe("Orders");
+    }
+
+    [Fact]
     public void Transform_RawPropertyName_WhenSimpleName() {
         RazorModel result = RazorModelTransform.Transform(Model(Prop("Name", "String")));
         result.Columns[0].Header.ShouldBe("Name");

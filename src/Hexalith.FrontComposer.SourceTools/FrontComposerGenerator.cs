@@ -57,7 +57,17 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             }
 
             if (result.Model is not null) {
-                RazorModel razorModel = RazorModelTransform.Transform(result.Model);
+                // Story 4-1 T2.5 — Transform-stage diagnostics (HFC1023 Dashboard fallback)
+                // travel through the same per-projection reporter.
+                List<DiagnosticInfo> transformDiagnostics = [];
+                RazorModel razorModel = RazorModelTransform.Transform(result.Model, transformDiagnostics);
+                foreach (DiagnosticInfo diagInfo in transformDiagnostics) {
+                    spc.ReportDiagnostic(Diagnostic.Create(
+                        GetDescriptor(diagInfo.Id, diagInfo.Severity),
+                        Location.None,
+                        diagInfo.Message));
+                }
+
                 FluxorModel fluxorModel = FluxorModelTransform.Transform(result.Model);
                 RegistrationModel registrationModel = RegistrationModelTransform.Transform(result.Model);
 
@@ -131,6 +141,9 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1017" => DiagnosticDescriptors.CommandTypeIsGeneric,
         "HFC1020" => DiagnosticDescriptors.DestructiveNamePatternMissingAttribute,
         "HFC1021" => DiagnosticDescriptors.DestructiveCommandHasZeroFields,
+        "HFC1022" => DiagnosticDescriptors.ProjectionWhenStateMemberUnknown,
+        "HFC1023" => DiagnosticDescriptors.ProjectionRoleDashboardFallback,
+        "HFC1024" => DiagnosticDescriptors.UnknownProjectionRoleValue,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

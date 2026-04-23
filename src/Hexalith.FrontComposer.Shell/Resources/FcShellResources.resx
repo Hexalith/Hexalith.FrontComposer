@@ -262,4 +262,36 @@
     <value>New</value>
     <comment>Story 3-5 AC8 / D12 / D19 — subtle FluentBadge label next to nav entries / card headers for unseen capabilities with data.</comment>
   </data>
+  <data name="HomeActionQueueSubtitleTemplate" xml:space="preserve">
+    <value>{0} {1} awaiting your action</value>
+    <comment>Story 4-1 D18 / AC6 — contextual subtitle for ActionQueue-annotated projections. {0}=count (badge service), {1}=humanized entity plural. Native-French pre-pass required per D18 / T8.4.</comment>
+  </data>
+  <data name="HomeStatusOverviewSubtitleTemplate" xml:space="preserve">
+    <value>{0} total across {1} statuses</value>
+    <comment>Story 4-1 D18 / AC6 — contextual subtitle for StatusOverview-annotated projections. {0}=total row count, {1}=humanized entity plural.</comment>
+  </data>
+  <data name="HomeDefaultSubtitleTemplate" xml:space="preserve">
+    <value>{0} {1}</value>
+    <comment>Story 4-1 D18 / AC6 — contextual subtitle for projections without a role attribute. Pre-pass required per D18.</comment>
+  </data>
+  <data name="HomeDetailSubtitleTemplate" xml:space="preserve">
+    <value>{0} overview</value>
+    <comment>Story 4-1 D18 / AC6 — contextual subtitle for DetailRecord-annotated projections. {0}=humanized entity singular (Sally copy nudge: "overview" reads as an intimate heading).</comment>
+  </data>
+  <data name="HomeTimelineSubtitleTemplate" xml:space="preserve">
+    <value>{0} events</value>
+    <comment>Story 4-1 D18 / AC6 — contextual subtitle for Timeline-annotated projections. {0}=total event count.</comment>
+  </data>
+  <data name="HomeEmptyPlaceholderText" xml:space="preserve">
+    <value>No {0} yet.</value>
+    <comment>Story 4-1 D18 / AC8 — minimal empty-state message rendered by FcProjectionEmptyPlaceholder. {0}=humanized entity plural. Story 4.6 replaces the component body without changing this key. Pre-pass required per D18.</comment>
+  </data>
+  <data name="HomeEmptyPlaceholderAriaLabel" xml:space="preserve">
+    <value>No {0} found</value>
+    <comment>Story 4-1 D18 / AC8 — aria-label on the empty placeholder container for AT. {0}=humanized entity plural.</comment>
+  </data>
+  <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
+    <value>Loading {0}</value>
+    <comment>Story 4-1 D18 / AC8 — aria-label on the loading skeleton container (role=status, aria-busy=true). {0}=humanized entity plural.</comment>
+  </data>
 </root>

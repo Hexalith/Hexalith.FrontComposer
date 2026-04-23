@@ -1,0 +1,8 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@implements IAsyncDisposable
+@implements IDisposable
+
+@if (!_suppressRender)
+{
+    <p class="fc-projection-subtitle">@Subtitle</p>
+}
