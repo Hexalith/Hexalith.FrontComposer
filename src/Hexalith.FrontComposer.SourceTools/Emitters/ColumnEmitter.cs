@@ -1,5 +1,6 @@
 using System.Text;
 
+using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
@@ -125,8 +126,69 @@ internal static class ColumnEmitter {
             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => Truncate(HumanizeEnumLabel(x." + col.PropertyName + ".ToString()), 30)));");
         }
 
+        if (col.BadgeMappings.Count > 0) {
+            EmitEnumBadgeChildContent(sb, col, typeName);
+        }
+
         EmitSortAttributes(sb, col, typeName, isDefaultSortColumn);
         _ = sb.AppendLine("            b.CloseComponent();");
+    }
+
+    /// <summary>
+    /// Story 4-2 D1 / D5 / D8 / AC1 / AC3 — emits the <c>ChildContent</c> render fragment that
+    /// renders <c>FcStatusBadge</c> for annotated enum members and falls back to humanized
+    /// text for unannotated members (partial coverage) or null values. The <c>Property</c>
+    /// lambda on the column is preserved verbatim so DataGrid sort / filter / default-aria
+    /// paths continue to operate on the text representation (unchanged from Story 1-5).
+    /// </summary>
+    private static void EmitEnumBadgeChildContent(StringBuilder sb, ColumnModel col, string typeName) {
+        string propertyAccess = col.IsNullable
+            ? "item." + col.PropertyName + ".Value"
+            : "item." + col.PropertyName;
+        string headerLiteral = "\"" + RoleBodyHelpers.EscapeString(col.Header) + "\"";
+
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + typeName + ">)(item => (RenderTreeBuilder rb) =>");
+        _ = sb.AppendLine("            {");
+
+        if (col.IsNullable) {
+            _ = sb.AppendLine("                if (!item." + col.PropertyName + ".HasValue)");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    rb.AddContent(0, \"\\u2014\");");
+            _ = sb.AppendLine("                    return;");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine();
+        }
+
+        _ = sb.AppendLine("                var _memberName = " + propertyAccess + ".ToString();");
+        _ = sb.AppendLine("                var _label = HumanizeEnumLabel(_memberName);");
+        EmitBadgeSwitch(sb, col, headerLiteral);
+        _ = sb.AppendLine("            }));");
+    }
+
+    /// <summary>
+    /// Story 4-2 D5 — emits the inline switch over enum member names. Mapped members emit an
+    /// <c>FcStatusBadge</c> with the resolved slot; unmapped members fall back to
+    /// <c>rb.AddContent(..., _label)</c>.
+    /// </summary>
+    private static void EmitBadgeSwitch(StringBuilder sb, ColumnModel col, string headerLiteral) {
+        _ = sb.AppendLine("                switch (_memberName)");
+        _ = sb.AppendLine("                {");
+
+        foreach (BadgeMappingEntry mapping in col.BadgeMappings) {
+            string memberLiteral = "\"" + RoleBodyHelpers.EscapeString(mapping.EnumMemberName) + "\"";
+            _ = sb.AppendLine("                    case " + memberLiteral + ":");
+            _ = sb.AppendLine("                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);");
+            _ = sb.AppendLine("                        rb.AddAttribute(1, \"Slot\", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + mapping.Slot + ");");
+            _ = sb.AppendLine("                        rb.AddAttribute(2, \"Label\", _label);");
+            _ = sb.AppendLine("                        rb.AddAttribute(3, \"ColumnHeader\", " + headerLiteral + ");");
+            _ = sb.AppendLine("                        rb.CloseComponent();");
+            _ = sb.AppendLine("                        break;");
+        }
+
+        _ = sb.AppendLine("                    default:");
+        _ = sb.AppendLine("                        rb.AddContent(10, _label);");
+        _ = sb.AppendLine("                        break;");
+        _ = sb.AppendLine("                }");
     }
 
     private static void EmitCollectionColumn(StringBuilder sb, ColumnModel col, string typeName, bool isDefaultSortColumn) {

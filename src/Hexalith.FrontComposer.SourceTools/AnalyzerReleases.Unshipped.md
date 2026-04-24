@@ -23,3 +23,5 @@ HFC1021 | HexalithFrontComposer | Error   | Destructive command must have at lea
 HFC1022 | HexalithFrontComposer | Warning | ProjectionRole.WhenState references unknown enum member
 HFC1023 | HexalithFrontComposer | Info | Dashboard projection rendering is deferred (renders Default body in v1)
 HFC1024 | HexalithFrontComposer | Warning | Unknown ProjectionRole value (falls back to Default rendering)
+HFC1025 | HexalithFrontComposer | Info | Projection enum has partial [ProjectionBadge] coverage (unannotated members render as text)
+HFC1026 | HexalithFrontComposer | Warning | Reserved — color-only badge detected (no call site in Story 4-2; held for Story 10-2 specimen checker)

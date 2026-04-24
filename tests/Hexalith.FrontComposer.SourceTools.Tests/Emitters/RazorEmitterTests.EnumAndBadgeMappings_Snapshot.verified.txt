@@ -165,6 +165,31 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
             b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
             b.AddAttribute(colSeq++, "Title", "Status");
             b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
+            b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => (RenderTreeBuilder rb) =>
+            {
+                var _memberName = item.Status.ToString();
+                var _label = HumanizeEnumLabel(_memberName);
+                switch (_memberName)
+                {
+                    case "Active":
+                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                        rb.AddAttribute(2, "Label", _label);
+                        rb.AddAttribute(3, "ColumnHeader", "Status");
+                        rb.CloseComponent();
+                        break;
+                    case "Inactive":
+                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                        rb.AddAttribute(2, "Label", _label);
+                        rb.AddAttribute(3, "ColumnHeader", "Status");
+                        rb.CloseComponent();
+                        break;
+                    default:
+                        rb.AddContent(10, _label);
+                        break;
+                }
+            }));
             b.CloseComponent();
         }));
 

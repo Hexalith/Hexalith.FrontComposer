@@ -294,4 +294,12 @@
     <value>Loading {0}</value>
     <comment>Story 4-1 D18 / AC8 — aria-label on the loading skeleton container (role=status, aria-busy=true). {0}=humanized entity plural.</comment>
   </data>
+  <data name="StatusBadgeAriaLabelTemplate" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Story 4-2 D4 / D12 / AC5 — aria-label template for FcStatusBadge when a ColumnHeader is supplied. {0}=column header, {1}=badge label. French satellite inserts U+00A0 NBSP before the colon.</comment>
+  </data>
+  <data name="StatusBadgeUnknownStateFallback" xml:space="preserve">
+    <value>Unknown</value>
+    <comment>Story 4-2 D4 — fail-soft label when a runtime enum value is outside the declared member set (should never happen for [ProjectionBadge]-annotated enums).</comment>
+  </data>
 </root>

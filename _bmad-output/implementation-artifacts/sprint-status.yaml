@@ -38,7 +38,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-24 (story 4-1 → review — AC1d behavioral bUnit proof build-fix pass: added missing Routing + DependencyInjection usings, relaxed lastClickedInViewA to string?, threaded StubCommandService.Assembly into the Fluxor scan so GeneratedComponentTestBase wakes up cleanly. Full regression: build 0/0, Contracts 26/26, SourceTools 375/375, Shell 796/798 (2 pre-existing E2E skips). All tasks + review findings [x]; AC1b visible-surface tracked as Known Gap G14 with Story 2-7 / Epic 6-3 pointer; T8.4 French pre-pass closed per jpiquot@itaneo.com sign-off.)"
+last_updated: "2026-04-24 (story 4-2 review completed — HFC1025 wording was aligned to the current Transform-stage per-(projection, enum-column) behavior, 6 code patch findings remain open as action items, and the story moved back to in-progress for follow-up work.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -80,7 +80,7 @@ development_status:
   # Epic 4: Rich DataGrid & Projection Interaction
   epic-4: in-progress
   4-1-projection-role-hints-and-view-rendering: review
-  4-2-status-badge-system: ready-for-dev
+  4-2-status-badge-system: in-progress
   4-3-datagrid-filtering-sorting-and-search: ready-for-dev
   4-4-virtual-scrolling-and-column-prioritization: ready-for-dev
   4-5-expand-in-row-detail-and-progressive-disclosure: ready-for-dev

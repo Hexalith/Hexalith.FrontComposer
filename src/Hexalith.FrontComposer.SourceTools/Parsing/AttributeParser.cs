@@ -606,6 +606,14 @@ public static class AttributeParser {
             return EmptyBadgeMappings;
         }
 
+        // Story 4-2 D10 — [Flags] enums cannot be expressed as a single-value badge (a
+        // bitmask may set multiple members simultaneously). Falling back to empty mappings
+        // routes the column through the Story 1-5 plain-text path; adopters needing
+        // compound rendering take the Epic 6 customization gradient.
+        if (HasFlagsAttribute(propertyType)) {
+            return EmptyBadgeMappings;
+        }
+
         ImmutableArray<BadgeMappingEntry>.Builder builder = ImmutableArray.CreateBuilder<BadgeMappingEntry>();
 
         foreach (ISymbol member in enumType.GetMembers()) {

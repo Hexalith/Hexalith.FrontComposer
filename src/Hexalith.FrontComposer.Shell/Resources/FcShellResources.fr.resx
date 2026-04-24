@@ -251,4 +251,11 @@
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Chargement de {0}</value>
   </data>
+  <data name="StatusBadgeAriaLabelTemplate" xml:space="preserve">
+    <value>{0} : {1}</value>
+    <comment>Story 4-2 D4 / D12 — French typographic convention requires U+00A0 non-breaking space before the colon. Do NOT replace with an ASCII space.</comment>
+  </data>
+  <data name="StatusBadgeUnknownStateFallback" xml:space="preserve">
+    <value>Inconnu</value>
+  </data>
 </root>

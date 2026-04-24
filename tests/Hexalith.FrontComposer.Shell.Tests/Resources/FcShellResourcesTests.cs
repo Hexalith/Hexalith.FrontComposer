@@ -183,6 +183,46 @@ public sealed class FcShellResourcesTests {
         }
     }
 
+    // --- Story 4-2 T6.3 (AC5 / D4 / D12) — 2 new status-badge resource keys ---
+
+    [Theory]
+    [InlineData("StatusBadgeAriaLabelTemplate", "{0}: {1}", "{0} : {1}")]
+    [InlineData("StatusBadgeUnknownStateFallback", "Unknown", "Inconnu")]
+    public void StatusBadgeKeysResolveInBothLocales(string key, string enValue, string frValue) {
+        ServiceProvider provider = BuildLocalizedProvider();
+        using IServiceScope scope = provider.CreateScope();
+        IStringLocalizer<FcShellResources> localizer = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>();
+
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = new CultureInfo("en");
+            localizer[key].Value.ShouldBe(enValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+
+            CultureInfo.CurrentUICulture = new CultureInfo("fr");
+            localizer[key].Value.ShouldBe(frValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
+    }
+
+    [Fact]
+    public void StatusBadgeAriaLabelTemplateFrenchUsesNonBreakingSpaceBeforeColon() {
+        // Story 4-2 T6.4 / D12 — explicit byte-level guard: the template must contain U+00A0
+        // between "{0}" and ":". A well-meaning editor save that collapses NBSP to ASCII
+        // space would fail French typographic convention silently otherwise.
+        ResourceManager manager = new(typeof(FcShellResources));
+        string frValue = manager.GetString("StatusBadgeAriaLabelTemplate", new CultureInfo("fr"))!;
+
+        frValue.ShouldNotBeNull();
+        int colonIndex = frValue.IndexOf(':');
+        colonIndex.ShouldBeGreaterThan(0);
+        char precedingChar = frValue[colonIndex - 1];
+        precedingChar.ShouldBe(' ', $"Expected U+00A0 NBSP before colon in French StatusBadgeAriaLabelTemplate; got U+{(int)precedingChar:X4}");
+    }
+
     private static ServiceProvider BuildLocalizedProvider() {
         ServiceCollection services = new();
         _ = services.AddLogging();

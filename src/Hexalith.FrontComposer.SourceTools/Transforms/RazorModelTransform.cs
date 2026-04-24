@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -137,6 +138,46 @@ public static class RazorModelTransform {
                     "ProjectionRole Timeline on {0} requires a DateTime/DateTimeOffset/DateOnly/TimeOnly property - timeline ordering falls back to declaration order.",
                     model.TypeName),
                 "Warning"));
+        }
+
+        // Story 4-2 D6 / AC3 — emit HFC1025 once per enum column that carries partial
+        // [ProjectionBadge] coverage on the projection. One diagnostic per (projection,
+        // column) pair; the IIncrementalGenerator per-type invocation model provides the
+        // "once per projection type per compile" guarantee natively.
+        foreach (ColumnModel column in columns) {
+            if (column.TypeCategory != TypeCategory.Enum) {
+                continue;
+            }
+
+            int annotated = column.BadgeMappings.Count;
+            int total = column.EnumMemberNames.Count;
+            if (annotated == 0 || total == 0 || annotated >= total) {
+                continue;
+            }
+
+            List<string> unannotated = new(total - annotated);
+            HashSet<string> annotatedNames = new(StringComparer.Ordinal);
+            foreach (BadgeMappingEntry mapping in column.BadgeMappings) {
+                _ = annotatedNames.Add(mapping.EnumMemberName);
+            }
+
+            foreach (string memberName in column.EnumMemberNames) {
+                if (!annotatedNames.Contains(memberName)) {
+                    unannotated.Add(memberName);
+                }
+            }
+
+            diagnostics.Add(CreateTransformDiagnostic(
+                model,
+                "HFC1025",
+                string.Format(
+                    "Enum property '{0}' on projection {1} has {2} of {3} members annotated with [ProjectionBadge] - unannotated members ({4}) render as plain text. Annotate every member or none for visual consistency.",
+                    column.PropertyName,
+                    model.TypeName,
+                    annotated,
+                    total,
+                    string.Join(", ", unannotated)),
+                "Info"));
         }
     }
 

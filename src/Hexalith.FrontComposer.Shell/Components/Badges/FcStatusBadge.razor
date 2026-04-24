@@ -1,0 +1,17 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Badges
+@using Hexalith.FrontComposer.Contracts.Attributes
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 4-2 D1 / D3 / D4 / D14 / AC1 / AC2 / AC5 — thin wrapper over FluentBadge that
+   resolves semantic slot → (Color, Appearance) via SlotAppearanceTable and produces the
+   "{ColumnHeader}: {Label}" aria-label so screen readers always announce the contextual
+   state. Label text is mandatory (EditorRequired) — color is never the sole signal
+   (UX-DR30 commitment #1). *@
+
+<FluentBadge Appearance="@_appearance"
+             Color="@_color"
+             aria-label="@_ariaLabel"
+             data-fc-badge-slot="@Slot"
+             data-testid="fc-status-badge">
+    @Label
+</FluentBadge>

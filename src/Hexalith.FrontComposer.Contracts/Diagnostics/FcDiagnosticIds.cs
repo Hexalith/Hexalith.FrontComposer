@@ -43,6 +43,25 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1024_UnknownProjectionRoleValue = "HFC1024";
 
+    /// <summary>
+    /// Build-time Information: a projection enum column carries <c>[ProjectionBadge]</c> on
+    /// some members but not all (Story 4-2 D6 / AC3). The generator emits semantic badges
+    /// for annotated members and falls back to humanized text for unannotated members.
+    /// Deduped per (projection, enum) pair so the same mixed enum is reported once per
+    /// projection it appears on. Fix: annotate every enum member or remove all annotations
+    /// for visual consistency.
+    /// </summary>
+    public const string HFC1025_BadgeSlotFallbackApplied = "HFC1025";
+
+    /// <summary>
+    /// Build-time Warning (RESERVED): a rendered badge is missing its visible text label
+    /// (Story 4-2 D7). Unreachable from generated code because <c>FcStatusBadge.Label</c>
+    /// is <c>EditorRequired</c> — the reservation is held for Story 10-2's specimen
+    /// checker to flag adopter-authored custom badges that violate UX-DR30 commitment #1.
+    /// No call sites in Story 4-2.
+    /// </summary>
+    public const string HFC1026_ColorOnlyBadgeDetected = "HFC1026";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

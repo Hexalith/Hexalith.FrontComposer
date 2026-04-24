@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text;
 
+using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
@@ -114,6 +115,9 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + recordTypeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"Status\");");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + recordTypeName + ", string?>>)(x => x.StatusLabel));");
+        if (statusColumn.BadgeMappings.Count > 0) {
+            EmitStatusOverviewBadgeChildContent(sb, statusColumn, recordTypeName);
+        }
         _ = sb.AppendLine("            b.CloseComponent();");
         _ = sb.AppendLine();
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + recordTypeName + ", string?>>(colSeq++);");
@@ -331,6 +335,42 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                rb.CloseComponent();");
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            b.CloseComponent();");
+    }
+
+    /// <summary>
+    /// Story 4-2 D9 / AC6 — StatusOverview-specific badge child content. The aggregate row
+    /// carries <c>Enum? Status</c> + <c>string StatusLabel</c>; the switch dispatches on the
+    /// enum member name to resolve an <c>FcStatusBadge</c> slot, falling back to the plain
+    /// <c>StatusLabel</c> text for null entries or members outside the declared mapping set.
+    /// </summary>
+    private static void EmitStatusOverviewBadgeChildContent(StringBuilder sb, ColumnModel statusColumn, string recordTypeName) {
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + recordTypeName + ">)(item => (RenderTreeBuilder rb) =>");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                if (item.Status is null)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    rb.AddContent(0, item.StatusLabel);");
+        _ = sb.AppendLine("                    return;");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("                var _memberName = item.Status.ToString();");
+        _ = sb.AppendLine("                var _label = item.StatusLabel;");
+        _ = sb.AppendLine("                switch (_memberName)");
+        _ = sb.AppendLine("                {");
+        foreach (BadgeMappingEntry mapping in statusColumn.BadgeMappings) {
+            string memberLiteral = "\"" + RoleBodyHelpers.EscapeString(mapping.EnumMemberName) + "\"";
+            _ = sb.AppendLine("                    case " + memberLiteral + ":");
+            _ = sb.AppendLine("                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);");
+            _ = sb.AppendLine("                        rb.AddAttribute(1, \"Slot\", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + mapping.Slot + ");");
+            _ = sb.AppendLine("                        rb.AddAttribute(2, \"Label\", _label);");
+            _ = sb.AppendLine("                        rb.AddAttribute(3, \"ColumnHeader\", \"Status\");");
+            _ = sb.AppendLine("                        rb.CloseComponent();");
+            _ = sb.AppendLine("                        break;");
+        }
+        _ = sb.AppendLine("                    default:");
+        _ = sb.AppendLine("                        rb.AddContent(10, _label);");
+        _ = sb.AppendLine("                        break;");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("            }));");
     }
 
     private static void EmitDetailField(
