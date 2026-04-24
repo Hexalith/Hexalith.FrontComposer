@@ -12,6 +12,7 @@ using System.Linq.Expressions;
 using Fluxor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace RoleSpecific.Negative;
@@ -26,6 +27,9 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IDisposable
 
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
+
+    [Inject]
+    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> FcShellLocalizer { get; set; } = default!;
 
     private object? _cachedActionQueueSource;
     private List<WhenStateTypoProjection>? _cachedActionQueueItems;
@@ -211,7 +215,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IDisposable
                         rb.CloseComponent();
                         break;
                     default:
-                        rb.AddContent(10, _label);
+                        rb.AddContent(11, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
                         break;
                 }
             }));

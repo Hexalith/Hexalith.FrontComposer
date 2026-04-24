@@ -27,7 +27,7 @@ public static class RazorEmitter {
         StringBuilder sb = new(4096);
 
         EmitFileHeader(sb);
-        EmitUsings(sb);
+        EmitUsings(sb, model);
         EmitNamespaceOpening(sb, model);
         EmitClassHeader(sb, model);
         EmitInjections(sb, model);
@@ -48,7 +48,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
     }
 
-    private static void EmitUsings(StringBuilder sb) {
+    private static void EmitUsings(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("using System;");
         _ = sb.AppendLine("using System.Collections.Generic;");
         _ = sb.AppendLine("using System.Globalization;");
@@ -57,6 +57,13 @@ public static class RazorEmitter {
         _ = sb.AppendLine("using Fluxor;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
+
+        // Story 4-2 RF3 — only views that inject IStringLocalizer<FcShellResources> pull in the
+        // namespace; keeps non-badge snapshots byte-for-byte identical to the Story 4-1 baseline.
+        if (HasBadgeMappings(model)) {
+            _ = sb.AppendLine("using Microsoft.Extensions.Localization;");
+        }
+
         _ = sb.AppendLine("using Microsoft.FluentUI.AspNetCore.Components;");
         _ = sb.AppendLine();
     }
@@ -83,6 +90,26 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    [Inject]");
         _ = sb.AppendLine("    private NavigationManager Navigation { get; set; } = default!;");
         _ = sb.AppendLine();
+
+        // Story 4-2 RF3 — views that render any badge-annotated enum column resolve the
+        // localised StatusBadgeUnknownStateFallback via IStringLocalizer<FcShellResources>
+        // in the out-of-range default arm. Injected conditionally so projections without
+        // badge mappings do not pick up a superfluous DI dependency.
+        if (HasBadgeMappings(model)) {
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> " + ColumnEmitter.ShellLocalizerFieldName + " { get; set; } = default!;");
+            _ = sb.AppendLine();
+        }
+    }
+
+    private static bool HasBadgeMappings(RazorModel model) {
+        foreach (ColumnModel col in model.Columns) {
+            if (col.BadgeMappings.Count > 0) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static void EmitStrategyMembers(StringBuilder sb, RazorModel model) {

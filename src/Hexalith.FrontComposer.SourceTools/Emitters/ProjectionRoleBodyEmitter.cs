@@ -112,11 +112,12 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int colSeq = 300;");
         _ = sb.AppendLine();
+        string statusHeaderLiteral = "\"" + RoleBodyHelpers.EscapeString(statusColumn.Header) + "\"";
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + recordTypeName + ", string?>>(colSeq++);");
-        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"Status\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", " + statusHeaderLiteral + ");");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + recordTypeName + ", string?>>)(x => x.StatusLabel));");
         if (statusColumn.BadgeMappings.Count > 0) {
-            EmitStatusOverviewBadgeChildContent(sb, statusColumn, recordTypeName);
+            EmitStatusOverviewBadgeChildContent(sb, statusColumn, recordTypeName, statusHeaderLiteral);
         }
         _ = sb.AppendLine("            b.CloseComponent();");
         _ = sb.AppendLine();
@@ -196,7 +197,7 @@ public static class ProjectionRoleBodyEmitter {
         ColumnModel? orderColumn = RoleBodyHelpers.ResolveFirstDateTimeColumn(model);
         string? orderProp = orderColumn?.PropertyName;
         ColumnModel? labelColumn = RoleBodyHelpers.ResolveTimelineLabelColumn(model);
-        string? statusProp = RoleBodyHelpers.ResolveStatusEnumProperty(model);
+        ColumnModel? statusColumn = RoleBodyHelpers.ResolveStatusEnumColumn(model);
 
         string orderedSource = orderProp is not null
             ? orderColumn!.IsNullable
@@ -223,8 +224,21 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("                b.AddContent(rowSeq++, " + FormatValueExpression(labelColumn!, "item") + ");");
             _ = sb.AppendLine("                b.AddMarkupContent(rowSeq++, \" \");");
         }
-        if (statusProp is not null) {
-            _ = sb.AppendLine("                b.AddContent(rowSeq++, HumanizeEnumLabel(item." + statusProp + ".ToString()));");
+        if (statusColumn is not null) {
+            // Story 4-2 RF1 — badge-annotated enum rows dispatch through FcStatusBadge; otherwise
+            // preserve the Story 4-1 humanized text behaviour.
+            if (statusColumn.BadgeMappings.Count > 0) {
+                ColumnEmitter.EmitInlineEnumRenderFragment(
+                    sb,
+                    statusColumn,
+                    instanceName: "item",
+                    builderName: "b",
+                    seqVariable: "rowSeq",
+                    indent: "                ");
+            }
+            else {
+                _ = sb.AppendLine("                b.AddContent(rowSeq++, HumanizeEnumLabel(item." + statusColumn.PropertyName + ".ToString()));");
+            }
         }
         _ = sb.AppendLine("                b.CloseElement();");
         _ = sb.AppendLine("            }");
@@ -338,12 +352,19 @@ public static class ProjectionRoleBodyEmitter {
     }
 
     /// <summary>
-    /// Story 4-2 D9 / AC6 — StatusOverview-specific badge child content. The aggregate row
-    /// carries <c>Enum? Status</c> + <c>string StatusLabel</c>; the switch dispatches on the
-    /// enum member name to resolve an <c>FcStatusBadge</c> slot, falling back to the plain
-    /// <c>StatusLabel</c> text for null entries or members outside the declared mapping set.
+    /// Story 4-2 D9 / AC6 / RF2 / RF4 — StatusOverview badge child content. The aggregate row
+    /// carries <c>Enum? Status</c> + <c>string StatusLabel</c>; after the null-guard, the
+    /// shared <see cref="ColumnEmitter.EmitBadgeSwitch"/> dispatches on the enum member name
+    /// so the rendered output matches the DataGrid column path byte-for-byte (including the
+    /// localised out-of-range fallback via the view-scoped <c>IStringLocalizer</c>). The
+    /// <paramref name="headerLiteral"/> carries the real column header metadata so
+    /// <c>aria-label</c> reflects per-projection naming (RF4).
     /// </summary>
-    private static void EmitStatusOverviewBadgeChildContent(StringBuilder sb, ColumnModel statusColumn, string recordTypeName) {
+    private static void EmitStatusOverviewBadgeChildContent(
+        StringBuilder sb,
+        ColumnModel statusColumn,
+        string recordTypeName,
+        string headerLiteral) {
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + recordTypeName + ">)(item => (RenderTreeBuilder rb) =>");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                if (item.Status is null)");
@@ -354,22 +375,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("                var _memberName = item.Status.ToString();");
         _ = sb.AppendLine("                var _label = item.StatusLabel;");
-        _ = sb.AppendLine("                switch (_memberName)");
-        _ = sb.AppendLine("                {");
-        foreach (BadgeMappingEntry mapping in statusColumn.BadgeMappings) {
-            string memberLiteral = "\"" + RoleBodyHelpers.EscapeString(mapping.EnumMemberName) + "\"";
-            _ = sb.AppendLine("                    case " + memberLiteral + ":");
-            _ = sb.AppendLine("                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);");
-            _ = sb.AppendLine("                        rb.AddAttribute(1, \"Slot\", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + mapping.Slot + ");");
-            _ = sb.AppendLine("                        rb.AddAttribute(2, \"Label\", _label);");
-            _ = sb.AppendLine("                        rb.AddAttribute(3, \"ColumnHeader\", \"Status\");");
-            _ = sb.AppendLine("                        rb.CloseComponent();");
-            _ = sb.AppendLine("                        break;");
-        }
-        _ = sb.AppendLine("                    default:");
-        _ = sb.AppendLine("                        rb.AddContent(10, _label);");
-        _ = sb.AppendLine("                        break;");
-        _ = sb.AppendLine("                }");
+        ColumnEmitter.EmitBadgeSwitch(sb, statusColumn, headerLiteral, builderName: "rb", indent: "                ");
         _ = sb.AppendLine("            }));");
     }
 
@@ -388,6 +394,21 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "    labelBuilder.AddContent(0, \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
         _ = sb.AppendLine(indent + "}));");
         _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
+
+        // Story 4-2 RF1 — annotated enum fields dispatch through FcStatusBadge so DetailRecord
+        // reaches the same semantic-color surface as the DataGrid column path.
+        if (col.TypeCategory == TypeCategory.Enum && col.BadgeMappings.Count > 0) {
+            ColumnEmitter.EmitInlineEnumRenderFragment(
+                sb,
+                col,
+                instanceName: "entity",
+                builderName: builderName,
+                seqVariable: seqName,
+                indent: indent);
+            _ = sb.AppendLine(indent + builderName + ".CloseElement();");
+            return;
+        }
+
         _ = sb.AppendLine(indent + builderName + ".OpenComponent<FluentText>(" + seqName + "++);");
         _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder textBuilder) =>");
         _ = sb.AppendLine(indent + "{");

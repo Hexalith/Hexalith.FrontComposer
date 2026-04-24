@@ -38,7 +38,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-24 (story 4-2 review completed — HFC1025 wording was aligned to the current Transform-stage per-(projection, enum-column) behavior, 6 code patch findings remain open as action items, and the story moved back to in-progress for follow-up work.)"
+last_updated: "2026-04-24 (story 4-2 review completed — remaining review fixes landed: inline Timeline/DetailRecord badge branches now use caller-managed render-tree sequence values, SlotContrastTests now cover Light+Dark theme pairs and both 4.5:1 text / 3:1 UI thresholds, and HFC1008 metadata/regression coverage now includes the widened analyzer release title plus command+projection flags tests. Targeted validation green: Shell SlotContrastTests 25/25, SourceTools Hfc1008DiagnosticTests 4/4, RoleSpecificProjectionApprovalTests 11/11.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -80,7 +80,7 @@ development_status:
   # Epic 4: Rich DataGrid & Projection Interaction
   epic-4: in-progress
   4-1-projection-role-hints-and-view-rendering: review
-  4-2-status-badge-system: in-progress
+  4-2-status-badge-system: done
   4-3-datagrid-filtering-sorting-and-search: ready-for-dev
   4-4-virtual-scrolling-and-column-prioritization: ready-for-dev
   4-5-expand-in-row-detail-and-progressive-disclosure: ready-for-dev

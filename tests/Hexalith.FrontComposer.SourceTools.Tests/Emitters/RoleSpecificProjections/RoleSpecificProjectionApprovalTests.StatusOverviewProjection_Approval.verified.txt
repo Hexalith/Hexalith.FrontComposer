@@ -12,6 +12,7 @@ using System.Linq.Expressions;
 using Fluxor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace RoleSpecific.Tickets;
@@ -26,6 +27,9 @@ public partial class StatusOverviewProjectionView : ComponentBase, IDisposable
 
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
+
+    [Inject]
+    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> FcShellLocalizer { get; set; } = default!;
 
     private sealed record StatusOverviewProjectionStatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder);
 
@@ -231,7 +235,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IDisposable
                         rb.CloseComponent();
                         break;
                     default:
-                        rb.AddContent(10, _label);
+                        rb.AddContent(11, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
                         break;
                 }
             }));

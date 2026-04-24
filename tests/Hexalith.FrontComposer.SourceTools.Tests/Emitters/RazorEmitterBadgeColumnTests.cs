@@ -45,22 +45,26 @@ public class RazorEmitterBadgeColumnTests {
     }
 
     /// <summary>
-    /// Story 4-2 AC3 — partial coverage. A mapped enum member emits a
-    /// <c>FcStatusBadge</c> switch arm; unmapped members fall through to the humanized
-    /// text default arm. The <c>Property</c> lambda stays intact for sort / filter.
+    /// Story 4-2 AC3 / RF3 — partial coverage. Mapped enum members emit
+    /// <c>FcStatusBadge</c> switch arms; declared-but-unannotated members emit plain-text
+    /// arms that render the humanized label (partial coverage is an HFC1025 fallback, not
+    /// an error); the <c>default</c> arm covers out-of-range runtime values (unsafe casts)
+    /// with the localised <c>StatusBadgeUnknownStateFallback</c> resource lookup. The
+    /// <c>Property</c> lambda stays intact for sort / filter / default-aria paths.
     /// </summary>
     [Fact]
     public void PartialMappings_EmitsSwitchWithBadgeArmsPlusTextDefault() {
         EquatableArray<BadgeMappingEntry> badges = new(ImmutableArray.Create(
             new BadgeMappingEntry("Pending", "Warning"),
             new BadgeMappingEntry("Approved", "Success")));
+        EquatableArray<string> declaredMembers = new(ImmutableArray.Create("Pending", "Approved", "Cancelled"));
 
         RazorModel model = new(
             "OrderProjection",
             "TestDomain",
             "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
-                new ColumnModel("Status", "Status", TypeCategory.Enum, "Humanize:30", false, badges, _emptyEnumMembers))));
+                new ColumnModel("Status", "Status", TypeCategory.Enum, "Humanize:30", false, badges, declaredMembers))));
 
         string source = RazorEmitter.Emit(model);
 
@@ -69,8 +73,12 @@ public class RazorEmitterBadgeColumnTests {
         source.ShouldContain("BadgeSlot.Warning");
         source.ShouldContain("case \"Approved\":");
         source.ShouldContain("BadgeSlot.Success");
-        source.ShouldContain("default:");
+        // Declared-but-unannotated member renders plain humanized text.
+        source.ShouldContain("case \"Cancelled\":");
         source.ShouldContain("rb.AddContent(10, _label);");
+        // Default arm uses the localised unknown-state fallback resource.
+        source.ShouldContain("default:");
+        source.ShouldContain("FcShellLocalizer[\"StatusBadgeUnknownStateFallback\"].Value");
     }
 
     /// <summary>
@@ -101,7 +109,11 @@ public class RazorEmitterBadgeColumnTests {
     /// Story 4-2 D14 / AC1 — <c>HumanizeEnumLabel</c> is the label source for badges too,
     /// not a resource lookup. Guards against the "localise enum labels via resource keys"
     /// slip where a well-meaning refactor routes badge text through
-    /// <see cref="Microsoft.Extensions.Localization.IStringLocalizer"/>.
+    /// <see cref="Microsoft.Extensions.Localization.IStringLocalizer"/>. The generator still
+    /// injects <c>IStringLocalizer&lt;FcShellResources&gt;</c> for the RF3 out-of-range
+    /// fallback path — the assertion here is narrowly that the LABEL is never sourced from
+    /// a localizer lookup (the assigned expression for <c>_label</c> stays on
+    /// <c>HumanizeEnumLabel</c>).
     /// </summary>
     [Fact]
     public void BadgeLabelUsesHumanizeEnumLabel_NotResourceLookup() {
@@ -118,7 +130,8 @@ public class RazorEmitterBadgeColumnTests {
         string source = RazorEmitter.Emit(model);
 
         source.ShouldContain("var _label = HumanizeEnumLabel(_memberName);");
-        source.ShouldNotContain("IStringLocalizer");
+        source.ShouldNotContain("_label = FcShellLocalizer[");
+        source.ShouldNotContain("_label = Localizer[");
     }
 
     /// <summary>

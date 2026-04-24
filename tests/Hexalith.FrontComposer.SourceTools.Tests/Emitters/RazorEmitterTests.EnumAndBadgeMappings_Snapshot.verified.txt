@@ -11,6 +11,7 @@ using System.Linq.Expressions;
 using Fluxor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace TestDomain;
@@ -25,6 +26,9 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
 
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
+
+    [Inject]
+    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> FcShellLocalizer { get; set; } = default!;
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -186,7 +190,7 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
                         rb.CloseComponent();
                         break;
                     default:
-                        rb.AddContent(10, _label);
+                        rb.AddContent(11, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
                         break;
                 }
             }));

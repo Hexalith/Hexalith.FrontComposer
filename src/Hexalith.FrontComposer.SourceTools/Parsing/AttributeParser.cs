@@ -606,11 +606,15 @@ public static class AttributeParser {
             return EmptyBadgeMappings;
         }
 
-        // Story 4-2 D10 — [Flags] enums cannot be expressed as a single-value badge (a
+        // Story 4-2 D10 / RF5 — [Flags] enums cannot be expressed as a single-value badge (a
         // bitmask may set multiple members simultaneously). Falling back to empty mappings
         // routes the column through the Story 1-5 plain-text path; adopters needing
-        // compound rendering take the Epic 6 customization gradient.
+        // compound rendering take the Epic 6 customization gradient. When the enum was
+        // deliberately annotated with [ProjectionBadge] on at least one member we emit
+        // HFC1008 so the ignored annotations surface in the Error List rather than being
+        // silently dropped (RF5 review finding).
         if (HasFlagsAttribute(propertyType)) {
+            EmitFlagsEnumBadgeDiagnosticIfAnnotated(enumType, diagnostics, filePath);
             return EmptyBadgeMappings;
         }
 
@@ -644,6 +648,55 @@ public static class AttributeParser {
         }
 
         return new EquatableArray<BadgeMappingEntry>(builder.ToImmutable());
+    }
+
+    /// <summary>
+    /// Story 4-2 RF5 — emits HFC1008 when a <c>[Flags]</c> enum carries at least one
+    /// <c>[ProjectionBadge]</c> annotation. The annotation is silently ignored by the badge
+    /// emitter (single-value slot cannot render a bitmask), so surfacing the drop as a build
+    /// Warning prevents adopters from believing their annotation took effect. Enum members
+    /// without <c>[ProjectionBadge]</c> do not trigger the diagnostic — plain Flags enums in
+    /// projections remain valid and silent.
+    /// </summary>
+    private static void EmitFlagsEnumBadgeDiagnosticIfAnnotated(
+        INamedTypeSymbol enumType,
+        List<DiagnosticInfo> diagnostics,
+        string filePath) {
+        IFieldSymbol? annotatedMember = null;
+        foreach (ISymbol member in enumType.GetMembers()) {
+            if (member is not IFieldSymbol field || !field.HasConstantValue) {
+                continue;
+            }
+
+            foreach (AttributeData attr in field.GetAttributes()) {
+                if (attr.AttributeClass?.ToDisplayString() == ProjectionBadgeAttributeName) {
+                    annotatedMember = field;
+                    break;
+                }
+            }
+
+            if (annotatedMember is not null) {
+                break;
+            }
+        }
+
+        if (annotatedMember is null) {
+            return;
+        }
+
+        Location location = annotatedMember.Locations.FirstOrDefault() ?? Location.None;
+        Microsoft.CodeAnalysis.Text.LinePosition linePos = location.GetLineSpan().StartLinePosition;
+        string memberFilePath = location.SourceTree?.FilePath ?? filePath;
+
+        diagnostics.Add(new DiagnosticInfo(
+            "HFC1008",
+            string.Format(
+                "[Flags] enum '{0}' carries [ProjectionBadge] annotations that are ignored because a bitmask value can set multiple members simultaneously and the 6-slot palette cannot render compound state. Remove the annotations or supply a custom multi-badge renderer via the Epic 6 Slot-level customization gradient.",
+                enumType.ToDisplayString()),
+            "Warning",
+            memberFilePath,
+            linePos.Line,
+            linePos.Character));
     }
 
     private static EquatableArray<string> GetEnumMemberNames(ITypeSymbol propertyType, bool isEnum) {

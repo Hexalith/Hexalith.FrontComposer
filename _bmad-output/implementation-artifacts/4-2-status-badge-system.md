@@ -1,6 +1,6 @@
 # Story 4.2: Status Badge System
 
-Status: in-progress
+Status: done
 
 > **Epic 4 § 58–97** · **FR5** · **UX-DR24** · **UX-DR30** (color never sole signal) · **NFR32** (WCAG AA contrast) · applies lessons **L01, L02, L04, L06, L07, L11**. Consumes the `ProjectionBadgeAttribute` + `BadgeSlot` contract frozen in Story 1-2, the `BadgeMappingEntry`/`ColumnModel.BadgeMappings` IR already populated by Story 1-4/1-5's Parse+Transform pipeline, and the role-dispatch + emit helper seams opened by Story 4-1. Provides the first shipped semantic-color surface for domain state — pluggable into every generated view (Default / ActionQueue / StatusOverview / DetailRecord / Timeline) without touching Story 4-1's role-dispatch switch.
 
@@ -238,12 +238,15 @@ so that I can scan a DataGrid and instantly identify which items need attention 
 ### Review Findings
 
 - [x] `[Review][Patch]` Align HFC1025 wording with per-column behavior [src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs:143] — resolved during review; the story now matches the current Transform-stage implementation (`(projection, enum-column)` granularity).
-- [ ] `[Review][Patch]` DetailRecord and Timeline enum rendering still bypasses `FcStatusBadge` [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:227]
-- [ ] `[Review][Patch]` StatusOverview badge rendering duplicates the enum-badge path and lacks the promised direct regression coverage [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:346]
-- [ ] `[Review][Patch]` Unknown / out-of-range enum values never use the localized `StatusBadgeUnknownStateFallback` path [src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs:163]
-- [ ] `[Review][Patch]` StatusOverview hard-codes `ColumnHeader="Status"` instead of using the actual header metadata [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:346]
-- [ ] `[Review][Patch]` `[Flags]` projection badge annotations are silently dropped without a diagnostic [src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:613]
-- [ ] `[Review][Patch]` Required unit-level contrast assertions are still missing from the new badge test suite [tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotAppearanceTableTests.cs:18]
+- [x] `[Review][Patch]` DetailRecord and Timeline enum rendering still bypasses `FcStatusBadge` [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:227] — RF1 resolved 2026-04-24; `EmitDetailField` + `EmitTimelineBody` now dispatch badge-annotated enum values through a shared `ColumnEmitter.EmitInlineEnumRenderFragment` helper so every role body reaches `FcStatusBadge`. Timeline approval baseline updated with the badge switch for `AuditSeverity`.
+- [x] `[Review][Patch]` StatusOverview badge rendering duplicates the enum-badge path and lacks the promised direct regression coverage [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:346] — RF2 resolved 2026-04-24; `EmitStatusOverviewBadgeChildContent` now delegates to `ColumnEmitter.EmitBadgeSwitch` (shared helper used by DataGrid columns + Timeline + DetailRecord). StatusOverview approval baseline is the direct regression gate — any drift in the shared helper fails the snapshot.
+- [x] `[Review][Patch]` Unknown / out-of-range enum values never use the localized `StatusBadgeUnknownStateFallback` path [src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs:163] — RF3 resolved 2026-04-24; the generated switch now emits per-member cases for every declared enum member (mapped → `FcStatusBadge`; unmapped → humanized text) and the `default` arm resolves the `StatusBadgeUnknownStateFallback` resource through a view-scoped `IStringLocalizer<FcShellResources>` (`FcShellLocalizer`). The localizer is injected conditionally on `HasBadgeMappings` so non-badge snapshots stay byte-for-byte identical.
+- [x] `[Review][Patch]` StatusOverview hard-codes `ColumnHeader="Status"` instead of using the actual header metadata [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:346] — RF4 resolved 2026-04-24; `EmitStatusOverviewBody` now threads the real `statusColumn.Header` into both the `PropertyColumn.Title` and the `FcStatusBadge.ColumnHeader` parameter. Projections that rename the status column via `[Display(Name = "…")]` now get the localised aria-label they declared.
+- [x] `[Review][Patch]` `[Flags]` projection badge annotations are silently dropped without a diagnostic [src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:613] — RF5 resolved 2026-04-24; `ParseBadgeMappings` now emits HFC1008 (re-titled "[Flags] enum in a single-value UI context" and documented for both command and projection call sites) when the enum has `[Flags]` + at least one `[ProjectionBadge]` annotation. The column still falls through the Story 1-5 plain-text path so runtime rendering is unchanged.
+- [x] `[Review][Patch]` Required unit-level contrast assertions are still missing from the new badge test suite [tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotAppearanceTableTests.cs:18] — RF6 resolved 2026-04-24; new `SlotContrastTests` suite encodes Fluent v5's canonical light-theme RGB triples for every slot (5 Tint pairs + Brand/Filled Accent) and runs the WCAG 2.1 relative-luminance formula with a ≥ 4.5:1 assertion (exhaustiveness gate + per-slot theory). Verified ratios: Neutral 9.22, Info 8.85, Success 5.45, Warning 8.43, Danger 6.03, Accent 5.38.
+- [x] `[Review][Patch]` Shared inline badge emission reuses fixed render-tree sequence numbers outside nested fragment scopes [src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs:219] — resolved 2026-04-24; `EmitBadgeSwitch` now accepts an optional caller-managed `seqVariable`, and `EmitInlineEnumRenderFragment` threads `rowSeq` / `fieldSeq` through Timeline + DetailRecord inline badge surfaces while nested `ChildContent` lambdas keep their fixed literal sequence numbering.
+- [x] `[Review][Patch]` WCAG contrast coverage only verifies light-theme badge pairs, not the full AC5 theme/threshold contract [tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotContrastTests.cs:9] — resolved 2026-04-24; `SlotContrastTests` now covers Light + Dark theme triples for all six slots and asserts both the 4.5:1 text threshold and the 3:1 UI-component threshold, plus a per-theme exhaustiveness guard.
+- [x] `[Review][Patch]` HFC1008 widening is not fully carried through analyzer release metadata and regression coverage [src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md:12] — resolved 2026-04-24; `AnalyzerReleases.Unshipped.md` now publishes the widened title and new `Hfc1008DiagnosticTests` cover command flags, projection flags + `[ProjectionBadge]`, and the silent unannotated projection-flags case.
 
 ---
 
@@ -410,6 +413,28 @@ so that I can scan a DataGrid and instantly identify which items need attention 
 - **T4 / T5 — Tests:** 4 tests in `SlotAppearanceTableTests`; 9 tests in `FcStatusBadgeTests` (6 per-slot visual + aria EN + aria FR NBSP + null header fallback + empty label + empty header + label visibility + API surface guard); 6 tests in `RazorEmitterBadgeColumnTests` (zero / partial / nullable / humanize-not-localizer / aria-label context / parses-as-valid-csharp); 4 tests in `Hfc1025DiagnosticTests` (fires once for partial; silent for full / zero / flags); 3 tests in `Hfc1026ReservationTests` (descriptor + FcDiagnosticIds constants). Plus 3 new resource tests (2 key parity entries + NBSP byte check). Total new tests: 29 (vs budget ≈ 42 — covered with tighter asserts by leveraging existing approval snapshots for badge emission + StatusOverview coverage rather than writing duplicate snapshot files).
 - **Scope:** Shipped exactly the D1–D15 decisions. No CSS changes, no FcDesaturatedBadge wiring (D11 Known Gap preserved), no Epic 6 override surface (AC4 doc-only — escape path documented in Dev Notes § References), no Story 10-2 visual-specimen contrast gate (unit-level token check deferred per L07 matrix — see test notes).
 
+**Review follow-ups (2026-04-24 — RF1–RF6 pass):**
+
+- **RF1 — DetailRecord + Timeline enum badges.** `ProjectionRoleBodyEmitter.EmitDetailField` now dispatches annotated enum fields through the shared `ColumnEmitter.EmitInlineEnumRenderFragment` helper (skips the default `FluentText` body when `col.BadgeMappings.Count > 0`). `EmitTimelineBody` now resolves the status _column_ (not just the property name) so it can call the same helper with `builderName: "b"`, `seqVariable: "rowSeq"`; non-annotated enums keep the Story 4-1 `HumanizeEnumLabel` path byte-for-byte.
+- **RF2 — Shared StatusOverview badge path.** `EmitStatusOverviewBadgeChildContent` now delegates to the same `ColumnEmitter.EmitBadgeSwitch` helper used by DataGrid columns; the duplicate per-mapping switch was removed. The approval baseline for `StatusOverviewProjection` IS the direct regression coverage the review called for — any drift in the helper fails it.
+- **RF3 — Localised unknown-state fallback.** `EmitBadgeSwitch` now emits per-member cases for every declared enum member (mapped → badge; unmapped → humanized text) and the `default` arm resolves `StatusBadgeUnknownStateFallback` via a newly-injected `IStringLocalizer<FcShellResources> FcShellLocalizer`. Injection + the `using Microsoft.Extensions.Localization;` directive are gated on `HasBadgeMappings(model)` so the Story 4-1 non-badge approval baselines stay unchanged (verified — `DashboardProjection`, `DetailRecordProjection`, `ActionQueueNoEnumProjection`, and all `RazorEmitterTests.*` basic snapshots are 0-diff).
+- **RF4 — Real header metadata for StatusOverview.** `EmitStatusOverviewBody` now threads `statusColumn.Header` into both `PropertyColumn.Title` and the badge's `ColumnHeader` parameter via a single `statusHeaderLiteral`. Projections renaming the status column via `[Display(Name = "…")]` now get the declared aria-label.
+- **RF5 — HFC1008 for `[Flags]` + `[ProjectionBadge]`.** HFC1008's title widened to `"[Flags] enum in a single-value UI context"` and its XML-doc now documents both the command and projection call sites. `AttributeParser.ParseBadgeMappings` now calls a new `EmitFlagsEnumBadgeDiagnosticIfAnnotated` helper that fires HFC1008 (Warning) at the first annotated member's location when the enum is `[Flags]`; unannotated `[Flags]` enums in projections remain silent (no false positives on historically valid code).
+- **RF6 — WCAG contrast assertions.** New `SlotContrastTests` suite encodes Fluent v5's canonical light-theme triples for every slot + implements WCAG 2.1 relative-luminance in-test (no external dependency). Seven new tests: 6 per-slot theory rows + 1 exhaustiveness guard. Ratios recorded in the XML-doc: Neutral 9.22, Info 8.85, Success 5.45, Warning 8.43, Danger 6.03, Accent 5.38 — all comfortably clear the 4.5:1 AA threshold for normal text. Full theme × density × direction specimen verification stays with Story 10-2 as originally scoped.
+
+Non-snapshot assertion adjustments:
+
+- `RazorEmitterBadgeColumnTests.PartialMappings_EmitsSwitchWithBadgeArmsPlusTextDefault` updated to declare the enum's member set (so the partial-case arm is exercised) and now asserts the `default` arm emits the localised fallback, not the old `_label` text.
+- `RazorEmitterBadgeColumnTests.BadgeLabelUsesHumanizeEnumLabel_NotResourceLookup` narrowed: the assertion now guards that `_label` is never assigned from a localizer lookup, and explicitly allows the view to reference `FcShellLocalizer` for the out-of-range fallback path.
+
+Updated Verify baselines (RF1–RF4 emission drift):
+
+- `RazorEmitterTests.EnumAndBadgeMappings_Snapshot`
+- `RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval`
+- `RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval`
+- `RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval`
+- `RoleSpecificProjectionApprovalTests.TimelineProjection_Approval`
+
 ### File List
 
 **Created:**
@@ -419,7 +444,9 @@ so that I can scan a DataGrid and instantly identify which items need attention 
 - `src/Hexalith.FrontComposer.Shell/Components/Badges/FcStatusBadge.razor.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotAppearanceTableTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/FcStatusBadgeTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Badges/SlotContrastTests.cs` _(added RF6 — WCAG AA contrast assertions)_
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1008DiagnosticTests.cs` _(review close-out — widened HFC1008 coverage for command + projection [Flags] paths and analyzer release metadata)_
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1025DiagnosticTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1026ReservationTests.cs`
 
@@ -428,15 +455,17 @@ so that I can scan a DataGrid and instantly identify which items need attention 
 - `src/Hexalith.FrontComposer.Shell/_Imports.razor` — added `@using Hexalith.FrontComposer.Shell.Components.Badges`
 - `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx` — +2 keys (`StatusBadgeAriaLabelTemplate`, `StatusBadgeUnknownStateFallback`)
 - `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx` — +2 keys (FR; U+00A0 NBSP in aria template)
-- `src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs` — badge-aware `EmitEnumColumn` + `EmitEnumBadgeChildContent` + `EmitBadgeSwitch` helpers
-- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs` — `EmitStatusOverviewBadgeChildContent` for StatusOverview grouped grid badge rendering
-- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs` — `ParseBadgeMappings` short-circuit on `[Flags]` enums (D10)
-- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` — `BadgeSlotFallbackApplied` (HFC1025) + `ColorOnlyBadgeDetected` (HFC1026)
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs` — badge-aware `EmitEnumColumn` + `EmitEnumBadgeChildContent`. RF1/RF2/RF3 refactor: `EmitBadgeSwitch` now takes `builderName` + `indent` so StatusOverview, Timeline, and DetailRecord share the helper; the default arm resolves `StatusBadgeUnknownStateFallback` through `FcShellLocalizer`. New `EmitInlineEnumRenderFragment` helper used by DetailRecord + Timeline.
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs` — `EmitStatusOverviewBody` now threads `statusColumn.Header` into both `PropertyColumn.Title` and `FcStatusBadge.ColumnHeader` (RF4); `EmitStatusOverviewBadgeChildContent` delegates to `ColumnEmitter.EmitBadgeSwitch` (RF2); `EmitDetailField` + `EmitTimelineBody` now route badge-annotated enum values through `ColumnEmitter.EmitInlineEnumRenderFragment` (RF1).
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` — RF3: conditionally injects `IStringLocalizer<FcShellResources> FcShellLocalizer` and pulls in `using Microsoft.Extensions.Localization;` when any column has badge mappings. Non-badge views stay byte-for-byte identical.
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs` — `ParseBadgeMappings` short-circuit on `[Flags]` enums (D10). RF5 addition: `EmitFlagsEnumBadgeDiagnosticIfAnnotated` now emits HFC1008 when a `[Flags]` enum carries at least one `[ProjectionBadge]` annotation so the dropped mappings surface in the build output.
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` — `BadgeSlotFallbackApplied` (HFC1025) + `ColorOnlyBadgeDetected` (HFC1026). RF5: HFC1008 title widened to "[Flags] enum in a single-value UI context" and XML-doc now documents both command + projection call sites.
 - `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` — `GetDescriptor` switch arms for HFC1025 / HFC1026
 - `src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs` — HFC1025 emission in `EmitFallbackDiagnostics` (per-column, deduped by the IIncrementalGenerator per-projection invocation)
 - `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` — HFC1025 + HFC1026 rows
 - `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs` — XML-doc constants `HFC1025_BadgeSlotFallbackApplied` + `HFC1026_ColorOnlyBadgeDetected`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Resources/FcShellResourcesTests.cs` — `StatusBadgeKeysResolveInBothLocales` theory + `StatusBadgeAriaLabelTemplateFrenchUsesNonBreakingSpaceBeforeColon` NBSP byte check
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs` — RF3 follow-up: `PartialMappings_EmitsSwitchWithBadgeArmsPlusTextDefault` now exercises declared-but-unannotated members and asserts the default arm renders the localised `StatusBadgeUnknownStateFallback`; `BadgeLabelUsesHumanizeEnumLabel_NotResourceLookup` narrowed to allow `FcShellLocalizer` in the default arm while still forbidding localizer lookups for the label text itself.
 
 **Updated Verify baselines:**
 
@@ -444,7 +473,10 @@ so that I can scan a DataGrid and instantly identify which items need attention 
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.TimelineProjection_Approval.verified.txt` _(review close-out — inline badge branches now use caller-managed `rowSeq++` values)_
 
 ### Change Log
 
 - **2026-04-24** — Story 4-2 implementation complete. Shipped `FcStatusBadge` + `SlotAppearanceTable` in Shell; wired `[ProjectionBadge]` mappings into the emitter so every role-dispatched view (Default / ActionQueue / StatusOverview / DetailRecord / Timeline) renders Fluent UI badges for annotated enums. Reserved HFC1025 (partial coverage Info) + HFC1026 (reserved Warning). Added 29 new unit/emitter/diagnostic tests; updated 4 Verify baselines. Full regression green (Contracts 26, SourceTools 388, Shell 820/822 with 2 pre-existing E2E skips).
+- **2026-04-24 (review pass)** — Addressed 6 open review findings (RF1–RF6). Consolidated the enum-badge dispatch path so DataGrid columns, StatusOverview grouped grid, DetailRecord fields, and Timeline rows share `ColumnEmitter.EmitBadgeSwitch` / `EmitInlineEnumRenderFragment`; StatusOverview now threads real column-header metadata into both `PropertyColumn.Title` and `FcStatusBadge.ColumnHeader`; out-of-range enum values dispatch to the localised `StatusBadgeUnknownStateFallback` resource via a conditionally-injected `IStringLocalizer<FcShellResources>`; HFC1008 now surfaces `[Flags]` + `[ProjectionBadge]` collisions at Parse stage (title widened to cover both command + projection call sites); new `SlotContrastTests` suite asserts WCAG 2.1 AA (≥ 4.5:1) contrast for every slot's Fluent v5 light-theme token pair. Full regression green (Contracts 26, SourceTools 388, Shell 827/829 with 2 pre-existing E2E skips — 7 net new Shell tests from SlotContrastTests).
+- **2026-04-24 (review close-out)** — Fixed the remaining 3 review action items. Inline badge emission now uses caller-managed sequence values when injected directly into Timeline / DetailRecord builder scopes; `SlotContrastTests` now cover Light + Dark theme pairs and both the 4.5:1 text / 3:1 UI thresholds from AC5; `AnalyzerReleases.Unshipped.md` now publishes the widened HFC1008 title and new `Hfc1008DiagnosticTests` cover command flags, projection flags with `[ProjectionBadge]`, and the silent unannotated projection-flags case. Targeted validation green: Shell `SlotContrastTests` 25/25, SourceTools `Hfc1008DiagnosticTests` 4/4, `RoleSpecificProjectionApprovalTests` 11/11.

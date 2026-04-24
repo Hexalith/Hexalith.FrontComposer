@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
@@ -11,6 +12,21 @@ namespace Hexalith.FrontComposer.SourceTools.Emitters;
 /// <see cref="ProjectionRoleBodyEmitter.EmitStandardDataGrid"/>.
 /// </summary>
 internal static class ColumnEmitter {
+    /// <summary>
+    /// Resource key for the localised fail-soft label rendered when an enum runtime value is
+    /// outside the declared member set (unsafe cast). Kept here so every emit path agrees on
+    /// the key name without embedding it as a magic string at multiple sites.
+    /// </summary>
+    internal const string UnknownStateFallbackResourceKey = "StatusBadgeUnknownStateFallback";
+
+    /// <summary>
+    /// Field name of the <c>IStringLocalizer&lt;FcShellResources&gt;</c> injected into generated
+    /// views that render any badge-annotated enum column (Story 4-2 RF3 / T3.2). Exposed as a
+    /// constant so both <see cref="RazorEmitter"/> (declares the property) and the badge-dispatch
+    /// helpers (reference it) stay in lock-step.
+    /// </summary>
+    internal const string ShellLocalizerFieldName = "FcShellLocalizer";
+
     public static void EmitColumn(StringBuilder sb, ColumnModel col, string typeName, bool isDefaultSortColumn = false) {
         switch (col.TypeCategory) {
             case TypeCategory.Text:
@@ -135,11 +151,12 @@ internal static class ColumnEmitter {
     }
 
     /// <summary>
-    /// Story 4-2 D1 / D5 / D8 / AC1 / AC3 — emits the <c>ChildContent</c> render fragment that
-    /// renders <c>FcStatusBadge</c> for annotated enum members and falls back to humanized
-    /// text for unannotated members (partial coverage) or null values. The <c>Property</c>
-    /// lambda on the column is preserved verbatim so DataGrid sort / filter / default-aria
-    /// paths continue to operate on the text representation (unchanged from Story 1-5).
+    /// Story 4-2 D1 / D5 / D8 / AC1 / AC3 — emits the <c>ChildContent</c> render fragment for a
+    /// DataGrid <c>PropertyColumn</c> that wraps annotated enum members in <c>FcStatusBadge</c>
+    /// and falls back to humanized text / the localised unknown-state string for null / declared
+    /// but unannotated / out-of-range values respectively. The <c>Property</c> lambda on the
+    /// column is preserved verbatim so DataGrid sort / filter / default-aria paths continue to
+    /// operate on the text representation (unchanged from Story 1-5).
     /// </summary>
     private static void EmitEnumBadgeChildContent(StringBuilder sb, ColumnModel col, string typeName) {
         string propertyAccess = col.IsNullable
@@ -161,35 +178,139 @@ internal static class ColumnEmitter {
 
         _ = sb.AppendLine("                var _memberName = " + propertyAccess + ".ToString();");
         _ = sb.AppendLine("                var _label = HumanizeEnumLabel(_memberName);");
-        EmitBadgeSwitch(sb, col, headerLiteral);
+        EmitBadgeSwitch(sb, col, headerLiteral, builderName: "rb", indent: "                ");
         _ = sb.AppendLine("            }));");
     }
 
     /// <summary>
-    /// Story 4-2 D5 — emits the inline switch over enum member names. Mapped members emit an
-    /// <c>FcStatusBadge</c> with the resolved slot; unmapped members fall back to
-    /// <c>rb.AddContent(..., _label)</c>.
+    /// Story 4-2 RF1 / RF2 / RF3 — shared badge-dispatch helper used by DataGrid columns,
+    /// StatusOverview grouped grid cells, DetailRecord detail fields, and Timeline rows.
+    /// Emits an inline <c>switch (memberName)</c> with three classes of arm:
+    /// <list type="bullet">
+    /// <item>annotated members → open <see cref="Hexalith.FrontComposer.Shell.Components.Badges"/><c>.FcStatusBadge</c> with the resolved slot;</item>
+    /// <item>declared-but-unannotated members (partial coverage) → <c>AddContent</c> with the humanized label;</item>
+    /// <item>out-of-range (unsafe cast) values → <c>AddContent</c> with the localised
+    /// <c>StatusBadgeUnknownStateFallback</c> resource resolved through the view-scoped
+    /// <c>IStringLocalizer&lt;FcShellResources&gt;</c> (Story 4-2 RF3; injected by
+    /// <see cref="RazorEmitter.EmitInjections"/> when any column carries badge mappings).</item>
+    /// </list>
     /// </summary>
-    private static void EmitBadgeSwitch(StringBuilder sb, ColumnModel col, string headerLiteral) {
-        _ = sb.AppendLine("                switch (_memberName)");
-        _ = sb.AppendLine("                {");
+    /// <param name="sb">Output builder receiving the switch lines.</param>
+    /// <param name="col">Column model carrying <see cref="ColumnModel.BadgeMappings"/> and
+    /// <see cref="ColumnModel.EnumMemberNames"/>.</param>
+    /// <param name="headerLiteral">Escaped, quoted column-header string used for the
+    /// <c>ColumnHeader</c> parameter on <c>FcStatusBadge</c> (e.g. <c>"\"Order Status\""</c>).</param>
+    /// <param name="builderName">Name of the local <c>RenderTreeBuilder</c> variable in scope
+    /// at the call site (e.g. <c>rb</c> or <c>b</c>).</param>
+    /// <param name="indent">Leading whitespace for each emitted line — lets the helper nest
+    /// correctly inside render fragments with different indentation depths.</param>
+    /// <param name="seqVariable">Optional caller-managed sequence variable for inline builder
+    /// scopes such as Timeline / DetailRecord. When <see langword="null"/>, the helper emits
+    /// fixed literal sequence numbers suitable for self-contained nested render fragments.</param>
+    internal static void EmitBadgeSwitch(
+        StringBuilder sb,
+        ColumnModel col,
+        string headerLiteral,
+        string builderName,
+        string indent,
+        string? seqVariable = null) {
+        HashSet<string> annotatedNames = new(StringComparer.Ordinal);
+        foreach (BadgeMappingEntry mapping in col.BadgeMappings) {
+            _ = annotatedNames.Add(mapping.EnumMemberName);
+        }
+
+        _ = sb.AppendLine(indent + "switch (_memberName)");
+        _ = sb.AppendLine(indent + "{");
 
         foreach (BadgeMappingEntry mapping in col.BadgeMappings) {
             string memberLiteral = "\"" + RoleBodyHelpers.EscapeString(mapping.EnumMemberName) + "\"";
-            _ = sb.AppendLine("                    case " + memberLiteral + ":");
-            _ = sb.AppendLine("                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);");
-            _ = sb.AppendLine("                        rb.AddAttribute(1, \"Slot\", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + mapping.Slot + ");");
-            _ = sb.AppendLine("                        rb.AddAttribute(2, \"Label\", _label);");
-            _ = sb.AppendLine("                        rb.AddAttribute(3, \"ColumnHeader\", " + headerLiteral + ");");
-            _ = sb.AppendLine("                        rb.CloseComponent();");
-            _ = sb.AppendLine("                        break;");
+            _ = sb.AppendLine(indent + "    case " + memberLiteral + ":");
+            _ = sb.AppendLine(indent + "        " + builderName + ".OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(" + SequenceExpression(seqVariable, 0) + ");");
+            _ = sb.AppendLine(indent + "        " + builderName + ".AddAttribute(" + SequenceExpression(seqVariable, 1) + ", \"Slot\", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot." + mapping.Slot + ");");
+            _ = sb.AppendLine(indent + "        " + builderName + ".AddAttribute(" + SequenceExpression(seqVariable, 2) + ", \"Label\", _label);");
+            _ = sb.AppendLine(indent + "        " + builderName + ".AddAttribute(" + SequenceExpression(seqVariable, 3) + ", \"ColumnHeader\", " + headerLiteral + ");");
+            _ = sb.AppendLine(indent + "        " + builderName + ".CloseComponent();");
+            _ = sb.AppendLine(indent + "        break;");
         }
 
-        _ = sb.AppendLine("                    default:");
-        _ = sb.AppendLine("                        rb.AddContent(10, _label);");
-        _ = sb.AppendLine("                        break;");
-        _ = sb.AppendLine("                }");
+        // Declared-but-unannotated members render as plain humanized text — partial coverage is
+        // valid state during incremental domain modelling; HFC1025 already surfaces the gap.
+        foreach (string memberName in col.EnumMemberNames) {
+            if (annotatedNames.Contains(memberName)) {
+                continue;
+            }
+
+            string memberLiteral = "\"" + RoleBodyHelpers.EscapeString(memberName) + "\"";
+            _ = sb.AppendLine(indent + "    case " + memberLiteral + ":");
+            _ = sb.AppendLine(indent + "        " + builderName + ".AddContent(" + SequenceExpression(seqVariable, 10) + ", _label);");
+            _ = sb.AppendLine(indent + "        break;");
+        }
+
+        // Out-of-range runtime values (unsafe cast) → localised fail-soft label per Story 4-2 D4.
+        _ = sb.AppendLine(indent + "    default:");
+        _ = sb.AppendLine(indent + "        " + builderName + ".AddContent(" + SequenceExpression(seqVariable, 11) + ", "
+            + ShellLocalizerFieldName + "[\"" + UnknownStateFallbackResourceKey + "\"].Value);");
+        _ = sb.AppendLine(indent + "        break;");
+        _ = sb.AppendLine(indent + "}");
     }
+
+    /// <summary>
+    /// Story 4-2 RF1 — shared inline enum-field emitter used outside the DataGrid column path
+    /// (DetailRecord FluentText host, Timeline row stack, StatusOverview grouped-grid cell).
+    /// Handles the null-check / badge-switch / plain-text dispatch in one place so every role
+    /// body reaches the same <c>FcStatusBadge</c> rendering contract.
+    /// </summary>
+    /// <param name="sb">Output builder.</param>
+    /// <param name="col">Column model (the enum column whose value is being rendered).</param>
+    /// <param name="instanceName">Name of the in-scope instance variable whose
+    /// <see cref="ColumnModel.PropertyName"/> we dereference (e.g. <c>entity</c> or <c>item</c>).</param>
+    /// <param name="builderName">Name of the local <c>RenderTreeBuilder</c> in scope.</param>
+    /// <param name="seqVariable">Name of the in-scope <c>int</c> sequence variable used when the
+    /// helper emits non-badge <c>AddContent</c> fallback paths (e.g. <c>fieldSeq</c>, <c>rowSeq</c>).</param>
+    /// <param name="indent">Leading whitespace for each emitted line.</param>
+    internal static void EmitInlineEnumRenderFragment(
+        StringBuilder sb,
+        ColumnModel col,
+        string instanceName,
+        string builderName,
+        string seqVariable,
+        string indent) {
+        string headerLiteral = "\"" + RoleBodyHelpers.EscapeString(col.Header) + "\"";
+        string propertyAccess = instanceName + "." + col.PropertyName;
+        string unwrappedAccess = col.IsNullable ? propertyAccess + ".Value" : propertyAccess;
+
+        if (col.IsNullable) {
+            _ = sb.AppendLine(indent + "if (!" + propertyAccess + ".HasValue)");
+            _ = sb.AppendLine(indent + "{");
+            _ = sb.AppendLine(indent + "    " + builderName + ".AddContent(" + seqVariable + "++, \"\\u2014\");");
+            _ = sb.AppendLine(indent + "}");
+            _ = sb.AppendLine(indent + "else");
+            _ = sb.AppendLine(indent + "{");
+            EmitInlineEnumBadgeBlock(sb, col, unwrappedAccess, headerLiteral, builderName, seqVariable, indent + "    ");
+            _ = sb.AppendLine(indent + "}");
+            return;
+        }
+
+        EmitInlineEnumBadgeBlock(sb, col, unwrappedAccess, headerLiteral, builderName, seqVariable, indent);
+    }
+
+    private static void EmitInlineEnumBadgeBlock(
+        StringBuilder sb,
+        ColumnModel col,
+        string propertyAccess,
+        string headerLiteral,
+        string builderName,
+        string seqVariable,
+        string indent) {
+        _ = sb.AppendLine(indent + "var _memberName = " + propertyAccess + ".ToString();");
+        _ = sb.AppendLine(indent + "var _label = HumanizeEnumLabel(_memberName);");
+        EmitBadgeSwitch(sb, col, headerLiteral, builderName, indent, seqVariable);
+    }
+
+    private static string SequenceExpression(string? seqVariable, int fixedValue)
+        => seqVariable is null
+            ? fixedValue.ToString()
+            : seqVariable + "++";
 
     private static void EmitCollectionColumn(StringBuilder sb, ColumnModel col, string typeName, bool isDefaultSortColumn) {
         _ = sb.AppendLine("            // Collection column: " + col.PropertyName);

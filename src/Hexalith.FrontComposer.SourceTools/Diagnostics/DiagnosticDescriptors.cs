@@ -85,12 +85,19 @@ public static class DiagnosticDescriptors {
         isEnabledByDefault: true);
 
     /// <summary>
-    /// HFC1008: [Command] property uses a <c>[Flags]</c> enum. Single-select controls cannot express composite values;
-    /// the field renders as <c>FcFieldPlaceholder</c> so adopters supply a multi-select renderer via the customization gradient.
+    /// HFC1008: A <c>[Flags]</c> enum cannot be expressed by a single-value UI surface. Two call sites:
+    /// (1) on a <see cref="Hexalith.FrontComposer.Contracts.Attributes.CommandAttribute"/>-annotated
+    /// type the field renders as <c>FcFieldPlaceholder</c> so adopters supply a multi-select
+    /// renderer via the customization gradient;
+    /// (2) on a <see cref="Hexalith.FrontComposer.Contracts.Attributes.ProjectionAttribute"/>-annotated
+    /// type any member-level <c>[ProjectionBadge]</c> annotations are ignored (Story 4-2 RF5 / D10)
+    /// because a bitmask value can set multiple members simultaneously and the 6-slot palette
+    /// cannot render compound state. The column falls through to the Story 1-5 plain-text path;
+    /// adopters needing compound rendering take the Epic 6 Slot-level customization path.
     /// </summary>
     public static readonly DiagnosticDescriptor CommandFlagsEnumProperty = new(
         id: "HFC1008",
-        title: "Command property is a [Flags] enum (renders as placeholder)",
+        title: "[Flags] enum in a single-value UI context",
         messageFormat: "{0}",
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Warning,
