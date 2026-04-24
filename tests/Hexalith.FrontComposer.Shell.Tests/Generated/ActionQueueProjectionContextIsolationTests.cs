@@ -4,9 +4,12 @@ using Bunit;
 using Bunit.Rendering;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Routing;
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
@@ -21,7 +24,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 /// </summary>
 public sealed class ActionQueueProjectionContextIsolationTests : GeneratedComponentTestBase {
     public ActionQueueProjectionContextIsolationTests()
-        : base() {
+        : base(typeof(StubCommandService).Assembly) {
     }
 
     [Fact]
@@ -40,7 +43,7 @@ public sealed class ActionQueueProjectionContextIsolationTests : GeneratedCompon
 
         cut.Find("[data-testid='probe-a-2']").Click();
         observedAggregateId.ShouldBe("a-2");
-        string lastClickedInViewA = observedAggregateId;
+        string? lastClickedInViewA = observedAggregateId;
 
         navigation.NavigateTo("/view-b");
 
