@@ -179,6 +179,27 @@ public static class RazorModelTransform {
                     string.Join(", ", unannotated)),
                 "Info"));
         }
+
+        // Story 4-3 D14 / D20 — emit HFC1027 once per projection type when it carries any
+        // Collection-typed column. Per-projection deduped (one entry regardless of how many
+        // Collection columns the projection declares).
+        List<string>? collectionColumnNames = null;
+        foreach (ColumnModel column in columns) {
+            if (column.TypeCategory == TypeCategory.Collection) {
+                (collectionColumnNames ??= []).Add(column.PropertyName);
+            }
+        }
+
+        if (collectionColumnNames is not null) {
+            diagnostics.Add(CreateTransformDiagnostic(
+                model,
+                "HFC1027",
+                string.Format(
+                    "Projection {0} has collection column(s) {1} which do not support automatic filtering. Filter affordance is omitted. Annotate with a slot-level override (Epic 6) for custom filter logic.",
+                    model.TypeName,
+                    string.Join(", ", collectionColumnNames)),
+                "Info"));
+        }
     }
 
     /// <summary>

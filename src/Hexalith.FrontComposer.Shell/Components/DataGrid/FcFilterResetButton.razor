@@ -1,0 +1,12 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 4-3 T1.5 / D17 / AC3 — outline button that dispatches FiltersResetAction. *@
+
+<FluentButton Appearance="ButtonAppearance.Outline"
+              OnClick="@OnResetClickedAsync"
+              Disabled="@(!HasActiveFilters)"
+              aria-label="@_ariaLabel"
+              data-testid="fc-filter-reset">
+    @Localizer["FilterResetButtonLabel"].Value
+</FluentButton>

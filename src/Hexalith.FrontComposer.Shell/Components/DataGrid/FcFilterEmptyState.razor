@@ -1,0 +1,12 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+
+@* Story 4-3 T1.6 / D11 / AC6 — filter-active empty state. Callers MUST render this component
+   only when filters are actually active; the inline reset button is gated on
+   ActiveFilterCount > 0 so a misuse (render with zero active filters) degrades to text-only. *@
+
+<div class="fc-filter-empty-state" role="status" aria-live="polite" data-testid="fc-filter-empty-state">
+    <p>@_message</p>
+    @if (ActiveFilterCount > 0) {
+        <FcFilterResetButton ViewKey="@ViewKey" ActiveFilterCount="@ActiveFilterCount" HasActiveFilters="true" />
+    }
+</div>

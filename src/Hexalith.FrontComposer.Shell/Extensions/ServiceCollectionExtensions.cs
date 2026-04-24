@@ -273,6 +273,10 @@ public static class ServiceCollectionExtensions
         // held for IDisposable cleanup of debounce CTSes on circuit teardown).
         services.TryAddScoped<DataGridNavigationEffects>();
 
+        // Story 4-3 T3 / T6 — filter-surface effects + DataGrid focus-scope service.
+        services.TryAddScoped<FilterEffects>();
+        services.TryAddScoped<Services.DataGridFocusScope>();
+
         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.
         // Registered via AddScoped (scoped per circuit in Blazor Server; per-app in WASM). Providers

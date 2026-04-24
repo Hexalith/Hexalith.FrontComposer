@@ -146,6 +146,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1024" => DiagnosticDescriptors.UnknownProjectionRoleValue,
         "HFC1025" => DiagnosticDescriptors.BadgeSlotFallbackApplied,
         "HFC1026" => DiagnosticDescriptors.ColorOnlyBadgeDetected,
+        "HFC1027" => DiagnosticDescriptors.CollectionColumnNotFilterable,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

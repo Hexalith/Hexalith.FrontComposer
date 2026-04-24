@@ -62,6 +62,16 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1026_ColorOnlyBadgeDetected = "HFC1026";
 
+    /// <summary>
+    /// Build-time Information: a projection carries at least one Collection-typed column
+    /// (<c>IReadOnlyList&lt;T&gt;</c> / <c>HashSet&lt;T&gt;</c> / <c>Dictionary&lt;,&gt;</c> / etc.)
+    /// whose column header renders no filter affordance (Story 4-3 D14 / D20). Information
+    /// severity — filter UI is omitted per D14; adopters needing collection-aware filters
+    /// override via the Epic 6 Slot-level customization path. Per-projection deduped: one
+    /// diagnostic per projection type regardless of how many Collection columns it carries.
+    /// </summary>
+    public const string HFC1027_CollectionColumnNotFilterable = "HFC1027";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

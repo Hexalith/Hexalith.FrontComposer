@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
 using Microsoft.AspNetCore.Components;
@@ -45,7 +46,8 @@ public sealed class FrontComposerShortcutRegistrar(
     IDialogService dialogService,
     NavigationManager navigation,
     IStringLocalizer<FcShellResources> localizer,
-    IUlidFactory ulidFactory)
+    IUlidFactory ulidFactory,
+    DataGridFocusScope dataGridFocusScope)
 {
     // Uses `int` + `Interlocked.Exchange` so two concurrent first-render paths (hot-reload
     // restart, bUnit teardown race) cannot both observe zero and double-register the defaults
@@ -94,6 +96,14 @@ public sealed class FrontComposerShortcutRegistrar(
                 "g h",
                 "HomeShortcutDescription",
                 NavigateHomeAsync);
+
+            // Story 4-3 D10 / AC1 — `/` focuses the first column filter inside the active DataGrid.
+            // Scope-gated via DataGridFocusScope — outside the grid the handler is a no-op (returns
+            // without focusing, so the native `/` key behaviour in other contexts is unaffected).
+            _ = shortcuts.Register(
+                "/",
+                "SlashFocusFilterShortcutDescription",
+                FocusFirstColumnFilterAsync);
         }
         catch
         {
@@ -192,5 +202,28 @@ public sealed class FrontComposerShortcutRegistrar(
     {
         navigation.NavigateTo("/");
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Story 4-3 D10 / AC1 — scope-gated focus of the first column-filter input inside the active
+    /// DataGrid. Returns without focusing when focus is outside any <c>[data-fc-datagrid]</c>
+    /// container so the shortcut stays transparent in non-DataGrid contexts.
+    /// </summary>
+    /// <returns>A task that resolves when the focus attempt completes.</returns>
+    public async Task FocusFirstColumnFilterAsync()
+    {
+        bool inGrid = await dataGridFocusScope.IsFocusWithinDataGridAsync().ConfigureAwait(false);
+        if (!inGrid)
+        {
+            return;
+        }
+
+        string? viewKey = await dataGridFocusScope.GetActiveViewKeyAsync().ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(viewKey))
+        {
+            return;
+        }
+
+        _ = await dataGridFocusScope.FocusFirstColumnFilterAsync(viewKey!).ConfigureAwait(false);
     }
 }

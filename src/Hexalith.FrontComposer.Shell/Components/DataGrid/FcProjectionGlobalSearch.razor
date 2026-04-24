@@ -1,0 +1,11 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 4-3 T1.3 / D6 / AC4 — optional global search input with 300ms TimeProvider debounce. *@
+
+<FluentTextInput Value="@_value"
+                 ValueChanged="@OnValueChangedAsync"
+                 TextInputType="TextInputType.Search"
+                 Placeholder="@_placeholder"
+                 aria-label="@_ariaLabel"
+                 data-testid="fc-global-search" />

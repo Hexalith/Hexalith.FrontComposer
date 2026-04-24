@@ -61,6 +61,16 @@ public sealed record GridViewSnapshot {
     }
 
     /// <summary>Gets the active filter values keyed by column name.</summary>
+    /// <remarks>
+    /// Story 4-3 D3 — two reserved keys pack non-column filter state into this dictionary without
+    /// bumping the blob schema:
+    /// <list type="bullet">
+    /// <item><see cref="ReservedFilterKeys.StatusKey"/> (<c>__status</c>): CSV of active <c>BadgeSlot</c> names.</item>
+    /// <item><see cref="ReservedFilterKeys.SearchKey"/> (<c>__search</c>): the current global search query.</item>
+    /// </list>
+    /// Every other key is a declared projection property name. Keys beginning with <c>__</c> are
+    /// reserved for framework use.
+    /// </remarks>
     public IImmutableDictionary<string, string> Filters {
         get => _filters;
         init => _filters = value ?? throw new ArgumentNullException(nameof(value));

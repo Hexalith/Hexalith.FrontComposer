@@ -1,0 +1,14 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 4-3 T1.1 / D1 / D4 / AC1 — FluentSearch with 300ms TimeProvider-anchored debounce
+   that dispatches ColumnFilterChangedAction on debounce-complete. *@
+
+<FluentTextInput Value="@_value"
+                 ValueChanged="@OnValueChangedAsync"
+                 TextInputType="TextInputType.Search"
+                 Placeholder="@_placeholder"
+                 aria-label="@_ariaLabel"
+                 data-testid="fc-column-filter"
+                 data-fc-column-filter="@ColumnKey" />

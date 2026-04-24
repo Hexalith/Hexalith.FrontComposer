@@ -298,4 +298,19 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1027: Projection has a Collection-typed column which does not support automatic
+    /// column-header filtering (Story 4-3 D14 / D20). Information severity — filter affordance
+    /// is omitted on the column; adopters needing collection-aware filtering override via the
+    /// Epic 6 Slot-level customization path. Per-projection deduped: one diagnostic per
+    /// projection type regardless of how many Collection columns it carries.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CollectionColumnNotFilterable = new(
+        id: "HFC1027",
+        title: "Collection column does not support automatic filtering",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
 }

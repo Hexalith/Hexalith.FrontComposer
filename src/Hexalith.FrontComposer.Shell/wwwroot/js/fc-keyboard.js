@@ -117,3 +117,52 @@ export function unregisterPaletteKeyFilter(element) {
     element.removeEventListener("keydown", element.__fcPaletteKeyFilter);
     element.__fcPaletteKeyFilter = null;
 }
+
+// Story 4-3 T6.2 / D10 — focus-scope query + focus target used by the `/` shortcut. Returns
+// true when:
+//   - the active element is inside an editable control → NEVER fire (user is typing and the
+//     literal `/` must reach the input unmolested); this also covers typing INTO a column
+//     filter cell, which is itself an <input> nested in [data-fc-datagrid].
+//   - the active element is body or null (page load, no explicit focus) AND at least one
+//     [data-fc-datagrid] container exists on the page → fire (relaxed gate per Review pass 2
+//     decision #3b: AC1's "one-keystroke" affordance shouldn't require a prior Tab).
+//   - otherwise, scope-gate to focus inside a [data-fc-datagrid] container.
+export function isFocusWithinDataGrid() {
+    const active = document.activeElement;
+    if (isEditableElement(active)) {
+        return false;
+    }
+    if (!active || active === document.body || active === document.documentElement) {
+        return document.querySelector("[data-fc-datagrid]") !== null;
+    }
+    return active.closest("[data-fc-datagrid]") !== null;
+}
+
+export function focusFirstColumnFilter(viewKey) {
+    if (!viewKey) {
+        return false;
+    }
+    const escaper =
+        typeof CSS !== "undefined" && typeof CSS.escape === "function"
+            ? CSS.escape
+            : (v) => v.replace(/"/g, '\\"');
+    const selector =
+        '[data-fc-datagrid="' +
+        escaper(viewKey) +
+        '"] [data-testid="fc-column-filter"] input';
+    const input = document.querySelector(selector);
+    if (input && typeof input.focus === "function") {
+        input.focus();
+        return true;
+    }
+    return false;
+}
+
+export function activeDataGridViewKey() {
+    const active = document.activeElement;
+    if (!active) {
+        return null;
+    }
+    const container = active.closest("[data-fc-datagrid]");
+    return container ? container.getAttribute("data-fc-datagrid") : null;
+}

@@ -302,4 +302,84 @@
     <value>Unknown</value>
     <comment>Story 4-2 D4 — fail-soft label when a runtime enum value is outside the declared member set (should never happen for [ProjectionBadge]-annotated enums).</comment>
   </data>
+  <data name="ColumnFilterPlaceholderTemplate" xml:space="preserve">
+    <value>Filter {0}</value>
+    <comment>Story 4-3 D19 / AC1 — placeholder text inside the per-column FluentSearch filter. {0}=humanized column header.</comment>
+  </data>
+  <data name="ColumnFilterAriaLabelTemplate" xml:space="preserve">
+    <value>Filter column {0}</value>
+    <comment>Story 4-3 D19 / AC1 — aria-label announced for each column filter input. {0}=humanized column header.</comment>
+  </data>
+  <data name="StatusFilterChipsAriaLabel" xml:space="preserve">
+    <value>Status filter chips</value>
+    <comment>Story 4-3 D19 / AC2 — group aria-label for the chips strip above the grid.</comment>
+  </data>
+  <data name="StatusFilterChipAriaLabelTemplate" xml:space="preserve">
+    <value>{0}, currently {1}</value>
+    <comment>Story 4-3 D19 / AC2 — per-chip aria-label. {0}=slot label, {1}=active/inactive status.</comment>
+  </data>
+  <data name="StatusFilterChipActiveLabel" xml:space="preserve">
+    <value>active</value>
+    <comment>Story 4-3 Review pass 2 — localized "active" substitution for StatusFilterChipAriaLabelTemplate {1}.</comment>
+  </data>
+  <data name="StatusFilterChipInactiveLabel" xml:space="preserve">
+    <value>inactive</value>
+    <comment>Story 4-3 Review pass 2 — localized "inactive" substitution for StatusFilterChipAriaLabelTemplate {1}.</comment>
+  </data>
+  <data name="GlobalSearchPlaceholder" xml:space="preserve">
+    <value>Search…</value>
+    <comment>Story 4-3 D19 / AC4 — placeholder for the optional FcProjectionGlobalSearch input.</comment>
+  </data>
+  <data name="GlobalSearchAriaLabel" xml:space="preserve">
+    <value>Search across all columns</value>
+    <comment>Story 4-3 D19 / AC4 — aria-label for the optional FcProjectionGlobalSearch input.</comment>
+  </data>
+  <data name="FilterSummaryShowingTemplate" xml:space="preserve">
+    <value>Showing {0} of {1} {2}</value>
+    <comment>Story 4-3 D19 / AC3 — leading prefix for FcFilterSummary. {0}=filtered count, {1}=total count, {2}=entity plural.</comment>
+  </data>
+  <data name="FilterSummaryStatusClauseTemplate" xml:space="preserve">
+    <value>Status: {0}</value>
+    <comment>Story 4-3 D19 / AC3 — status chip clause for FcFilterSummary. {0}=joined slot labels. French satellite uses NBSP before the colon.</comment>
+  </data>
+  <data name="FilterSummaryColumnContainsTemplate" xml:space="preserve">
+    <value>{0} contains "{1}"</value>
+    <comment>Story 4-3 D19 / AC3 — per-column filter clause for FcFilterSummary. {0}=humanized column header, {1}=filter value.</comment>
+  </data>
+  <data name="FilterSummarySearchClauseTemplate" xml:space="preserve">
+    <value>Search: "{0}"</value>
+    <comment>Story 4-3 D19 / AC3 — global search clause for FcFilterSummary. {0}=search query. French satellite uses NBSP + guillemets.</comment>
+  </data>
+  <data name="FilterSummarySortClauseTemplate" xml:space="preserve">
+    <value>Sorted by {0} {1}</value>
+    <comment>Story 4-3 Review pass 2 — sort clause for FcFilterSummary. {0}=humanized column header, {1}=localized direction label.</comment>
+  </data>
+  <data name="SortDirectionAscending" xml:space="preserve">
+    <value>ascending</value>
+    <comment>Story 4-3 Review pass 2 — direction label substituted into FilterSummarySortClauseTemplate {1}.</comment>
+  </data>
+  <data name="SortDirectionDescending" xml:space="preserve">
+    <value>descending</value>
+    <comment>Story 4-3 Review pass 2 — direction label substituted into FilterSummarySortClauseTemplate {1}.</comment>
+  </data>
+  <data name="FilterSummaryOrConjunction" xml:space="preserve">
+    <value> or </value>
+    <comment>Story 4-3 Review pass 2 — conjunction joining multiple status chip labels in FcFilterSummary. Surrounding spaces are intentional.</comment>
+  </data>
+  <data name="FilterResetButtonLabel" xml:space="preserve">
+    <value>Reset filters</value>
+    <comment>Story 4-3 D19 / AC3 — visible label for the FcFilterResetButton.</comment>
+  </data>
+  <data name="FilterResetButtonAriaLabelTemplate" xml:space="preserve">
+    <value>Reset all filters. {0} filters currently active.</value>
+    <comment>Story 4-3 D19 / AC3 — aria-label for FcFilterResetButton. {0}=active filter count.</comment>
+  </data>
+  <data name="EmptyFilteredStateTemplate" xml:space="preserve">
+    <value>No {0} match the current filters. Reset filters to see all {1} {0}.</value>
+    <comment>Story 4-3 D19 / AC6 — FcFilterEmptyState body copy. {0}=entity plural, {1}=total count.</comment>
+  </data>
+  <data name="SlashFocusFilterShortcutDescription" xml:space="preserve">
+    <value>Focus the first column filter in the current DataGrid</value>
+    <comment>Story 4-3 Review pass 2 — description column for the `/` shortcut row in the shortcut reference view (replaces the copy-pasted PaletteShortcutDescription).</comment>
+  </data>
 </root>

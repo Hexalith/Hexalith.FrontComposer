@@ -208,6 +208,83 @@ public sealed class FcShellResourcesTests {
         }
     }
 
+    // --- Story 4-3 T8.3 (D19 / AC1-AC6) — 13 new filter + search + summary keys ---
+
+    [Theory]
+    [InlineData("ColumnFilterPlaceholderTemplate", "Filter {0}", "Filtrer {0}")]
+    [InlineData("ColumnFilterAriaLabelTemplate", "Filter column {0}", "Filtrer la colonne {0}")]
+    [InlineData("StatusFilterChipsAriaLabel", "Status filter chips", "Puces de filtrage par statut")]
+    [InlineData("StatusFilterChipAriaLabelTemplate", "{0}, currently {1}", "{0}, actuellement {1}")]
+    [InlineData("GlobalSearchPlaceholder", "Search…", "Rechercher…")]
+    [InlineData("GlobalSearchAriaLabel", "Search across all columns", "Rechercher dans toutes les colonnes")]
+    [InlineData("FilterSummaryShowingTemplate", "Showing {0} of {1} {2}", "Affichage de {0} sur {1} {2}")]
+    [InlineData("FilterResetButtonLabel", "Reset filters", "Réinitialiser les filtres")]
+    [InlineData("FilterResetButtonAriaLabelTemplate",
+        "Reset all filters. {0} filters currently active.",
+        "Réinitialiser tous les filtres. {0} filtres actuellement actifs.")]
+    [InlineData("EmptyFilteredStateTemplate",
+        "No {0} match the current filters. Reset filters to see all {1} {0}.",
+        "Aucun {0} ne correspond aux filtres. Réinitialiser les filtres pour voir les {1} {0}.")]
+    [InlineData("FilterSummaryColumnContainsTemplate",
+        "{0} contains \"{1}\"",
+        "{0} contient « {1} »")]
+    [InlineData("FilterSummaryStatusClauseTemplate", "Status: {0}", "Statut : {0}")]
+    [InlineData("FilterSummarySearchClauseTemplate", "Search: \"{0}\"", "Recherche : « {0} »")]
+    [InlineData("StatusFilterChipActiveLabel", "active", "actif")]
+    [InlineData("StatusFilterChipInactiveLabel", "inactive", "inactif")]
+    [InlineData("FilterSummarySortClauseTemplate", "Sorted by {0} {1}", "Trié par {0} {1}")]
+    [InlineData("SortDirectionAscending", "ascending", "croissant")]
+    [InlineData("SortDirectionDescending", "descending", "décroissant")]
+    [InlineData("FilterSummaryOrConjunction", " or ", " ou ")]
+    [InlineData("SlashFocusFilterShortcutDescription",
+        "Focus the first column filter in the current DataGrid",
+        "Placer le focus sur le premier filtre de colonne du DataGrid actif")]
+    public void FilterSurfaceKeysResolveInBothLocales(string key, string enValue, string frValue) {
+        ServiceProvider provider = BuildLocalizedProvider();
+        using IServiceScope scope = provider.CreateScope();
+        IStringLocalizer<FcShellResources> localizer = scope.ServiceProvider.GetRequiredService<IStringLocalizer<FcShellResources>>();
+
+        CultureInfo previous = CultureInfo.CurrentUICulture;
+        try {
+            CultureInfo.CurrentUICulture = new CultureInfo("en");
+            localizer[key].Value.ShouldBe(enValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+
+            CultureInfo.CurrentUICulture = new CultureInfo("fr");
+            localizer[key].Value.ShouldBe(frValue);
+            localizer[key].ResourceNotFound.ShouldBeFalse();
+        }
+        finally {
+            CultureInfo.CurrentUICulture = previous;
+        }
+    }
+
+    [Fact]
+    public void FilterSummaryStatusClauseTemplateFrenchUsesNonBreakingSpaceBeforeColon() {
+        // Story 4-3 T8.4 / D19 — byte-level guard: the French clause MUST use U+00A0 before the
+        // colon per French typographic convention. An ASCII space would fail the convention silently.
+        ResourceManager manager = new(typeof(FcShellResources));
+        string frValue = manager.GetString("FilterSummaryStatusClauseTemplate", new CultureInfo("fr"))!;
+
+        frValue.ShouldNotBeNull();
+        int colonIndex = frValue.IndexOf(':');
+        colonIndex.ShouldBeGreaterThan(0);
+        char precedingChar = frValue[colonIndex - 1];
+        precedingChar.ShouldBe(' ', $"Expected U+00A0 NBSP before colon in French FilterSummaryStatusClauseTemplate; got U+{(int)precedingChar:X4}");
+    }
+
+    [Fact]
+    public void FilterSummarySearchClauseTemplateFrenchUsesNonBreakingSpaceBeforeColon() {
+        ResourceManager manager = new(typeof(FcShellResources));
+        string frValue = manager.GetString("FilterSummarySearchClauseTemplate", new CultureInfo("fr"))!;
+
+        frValue.ShouldNotBeNull();
+        int colonIndex = frValue.IndexOf(':');
+        colonIndex.ShouldBeGreaterThan(0);
+        char precedingChar = frValue[colonIndex - 1];
+        precedingChar.ShouldBe(' ', $"Expected U+00A0 NBSP before colon in French FilterSummarySearchClauseTemplate; got U+{(int)precedingChar:X4}");
+    }
+
     [Fact]
     public void StatusBadgeAriaLabelTemplateFrenchUsesNonBreakingSpaceBeforeColon() {
         // Story 4-2 T6.4 / D12 — explicit byte-level guard: the template must contain U+00A0

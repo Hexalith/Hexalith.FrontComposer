@@ -36,6 +36,20 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
 
     public EquatableArray<string> EnumMemberNames { get; }
 
+    /// <summary>
+    /// Story 4-3 D14 — derived gate for column-header filter affordance. True for
+    /// Text / Numeric / Enum / DateTime; false for Boolean / Collection / Unsupported.
+    /// Derived from <see cref="TypeCategory"/> so IR byte-stability is preserved
+    /// (no ctor parameter, no additional equality contribution).
+    /// </summary>
+    public bool SupportsFilter => TypeCategory switch {
+        TypeCategory.Text => true,
+        TypeCategory.Numeric => true,
+        TypeCategory.Enum => true,
+        TypeCategory.DateTime => true,
+        _ => false,
+    };
+
     public bool Equals(ColumnModel? other) {
         if (other is null) {
             return false;

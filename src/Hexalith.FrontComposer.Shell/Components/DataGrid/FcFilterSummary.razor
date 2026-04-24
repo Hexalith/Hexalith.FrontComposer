@@ -1,0 +1,13 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+
+@* Story 4-3 T1.4 / D13 / AC3 — summary row rendered when any filter/sort is active. *@
+
+@if (_visible) {
+    <div class="fc-filter-summary" role="status" data-testid="fc-filter-summary">
+        <span class="fc-filter-summary-prefix">@_prefix</span>
+        @if (_clauses.Count > 0) {
+            <span class="fc-filter-summary-separator"> — </span>
+            <span class="fc-filter-summary-clauses">@string.Join("; ", _clauses)</span>
+        }
+    </div>
+}

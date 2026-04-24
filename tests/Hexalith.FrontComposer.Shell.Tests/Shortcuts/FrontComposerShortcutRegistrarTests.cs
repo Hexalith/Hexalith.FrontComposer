@@ -13,6 +13,8 @@ using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
+using Hexalith.FrontComposer.Shell.Services;
+
 using Microsoft.FluentUI.AspNetCore.Components;
 using Microsoft.JSInterop;
 
@@ -85,8 +87,9 @@ public class FrontComposerShortcutRegistrarTests
         // Second call should not be a no-op — the rollback freed the flag.
         await sut.RegisterShellDefaultsAsync();
 
-        // First attempt made 1 call (threw), second attempt made 5 → total 6.
-        callCount.ShouldBe(6);
+        // First attempt made 1 call (threw), second attempt made 6 (5 shell defaults + "/" per
+        // Story 4-3 D10) → total 7.
+        callCount.ShouldBe(7);
     }
 
     [Fact]
@@ -120,7 +123,8 @@ public class FrontComposerShortcutRegistrarTests
         IUlidFactory ulids = Substitute.For<IUlidFactory>();
         ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
         NavigationManager nav = new BunitNavigationManager();
-        return new FrontComposerShortcutRegistrar(shortcuts, dispatcher, state, dialog, nav, loc, ulids);
+        DataGridFocusScope focus = new(Substitute.For<IJSRuntime>());
+        return new FrontComposerShortcutRegistrar(shortcuts, dispatcher, state, dialog, nav, loc, ulids, focus);
     }
 
     private sealed class BunitNavigationManager : NavigationManager

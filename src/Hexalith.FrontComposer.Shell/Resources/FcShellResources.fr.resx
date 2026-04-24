@@ -258,4 +258,71 @@
   <data name="StatusBadgeUnknownStateFallback" xml:space="preserve">
     <value>Inconnu</value>
   </data>
+  <data name="ColumnFilterPlaceholderTemplate" xml:space="preserve">
+    <value>Filtrer {0}</value>
+    <comment>Story 4-3 D19 / AC1 — placeholder for the per-column FluentSearch. {0}=humanized column header.</comment>
+  </data>
+  <data name="ColumnFilterAriaLabelTemplate" xml:space="preserve">
+    <value>Filtrer la colonne {0}</value>
+    <comment>Story 4-3 D19 / AC1 — aria-label for per-column filter. {0}=column header.</comment>
+  </data>
+  <data name="StatusFilterChipsAriaLabel" xml:space="preserve">
+    <value>Puces de filtrage par statut</value>
+  </data>
+  <data name="StatusFilterChipAriaLabelTemplate" xml:space="preserve">
+    <value>{0}, actuellement {1}</value>
+  </data>
+  <data name="StatusFilterChipActiveLabel" xml:space="preserve">
+    <value>actif</value>
+  </data>
+  <data name="StatusFilterChipInactiveLabel" xml:space="preserve">
+    <value>inactif</value>
+  </data>
+  <data name="GlobalSearchPlaceholder" xml:space="preserve">
+    <value>Rechercher…</value>
+  </data>
+  <data name="GlobalSearchAriaLabel" xml:space="preserve">
+    <value>Rechercher dans toutes les colonnes</value>
+  </data>
+  <data name="FilterSummaryShowingTemplate" xml:space="preserve">
+    <value>Affichage de {0} sur {1} {2}</value>
+  </data>
+  <data name="FilterSummaryStatusClauseTemplate" xml:space="preserve">
+    <value>Statut : {0}</value>
+    <comment>Story 4-3 D19 / AC3 — French convention requires U+00A0 NBSP before the colon. Do NOT replace with an ASCII space.</comment>
+  </data>
+  <data name="FilterSummaryColumnContainsTemplate" xml:space="preserve">
+    <value>{0} contient « {1} »</value>
+    <comment>Story 4-3 D19 / AC3 — French guillemets around filter value. U+00A0 NBSP inside guillemets (before » / after «).</comment>
+  </data>
+  <data name="FilterSummarySearchClauseTemplate" xml:space="preserve">
+    <value>Recherche : « {0} »</value>
+    <comment>Story 4-3 D19 / AC3 — NBSP before colon AND inside guillemets per French convention.</comment>
+  </data>
+  <data name="FilterSummarySortClauseTemplate" xml:space="preserve">
+    <value>Trié par {0} {1}</value>
+    <comment>Story 4-3 Review pass 2 — sort clause FR satellite. {0}=column header, {1}=localized direction label.</comment>
+  </data>
+  <data name="SortDirectionAscending" xml:space="preserve">
+    <value>croissant</value>
+  </data>
+  <data name="SortDirectionDescending" xml:space="preserve">
+    <value>décroissant</value>
+  </data>
+  <data name="FilterSummaryOrConjunction" xml:space="preserve">
+    <value> ou </value>
+    <comment>Story 4-3 Review pass 2 — FR satellite for the multi-chip conjunction. Surrounding spaces are intentional.</comment>
+  </data>
+  <data name="FilterResetButtonLabel" xml:space="preserve">
+    <value>Réinitialiser les filtres</value>
+  </data>
+  <data name="FilterResetButtonAriaLabelTemplate" xml:space="preserve">
+    <value>Réinitialiser tous les filtres. {0} filtres actuellement actifs.</value>
+  </data>
+  <data name="EmptyFilteredStateTemplate" xml:space="preserve">
+    <value>Aucun {0} ne correspond aux filtres. Réinitialiser les filtres pour voir les {1} {0}.</value>
+  </data>
+  <data name="SlashFocusFilterShortcutDescription" xml:space="preserve">
+    <value>Placer le focus sur le premier filtre de colonne du DataGrid actif</value>
+  </data>
 </root>
