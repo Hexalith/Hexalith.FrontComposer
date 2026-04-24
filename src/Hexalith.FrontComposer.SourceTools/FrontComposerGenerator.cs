@@ -147,6 +147,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1025" => DiagnosticDescriptors.BadgeSlotFallbackApplied,
         "HFC1026" => DiagnosticDescriptors.ColorOnlyBadgeDetected,
         "HFC1027" => DiagnosticDescriptors.CollectionColumnNotFilterable,
+        "HFC1028" => DiagnosticDescriptors.ColumnPriorityCollision,
+        "HFC1029" => DiagnosticDescriptors.ColumnPrioritizerActivated,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

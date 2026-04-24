@@ -49,6 +49,13 @@ public sealed record GridViewSnapshot {
     }
 
     /// <summary>Gets the vertical scroll offset of the DataGrid viewport.</summary>
+    /// <remarks>
+    /// ScrollTop is captured within-session by Story 4-4's <c>ScrollCapturedAction</c> pipeline;
+    /// it is clamped to 0 on cross-session hydration (LocalStorage → in-memory restore) by the
+    /// <c>GridViewHydratedAction</c> reducer per Story 4-4 D5 — readers inspecting the snapshot
+    /// type alone would otherwise not discover the clamp behavior. See Story 4-4 AC7 for the
+    /// full hydrate lifecycle.
+    /// </remarks>
     public double ScrollTop {
         get => _scrollTop;
         init {

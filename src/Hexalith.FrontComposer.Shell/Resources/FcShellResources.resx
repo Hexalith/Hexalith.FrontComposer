@@ -382,4 +382,44 @@
     <value>Focus the first column filter in the current DataGrid</value>
     <comment>Story 4-3 Review pass 2 — description column for the `/` shortcut row in the shortcut reference view (replaces the copy-pasted PaletteShortcutDescription).</comment>
   </data>
+  <data name="PrioritizerMoreColumnsButtonLabelTemplate" xml:space="preserve">
+    <value>More columns ({0} hidden)</value>
+    <comment>Story 4-4 D19 — legacy text-button label retained for adopters who invoke FcColumnPrioritizer manually outside the gear-icon generator emission.</comment>
+  </data>
+  <data name="PrioritizerMoreColumnsAriaLabelTemplate" xml:space="preserve">
+    <value>Hidden columns: {0}. Activate to show more.</value>
+    <comment>Story 4-4 D19 revised — plural-neutral colon framing for the gear-icon aria-label. {0}=hidden count.</comment>
+  </data>
+  <data name="PrioritizerColumnsAllVisibleAriaLabel" xml:space="preserve">
+    <value>All columns visible. Open column visibility settings.</value>
+    <comment>Story 4-4 D19 N=0 rider — substituted when every column is currently visible so the aria-label does not announce "Hidden columns: 0".</comment>
+  </data>
+  <data name="PrioritizerColumnsPanelTitle" xml:space="preserve">
+    <value>Column visibility</value>
+    <comment>Story 4-4 D19 — title of the prioritizer popover; referenced by aria-labelledby.</comment>
+  </data>
+  <data name="PrioritizerColumnCheckboxAriaLabelTemplate" xml:space="preserve">
+    <value>Toggle visibility of {0}</value>
+    <comment>Story 4-4 D19 — aria-label template for each column checkbox inside the prioritizer popover. {0}=column header.</comment>
+  </data>
+  <data name="PrioritizerResetToDefaults" xml:space="preserve">
+    <value>Reset to defaults</value>
+    <comment>Story 4-4 D19 Sally-review addition — footer hyperlink inside the prioritizer popover that dispatches ResetColumnVisibilityAction.</comment>
+  </data>
+  <data name="SlowQueryNoticeMessage" xml:space="preserve">
+    <value>Loading is slow. Add filters to narrow results.</value>
+    <comment>Story 4-4 D19 / AC3 — body of FcSlowQueryNotice.</comment>
+  </data>
+  <data name="MaxItemsCapNoticeTemplate" xml:space="preserve">
+    <value>Showing first {0} items. Use filters to find specific records.</value>
+    <comment>Story 4-4 D19 / AC4 — body of FcMaxItemsCapNotice. {0}=MaxUnfilteredItems cap.</comment>
+  </data>
+  <data name="VirtualizedSkeletonRowAriaLabel" xml:space="preserve">
+    <value>Loading rows…</value>
+    <comment>Story 4-4 D19 — aria-label applied to Virtualize skeleton rows. Uses U+2026 HORIZONTAL ELLIPSIS for consistency with Fluent UI.</comment>
+  </data>
+  <data name="UnfilteredRowCountTemplate" xml:space="preserve">
+    <value>{0} {1}</value>
+    <comment>Story 4-4 D9 / D19 — row-count label when no filters are active. {0}=count, {1}=entity plural.</comment>
+  </data>
 </root>

@@ -1,0 +1,19 @@
+/* Story 4-4 T1.1 / D6 — positioning context + gear pinned top-right outside scroll viewport. */
+
+.fc-column-prioritizer {
+    position: relative;
+}
+
+.fc-column-prioritizer-gear {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.25rem;
+    z-index: var(--fc-datagrid-affordance-z, 10);
+}
+
+.fc-column-prioritizer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 14rem;
+}

@@ -15,6 +15,7 @@ public static class AttributeParser {
     private const string ProjectionRoleAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionRoleAttribute";
     private const string BadgeSlotEnumName = "Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot";
     private const string ProjectionBadgeAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionBadgeAttribute";
+    private const string ColumnPriorityAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ColumnPriorityAttribute";
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
     private static readonly EquatableArray<BadgeMappingEntry> EmptyBadgeMappings = new(ImmutableArray<BadgeMappingEntry>.Empty);
     private static readonly EquatableArray<DiagnosticInfo> EmptyDiagnostics = new(ImmutableArray<DiagnosticInfo>.Empty);
@@ -88,6 +89,10 @@ public static class AttributeParser {
         }
 
         EquatableArray<PropertyModel> parsedProperties = new(propertiesBuilder.ToImmutable());
+
+        // Story 4-4 T6.5 / D15 — HFC1028 per-projection dedupe: fire once per projection that
+        // declares ≥ 2 properties with the SAME explicit non-null [ColumnPriority] value.
+        EmitColumnPriorityCollisionDiagnostic(typeSymbol, parsedProperties, diagnostics, filePath, linePos);
 
         // Story 4-1 T1.4 — validate WhenState CSV against the projection's status-enum type.
         // Emits HFC1022 per unknown member. Unknown members still flow through to the IR
@@ -528,6 +533,9 @@ public static class AttributeParser {
         EquatableArray<BadgeMappingEntry> badgeMappings = ParseBadgeMappings(propertyType, isEnum, diagnostics, filePath);
         EquatableArray<string> enumMemberNames = GetEnumMemberNames(propertyType, isEnum);
 
+        // Story 4-4 T6.1 / D14 — [ColumnPriority(N)] annotation; null when absent.
+        int? columnPriority = ParseColumnPriority(propertySymbol);
+
         return new PropertyModel(
             propertySymbol.Name,
             resolvedTypeName,
@@ -537,7 +545,84 @@ public static class AttributeParser {
             badgeMappings,
             enumFqn,
             unsupportedFqn,
-            enumMemberNames);
+            enumMemberNames,
+            columnPriority);
+    }
+
+    /// <summary>
+    /// Story 4-4 T6.1 / D14 — reads <c>[ColumnPriority(N)]</c> and returns the priority value,
+    /// or <see langword="null"/> when the attribute is absent. Any 32-bit int is accepted;
+    /// duplicates across the same projection surface via HFC1028 at
+    /// <see cref="EmitColumnPriorityCollisionDiagnostic"/>.
+    /// </summary>
+    private static int? ParseColumnPriority(IPropertySymbol propertySymbol) {
+        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == ColumnPriorityAttributeName
+                && attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is int priority) {
+                return priority;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Story 4-4 T6.5 / D15 — fires HFC1028 Information once per projection that has two or more
+    /// properties declaring the SAME explicit non-null <c>[ColumnPriority]</c> value. Dedupe is
+    /// "per projection type" (not per colliding pair) per D22 / cheat-sheet.
+    /// </summary>
+    private static void EmitColumnPriorityCollisionDiagnostic(
+        INamedTypeSymbol typeSymbol,
+        EquatableArray<PropertyModel> properties,
+        List<DiagnosticInfo> diagnostics,
+        string filePath,
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
+        Dictionary<int, List<string>>? groups = null;
+        foreach (PropertyModel property in properties) {
+            if (property.ColumnPriority is not int priority) {
+                continue;
+            }
+
+            if (groups is null) {
+                groups = new Dictionary<int, List<string>>();
+            }
+
+            if (!groups.TryGetValue(priority, out List<string>? names)) {
+                names = new List<string>();
+                groups[priority] = names;
+            }
+
+            names.Add(property.Name);
+        }
+
+        if (groups is null) {
+            return;
+        }
+
+        // Fire once per colliding priority value (per-projection dedupe on the HFC1028 code
+        // itself — multiple distinct priorities colliding on the same projection surface as
+        // multiple Information diagnostics carrying disjoint payload sets).
+        foreach (KeyValuePair<int, List<string>> kvp in groups) {
+            if (kvp.Value.Count < 2) {
+                continue;
+            }
+
+            string[] sorted = [.. kvp.Value];
+            Array.Sort(sorted, StringComparer.Ordinal);
+            string payloadNames = string.Join(", ", sorted);
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1028",
+                string.Format(
+                    "[ColumnPriority] collision on {0} — properties [{1}] share priority {2}. Deterministic tiebreaker is declaration order.",
+                    typeSymbol.Name,
+                    payloadNames,
+                    kvp.Key),
+                "Info",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+        }
     }
 
     private static bool HasFlagsAttribute(ITypeSymbol typeSymbol) {

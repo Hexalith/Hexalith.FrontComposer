@@ -316,7 +316,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         EquatableArray<BadgeMappingEntry> badgeMappings,
         string? enumFullyQualifiedName = null,
         string? unsupportedTypeFullyQualifiedName = null,
-        EquatableArray<string> enumMemberNames = default) {
+        EquatableArray<string> enumMemberNames = default,
+        int? columnPriority = null) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -326,6 +327,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         EnumFullyQualifiedName = enumFullyQualifiedName;
         UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
         EnumMemberNames = enumMemberNames;
+        ColumnPriority = columnPriority;
     }
 
     public string Name { get; }
@@ -359,6 +361,13 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     /// </summary>
     internal EquatableArray<string> EnumMemberNames { get; }
 
+    /// <summary>
+    /// Gets the declared <c>[ColumnPriority]</c> value (Story 4-4 T6.2 / D14). <see langword="null"/>
+    /// when the property is unannotated; Transform stage materialises null as <see cref="int.MaxValue"/>
+    /// for the stable sort and re-emits the priority on <see cref="Transforms.ColumnModel.Priority"/>.
+    /// </summary>
+    public int? ColumnPriority { get; }
+
     public bool Equals(PropertyModel? other) {
         if (other is null) {
             return false;
@@ -376,7 +385,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && BadgeMappings == other.BadgeMappings
             && EnumFullyQualifiedName == other.EnumFullyQualifiedName
             && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName
-            && EnumMemberNames == other.EnumMemberNames;
+            && EnumMemberNames == other.EnumMemberNames
+            && ColumnPriority == other.ColumnPriority;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -393,6 +403,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + (EnumFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + EnumMemberNames.GetHashCode();
+            hash = (hash * 31) + (ColumnPriority?.GetHashCode() ?? 0);
             return hash;
         }
     }

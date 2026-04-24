@@ -1,0 +1,49 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 4-4 T1.1 / D6 / AC5 / AC6 — gear-icon prioritizer wrap for projections with > 15 columns. *@
+
+<div class="fc-column-prioritizer" data-fc-column-prioritizer="@ViewKey">
+    @ChildContent(_context)
+
+    <FluentButton Appearance="ButtonAppearance.Stealth"
+                  IconStart="@_gearIcon"
+                  OnClick="@OnGearClickedAsync"
+                  aria-label="@_gearAriaLabel"
+                  aria-haspopup="dialog"
+                  aria-expanded="@(_popoverOpen ? "true" : "false")"
+                  class="fc-column-prioritizer-gear"
+                  data-testid="fc-column-prioritizer-gear"
+                  @ref="_gearButton" />
+
+    @if (_popoverOpen) {
+        <FluentPopover AnchorId="@_gearButtonId"
+                       Open="true"
+                       role="dialog"
+                       aria-labelledby="@_popoverTitleId"
+                       data-testid="fc-column-prioritizer-popover">
+            <div class="fc-column-prioritizer-popover">
+                <div class="fc-column-prioritizer-popover-header" id="@_popoverTitleId">
+                    @Localizer["PrioritizerColumnsPanelTitle"].Value
+                </div>
+                <div class="fc-column-prioritizer-list" role="group">
+                    @foreach (ColumnDescriptor column in AllColumns) {
+                        bool isVisible = !_hiddenSet.Contains(column.Key);
+                        <FluentCheckbox Value="@isVisible"
+                                        ValueChanged="@((bool newValue) => OnVisibilityChangedAsync(column.Key, newValue))"
+                                        Label="@column.Header"
+                                        aria-label="@string.Format(System.Globalization.CultureInfo.CurrentUICulture, _checkboxAriaLabelTemplate, column.Header)"
+                                        data-testid="@("fc-column-prioritizer-checkbox-" + column.Key)" />
+                    }
+                </div>
+                <div class="fc-column-prioritizer-popover-footer">
+                    <FluentAnchor Appearance="Appearance.Hypertext"
+                                  OnClick="@OnResetToDefaultsAsync"
+                                  data-testid="fc-column-prioritizer-reset">
+                        @Localizer["PrioritizerResetToDefaults"].Value
+                    </FluentAnchor>
+                </div>
+            </div>
+        </FluentPopover>
+    }
+</div>

@@ -72,6 +72,23 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1027_CollectionColumnNotFilterable = "HFC1027";
 
+    /// <summary>
+    /// Build-time Information: two or more properties on a projection declare the same
+    /// explicit <c>[ColumnPriority]</c> value (Story 4-4 D14 / D15). Deterministic fallback is
+    /// declaration order within the tied priority. Fire once per colliding priority value per
+    /// projection type. Fix: give each annotated property a distinct priority.
+    /// </summary>
+    public const string HFC1028_ColumnPriorityCollision = "HFC1028";
+
+    /// <summary>
+    /// Build-time Information: projection exceeds the 15-column auto-generation limit
+    /// (UX-DR63 / Story 4-4 D15). <c>FcColumnPrioritizer</c> wraps the grid at runtime showing
+    /// the first 10 columns by priority; remaining columns hide behind the "More columns" gear.
+    /// Per-projection deduped. Fix: annotate columns with <c>[ColumnPriority]</c> to control
+    /// the default-visible subset.
+    /// </summary>
+    public const string HFC1029_ColumnPrioritizerActivated = "HFC1029";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

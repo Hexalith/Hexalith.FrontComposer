@@ -525,9 +525,76 @@ so that performance stays fast on 500+-row projections and the view remains usab
 ### Agent Model Used
 
 Claude Opus 4.7 (1M context) (story creation — Jerome Piquot, `bmad-create-story` skill, 2026-04-23)
+Claude Opus 4.7 (1M context) (implementation session 1 — Jerome Piquot, `bmad-dev-story` skill, 2026-04-24)
 
 ### Debug Log References
 
+2026-04-24 session 1 — foundation layer (Contracts + Shell state/effects). All existing tests pass (35 Contracts + 78 Shell DataGridNav/Options filtered + 396 SourceTools). No regressions introduced by the foundation pass.
+
 ### Completion Notes List
 
+**2026-04-24 session 1 — foundation layer (partial story progress):**
+
+- ✅ **T7.1** `ColumnPriorityAttribute` in `src/Hexalith.FrontComposer.Contracts/Attributes/` — accepts any `int` priority per D14; property-level, non-inherited, single-use.
+- ✅ **T7.2** Four new `FcShellOptions` properties (`MaxUnfilteredItems=10_000`, `SlowQueryThresholdMs=2_000`, `VirtualizationServerSideThreshold=500`, `MaxCachedPages=200`) with `[Range]` guards per D10 re-revised.
+- ✅ **T7.3** `FcShellOptionsThresholdValidator` extended with the `VirtualizationServerSideThreshold < MaxUnfilteredItems` cross-property invariant.
+- ✅ **T3.1** 8 new Fluxor action records in `VirtualizationActions.cs` — `LoadPageAction` (carries `Completion: TaskCompletionSource<object>` + `CancellationToken` per D3), `LoadPageSucceededAction`, `LoadPageFailedAction`, `LoadPageCancelledAction`, `ClearPendingPagesAction`, `ColumnVisibilityChangedAction`, `ResetColumnVisibilityAction`, `ScrollCapturedAction`. All validate non-empty `ViewKey`; reserved-key prefix guard on `ColumnKey`; `ScrollTop` rejects NaN/Infinity/negative.
+- ✅ **T3.2** `VirtualizationReservedKeys.HiddenColumnsKey = "__hidden"` per D7.
+- ✅ **T3.3** `LoadedPageState` with SIX immutable fields: `PagesByKey` + `TotalCountByKey` + `LastElapsedMsByKey` + `PendingCompletionsByKey` + `LaneByKey` (D2 latched-at-mount) + `PageInsertionOrder: ImmutableQueue` (D10 single-queue FIFO eviction). New `VirtualizationLane` enum (ClientSide / ServerSide).
+- ✅ **T3.4** `LoadedPageFeature` Fluxor feature registration.
+- ✅ **T3.5** `LoadedPageReducers` (PURE) — TCS registration + double-registration idempotency guard (D3 chaos-monkey), null-items guard on Succeeded (D3), insertion-order FIFO eviction with Information-level log (D10 re-revised). Plus `VirtualizationViewStateReducers` (PURE) for `ColumnVisibilityChangedAction` / `ResetColumnVisibilityAction` / `ScrollCapturedAction` — reducers never chain; effects do.
+- ✅ **T3.6** `LoadPageEffects` — try/catch/finally with guaranteed terminal dispatch (D3), nested defensive dispatch wrapped in try/catch (D3 re-revised), cancellation routed through the Fluxor pipeline via `ct.Register`.
+- ✅ **T3.6a** `ScrollPersistenceEffect` — 150 ms `TimeProvider`-anchored per-viewKey debounce coalescing rapid `ScrollCapturedAction` dispatches into a single `CaptureGridStateAction`.
+- ✅ **T3.6b** `ColumnVisibilityPersistenceEffect` — immediate `CaptureGridStateAction` dispatch (no debounce; clicks are low-frequency).
+- ✅ **T3.7** `DataGridNavigationReducers.ReduceGridViewHydrated` extended to clamp cross-session `ScrollTop` to 0 per D5 + XML `<remarks>` appended to `GridViewSnapshot.ScrollTop` doc-comment per T3.7 revised.
+- ✅ **T3.8 (partial)** `ServiceCollectionExtensions.AddHexalithFrontComposer` registers `LoadedPageReducers`, `LoadPageEffects`, `ScrollPersistenceEffect`, `ColumnVisibilityPersistenceEffect`, `IProjectionPageLoader` → `NullProjectionPageLoader` (default no-op), and `DataGridScrollInterop` (all Scoped).
+- ✅ **T1.4** `DataGridScrollInterop` service with `CaptureScrollAsync` / `ScrollToOffsetAsync` / `DisposeViewKeyAsync` + module-import gate + circuit-tolerant exception handling.
+- ✅ **Additional abstraction not in original story:** `IProjectionPageLoader` + `ProjectionPageResult` + `NullProjectionPageLoader` — introduced because `IQueryService.QueryAsync<T>` is generic but `PendingCompletionsByKey` must carry TCS<object> (D16 Fluxor non-generic state constraint). The loader decouples the effect from `T` so adopters bind the type in their typed implementation. This is a minor scope addition documented here; does NOT inflate the binding-decision count because D16's object-boundary rationale directly implies the need for a non-generic loader.
+
+**Regression proof:**
+- Contracts builds (net10.0 + netstandard2.0).
+- Shell builds (net10.0).
+- All 35 existing Contracts tests pass.
+- All 78 existing Shell DataGridNav + FcShellOptions tests pass.
+- All 396 existing SourceTools tests pass.
+
+**NOT YET IMPLEMENTED (remaining work):**
+
+- ❌ **T1.1 / T1.2 / T1.3** — `FcColumnPrioritizer`, `FcSlowQueryNotice`, `FcMaxItemsCapNotice` Razor components (+ their `.razor.css` for CSS isolation).
+- ❌ **T1.5 / T1.6** — `fc-datagrid.js` module + `FrontComposerShell.razor` script registration.
+- ❌ **T1.7** — smoke-test scratch page.
+- ❌ **T2.1–T2.8** — source-generator emit-stage changes (Virtualize/DisplayMode/ItemSize/OverscanCount/ItemKey on every DataGrid, conditional `FcColumnPrioritizer` wrap, client/server lane branch + `LoadPageAsync` emission, banner emission, `@onscroll` handler, unified `OnAfterRenderAsync` ordered hook list, `@key="@RenderContext.Density"`, approval-test baseline regeneration).
+- ❌ **T6.1–T6.5** — parse/transform-stage changes (AttributeParser `ParseColumnPriority`, `PropertyModel.ColumnPriority int?`, `ColumnModel.Priority int?`, `RazorModelTransform` stable sort, HFC1028 + HFC1029 diagnostic emission).
+- ❌ **T8.1–T8.4** — 10 EN + 10 FR resource keys + French NBSP in `PrioritizerMoreColumnsAriaLabelTemplate.fr` + `CanonicalKeysHaveFrenchCounterparts` update 78 → 88 per locale.
+- ❌ **T9.1–T9.7** — `HFC1028_ColumnPriorityCollision` + `HFC1029_ColumnPrioritizerActivated` descriptors + generator pipeline emission + `FcDiagnosticIds` XML docs + `AnalyzerReleases.Unshipped` rows + 6 diagnostic tests + Known Gaps notes + phone-viewport HTML comment + `RazorEmitterPhoneDeferralNoteTests`.
+- ❌ **T4.1–T4.10** — ~13 Shell component tests + ~30 state/effect/TCS/cache-bound/scroll-restore tests.
+- ❌ **T5.1–T5.6** — ~12 SourceTools emitter snapshot tests + approval-baseline regeneration.
+- ❌ **T7.4–T7.6** — ~10 Contracts tests (`ColumnPriorityAttribute`, `VirtualizationActions`, `FcShellOptionsVirtualization`).
+
 ### File List
+
+**Created:**
+- `src/Hexalith.FrontComposer.Contracts/Attributes/ColumnPriorityAttribute.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/VirtualizationActions.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/VirtualizationReservedKeys.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/VirtualizationLane.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageState.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageFeature.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/ScrollPersistenceEffect.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/ColumnVisibilityPersistenceEffect.cs`
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/IProjectionPageLoader.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/DataGridScrollInterop.cs`
+
+**Extended:**
+- `src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs` — 4 new properties per D10 re-revised
+- `src/Hexalith.FrontComposer.Contracts/Rendering/DataGridNavigationActions.cs` — `<remarks>` block on `GridViewSnapshot.ScrollTop` per T3.7 revised
+- `src/Hexalith.FrontComposer.Shell/Options/FcShellOptionsThresholdValidator.cs` — cross-property invariant
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/DataGridNavigationReducers.cs` — cross-session ScrollTop clamp per D5
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` — 5 new DI registrations
+
+### Change Log
+
+- 2026-04-24: Story moved `ready-for-dev → in-progress` (sprint-status.yaml + story file).
+- 2026-04-24: Foundation layer shipped — Contracts attribute/actions/reserved-keys/options + Shell Fluxor feature/state/reducers/3 effects + hydration clamp + service registrations. Build green; all existing tests pass.

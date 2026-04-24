@@ -97,15 +97,26 @@ public static class DataGridNavigationReducers {
     /// <param name="state">The current DataGrid navigation state.</param>
     /// <param name="action">The grid-view-hydrated action.</param>
     /// <returns>A new state with the snapshot inserted when the key was absent; the same state otherwise.</returns>
+    /// <remarks>
+    /// Story 4-4 D5 — hydrated snapshots arriving from cross-session storage have their
+    /// <see cref="GridViewSnapshot.ScrollTop"/> clamped to 0 before being written. Restoring a
+    /// scroll position from hours ago is disorienting and data may have shifted. Within-session
+    /// <c>CaptureGridStateAction</c> dispatches are untouched.
+    /// </remarks>
     [ReducerMethod]
     public static DataGridNavigationState ReduceGridViewHydrated(
         DataGridNavigationState state,
         GridViewHydratedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state.ViewStates.ContainsKey(action.ViewKey)
-            ? state
-            : state with { ViewStates = state.ViewStates.SetItem(action.ViewKey, action.Snapshot) };
+        if (state.ViewStates.ContainsKey(action.ViewKey)) {
+            return state;
+        }
+
+        GridViewSnapshot clamped = action.Snapshot.ScrollTop == 0
+            ? action.Snapshot
+            : action.Snapshot with { ScrollTop = 0 };
+        return state with { ViewStates = state.ViewStates.SetItem(action.ViewKey, clamped) };
     }
 
     /// <summary>

@@ -26,3 +26,5 @@ HFC1024 | HexalithFrontComposer | Warning | Unknown ProjectionRole value (falls 
 HFC1025 | HexalithFrontComposer | Info | Projection enum has partial [ProjectionBadge] coverage (unannotated members render as text)
 HFC1026 | HexalithFrontComposer | Warning | Reserved — color-only badge detected (no call site in Story 4-2; held for Story 10-2 specimen checker)
 HFC1027 | HexalithFrontComposer | Info | Projection has collection column which does not support automatic filtering (Story 4-3)
+HFC1028 | HexalithFrontComposer | Info | [ColumnPriority] collision on projection (Story 4-4 — deterministic tiebreaker is declaration order)
+HFC1029 | HexalithFrontComposer | Info | Projection exceeds 15 columns — FcColumnPrioritizer activates (Story 4-4)

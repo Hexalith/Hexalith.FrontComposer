@@ -162,4 +162,41 @@ public sealed class FcShellOptions {
     /// </remarks>
     [EnumDataType(typeof(DensityLevel), ErrorMessage = "DefaultDensity must be Compact, Comfortable, or Roomy.")]
     public DensityLevel? DefaultDensity { get; set; }
+
+    /// <summary>
+    /// Upper bound (inclusive) on the unfiltered row count returned by projection queries.
+    /// Story 4-4 Decision D10. When <c>state.Items.Count</c> reaches this cap, the shell surfaces
+    /// <c>FcMaxItemsCapNotice</c> inviting the user to apply filters. Servers are expected to
+    /// honour this value via <c>QueryRequest.Take</c> clamping. Default: 10 000.
+    /// </summary>
+    [Range(100, 1_000_000, ErrorMessage = "MaxUnfilteredItems must be between 100 and 1000000.")]
+    public int MaxUnfilteredItems { get; set; } = 10_000;
+
+    /// <summary>
+    /// Threshold (ms) at which <c>FcSlowQueryNotice</c> surfaces after a first-page fetch
+    /// (Story 4-4 Decision D8 / D10 / AC3). Banner auto-dismisses after 5 s (matches
+    /// <c>ConfirmedToastDurationMs</c> precedent). Default: 2 000 ms.
+    /// </summary>
+    [Range(500, 30_000, ErrorMessage = "SlowQueryThresholdMs must be between 500 and 30000.")]
+    public int SlowQueryThresholdMs { get; set; } = 2_000;
+
+    /// <summary>
+    /// Lane decision boundary (Story 4-4 Decision D2 / D10). Projections whose first-mount
+    /// <c>state.Items.Count</c> falls below this value bind the client-side
+    /// <c>FluentDataGrid.Items</c> path; at or above, the generator emits a
+    /// <c>GridItemsProvider&lt;T&gt;</c> server-side pagination lane. The validator
+    /// enforces <c>VirtualizationServerSideThreshold &lt; MaxUnfilteredItems</c> so the server-side
+    /// lane triggers before the cap. Default: 500.
+    /// </summary>
+    [Range(50, 10_000, ErrorMessage = "VirtualizationServerSideThreshold must be between 50 and 10000.")]
+    public int VirtualizationServerSideThreshold { get; set; } = 500;
+
+    /// <summary>
+    /// Upper bound on <c>LoadedPageState.PagesByKey</c> entries across all view keys
+    /// (Story 4-4 Decision D10). When a successful page write pushes the total above this value,
+    /// the reducer evicts the oldest insertion-ordered entry and emits an Information-level log.
+    /// Default: 200 pages — approximately 4 000 rows at 20 rows/page.
+    /// </summary>
+    [Range(10, 10_000, ErrorMessage = "MaxCachedPages must be between 10 and 10000.")]
+    public int MaxCachedPages { get; set; } = 200;
 }

@@ -49,6 +49,13 @@ public sealed class FcShellOptionsThresholdValidator : IValidateOptions<FcShellO
             (failures ??= []).Add($"FcShellOptions.SupportedCultures must include DefaultCulture ('{options.DefaultCulture}'); currently contains [{string.Join(", ", options.SupportedCultures)}].");
         }
 
+        // Story 4-4 D10 — the server-side virtualization lane must trigger strictly BEFORE the
+        // unfiltered cap, otherwise a projection hitting the cap would full-render (client-side lane)
+        // before the ItemsProvider path had a chance to page.
+        if (options.VirtualizationServerSideThreshold >= options.MaxUnfilteredItems) {
+            (failures ??= []).Add($"FcShellOptions.VirtualizationServerSideThreshold ({options.VirtualizationServerSideThreshold}) must be strictly less than MaxUnfilteredItems ({options.MaxUnfilteredItems}).");
+        }
+
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

@@ -325,4 +325,34 @@
   <data name="SlashFocusFilterShortcutDescription" xml:space="preserve">
     <value>Placer le focus sur le premier filtre de colonne du DataGrid actif</value>
   </data>
+  <data name="PrioritizerMoreColumnsButtonLabelTemplate" xml:space="preserve">
+    <value>Autres colonnes ({0} masquées)</value>
+  </data>
+  <data name="PrioritizerMoreColumnsAriaLabelTemplate" xml:space="preserve">
+    <value>Colonnes masquées&#xA0;: {0}. Activez pour en afficher davantage.</value>
+  </data>
+  <data name="PrioritizerColumnsAllVisibleAriaLabel" xml:space="preserve">
+    <value>Toutes les colonnes sont visibles. Ouvrir les paramètres de visibilité.</value>
+  </data>
+  <data name="PrioritizerColumnsPanelTitle" xml:space="preserve">
+    <value>Visibilité des colonnes</value>
+  </data>
+  <data name="PrioritizerColumnCheckboxAriaLabelTemplate" xml:space="preserve">
+    <value>Basculer la visibilité de {0}</value>
+  </data>
+  <data name="PrioritizerResetToDefaults" xml:space="preserve">
+    <value>Réinitialiser</value>
+  </data>
+  <data name="SlowQueryNoticeMessage" xml:space="preserve">
+    <value>Le chargement est lent. Ajoutez des filtres pour affiner les résultats.</value>
+  </data>
+  <data name="MaxItemsCapNoticeTemplate" xml:space="preserve">
+    <value>Affichage des {0} premiers éléments. Utilisez des filtres pour trouver des enregistrements spécifiques.</value>
+  </data>
+  <data name="VirtualizedSkeletonRowAriaLabel" xml:space="preserve">
+    <value>Chargement des lignes…</value>
+  </data>
+  <data name="UnfilteredRowCountTemplate" xml:space="preserve">
+    <value>{0} {1}</value>
+  </data>
 </root>

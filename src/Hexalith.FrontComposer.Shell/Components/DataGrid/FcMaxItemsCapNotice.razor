@@ -1,0 +1,13 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 4-4 T1.3 / D11 / AC4 — non-dismissing Info banner shown while the unfiltered cap is active. *@
+
+@if (Visible) {
+    <FluentMessageBar Intent="MessageIntent.Info"
+                      AllowDismiss="false"
+                      data-testid="fc-max-items-cap-notice"
+                      aria-live="polite">
+        @_message
+    </FluentMessageBar>
+}

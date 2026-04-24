@@ -277,6 +277,16 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<FilterEffects>();
         services.TryAddScoped<Services.DataGridFocusScope>();
 
+        // Story 4-4 D2 / D3 / D10 — virtualization effects + page-loader boundary (Story 4-4 D16).
+        // Default no-op loader so wiring compiles without an adopter-provided implementation;
+        // adopters supply a typed loader via services.Replace when the server-side lane is needed.
+        services.TryAddScoped<LoadedPageReducers>();
+        services.TryAddScoped<LoadPageEffects>();
+        services.TryAddScoped<ScrollPersistenceEffect>();
+        services.TryAddScoped<ColumnVisibilityPersistenceEffect>();
+        services.TryAddScoped<IProjectionPageLoader, NullProjectionPageLoader>();
+        services.TryAddScoped<DataGridScrollInterop>();
+
         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.
         // Registered via AddScoped (scoped per circuit in Blazor Server; per-app in WASM). Providers

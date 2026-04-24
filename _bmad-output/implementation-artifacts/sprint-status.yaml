@@ -38,7 +38,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-24 (story 4-3 code review pass 2 complete via bmad-code-review — 3 decision-needed resolved (FluentTextInput substitution kept, ordinal clause/CSV ordering accepted, `/` focus-scope body-gate relaxed with editable-element guard). 11 patches applied + 3 dismissed with justification: shortcut description resx key, localized active/inactive chip labels, localized sort + or-conjunction clauses, typographic-quote value escaping in filter summary, resource-parity theory coverage (20 keys), fc-keyboard.js CSS.escape + editable-element guard, FcFilterResetButton EditorRequired, FcFilterEmptyState zero-active-filter guard, ColumnFilterChangedAction.ColumnKey reserved-key record-level guard. 7 new resx keys added (81 → 88 per locale). 4 deferred items (TimeProvider mention in D8, TotalCount<0 defensive check, shortcut handler exception wrap, HumanizeSlotName) logged to deferred-work.md. Sprint builds green: 879 Shell + 35 Contracts + 396 SourceTools = 1310 tests passing. Story transitions review → done. T2 RazorEmitter integration remains deferred to Story 4-3.1 follow-up.)"
+last_updated: "2026-04-24 (story 4-4 development started via bmad-dev-story — status ready-for-dev → in-progress)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -82,7 +82,7 @@ development_status:
   4-1-projection-role-hints-and-view-rendering: review
   4-2-status-badge-system: done
   4-3-datagrid-filtering-sorting-and-search: done
-  4-4-virtual-scrolling-and-column-prioritization: ready-for-dev
+  4-4-virtual-scrolling-and-column-prioritization: in-progress
   4-5-expand-in-row-detail-and-progressive-disclosure: ready-for-dev
   4-6-empty-states-field-descriptions-and-unsupported-types: backlog
   epic-4-retrospective: optional

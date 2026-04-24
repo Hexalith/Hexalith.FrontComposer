@@ -313,4 +313,33 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1028: Two or more properties on a projection declare the same explicit
+    /// <c>[ColumnPriority]</c> value (Story 4-4 D14 / D15). Information severity — the build
+    /// succeeds; the deterministic fallback is declaration order within the tied priority.
+    /// Fire once per colliding priority value per projection type (per-projection dedupe).
+    /// </summary>
+    public static readonly DiagnosticDescriptor ColumnPriorityCollision = new(
+        id: "HFC1028",
+        title: "[ColumnPriority] collision on projection",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1029: Projection exceeds the 15-column auto-generation limit (UX-DR63 / Story 4-4
+    /// D15). Information severity — <c>FcColumnPrioritizer</c> wraps the grid at runtime
+    /// showing the first 10 columns by priority; the remainder hide behind the "More columns"
+    /// gear affordance. Fire once per projection type (per-projection dedupe). Annotate columns
+    /// with <c>[ColumnPriority]</c> to control which 10 stay visible by default.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ColumnPrioritizerActivated = new(
+        id: "HFC1029",
+        title: "Projection exceeds 15 columns — FcColumnPrioritizer activates",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
 }

@@ -41,13 +41,73 @@ public static class RazorModelTransform {
                 formatHint,
                 property.IsNullable,
                 property.BadgeMappings,
-                property.EnumMemberNames));
+                property.EnumMemberNames,
+                property.ColumnPriority));
         }
 
-        EquatableArray<ColumnModel> columns = new(columnsBuilder.ToImmutable());
+        // Story 4-4 T6.4 / D17 — stable sort by (Priority ?? int.MaxValue, DeclarationOrder)
+        // ONLY when at least one column declares a non-null priority. NO-OP preserves the
+        // pre-4-4 declaration-order baseline byte-for-byte (CounterProjectionApprovalTests gate).
+        ImmutableArray<ColumnModel> columnsArray = columnsBuilder.ToImmutable();
+        bool anyPriority = false;
+        for (int i = 0; i < columnsArray.Length; i++) {
+            if (columnsArray[i].Priority is not null) {
+                anyPriority = true;
+                break;
+            }
+        }
+
+        if (anyPriority) {
+            ColumnModel[] buffer = new ColumnModel[columnsArray.Length];
+            int[] declarationOrder = new int[columnsArray.Length];
+            for (int i = 0; i < columnsArray.Length; i++) {
+                buffer[i] = columnsArray[i];
+                declarationOrder[i] = i;
+            }
+
+            // Array.Sort with IComparer<int> on the index array keeps the sort stable via the
+            // original index — .NET's Array.Sort on a single array is NOT guaranteed stable,
+            // so we sort indices.
+            Array.Sort(declarationOrder, (left, right) => {
+                int lp = buffer[left].Priority ?? int.MaxValue;
+                int rp = buffer[right].Priority ?? int.MaxValue;
+                int cmp = lp.CompareTo(rp);
+                return cmp != 0 ? cmp : left.CompareTo(right);
+            });
+
+            ImmutableArray<ColumnModel>.Builder sortedBuilder = ImmutableArray.CreateBuilder<ColumnModel>(buffer.Length);
+            for (int i = 0; i < declarationOrder.Length; i++) {
+                sortedBuilder.Add(buffer[declarationOrder[i]]);
+            }
+
+            columnsArray = sortedBuilder.ToImmutable();
+        }
+
+        EquatableArray<ColumnModel> columns = new(columnsArray);
         ProjectionRenderStrategy strategy = MapStrategy(model, diagnostics);
         EquatableArray<string> whenStates = SplitWhenStates(model.ProjectionRoleWhenState);
         EmitFallbackDiagnostics(model, strategy, columns, whenStates, diagnostics);
+
+        // Story 4-4 T6.4 / D15 — HFC1029 Information emit-stage when Columns.Count > 15
+        // (strict > per D6 — exactly 15 does NOT trigger). Per-projection deduped via
+        // IIncrementalGenerator's per-input invocation.
+        if (columns.Count > 15) {
+            List<string> hiddenByDefault = new(columns.Count - 10);
+            for (int i = 10; i < columns.Count; i++) {
+                hiddenByDefault.Add(columns[i].PropertyName);
+            }
+
+            diagnostics.Add(CreateTransformDiagnostic(
+                model,
+                "HFC1029",
+                string.Format(
+                    "Projection {0} has {1} columns (>15); FcColumnPrioritizer activates — {2} columns hidden by default: [{3}].",
+                    model.TypeName,
+                    columns.Count,
+                    hiddenByDefault.Count,
+                    string.Join(", ", hiddenByDefault)),
+                "Info"));
+        }
         string entityLabel = ResolveEntityLabel(model);
         string entityPluralLabel = ResolveEntityPluralLabel(model, entityLabel);
 
