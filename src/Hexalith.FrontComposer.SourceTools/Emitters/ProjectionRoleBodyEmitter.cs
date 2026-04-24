@@ -191,7 +191,7 @@ public static class ProjectionRoleBodyEmitter {
     public static void EmitTimelineBody(StringBuilder sb, RazorModel model) {
         ColumnModel? orderColumn = RoleBodyHelpers.ResolveFirstDateTimeColumn(model);
         string? orderProp = orderColumn?.PropertyName;
-        ColumnModel? labelColumn = RoleBodyHelpers.ResolveFirstTextColumn(model);
+        ColumnModel? labelColumn = RoleBodyHelpers.ResolveTimelineLabelColumn(model);
         string? statusProp = RoleBodyHelpers.ResolveStatusEnumProperty(model);
 
         string orderedSource = orderProp is not null

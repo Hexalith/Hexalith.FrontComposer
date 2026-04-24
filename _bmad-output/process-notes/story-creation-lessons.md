@@ -131,6 +131,46 @@ This ledger is append-only. Add new lessons at the bottom. Reference lessons by 
 
 ---
 
+## L12 — Full TCS / async-bridge lifecycle contract upfront
+
+**Pattern:** Stories that introduce a `TaskCompletionSource<T>` (or similar async bridging primitive) between an external callback surface (Fluent `ItemsProvider`, third-party awaitable, DOM event stream) and the Fluxor pipeline require a COMPLETE lifecycle contract in the FIRST draft. Deferring defensive additions leads to 4-5 rounds of hardening (each round discovering a new orphan / leak window).
+
+**The 7-point TCS lifecycle checklist:**
+1. **Registration** — where/when does the TCS enter the state dictionary, with what idempotency guarantee if the key already exists?
+2. **Cancellation** — how does external cancellation (token, scroll-away, navigation) propagate to `TrySetCanceled` + entry removal?
+3. **Success** — how does `TrySetResult` land and who removes the entry?
+4. **Failure** — how does `TrySetException` land and who removes the entry?
+5. **Disposal** — how does component/store disposal sweep pending entries (`ClearPendingPagesAction` pattern)?
+6. **Effect-body exception (guaranteed terminal dispatch)** — the effect body MUST wrap in `try/catch/finally` with a defensive finally-dispatch if no terminal action fired, so DI-resolution / cancellation-register / OOM exceptions don't orphan.
+7. **Defensive-dispatch nested safety** — the defensive finally-dispatch itself MUST be wrapped in a nested try/catch — `dispatcher.Dispatch` can throw `ObjectDisposedException` during store-disposal race; the nested catch swallows-and-logs so the orphan is bounded to the disposing store's heap lifetime.
+8. **Null-payload guard** — reducers consuming TCS-terminal actions MUST guard against null payloads (malformed effect output, serialization edge cases) and route to `TrySetException` instead of writing state.
+
+**Apply:** in any story introducing an async bridge, enumerate all 8 items in the first-draft Critical Decision entry. Don't wait for a party review or elicitation pass to discover them. Reference Story 4-4 D3 as the canonical complete example.
+
+**Triggered by:** Story 4-4 D3 took 4 revision rounds (Winston+Murat → PM elicitation pre-mortem → evening elicitation code-review+chaos-monkey) to land the complete contract. Each round discovered a new gap that was obvious in hindsight. Starting with the full checklist would have collapsed the rounds to one.
+
+---
+
+## L13 — JS interop helpers must spec `dispose*` from day 1
+
+**Pattern:** Any `IJSRuntime`-bridged helper that holds state in a JS-side `Map` / `Set` / counter across .NET invocations MUST expose a `dispose*` export AND be wired into the .NET service's `IAsyncDisposable` chain from the FIRST draft. Deferring disposal to fold-time risks cross-navigation state leaks in the interim + complicates test harnesses.
+
+**Apply:** for every JS module file in a story's cheat sheet, specify: (a) the stateful JS-side data structure; (b) the `dispose*(key)` export; (c) the .NET-side `IAsyncDisposable` call site that invokes it. Include a "`dispose*` wired into component `DisposeAsync` per L13" bullet in the T* task entry.
+
+**Triggered by:** Story 4-4 `fc-datagrid.js` originally had `captureScrollThrottled` + `scrollToOffset` only. `disposeViewKey` was added during PM elicitation fold — preventing cross-nav leaks that would otherwise have surfaced as runtime bugs.
+
+---
+
+## L14 — Bounded-by-policy beats documented-unbounded for any in-memory cache
+
+**Pattern:** Any cache structure (`Dictionary<K, V>`, `Queue<T>`, `MemoryCache`, etc.) that accumulates entries during user interaction MUST ship with a DEFAULT BOUND + simple eviction policy in v1 — EVEN IF a sophisticated policy (LRU, TTL, access-order) is deferred to a later story. "Documented-unbounded" is a slow memory leak waiting to surface in long-lived sessions (8-hour tab-open is a common adopter pattern).
+
+**Apply:** for every caching layer in a new story: (a) define a `Max*` `FcShellOptions` property with a `[Range]` constraint; (b) specify a simple eviction policy (insertion-order FIFO via `ImmutableQueue`) in the reducer that writes the cache; (c) emit an Information-level log on eviction for operator visibility; (d) defer sophisticated policy (LRU, TTL) to a follow-up story while keeping the bound + simple eviction in v1. Avoid the "v1 ships unbounded + test-as-regression-rail only" anti-pattern — tests are not runtime bounds.
+
+**Triggered by:** Story 4-4 `LoadedPageState.PagesByKey` was initially planned as documented-unbounded with Epic 9-5 as the LRU owner. Pre-mortem elicitation flagged silent memory leak in 8-hour-open sessions. Fold added `MaxCachedPages=200` + `ImmutableQueue`-based FIFO eviction + Information-level log — O(1) runtime complexity, simple to understand, operator-visible. LRU sophistication still deferred to Epic 9-5, but runtime is bounded from v1.
+
+---
+
 ## Process: How to use this ledger
 
 - Before creating a new story, scan this file for relevant lessons

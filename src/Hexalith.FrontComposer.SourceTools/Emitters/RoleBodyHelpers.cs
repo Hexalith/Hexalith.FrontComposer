@@ -81,17 +81,51 @@ internal static class RoleBodyHelpers {
     }
 
     /// <summary>
+    /// Story 4-1 AC4 — prefer a descriptive domain label for Timeline rows instead of
+    /// blindly picking the first text column. The heuristic favors descriptive names
+    /// (<c>Name</c>, <c>Title</c>, <c>Description</c>, etc.), then any non-id text
+    /// column, and only falls back to id-like columns when no richer text field exists.
+    /// This keeps Guid-like identifiers from crowding out the human-readable event label
+    /// while preserving the existing <c>Id</c>-only fallback used by generic fixtures.
+    /// </summary>
+    public static string? ResolveTimelineLabelProperty(RazorModel model) {
+        return ResolveTimelineLabelColumn(model)?.PropertyName;
+    }
+
+    public static ColumnModel? ResolveTimelineLabelColumn(RazorModel model) {
+        ColumnModel? preferred = null;
+        ColumnModel? nonIdText = null;
+        ColumnModel? idLikeText = null;
+
+        foreach (ColumnModel col in model.Columns) {
+            if (col.TypeCategory != TypeCategory.Text) {
+                continue;
+            }
+
+            if (preferred is null && IsPreferredTimelineLabelProperty(col.PropertyName)) {
+                preferred = col;
+            }
+
+            if (IsIdLikeProperty(model, col.PropertyName)) {
+                idLikeText ??= col;
+                continue;
+            }
+
+            nonIdText ??= col;
+        }
+
+        return preferred ?? nonIdText ?? idLikeText;
+    }
+
+    /// <summary>
     /// Story 4-1 D14 — AggregateId convention scan. Ordinal-case-insensitive match
     /// against "Id" / "AggregateId" / "{TypeName}Id" in declaration order. Returns
     /// null when no matching property is found; per-row cascade tolerates a null
     /// aggregate id (valid for read-only timeline projections).
     /// </summary>
     public static string? ResolveAggregateIdProperty(RazorModel model) {
-        string typeIdCandidate = StripProjectionSuffix(model.TypeName) + "Id";
         foreach (ColumnModel col in model.Columns) {
-            if (string.Equals(col.PropertyName, "Id", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(col.PropertyName, "AggregateId", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(col.PropertyName, typeIdCandidate, StringComparison.OrdinalIgnoreCase)) {
+            if (IsIdLikeProperty(model, col.PropertyName)) {
                 return col.PropertyName;
             }
         }
@@ -147,6 +181,25 @@ internal static class RoleBodyHelpers {
     /// <summary>C-style string escape for StringBuilder literal emission.</summary>
     public static string EscapeString(string value) =>
         value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+    private static bool IsPreferredTimelineLabelProperty(string propertyName)
+        => propertyName.EndsWith("Name", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Title", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Label", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Description", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Summary", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Subject", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Message", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Event", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Activity", StringComparison.OrdinalIgnoreCase)
+            || propertyName.EndsWith("Details", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsIdLikeProperty(RazorModel model, string propertyName) {
+        string typeIdCandidate = StripProjectionSuffix(model.TypeName) + "Id";
+        return string.Equals(propertyName, "Id", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(propertyName, "AggregateId", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(propertyName, typeIdCandidate, StringComparison.OrdinalIgnoreCase);
+    }
 
     private static string StripProjectionSuffix(string typeName)
         => typeName.EndsWith("Projection", StringComparison.Ordinal)

@@ -200,6 +200,33 @@ public class RazorEmitterStrategyDispatchTests {
     }
 
     [Fact]
+    public void TimelineStrategyPrefersDescriptiveLabelOverIdLikeText() {
+        RazorModel model = new(
+            "AuditProjection",
+            "TestDomain",
+            "Audit",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col("Id", "Id", TypeCategory.Text),
+                Col("Actor", "Actor", TypeCategory.Text),
+                Col("Description", "Description", TypeCategory.Text),
+                Col("OccurredAt", "Occurred At", TypeCategory.DateTime, "g"),
+                Col(
+                    "Severity",
+                    "Severity",
+                    TypeCategory.Enum,
+                    "Humanize:30",
+                    badges: new EquatableArray<BadgeMappingEntry>(ImmutableArray.Create(new BadgeMappingEntry("Pending", "Warning"))),
+                    enumMemberNames: _defaultStatusOrder))),
+            ProjectionRenderStrategy.Timeline,
+            _noWhenStates);
+
+        string output = RazorEmitter.Emit(model);
+
+        output.ShouldContain("b.AddContent(rowSeq++, item.Description);");
+        output.ShouldNotContain("b.AddContent(rowSeq++, item.Id);");
+    }
+
+    [Fact]
     public void DashboardStrategyDelegatesToDefaultBody() {
         string dashboard = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.Dashboard));
         string @default = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.Default));

@@ -18,7 +18,7 @@ internal static class CompilationHelper {
 
         // Add runtime assemblies needed for netcoreapp compilation
         string runtimeDir = Path.GetDirectoryName(typeof(object).Assembly.Location)!;
-        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.Collections.dll", "System.Collections.Concurrent.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll", "System.Private.Uri.dll"];
+        string[] additionalDlls = ["System.Runtime.dll", "netstandard.dll", "System.Collections.dll", "System.Collections.Concurrent.dll", "System.Collections.Immutable.dll", "System.Linq.dll", "System.Linq.Queryable.dll", "System.Linq.Expressions.dll", "System.Private.Uri.dll"];
         foreach (string dll in additionalDlls) {
             string path = Path.Combine(runtimeDir, dll);
             if (File.Exists(path)) {
@@ -48,6 +48,7 @@ internal static class CompilationHelper {
         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.RouteAttribute));     // Routing
         // System.Collections.Concurrent explicit ref (ConcurrentDictionary<,>).
         TryAddAssemblyRef(refs, typeof(System.Collections.Concurrent.ConcurrentDictionary<,>));
+        TryAddAssemblyRef(refs, typeof(System.Collections.Immutable.ImmutableDictionary<,>)); // Immutable collections
 
         return refs.ToArray();
     }
