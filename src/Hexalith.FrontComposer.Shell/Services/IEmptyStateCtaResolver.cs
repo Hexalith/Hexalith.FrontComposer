@@ -29,8 +29,29 @@ public interface IEmptyStateCtaResolver {
 /// <param name="AuthorizationPolicy">Optional <c>[Authorize(Policy=…)]</c> name discovered on the
 /// resolved command type. <see langword="null"/> when the command carries no explicit policy
 /// (callers wrap with a default <c>&lt;AuthorizeView&gt;</c> for the authenticated-user check).</param>
-public sealed record EmptyStateCta(
-    string CommandFqn,
-    string CommandDisplayName,
-    string CommandRoute,
-    string? AuthorizationPolicy = null);
+public sealed record EmptyStateCta {
+    public EmptyStateCta(
+        string CommandFqn,
+        string CommandDisplayName,
+        string CommandRoute,
+        string? AuthorizationPolicy = null) {
+        // P-18: reject whitespace-only AuthorizationPolicy. The component branches on
+        // `policy is { Length: > 0 }` and would otherwise pass "   " into <AuthorizeView Policy=>
+        // which throws InvalidOperationException at runtime.
+        if (AuthorizationPolicy is not null && string.IsNullOrWhiteSpace(AuthorizationPolicy)) {
+            throw new ArgumentException(
+                "AuthorizationPolicy must be either null or a non-whitespace policy name.",
+                nameof(AuthorizationPolicy));
+        }
+
+        this.CommandFqn = CommandFqn;
+        this.CommandDisplayName = CommandDisplayName;
+        this.CommandRoute = CommandRoute;
+        this.AuthorizationPolicy = AuthorizationPolicy;
+    }
+
+    public string CommandFqn { get; init; }
+    public string CommandDisplayName { get; init; }
+    public string CommandRoute { get; init; }
+    public string? AuthorizationPolicy { get; init; }
+}

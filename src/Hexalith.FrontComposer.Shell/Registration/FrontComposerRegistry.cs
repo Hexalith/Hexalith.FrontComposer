@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.Shell.Registration;
 /// Stores registered domain manifests and navigation groups for runtime composition.
 /// Domain registrations from <see cref="DomainRegistrationAction"/> are applied on construction.
 /// </summary>
-internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry {
+internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry {
     private readonly List<DomainManifest> _manifests = [];
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
 
@@ -70,6 +70,25 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
 
     /// <inheritdoc />
     public IReadOnlyList<DomainManifest> GetManifests() => _manifests;
+
+    /// <summary>
+    /// Story 4-6 / Pass-3 review DN1-c — default heuristic: a command is treated as writable
+    /// (eligible for empty-state CTA) unless its simple type name ends with "Query" /
+    /// "Queries" / "Reader" (read-only suffix conventions). Adopters who need finer control
+    /// override this by registering a custom <see cref="IFrontComposerRegistry"/> implementation
+    /// that also implements <see cref="IFrontComposerCommandWriteAccessRegistry"/>.
+    /// </summary>
+    public bool IsCommandWritable(string commandTypeName) {
+        if (string.IsNullOrWhiteSpace(commandTypeName)) {
+            return false;
+        }
+
+        int lastDot = commandTypeName.LastIndexOf('.');
+        string simple = lastDot >= 0 ? commandTypeName[(lastDot + 1)..] : commandTypeName;
+        return !simple.EndsWith("Query", StringComparison.Ordinal)
+            && !simple.EndsWith("Queries", StringComparison.Ordinal)
+            && !simple.EndsWith("Reader", StringComparison.Ordinal);
+    }
 
     /// <inheritdoc />
     public bool HasFullPageRoute(string commandTypeName) {

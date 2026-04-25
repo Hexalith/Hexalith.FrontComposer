@@ -71,7 +71,8 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
         IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
             .Add(p => p.ProjectionType, typeof(OrderProjection)));
 
-        cut.Markup.ShouldContain("aria-label=\"Aucun résultat trouvé pour orders\"");
+        // P-8 (Pass-3 review fix): FR EmptyStateAriaLabelTemplate aligned to spec "Aucun {0} trouvé".
+        cut.Markup.ShouldContain("aria-label=\"Aucun orders trouvé\"");
     }
 
     [Fact]

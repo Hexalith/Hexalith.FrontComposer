@@ -39,7 +39,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-25 (story 5-2 created via bmad-create-story — hardens HTTP response handling, bounded ETag caching, and framework-owned command/query response mapping. story 5-1 remains ready-for-dev.)"
+last_updated: "2026-04-25 (story 4-6 Pass-3 human re-pass via bmad-code-review COMPLETED. All 11 decision-needed resolved (Pass-2: 6 with option a; Pass-3 supplemental: DN1-c require companion / DN6-c verb collision accept / DN7-c arity accept / DN9-c role status drop / DN10-c Fluent refactor defer). 22 of 28 patches applied (P-1 DetailRecord branch, P-2/P-3 memoization+whitespace, P-4 exception filter, P-5 escapes, P-6 regex narrow, P-7 RenderContext init, P-8 FR resx, P-9 leak guard, P-10/P-12/P-13/P-19/P-21/P-23/P-24 resolver cluster, P-15 culture try/finally, P-17 newline, P-18 ctor throw, P-26 AddAuthorizationCore, P-27 require companion, P-28 drop role=status, P-29 remove dead keys). Skipped/Story-4-7 (14 candidates): P-9 sort attrs, P-11 per-row aria-controls, P-14 CSS rename, P-16 AC3 routing test, P-22 KebabCase test, P-30 P-18 ctor-throw test (contract enforced). All 1,523 tests pass (Contracts 76, Shell 966+2-skipped, SourceTools 481). Status: done. Story 5-2 prior pass also complete.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -85,7 +85,7 @@ development_status:
   4-3-datagrid-filtering-sorting-and-search: done
   4-4-virtual-scrolling-and-column-prioritization: done
   4-5-expand-in-row-detail-and-progressive-disclosure: done
-  4-6-empty-states-field-descriptions-and-unsupported-types: review
+  4-6-empty-states-field-descriptions-and-unsupported-types: done
   epic-4-retrospective: optional
 
   # Epic 5: Reliable Real-Time Experience

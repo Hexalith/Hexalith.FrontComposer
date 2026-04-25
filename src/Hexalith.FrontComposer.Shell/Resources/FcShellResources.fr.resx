@@ -249,19 +249,20 @@
     <value>Aucun résultat trouvé pour {0}</value>
   </data>
   <data name="EmptyStateMessageTemplate" xml:space="preserve">
-    <value>Aucun {0} pour l'instant.</value>
-    <comment>Story 4-6 D8 — French translation. Pluralization deferred to Story 9-5 ICU.</comment>
+    <value>Aucun {0} pour le moment.</value>
+    <comment>Story 4-6 D8 — French translation aligned with spec (P-8 Pass-3 review fix). Pluralization deferred to Story 9-5 ICU.</comment>
   </data>
   <data name="EmptyStateActionQueueMessageTemplate" xml:space="preserve">
     <value>Aucun {0} en attente d'action.</value>
     <comment>Story 4-6 D8 — French translation. Pluralization deferred to Story 9-5 ICU.</comment>
   </data>
   <data name="EmptyStateAriaLabelTemplate" xml:space="preserve">
-    <value>Aucun résultat trouvé pour {0}</value>
+    <value>Aucun {0} trouvé</value>
+    <comment>Story 4-6 D8 — French aria-label aligned with spec (P-8 Pass-3 review fix).</comment>
   </data>
   <data name="EmptyStateCtaTemplate" xml:space="preserve">
-    <value>Créer votre premier {0}</value>
-    <comment>Story 4-6 D8 — French CTA template. {0}=command display name.</comment>
+    <value>Envoyer votre premier {0}</value>
+    <comment>Story 4-6 D8 — French CTA template aligned with spec (P-8 Pass-3 review fix). {0}=command display name.</comment>
   </data>
   <data name="FieldPlaceholderMessageTemplate" xml:space="preserve">
     <value>Ce champ nécessite un rendu personnalisé.</value>
@@ -277,15 +278,9 @@
     <value>({0})</value>
     <comment>Story 4-6 D8 — French type annotation. {0}=type name.</comment>
   </data>
-  <data name="FieldDescriptionTooltipAriaSuffix" xml:space="preserve">
-    <value>— texte d'aide</value>
-    <comment>Story 4-6 D8 — French accessible suffix.</comment>
-  </data>
-  <data name="ColumnHeaderWithDescriptionAriaTemplate" xml:space="preserve">
-    <value>{0}, {1}</value>
-  </data>
   <data name="UnsupportedColumnHeaderSuffix" xml:space="preserve">
-    <value>(rendu personnalisé nécessaire)</value>
+    <value>(rendu personnalisé requis)</value>
+    <comment>Story 4-6 D8 — French translation aligned with spec (P-8 Pass-3 review fix).</comment>
   </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Chargement de {0}</value>

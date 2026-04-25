@@ -26,6 +26,14 @@ namespace Hexalith.FrontComposer.Shell.Components.Rendering;
 public partial class FcProjectionEmptyPlaceholder : ComponentBase {
     private EmptyStateCta? _resolvedCta;
     private string? _resolvedSecondaryText;
+    // P-2: memoization keys for the resolver call. OnParametersSet runs on every parent re-render;
+    // skipping the registry walk when (ProjectionType, CtaCommandName) are unchanged keeps the
+    // empty-state cheap on dense pages.
+    private Type? _lastResolvedProjectionType;
+    private string? _lastResolvedCtaCommandName;
+    // P-2: secondary-text resolution depends on (ProjectionType, SecondaryText) only.
+    private Type? _lastSecondaryTextProjectionType;
+    private string? _lastSecondaryTextParameter;
 
     [Inject]
     private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
@@ -101,19 +109,34 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
             : string.Format(CultureInfo.CurrentCulture, template.Value, cta.CommandDisplayName);
     }
 
-    private string CtaAriaLabel(EmptyStateCta cta) => FormatCtaLabel(cta);
-
     /// <inheritdoc/>
     protected override void OnParametersSet() {
-        // Cache CTA + secondary-text resolution once per parameter change so the razor doesn't
-        // re-walk the registry on every re-render and so the rendered slot stays consistent
-        // within a single render pass.
-        _resolvedCta = ProjectionType is null
-            ? null
-            : (CtaCommandName is { Length: > 0 } explicitName
-                ? CtaResolver.ResolveExplicit(ProjectionType, explicitName)
-                : CtaResolver.Resolve(ProjectionType));
-        _resolvedSecondaryText = ResolveSecondaryText();
+        // P-2: cache CTA resolution once per parameter change so the razor doesn't re-walk the
+        // registry on every re-render. Re-resolve only when (ProjectionType, CtaCommandName)
+        // actually changed.
+        bool ctaInputsUnchanged = ReferenceEquals(_lastResolvedProjectionType, ProjectionType)
+            && string.Equals(_lastResolvedCtaCommandName, CtaCommandName, StringComparison.Ordinal);
+
+        if (!ctaInputsUnchanged) {
+            // P-3: use IsNullOrWhiteSpace so a whitespace-only override falls through to the
+            // resolver's attribute / bounded-context discovery instead of being treated as an
+            // explicit command name (which would trim-then-fail with no fallback).
+            _resolvedCta = ProjectionType is null
+                ? null
+                : (!string.IsNullOrWhiteSpace(CtaCommandName)
+                    ? CtaResolver.ResolveExplicit(ProjectionType, CtaCommandName)
+                    : CtaResolver.Resolve(ProjectionType));
+            _lastResolvedProjectionType = ProjectionType;
+            _lastResolvedCtaCommandName = CtaCommandName;
+        }
+
+        bool secondaryInputsUnchanged = ReferenceEquals(_lastSecondaryTextProjectionType, ProjectionType)
+            && string.Equals(_lastSecondaryTextParameter, SecondaryText, StringComparison.Ordinal);
+        if (!secondaryInputsUnchanged) {
+            _resolvedSecondaryText = ResolveSecondaryText();
+            _lastSecondaryTextProjectionType = ProjectionType;
+            _lastSecondaryTextParameter = SecondaryText;
+        }
     }
 
     private string? ResolveSecondaryText() {
@@ -128,7 +151,12 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
         string projectionFqn = ProjectionType.FullName ?? ProjectionType.Name;
         string conventionKey = projectionFqn + "_EmptyStateSecondaryText";
         LocalizedString secondary = Localizer[conventionKey];
-        return secondary.ResourceNotFound ? null : secondary.Value;
+        // Guard against IStringLocalizer implementations that return ResourceNotFound==false
+        // with Value==Name on miss. Treat value-equals-key as "no resource" so the user never
+        // sees the raw FQN-prefixed convention key on screen.
+        return secondary.ResourceNotFound || string.Equals(secondary.Value, conventionKey, StringComparison.Ordinal)
+            ? null
+            : secondary.Value;
     }
 
     private RenderFragment RenderCta(EmptyStateCta cta)
@@ -136,12 +164,14 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
             // FluentUI v5 collapses the v3 "FluentAnchor Appearance=Accent" pattern into
             // FluentAnchorButton + ButtonAppearance.Primary. Semantically still a navigation
             // link (Href set, no @onclick).
+            // P-21: no aria-label — the visible ChildContent already conveys the link purpose
+            // and a label that duplicates visible text adds no value (WAI-ARIA recommends
+            // omitting redundant labels).
             builder.OpenComponent<FluentAnchorButton>(0);
             builder.AddAttribute(1, "Href", cta.CommandRoute);
             builder.AddAttribute(2, "Appearance", ButtonAppearance.Primary);
             builder.AddAttribute(3, "Class", "fc-empty-state-body__cta fc-projection-empty-placeholder-cta");
-            builder.AddAttribute(4, "aria-label", CtaAriaLabel(cta));
-            builder.AddAttribute(5, "ChildContent", (RenderFragment)(childBuilder => childBuilder.AddContent(0, FormatCtaLabel(cta))));
+            builder.AddAttribute(4, "ChildContent", (RenderFragment)(childBuilder => childBuilder.AddContent(0, FormatCtaLabel(cta))));
             builder.CloseComponent();
         };
 

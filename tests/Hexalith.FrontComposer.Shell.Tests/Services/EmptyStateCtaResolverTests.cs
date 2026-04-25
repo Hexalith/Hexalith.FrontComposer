@@ -144,8 +144,12 @@ public sealed class EmptyStateCtaResolverTests {
 
     [Fact]
     public void RegistryThrows_ReturnsNull() {
-        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        // P-27 Pass-3 review: registry must implement IFrontComposerCommandWriteAccessRegistry
+        // (mocked here via the IWriteAwareRegistry composite interface). Default writable=true
+        // since this test focuses on the GetManifests-throws path.
+        IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
         registry.GetManifests().Returns(_ => throw new InvalidOperationException("boom"));
+        registry.IsCommandWritable(Arg.Any<string>()).Returns(true);
         var resolver = new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
 
         resolver.Resolve(typeof(OrderProjection)).ShouldBeNull();
@@ -166,8 +170,13 @@ public sealed class EmptyStateCtaResolverTests {
     }
 
     private static EmptyStateCtaResolver CreateResolver(params DomainManifest[] manifests) {
-        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
+        // P-27 Pass-3 review: registry must implement IFrontComposerCommandWriteAccessRegistry.
+        // Default to writable=true so existing tests focusing on the discovery chain (not the
+        // write-filter) keep their behavior; tests that exercise the read-only filter override
+        // .IsCommandWritable explicitly per-command.
+        IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
         registry.GetManifests().Returns(manifests);
+        registry.IsCommandWritable(Arg.Any<string>()).Returns(true);
         return new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
     }
 

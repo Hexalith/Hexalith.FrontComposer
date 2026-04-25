@@ -30,6 +30,7 @@ using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.Logging;
 
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
@@ -169,6 +170,11 @@ public static class ServiceCollectionExtensions
         services.RemoveAll<IStorageService>();
         _ = services.AddScoped<IStorageService, LocalStorageService>();
         _ = services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
+        // P-27 (DN1-c): EmptyStateCtaResolver throws at construction if the registered
+        // IFrontComposerRegistry does not also implement IFrontComposerCommandWriteAccessRegistry.
+        // The optional-companion fallback (returning true for every command) silently surfaces
+        // read-only Query types as empty-state CTAs in production; adopters MUST opt-in by
+        // implementing the companion interface (or by registering a different registry that does).
         services.TryAddScoped<IEmptyStateCtaResolver, EmptyStateCtaResolver>();
 
         // Default stub command service (ADR-010). Adopters replace it via Story 5.1's AddHexalithEventStore().
@@ -382,6 +388,14 @@ public static class ServiceCollectionExtensions
         // AddLocalization is idempotent (TryAdd under the hood), so chaining it here never collides
         // with an adopter's own call.
         _ = services.AddLocalization();
+        // P-26 (DN2-a, Pass-3 review fix): empty-state CTA wraps in <AuthorizeView> per AC2.5.
+        // <AuthorizeView> requires IAuthorizationService; without it, an empty-state CTA render
+        // throws InvalidOperationException at first user-visible empty grid. AddAuthorizationCore
+        // is idempotent (TryAdd) and brings only the contract pieces (no policy evaluation
+        // pipeline, no authentication scheme), so a quickstart adopter without auth still gets
+        // the anonymous-user fall-through (default <AuthorizeView Policy=null> → user must be
+        // authenticated → anonymous skips the CTA gracefully).
+        _ = services.AddAuthorizationCore();
         _ = AddHexalithShellLocalization(services, configureLocalization);
         _ = AddHexalithFrontComposer(services, configureFluxor);
         return services;

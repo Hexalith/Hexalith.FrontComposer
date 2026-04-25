@@ -322,17 +322,9 @@
     <value>({0})</value>
     <comment>Story 4-6 D8 — unsupported field placeholder type annotation. {0}=type name. No colon (D8).</comment>
   </data>
-  <data name="FieldDescriptionTooltipAriaSuffix" xml:space="preserve">
-    <value>— help text</value>
-    <comment>Story 4-6 D8 — accessible suffix for description-bearing column headers.</comment>
-  </data>
-  <data name="ColumnHeaderWithDescriptionAriaTemplate" xml:space="preserve">
-    <value>{0}, {1}</value>
-    <comment>Story 4-6 — accessible column-header template. {0}=header, {1}=description suffix.</comment>
-  </data>
   <data name="UnsupportedColumnHeaderSuffix" xml:space="preserve">
     <value>(custom renderer needed)</value>
-    <comment>Story 4-6 — appended to unsupported column headers so placeholders are visually distinct.</comment>
+    <comment>Story 4-6 — appended to unsupported column headers so placeholders are visually distinct. (Note P-29: FieldDescriptionTooltipAriaSuffix and ColumnHeaderWithDescriptionAriaTemplate were removed per DN4-a — D9 anatomy reduced to FluentDataGrid HeaderTooltip; the icon+aria-describedby anatomy is deferred to Story 4-7.)</comment>
   </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Loading {0}</value>

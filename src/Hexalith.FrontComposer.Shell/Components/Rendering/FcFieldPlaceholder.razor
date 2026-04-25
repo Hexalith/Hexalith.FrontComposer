@@ -1,7 +1,10 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Rendering
 
-<div role="status"
-     aria-label="@AriaLabel"
+@* P-28 / DN9-c: role="status" removed — placeholder appears once per cell × per row, which
+   would create N×M live regions on a single grid. Column-header carries the
+   UnsupportedColumnHeaderSuffix and the dashed-card affordance is visually obvious; aria-label
+   stays for screen readers that focus into the cell. *@
+<div aria-label="@AriaLabel"
      class="@CssClass">
     <strong>@FieldName</strong>
     <span>@Localizer["FieldPlaceholderTypeAnnotationTemplate", TypeName].Value</span>

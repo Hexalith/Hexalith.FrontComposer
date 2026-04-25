@@ -745,6 +745,25 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "}));");
         _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
 
+        // P-1 (Pass-3 review fix): Unsupported columns flowing into DetailRecord / Timeline /
+        // StatusOverview detail surfaces must render FcFieldPlaceholder, NOT a bare em-dash.
+        // Story 4-6 reversed the silent-drop in RazorModelTransform but the AC6/FR9 contract
+        // ("never silently omit") was only honored on the DataGrid path; non-grid roles fell
+        // through to the em-dash default arm of FormatValueExpression. This branch closes that
+        // regression.
+        if (col.TypeCategory == TypeCategory.Unsupported) {
+            string typeNameLiteral = "\"" + RoleBodyHelpers.EscapeString(col.UnsupportedTypeFullyQualifiedName ?? col.PropertyName) + "\"";
+            string fieldNameLiteral = "\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"";
+            _ = sb.AppendLine(indent + builderName + ".OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>(" + seqName + "++);");
+            _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"FieldName\", " + fieldNameLiteral + ");");
+            _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"TypeName\", " + typeNameLiteral + ");");
+            _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"IsDevMode\", RenderContext?.IsDevMode == true);");
+            _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
+            EmitDetailDescription(sb, col, indent, builderName, seqName);
+            _ = sb.AppendLine(indent + builderName + ".CloseElement();");
+            return;
+        }
+
         // Story 4-2 RF1 — annotated enum fields dispatch through FcStatusBadge so DetailRecord
         // reaches the same semantic-color surface as the DataGrid column path.
         if (col.TypeCategory == TypeCategory.Enum && col.BadgeMappings.Count > 0) {

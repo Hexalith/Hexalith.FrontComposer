@@ -181,9 +181,10 @@ internal static class RoleBodyHelpers {
 
     /// <summary>
     /// C-style string escape for StringBuilder literal emission. Handles backslash, double quote,
-    /// and control characters (CR, LF, tab) so multi-line authored strings (e.g., a
-    /// <c>[Description("line one\nline two")]</c> annotation) emit valid C# string literals
-    /// rather than producing malformed source.
+    /// control characters (BEL/BS/FF/CR/LF/HT/VT), and the Unicode line/paragraph separators
+    /// (U+2028, U+2029) so multi-line authored strings (e.g., a
+    /// <c>[Description("line one\nline two")]</c> annotation) emit valid C# string literals AND
+    /// stay safe across JS-interop hops where U+2028/U+2029 break JSON parse.
     /// </summary>
     public static string EscapeString(string value) {
         if (string.IsNullOrEmpty(value)) {
@@ -207,6 +208,21 @@ internal static class RoleBodyHelpers {
                     break;
                 case '\t':
                     _ = sb.Append("\\t");
+                    break;
+                case '\b':
+                    _ = sb.Append("\\b");
+                    break;
+                case '\f':
+                    _ = sb.Append("\\f");
+                    break;
+                case '\v':
+                    _ = sb.Append("\\v");
+                    break;
+                case '\u2028':
+                    _ = sb.Append("\\u2028");
+                    break;
+                case '\u2029':
+                    _ = sb.Append("\\u2029");
                     break;
                 default:
                     _ = sb.Append(c);
