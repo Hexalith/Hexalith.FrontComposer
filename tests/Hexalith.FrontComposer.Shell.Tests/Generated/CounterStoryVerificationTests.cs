@@ -110,8 +110,17 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         await cut.WaitForAssertionAsync(() =>
         {
             string markup = cut.Markup;
-            markup.IndexOf("Id", StringComparison.Ordinal).ShouldBeLessThan(markup.IndexOf("Count", StringComparison.Ordinal));
-            markup.IndexOf("Count", StringComparison.Ordinal).ShouldBeLessThan(markup.IndexOf("Last Updated", StringComparison.Ordinal));
+            // Story 4-4 — Story 4.4's new envelope (data-fc-datagrid="...Counter..." attribute) introduces an
+            // earlier "Count" substring inside the host div's data-* attribute. Anchor the column-header search
+            // to the FluentDataGrid col-title-text marker so we keep the original ordering invariant.
+            int idHeader = markup.IndexOf(">Id<", StringComparison.Ordinal);
+            int countHeader = markup.IndexOf(">Count<", StringComparison.Ordinal);
+            int lastUpdatedHeader = markup.IndexOf(">Last Updated<", StringComparison.Ordinal);
+            idHeader.ShouldBeGreaterThanOrEqualTo(0);
+            countHeader.ShouldBeGreaterThanOrEqualTo(0);
+            lastUpdatedHeader.ShouldBeGreaterThanOrEqualTo(0);
+            idHeader.ShouldBeLessThan(countHeader);
+            countHeader.ShouldBeLessThan(lastUpdatedHeader);
             markup.ShouldContain("counter-1");
             markup.ShouldContain("1,234");
             markup.ShouldContain("04/14/2026");

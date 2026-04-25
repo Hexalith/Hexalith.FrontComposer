@@ -6,7 +6,7 @@
 <div class="fc-column-prioritizer" data-fc-column-prioritizer="@ViewKey">
     @ChildContent(_context)
 
-    <FluentButton Appearance="ButtonAppearance.Stealth"
+    <FluentButton Appearance="ButtonAppearance.Subtle"
                   IconStart="@_gearIcon"
                   OnClick="@OnGearClickedAsync"
                   aria-label="@_gearAriaLabel"
@@ -37,11 +37,11 @@
                     }
                 </div>
                 <div class="fc-column-prioritizer-popover-footer">
-                    <FluentAnchor Appearance="Appearance.Hypertext"
+                    <FluentButton Appearance="ButtonAppearance.Subtle"
                                   OnClick="@OnResetToDefaultsAsync"
                                   data-testid="fc-column-prioritizer-reset">
                         @Localizer["PrioritizerResetToDefaults"].Value
-                    </FluentAnchor>
+                    </FluentButton>
                 </div>
             </div>
         </FluentPopover>

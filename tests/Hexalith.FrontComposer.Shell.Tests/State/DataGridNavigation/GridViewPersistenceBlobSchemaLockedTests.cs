@@ -102,4 +102,38 @@ public sealed class GridViewPersistenceBlobSchemaLockedTests
 
         snapshot.ScrollTop.ShouldBe(0);
     }
+
+    // Story 4-4 T4.8 / D7 — the __hidden reserved key round-trips as a plain CSV inside the
+    // Filters dictionary. The blob schema shape is UNCHANGED (no new top-level field).
+    [Fact]
+    public void HiddenColumnsReservedKey_RoundTripsAsCsvInsideFilters() {
+        GridViewPersistenceBlob original = new(
+            ScrollTop: 0,
+            Filters: new Dictionary<string, string> {
+                ["__hidden"] = "Created,Priority",
+                ["Status"] = "Active",
+            },
+            SortColumn: null,
+            SortDescending: false,
+            ExpandedRowId: null,
+            SelectedRowId: null,
+            CapturedAt: new DateTimeOffset(2026, 4, 22, 9, 30, 0, TimeSpan.Zero));
+
+        string json = JsonSerializer.Serialize(original, LocalStorageService.SchemaLockJsonOptions);
+        json.ShouldContain("\"__hidden\":\"Created,Priority\"");
+
+        GridViewPersistenceBlob? roundTripped = JsonSerializer.Deserialize<GridViewPersistenceBlob>(
+            json, LocalStorageService.SchemaLockJsonOptions);
+        roundTripped.ShouldNotBeNull();
+        roundTripped!.Filters["__hidden"].ShouldBe("Created,Priority");
+        roundTripped.Filters["Status"].ShouldBe("Active");
+    }
+
+    // Story 4-4 T4.8 refactor-rename rail — the LITERAL STRING value of HiddenColumnsKey is
+    // asserted against the blob contract. If a contributor IDE-renames the constant via
+    // "Rename Symbol", the test literal is NOT renamed and catches the contract break.
+    [Fact]
+    public void HiddenColumnsKey_LiteralValue_IsPinned() {
+        VirtualizationReservedKeys.HiddenColumnsKey.ShouldBe("__hidden");
+    }
 }

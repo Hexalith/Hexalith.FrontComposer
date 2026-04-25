@@ -177,6 +177,42 @@ public sealed class FcShellOptionsValidationTests {
         result.Succeeded.ShouldBeTrue();
     }
 
+    // --- Story 4-4 T7.3 / D10 revised — virtualization cross-property invariant ---
+
+    [Fact]
+    public void VirtualizationServerSideThreshold_MustBeStrictlyLessThanMaxUnfilteredItems() {
+        FcShellOptions options = new() {
+            VirtualizationServerSideThreshold = 10_000,
+            MaxUnfilteredItems = 10_000,
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("VirtualizationServerSideThreshold", Case.Insensitive);
+        result.FailureMessage.ShouldContain("MaxUnfilteredItems", Case.Insensitive);
+    }
+
+    [Fact]
+    public void VirtualizationServerSideThreshold_AbovCap_FailsValidator() {
+        FcShellOptions options = new() {
+            VirtualizationServerSideThreshold = 600,
+            MaxUnfilteredItems = 500,
+        };
+
+        ValidateOptionsResult result = new FcShellOptionsThresholdValidator().Validate(null, options);
+
+        result.Failed.ShouldBeTrue();
+        result.FailureMessage.ShouldContain("VirtualizationServerSideThreshold", Case.Insensitive);
+    }
+
+    [Fact]
+    public void VirtualizationDefaults_PassValidator() {
+        FcShellOptions options = new();
+
+        new FcShellOptionsThresholdValidator().Validate(null, options).Succeeded.ShouldBeTrue();
+    }
+
     // --- Story 3-3 Task 10.2 (D4 / AC1) ---
 
     [Theory]

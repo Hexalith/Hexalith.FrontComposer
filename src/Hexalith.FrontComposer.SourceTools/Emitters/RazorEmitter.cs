@@ -54,6 +54,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("using System.Globalization;");
         _ = sb.AppendLine("using System.Linq;");
         _ = sb.AppendLine("using System.Linq.Expressions;");
+        // Story 4-4 T2.6 — async lifecycle hooks + LoadPageAsync provider callback.
+        _ = sb.AppendLine("using System.Threading.Tasks;");
         _ = sb.AppendLine("using Fluxor;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
@@ -79,7 +81,15 @@ public static class RazorEmitter {
         _ = sb.AppendLine("/// <summary>");
         _ = sb.AppendLine("/// Auto-generated DataGrid view for <see cref=\"" + model.TypeName + "\"/>.");
         _ = sb.AppendLine("/// </summary>");
-        _ = sb.AppendLine("public partial class " + model.TypeName + "View : ComponentBase, IDisposable");
+        // Story 4-4 T2.6 — grid-rendering strategies need IAsyncDisposable to dispatch
+        // ClearPendingPagesAction + DataGridScrollInterop.DisposeViewKeyAsync on view teardown.
+        if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
+            _ = sb.AppendLine("public partial class " + model.TypeName + "View : ComponentBase, IAsyncDisposable");
+        }
+        else {
+            _ = sb.AppendLine("public partial class " + model.TypeName + "View : ComponentBase, IDisposable");
+        }
+
         _ = sb.AppendLine("{");
     }
 
@@ -100,6 +110,30 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> " + ColumnEmitter.ShellLocalizerFieldName + " { get; set; } = default!;");
             _ = sb.AppendLine();
         }
+
+        // Story 4-4 T2.1 / T2.3 / T2.5 / T2.6 — grid-rendering strategies receive the
+        // virtualization envelope (Dispatcher / FcShellOptions / scroll interop / page state /
+        // page loader) plus the cascading RenderContext for density-driven row height.
+        if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private IDispatcher Dispatcher { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Contracts.FcShellOptions> ShellOptions { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.DataGridScrollInterop ScrollInterop { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private IState<global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState> LoadedPageState { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader PageLoader { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [CascadingParameter]");
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }");
+            _ = sb.AppendLine();
+        }
     }
 
     private static bool HasBadgeMappings(RazorModel model) {
@@ -113,6 +147,43 @@ public static class RazorEmitter {
     }
 
     private static void EmitStrategyMembers(StringBuilder sb, RazorModel model) {
+        // Story 4-4 T2.1 / T2.5 — grid-rendering strategies emit the stable per-view key,
+        // the compile-time-resolved item-key accessor, and a DotNetObjectReference for the
+        // JS-side scroll throttle's invokeMethodAsync callback.
+        if (RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
+            string viewKey = RoleBodyHelpers.ResolveViewKey(model);
+            string itemKeyExpr = RoleBodyHelpers.ResolveItemKeyAccessorExpression(model);
+            _ = sb.AppendLine("    private const string _viewKey = \"" + RoleBodyHelpers.EscapeString(viewKey) + "\";");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private static readonly System.Func<" + model.TypeName + ", object> _itemKeyAccessor = static x => " + itemKeyExpr + ";");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
+            _ = sb.AppendLine();
+
+            // Story 4-4 T2.2 / D6 — emitted only when the projection is column-prioritizer-wrapped
+            // (>15 columns). The descriptor list mirrors the IR ColumnModel set in priority-then-
+            // declaration order (Story 4-4 T6.4 stable sort); below the threshold the field is omitted.
+            if (model.Columns.Count > 15) {
+                _ = sb.AppendLine("    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Shell.Components.DataGrid.ColumnDescriptor> _allColumnsDescriptor = new global::Hexalith.FrontComposer.Shell.Components.DataGrid.ColumnDescriptor[]");
+                _ = sb.AppendLine("    {");
+                for (int i = 0; i < model.Columns.Count; i++) {
+                    ColumnModel col = model.Columns[i];
+                    string keyLit = "\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"";
+                    string headerLit = "\"" + RoleBodyHelpers.EscapeString(col.Header) + "\"";
+                    string priorityLit = col.Priority.HasValue
+                        ? col.Priority.Value.ToString(CultureInfo.InvariantCulture)
+                        : "(int?)null";
+                    string trailingComma = i == model.Columns.Count - 1 ? string.Empty : ",";
+                    _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Shell.Components.DataGrid.ColumnDescriptor(" + keyLit + ", " + headerLit + ", " + priorityLit + ")" + trailingComma);
+                }
+
+                _ = sb.AppendLine("    };");
+                _ = sb.AppendLine();
+            }
+        }
+
         if (model.Strategy == ProjectionRenderStrategy.ActionQueue) {
             _ = sb.AppendLine("    private object? _cachedActionQueueSource;");
             _ = sb.AppendLine("    private List<" + model.TypeName + ">? _cachedActionQueueItems;");
@@ -156,21 +227,139 @@ public static class RazorEmitter {
     }
 
     private static void EmitLifecycleHooks(StringBuilder sb, RazorModel model) {
+        bool isGrid = RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy);
+
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override void OnInitialized()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
+        if (isGrid) {
+            _ = sb.AppendLine("        LoadedPageState.StateChanged += OnStateChanged;");
+        }
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+
         _ = sb.AppendLine("    private void OnStateChanged(object? sender, EventArgs e)");
         _ = sb.AppendLine("        => InvokeAsync(StateHasChanged);");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("    /// <inheritdoc />");
-        _ = sb.AppendLine("    public void Dispose()");
-        _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
-        _ = sb.AppendLine("    }");
-        _ = sb.AppendLine();
+
+        if (isGrid) {
+            // Story 4-4 T2.6 — unified OnAfterRenderAsync with ordered hook list. First-render
+            // only: capture DotNetObjectReference for the JS scroll throttle. Within-session
+            // scroll restore is gated on the hydrated GridViewSnapshot (Story 3-6 emits the
+            // RestoreGridStateAction; this hook simply replays the hydrated ScrollTop via JS).
+            _ = sb.AppendLine("    /// <inheritdoc />");
+            _ = sb.AppendLine("    protected override async Task OnAfterRenderAsync(bool firstRender)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (firstRender)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            // Story 4-4 T2.5 / D4 — DotNetObjectReference scoped to the view; disposed in DisposeAsync.");
+            _ = sb.AppendLine("            _dotNetRef = global::Microsoft.JSInterop.DotNetObjectReference.Create<object>(this);");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("            // Story 4-4 T2.6 / AC7 — within-session scroll restore. Cross-session is clamped to 0 by D5.");
+            _ = sb.AppendLine("            try");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                await ScrollInterop.ScrollToOffsetAsync(_viewKey, scrollTop: 0d).ConfigureAwait(true);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
+            _ = sb.AppendLine("            catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+
+            // Story 4-4 T2.5 / D4 — @onscroll handler kicks the JS-side throttle. Blazor does not
+            // expose the scroll offset on the event args; the JS module reads DOM.scrollTop
+            // directly via the captureScrollThrottled callback.
+            _ = sb.AppendLine("    private async Task OnScrollAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (_dotNetRef is null) { return; }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await ScrollInterop");
+            _ = sb.AppendLine("                .CaptureScrollAsync(_viewKey, scrollTop: 0d, _dotNetRef, System.Threading.CancellationToken.None)");
+            _ = sb.AppendLine("                .ConfigureAwait(true);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
+            _ = sb.AppendLine("        catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+
+            // Story 4-4 T2.5 — JSInvokable callback dispatched by the JS throttle's trailing-edge fire.
+            _ = sb.AppendLine("    [global::Microsoft.JSInterop.JSInvokable]");
+            _ = sb.AppendLine("    public void HandleScrollAsync(string viewKey, double scrollTop)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (string.IsNullOrEmpty(viewKey) || double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0) { return; }");
+            _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction(viewKey, scrollTop));");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+
+            // Story 4-4 T2.3 / D2 / D3 — server-side LoadPageAsync provider callback. Registers
+            // a TaskCompletionSource via LoadPageAction; awaits the reducer-resolved result.
+            _ = sb.AppendLine("    private async ValueTask<global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + ">> LoadPageAsync(global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderRequest<" + model.TypeName + "> request)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        var ct = request.CancellationToken;");
+            _ = sb.AppendLine("        var completion = new System.Threading.Tasks.TaskCompletionSource<object>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);");
+            _ = sb.AppendLine("        var skip = request.StartIndex;");
+            _ = sb.AppendLine("        var take = request.Count ?? ShellOptions.Value.VirtualizationServerSideThreshold;");
+            _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction(");
+            _ = sb.AppendLine("            viewKey: _viewKey,");
+            _ = sb.AppendLine("            skip: skip,");
+            _ = sb.AppendLine("            take: take,");
+            _ = sb.AppendLine("            filters: System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,");
+            _ = sb.AppendLine("            sortColumn: null,");
+            _ = sb.AppendLine("            sortDescending: false,");
+            _ = sb.AppendLine("            searchQuery: null,");
+            _ = sb.AppendLine("            completion: completion,");
+            _ = sb.AppendLine("            cancellationToken: ct));");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            var resolved = await completion.Task.WaitAsync(ct).ConfigureAwait(true);");
+            _ = sb.AppendLine("            var items = resolved as System.Collections.Generic.IReadOnlyList<object>");
+            _ = sb.AppendLine("                ?? System.Array.Empty<object>();");
+            _ = sb.AppendLine("            var typed = new System.Collections.Generic.List<" + model.TypeName + ">(items.Count);");
+            _ = sb.AppendLine("            foreach (var item in items)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                if (item is " + model.TypeName + " typedItem)");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    typed.Add(typedItem);");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            int totalCount = LoadedPageState.Value.TotalCountByKey.TryGetValue(_viewKey, out var c) ? c : typed.Count;");
+            _ = sb.AppendLine("            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + "> { Items = typed, TotalItemCount = totalCount };");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (System.OperationCanceledException)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<" + model.TypeName + "> { Items = System.Array.Empty<" + model.TypeName + ">(), TotalItemCount = 0 };");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+
+            // Story 4-4 T2.6 / D3 — DisposeAsync sweeps pending TCS via ClearPendingPagesAction
+            // and tells the JS throttle to release the per-viewKey Map entry.
+            _ = sb.AppendLine("    /// <inheritdoc />");
+            _ = sb.AppendLine("    public async ValueTask DisposeAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
+            _ = sb.AppendLine("        LoadedPageState.StateChanged -= OnStateChanged;");
+            _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }");
+            _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
+            _ = sb.AppendLine("        try { await ScrollInterop.DisposeViewKeyAsync(_viewKey).ConfigureAwait(true); }");
+            _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
+            _ = sb.AppendLine("        catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
+            _ = sb.AppendLine("        _dotNetRef?.Dispose();");
+            _ = sb.AppendLine("        _dotNetRef = null;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+        }
+        else {
+            _ = sb.AppendLine("    /// <inheritdoc />");
+            _ = sb.AppendLine("    public void Dispose()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+        }
     }
 
     private static void EmitFormatters(StringBuilder sb) {
@@ -252,11 +441,20 @@ public static class RazorEmitter {
     }
 
     private static void EmitBuildRenderTree(StringBuilder sb, RazorModel model) {
+        bool isGrid = RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy);
+
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
         _ = sb.AppendLine("        int seq = 0;");
+        if (isGrid) {
+            // Story 4-4 T2.1 / D20 — density resolved fresh on every render so user toggles
+            // are reflected without remount. SetKey on the FluentDataGrid forces internal remount
+            // when density actually flips.
+            _ = sb.AppendLine("        _density = RenderContext?.DensityLevel ?? global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
+        }
+
         _ = sb.AppendLine();
 
         EmitSubtitleInvocation(sb, model);
@@ -264,10 +462,87 @@ public static class RazorEmitter {
         EmitEmptyShell(sb, model);
 
         _ = sb.AppendLine("        seq = 100;");
-        DispatchBody(sb, model);
+
+        if (isGrid) {
+            EmitGridEnvelopeOpen(sb, model);
+            DispatchBody(sb, model);
+            EmitGridEnvelopeClose(sb, model);
+        }
+        else {
+            DispatchBody(sb, model);
+        }
 
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine("}");
+    }
+
+    /// <summary>
+    /// Story 4-4 T2.4 / T2.5 / T2.7 / T9.7 — opens the virtualization envelope: phone-viewport
+    /// deferral HTML comment, two banners (slow-query + cap), unfiltered row-count display, and
+    /// the outer <c>data-fc-datagrid</c> container that hosts the <c>@onscroll</c> handler.
+    /// </summary>
+    private static void EmitGridEnvelopeOpen(StringBuilder sb, RazorModel model) {
+        // Story 4-4 T9.7 — phone-viewport layout deferred to Story 10-2; HTML comment serves as
+        // a discoverability anchor for adopters inspecting the rendered DOM.
+        _ = sb.AppendLine("        builder.AddMarkupContent(seq++, \"<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->\");");
+        _ = sb.AppendLine();
+
+        // Story 4-4 T2.4 — banners ABOVE the grid (below 4-3's filter surface).
+        _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+        _ = sb.AppendLine("        builder.CloseComponent();");
+        _ = sb.AppendLine();
+        string entityPluralLiteral = "\"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"";
+        _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemsCount\", state.Items.Count);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AnyRealFilterActive\", false);");
+        _ = sb.AppendLine("        builder.CloseComponent();");
+        _ = sb.AppendLine();
+
+        // Story 4-4 T2.7 / D9 — unfiltered row count above the grid (filter-summary path is owned by Story 4-3).
+        _ = sb.AppendLine("        builder.OpenElement(seq++, \"span\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", \"fc-row-count\");");
+        _ = sb.AppendLine("        builder.AddContent(seq++, $\"{state.Items.Count} \" + " + entityPluralLiteral + ");");
+        _ = sb.AppendLine("        builder.CloseElement();");
+        _ = sb.AppendLine();
+
+        // Story 4-4 T2.5 — outer scroll container; data-fc-datagrid attribute is consumed by
+        // fc-datagrid.js to locate the Fluent scroll viewport.
+        _ = sb.AppendLine("        builder.OpenElement(seq++, \"div\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", \"fc-datagrid-host\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-datagrid\", _viewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"onscroll\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));");
+        _ = sb.AppendLine();
+
+        // Story 4-4 T2.2 / D6 — column prioritizer wraps grid when emit-time column count > 15.
+        // The wrap is OUTER (sits inside the data-fc-datagrid host so the gear icon shares the
+        // host as its CSS containing block).
+        if (model.Columns.Count > 15) {
+            _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcColumnPrioritizer>(seq++);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AllColumns\", _allColumnsDescriptor);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HiddenColumns\", System.Array.Empty<string>());");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"MaxVisibleColumns\", 10);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment<global::Hexalith.FrontComposer.Shell.Components.DataGrid.ColumnVisibilityContext>)(_ctx => (RenderTreeBuilder gridBuilder) =>");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            var builder = gridBuilder; // shadow so DispatchBody's emitted lines compile unchanged");
+            _ = sb.AppendLine("            int seq = 100;");
+        }
+    }
+
+    /// <summary>
+    /// Story 4-4 T2.5 — closes the virtualization envelope (outer host div, optional prioritizer wrap).
+    /// </summary>
+    private static void EmitGridEnvelopeClose(StringBuilder sb, RazorModel model) {
+        if (model.Columns.Count > 15) {
+            // Close the FcColumnPrioritizer ChildContent render fragment + the prioritizer itself.
+            _ = sb.AppendLine("        }));");
+            _ = sb.AppendLine("        builder.CloseComponent();");
+        }
+
+        // Close the outer data-fc-datagrid host div.
+        _ = sb.AppendLine("        builder.CloseElement();");
     }
 
     /// <summary>

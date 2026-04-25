@@ -107,7 +107,14 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + recordTypeName + ">>(seq++);");
+        // Story 4-4 T2.1 / D1 / D20 — Virtualize even at low item count keeps emission shape uniform.
+        _ = sb.AppendLine("        builder.SetKey(_density);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Items\", groupedItems.AsQueryable());");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Virtualize\", true);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + recordTypeName + ", object>)(static r => (object)r.StatusLabel));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int colSeq = 300;");
@@ -272,7 +279,15 @@ public static class ProjectionRoleBodyEmitter {
         bool emitRowContextActionColumn = false,
         string? defaultSortPropertyName = null) {
         _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + model.TypeName + ">>(seq++);");
+        // Story 4-4 T2.1 / D1 / D20 — Virtualize default ON. @key on density forces a Virtualize remount
+        // when the user toggles density (Fluent v5 reads ItemSize at initialisation).
+        _ = sb.AppendLine("        builder.SetKey(_density);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Items\", " + filteredItemsExpression + ");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Virtualize\", true);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + model.TypeName + ", object>)_itemKeyAccessor);");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
         _ = sb.AppendLine("        {");

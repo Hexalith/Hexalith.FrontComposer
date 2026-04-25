@@ -18,10 +18,9 @@ public sealed class RazorEmitterScopeGuardrailTests {
         new(ImmutableArray<BadgeMappingEntry>.Empty);
 
     private static readonly (string Token, string OwningStory)[] ForbiddenTokens = [
-        ("Virtualize", "Story 4.4 — Virtual Scrolling & Column Prioritization"),
-        ("ItemsProvider", "Story 4.4"),
+        // Story 4-4 has now landed Virtualize / ItemsProvider / FcColumnPrioritizer (T2.1 / T2.2 / T2.3) — these
+        // tokens are no longer scope creep and are intentionally part of the generated view body.
         ("FluentSearch", "Story 4.3 — DataGrid Filtering, Sorting & Search"),
-        ("FcColumnPrioritizer", "Story 4.4"),
         ("FcEmptyState", "Story 4.6 — Empty States (full CTA variant; only FcProjectionEmptyPlaceholder is allowed in 4-1)"),
         ("CaptureGridStateAction", "Story 3-6 / 4.3 — Filter/Sort state persistence is 4.3's scope"),
         ("HubConnection", "Epic 5 — SignalR"),

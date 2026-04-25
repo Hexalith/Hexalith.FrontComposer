@@ -71,6 +71,15 @@ public abstract class FrontComposerTestBase : BunitContext {
         });
         _ = Services.AddScoped<DataGridNavigationEffects>();
 
+        // Story 4-4 — Fluxor scan picks up LoadPageEffects + ScrollPersistenceEffect +
+        // ColumnVisibilityPersistenceEffect + LoadedPageReducers; their dependencies must resolve
+        // in the test host. Default to the no-op loader (adopter tests override via Services.Replace).
+        _ = Services.AddScoped<IProjectionPageLoader, NullProjectionPageLoader>();
+        _ = Services.AddScoped<LoadedPageReducers>();
+        _ = Services.AddScoped<LoadPageEffects>();
+        _ = Services.AddScoped<ScrollPersistenceEffect>();
+        _ = Services.AddScoped<ColumnVisibilityPersistenceEffect>();
+
         InitializeStoreAsync().GetAwaiter().GetResult();
     }
 

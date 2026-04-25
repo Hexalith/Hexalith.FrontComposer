@@ -171,6 +171,16 @@ This ledger is append-only. Add new lessons at the bottom. Reference lessons by 
 
 ---
 
+## L15 — Flip-the-silent-drop patches must bundle placeholder emission + scope-guardrail test
+
+**Pattern:** When a story removes a "silent drop" / `continue` in an IR pipeline (e.g., Transform-stage `if (isUnsupported) continue`) that contradicts a PRD / UX requirement (like FR9 "never silently omit"), the story MUST bundle THREE things in the SAME story — (1) the pipeline flip, (2) the emit-side placeholder (or equivalent visible artifact), (3) a scope-guardrail test that asserts "every input property appears as an output column/artifact." Shipping the flip without the guardrail lets future refactors re-introduce the drop silently.
+
+**Apply:** for any story removing a silent-drop / filter in an IR pipeline, add an explicit test named `EveryInputXAppearsInOutputY` (e.g., `EveryProjectionPropertyAppearsInEmittedColumns`) that scans approved baselines and asserts the invariant with a fail-message naming the owning story decision (e.g., "Unsupported-drop regression. See Story 4-6 D1"). Treat as a regression rail AT the pipeline boundary — emit-site assertions alone are too brittle (emit logic can also drop).
+
+**Triggered by:** Story 4-6 D1 removed `RazorModelTransform.cs:29` `if (property.IsUnsupported) { continue; }` to honor FR9 + UX-DR55. The Parse-stage HFC1002 Warning was firing; the Transform-stage drop was silently reversing it at runtime. The combination made auto-generation "dishonest": build says "unsupported" but runtime says "nothing here." Scope-guardrail test lives in `UnsupportedColumnEmissionTests.EveryProjectionPropertyAppearsInEmittedColumns` (story 4-6 T6.1-T6.4).
+
+---
+
 ## Process: How to use this ledger
 
 - Before creating a new story, scan this file for relevant lessons

@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Threading.Tasks;
 using Fluxor;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -18,7 +19,7 @@ namespace TestDomain;
 /// <summary>
 /// Auto-generated DataGrid view for <see cref="OrderProjection"/>.
 /// </summary>
-public partial class OrderProjectionView : ComponentBase, IDisposable
+public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
 {
     [Inject]
     private IState<OrderProjectionState> OrderProjectionState { get; set; } = default!;
@@ -26,19 +27,131 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
+    [Inject]
+    private IDispatcher Dispatcher { get; set; } = default!;
+
+    [Inject]
+    private Microsoft.Extensions.Options.IOptions<global::Hexalith.FrontComposer.Contracts.FcShellOptions> ShellOptions { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Shell.Services.DataGridScrollInterop ScrollInterop { get; set; } = default!;
+
+    [Inject]
+    private IState<global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState> LoadedPageState { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader PageLoader { get; set; } = default!;
+
+    [CascadingParameter]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }
+
+    private const string _viewKey = "Orders:TestDomain.OrderProjection";
+
+    private static readonly System.Func<OrderProjection, object> _itemKeyAccessor = static x => (object)x;
+
+    private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;
+
+    private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
+
     /// <inheritdoc />
     protected override void OnInitialized()
     {
         OrderProjectionState.StateChanged += OnStateChanged;
+        LoadedPageState.StateChanged += OnStateChanged;
     }
 
     private void OnStateChanged(object? sender, EventArgs e)
         => InvokeAsync(StateHasChanged);
 
     /// <inheritdoc />
-    public void Dispose()
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            // Story 4-4 T2.5 / D4 — DotNetObjectReference scoped to the view; disposed in DisposeAsync.
+            _dotNetRef = global::Microsoft.JSInterop.DotNetObjectReference.Create<object>(this);
+
+            // Story 4-4 T2.6 / AC7 — within-session scroll restore. Cross-session is clamped to 0 by D5.
+            try
+            {
+                await ScrollInterop.ScrollToOffsetAsync(_viewKey, scrollTop: 0d).ConfigureAwait(true);
+            }
+            catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }
+            catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }
+        }
+    }
+
+    private async Task OnScrollAsync()
+    {
+        if (_dotNetRef is null) { return; }
+
+        try
+        {
+            await ScrollInterop
+                .CaptureScrollAsync(_viewKey, scrollTop: 0d, _dotNetRef, System.Threading.CancellationToken.None)
+                .ConfigureAwait(true);
+        }
+        catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }
+        catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }
+    }
+
+    [global::Microsoft.JSInterop.JSInvokable]
+    public void HandleScrollAsync(string viewKey, double scrollTop)
+    {
+        if (string.IsNullOrEmpty(viewKey) || double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0) { return; }
+        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction(viewKey, scrollTop));
+    }
+
+    private async ValueTask<global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<OrderProjection>> LoadPageAsync(global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderRequest<OrderProjection> request)
+    {
+        var ct = request.CancellationToken;
+        var completion = new System.Threading.Tasks.TaskCompletionSource<object>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+        var skip = request.StartIndex;
+        var take = request.Count ?? ShellOptions.Value.VirtualizationServerSideThreshold;
+        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction(
+            viewKey: _viewKey,
+            skip: skip,
+            take: take,
+            filters: System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,
+            sortColumn: null,
+            sortDescending: false,
+            searchQuery: null,
+            completion: completion,
+            cancellationToken: ct));
+        try
+        {
+            var resolved = await completion.Task.WaitAsync(ct).ConfigureAwait(true);
+            var items = resolved as System.Collections.Generic.IReadOnlyList<object>
+                ?? System.Array.Empty<object>();
+            var typed = new System.Collections.Generic.List<OrderProjection>(items.Count);
+            foreach (var item in items)
+            {
+                if (item is OrderProjection typedItem)
+                {
+                    typed.Add(typedItem);
+                }
+            }
+            int totalCount = LoadedPageState.Value.TotalCountByKey.TryGetValue(_viewKey, out var c) ? c : typed.Count;
+            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<OrderProjection> { Items = typed, TotalItemCount = totalCount };
+        }
+        catch (System.OperationCanceledException)
+        {
+            return new global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<OrderProjection> { Items = System.Array.Empty<OrderProjection>(), TotalItemCount = 0 };
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync()
     {
         OrderProjectionState.StateChanged -= OnStateChanged;
+        LoadedPageState.StateChanged -= OnStateChanged;
+        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }
+        catch (System.ObjectDisposedException) { /* store already disposed */ }
+        try { await ScrollInterop.DisposeViewKeyAsync(_viewKey).ConfigureAwait(true); }
+        catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }
+        catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }
+        _dotNetRef?.Dispose();
+        _dotNetRef = null;
     }
 
     private static string Truncate(string value, int maxLength)
@@ -121,6 +234,7 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
     {
         var state = OrderProjectionState.Value;
         int seq = 0;
+        _density = RenderContext?.DensityLevel ?? global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
 
         builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionSubtitle>(seq++);
         builder.AddAttribute(seq++, "ProjectionType", typeof(OrderProjection));
@@ -154,8 +268,36 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
         }
 
         seq = 100;
+        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.CloseComponent();
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
+        builder.AddAttribute(seq++, "AnyRealFilterActive", false);
+        builder.CloseComponent();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "fc-row-count");
+        builder.AddContent(seq++, $"{state.Items.Count} " + "orders");
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", "fc-datagrid-host");
+        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
+        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
+
         builder.OpenComponent<FluentDataGrid<OrderProjection>>(seq++);
+        builder.SetKey(_density);
         builder.AddAttribute(seq++, "Items", state.Items.AsQueryable());
+        builder.AddAttribute(seq++, "Virtualize", true);
+        builder.AddAttribute(seq++, "DisplayMode", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);
+        builder.AddAttribute(seq++, "ItemSize", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));
+        builder.AddAttribute(seq++, "OverscanCount", 3);
+        builder.AddAttribute(seq++, "ItemKey", (System.Func<OrderProjection, object>)_itemKeyAccessor);
 
         builder.AddAttribute(seq++, "ChildContent", (RenderFragment)((RenderTreeBuilder b) =>
         {
@@ -169,5 +311,6 @@ public partial class OrderProjectionView : ComponentBase, IDisposable
         }));
 
         builder.CloseComponent();
+        builder.CloseElement();
     }
 }

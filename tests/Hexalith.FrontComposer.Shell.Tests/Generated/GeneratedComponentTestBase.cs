@@ -38,6 +38,16 @@ public abstract class GeneratedComponentTestBase : BunitContext
             }
         });
 
+        // Story 4-4 — generated grid views inject IState<LoadedPageState>. Register the
+        // LoadedPageFeature directly (Shell-assembly scan would duplicate FrontComposerTheme via
+        // TestableFrontComposerThemeFeature in Shell.Tests). Fluxor's State<TState> resolves via
+        // IFeature<TState>; both descriptors point at the same singleton instance.
+        _ = Services.AddSingleton<Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageFeature>();
+        _ = Services.AddSingleton<Fluxor.IFeature<Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState>>(
+            sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageFeature>());
+        _ = Services.AddSingleton<Fluxor.IFeature>(
+            sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageFeature>());
+
         // Zero-delay stub so bUnit tests stay deterministic under CI load.
         _ = Services.Configure<StubCommandServiceOptions>(o =>
         {
@@ -63,6 +73,14 @@ public abstract class GeneratedComponentTestBase : BunitContext
         // Story 2-4 — FcLifecycleWrapper injects TimeProvider; use the system clock by default
         // so generated-form rendering doesn't block on a fake clock that never ticks.
         _ = Services.AddSingleton(TimeProvider.System);
+
+        // Story 4-4 T2.1 / T2.5 — generated grid views inject DataGridScrollInterop and
+        // IProjectionPageLoader. Loose JS interop mode swallows the JS calls; the loader
+        // returns an empty page by default (Story 4-4 NullProjectionPageLoader).
+        _ = Services.AddScoped<DataGridScrollInterop>();
+        _ = Services.AddScoped<
+            Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader,
+            Hexalith.FrontComposer.Shell.State.DataGridNavigation.NullProjectionPageLoader>();
     }
 
     protected async Task InitializeStoreAsync()

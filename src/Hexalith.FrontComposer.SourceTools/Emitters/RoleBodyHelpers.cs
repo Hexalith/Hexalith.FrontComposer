@@ -182,6 +182,67 @@ internal static class RoleBodyHelpers {
     public static string EscapeString(string value) =>
         value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
+    /// <summary>
+    /// Story 4-4 T2 / D2 — strategies that emit a <c>FluentDataGrid</c> and therefore receive
+    /// the virtualization envelope (banners, outer scroll container, OnAfterRenderAsync hooks,
+    /// IAsyncDisposable). DetailRecord and Timeline render <c>FluentCard</c>/<c>FluentStack</c>
+    /// and are exempt.
+    /// </summary>
+    public static bool IsGridRenderingStrategy(ProjectionRenderStrategy strategy)
+        => strategy == ProjectionRenderStrategy.Default
+            || strategy == ProjectionRenderStrategy.ActionQueue
+            || strategy == ProjectionRenderStrategy.StatusOverview
+            || strategy == ProjectionRenderStrategy.Dashboard;
+
+    /// <summary>
+    /// Story 4-4 T2.1 / D13 / D18 — first-match item-key accessor expression. Precedence:
+    /// <c>AggregateId</c> &gt; <c>Id</c> &gt; <c>Key</c> &gt; <c>x =&gt; (object)x</c> fallback.
+    /// Resolved at emit time so the generated view contains a baked-in lambda — no runtime
+    /// reflection (D8 trim/AOT discipline). Returns the lambda body without the lambda
+    /// keyword: caller wraps in <c>x =&gt; (object)( ... )</c>.
+    /// </summary>
+    public static string ResolveItemKeyAccessorExpression(RazorModel model) {
+        string? aggregateIdProp = null;
+        string? idProp = null;
+        string? keyProp = null;
+
+        foreach (ColumnModel col in model.Columns) {
+            if (aggregateIdProp is null
+                && string.Equals(col.PropertyName, "AggregateId", StringComparison.Ordinal)) {
+                aggregateIdProp = col.PropertyName;
+            }
+            else if (idProp is null
+                && string.Equals(col.PropertyName, "Id", StringComparison.Ordinal)) {
+                idProp = col.PropertyName;
+            }
+            else if (keyProp is null
+                && string.Equals(col.PropertyName, "Key", StringComparison.Ordinal)) {
+                keyProp = col.PropertyName;
+            }
+        }
+
+        string? selected = aggregateIdProp ?? idProp ?? keyProp;
+        return selected is null
+            ? "(object)x"
+            : "(object)x." + selected + "!";
+    }
+
+    /// <summary>
+    /// Story 4-4 T2.5 / D4 — stable per-view key consumed by the @onscroll handler, scroll
+    /// restore interop, ClearPendingPagesAction sweep, and persistence keys. Format:
+    /// <c>{boundedContext}:{Namespace}.{TypeName}</c>. Bounded context defaults to namespace
+    /// when not explicitly declared.
+    /// </summary>
+    public static string ResolveViewKey(RazorModel model) {
+        string bc = string.IsNullOrEmpty(model.BoundedContext)
+            ? model.Namespace
+            : model.BoundedContext!;
+        string typeFqn = string.IsNullOrEmpty(model.Namespace)
+            ? model.TypeName
+            : model.Namespace + "." + model.TypeName;
+        return bc + ":" + typeFqn;
+    }
+
     private static bool IsPreferredTimelineLabelProperty(string propertyName)
         => propertyName.EndsWith("Name", StringComparison.OrdinalIgnoreCase)
             || propertyName.EndsWith("Title", StringComparison.OrdinalIgnoreCase)
