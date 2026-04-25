@@ -39,53 +39,63 @@ After the operation completes (or aborts), stop immediately. Do not chain anothe
 
 ## Pre-Flight Checks
 
-Before any selection, verify the items below. **Each check must be performed by running the named command and observing its actual output in this run.** Do not infer state from session memory, prior runs, recently committed files, the conversation history, or what you "expect" the working tree to look like. If you have not just run the command in the current run, the check has not been performed.
+**Pre-flight is performed by an out-of-band script — `jobs/preflight-code-review.py`. The LLM does NOT perform the checks itself.** This rule exists because four consecutive false-positive aborts on 2026-04-25 demonstrated that the LLM will fabricate "evidence" of repository state it never observed (see annotations on rows 1–5 of the run log). The script's JSON result file is the only acceptable source of pre-flight pass/fail.
 
-### Pre-Flight Evidence Discipline (binding)
+### Procedure (mandatory, in order)
 
-These rules apply to every pre-flight check below.
+1. **Run the script.** Exactly this invocation, no substitutions:
 
-- **Run the command, then quote its output.** Each check specifies a command. You must execute that exact command in the current run and capture its real output (stdout, stderr, and exit code).
-- **Aborts must cite evidence.** When a check fails and you abort, the `notes` field of the run-log row and the structured output **must** include:
-  - the exact command that was run,
-  - the verbatim first ~200 chars of its output (stdout/stderr) or a deterministic summary like `0 lines`, `PARSE OK`, `exit=2`,
-  - the timestamp at which the command was run.
-- **No evidence ⇒ no abort.** If you cannot produce verbatim output for a check, you may not abort on that check. Either re-run the command and capture its output, or treat the check as passing and proceed.
-- **Do not substitute commands.** `git diff HEAD~1`, file listings from session context, or recollections of prior runs are NOT substitutes for `git status --porcelain`. A YAML structure recalled from earlier in the conversation is NOT a substitute for `python -c "import yaml; yaml.safe_load(open(...))"` run **this** turn.
-- **Prior false positives.** Three consecutive false-positive aborts have been recorded in the run log (rows from 2026-04-25 — see annotations). The pattern was the agent reporting failures it never actually observed. The rules above exist specifically to prevent that pattern from recurring.
+   ```text
+   python jobs/preflight-code-review.py --latest
+   ```
 
-### The checks
+   The script writes a per-run JSON result to `_bmad-output/process-notes/preflight-{ISO}.json` and a copy to `_bmad-output/process-notes/preflight-latest.json`. Its exit code is 0 if all hard checks passed, 1 if any failed, 2 on script error.
 
-1. **`sprint-status.yaml` parses as YAML.**
-   - Command: `python -c "import yaml; yaml.safe_load(open(r'_bmad-output/implementation-artifacts/sprint-status.yaml', encoding='utf-8')); print('PARSE OK')"`
-   - Pass: command exits 0 and prints `PARSE OK`.
-   - Fail: command exits non-zero. Capture the **full Python traceback** (or its last 10 lines) into `notes`. Do not paraphrase the error. Do not auto-repair: a human must reconcile the yaml before the next run.
+2. **Read the result file.** Open `_bmad-output/process-notes/preflight-latest.json` with the file-read tool. Do not skip this step even if you "saw" the script's stdout — the JSON is the canonical record.
 
-2. **Artifacts root exists.**
-   - Command: `test -d _bmad-output/implementation-artifacts && echo OK || echo MISSING`
-   - Pass: prints `OK`. Fail: capture the printed value into `notes`.
+3. **Verify check #5 (skill discoverability) yourself.** This is the one check the script cannot perform. Confirm the `bmad-code-review` skill responds to `/bmad-code-review` or natural-language invocation. If both forms refuse, treat pre-flight as failed and quote the refusal text verbatim into `notes`.
 
-3. **Lessons ledger exists and is readable.**
-   - Command: `test -r _bmad-output/process-notes/story-creation-lessons.md && echo OK || echo MISSING`
-   - Pass: prints `OK`. Fail: capture the printed value.
+4. **Decide based on the JSON, not on your own re-checks.**
+   - If `result == "pass"` in the JSON AND check #5 passed: pre-flight is green. Proceed to selection.
+   - If `result == "fail"` in the JSON OR check #5 failed: abort. Write the run-log row and structured output per the next section.
 
-4. **Deferred-work ledger exists OR can be created.** Informational only — the skill creates it on first write. Do not abort on this check; only note if the file is absent.
+### Reporting failed pre-flight (binding)
 
-5. **`bmad-code-review` skill is discoverable.** Confirm the skill responds to `/bmad-code-review` or natural-language invocation. If both forms refuse, abort with `notes` quoting the refusal text verbatim.
+When pre-flight fails, the run-log row and structured output's `notes` field MUST contain:
 
-6. **Status–artifact consistency.** For each `development_status` entry whose key is neither `epic-*` nor `*-retrospective`, resolve the artifact using the **Story Artifact Resolution** rule. The status and the artifact must agree:
-   - `status == backlog` ⇒ no artifact must exist for that key.
+- The path of the JSON result file you read (e.g. `_bmad-output/process-notes/preflight-latest.json`).
+- The `timestamp` field copied verbatim from that JSON.
+- For each check whose `result == "fail"`: the check's `name` and its `details` field copied verbatim from the JSON.
+- For check #7 (working tree) failures specifically: also copy the verbatim `stdout` field of that check (the actual `git status --porcelain` output captured by the script).
+
+You may NOT:
+
+- Paraphrase or rewrite the JSON contents in your own words.
+- Re-run the underlying checks (`yaml.safe_load`, `git status --porcelain`, etc.) and substitute your observations for the JSON's.
+- Generate plausible-looking "verbatim" output that did not come from the JSON file.
+
+If you find yourself about to write an abort message describing repository state that does not appear in the JSON file you just read, stop. The JSON is ground truth; your recollection is not.
+
+### What the script checks
+
+For reference (the script implements these — do not re-implement them yourself):
+
+1. `sprint-status.yaml` parses as YAML.
+2. `_bmad-output/implementation-artifacts/` exists.
+3. Lessons ledger (`_bmad-output/process-notes/story-creation-lessons.md`) is readable.
+4. Deferred-work ledger readable (informational; absence does not fail pre-flight — the skill creates it on first write).
+5. **(LLM-only)** `bmad-code-review` skill is discoverable.
+6. Status–artifact consistency: for each `development_status` entry whose key is neither `epic-*` nor `*-retrospective`:
+   - `status == backlog` ⇒ no artifact must exist.
    - `status` in `{ready-for-dev, in-progress, review, done}` ⇒ an artifact must exist.
-   - `status == blocked` is exempt (blocked stories may legitimately have a partial or no artifact pending human reconciliation).
+   - `status == blocked` exempt.
+7. Working tree cleanliness: `git status --porcelain` produces zero non-empty lines (the script's per-run pre-flight result files are gitignored and do not count).
 
-   On any mismatch, abort with `operation: failed` and `notes: "status-artifact drift on {key}: status={status}, artifact={present|absent}"`. Do not auto-repair: a human must reconcile the yaml and the disk before the next run.
+The script never auto-repairs. A human must reconcile the YAML or the working tree before the next run.
 
-7. **Working tree cleanliness.**
-   - Command: `git status --porcelain`
-   - Pass: command produces zero output lines. Note literally `0 lines` in your run notes if you proceed, so the trace is auditable.
-   - Fail: command produces ≥1 line. Abort with `operation: failed` and `notes: "working tree not clean — refusing to interleave review edits with unrelated changes; git status --porcelain output (first 20 lines): {verbatim output}"`. **Do not** infer dirtiness from `git diff HEAD~1`, the most recent commit's file list, or any other source — only `git status --porcelain` counts. The job is allowed to **produce** edits, but it must not **start** alongside a dirty tree.
+### Per-run JSON result files
 
-If any check fails, append a `failed` row to the run log per the evidence discipline above, emit the structured output with `operation: failed`, and stop.
+The script writes `preflight-{ISO}.json` per run and overwrites `preflight-latest.json` on each `--latest` invocation. Both file patterns are gitignored. Do not commit them. Do not delete the per-run files manually — they are the audit trail for any disputed abort.
 
 ## Story Artifact Resolution
 
