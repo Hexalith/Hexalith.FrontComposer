@@ -26,7 +26,16 @@ public static class CommandPaletteReducers {
         PaletteOpenedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state with { IsOpen = true, LoadState = PaletteLoadState.Idle };
+        // P3 (Pass-6): explicitly reset Query/Results/SelectedIndex on every open so a programmatic
+        // re-open path (test seam, future bell-icon trigger) cannot resurrect stale state from a
+        // previous open that bypassed PaletteClosedAction.
+        return state with {
+            IsOpen = true,
+            Query = string.Empty,
+            Results = ImmutableArray<PaletteResult>.Empty,
+            SelectedIndex = 0,
+            LoadState = PaletteLoadState.Idle,
+        };
     }
 
     /// <summary>
@@ -64,6 +73,14 @@ public static class CommandPaletteReducers {
         PaletteQueryChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        // P1 (Pass-6): refuse query mutations when the palette is closed. Without this, a stray
+        // dispatch (race vs PaletteClosedAction in flight, or sentinel-activation branch racing a
+        // parallel close) would leave a closed palette with Query="…" + LoadState=Searching that
+        // resurrects on the next open.
+        if (!state.IsOpen) {
+            return state;
+        }
+
         return state with { Query = action.Query, LoadState = PaletteLoadState.Searching };
     }
 
@@ -94,12 +111,12 @@ public static class CommandPaletteReducers {
 
         // DN4 — preserve the user's arrow-selection when the new Results still spans it,
         // instead of hard-resetting to 0 on every query refinement.
-        int preservedIndex = state.Results.IsEmpty
+        // P30 (Pass-6): collapsed redundant double-branch — when action.Results is empty,
+        // Math.Clamp(_, 0, action.Results.Length - 1) would clamp to 0 anyway, so a single
+        // ternary is equivalent and clearer.
+        int preservedIndex = action.Results.IsEmpty
             ? 0
-            : Math.Clamp(state.SelectedIndex, 0, Math.Max(0, action.Results.Length - 1));
-        if (action.Results.IsEmpty) {
-            preservedIndex = 0;
-        }
+            : Math.Clamp(state.SelectedIndex, 0, action.Results.Length - 1);
 
         return state with {
             Results = action.Results,
@@ -215,7 +232,16 @@ public static class CommandPaletteReducers {
         PaletteScopeChangedAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
-        return state with { RecentRouteUrls = ImmutableArray<string>.Empty };
+        // P33 (Pass-6 C2-D3): fail-closed clear of all per-scope state on tenant/user change.
+        // Aligns with feedback_tenant_isolation_fail_closed — never let cross-tenant Results,
+        // Query, or selection survive a scope flip. Hydrate effect repopulates from new scope.
+        return state with {
+            RecentRouteUrls = ImmutableArray<string>.Empty,
+            Results = ImmutableArray<PaletteResult>.Empty,
+            Query = string.Empty,
+            SelectedIndex = 0,
+            LoadState = PaletteLoadState.Idle,
+        };
     }
 
     /// <summary>

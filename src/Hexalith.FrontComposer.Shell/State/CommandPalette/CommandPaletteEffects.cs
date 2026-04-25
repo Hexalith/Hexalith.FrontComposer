@@ -50,6 +50,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     private readonly TimeProvider _timeProvider;
 
     private readonly object _ctsSync = new();
+    private readonly SemaphoreSlim _persistGate = new(1, 1);
     private CancellationTokenSource? _queryCts;
     private bool _disposed;
 
@@ -174,12 +175,22 @@ public sealed class CommandPaletteEffects : IDisposable {
             dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
-        catch (Exception ex) {
+        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+            // P8 (Pass-6): distinguish deserialisation/schema corruption from transient I/O so
+            // operators can triage HFC2111 without misdiagnosing a network blip as data corruption.
+            string reason = ex switch {
+                IOException => "TransientFailure",
+                TimeoutException => "TransientFailure",
+                System.Text.Json.JsonException => "Corrupt",
+                InvalidOperationException => "Corrupt",
+                FormatException => "Corrupt",
+                _ => "Unknown",
+            };
             _logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Palette hydration errored. Reason={Reason}.",
                 FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
-                "Corrupt");
+                reason);
             dispatcher.Dispatch(new PaletteHydratedCompletedAction());
             return;
         }
@@ -193,7 +204,11 @@ public sealed class CommandPaletteEffects : IDisposable {
             return;
         }
 
-        ImmutableArray<string> filtered = [.. stored.Where(CommandRouteBuilder.IsInternalRoute)];
+        // P6 (Pass-6): dedupe identical filtered entries — older code paths or storage corruption
+        // could persist duplicates; the reducer dedupes on visit but NOT on hydrate.
+        ImmutableArray<string> filtered = [.. stored
+            .Where(CommandRouteBuilder.IsInternalRoute)
+            .Distinct(StringComparer.OrdinalIgnoreCase)];
         int rejected = stored.Length - filtered.Length;
         if (rejected > 0) {
             _logger.LogInformation(
@@ -278,6 +293,12 @@ public sealed class CommandPaletteEffects : IDisposable {
         if (string.Equals(canonical, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase)) {
             IShortcutService? shortcuts = Shortcuts;
             if (shortcuts is null) {
+                // P10 (Pass-6): log when the alias bypass falls through to an empty result set
+                // because IShortcutService is unregistered. Adopters who forget the registration
+                // saw silent UX degradation (typing "?" produced an empty list with no clue why).
+                _logger.LogWarning(
+                    "{DiagnosticId}: Palette shortcuts query bypassed scoring but IShortcutService is unregistered; dispatching empty result set.",
+                    FcDiagnosticIds.HFC2110_PaletteScoringFault);
                 dispatcher.Dispatch(new PaletteResultsComputedAction(action.Query, ImmutableArray<PaletteResult>.Empty));
                 return;
             }
@@ -307,7 +328,7 @@ public sealed class CommandPaletteEffects : IDisposable {
         try {
             manifests = (scoringRegistry?.GetManifests() ?? []).ToList();
         }
-        catch (Exception ex) {
+        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
             _logger.LogWarning(
                 ex,
                 "{DiagnosticId}: Registry enumeration threw during palette scoring — dispatching empty result set.",
@@ -317,6 +338,9 @@ public sealed class CommandPaletteEffects : IDisposable {
         }
 
         foreach (DomainManifest manifest in manifests) {
+            // P5 (Pass-6): narrow the per-manifest catch so fatal exceptions (OOM, StackOverflow,
+            // ThreadAbort) propagate. Otherwise a real fatal becomes a LogWarning + the loop
+            // continues, masking serious issues as routine HFC2110 noise.
             try {
                 if (string.IsNullOrWhiteSpace(manifest.BoundedContext)) {
                     // Skip manifests with null/empty BoundedContext — BuildRoute would throw and any
@@ -359,7 +383,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                         IsInCurrentContext: inContext));
                 }
             }
-            catch (Exception ex) {
+            catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
                 _logger.LogWarning(
                     ex,
                     "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette scoring — skipping manifest, keeping other results.",
@@ -438,6 +462,14 @@ public sealed class CommandPaletteEffects : IDisposable {
 
         // D23 sentinel — refill instead of navigating.
         if (string.Equals(result.CommandTypeName, KeyboardShortcutsSentinel, StringComparison.Ordinal)) {
+            // P2 (Pass-6): IsOpen guard against double-activation race. If the palette already
+            // closed (rapid double-click + interleaved PaletteClosedAction), dispatching a fresh
+            // PaletteQueryChangedAction would be no-op'd by the reducer's IsOpen guard (P1)
+            // anyway, but bailing early avoids the dispatch round-trip.
+            if (!snapshot.IsOpen) {
+                return Task.CompletedTask;
+            }
+
             dispatcher.Dispatch(new PaletteQueryChangedAction(NewCorrelationId(), ShortcutsCanonicalQuery));
             return Task.CompletedTask;
         }
@@ -516,7 +548,17 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
         }
         else {
-            // Informational shortcut row — close anyway so the user lands back at the shell.
+            // P9 (Pass-6): targetUrl is null on either (a) informational shortcut row (already
+            // returned earlier in this method); (b) Command result with empty BoundedContext or
+            // CommandTypeName that fell through the switch's `when` clause. Differentiate the two
+            // so operators can diagnose unreachable-command cases. The shortcut path returned
+            // before reaching here, so this else branch is the unreachable-command case.
+            _logger.LogInformation(
+                "{DiagnosticId}: Palette command activation produced no target URL — Category={Category}, BoundedContext='{BoundedContext}', CommandTypeName='{CommandTypeName}'. Closing palette without navigation.",
+                FcDiagnosticIds.HFC2110_PaletteScoringFault,
+                result.Category,
+                result.BoundedContext ?? "<null>",
+                result.CommandTypeName ?? "<null>");
             SafeDispatchClose(dispatcher);
         }
 
@@ -542,20 +584,43 @@ public sealed class CommandPaletteEffects : IDisposable {
             return;
         }
 
+        // The reducer has already updated state.RecentRouteUrls — read the post-reduce snapshot
+        // BEFORE awaiting the persist gate so the snapshot reflects the action that triggered
+        // this effect. Without the synchronous read, two rapid activations could swap snapshots
+        // before either persist completes.
+        string[] payload = [.. _paletteState.Value.RecentRouteUrls];
+        string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
+
+        // P7 (Pass-6): serialise persist calls so an older payload cannot overwrite a newer one
+        // when storage I/O latency exceeds the inter-action interval. Snapshot is captured above;
+        // gate ensures FIFO ordering even if effects run concurrently across actions.
         try {
-            // The reducer has already updated state.RecentRouteUrls — read the post-reduce snapshot.
-            string[] payload = [.. _paletteState.Value.RecentRouteUrls];
-            string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
+            await _persistGate.WaitAsync().ConfigureAwait(false);
+        }
+        catch (ObjectDisposedException) {
+            // Effect ran after Dispose — semaphore is gone, nothing to do.
+            return;
+        }
+
+        try {
             await persistStorage.SetAsync(key, payload).ConfigureAwait(false);
         }
         catch (OperationCanceledException) {
             _logger.LogDebug("Palette recent-route persist cancelled — circuit disposing.");
         }
-        catch (Exception ex) {
+        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
             _logger.LogInformation(
                 ex,
                 "{DiagnosticId}: Palette recent-route persistence failed.",
                 FcDiagnosticIds.HFC2105_StoragePersistenceSkipped);
+        }
+        finally {
+            try {
+                _persistGate.Release();
+            }
+            catch (ObjectDisposedException) {
+                // Disposed mid-await — benign.
+            }
         }
     }
 
@@ -596,15 +661,24 @@ public sealed class CommandPaletteEffects : IDisposable {
         // against the freshly hydrated post-switch state, mixing cross-scope results.
         CancelInFlightQuery();
 
-        await HandleAppInitialized(new AppInitializedAction(NewCorrelationId()), dispatcher).ConfigureAwait(false);
+        // P34 (Pass-6 C2-D4): call the extracted hydrate helper directly instead of dispatching
+        // `AppInitializedAction` (which would broadcast to every app-init subscriber — theme,
+        // navigation, capability discovery, expanded-row state — far broader than the palette
+        // scope-change intent) or invoking the `HandleAppInitialized` effect by method (bypasses
+        // Fluxor's middleware/observer pipeline). The shared `HydrateRecentRoutesAsync` is the
+        // single source of truth for the hydrate path.
+        await HydrateRecentRoutesAsync(dispatcher).ConfigureAwait(false);
     }
 
     /// <summary>
     /// Canonicalises the user query through the D23 alias table. Public for unit testing.
     /// </summary>
     /// <param name="query">The raw user query.</param>
-    /// <returns><c>"shortcuts"</c> when the query is a known alias; otherwise the input unchanged.</returns>
+    /// <returns><c>"shortcuts"</c> when the query is a known alias or canonical; otherwise the input trimmed.</returns>
     public static string ResolveShortcutAliasQuery(string query) {
+        // P29 (Pass-6): single contract — return the canonical when matched, else return the raw
+        // input. The caller still trims; returning trimmed-when-matched + raw-when-not collapses
+        // the two-exit ambiguity that previously made readers wonder which branch trims.
         if (string.IsNullOrWhiteSpace(query)) {
             return query;
         }
@@ -616,9 +690,11 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
         }
 
-        return string.Equals(trimmed, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase)
-            ? ShortcutsCanonicalQuery
-            : query;
+        if (string.Equals(trimmed, ShortcutsCanonicalQuery, StringComparison.OrdinalIgnoreCase)) {
+            return ShortcutsCanonicalQuery;
+        }
+
+        return query;
     }
 
     private ImmutableArray<PaletteResult> BuildDefaultResults() {
@@ -627,9 +703,31 @@ public sealed class CommandPaletteEffects : IDisposable {
         AddRecentRoutes(builder);
 
         IFrontComposerRegistry? registry = Registry;
+        IReadOnlyList<DomainManifest> manifests;
         try {
-            int projectionCount = 0;
-            foreach (DomainManifest manifest in (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal)) {
+            manifests = (registry?.GetManifests() ?? []).OrderBy(static m => m.Name, StringComparer.Ordinal).ToList();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+            _logger.LogWarning(
+                ex,
+                "{DiagnosticId}: Registry enumeration failed during palette open — falling back to empty projection preview.",
+                FcDiagnosticIds.HFC2110_PaletteScoringFault);
+            return builder.ToImmutable();
+        }
+
+        // P4 (Pass-6): per-manifest try/catch so a single malformed manifest cannot blank the
+        // whole projections preview. Mirrors the pattern in HandlePaletteQueryChanged.
+        int projectionCount = 0;
+        foreach (DomainManifest manifest in manifests) {
+            if (projectionCount >= 20) {
+                break;
+            }
+
+            try {
+                if (string.IsNullOrWhiteSpace(manifest.BoundedContext)) {
+                    continue;
+                }
+
                 foreach (string projection in manifest.Projections.OrderBy(static p => p, StringComparer.Ordinal)) {
                     if (projectionCount >= 20) {
                         break;
@@ -638,17 +736,14 @@ public sealed class CommandPaletteEffects : IDisposable {
                     builder.Add(CreateProjectionResult(manifest, projection, 0, isInCurrentContext: false));
                     projectionCount++;
                 }
-
-                if (projectionCount >= 20) {
-                    break;
-                }
             }
-        }
-        catch (Exception ex) {
-            _logger.LogWarning(
-                ex,
-                "{DiagnosticId}: Registry enumeration failed during palette open — falling back to empty projection preview.",
-                FcDiagnosticIds.HFC2110_PaletteScoringFault);
+            catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+                _logger.LogWarning(
+                    ex,
+                    "{DiagnosticId}: Manifest '{BoundedContext}' threw during palette open preview — skipping manifest, keeping other projection rows.",
+                    FcDiagnosticIds.HFC2110_PaletteScoringFault,
+                    manifest.BoundedContext ?? "<unknown>");
+            }
         }
 
         return builder.ToImmutable();
@@ -705,6 +800,7 @@ public sealed class CommandPaletteEffects : IDisposable {
 
         _disposed = true;
         CancelInFlightQuery();
+        _persistGate.Dispose();
     }
 
     private CancellationTokenSource ReplaceQueryCts() {
@@ -718,6 +814,17 @@ public sealed class CommandPaletteEffects : IDisposable {
             }
 
             previous?.Dispose();
+            // P15 (Pass-6): when Dispose has run, return an already-cancelled CTS so the caller's
+            // `await Task.Delay(_, _, cts.Token)` throws `OperationCanceledException` and unwinds
+            // cleanly. Allocating a fresh active CTS post-dispose would leak (no consumer to dispose
+            // it; subsequent CancelInFlightQuery is gated by Dispose's `_disposed` flag).
+            if (_disposed) {
+                CancellationTokenSource cancelled = new();
+                cancelled.Cancel();
+                _queryCts = null;
+                return cancelled;
+            }
+
             CancellationTokenSource fresh = new();
             _queryCts = fresh;
             return fresh;
@@ -745,8 +852,26 @@ public sealed class CommandPaletteEffects : IDisposable {
 
     private bool TryResolveScope(out string tenantId, out string userId, string direction) {
         IUserContextAccessor? accessor = UserContextAccessor;
-        string? rawTenant = accessor?.TenantId;
-        string? rawUser = accessor?.UserId;
+        // P16 (Pass-6): accessor property getters may throw (claims principal disposed, JWT parse
+        // error in adopter implementation). Wrap reads so the fail-closed branch fires consistently
+        // with HFC2105 instead of bubbling an unhandled effect exception to Fluxor's pipeline.
+        string? rawTenant;
+        string? rawUser;
+        try {
+            rawTenant = accessor?.TenantId;
+            rawUser = accessor?.UserId;
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
+            _logger.LogInformation(
+                ex,
+                "{DiagnosticId}: Palette {Direction} skipped — IUserContextAccessor threw on TenantId/UserId access. Reason=AccessorThrew.",
+                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+                direction);
+            tenantId = string.Empty;
+            userId = string.Empty;
+            return false;
+        }
+
         if (string.IsNullOrWhiteSpace(rawTenant) || string.IsNullOrWhiteSpace(rawUser)) {
             _logger.LogInformation(
                 "{DiagnosticId}: Palette {Direction} skipped — null/empty/whitespace tenant or user context.",

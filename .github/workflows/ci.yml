@@ -102,19 +102,28 @@ jobs:
       # whole solution (all tests are Tier 1, no DAPR/Aspire tiers). EventStore runs 12 separate
       # per-project test commands because it has DAPR-dependent tiers.
       #
-      # Story 1.8 AC2 note: the `[Trait("Category", "Performance")]`-tagged benchmark tests
-      # (IncrementalRebuildBenchmarkTests) run *within* this same step. "Advisory mode" for
-      # benchmark regressions is satisfied by job-level `continue-on-error: true` (line 59) —
-      # a perf regression does not block the merge today. When Epic 2 removes the job-level
-      # advisory flag, split the perf tests into a dedicated step filtered by
-      # `--filter Category=Performance` with its own `continue-on-error: true` so benchmark
-      # flakes stay advisory while functional regressions become blocking.
-      - name: 'Gate 3: All Tests'
+      # Story 3-7 D6: Gate 3 is split into three lanes so Story 3-4 closure can gate on
+      # `e2e-palette` independently of latency/perf variance:
+      #   - Gate 3a (default):   excludes both Performance and e2e-palette traits.
+      #   - Gate 3b (palette):   `Category=e2e-palette` (Story 3-7 T1 — bUnit-level flow gate).
+      #   - Gate 3c (perf bench): `Category=Performance` (Story 1-8 + Story 3-7 T2 BDN bench).
+      # The job-level `continue-on-error: true` (line 59) keeps perf regressions advisory.
+      - name: 'Gate 3a: Unit + bUnit (default lane)'
         env:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
           # Without this env var, a snapshot mismatch launches a diff tool and hangs the CI runner.
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+
+      - name: 'Gate 3b: Palette E2E (e2e-palette lane)'
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results-e2e-palette.trx"
+
+      - name: 'Gate 3c: Performance bench (Performance lane)'
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Performance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-performance.trx"
 
       # Guard: fail fast if no tests ran (--no-build silently exits 0 with 0 tests).
       # Uses find + grep to handle both flat and per-project-GUID subdirectory layouts.

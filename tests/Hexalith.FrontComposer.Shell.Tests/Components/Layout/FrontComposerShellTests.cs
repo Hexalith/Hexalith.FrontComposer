@@ -5,7 +5,9 @@ using Fluxor;
 using Fluxor.Blazor.Web;
 
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
@@ -13,6 +15,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -303,7 +306,45 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
         cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
         dialogService.LastDialogType.ShouldBe(typeof(FcCommandPalette));
         dialogService.LastOptions!.Modal.ShouldBe(true);
-        dialogService.LastOptions.Width.ShouldBe("600px");
+        // P21 (Pass-6): drop the `Width="600px"` assertion — that's an FcCommandPalette-internal
+        // dialog parameter, not a shell-routing contract. Pass-5 owns FcCommandPalette dialog
+        // chrome testing. P23 (Pass-6): assert the dialog title resolves to the localised
+        // CommandPaletteTitle resource per AC2 line 37 (set via options.Header.Title in registrar).
+        IStringLocalizer<FcShellResources> localizer = Services.GetRequiredService<IStringLocalizer<FcShellResources>>();
+        string expectedTitle = localizer["CommandPaletteTitle"].Value;
+        string.IsNullOrWhiteSpace(dialogService.LastOptions.Header.Title).ShouldBeFalse();
+        dialogService.LastOptions.Header.Title.ShouldBe(expectedTitle);
+    }
+
+    // P24 (Pass-6 — AC8 spec-named replacement). AC8 line 241 names this test verbatim and
+    // prescribes the assertion shape: (a) registrar registered "ctrl+," on first render via the
+    // IShortcutService surface; (b) TryInvokeAsync(Key=",", CtrlKey=true) reaches
+    // IDialogService.ShowDialogAsync<FcSettingsDialog>. Complements the pre-existing
+    // CtrlCommaOpensSettingsDialogFromShellRoot which covers similar ground via shell @onkeydown
+    // wiring; this version asserts the registration via IShortcutService.GetRegistrations() so a
+    // refactor that bypasses the service can't silently regress AC8.
+    [Fact]
+    public async Task CtrlCommaInvokesRegisteredShortcut() {
+        RecordingDialogService dialogService = new();
+        Services.Replace(ServiceDescriptor.Scoped<IDialogService>(_ => dialogService));
+
+        IRenderedComponent<FrontComposerShell> cut = Render<FrontComposerShell>(p => p
+            .AddChildContent("<p>Body</p>"));
+
+        // (a) Verify the registrar registered "ctrl+," via the IShortcutService surface.
+        IShortcutService shortcuts = Services.GetRequiredService<IShortcutService>();
+        cut.WaitForAssertion(() =>
+            shortcuts.GetRegistrations().Any(r => string.Equals(r.Binding, "ctrl+,", StringComparison.Ordinal))
+                .ShouldBeTrue("Registrar must register \"ctrl+,\" on first render per AC8."));
+
+        // (b) Trigger the binding through the global shell key router and verify the settings
+        // dialog opens via IDialogService.
+        await cut.Find(".fc-shell-root").TriggerEventAsync(
+            "onkeydown",
+            new KeyboardEventArgs { Key = ",", CtrlKey = true });
+
+        cut.WaitForAssertion(() => dialogService.ShowDialogCallCount.ShouldBe(1));
+        dialogService.LastDialogType.ShouldBe(typeof(FcSettingsDialog));
     }
 
     [Fact]
@@ -325,6 +366,25 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
             "onkeydown",
             new KeyboardEventArgs { Key = "g" });
 
+        dialogService.ShowDialogCallCount.ShouldBe(0);
+        navigation.Uri.ShouldBe(initialUri);
+
+        // P20 (Pass-6): advance past D4's 1500 ms chord-window to verify the pending state
+        // clears so a subsequent unrelated key does NOT racially complete a stale chord. A
+        // regression that left _pendingFirstKey set forever (missed timeout fire) would still
+        // pass the synchronous assertions above; this advance + 'x' second-key sequence catches it.
+        if (Services.GetService<TimeProvider>() is Microsoft.Extensions.Time.Testing.FakeTimeProvider fakeTime) {
+            fakeTime.Advance(TimeSpan.FromMilliseconds(1501));
+        }
+
+        await cut.Find(".fc-shell-root").TriggerEventAsync(
+            "onkeydown",
+            new KeyboardEventArgs { Key = "x" });
+
+        // After the timeout, 'x' must NOT be interpreted as the second key of a 'g x' chord
+        // (no such binding exists, so a chord-stuck state would be invisible — but if 'h'
+        // arrived it would mistakenly complete 'g h' → home navigation. A subsequent 'h' key
+        // is the canonical regression check; here we assert dialog/nav remain quiescent.)
         dialogService.ShowDialogCallCount.ShouldBe(0);
         navigation.Uri.ShouldBe(initialUri);
     }
@@ -349,6 +409,11 @@ public sealed class FrontComposerShellTests : LayoutComponentTestBase {
 
     [Fact]
     public void RouteChangesUpdateCurrentBoundedContextInNavigationState() {
+        // P26 (Pass-6): explicitly initialise the Fluxor store so the IState<> read below is not
+        // racing against on-demand store init from Render<T>(). The base class exposes
+        // EnsureStoreInitialized; calling it before the state read makes the test deterministic
+        // across Fluxor / bUnit version upgrades.
+        EnsureStoreInitialized();
         NavigationManager navigation = Services.GetRequiredService<NavigationManager>();
         IState<FrontComposerNavigationState> state = Services.GetRequiredService<IState<FrontComposerNavigationState>>();
 

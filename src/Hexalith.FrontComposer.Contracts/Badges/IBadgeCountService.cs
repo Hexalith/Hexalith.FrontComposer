@@ -18,11 +18,28 @@ public interface IBadgeCountService
     /// <summary>
     /// Snapshot of actionable-item counts keyed by projection runtime type.
     /// </summary>
+    /// <remarks>
+    /// Implementations MUST return a thread-safe snapshot — either an immutable collection
+    /// (e.g., <see cref="System.Collections.Immutable.ImmutableDictionary{TKey, TValue}"/>) OR a
+    /// defensive copy created on each access. Returning a live reference to a mutable
+    /// <see cref="System.Collections.Generic.Dictionary{TKey, TValue}"/> mutated by the producer
+    /// is a contract violation: concurrent enumeration during mutation throws
+    /// <see cref="InvalidOperationException"/> and the palette badge resolution race-fails
+    /// mid-render. Snapshot semantics also remove the need for callers to hold any lock.
+    /// </remarks>
     IReadOnlyDictionary<Type, int> Counts { get; }
 
     /// <summary>
     /// Reactive stream of count changes — subscribe to refresh badges in real time.
     /// </summary>
+    /// <remarks>
+    /// Implementations MUST expose a HOT observable: late subscribers receive only future
+    /// changes, not a replay of history. Consumers that need the current snapshot read
+    /// <see cref="Counts"/> at subscription time and merge with subsequent
+    /// <see cref="BadgeCountChangedArgs"/> events. The observable MUST also tolerate subscriber
+    /// exceptions — implementations should not let one subscriber's <c>OnNext</c> throw kill the
+    /// stream for other subscribers.
+    /// </remarks>
     IObservable<BadgeCountChangedArgs> CountChanged { get; }
 
     /// <summary>

@@ -39,7 +39,9 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-25 (story 4-6 Pass-3 human re-pass via bmad-code-review COMPLETED. All 11 decision-needed resolved (Pass-2: 6 with option a; Pass-3 supplemental: DN1-c require companion / DN6-c verb collision accept / DN7-c arity accept / DN9-c role status drop / DN10-c Fluent refactor defer). 22 of 28 patches applied (P-1 DetailRecord branch, P-2/P-3 memoization+whitespace, P-4 exception filter, P-5 escapes, P-6 regex narrow, P-7 RenderContext init, P-8 FR resx, P-9 leak guard, P-10/P-12/P-13/P-19/P-21/P-23/P-24 resolver cluster, P-15 culture try/finally, P-17 newline, P-18 ctor throw, P-26 AddAuthorizationCore, P-27 require companion, P-28 drop role=status, P-29 remove dead keys). Skipped/Story-4-7 (14 candidates): P-9 sort attrs, P-11 per-row aria-controls, P-14 CSS rename, P-16 AC3 routing test, P-22 KebabCase test, P-30 P-18 ctor-throw test (contract enforced). All 1,523 tests pass (Contracts 76, Shell 966+2-skipped, SourceTools 481). Status: done. Story 5-2 prior pass also complete.)"
+last_updated: "2026-04-25 (story 3-7 closure ceremony executed via bmad-dev-story. Story 3-7 ships AC1–AC6 as the bUnit `[Trait('Category','e2e-palette')]` palette-flow suite (4 tests in tests/Hexalith.FrontComposer.Shell.Tests/EndToEnd/CommandPaletteE2ETests.cs driving reducers + effects against a captured FrontComposerCommandPaletteState via custom IDispatcher harness — debounce determinism via FakeTimeProvider) + the `[Trait('Category','Performance')]` BDN bench in new tests/Hexalith.FrontComposer.Shell.Tests.Bench project (PaletteScorerBench [Params]=cou/view/olv/zzz × 1 000-candidate synthetic registry; PaletteScorerBenchAdapter asserts AC5/D4 < 200 μs/candidate guardrail via InProcess ShortRunJob). CI workflow Gate 3 split into three lanes (3a default / 3b e2e-palette / 3c Performance) per Story 3-7 D6 so Story 3-4 closure is independent of Story 1-8 latency variance. Microsoft.Playwright NuGet NOT added (Story 3-7 D2 — bUnit covers CI gate; live Aspire MCP + Chrome DevTools MCP captures browser validation in 3-4 dev-agent-record Pass-7). Story 3-7 surfaces G37-5 (AC3 spec/code mismatch — production HandlePaletteQueryChanged shortcut-alias branch hard-codes RouteUrl=null; spec expected g h to render RouteUrl=/ ; documented as Story 3-4 follow-up, NOT a regression). G23 closed in 3-4 known-gaps. Story 3-4 flipped review → done. Story 3-7 transitions to review per bmad-dev-story Step 9. Solution test suite: 1 534 passed / 0 failed / 2 skipped (the 2 skips remain Story 1-8 Playwright RED-phase). Epic 3 wholly done — epic-3-retrospective: optional trigger surfaces here.)"
+# previous: 2026-04-25 (story 3-4 Pass-6 / Chunk 2 review via bmad-code-review COMPLETED. 5 decision-needed resolved (C2-D1 unregisterShellKeyFilter pair / C2-D2 Mac Cmd+K preventDefault / C2-D3 fail-closed scope reset / C2-D4 extract LoadAndDispatchHydrateAsync / C2-D5 ratify Score=1000 via D32 addendum). 35 patches applied: 3 doc + 4 reducer + 12 effect + 1 shell + 1 JS + 2 contracts + 10 tests. All 1,529 tests pass (Contracts 76, Shell 972+2-skipped, SourceTools 481). dotnet build --warnaserror clean. Status: review (DN3 from Pass-3 user-gated — Playwright palette E2E + PaletteScorerBench BenchmarkDotNet remain blocking close).)
+# previous: 2026-04-25 (story 4-6 Pass-3 human re-pass via bmad-code-review COMPLETED. All 11 decision-needed resolved (Pass-2: 6 with option a; Pass-3 supplemental: DN1-c require companion / DN6-c verb collision accept / DN7-c arity accept / DN9-c role status drop / DN10-c Fluent refactor defer). 22 of 28 patches applied. All 1,523 tests pass. Status: done. Story 5-2 prior pass also complete.)
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -73,9 +75,10 @@ development_status:
   3-1-shell-layout-theme-and-typography: done
   3-2-sidebar-navigation-and-responsive-behavior: done
   3-3-display-density-and-user-settings: done
-  3-4-fccommandpalette-and-keyboard-shortcuts: review
+  3-4-fccommandpalette-and-keyboard-shortcuts: done
   3-5-home-directory-badge-counts-and-new-capability-discovery: done
   3-6-session-persistence-and-context-restoration: done
+  3-7-command-palette-e2e-and-scorer-bench: review
   epic-3-retrospective: optional
 
   # Epic 4: Rich DataGrid & Projection Interaction

@@ -1,5 +1,17 @@
 # Deferred Work
 
+## Deferred from: code review of 3-4-fccommandpalette-and-keyboard-shortcuts — Pass 6 / Chunk 2 (2026-04-25 bmad-code-review)
+
+- **`registerPaletteKeyFilter` ArrowUp/Down preventDefault breaks caret navigation in long search-input queries** [`src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-keyboard.js:registerPaletteKeyFilter`] — UX papercut for queries longer than visible width; v1.x polish, current behavior matches WAI-ARIA combobox patterns.
+- **`HandlePaletteResultActivated` informational-shortcut early-return gives no UX feedback** [`src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs:HandlePaletteResultActivated`] — User presses Enter on `Shortcut + RouteUrl=null` row, nothing happens visibly. v1.x polish (aria-live or row-flash).
+- **`HandlePaletteQueryChanged` debounce wastes CPU on cancelled queries** [`CommandPaletteEffects.cs:HandlePaletteQueryChanged`] — Stale-query reducer guard defends correctness; wasted cycles are perf only. Acceptable per D9.
+- **Recent-route scoring uses raw URL not human label — long URLs dominate substring matches** [`CommandPaletteEffects.cs` recent-route scoring branch] — Affects perceived ranking quality; v2 with persisted human labels alongside URLs in the ring buffer.
+- **`_shortcutAliases` array has no FR-locale aliases (`aide`, `clés`, etc.)** [`CommandPaletteEffects.cs:_shortcutAliases`] — French users discover help only via `?` (universal). Spec scope line 36 covers the v1 ASCII alias set; v2 i18n rolodex.
+- **`PaletteResultsComputedAction.Results` Query field invariant fragile under future canonicalisation** [`CommandPaletteActions.cs`] — Reducer's stale-query guard requires `state.Query == action.Query`; doc-only tightening for v1.x.
+- **`LayoutComponentTestBase` JS module setup matcher cosmetic (`_ => true` for no-arg shape)** [`tests/.../LayoutComponentTestBase.cs:~57`] — Misleading but functionally correct.
+- **`OnAfterRenderAsync` `RegisterLocationTracking` precedes `SyncCurrentBoundedContext` — race in CSR-prerender hand-off window** [`FrontComposerShell.razor.cs:OnAfterRenderAsync`] — Both fire and race to dispatch. Action is idempotent in payload; observable only in narrow timing windows. Pre-existing.
+- **`registerShellKeyFilter` early-return on `__fcShellKeyFilter` marker after circuit reconnect — sub-finding of C2-D1** [`fc-keyboard.js:registerShellKeyFilter`] — Resolution depends on C2-D1; current behavior acceptable because the orphaned handler runs equivalent logic.
+
 ## Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types — Pass 3 (2026-04-25 bmad-code-review)
 
 - **`EmptyStateCtaResolver` reflection on attributes not trim/AOT annotated** [`src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs:38-42, 151-155`] — `GetCustomAttributes(typeof(ProjectionEmptyStateCtaAttribute), false)` and `GetCustomAttributes(typeof(BoundedContextAttribute), false)` on user types without `[DynamicallyAccessedMembers]`/`[RequiresUnreferencedCode]`. Empty-state CTA may silently disappear under `dotnet publish -p:PublishTrimmed=true`. Story 4-7 trim-safe alternative (registry-companion + source-generator-emitted manifest).

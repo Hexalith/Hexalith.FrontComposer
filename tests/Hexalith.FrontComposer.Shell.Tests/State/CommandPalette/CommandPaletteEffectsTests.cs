@@ -12,6 +12,7 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Routing;
 using Hexalith.FrontComposer.Shell.Shortcuts;
+using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
@@ -85,9 +86,15 @@ public class CommandPaletteEffectsTests
         time.Advance(TimeSpan.FromMilliseconds(150));
         await pending;
 
+        // P25 (Pass-6): assert presence-by-binding and use >= rather than == so a future change
+        // that auto-registers shell defaults inside ShortcutService's ctor doesn't silently
+        // invalidate the assertion. The shortcuts-bypass branch must surface ALL registrations as
+        // Shortcut-category results.
         dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
-            a.Results.Length == 2
-            && a.Results.All(r => r.Category == PaletteResultCategory.Shortcut)));
+            a.Results.Length >= 2
+            && a.Results.All(r => r.Category == PaletteResultCategory.Shortcut)
+            && a.Results.Any(r => r.DescriptionKey == "PaletteShortcutDescription")
+            && a.Results.Any(r => r.DescriptionKey == "HomeShortcutDescription")));
     }
 
     [Theory]
@@ -159,8 +166,17 @@ public class CommandPaletteEffectsTests
 
         await sut.HandlePaletteOpened(new PaletteOpenedAction("c1"), dispatcher);
 
+        // P22 (Pass-6): assert the full record shape per AC6 / D23 / D32. The earlier predicate
+        // only checked CommandTypeName; a silent shape regression (wrong category, missing
+        // description key, mistyped score) would have slipped through.
         dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
-            a.Results.Any(r => r.CommandTypeName == CommandPaletteEffects.KeyboardShortcutsSentinel)));
+            a.Results.Any(r =>
+                r.CommandTypeName == CommandPaletteEffects.KeyboardShortcutsSentinel
+                && r.Category == PaletteResultCategory.Command
+                && r.BoundedContext == string.Empty
+                && r.RouteUrl == null
+                && r.Score == 1000
+                && r.DescriptionKey == "KeyboardShortcutsCommandDescription")));
     }
 
     [Fact]
@@ -172,6 +188,45 @@ public class CommandPaletteEffectsTests
         await sut.HandlePaletteHydrated(new PaletteHydratedAction(["/x"]), dispatcher);
 
         await storage.DidNotReceiveWithAnyArgs().SetAsync<string[]>(default!, default!);
+    }
+
+    // P27 (Pass-6): D10 hydrate-time route safety filter — `HandleAppInitialized` filters
+    // tampered URLs through `CommandRouteBuilder.IsInternalRoute` BEFORE dispatching
+    // `PaletteHydratedAction`, and the dispatched payload contains only the surviving (safe)
+    // entries. This regression-guards the rejected-count logging path AND the filter contract
+    // itself; previously no chunk-2 test exercised it.
+    [Theory]
+    [InlineData("//evil.example/pwn")]                  // protocol-relative URL
+    [InlineData("https://attacker.example/")]           // explicit external scheme
+    [InlineData("javascript:alert(1)")]                 // javascript scheme
+    public async Task HandleAppInitialized_FiltersTamperedUrls_BeforeDispatchingHydrate(string tampered)
+    {
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider sp);
+        IStorageService storage = sp.GetRequiredService<IStorageService>();
+        storage.GetAsync<string[]>(Arg.Any<string>()).Returns(["/safe/route", tampered]);
+
+        await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
+
+        // The hydrate dispatch (if any) must NOT include the tampered URL — only the safe entry survives.
+        dispatcher.Received().Dispatch(Arg.Is<PaletteHydratedAction>(a =>
+            !a.RecentRouteUrls.Contains(tampered)
+            && a.RecentRouteUrls.Contains("/safe/route")));
+    }
+
+    [Fact]
+    public async Task HandleAppInitialized_AllTamperedUrls_DispatchesNoHydrateAction()
+    {
+        // When 100 % of the stored payload fails the IsInternalRoute filter, no PaletteHydratedAction
+        // dispatches at all — the reducer would have nothing to assign, and `PaletteHydratedCompletedAction`
+        // closes the hydration state.
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out IServiceProvider sp);
+        IStorageService storage = sp.GetRequiredService<IStorageService>();
+        storage.GetAsync<string[]>(Arg.Any<string>()).Returns(["//evil/x", "javascript:alert(1)"]);
+
+        await sut.HandleAppInitialized(new AppInitializedAction("c1"), dispatcher);
+
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteHydratedAction>());
+        dispatcher.Received().Dispatch(Arg.Any<PaletteHydratedCompletedAction>());
     }
 
     [Fact]
@@ -207,6 +262,23 @@ public class CommandPaletteEffectsTests
         await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
 
         dispatcher.DidNotReceive().Dispatch(Arg.Any<PaletteClosedAction>());
+        dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
+    }
+
+    // P28 (Pass-6): Shortcut-category row with a non-empty RouteUrl (e.g., `g h → "/"`) must
+    // navigate, close the palette, AND NOT record a Recent-route entry per AC6 / D11. The
+    // pre-existing InformationalShortcut test only covered the RouteUrl=null path; this test
+    // covers the with-route path so the `result.Category != Shortcut` recent-route guard cannot
+    // silently regress.
+    [Fact]
+    public async Task HandlePaletteResultActivated_ShortcutRowWithRouteUrl_NavigatesAndClosesAndDoesNotPersistRecent()
+    {
+        CommandPaletteEffects sut = BuildEffects(out _, out IDispatcher dispatcher, out _,
+            paletteResults: [new PaletteResult(PaletteResultCategory.Shortcut, "g h", "", "/", null, 0, false, null, "HomeShortcutDescription")]);
+
+        await sut.HandlePaletteResultActivated(new PaletteResultActivatedAction(0), dispatcher);
+
+        dispatcher.Received(1).Dispatch(Arg.Any<PaletteClosedAction>());
         dispatcher.DidNotReceive().Dispatch(Arg.Any<RecentRouteVisitedAction>());
     }
 

@@ -18,6 +18,25 @@ function isEditableElement(element) {
     );
 }
 
+// P17 (Pass-6): walk event.composedPath() to detect editable elements inside shadow DOM.
+// Shadow DOM retargets event.target to the shadow host, so a third-party web-component editor
+// wrapping its <input> in a shadow root would bypass plain isEditableElement(event.target).
+// Used by registerShellKeyFilter for the bare-letter chord-prefix guard.
+function isEditableInComposedPath(event) {
+    if (typeof event.composedPath !== "function") {
+        return isEditableElement(event.target);
+    }
+
+    const path = event.composedPath();
+    for (const node of path) {
+        if (node instanceof HTMLElement && isEditableElement(node)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function registerFilter(element, marker, predicate) {
     if (!element || element[marker]) {
         return;
@@ -71,11 +90,12 @@ export function registerShellKeyFilter(element) {
 
         // Bare-letter keys targeting an editable element must NEVER reach the Blazor global
         // router — stopPropagation avoids the circuit round-trip previously paid by
-        // IsEditableElementActiveAsync (DN3).
+        // IsEditableElementActiveAsync (DN3). P17 (Pass-6): walk composedPath() so shadow-DOM
+        // hosts (third-party web-component editors) don't escape the guard.
         if (
             !hasModifier &&
             key.length === 1 &&
-            isEditableElement(event.target)
+            isEditableInComposedPath(event)
         ) {
             event.stopPropagation();
         }

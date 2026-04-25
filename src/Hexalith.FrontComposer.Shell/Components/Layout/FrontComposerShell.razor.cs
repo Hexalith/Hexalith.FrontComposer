@@ -81,6 +81,7 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private DotNetObjectReference<FrontComposerShell>? _selfRef;
     private bool _themeBootstrapped;
     private bool _locationTrackingRegistered;
+    private readonly object _locationTrackingSync = new();
     private bool _sessionRestoreAttempted;
     private string? _initialRenderUri;
     private ElementReference _shellRoot;
@@ -342,10 +343,11 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
 
     /// <inheritdoc />
     public new async ValueTask DisposeAsync() {
-        if (_locationTrackingRegistered) {
-            NavigationManager.LocationChanged -= HandleLocationChanged;
-            _locationTrackingRegistered = false;
-        }
+        // P14 (Pass-6): serialize the field write + event -= against HandleLocationChanged's
+        // exception-recovery path. Both paths write _locationTrackingRegistered and detach the
+        // handler; without the lock a racing call could observe true → both call -= (idempotent
+        // but fragile) → leave the field in a transient inconsistent state.
+        DetachLocationTracking();
 
         if (_beforeUnloadSubscription is not null && _beforeUnloadModule is not null) {
             try {
@@ -452,12 +454,25 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     }
 
     private void RegisterLocationTracking() {
-        if (_locationTrackingRegistered) {
-            return;
-        }
+        lock (_locationTrackingSync) {
+            if (_locationTrackingRegistered) {
+                return;
+            }
 
-        _locationTrackingRegistered = true;
-        NavigationManager.LocationChanged += HandleLocationChanged;
+            _locationTrackingRegistered = true;
+            NavigationManager.LocationChanged += HandleLocationChanged;
+        }
+    }
+
+    private void DetachLocationTracking() {
+        lock (_locationTrackingSync) {
+            if (!_locationTrackingRegistered) {
+                return;
+            }
+
+            _locationTrackingRegistered = false;
+            NavigationManager.LocationChanged -= HandleLocationChanged;
+        }
     }
 
     private void HandleLocationChanged(object? sender, LocationChangedEventArgs e) {
@@ -469,10 +484,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
             // before DisposeAsync runs. Some Fluxor versions throw InvalidOperationException once
             // the store is disposed; others throw ObjectDisposedException. Detach the handler
             // defensively so future LocationChanged events do not re-enter a disposed scope.
-            if (_locationTrackingRegistered) {
-                _locationTrackingRegistered = false;
-                NavigationManager.LocationChanged -= HandleLocationChanged;
-            }
+            // Lock-protected detach (P14) prevents a racing DisposeAsync from leaving the field
+            // in a transient inconsistent state.
+            DetachLocationTracking();
         }
     }
 

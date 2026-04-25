@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <!-- Story 3-7 D3 — separate BDN project keeps the heavy BDN dependency tree out of the
+         default-lane Shell.Tests cold-start. Matches Story 1-8 precedent. -->
+    <OutputType>Exe</OutputType>
+    <!-- BenchmarkDotNet emits its own warnings about RyuJIT/Release/etc. that we surface
+         as informational rather than promoting to errors here. The default-lane projects
+         still build with -warnaserror. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
+    <PackageReference Include="BenchmarkDotNet" />
+    <PackageReference Include="xunit.v3" />
+    <PackageReference Include="xunit.v3.assert" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Shouldly" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+  </ItemGroup>
+</Project>
