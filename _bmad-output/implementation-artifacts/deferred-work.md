@@ -350,3 +350,7 @@ These two defects sit in the Counter-sample lifecycle wiring — the generated e
 - **`FcFilterEmptyState` does not guard against `TotalCount < 0`** — Contract-impossible in production, but an explicit `ArgumentOutOfRangeException` at the component boundary would catch buggy callers. Low priority; add alongside any future component-hardening pass.
 - **`FrontComposerShortcutRegistrar` slash handler does not wrap `DataGridFocusScope.IsFocusWithinDataGridAsync` in try/catch** — A JS-interop failure (disconnected circuit, disposed module) bubbles unhandled out of the shortcut pump. Defensive `try/catch` returning `false` would align with other shortcut handlers.
 - **`FcStatusFilterChips.HumanizeSlotName` returns raw `slot.ToString()`** — "InProgress" renders literally instead of "In progress" / "En cours". Already in the story's Known Gaps; logging here so the review record matches the gap ledger.
+
+## Deferred from: code review of 5-3-signalr-connection-and-disconnection-handling (2026-04-26)
+
+- **Information-level logging on every projection-connection-state transition floods telemetry on flapping connections** — A 30s SignalR reconnect cycle writes 3+ lines per cycle plus one `RejoinFailed` per active group. Rate-limiting / sampling / structured trace correlation belongs to Story 5-6 build-time infrastructure enforcement and observability. Source: `ProjectionConnectionState.cs:100-104` (`ProjectionConnectionStateService.Apply` log call).

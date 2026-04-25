@@ -261,8 +261,11 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             return;
         }
 
-        _projectionConnectionSnapshot = snapshot;
+        // P10 — capture the snapshot inside the InvokeAsync lambda so the renderer thread sees
+        // a coherent value through the dispatcher's serialization barrier instead of a non-volatile
+        // field write from the SignalR/state-service call chain.
         _ = InvokeAsync(() => {
+            _projectionConnectionSnapshot = snapshot;
             if (_state.Current is CommandLifecycleState.Syncing) {
                 LifecycleTimerPhase phase = _timer?.CurrentPhase ?? _state.TimerPhase;
                 _state = _state with { TimerPhase = phase };

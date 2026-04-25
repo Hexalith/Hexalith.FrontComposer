@@ -10,6 +10,7 @@ namespace Hexalith.FrontComposer.Shell.Components.EventStore;
 public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
     private IDisposable? _subscription;
     private ITimer? _clearTimer;
+    private long _clearTimerGeneration;
     private ProjectionConnectionSnapshot _snapshot = new(
         ProjectionConnectionStatus.Connected,
         DateTimeOffset.MinValue,
@@ -37,11 +38,19 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
         }
 
         _ = InvokeAsync(() => {
+            if (_disposed != 0) {
+                return;
+            }
+
             bool wasUnavailable = _snapshot.IsDisconnected;
             _snapshot = snapshot;
             CancelClearTimer();
             _showReconnected = wasUnavailable && snapshot.Status is ProjectionConnectionStatus.Connected;
             if (_showReconnected) {
+                // P8 — capture the generation that owns this timer. The timer callback only
+                // mutates state when the generation it captured still matches the current
+                // generation; stale callbacks from prior reconnect cycles are no-ops.
+                long generation = Interlocked.Increment(ref _clearTimerGeneration);
                 _clearTimer = Time.CreateTimer(
                     _ => {
                         if (_disposed != 0) {
@@ -49,6 +58,10 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
                         }
 
                         _ = InvokeAsync(() => {
+                            if (_disposed != 0 || Interlocked.Read(ref _clearTimerGeneration) != generation) {
+                                return;
+                            }
+
                             _showReconnected = false;
                             StateHasChanged();
                         });
@@ -63,6 +76,9 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
     }
 
     private void CancelClearTimer() {
+        // Bumping the generation invalidates any in-flight callback from the previous timer
+        // before disposing it.
+        _ = Interlocked.Increment(ref _clearTimerGeneration);
         ITimer? timer = Interlocked.Exchange(ref _clearTimer, null);
         timer?.Dispose();
     }

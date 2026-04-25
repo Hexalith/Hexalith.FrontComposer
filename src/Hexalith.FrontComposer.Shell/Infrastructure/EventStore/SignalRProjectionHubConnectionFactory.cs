@@ -1,8 +1,13 @@
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
-internal sealed class SignalRProjectionHubConnectionFactory : IProjectionHubConnectionFactory {
+internal sealed class SignalRProjectionHubConnectionFactory(
+    ILogger<SignalRProjectionHubConnectionFactory>? logger = null) : IProjectionHubConnectionFactory {
+    private readonly ILogger _logger = (ILogger?)logger ?? NullLogger.Instance;
+
     public IProjectionHubConnection Create(Uri hubUri, Func<CancellationToken, ValueTask<string?>>? accessTokenProvider) {
         HubConnectionBuilder builder = new();
         _ = builder.WithUrl(hubUri, options => {
@@ -11,16 +16,18 @@ internal sealed class SignalRProjectionHubConnectionFactory : IProjectionHubConn
             }
         });
         _ = builder.WithAutomaticReconnect();
-        return new SignalRProjectionHubConnection(builder.Build());
+        return new SignalRProjectionHubConnection(builder.Build(), _logger);
     }
 
     private sealed class SignalRProjectionHubConnection : IProjectionHubConnection {
         private readonly HubConnection _connection;
+        private readonly ILogger _logger;
         private readonly object _sync = new();
         private readonly List<Func<ProjectionHubConnectionStateChanged, Task>> _stateHandlers = [];
 
-        public SignalRProjectionHubConnection(HubConnection connection) {
+        public SignalRProjectionHubConnection(HubConnection connection, ILogger logger) {
             _connection = connection;
+            _logger = logger;
             _connection.Reconnecting += exception => PublishAsync(new ProjectionHubConnectionStateChanged(
                 ProjectionHubConnectionState.Reconnecting,
                 exception));
@@ -73,8 +80,20 @@ internal sealed class SignalRProjectionHubConnectionFactory : IProjectionHubConn
                 handlers = [.. _stateHandlers];
             }
 
+            // P7 — isolate per-handler failures so a buggy subscriber does not skip the rest of
+            // the handler chain or escalate up the SignalR dispatcher (Closed-event delegate
+            // throws otherwise become AppDomain unhandled exceptions). Logged with redacted
+            // exception type only — no payload/tenant data.
             foreach (Func<ProjectionHubConnectionStateChanged, Task> handler in handlers) {
-                await handler(change).ConfigureAwait(false);
+                try {
+                    await handler(change).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                    _logger.LogWarning(
+                        "EventStore projection hub state subscriber threw. State={State}, FailureCategory={FailureCategory}",
+                        change.State,
+                        ex.GetType().Name);
+                }
             }
         }
 

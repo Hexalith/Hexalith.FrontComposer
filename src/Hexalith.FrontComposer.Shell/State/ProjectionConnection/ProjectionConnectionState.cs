@@ -65,14 +65,16 @@ public sealed class ProjectionConnectionStateService(
     /// <inheritdoc />
     public IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true) {
         ArgumentNullException.ThrowIfNull(handler);
-        ProjectionConnectionSnapshot snapshot;
+
+        // P14 — invoke replay under the lock so a concurrent Apply that runs between
+        // add-to-handlers and replay cannot deliver fresh-then-stale ordering. The lock is
+        // re-entrant by virtue of running on the same thread; subscribers must not call back
+        // into Apply/Subscribe inside their replay handler.
         lock (_sync) {
             _handlers.Add(handler);
-            snapshot = _current;
-        }
-
-        if (replay) {
-            handler(snapshot);
+            if (replay) {
+                InvokeSafe(handler, _current);
+            }
         }
 
         return new Subscription(this, handler);
@@ -81,15 +83,30 @@ public sealed class ProjectionConnectionStateService(
     /// <inheritdoc />
     public void Apply(ProjectionConnectionTransition transition) {
         ArgumentNullException.ThrowIfNull(transition);
-        ProjectionConnectionSnapshot snapshot = new(
-            transition.Status,
-            timeProvider.GetUtcNow(),
-            Math.Max(0, transition.ReconnectAttempt),
-            BoundCategory(transition.FailureCategory));
 
         Action<ProjectionConnectionSnapshot>[] handlers;
+        ProjectionConnectionSnapshot snapshot;
         lock (_sync) {
-            if (_current == snapshot) {
+            // P6 — accumulate ReconnectAttempt across consecutive Reconnecting transitions.
+            // The transition's ReconnectAttempt is used as a lower bound so first-attempt
+            // callers can pass 1; subsequent Reconnecting events without Connected in between
+            // increment from the current value.
+            int attempt = transition.Status switch {
+                ProjectionConnectionStatus.Connected => 0,
+                ProjectionConnectionStatus.Reconnecting when _current.Status is ProjectionConnectionStatus.Reconnecting
+                    => Math.Max(_current.ReconnectAttempt + 1, Math.Max(1, transition.ReconnectAttempt)),
+                _ => Math.Max(0, transition.ReconnectAttempt),
+            };
+
+            snapshot = new ProjectionConnectionSnapshot(
+                transition.Status,
+                timeProvider.GetUtcNow(),
+                attempt,
+                BoundCategory(transition.FailureCategory));
+
+            // P9 — short-circuit when no logical change occurred (status / attempt / category).
+            // Excludes LastTransitionAt because it always differs and would defeat the dedupe.
+            if (IsSameLogicalState(_current, snapshot)) {
                 return;
             }
 
@@ -103,8 +120,27 @@ public sealed class ProjectionConnectionStateService(
             snapshot.ReconnectAttempt,
             snapshot.LastFailureCategory ?? "none");
 
+        // P7 — wrap handler invocations: a single throwing subscriber must not skip the rest
+        // of the chain or escalate up the SignalR dispatcher. Failures are logged at warning
+        // with the redacted exception type only (no payload/tenant data).
         foreach (Action<ProjectionConnectionSnapshot> handler in handlers) {
+            InvokeSafe(handler, snapshot);
+        }
+    }
+
+    private static bool IsSameLogicalState(ProjectionConnectionSnapshot a, ProjectionConnectionSnapshot b)
+        => a.Status == b.Status
+            && a.ReconnectAttempt == b.ReconnectAttempt
+            && string.Equals(a.LastFailureCategory, b.LastFailureCategory, StringComparison.Ordinal);
+
+    private void InvokeSafe(Action<ProjectionConnectionSnapshot> handler, ProjectionConnectionSnapshot snapshot) {
+        try {
             handler(snapshot);
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException) {
+            logger.LogWarning(
+                "Projection connection state subscriber threw. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
         }
     }
 

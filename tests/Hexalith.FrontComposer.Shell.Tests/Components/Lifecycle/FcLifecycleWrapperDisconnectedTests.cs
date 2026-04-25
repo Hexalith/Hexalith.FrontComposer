@@ -38,4 +38,24 @@ public sealed class FcLifecycleWrapperDisconnectedTests : LifecycleWrapperTestBa
             cut.Markup.ShouldNotContain("Connection lost -- unable to confirm sync status");
         });
     }
+
+    [Fact]
+    public void DisconnectedSyncing_DoesNotAutoConfirm_OnReconnect() {
+        // P16 / T6: a Syncing lifecycle escalated to ActionPrompt by disconnect must NOT
+        // transition to Confirmed when the projection hub reconnects. Reconnection alone is
+        // not evidence the command succeeded — Story 5-5 owns idempotent terminal reconciliation.
+        (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, _) = RenderWrapperWithFakeTime();
+        IProjectionConnectionState state = Services.GetRequiredService<IProjectionConnectionState>();
+
+        push(TransitionAt(CommandLifecycleState.Acknowledged, CommandLifecycleState.Syncing, FakeTime.GetUtcNow()));
+        state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, "Closed"));
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Connection lost -- unable to confirm sync status"));
+
+        state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("Submission confirmed");
+        });
+    }
 }

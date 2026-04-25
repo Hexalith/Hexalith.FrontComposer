@@ -42,8 +42,8 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             }).ToMonitor(),
             NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
 
-        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
-        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:CustomersProjection", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:CustomersProjection", "CustomersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
 
         int refreshed = await sut.TriggerFallbackOnceAsync(TestContext.Current.CancellationToken);
 
@@ -72,7 +72,7 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             loader,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { ProjectionFallbackPollingIntervalSeconds = 0 }).ToMonitor(),
             NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
-        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
 
         int refreshed = await sut.TriggerFallbackOnceAsync(TestContext.Current.CancellationToken);
 
@@ -104,9 +104,9 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             loader,
             Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
             NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
-        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null, "acme"));
-        _ = sut.RegisterLane(new ProjectionFallbackLane("other:OrdersProjection", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null, "other"));
-        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:CustomersProjection", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null, "acme"));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("other:OrdersProjection", "OrdersProjection", "other", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:CustomersProjection", "CustomersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
 
         int refreshed = await sut.TriggerNudgeRefreshAsync("OrdersProjection", "acme", TestContext.Current.CancellationToken);
 

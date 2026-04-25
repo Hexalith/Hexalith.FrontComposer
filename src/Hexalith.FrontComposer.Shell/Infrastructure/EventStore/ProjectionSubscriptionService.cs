@@ -17,9 +17,11 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly IProjectionChangeNotifier _notifier;
     private readonly ILogger<ProjectionSubscriptionService> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly ConcurrentDictionary<GroupKey, byte> _activeGroups = new();
+    private readonly ConcurrentDictionary<GroupKey, GroupHealth> _activeGroups = new();
     private readonly IDisposable _projectionChangedRegistration;
     private readonly IDisposable _connectionStateRegistration;
+    private readonly CancellationTokenSource _disposalCts = new();
+    private readonly ProjectionFallbackPollingDriver? _fallbackDriver;
     private bool _disposed;
 
     public ProjectionSubscriptionService(
@@ -28,7 +30,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         IProjectionConnectionState connectionState,
         IProjectionFallbackRefreshScheduler refreshScheduler,
         IProjectionChangeNotifier notifier,
-        ILogger<ProjectionSubscriptionService> logger) {
+        ILogger<ProjectionSubscriptionService> logger,
+        ProjectionFallbackPollingDriver? fallbackDriver = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -39,11 +42,16 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _refreshScheduler = refreshScheduler;
         _notifier = notifier;
         _logger = logger;
+        _fallbackDriver = fallbackDriver;
         EventStoreOptions current = options.Value;
         Uri hubUri = BuildHubUri(current.BaseAddress ?? throw new InvalidOperationException("EventStore BaseAddress is required."), current.ProjectionChangesHubPath);
         _connection = connectionFactory.Create(hubUri, current.AccessTokenProvider);
         _projectionChangedRegistration = _connection.OnProjectionChanged(OnProjectionChangedAsync);
         _connectionStateRegistration = _connection.OnConnectionStateChanged(OnConnectionStateChangedAsync);
+        // DN1 — wire the bounded fallback polling driver. The driver subscribes to connection
+        // state and only runs while disconnected; injection is optional so test harnesses without
+        // a driver still construct cleanly.
+        _fallbackDriver?.Start();
     }
 
     public async Task SubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
@@ -68,7 +76,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             }
 
             await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
-            _ = _activeGroups.TryAdd(key, 0);
+            _ = _activeGroups.TryAdd(key, GroupHealth.Active);
         }
         finally {
             _ = _gate.Release();
@@ -92,6 +100,15 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     }
 
     public async ValueTask DisposeAsync() {
+        // Signal disposal to background rejoin/nudge tasks before taking the gate so they can
+        // observe cancellation while we wait for the gate.
+        try {
+            _disposalCts.Cancel();
+        }
+        catch (ObjectDisposedException) {
+            // Already disposed; nothing to do.
+        }
+
         await _gate.WaitAsync().ConfigureAwait(false);
         try {
             if (_disposed) {
@@ -102,14 +119,19 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             _activeGroups.Clear();
             _projectionChangedRegistration.Dispose();
             _connectionStateRegistration.Dispose();
+            if (_fallbackDriver is not null) {
+                await _fallbackDriver.DisposeAsync().ConfigureAwait(false);
+            }
+
             await _connection.StopAsync(CancellationToken.None).ConfigureAwait(false);
             await _connection.DisposeAsync().ConfigureAwait(false);
         }
         catch (Exception ex) {
-            _logger.LogWarning(ex, "EventStore projection subscription disposal failed.");
+            _logger.LogWarning("EventStore projection subscription disposal failed. FailureCategory={FailureCategory}", ex.GetType().Name);
         }
         finally {
             _ = _gate.Release();
+            _disposalCts.Dispose();
         }
     }
 
@@ -126,7 +148,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             return;
         }
 
-        if (_activeGroups.ContainsKey(key)) {
+        // DN2 — only Active groups receive nudge refresh. Degraded groups (failed rejoin)
+        // wait for the next reconnect cycle to attempt recovery.
+        if (_activeGroups.TryGetValue(key, out GroupHealth health) && health == GroupHealth.Active) {
             try {
                 if (_notifier is IProjectionChangeNotifierWithTenant tenantAware) {
                     tenantAware.NotifyChanged(key.ProjectionType, key.TenantId);
@@ -135,14 +159,21 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                     _notifier.NotifyChanged(key.ProjectionType);
                 }
 
+                // P11 — link nudge refresh to the service's disposal CTS so disposal cancels
+                // an in-flight refresh promptly.
                 _ = await _refreshScheduler.TriggerNudgeRefreshAsync(
                     key.ProjectionType,
                     key.TenantId,
-                    CancellationToken.None).ConfigureAwait(false);
+                    _disposalCts.Token).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
+                // Expected on disposal; swallow.
             }
             catch (Exception ex) when (ex is not OutOfMemoryException) {
                 // A buggy subscriber must not kill the SignalR callback dispatcher.
-                _logger.LogWarning(ex, "Projection change subscriber threw while handling nudge.");
+                _logger.LogWarning(
+                    "Projection change subscriber threw while handling nudge. FailureCategory={FailureCategory}",
+                    ex.GetType().Name);
             }
         }
     }
@@ -166,10 +197,23 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
 
             case ProjectionHubConnectionState.Reconnected:
                 _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
-                await RejoinActiveGroupsAsync().ConfigureAwait(false);
+                // DN3 — rejoin runs in the handler chain (so tests and adopters can observe
+                // completion deterministically) but takes the gate with a bounded timeout and the
+                // service disposal token. A blocked subscribe/unsubscribe on the same gate cannot
+                // hang rejoin indefinitely; disposal cancels the sweep promptly.
+                await RejoinActiveGroupsAsync(_disposalCts.Token).ConfigureAwait(false);
                 break;
 
             case ProjectionHubConnectionState.Closed:
+                // P19 — preserve sticky InitialStartFailed category set inside SubscribeAsync.
+                // Once a non-null failure category exists in the current Disconnected state, a
+                // follow-up Closed event must not overwrite it with a less-specific category.
+                ProjectionConnectionSnapshot currentSnapshot = _connectionState.Current;
+                if (currentSnapshot.Status is ProjectionConnectionStatus.Disconnected
+                    && !string.IsNullOrEmpty(currentSnapshot.LastFailureCategory)) {
+                    break;
+                }
+
                 _connectionState.Apply(new ProjectionConnectionTransition(
                     ProjectionConnectionStatus.Disconnected,
                     FailureCategory: change.Exception?.GetType().Name ?? "Closed"));
@@ -177,26 +221,45 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         }
     }
 
-    private async Task RejoinActiveGroupsAsync() {
-        await _gate.WaitAsync().ConfigureAwait(false);
+    private async Task RejoinActiveGroupsAsync(CancellationToken cancellationToken) {
         try {
-            if (_disposed || !_connection.IsConnected) {
+            await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            return;
+        }
+
+        try {
+            if (_disposed) {
                 return;
             }
 
             foreach (GroupKey key in _activeGroups.Keys.OrderBy(static key => key.ProjectionType, StringComparer.Ordinal)) {
-                try {
-                    await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, CancellationToken.None).ConfigureAwait(false);
+                if (cancellationToken.IsCancellationRequested) {
+                    return;
                 }
-                catch (Exception ex) when (ex is not OperationCanceledException) {
-                    _connectionState.Apply(new ProjectionConnectionTransition(
-                        ProjectionConnectionStatus.Reconnecting,
-                        FailureCategory: "RejoinFailed",
-                        ReconnectAttempt: 1));
+
+                // P13 — re-check connection per-Join so a mid-loop disconnect stops the sweep
+                // instead of flooding logs with RejoinFailed for every remaining group.
+                if (!_connection.IsConnected) {
+                    break;
+                }
+
+                try {
+                    await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
+                    _activeGroups[key] = GroupHealth.Active;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                    return;
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                    // DN2 — mark degraded; nudges skip until the next successful rejoin.
+                    _activeGroups[key] = GroupHealth.Degraded;
+                    // P5 — exception type only. Raw exception messages can carry group/tenant
+                    // arguments embedded in stack frames or framework-formatted text.
                     _logger.LogWarning(
-                        ex,
                         "EventStore projection group rejoin failed. FailureCategory={FailureCategory}",
-                        "RejoinFailed");
+                        ex.GetType().Name);
                 }
             }
         }
@@ -220,4 +283,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         => new(baseAddress, path);
 
     private readonly record struct GroupKey(string ProjectionType, string TenantId);
+
+    private enum GroupHealth : byte {
+        Active,
+        Degraded,
+    }
 }

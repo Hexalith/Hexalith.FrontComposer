@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -167,6 +168,74 @@ public sealed class ProjectionSubscriptionServiceTests {
         await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
         // Must not throw.
         await connection.RaiseAsync("orders", "acme");
+    }
+
+    [Fact]
+    public async Task FailedRejoin_MarksGroupDegraded_AndSkipsNudgeRefresh_UntilNextSuccessfulRejoin() {
+        // DN2: per-group degraded marker. After a rejoin failure, nudges for that group must
+        // not trigger refresh until a subsequent rejoin succeeds.
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestRefreshScheduler refresh = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier, refreshScheduler: refresh);
+
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        connection.JoinedGroups.Clear();
+        refresh.NudgeRefreshes.Clear();
+
+        // Cause rejoin to fail.
+        connection.JoinException = new InvalidOperationException("transient join failure");
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+
+        // Nudge while degraded: must not trigger refresh.
+        await connection.RaiseAsync("orders", "acme");
+        refresh.NudgeRefreshes.ShouldBeEmpty();
+        notifier.Changed.ShouldBeEmpty();
+
+        // Recover on next successful rejoin.
+        connection.JoinException = null;
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+        await connection.RaiseAsync("orders", "acme");
+        refresh.NudgeRefreshes.ShouldBe([("orders", "acme")]);
+    }
+
+    [Fact]
+    public async Task RejoinFailure_LogsRedactedFailureCategory_NotRawExceptionMessage() {
+        // P5 / D11: rejoin warning must log the bounded exception type name only — never the
+        // raw exception message (which can carry group/tenant/payload arguments).
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        CapturingLogger<ProjectionSubscriptionService> logger = new();
+        const string sensitive = "tenant=acme group=orders:acme token=Bearer-secret";
+        connection.JoinException = new InvalidOperationException(sensitive);
+
+        ProjectionSubscriptionService sut = new(
+            Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(),
+            new TestRefreshScheduler(),
+            notifier,
+            logger);
+
+        connection.JoinException = null;
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        connection.JoinException = new InvalidOperationException(sensitive);
+
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+
+        logger.Entries.ShouldNotBeEmpty();
+        foreach (CapturingLogger<ProjectionSubscriptionService>.Entry entry in logger.Entries) {
+            entry.Message.ShouldNotContain("acme");
+            entry.Message.ShouldNotContain("orders:acme");
+            entry.Message.ShouldNotContain("Bearer-secret");
+            entry.Message.ShouldNotContain(sensitive);
+        }
+
+        logger.Entries.ShouldContain(e => e.Message.Contains("InvalidOperationException", StringComparison.Ordinal));
     }
 
     private static ProjectionSubscriptionService Create(
@@ -348,5 +417,24 @@ public sealed class ProjectionSubscriptionServiceTests {
             NudgeRefreshes.Add((projectionType, tenantId));
             return Task.FromResult(1);
         }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T> {
+        public List<Entry> Entries { get; } = [];
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter) {
+            Entries.Add(new Entry(logLevel, formatter(state, exception), exception?.GetType().Name));
+        }
+
+        public sealed record Entry(LogLevel Level, string Message, string? ExceptionType);
     }
 }

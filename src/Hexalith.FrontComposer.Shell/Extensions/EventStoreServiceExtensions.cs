@@ -39,8 +39,13 @@ public static class EventStoreServiceExtensions {
         services.TryAddScoped<EventStoreCommandClient>();
         services.TryAddScoped<EventStoreQueryClient>();
         services.TryAddScoped<IAuthRedirector, NoOpAuthRedirector>();
+        // P12 — TryAdd is idempotent; this duplicates the registration in
+        // AddHexalithFrontComposer so adopters that wire EventStore without first calling
+        // AddHexalithFrontComposer still resolve a TimeProvider for the connection-state service.
+        services.TryAddSingleton(TimeProvider.System);
         services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
         services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
+        services.TryAddScoped<ProjectionFallbackPollingDriver>();
         services.TryAddScoped<ProjectionSubscriptionService>();
         services.TryAddScoped<IProjectionHubConnectionFactory, SignalRProjectionHubConnectionFactory>();
         services.TryAddScoped<ProjectionChangeNotifier>();
