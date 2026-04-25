@@ -159,6 +159,10 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     {
         string normalized = Regex.Replace(markup, "\\s+id=\"[^\"]+\"", string.Empty);
         normalized = Regex.Replace(normalized, "\\s+blazor:[^=]+=\"[^\"]*\"", string.Empty);
+        // Story 4-6 review fix: per-instance Guid suffix on _expandPanelId (added to prevent
+        // duplicate DOM ids) makes aria-controls non-deterministic across runs. Scrub the
+        // 32-hex-char "N"-format Guid back to a stable placeholder for snapshot stability.
+        normalized = Regex.Replace(normalized, "-[0-9a-f]{32}", "-{guid}");
         return normalized.Replace("\r\n", "\n");
     }
 

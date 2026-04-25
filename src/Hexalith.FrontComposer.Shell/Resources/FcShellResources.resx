@@ -298,13 +298,17 @@
     <value>No {0} awaiting action.</value>
     <comment>Story 4-6 — ActionQueue empty-state primary copy. {0}=humanized entity plural.</comment>
   </data>
-  <data name="EmptyStateCtaAriaLabelTemplate" xml:space="preserve">
-    <value>{0}: {1}</value>
-    <comment>Story 4-6 — empty-state CTA aria-label. {0}=entity plural, {1}=command display name.</comment>
+  <data name="EmptyStateAriaLabelTemplate" xml:space="preserve">
+    <value>No {0} found</value>
+    <comment>Story 4-6 — aria-label on the empty-state container. {0}=humanized entity plural.</comment>
+  </data>
+  <data name="EmptyStateCtaTemplate" xml:space="preserve">
+    <value>Send your first {0}</value>
+    <comment>Story 4-6 D8 — empty-state CTA visible label. {0}=command display name. No colon (D8).</comment>
   </data>
   <data name="FieldPlaceholderMessageTemplate" xml:space="preserve">
-    <value>{0} requires a custom renderer.</value>
-    <comment>Story 4-6 — unsupported field placeholder message. {0}=field name.</comment>
+    <value>This field requires a custom renderer.</value>
+    <comment>Story 4-6 D8 — unsupported field placeholder message. No interpolation per D8 spec template.</comment>
   </data>
   <data name="FieldPlaceholderAriaLabelTemplate" xml:space="preserve">
     <value>{0} with unsupported type {1} requires a custom renderer</value>
@@ -315,8 +319,20 @@
     <comment>Story 4-6 — unsupported field placeholder docs link text.</comment>
   </data>
   <data name="FieldPlaceholderTypeAnnotationTemplate" xml:space="preserve">
-    <value>Unsupported type: {0}</value>
-    <comment>Story 4-6 — unsupported field placeholder type annotation. {0}=type name.</comment>
+    <value>({0})</value>
+    <comment>Story 4-6 D8 — unsupported field placeholder type annotation. {0}=type name. No colon (D8).</comment>
+  </data>
+  <data name="FieldDescriptionTooltipAriaSuffix" xml:space="preserve">
+    <value>— help text</value>
+    <comment>Story 4-6 D8 — accessible suffix for description-bearing column headers.</comment>
+  </data>
+  <data name="ColumnHeaderWithDescriptionAriaTemplate" xml:space="preserve">
+    <value>{0}, {1}</value>
+    <comment>Story 4-6 — accessible column-header template. {0}=header, {1}=description suffix.</comment>
+  </data>
+  <data name="UnsupportedColumnHeaderSuffix" xml:space="preserve">
+    <value>(custom renderer needed)</value>
+    <comment>Story 4-6 — appended to unsupported column headers so placeholders are visually distinct.</comment>
   </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Loading {0}</value>

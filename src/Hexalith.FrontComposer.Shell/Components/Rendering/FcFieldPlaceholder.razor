@@ -1,32 +1,10 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Rendering
-@using Hexalith.FrontComposer.Shell.Resources
-@using Microsoft.Extensions.Localization
-@inject IStringLocalizer<FcShellResources> Localizer
 
-<div role="region"
-     tabindex="0"
+<div role="status"
      aria-label="@AriaLabel"
-     class="@CssClass"
-     style="border: 2px dashed var(--neutral-stroke-rest, #aaaaaa); padding: 12px; margin: 4px 0; background-color: var(--neutral-fill-rest, #fafafa);">
+     class="@CssClass">
     <strong>@FieldName</strong>
     <span>@Localizer["FieldPlaceholderTypeAnnotationTemplate", TypeName].Value</span>
-    <span>@Localizer["FieldPlaceholderMessageTemplate", FieldName].Value</span>
-    <a href="https://hexalith.dev/docs/customization-gradient" target="_blank" rel="noopener">@Localizer["FieldPlaceholderDocsLinkText"].Value</a>
+    <span>@Localizer["FieldPlaceholderMessageTemplate"].Value</span>
+    <a href="@DocsLink" target="_blank" rel="noopener">@Localizer["FieldPlaceholderDocsLinkText"].Value</a>
 </div>
-
-@code {
-    /// <summary>Gets or sets the name of the property this placeholder represents.</summary>
-    [Parameter, EditorRequired] public string FieldName { get; set; } = default!;
-
-    /// <summary>Gets or sets the fully qualified name of the unsupported type.</summary>
-    [Parameter, EditorRequired] public string TypeName { get; set; } = default!;
-
-    /// <summary>Gets or sets a value indicating whether the placeholder is rendered in developer mode (red dashed border).</summary>
-    [Parameter] public bool IsDevMode { get; set; }
-
-    private string AriaLabel => Localizer["FieldPlaceholderAriaLabelTemplate", FieldName, TypeName].Value;
-
-    private string CssClass => IsDevMode
-        ? "fc-field-placeholder fc-field-placeholder-dev"
-        : "fc-field-placeholder";
-}

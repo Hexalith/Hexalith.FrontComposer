@@ -39,7 +39,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-25 (story 5-1 created via bmad-create-story. Epic 5 started; story 5-1 status backlog -> ready-for-dev.)"
+last_updated: "2026-04-25 (story 4-6 code-review patches applied via bmad-code-review. 7 decision-needed resolved (D1=companion-interface, D2=IsDevMode bool, D3=conditional emit, D4=overload, D5=component-owned, D6=merged tooltip, D7=no-tabindex), 22 of 26 patches applied, 2 partial (AuthPolicy reflection / D9 visible-tooltip anatomy) tracked as Story 4-7 follow-ups, 1 unapplied (FR NBSP), 2 deferred. All 1,523 tests pass (Contracts 76, Shell 966, SourceTools 481). Status remains review pending human re-pass.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -85,7 +85,7 @@ development_status:
   4-3-datagrid-filtering-sorting-and-search: done
   4-4-virtual-scrolling-and-column-prioritization: done
   4-5-expand-in-row-detail-and-progressive-disclosure: done
-  4-6-empty-states-field-descriptions-and-unsupported-types: in-progress
+  4-6-empty-states-field-descriptions-and-unsupported-types: review
   epic-4-retrospective: optional
 
   # Epic 5: Reliable Real-Time Experience

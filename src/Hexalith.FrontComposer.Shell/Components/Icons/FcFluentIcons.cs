@@ -19,8 +19,11 @@ public static class FcFluentIcons {
     /// <summary>Creates a row-expansion chevron icon.</summary>
     public static Icon ChevronRight20() => Create("ChevronRight", IconSize.Size20, ChevronRightPath);
 
-    /// <summary>Creates the empty-projection placeholder icon.</summary>
+    /// <summary>Creates the empty-projection placeholder icon (32px — kept for legacy callers).</summary>
     public static Icon DocumentSearch32() => Create("DocumentSearch", IconSize.Size32, DocumentSearchPath);
+
+    /// <summary>Creates the empty-projection placeholder icon at the UX-DR4 mandated 48px size.</summary>
+    public static Icon DocumentSearch48() => Create("DocumentSearch", IconSize.Size48, DocumentSearchPath);
 
     /// <summary>Creates the default command action icon.</summary>
     public static Icon Play16() => Create("Play", IconSize.Size16, PlayPath);
@@ -43,6 +46,7 @@ public static class FcFluentIcons {
             "Regular.Size20.Search" => Search20(),
             "Regular.Size20.Settings" => Settings20(),
             "Regular.Size32.DocumentSearch" => DocumentSearch32(),
+            "Regular.Size48.DocumentSearch" => DocumentSearch48(),
             _ => null,
         };
 

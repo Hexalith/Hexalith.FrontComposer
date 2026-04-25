@@ -32,4 +32,29 @@ public static class FrontComposerRegistryExtensions
             ? routeAware.HasFullPageRoute(commandTypeName)
             : true;
     }
+
+    /// <summary>
+    /// Returns whether the given command performs a write/state-change action and is therefore
+    /// eligible to surface as an empty-state CTA (Story 4-6 D5 cross-story contract).
+    /// </summary>
+    /// <remarks>
+    /// The extension preserves backward compatibility with pre-4-6 <see cref="IFrontComposerRegistry"/>
+    /// implementers: when the registry also implements <see cref="IFrontComposerCommandWriteAccessRegistry"/>
+    /// the write-aware answer is used; otherwise the method returns <see langword="true"/> and every
+    /// registered command is treated as writable.
+    /// </remarks>
+    /// <param name="registry">The registry to query.</param>
+    /// <param name="commandTypeName">The fully qualified command type name.</param>
+    /// <returns><see langword="true"/> when the command is writable; <see langword="false"/> for query/read-only commands.</returns>
+    public static bool IsCommandWritable(this IFrontComposerRegistry registry, string commandTypeName)
+    {
+        if (registry is null)
+        {
+            throw new ArgumentNullException(nameof(registry));
+        }
+
+        return registry is IFrontComposerCommandWriteAccessRegistry writeAware
+            ? writeAware.IsCommandWritable(commandTypeName)
+            : true;
+    }
 }

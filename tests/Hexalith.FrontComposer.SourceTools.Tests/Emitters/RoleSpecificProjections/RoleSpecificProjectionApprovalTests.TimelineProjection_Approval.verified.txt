@@ -155,6 +155,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
             builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(seq++);
             builder.AddAttribute(seq++, "ProjectionType", typeof(TimelineProjection));
             builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
+            builder.AddAttribute(seq++, "CtaCommandName", (string?)null);
             builder.CloseComponent();
             return;
         }

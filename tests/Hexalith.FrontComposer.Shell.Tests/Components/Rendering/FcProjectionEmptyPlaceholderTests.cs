@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Reflection;
 
 using Bunit;
+using Bunit.TestDoubles;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Registration;
@@ -17,15 +18,30 @@ using Xunit;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 
 /// <summary>
-/// Story 4-1 T4.5 / ADR-053 — <see cref="FcProjectionEmptyPlaceholder"/> tests. Minimal
-/// placeholder (Story 4.6 replaces the body). Parameter surface frozen + append-only.
+/// Story 4-1 T4.5 / ADR-053 + Story 4-6 review patches — <see cref="FcProjectionEmptyPlaceholder"/>
+/// tests. Parameter surface frozen + append-only; Story 4-6 ships the full anatomy + auth-gated CTA.
 /// </summary>
 public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase {
     private sealed class OrderProjection { }
 
+    [ProjectionEmptyStateCta(nameof(NewShipmentCommand))]
+    private sealed class ShipmentProjection { }
+
+    private sealed class ReadOnlyProjection { }
+
+    private sealed class CreateOrderCommand { }
+
+    private sealed class NewShipmentCommand { }
+
+    private readonly BunitAuthorizationContext _auth;
+
     public FcProjectionEmptyPlaceholderTests() {
         CultureInfo.CurrentUICulture = new CultureInfo("en");
         CultureInfo.CurrentCulture = new CultureInfo("en");
+        // bUnit forbids service registration after the provider is built; AddAuthorization()
+        // must run BEFORE EnsureStoreInitialized triggers the first service resolution. The
+        // returned context is mutable across tests via SetAuthorized / SetNotAuthorized.
+        _auth = AddAuthorization();
         EnsureStoreInitialized();
     }
 
@@ -34,7 +50,6 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
         IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
             .Add(p => p.ProjectionType, typeof(OrderProjection)));
 
-        // Message template: "No {0} yet." with entity plural = "orders" (Projection suffix stripped + "s" added).
         cut.Markup.ShouldContain("No orders yet.");
     }
 
@@ -88,20 +103,76 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
     }
 
     [Fact]
-    public void CtaRendersWhenResolverFindsCommand() {
+    public void CtaRendersWhenResolverFindsCommandAndUserAuthenticated() {
         Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
             Name: "Orders",
             BoundedContext: "Orders",
             Projections: [typeof(OrderProjection).FullName!],
             Commands: ["CreateOrderCommand"]));
+        _auth.SetAuthorized("test-user");
 
         IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
             .Add(p => p.ProjectionType, typeof(OrderProjection))
             .Add(p => p.CtaCommandName, "CreateOrderCommand"));
 
-        cut.Markup.ShouldContain("Create Order");
+        cut.Markup.ShouldContain("Send your first Create Order");
         cut.Markup.ShouldContain("href=\"/domain/orders/create-order-command\"");
         cut.Markup.ShouldContain("fc-projection-empty-placeholder-cta");
+    }
+
+    [Fact]
+    public void CtaIsHiddenForAnonymousUsers_AC2_5() {
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Orders",
+            BoundedContext: "Orders",
+            Projections: [typeof(OrderProjection).FullName!],
+            Commands: ["CreateOrderCommand"]));
+        _auth.SetNotAuthorized();
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, "CreateOrderCommand"));
+
+        // Empty-state copy still renders for anonymous users; the CTA anchor does not.
+        cut.Markup.ShouldContain("No orders yet.");
+        cut.Markup.ShouldNotContain("fc-projection-empty-placeholder-cta");
+        cut.Markup.ShouldNotContain("Send your first");
+    }
+
+    [Fact]
+    public void NoCtaWhenProjectionHasNoRegisteredCommands() {
+        // Bounded context exists but registers no commands → resolver returns null → no CTA.
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Reports",
+            BoundedContext: "Reports",
+            Projections: [typeof(ReadOnlyProjection).FullName!],
+            Commands: []));
+        _auth.SetAuthorized("test-user");
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(ReadOnlyProjection)));
+
+        cut.Markup.ShouldContain("No read onlys yet.");
+        cut.Markup.ShouldNotContain("fc-projection-empty-placeholder-cta");
+    }
+
+    [Fact]
+    public void ProjectionEmptyStateCtaAttribute_OverridesBoundedContextFallback() {
+        // BC fallback would pick the alphabetically-first creation-verb command (CreateOrder),
+        // but the projection carries [ProjectionEmptyStateCta(nameof(NewShipmentCommand))]
+        // which must take precedence per Story 4-6 D5/D6.
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Logistics",
+            BoundedContext: "Logistics",
+            Projections: [typeof(ShipmentProjection).FullName!],
+            Commands: ["CreateOrderCommand", "NewShipmentCommand"]));
+        _auth.SetAuthorized("test-user");
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(ShipmentProjection)));
+
+        cut.Markup.ShouldContain("Send your first New Shipment");
+        cut.Markup.ShouldNotContain("Create Order");
     }
 
     [Fact]

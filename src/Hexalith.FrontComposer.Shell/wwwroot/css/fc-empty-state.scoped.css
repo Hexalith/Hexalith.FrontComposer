@@ -1,0 +1,36 @@
+.fc-empty-state-body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 48px 24px;
+    text-align: center;
+}
+
+.fc-empty-state-body__icon {
+    opacity: 0.5;
+}
+
+.fc-empty-state-body__cta {
+    margin-top: 8px;
+}
+
+.fc-field-placeholder {
+    border: 2px dashed var(--neutral-stroke-rest, #aaaaaa);
+    padding: 12px;
+    margin: 4px 0;
+    background-color: var(--neutral-fill-rest, #fafafa);
+}
+
+/* Dev-mode highlight per UX-DR3. The base border lives in `.fc-field-placeholder` so this
+   class can override cleanly without inline-style precedence games. */
+.fc-field-placeholder-dev {
+    border-color: var(--palette-red-70, #d13438);
+}
+
+@media (max-width: 767px) {
+    .fc-empty-state-body {
+        gap: 12px;
+        padding: 32px 16px;
+    }
+}

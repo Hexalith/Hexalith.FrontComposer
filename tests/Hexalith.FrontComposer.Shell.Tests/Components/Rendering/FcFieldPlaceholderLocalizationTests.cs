@@ -22,10 +22,10 @@ public sealed class FcFieldPlaceholderLocalizationTests : LayoutComponentTestBas
             .Add(p => p.FieldName, "Metadata")
             .Add(p => p.TypeName, "System.Collections.Generic.Dictionary<string, string>"));
 
-        cut.Markup.ShouldContain("Metadata requires a custom renderer.");
-        cut.Markup.ShouldContain("Unsupported type: System.Collections.Generic.Dictionary&lt;string, string&gt;");
+        cut.Markup.ShouldContain("This field requires a custom renderer.");
+        cut.Markup.ShouldContain("(System.Collections.Generic.Dictionary&lt;string, string&gt;)");
         cut.Markup.ShouldContain("Learn how to customize this field");
-        cut.Markup.ShouldContain("aria-label=\"Metadata with unsupported type System.Collections.Generic.Dictionary&lt;string, string&gt; requires a custom renderer\"");
+        cut.Find("div").GetAttribute("aria-label").ShouldBe("Metadata with unsupported type System.Collections.Generic.Dictionary<string, string> requires a custom renderer");
     }
 
     [Fact]
@@ -38,7 +38,7 @@ public sealed class FcFieldPlaceholderLocalizationTests : LayoutComponentTestBas
             .Add(p => p.FieldName, "Metadata")
             .Add(p => p.TypeName, "System.Object"));
 
-        cut.Markup.ShouldContain("Metadata nécessite un rendu personnalisé.");
+        cut.Markup.ShouldContain("Ce champ nécessite un rendu personnalisé.");
         cut.Markup.ShouldContain("Apprendre à personnaliser ce champ");
     }
 
@@ -58,7 +58,19 @@ public sealed class FcFieldPlaceholderLocalizationTests : LayoutComponentTestBas
             .Add(p => p.FieldName, "Metadata")
             .Add(p => p.TypeName, "System.Object"));
 
-        cut.Markup.ShouldContain("role=\"region\"");
-        cut.Markup.ShouldContain("tabindex=\"0\"");
+        // AC7 / Story 4-6 review fix: outer wrapper carries role="status" (live region for AT)
+        // and is NOT focusable per cell-renderer instance — focus stops would multiply N×M with
+        // unsupported columns × rows.
+        cut.Markup.ShouldContain("role=\"status\"");
+        cut.Markup.ShouldNotContain("tabindex=\"0\"");
+    }
+
+    [Fact]
+    public void DocsLinkTargetsHfc1002DiagnosticsPage() {
+        IRenderedComponent<FcFieldPlaceholder> cut = Render<FcFieldPlaceholder>(parameters => parameters
+            .Add(p => p.FieldName, "Metadata")
+            .Add(p => p.TypeName, "System.Object"));
+
+        cut.Find("a").GetAttribute("href").ShouldBe(FcFieldPlaceholder.DocsLink);
     }
 }

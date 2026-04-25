@@ -336,24 +336,32 @@ internal static class ColumnEmitter {
 
         _ = sb.AppendLine("            // Unsupported column: " + col.PropertyName);
         _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + typeName + ">>(colSeq++);");
-        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
-        EmitHeaderDescription(sb, col);
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + " \" + " + ShellLocalizerFieldName + "[\"UnsupportedColumnHeaderSuffix\"].Value);");
+        // Description + unsupported-suffix are merged into a single tooltip so both signals
+        // (author intent and FR9 unsupported warning) reach the user without duplication.
+        EmitHeaderDescription(sb, col, mergeWith: ShellLocalizerFieldName + "[\"UnsupportedColumnHeaderSuffix\"].Value");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-col-unsupported\");");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + typeName + ">)(item => (RenderTreeBuilder rb) =>");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>(0);");
         _ = sb.AppendLine("                rb.AddAttribute(1, \"FieldName\", \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\");");
         _ = sb.AppendLine("                rb.AddAttribute(2, \"TypeName\", \"" + RoleBodyHelpers.EscapeString(unsupportedTypeName) + "\");");
-        _ = sb.AppendLine("                rb.AddAttribute(3, \"IsDevMode\", false);");
+        _ = sb.AppendLine("                rb.AddAttribute(3, \"IsDevMode\", RenderContext?.IsDevMode == true);");
         _ = sb.AppendLine("                rb.CloseComponent();");
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            b.CloseComponent();");
     }
 
-    private static void EmitHeaderDescription(StringBuilder sb, ColumnModel col) {
-        if (!string.IsNullOrWhiteSpace(col.Description)) {
-            _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"HeaderTooltip\", \"" + RoleBodyHelpers.EscapeString(col.Description!) + "\");");
+    private static void EmitHeaderDescription(StringBuilder sb, ColumnModel col, string? mergeWith = null) {
+        if (string.IsNullOrWhiteSpace(col.Description)) {
+            return;
         }
+
+        string descriptionLiteral = "\"" + RoleBodyHelpers.EscapeString(col.Description!) + "\"";
+        string tooltipExpression = mergeWith is null
+            ? descriptionLiteral
+            : descriptionLiteral + " + \" \\u2014 \" + " + mergeWith;
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"HeaderTooltip\", " + tooltipExpression + ");");
     }
 
     private static void EmitSortAttributes(StringBuilder sb, ColumnModel col, string typeName, bool isDefaultSortColumn) {

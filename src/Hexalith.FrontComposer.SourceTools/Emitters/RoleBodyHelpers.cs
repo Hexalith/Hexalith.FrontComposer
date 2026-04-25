@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text;
 
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
@@ -178,9 +179,43 @@ internal static class RoleBodyHelpers {
         return comparisons.Count == 0 ? null : string.Join(" || ", comparisons);
     }
 
-    /// <summary>C-style string escape for StringBuilder literal emission.</summary>
-    public static string EscapeString(string value) =>
-        value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+    /// <summary>
+    /// C-style string escape for StringBuilder literal emission. Handles backslash, double quote,
+    /// and control characters (CR, LF, tab) so multi-line authored strings (e.g., a
+    /// <c>[Description("line one\nline two")]</c> annotation) emit valid C# string literals
+    /// rather than producing malformed source.
+    /// </summary>
+    public static string EscapeString(string value) {
+        if (string.IsNullOrEmpty(value)) {
+            return value;
+        }
+
+        StringBuilder sb = new(value.Length + 8);
+        foreach (char c in value) {
+            switch (c) {
+                case '\\':
+                    _ = sb.Append("\\\\");
+                    break;
+                case '"':
+                    _ = sb.Append("\\\"");
+                    break;
+                case '\r':
+                    _ = sb.Append("\\r");
+                    break;
+                case '\n':
+                    _ = sb.Append("\\n");
+                    break;
+                case '\t':
+                    _ = sb.Append("\\t");
+                    break;
+                default:
+                    _ = sb.Append(c);
+                    break;
+            }
+        }
+
+        return sb.ToString();
+    }
 
     /// <summary>
     /// Story 4-4 T2 / D2 — strategies that emit a <c>FluentDataGrid</c> and therefore receive

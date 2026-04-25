@@ -176,10 +176,34 @@ public static class RazorEmitter {
     }
 
     private static bool NeedsShellLocalizer(RazorModel model)
-        // Story 4-6 empty states use a per-projection optional secondary text resource key,
-        // so every generated projection view needs FcShellResources even if it has no badges
-        // or expand-in-row labels.
-        => true;
+        // Story 4-6 review fix (D3): revert to conditional emission so non-using views do not
+        // ship a superfluous DI injection. Empty-state secondary text now resolves inside
+        // FcProjectionEmptyPlaceholder itself (D17 follow-up), so views without badges,
+        // descriptions, or unsupported columns no longer pull in IStringLocalizer.
+        => HasBadgeMappings(model)
+            || EmitsExpandInRowMachinery(model.Strategy)
+            || HasUnsupportedColumns(model)
+            || HasColumnDescriptions(model);
+
+    private static bool HasUnsupportedColumns(RazorModel model) {
+        foreach (ColumnModel col in model.Columns) {
+            if (col.TypeCategory == TypeCategory.Unsupported) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasColumnDescriptions(RazorModel model) {
+        foreach (ColumnModel col in model.Columns) {
+            if (!string.IsNullOrWhiteSpace(col.Description)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static string ResolveDomIdSuffix(string value) {
         StringBuilder sb = new(value.Length);
@@ -220,7 +244,10 @@ public static class RazorEmitter {
             if (EmitsExpandInRowMachinery(model.Strategy)) {
                 _ = sb.AppendLine("    private readonly string _ephemeralViewKey = \"" + RoleBodyHelpers.EscapeString(viewKey) + ":\" + System.Guid.NewGuid().ToString(\"N\");");
                 _ = sb.AppendLine();
-                _ = sb.AppendLine("    private const string _expandPanelId = \"fc-expand-panel-" + ResolveDomIdSuffix(viewKey) + "\";");
+                // Story 4-6 review fix: per-instance Guid suffix prevents duplicate DOM ids when
+                // the same projection is rendered twice on a page (WCAG 4.1.2). The previous
+                // `const string` shared the id across every instance.
+                _ = sb.AppendLine("    private readonly string _expandPanelId = \"fc-expand-panel-" + ResolveDomIdSuffix(viewKey) + "-\" + System.Guid.NewGuid().ToString(\"N\");");
                 _ = sb.AppendLine();
             }
 
@@ -266,21 +293,9 @@ public static class RazorEmitter {
             EmitStatusOverviewSortHelper(sb, model);
         }
 
-        EmitEmptyStateSecondaryTextResolver(sb, model);
-    }
-
-    private static void EmitEmptyStateSecondaryTextResolver(StringBuilder sb, RazorModel model) {
-        string projectionFqn = string.IsNullOrEmpty(model.Namespace)
-            ? model.TypeName
-            : model.Namespace + "." + model.TypeName;
-        string key = projectionFqn + "_EmptyStateSecondaryText";
-
-        _ = sb.AppendLine("    private string? ResolveEmptyStateSecondaryText()");
-        _ = sb.AppendLine("    {");
-        _ = sb.AppendLine("        var localized = " + ColumnEmitter.ShellLocalizerFieldName + "[\"" + RoleBodyHelpers.EscapeString(key) + "\"];");
-        _ = sb.AppendLine("        return localized.ResourceNotFound ? null : localized.Value;");
-        _ = sb.AppendLine("    }");
-        _ = sb.AppendLine();
+        // Story 4-6 review fix (D17): the secondary-text resolver previously emitted here
+        // moved into FcProjectionEmptyPlaceholder.ResolveSecondaryText() so adopters can override
+        // per-projection without re-emitting the view.
     }
 
     private static void EmitStatusOverviewSortHelper(StringBuilder sb, RazorModel model) {
@@ -897,11 +912,14 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionEmptyPlaceholder>(seq++);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ProjectionType\", typeof(" + model.TypeName + "));");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Role\", " + roleLiteral + ");");
-        if (!string.IsNullOrWhiteSpace(model.EmptyStateCtaCommandName)) {
-            _ = sb.AppendLine("            builder.AddAttribute(seq++, \"CtaCommandName\", \"" + RoleBodyHelpers.EscapeString(model.EmptyStateCtaCommandName!) + "\");");
-        }
+        string ctaCommandNameLiteral = string.IsNullOrWhiteSpace(model.EmptyStateCtaCommandName)
+            ? "(string?)null"
+            : "\"" + RoleBodyHelpers.EscapeString(model.EmptyStateCtaCommandName!) + "\"";
 
-        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"SecondaryText\", ResolveEmptyStateSecondaryText());");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"CtaCommandName\", " + ctaCommandNameLiteral + ");");
+        // Story 4-6 review fix (D17): SecondaryText is resolved INSIDE the component via the
+        // {ProjectionFqn}_EmptyStateSecondaryText convention key. The generator no longer emits
+        // the per-view ResolveEmptyStateSecondaryText helper; the component owns the chain.
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");

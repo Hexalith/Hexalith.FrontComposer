@@ -37,7 +37,7 @@ public sealed class FcFieldPlaceholderColumnEmissionTests {
             "System.Collections.Generic.Dictionary<string, string>",
             header: "Integration metadata")));
 
-        output.ShouldContain("Title\", \"Integration metadata\"");
+        output.ShouldContain("Title\", \"Integration metadata \" + FcShellLocalizer[\"UnsupportedColumnHeaderSuffix\"].Value");
     }
 
     [Fact]

@@ -255,7 +255,11 @@ public class RazorEmitterStrategyDispatchTests {
     }
 
     [Fact]
-    public void EmptyShellEmitsCtaCommandNameAndSecondaryTextResolver() {
+    public void EmptyShellEmitsCtaCommandName() {
+        // Story 4-6 review fix (D17): SecondaryText is no longer emitted by the generator —
+        // FcProjectionEmptyPlaceholder resolves the convention key
+        // ({ProjectionFqn}_EmptyStateSecondaryText) internally so adopters can override per
+        // projection without re-emit. Generator emits CtaCommandName only.
         RazorModel model = new(
             "OrderProjection",
             "TestDomain",
@@ -268,8 +272,16 @@ public class RazorEmitterStrategyDispatchTests {
         string output = RazorEmitter.Emit(model);
 
         output.ShouldContain("CtaCommandName\", \"CreateOrderCommand\"");
-        output.ShouldContain("SecondaryText\", ResolveEmptyStateSecondaryText()");
-        output.ShouldContain("TestDomain.OrderProjection_EmptyStateSecondaryText");
+        output.ShouldNotContain("ResolveEmptyStateSecondaryText");
+        output.ShouldNotContain("SecondaryText\",");
+    }
+
+    [Fact]
+    public void EmptyShellEmitsNullCtaCommandNameWhenNoCommandIsDeclared() {
+        string output = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.Default));
+
+        output.ShouldContain("CtaCommandName\", (string?)null");
+        output.ShouldNotContain("ResolveEmptyStateSecondaryText");
     }
 
     [Fact]

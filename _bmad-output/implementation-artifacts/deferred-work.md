@@ -1,5 +1,10 @@
 # Deferred Work
 
+## Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types (2026-04-25)
+
+- **Snapshot files lost UTF-8 BOM after regeneration** [multiple `.verified.txt` under `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/`] — environment/tooling regression (text-editor or `dotnet test` regeneration encoding); not a Story 4-6 logic defect. Investigate the regeneration toolchain or accept the new BOM-less convention for verified.txt files.
+- **`BoundedContextAttribute.AttributeTargets` is `Class` only — struct projections silent fallback hole** [`Contracts/Attributes/BoundedContextAttribute.cs:7`] — `ProjectionEmptyStateCtaAttribute` allows `Class | Struct` but `[BoundedContext]` does not, so struct projections cannot drive the BC fallback chain. Owned by Story 1-2 contract scope; struct projections are an edge case not addressed by Story 4-6.
+
 ## Deferred from: code review of 3-5-home-directory-badge-counts-and-new-capability-discovery.md (2026-04-22)
 
 - **External native-French sign-off remains required but cannot be completed in-tool** — AC13 / D19 / Task 6.2 still require native-French review for `HomeWelcomeTemplate`, `HomeAllCaughtUpText`, `HomeWelcomeAnonymous`, and `HomeFirstVisitText`. Deferred because this review session cannot supply the external native-language reviewer sign-off; keep it as a merge gate.

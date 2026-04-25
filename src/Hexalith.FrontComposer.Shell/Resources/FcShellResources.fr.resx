@@ -249,18 +249,23 @@
     <value>Aucun résultat trouvé pour {0}</value>
   </data>
   <data name="EmptyStateMessageTemplate" xml:space="preserve">
-    <value>No {0} yet.</value>
-    <comment>Story 4-6 — identity-pass until Story 9-5 ICU pluralization.</comment>
+    <value>Aucun {0} pour l'instant.</value>
+    <comment>Story 4-6 D8 — French translation. Pluralization deferred to Story 9-5 ICU.</comment>
   </data>
   <data name="EmptyStateActionQueueMessageTemplate" xml:space="preserve">
-    <value>No {0} awaiting action.</value>
-    <comment>Story 4-6 — identity-pass until Story 9-5 ICU pluralization.</comment>
+    <value>Aucun {0} en attente d'action.</value>
+    <comment>Story 4-6 D8 — French translation. Pluralization deferred to Story 9-5 ICU.</comment>
   </data>
-  <data name="EmptyStateCtaAriaLabelTemplate" xml:space="preserve">
-    <value>{0} : {1}</value>
+  <data name="EmptyStateAriaLabelTemplate" xml:space="preserve">
+    <value>Aucun résultat trouvé pour {0}</value>
+  </data>
+  <data name="EmptyStateCtaTemplate" xml:space="preserve">
+    <value>Créer votre premier {0}</value>
+    <comment>Story 4-6 D8 — French CTA template. {0}=command display name.</comment>
   </data>
   <data name="FieldPlaceholderMessageTemplate" xml:space="preserve">
-    <value>{0} nécessite un rendu personnalisé.</value>
+    <value>Ce champ nécessite un rendu personnalisé.</value>
+    <comment>Story 4-6 D8 — French translation. No interpolation per spec template.</comment>
   </data>
   <data name="FieldPlaceholderAriaLabelTemplate" xml:space="preserve">
     <value>{0} avec le type non pris en charge {1} nécessite un rendu personnalisé</value>
@@ -269,7 +274,18 @@
     <value>Apprendre à personnaliser ce champ</value>
   </data>
   <data name="FieldPlaceholderTypeAnnotationTemplate" xml:space="preserve">
-    <value>Type non pris en charge : {0}</value>
+    <value>({0})</value>
+    <comment>Story 4-6 D8 — French type annotation. {0}=type name.</comment>
+  </data>
+  <data name="FieldDescriptionTooltipAriaSuffix" xml:space="preserve">
+    <value>— texte d'aide</value>
+    <comment>Story 4-6 D8 — French accessible suffix.</comment>
+  </data>
+  <data name="ColumnHeaderWithDescriptionAriaTemplate" xml:space="preserve">
+    <value>{0}, {1}</value>
+  </data>
+  <data name="UnsupportedColumnHeaderSuffix" xml:space="preserve">
+    <value>(rendu personnalisé nécessaire)</value>
   </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Chargement de {0}</value>

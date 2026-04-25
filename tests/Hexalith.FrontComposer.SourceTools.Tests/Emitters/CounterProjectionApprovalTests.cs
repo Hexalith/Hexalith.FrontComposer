@@ -41,6 +41,13 @@ public sealed class CounterProjectionApprovalTests {
         "EntityLabel",
         "EntityPluralLabel",
         "IsLoading",
+        "IStringLocalizer",
+        "FcShellLocalizer",
+        "ResolveEmptyStateSecondaryText",
+        "EmptyStateSecondaryText",
+        "ResourceNotFound",
+        "CtaCommandName",
+        "SecondaryText",
         // Cascading namespaces emitted by the shells
         "Hexalith.FrontComposer.Shell.Components.Rendering",
         "Hexalith.FrontComposer.Contracts.Attributes",
@@ -162,6 +169,10 @@ public sealed class CounterProjectionApprovalTests {
     }
 
     private static bool ContainsAnyApprovedToken(string content) {
+        if (content is "{" or "}") {
+            return true;
+        }
+
         foreach (string token in _approvedInsertionTokens) {
             if (content.Contains(token, StringComparison.Ordinal)) {
                 return true;
