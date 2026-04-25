@@ -1,7 +1,4 @@
-using System.Collections.Immutable;
-
 using Hexalith.FrontComposer.Contracts;
-using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.Logging.Abstractions;
@@ -29,20 +26,24 @@ public sealed class ProjectionFallbackPollingDriverTests {
         try {
             sut.Start();
 
-        // Initial state is Connected → no polling.
-        await Task.Delay(100, TestContext.Current.CancellationToken).ConfigureAwait(true);
-        scheduler.TriggerCount.ShouldBe(0);
+            // Initial state is Connected → no polling.
+            await Task.Delay(100, TestContext.Current.CancellationToken).ConfigureAwait(true);
+            scheduler.TriggerCount.ShouldBe(0);
 
-        // Disconnect → driver should call TriggerFallbackOnceAsync at least once promptly.
-        state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
-        await scheduler.WaitForTriggers(1, TimeSpan.FromSeconds(2)).ConfigureAwait(true);
-        scheduler.TriggerCount.ShouldBeGreaterThanOrEqualTo(1);
+            // Disconnect → driver should call TriggerFallbackOnceAsync at least once promptly.
+            state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
+            await scheduler.WaitForTriggers(1, TimeSpan.FromSeconds(2)).ConfigureAwait(true);
+            scheduler.TriggerCount.ShouldBeGreaterThanOrEqualTo(1);
 
-        // Reconnect → driver loop must exit and stop firing.
-        state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
-        int countAtReconnect = scheduler.TriggerCount;
-        await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
-        scheduler.TriggerCount.ShouldBeLessThanOrEqualTo(countAtReconnect + 1);
+            // Reconnect → driver loop must exit and stop firing.
+            state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
+            int countAtReconnect = scheduler.TriggerCount;
+            await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
+            scheduler.TriggerCount.ShouldBeLessThanOrEqualTo(countAtReconnect + 1);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
     }
 
     [Fact]
@@ -60,10 +61,14 @@ public sealed class ProjectionFallbackPollingDriverTests {
         try {
             sut.Start();
 
-        state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
-        await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
+            state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
+            await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
-        scheduler.TriggerCount.ShouldBe(0);
+            scheduler.TriggerCount.ShouldBe(0);
+        }
+        finally {
+            await sut.DisposeAsync().ConfigureAwait(true);
+        }
     }
 
     [Fact]
@@ -82,7 +87,7 @@ public sealed class ProjectionFallbackPollingDriverTests {
         state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
         await scheduler.WaitForTriggers(1, TimeSpan.FromSeconds(2)).ConfigureAwait(true);
 
-        await sut.DisposeAsync();
+        await sut.DisposeAsync().ConfigureAwait(true);
         int countAtDispose = scheduler.TriggerCount;
         await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
