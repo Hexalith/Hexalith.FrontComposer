@@ -21,12 +21,13 @@ public sealed class ProjectionFallbackPollingDriverTests {
         IOptionsMonitor<FcShellOptions> options = Microsoft.Extensions.Options.Options.Create(
             new FcShellOptions { ProjectionFallbackPollingIntervalSeconds = 1 }).ToMonitor();
 
-        await using ProjectionFallbackPollingDriver sut = new(
+        ProjectionFallbackPollingDriver sut = new(
             state,
             scheduler,
             options,
             NullLogger<ProjectionFallbackPollingDriver>.Instance);
-        sut.Start();
+        try {
+            sut.Start();
 
         // Initial state is Connected → no polling.
         await Task.Delay(100, TestContext.Current.CancellationToken).ConfigureAwait(true);
@@ -51,12 +52,13 @@ public sealed class ProjectionFallbackPollingDriverTests {
         IOptionsMonitor<FcShellOptions> options = Microsoft.Extensions.Options.Options.Create(
             new FcShellOptions { ProjectionFallbackPollingIntervalSeconds = 0 }).ToMonitor();
 
-        await using ProjectionFallbackPollingDriver sut = new(
+        ProjectionFallbackPollingDriver sut = new(
             state,
             scheduler,
             options,
             NullLogger<ProjectionFallbackPollingDriver>.Instance);
-        sut.Start();
+        try {
+            sut.Start();
 
         state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
         await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
