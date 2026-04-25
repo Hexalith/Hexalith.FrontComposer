@@ -1,50 +1,59 @@
 installation:
-  version: 6.3.0
+  version: 6.4.0
   installDate: 2026-04-06T06:52:40.598Z
-  lastUpdated: 2026-04-11T05:43:01.529Z
+  lastUpdated: 2026-04-25T04:38:51.427Z
 modules:
   - name: core
-    version: 6.3.0
+    version: 6.4.0
     installDate: 2026-04-06T06:52:38.953Z
-    lastUpdated: 2026-04-11T05:43:01.502Z
+    lastUpdated: 2026-04-25T04:38:51.082Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
-    version: 6.3.0
+    version: 6.4.0
     installDate: 2026-04-06T06:52:25.130Z
-    lastUpdated: 2026-04-11T05:43:01.502Z
+    lastUpdated: 2026-04-25T04:38:51.083Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmb
-    version: 1.5.0
+    version: v1.7.0
     installDate: 2026-04-06T06:52:27.428Z
-    lastUpdated: 2026-04-11T05:43:01.508Z
+    lastUpdated: 2026-04-25T04:38:51.098Z
     source: external
     npmPackage: bmad-builder
     repoUrl: https://github.com/bmad-code-org/bmad-builder
+    channel: stable
+    sha: 86033fc9aeae2ca6d52c7cdb675c1f4bf17fc1c1
   - name: cis
-    version: 0.1.9
+    version: v0.2.0
     installDate: 2026-04-06T06:52:29.018Z
-    lastUpdated: 2026-04-11T05:43:01.513Z
+    lastUpdated: 2026-04-25T04:38:51.113Z
     source: external
     npmPackage: bmad-creative-intelligence-suite
     repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
+    channel: stable
+    sha: 14a63b893c07173b7a6cfe0fb6a9a72ba51d3cf1
   - name: tea
-    version: 1.7.2
+    version: v1.15.1
     installDate: 2026-04-06T06:52:31.585Z
-    lastUpdated: 2026-04-11T05:43:01.519Z
+    lastUpdated: 2026-04-25T04:38:51.127Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
+    channel: stable
+    sha: 7c94bdc6e3d2c8c3cad09eb0a32a42fade0e9079
   - name: wds
-    version: 0.3.1
+    version: v0.1.0
     installDate: 2026-04-06T06:52:34.144Z
-    lastUpdated: 2026-04-11T05:43:01.529Z
+    lastUpdated: 2026-04-25T04:38:51.427Z
     source: community
     npmPackage: bmad-method-wds-expansion
     repoUrl: https://github.com/bmad-code-org/bmad-method-wds-expansion
+    channel: stable
+    sha: 0c9ebf3769e1a20797893376318b595bfa64626b
+    registryApprovedTag: v0.1.0
 ides:
   - claude-code
   - cursor
