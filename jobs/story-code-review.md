@@ -39,13 +39,40 @@ After the operation completes (or aborts), stop immediately. Do not chain anothe
 
 ## Pre-Flight Checks
 
-Before any selection, verify:
+Before any selection, verify the items below. **Each check must be performed by running the named command and observing its actual output in this run.** Do not infer state from session memory, prior runs, recently committed files, the conversation history, or what you "expect" the working tree to look like. If you have not just run the command in the current run, the check has not been performed.
 
-1. `sprint-status.yaml` exists and parses as YAML.
-2. The artifacts root directory exists.
-3. The lessons ledger exists and is readable.
-4. The `deferred-work.md` ledger exists OR can be created (the skill writes deferred items there).
-5. The `bmad-code-review` skill is installed and discoverable (slash-form `/bmad-code-review` or natural-language form must engage).
+### Pre-Flight Evidence Discipline (binding)
+
+These rules apply to every pre-flight check below.
+
+- **Run the command, then quote its output.** Each check specifies a command. You must execute that exact command in the current run and capture its real output (stdout, stderr, and exit code).
+- **Aborts must cite evidence.** When a check fails and you abort, the `notes` field of the run-log row and the structured output **must** include:
+  - the exact command that was run,
+  - the verbatim first ~200 chars of its output (stdout/stderr) or a deterministic summary like `0 lines`, `PARSE OK`, `exit=2`,
+  - the timestamp at which the command was run.
+- **No evidence ⇒ no abort.** If you cannot produce verbatim output for a check, you may not abort on that check. Either re-run the command and capture its output, or treat the check as passing and proceed.
+- **Do not substitute commands.** `git diff HEAD~1`, file listings from session context, or recollections of prior runs are NOT substitutes for `git status --porcelain`. A YAML structure recalled from earlier in the conversation is NOT a substitute for `python -c "import yaml; yaml.safe_load(open(...))"` run **this** turn.
+- **Prior false positives.** Three consecutive false-positive aborts have been recorded in the run log (rows from 2026-04-25 — see annotations). The pattern was the agent reporting failures it never actually observed. The rules above exist specifically to prevent that pattern from recurring.
+
+### The checks
+
+1. **`sprint-status.yaml` parses as YAML.**
+   - Command: `python -c "import yaml; yaml.safe_load(open(r'_bmad-output/implementation-artifacts/sprint-status.yaml', encoding='utf-8')); print('PARSE OK')"`
+   - Pass: command exits 0 and prints `PARSE OK`.
+   - Fail: command exits non-zero. Capture the **full Python traceback** (or its last 10 lines) into `notes`. Do not paraphrase the error. Do not auto-repair: a human must reconcile the yaml before the next run.
+
+2. **Artifacts root exists.**
+   - Command: `test -d _bmad-output/implementation-artifacts && echo OK || echo MISSING`
+   - Pass: prints `OK`. Fail: capture the printed value into `notes`.
+
+3. **Lessons ledger exists and is readable.**
+   - Command: `test -r _bmad-output/process-notes/story-creation-lessons.md && echo OK || echo MISSING`
+   - Pass: prints `OK`. Fail: capture the printed value.
+
+4. **Deferred-work ledger exists OR can be created.** Informational only — the skill creates it on first write. Do not abort on this check; only note if the file is absent.
+
+5. **`bmad-code-review` skill is discoverable.** Confirm the skill responds to `/bmad-code-review` or natural-language invocation. If both forms refuse, abort with `notes` quoting the refusal text verbatim.
+
 6. **Status–artifact consistency.** For each `development_status` entry whose key is neither `epic-*` nor `*-retrospective`, resolve the artifact using the **Story Artifact Resolution** rule. The status and the artifact must agree:
    - `status == backlog` ⇒ no artifact must exist for that key.
    - `status` in `{ready-for-dev, in-progress, review, done}` ⇒ an artifact must exist.
@@ -53,9 +80,12 @@ Before any selection, verify:
 
    On any mismatch, abort with `operation: failed` and `notes: "status-artifact drift on {key}: status={status}, artifact={present|absent}"`. Do not auto-repair: a human must reconcile the yaml and the disk before the next run.
 
-7. **Working tree cleanliness.** `git status --porcelain` must be empty. If there are unrelated uncommitted changes, abort with `operation: failed` and `notes: "working tree not clean — refusing to interleave review edits with unrelated changes"`. The job is allowed to **produce** edits, but it must not **start** alongside a dirty tree.
+7. **Working tree cleanliness.**
+   - Command: `git status --porcelain`
+   - Pass: command produces zero output lines. Note literally `0 lines` in your run notes if you proceed, so the trace is auditable.
+   - Fail: command produces ≥1 line. Abort with `operation: failed` and `notes: "working tree not clean — refusing to interleave review edits with unrelated changes; git status --porcelain output (first 20 lines): {verbatim output}"`. **Do not** infer dirtiness from `git diff HEAD~1`, the most recent commit's file list, or any other source — only `git status --porcelain` counts. The job is allowed to **produce** edits, but it must not **start** alongside a dirty tree.
 
-If any check fails, append a `failed` row to the run log, emit the structured output with `operation: failed` and a `notes` field naming the failed check, and stop.
+If any check fails, append a `failed` row to the run log per the evidence discipline above, emit the structured output with `operation: failed`, and stop.
 
 ## Story Artifact Resolution
 
@@ -254,6 +284,8 @@ Abort the run immediately when any of these occur:
 
 On abort: leave `sprint-status.yaml` and the story artifact in a best-effort consistent state (do not partial-edit if avoidable), append a `failed` row to the run log, and emit the structured output with `operation: failed` and a `notes` field describing the cause. Do not retry inside the same context.
 
+**Evidence is mandatory for pre-flight aborts.** Per **Pre-Flight Evidence Discipline**, any abort triggered by a pre-flight check must quote the exact command run and the verbatim output of that command in both the run-log row and the structured `notes` field. An abort without this evidence is a spec violation. If you find yourself about to write an abort message describing repository state you have not verified by command in the current run, stop and run the command first.
+
 ## Run Log
 
 Append exactly one tab-separated line to `_bmad-output/process-notes/code-review-runs.log` per run:
@@ -264,11 +296,22 @@ Append exactly one tab-separated line to `_bmad-output/process-notes/code-review
 
 The log is append-only and human-readable. Never rewrite or truncate it.
 
-Suggested short-message content:
+Short-message content:
 
 - `ok` — `"trace recorded; new status={status}; findings D={d}/P={p}/W={w}/R={r}"`
-- `failed` — the abort cause, ≤ 120 characters
 - `none` — `"no review-status stories"` or `"stalled queue: {N} fresh traces still in review"`
+- `failed` — the abort cause AND the verbatim evidence required by **Pre-Flight Evidence Discipline**. Use this shape:
+
+  ```text
+  {check name}: {one-line cause}; cmd=`{exact command run}`; output=`{verbatim first ~200 chars}`
+  ```
+
+  Examples of acceptable failed rows:
+
+  - ``preflight #1 yaml parse: yaml.safe_load raised; cmd=`python -c "import yaml; yaml.safe_load(open('_bmad-output/implementation-artifacts/sprint-status.yaml'))"`; output=`yaml.scanner.ScannerError: while scanning a simple key ... line 111, col 17` ``
+  - ``preflight #7 working tree: 3 dirty paths; cmd=`git status --porcelain`; output=` M src/Foo.cs?? bar.tmp?? baz.log` ``
+
+  A failed row that lacks `cmd=` or `output=` violates the spec. Reviewers may treat such rows as untrusted and a hint that the abort itself was hallucinated.
 
 ## Output
 
