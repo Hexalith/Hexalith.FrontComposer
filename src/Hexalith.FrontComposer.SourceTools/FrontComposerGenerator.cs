@@ -149,6 +149,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1027" => DiagnosticDescriptors.CollectionColumnNotFilterable,
         "HFC1028" => DiagnosticDescriptors.ColumnPriorityCollision,
         "HFC1029" => DiagnosticDescriptors.ColumnPrioritizerActivated,
+        "HFC1030" => DiagnosticDescriptors.FieldGroupNameCollidesWithCatchAll,
+        "HFC1031" => DiagnosticDescriptors.FieldGroupIgnoredForNonDetailRole,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

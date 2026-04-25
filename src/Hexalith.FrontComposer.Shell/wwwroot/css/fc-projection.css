@@ -1,0 +1,59 @@
+/* Story 4-5 T1.3 / D11 / D14 / AC3 / AC7 — DataGrid projection layout hooks.
+   Loaded as a global static web asset (NOT scoped) because the classes are emitted by the
+   source generator into adopter-namespace .razor.g.cs output where component-scoped
+   selectors would not apply. The four classes serve distinct layout purposes:
+       .fc-row-action-column   — phone-viewport hide target (UX-DR62)
+       .fc-row-expanded        — row-highlight while detail panel is open
+       .fc-expand-button       — chevron rotation (closed → open)
+       .fc-expand-button--open — rotated state class
+       .fc-expand-in-row-detail — region wrapper for the detail panel
+*/
+
+/* Phone-viewport (<768px) hides the trailing row-action column entirely (UX-DR62).
+   Action buttons remain visible inside the expanded detail panel — see Story 4-5 D12.
+   !important is defensive against Fluent UI default table-cell display rules.
+*/
+@media (max-width: 767px) {
+    .fc-row-action-column {
+        display: none !important;
+    }
+}
+
+/* Highlight the currently-expanded row. CSS variable so adopters can theme without
+   patching the Shell. Reduced-motion users get an instant transition. */
+.fc-row-expanded {
+    background: var(--neutral-fill-stealth-hover, rgba(0, 0, 0, 0.04));
+    transition: background 150ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-row-expanded {
+        transition: none;
+    }
+}
+
+/* Chevron rotation: ChevronRight → 90deg = ChevronDown visual without icon swap.
+   Story 4-5 D14 — CSS-driven rotation is cheaper than icon swap and a11y-quieter
+   (no DOM replacement, no Fluent re-render). */
+.fc-expand-button {
+    transition: transform 200ms ease-in-out;
+    transform: rotate(0deg);
+}
+
+.fc-expand-button.fc-expand-button--open {
+    transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-expand-button {
+        transition: none;
+    }
+}
+
+/* Detail container — visible block-level region between virtualized grid and the
+   next view-level element. Padding/margin tokens kept conservative; adopters extend
+   via the .fc-expand-in-row-detail selector. */
+.fc-expand-in-row-detail {
+    display: block;
+    margin: calc(var(--fc-spacing-unit, 4px) * 2) 0;
+}

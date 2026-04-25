@@ -317,7 +317,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         string? enumFullyQualifiedName = null,
         string? unsupportedTypeFullyQualifiedName = null,
         EquatableArray<string> enumMemberNames = default,
-        int? columnPriority = null) {
+        int? columnPriority = null,
+        string? fieldGroup = null) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -328,6 +329,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
         EnumMemberNames = enumMemberNames;
         ColumnPriority = columnPriority;
+        FieldGroup = fieldGroup;
     }
 
     public string Name { get; }
@@ -368,6 +370,15 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     /// </summary>
     public int? ColumnPriority { get; }
 
+    /// <summary>
+    /// Gets the declared <c>[ProjectionFieldGroup]</c> group name (Story 4-5 T6.1 / D9).
+    /// <see langword="null"/> when the property is unannotated; the Transform stage propagates to
+    /// <see cref="Transforms.ColumnModel.FieldGroup"/> verbatim. Case-insensitive collision with
+    /// the reserved catch-all label <c>"Additional details"</c> emits HFC1030 Information at
+    /// parse stage (fail-soft pass-through).
+    /// </summary>
+    public string? FieldGroup { get; }
+
     public bool Equals(PropertyModel? other) {
         if (other is null) {
             return false;
@@ -386,7 +397,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && EnumFullyQualifiedName == other.EnumFullyQualifiedName
             && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName
             && EnumMemberNames == other.EnumMemberNames
-            && ColumnPriority == other.ColumnPriority;
+            && ColumnPriority == other.ColumnPriority
+            && FieldGroup == other.FieldGroup;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -404,6 +416,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + EnumMemberNames.GetHashCode();
             hash = (hash * 31) + (ColumnPriority?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
             return hash;
         }
     }

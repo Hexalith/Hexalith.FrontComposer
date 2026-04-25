@@ -42,7 +42,8 @@ public static class RazorModelTransform {
                 property.IsNullable,
                 property.BadgeMappings,
                 property.EnumMemberNames,
-                property.ColumnPriority));
+                property.ColumnPriority,
+                property.FieldGroup));
         }
 
         // Story 4-4 T6.4 / D17 — stable sort by (Priority ?? int.MaxValue, DeclarationOrder)
@@ -259,6 +260,29 @@ public static class RazorModelTransform {
                     model.TypeName,
                     string.Join(", ", collectionColumnNames)),
                 "Info"));
+        }
+
+        // Story 4-5 T6.3 / D17 — emit HFC1031 once per projection whose role is Timeline AND
+        // declares any [ProjectionFieldGroup] annotation. Timeline has no detail surface, so
+        // the grouping is silently unused. Per-projection deduped.
+        if (strategy == ProjectionRenderStrategy.Timeline) {
+            int ignoredGroupCount = 0;
+            foreach (ColumnModel column in columns) {
+                if (column.FieldGroup is not null) {
+                    ignoredGroupCount++;
+                }
+            }
+
+            if (ignoredGroupCount > 0) {
+                diagnostics.Add(CreateTransformDiagnostic(
+                    model,
+                    "HFC1031",
+                    string.Format(
+                        "[ProjectionFieldGroup] on {0} is ignored because the projection role is Timeline (no detail surface). {1} group annotation(s) have no effect; remove them or change the role to Default / DetailRecord / ActionQueue / StatusOverview / Dashboard to surface the grouped detail body.",
+                        model.TypeName,
+                        ignoredGroupCount),
+                    "Info"));
+            }
         }
     }
 

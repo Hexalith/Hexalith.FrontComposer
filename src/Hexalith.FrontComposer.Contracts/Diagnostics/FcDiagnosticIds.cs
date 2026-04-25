@@ -89,6 +89,23 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1029_ColumnPrioritizerActivated = "HFC1029";
 
+    /// <summary>
+    /// Build-time Information: a <c>[ProjectionFieldGroup]</c> annotation declares a group
+    /// name that case-insensitively collides with the reserved catch-all label
+    /// "Additional details" (Story 4-5 D9 / D16). Fail-soft pass-through — the colliding
+    /// group renders alongside the catch-all bucket. Per-projection deduped. Fix: rename
+    /// the group.
+    /// </summary>
+    public const string HFC1030_FieldGroupNameCollidesWithCatchAll = "HFC1030";
+
+    /// <summary>
+    /// Build-time Information: a projection annotated <c>[ProjectionRole(Timeline)]</c>
+    /// also carries one or more <c>[ProjectionFieldGroup]</c> annotations (Story 4-5 D17).
+    /// Timeline has no detail body, so the grouping is silently unused. Per-projection
+    /// deduped. Fix: remove the annotations or change the projection role.
+    /// </summary>
+    public const string HFC1031_FieldGroupIgnoredForNonDetailRole = "HFC1031";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

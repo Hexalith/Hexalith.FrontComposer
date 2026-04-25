@@ -422,4 +422,32 @@
     <value>{0} {1}</value>
     <comment>Story 4-4 D9 / D19 — row-count label when no filters are active. {0}=count, {1}=entity plural.</comment>
   </data>
+  <data name="ExpandRowButtonAriaLabelTemplate" xml:space="preserve">
+    <value>Expand details for {0}</value>
+    <comment>Story 4-5 D15 / AC1 — aria-label on the row-action chevron when collapsed. {0}=row identifier.</comment>
+  </data>
+  <data name="CollapseRowButtonAriaLabelTemplate" xml:space="preserve">
+    <value>Collapse details for {0}</value>
+    <comment>Story 4-5 D15 / AC1 — aria-label on the row-action chevron when expanded. {0}=row identifier.</comment>
+  </data>
+  <data name="ExpandInRowDetailPanelAriaLabelTemplate" xml:space="preserve">
+    <value>Details for {0}</value>
+    <comment>Story 4-5 D15 / D19 / AC3 — aria-label on the FcExpandInRowDetail region landmark. {0}=row identifier.</comment>
+  </data>
+  <data name="FieldGroupCatchAllTitle" xml:space="preserve">
+    <value>Additional details</value>
+    <comment>Story 4-5 D9 / D15 / AC5 — heading of the catch-all FluentAccordionItem for ungrouped secondary fields. Reserved label — colliding [ProjectionFieldGroup] names trigger HFC1030.</comment>
+  </data>
+  <data name="ExpandInRowDetailSuppressedByFilterAnnouncement" xml:space="preserve">
+    <value>Your expanded item is hidden by the current filter</value>
+    <comment>Story 4-5 D19 / AC8 — visually-hidden live-region announcement when a column-filter change suppresses the currently-expanded row.</comment>
+  </data>
+  <data name="ExpandedRowHiddenByFilterBanner" xml:space="preserve">
+    <value>{0} expanded item hidden by current filter</value>
+    <comment>Story 4-5 D15 / AC8 — banner copy above FluentDataGrid when expanded row is suppressed by filter. {0}=count (always "1" in v1; ICU pluralization bundles with multi-expand v2 commit).</comment>
+  </data>
+  <data name="ExpandedRowHiddenByFilterBannerClearLink" xml:space="preserve">
+    <value>Clear filter</value>
+    <comment>Story 4-5 D15 / AC8 — banner action link dispatching FiltersResetAction (Story 4-3).</comment>
+  </data>
 </root>

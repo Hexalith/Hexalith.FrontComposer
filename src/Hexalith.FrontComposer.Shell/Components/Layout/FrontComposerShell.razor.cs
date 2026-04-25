@@ -179,6 +179,17 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         .ToString();
 
     /// <summary>
+    /// Story 4-5 T1.3 — global stylesheet for DataGrid projection layout hooks (expand-in-row
+    /// detail, row-action column phone-tier hide, chevron rotation, expanded-row highlight).
+    /// Loaded as a global static web asset because the classes are emitted by the source
+    /// generator into adopter-namespace .razor.g.cs output where component-scoped selectors
+    /// would not apply.
+    /// </summary>
+    protected string ProjectionStylesheetPath => NavigationManager
+        .ToAbsoluteUri("_content/Hexalith.FrontComposer.Shell/css/fc-projection.css")
+        .ToString();
+
+    /// <summary>
     /// Whether the shell should render the Navigation area. Adopter-supplied content always wins;
     /// framework auto-navigation appears only when at least one manifest has projections.
     /// </summary>

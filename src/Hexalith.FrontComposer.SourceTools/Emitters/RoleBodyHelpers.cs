@@ -243,6 +243,73 @@ internal static class RoleBodyHelpers {
         return bc + ":" + typeFqn;
     }
 
+    /// <summary>
+    /// Story 4-5 T6.5 / D9 / AC5 — partitions a column list (typically the secondary detail
+    /// columns at positions 7+) into ordered groups for <c>FluentAccordionItem</c> emission.
+    /// Group ordering is first-declared-property precedence (stable); the catch-all bucket
+    /// (returned with <c>GroupName == null</c>) collects every column whose
+    /// <see cref="ColumnModel.FieldGroup"/> is null and is appended LAST. When no column
+    /// in the input declares a <see cref="ColumnModel.FieldGroup"/>, the result is a single
+    /// catch-all bucket carrying every input column unchanged — letting the emitter fall
+    /// back to the Story 4-1 single-accordion layout (regression gate for 4-1's approval
+    /// baselines).
+    /// </summary>
+    /// <param name="columns">The columns to partition (declaration order preserved within each group).</param>
+    /// <returns>An ordered list of (group-name, columns) pairs. Empty input yields empty output.</returns>
+    public static IReadOnlyList<FieldGroupBucket> ResolveFieldGroups(IReadOnlyList<ColumnModel> columns) {
+        if (columns is null || columns.Count == 0) {
+            return Array.Empty<FieldGroupBucket>();
+        }
+
+        // Detect whether ANY column declares a [ProjectionFieldGroup] annotation. When zero,
+        // short-circuit to the legacy single-bucket form so 4-1 approval baselines stay green.
+        bool anyAnnotated = false;
+        for (int i = 0; i < columns.Count; i++) {
+            if (columns[i].FieldGroup is not null) {
+                anyAnnotated = true;
+                break;
+            }
+        }
+
+        if (!anyAnnotated) {
+            return new[] { new FieldGroupBucket(null, columns) };
+        }
+
+        // Group-order discovery: walk in declaration order, emit a new bucket the first time
+        // a non-null FieldGroup is seen, append subsequent same-name columns to that bucket.
+        // Ungrouped columns go into a deferred catch-all that's appended at the end.
+        Dictionary<string, List<ColumnModel>> grouped = new(StringComparer.Ordinal);
+        List<string> orderedNames = new();
+        List<ColumnModel> ungrouped = new();
+        for (int i = 0; i < columns.Count; i++) {
+            ColumnModel col = columns[i];
+            if (col.FieldGroup is null) {
+                ungrouped.Add(col);
+                continue;
+            }
+
+            if (!grouped.TryGetValue(col.FieldGroup, out List<ColumnModel>? bucket)) {
+                bucket = new List<ColumnModel>();
+                grouped.Add(col.FieldGroup, bucket);
+                orderedNames.Add(col.FieldGroup);
+            }
+
+            bucket.Add(col);
+        }
+
+        List<FieldGroupBucket> result = new(orderedNames.Count + (ungrouped.Count > 0 ? 1 : 0));
+        for (int i = 0; i < orderedNames.Count; i++) {
+            string name = orderedNames[i];
+            result.Add(new FieldGroupBucket(name, grouped[name]));
+        }
+
+        if (ungrouped.Count > 0) {
+            result.Add(new FieldGroupBucket(null, ungrouped));
+        }
+
+        return result;
+    }
+
     private static bool IsPreferredTimelineLabelProperty(string propertyName)
         => propertyName.EndsWith("Name", StringComparison.OrdinalIgnoreCase)
             || propertyName.EndsWith("Title", StringComparison.OrdinalIgnoreCase)

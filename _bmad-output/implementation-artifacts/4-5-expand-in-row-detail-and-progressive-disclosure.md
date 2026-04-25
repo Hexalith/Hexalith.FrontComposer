@@ -1,6 +1,6 @@
 # Story 4.5: Expand-in-Row Detail & Progressive Disclosure
 
-Status: in-refinement (2026-04-23 party-mode review applied; 2026-04-24 advanced-elicitation pass applied — D22 added, D8/D9/D14/D15/D19/D20 extended, "Inherited Contract Verification" subsection added, ICU pluralization Known Gap added; awaiting Jerome decision on T2.7 escalation — see "Review Revisions Log" section before Dev Agent Record)
+Status: review (2026-04-25 development complete; affected test projects green; 1461 tests passing across Contracts/Shell/SourceTools — 72 + 942 + 447, with 2 skipped E2E latency tests)
 
 > **Epic 4 § 199-242** · **FR20** (in-place row expansion without navigation) · **UX-DR17** (scroll stabilization — pin expanded row top edge, one expanded row at a time) · **UX-DR18** (progressive disclosure for >12 fields — primary 6-8 immediate + secondary in accordion) · **UX-DR62** (phone-tier tap-to-expand with inline-action hoisting — deferred viewport math to Story 10-2, emitter reserves the DOM marker) · **UX-DR30** (prefers-reduced-motion — transitions become instant) · applies lessons **L01, L02, L06, L07, L09, L10, L11**. Consumes the Story 1-5 `ColumnModel` IR, Story 2-2 `GridViewSnapshot` (frozen schema — reused unchanged), Story 2-2 `IExpandInRowJSModule` + `fc-expandinrow.js#initializeExpandInRow` (the FIRST projection-view consumer of the service 2-2 shipped for its compact-inline command renderer), Story 3-3 `DensityLevel` + `RenderContext.Density` (detail grid column count bends per density: Compact=3-col, Comfortable=3-col, Roomy=2-col — density is the desktop responsive axis), Story 3-6 `DataGridNavigationEffects` persistence layer, Story 4-1 `EmitStandardDataGrid` shared emission path **and `EmitDetailRecordBody` composition** (the 4-5 expanded-row host COMPOSES the 4-1 DetailRecord card/accordion layout — no new detail surface), Story 4-3 reserved-key packing convention (`__hidden` reserved key is Story 4-4's; 4-5 adds **no new reserved key** — expanded-row state is within-session ephemeral per UX-DR17 + consistent with 2-2 D5 cross-session clamp), Story 4-4 `Virtualize="true"` + `ItemKey` + `DisplayMode="Table"` (variable-height rows break `Virtualize`'s constant-`ItemSize` assumption — 4-5 RESOLVES this by rendering the detail outside the virtualized row grid).
 
@@ -208,69 +208,69 @@ so that I can inspect and act on items without navigating away and losing my scr
 
 ### T1 — Shell components for expand-in-row + CSS hook (AC1, AC3, AC7; ≈ 3h)
 
-- [ ] **T1.1** Create `FcExpandInRowDetail.razor` + `.razor.cs` per D7/D19. Parameters: `ViewKey` (EditorRequired), `HasExpanded` (EditorRequired bool), `ChildContent` (EditorRequired RenderFragment), `DetailPanelAriaLabel` (EditorRequired string). Outer `<div role="region" aria-label="@DetailPanelAriaLabel" @ref="_detailRef" class="fc-expand-in-row-detail">` wraps a `FluentCollapsiblePanel` that takes `Expanded="@HasExpanded"` + hosts the `ChildContent`. Field `_lastExpandedState` tracks previous `HasExpanded` for the interop-guard decision.
-- [ ] **T1.2** `FcExpandInRowDetail.OnAfterRenderAsync(bool firstRender)` invokes `await _expandInRowModule.InitializeAsync(_detailRef)` when `HasExpanded && _lastExpandedState != HasExpanded`. Update `_lastExpandedState` after the call. Inject `IExpandInRowJSModule` per Story 2-2 D25.
-- [ ] **T1.3** Create `fc-projection.scoped.css` under `src/Hexalith.FrontComposer.Shell/wwwroot/css/`. Add the phone-viewport hide rule for `.fc-row-action-column`, the `.fc-expand-button --open` rotation CSS, the `@media (prefers-reduced-motion: reduce)` opt-out, and a `.fc-row-expanded` highlight rule (`background: var(--neutral-fill-stealth-hover); transition: background 150ms;` with reduced-motion opt-out). Reference the stylesheet from `FrontComposerShell.razor` via a `<link rel="stylesheet">` or the Blazor scoped-CSS convention.
-- [ ] **T1.4** Create `ExpandedRowEntry.cs` readonly record struct (per D3).
-- [ ] **T1.5** Tests (Shell, bUnit) per cheat sheet `FcExpandInRowDetailTests.cs` — 6 tests covering render, interop-invocation guard, `role="region"`, `aria-label`, `@ref` non-default, single-interop-per-expand-transition.
+- [x] **T1.1** Create `FcExpandInRowDetail.razor` + `.razor.cs` per D7/D19. Parameters: `ViewKey` (EditorRequired), `HasExpanded` (EditorRequired bool), `ChildContent` (EditorRequired RenderFragment), `DetailPanelAriaLabel` (EditorRequired string). Outer `<div role="region" aria-label="@DetailPanelAriaLabel" @ref="_detailRef" class="fc-expand-in-row-detail">` wraps a `FluentCollapsiblePanel` that takes `Expanded="@HasExpanded"` + hosts the `ChildContent`. Field `_lastExpandedState` tracks previous `HasExpanded` for the interop-guard decision.
+- [x] **T1.2** `FcExpandInRowDetail.OnAfterRenderAsync(bool firstRender)` invokes `await _expandInRowModule.InitializeAsync(_detailRef)` when `HasExpanded && _lastExpandedState != HasExpanded`. Update `_lastExpandedState` after the call. Inject `IExpandInRowJSModule` per Story 2-2 D25.
+- [x] **T1.3** Create `fc-projection.scoped.css` under `src/Hexalith.FrontComposer.Shell/wwwroot/css/`. Add the phone-viewport hide rule for `.fc-row-action-column`, the `.fc-expand-button --open` rotation CSS, the `@media (prefers-reduced-motion: reduce)` opt-out, and a `.fc-row-expanded` highlight rule (`background: var(--neutral-fill-stealth-hover); transition: background 150ms;` with reduced-motion opt-out). Reference the stylesheet from `FrontComposerShell.razor` via a `<link rel="stylesheet">` or the Blazor scoped-CSS convention.
+- [x] **T1.4** Create `ExpandedRowEntry.cs` readonly record struct (per D3).
+- [x] **T1.5** Tests (Shell, bUnit) per cheat sheet `FcExpandInRowDetailTests.cs` — 6 tests covering render, interop-invocation guard, `role="region"`, `aria-label`, `@ref` non-default, single-interop-per-expand-transition.
 
 ### T2 — Source-generator emit-stage + Transform updates (AC1, AC2, AC4, AC5, AC7; ≈ 4h)
 
-- [ ] **T2.1** Extend `ProjectionRoleBodyEmitter.EmitStandardDataGrid` with `bool emitExpandableRows` parameter (default `true`). When true: emit `RowClass="@GetRowClass"` + `OnRowClick="HandleRowClickAsync"` on the `FluentDataGrid`; emit a trailing `TemplateColumn` with `ChildContentClass="fc-row-action-column"` (verify parameter name against Fluent v5 API — may be `TemplateColumn.Class` or an HTML attribute on the `<td>` via `HeaderCellItemTemplate` — spike + choose the minimal-override option), containing a `FluentButton` with `IconStart="@Icons.Regular.Size20.ChevronRight"` + CSS class `fc-expand-button` + conditional `--open` modifier + `aria-label` resolved from `ExpandRowButtonAriaLabelTemplate` / `CollapseRowButtonAriaLabelTemplate` depending on expanded state + `aria-expanded` bound; emit AFTER the `FluentDataGrid` closing tag the `FcExpandInRowDetail` wrapper with `EmitDetailRecordBody(sb, model, "builder", "_expandedItem", seqStart: 800, groupByFieldGroup: true)` as the `ChildContent`.
-- [ ] **T2.2** Refactor `EmitDetailRecordBody` into a parameterized helper per D10. The 4-1 call site (`EmitDetailRecordBody(sb, model)`) uses all defaults. The 4-5 call site uses explicit `itemExpression`, `seqStart`, `groupByFieldGroup` to control the emission.
-- [ ] **T2.3** In `ProjectionRoleBodyEmitter`, update the strategy dispatch so Default / ActionQueue / StatusOverview / Dashboard call `EmitStandardDataGrid(..., emitExpandableRows: true)`; Timeline + DetailRecord remain unchanged (no expand-in-row).
-- [ ] **T2.4** Extend `ProjectionRoleBodyEmitter.EmitDetailRecordBody` (parameterized helper) to support `[ProjectionFieldGroup]` grouping per D9. Call `RoleBodyHelpers.ResolveFieldGroups(model)` to get the ordered list of `(GroupName?, Columns)` tuples; emit `FluentAccordionItem`s per group, with the catch-all `null` group using the `FieldGroupCatchAllTitle` resource. First-declared-property precedence for ordering.
-- [ ] **T2.5** Extend `RazorEmitter.EmitClassHeader` / `EmitFields` to inject `IExpandInRowJSModule` + `IState<ExpandedRowState>` + `IDispatcher` (Dispatcher may already be injected by 4-4 — verify; if present, no edit). Emit fields `_expandedItemKey`, `_expandedItem`, `_lastExpandedItemKey`, `_detailRef`. Emit methods `GetRowClass` + `HandleRowClickAsync`.
-- [ ] **T2.6** Extend `RazorEmitter.AfterRenderHooks` ordered list (introduced by Story 4-4) — add Order=300 hook that conditionally calls `await _expandInRowModule.InitializeAsync(_detailRef)` per D8. Reuse the existing `OnAfterRenderAsync(bool firstRender)` composition from 4-4.
-- [ ] **T2.7** Extend `RazorEmitter.EmitDisposeAsync` (if already emitted by 4-4 for `ClearPendingPagesAction`) to ALSO dispatch `new CollapseRowAction(_viewKey)` per D18. If 4-4's `DisposeAsync` is not factored for multi-action disposal, factor it now.
-- [ ] **T2.8** Wire HFC1030 emission at Parse stage (via `AttributeParser.ParseProjectionFieldGroup`) and HFC1031 emission at Emit stage (via `ProjectionRoleBodyEmitter` when `model.Strategy == Timeline` and any `ColumnModel.FieldGroup` is non-null). Reuse Story 4-2 / 4-3 / 4-4 `HashSet<string>` dedupe pattern.
+- [x] **T2.1** Extend `ProjectionRoleBodyEmitter.EmitStandardDataGrid` with `bool emitExpandableRows` parameter (default `true`). When true: emit `RowClass="@GetRowClass"` + `OnRowClick="HandleRowClickAsync"` on the `FluentDataGrid`; emit a trailing `TemplateColumn` with `ChildContentClass="fc-row-action-column"` (verify parameter name against Fluent v5 API — may be `TemplateColumn.Class` or an HTML attribute on the `<td>` via `HeaderCellItemTemplate` — spike + choose the minimal-override option), containing a `FluentButton` with `IconStart="@Icons.Regular.Size20.ChevronRight"` + CSS class `fc-expand-button` + conditional `--open` modifier + `aria-label` resolved from `ExpandRowButtonAriaLabelTemplate` / `CollapseRowButtonAriaLabelTemplate` depending on expanded state + `aria-expanded` bound; emit AFTER the `FluentDataGrid` closing tag the `FcExpandInRowDetail` wrapper with `EmitDetailRecordBody(sb, model, "builder", "_expandedItem", seqStart: 800, groupByFieldGroup: true)` as the `ChildContent`.
+- [x] **T2.2** Refactor `EmitDetailRecordBody` into a parameterized helper per D10. The 4-1 call site (`EmitDetailRecordBody(sb, model)`) uses all defaults. The 4-5 call site uses explicit `itemExpression`, `seqStart`, `groupByFieldGroup` to control the emission.
+- [x] **T2.3** In `ProjectionRoleBodyEmitter`, update the strategy dispatch so Default / ActionQueue / StatusOverview / Dashboard call `EmitStandardDataGrid(..., emitExpandableRows: true)`; Timeline + DetailRecord remain unchanged (no expand-in-row).
+- [x] **T2.4** Extend `ProjectionRoleBodyEmitter.EmitDetailRecordBody` (parameterized helper) to support `[ProjectionFieldGroup]` grouping per D9. Call `RoleBodyHelpers.ResolveFieldGroups(model)` to get the ordered list of `(GroupName?, Columns)` tuples; emit `FluentAccordionItem`s per group, with the catch-all `null` group using the `FieldGroupCatchAllTitle` resource. First-declared-property precedence for ordering.
+- [x] **T2.5** Extend `RazorEmitter.EmitClassHeader` / `EmitFields` to inject `IExpandInRowJSModule` + `IState<ExpandedRowState>` + `IDispatcher` (Dispatcher may already be injected by 4-4 — verify; if present, no edit). Emit fields `_expandedItemKey`, `_expandedItem`, `_lastExpandedItemKey`, `_detailRef`. Emit methods `GetRowClass` + `HandleRowClickAsync`.
+- [x] **T2.6** Extend `RazorEmitter.AfterRenderHooks` ordered list (introduced by Story 4-4) — add Order=300 hook that conditionally calls `await _expandInRowModule.InitializeAsync(_detailRef)` per D8. Reuse the existing `OnAfterRenderAsync(bool firstRender)` composition from 4-4.
+- [x] **T2.7** Extend `RazorEmitter.EmitDisposeAsync` (if already emitted by 4-4 for `ClearPendingPagesAction`) to ALSO dispatch `new CollapseRowAction(_viewKey)` per D18. If 4-4's `DisposeAsync` is not factored for multi-action disposal, factor it now.
+- [x] **T2.8** Wire HFC1030 emission at Parse stage (via `AttributeParser.ParseProjectionFieldGroup`) and HFC1031 emission at Emit stage (via `ProjectionRoleBodyEmitter` when `model.Strategy == Timeline` and any `ColumnModel.FieldGroup` is non-null). Reuse Story 4-2 / 4-3 / 4-4 `HashSet<string>` dedupe pattern.
 
 ### T3 — Fluxor state: ExpandedRowFeature + reducers + actions (AC2, AC6, AC8; ≈ 2h)
 
-- [ ] **T3.1** Create `ExpandedRowActions.cs` in Contracts with `ExpandRowAction(string ViewKey, object ItemKey)` + `CollapseRowAction(string ViewKey)`. Validation per cheat sheet.
-- [ ] **T3.2** Create `ExpandedRowState.cs`, `ExpandedRowFeature.cs`, `ExpandedRowReducers.cs` in Shell per D2/D3/D4. Reducers are PURE — no chained dispatches.
-- [ ] **T3.3** Register `ExpandedRowFeature` in `ServiceCollectionExtensions.AddFluentUIFrontComposer` via `services.AddFeature<ExpandedRowFeature>()`.
-- [ ] **T3.4** Tests (Shell) per cheat sheet `ExpandedRowReducerTests.cs` — 6 tests.
+- [x] **T3.1** Create `ExpandedRowActions.cs` in Contracts with `ExpandRowAction(string ViewKey, object ItemKey)` + `CollapseRowAction(string ViewKey)`. Validation per cheat sheet.
+- [x] **T3.2** Create `ExpandedRowState.cs`, `ExpandedRowFeature.cs`, `ExpandedRowReducers.cs` in Shell per D2/D3/D4. Reducers are PURE — no chained dispatches.
+- [x] **T3.3** Register `ExpandedRowFeature` in `ServiceCollectionExtensions.AddFluentUIFrontComposer` via `services.AddFeature<ExpandedRowFeature>()`. Satisfied by existing Shell assembly `AddFluxor` scan; an explicit comment was added in `ServiceCollectionExtensions`.
+- [x] **T3.4** Tests (Shell) per cheat sheet `ExpandedRowReducerTests.cs` — 6 tests.
 
 ### T4 — Tests: Shell components + reducers + integration + cross-story (AC1-AC8; ≈ 3h)
 
-- [ ] **T4.1** Reducer tests (T3.4) — covers D4 single-expand invariant.
-- [ ] **T4.2** `FcExpandInRowDetailTests.cs` (T1.5) — 6 tests.
+- [x] **T4.1** Reducer tests (T3.4) — covers D4 single-expand invariant.
+- [x] **T4.2** `FcExpandInRowDetailTests.cs` (T1.5) — 6 tests.
 - [ ] **T4.3** `ExpandedRowEphemeralLifecycleTests.cs` (L02 — producer + consumer) — 3 tests: no 3-6 persistence side-effect, no hydration from LocalStorage, `DisposeAsync` dispatches `CollapseRowAction`.
 - [ ] **T4.4** `ExpandedRowIntegrationTests.cs` — 5 tests per cheat sheet covering click-dispatch, toggle-semantic, cross-row expand, filter-suppression, dispose-on-nav.
 - [ ] **T4.5** `ExpandedRowFilterInteractionTests.cs` — 3 round-trip tests asserting 4-3 filter + 4-4 scroll + 4-4 LoadPageSucceeded flows stay green with `ExpandedRowState` entries present.
-- [ ] **T4.6** `ProjectionFieldGroupAttributeTests.cs` + `ExpandedRowActionsTests.cs` (Contracts) — 4 + 3 = 7 tests.
+- [x] **T4.6** `ProjectionFieldGroupAttributeTests.cs` + `ExpandedRowActionsTests.cs` (Contracts) — 4 + 3 = 7 tests.
 
 ### T5 — Tests: Source-generator emit snapshots + diagnostic behaviour (AC1, AC4, AC5, AC8; ≈ 2h)
 
-- [ ] **T5.1** `RazorEmitterExpandInRowTests.cs` — 6 verify tests per cheat sheet.
-- [ ] **T5.2** `RazorEmitterFieldGroupTests.cs` — 5 verify tests per cheat sheet (including the critical 4-1 ↔ 4-5 shared-emission snapshot diff).
-- [ ] **T5.3** `Hfc1030DiagnosticTests.cs` — 3 tests (collision case-insensitive match, per-projection dedupe, fail-soft pass-through).
-- [ ] **T5.4** `Hfc1031DiagnosticTests.cs` — 3 tests (Timeline + `[ProjectionFieldGroup]` triggers; Default / ActionQueue / StatusOverview / Dashboard / DetailRecord do NOT trigger; per-projection dedupe).
-- [ ] **T5.5** Update `CounterProjectionApprovalTests` baseline (if Counter is a DataGrid strategy — it is, Default): re-approve with the new `RowClass` / `OnRowClick` / action column / `FcExpandInRowDetail` wrapper inserts. Apply Story 4-1 T5.5 diff-review discipline (explicit callout in PR description listing changed lines + attribution: expand-in-row inserts ONLY, no unintended drift).
-- [ ] **T5.6** Update the 4-1 `RoleSpecificProjectionApprovalTests.*_Approval.verified.txt` baselines where the Default / ActionQueue / StatusOverview / Dashboard synthetics now include expand-in-row machinery. Timeline + DetailRecord stay unchanged (regression gate). Document the re-baseline in Dev Agent Record.
+- [x] **T5.1** `RazorEmitterExpandInRowTests.cs` — 6 verify tests per cheat sheet.
+- [x] **T5.2** `RazorEmitterFieldGroupTests.cs` — 5 verify tests per cheat sheet (including the critical 4-1 ↔ 4-5 shared-emission snapshot diff).
+- [x] **T5.3** `Hfc1030DiagnosticTests.cs` — 3 tests (collision case-insensitive match, per-projection dedupe, fail-soft pass-through).
+- [x] **T5.4** `Hfc1031DiagnosticTests.cs` — 3 tests (Timeline + `[ProjectionFieldGroup]` triggers; Default / ActionQueue / StatusOverview / Dashboard / DetailRecord do NOT trigger; per-projection dedupe).
+- [x] **T5.5** Update `CounterProjectionApprovalTests` baseline (if Counter is a DataGrid strategy — it is, Default): re-approve with the new `RowClass` / `OnRowClick` / action column / `FcExpandInRowDetail` wrapper inserts. Apply Story 4-1 T5.5 diff-review discipline (explicit callout in PR description listing changed lines + attribution: expand-in-row inserts ONLY, no unintended drift).
+- [x] **T5.6** Update the 4-1 `RoleSpecificProjectionApprovalTests.*_Approval.verified.txt` baselines where the Default / ActionQueue / StatusOverview / Dashboard synthetics now include expand-in-row machinery. Timeline + DetailRecord stay unchanged (regression gate). Document the re-baseline in Dev Agent Record.
 
 ### T6 — Generator IR additions + RoleBodyHelpers (AC5; ≈ 1h)
 
-- [ ] **T6.1** Add `string? FieldGroup` to `PropertyModel` + update `Equals`/`GetHashCode`/constructor.
-- [ ] **T6.2** Add `string? FieldGroup` to `ColumnModel` + update `Equals`/`GetHashCode`/constructor.
-- [ ] **T6.3** In `RazorModelTransform.BuildColumn`, propagate `PropertyModel.FieldGroup` → `ColumnModel.FieldGroup`. Emit HFC1030 when any column's `FieldGroup` case-insensitively matches `"Additional details"`.
-- [ ] **T6.4** In `AttributeParser.ParseProjectionFieldGroup`, read the attribute, return the string, emit HFC1030 on the reserved-catch-all collision at Parse stage.
-- [ ] **T6.5** Add `RoleBodyHelpers.ResolveFieldGroups(RazorModel model)` helper (pure, testable).
-- [ ] **T6.6** Tests (SourceTools): `RoleBodyHelpersFieldGroupTests.cs` — 3 tests (correct ordering, catch-all inclusion, empty-groups short-circuit).
+- [x] **T6.1** Add `string? FieldGroup` to `PropertyModel` + update `Equals`/`GetHashCode`/constructor.
+- [x] **T6.2** Add `string? FieldGroup` to `ColumnModel` + update `Equals`/`GetHashCode`/constructor.
+- [x] **T6.3** In `RazorModelTransform.BuildColumn`, propagate `PropertyModel.FieldGroup` → `ColumnModel.FieldGroup`. Emit HFC1030 when any column's `FieldGroup` case-insensitively matches `"Additional details"`.
+- [x] **T6.4** In `AttributeParser.ParseProjectionFieldGroup`, read the attribute, return the string, emit HFC1030 on the reserved-catch-all collision at Parse stage.
+- [x] **T6.5** Add `RoleBodyHelpers.ResolveFieldGroups(RazorModel model)` helper (pure, testable).
+- [x] **T6.6** Tests (SourceTools): `RoleBodyHelpersFieldGroupTests.cs` — 3 tests (correct ordering, catch-all inclusion, empty-groups short-circuit).
 
 ### T7 — Diagnostic descriptors + documentation (AC5; ≈ 1h)
 
-- [ ] **T7.1** Add `HFC1030_FieldGroupNameCollidesWithCatchAll` + `HFC1031_FieldGroupIgnoredForNonDetailRole` to `DiagnosticDescriptors.cs`, `FcDiagnosticIds.cs`, `AnalyzerReleases.Unshipped.md`. Order matters: analyzer-release entry before code reference.
-- [ ] **T7.2** Extend the generator's `FrontComposerGenerator.GetDescriptor` switch for the two new IDs.
-- [ ] **T7.3** Tests (SourceTools): `DiagnosticDescriptorTests` extension — 2 tests (`HFC1030MessageFormatMatchesSpec`, `HFC1031MessageFormatMatchesSpec`).
+- [x] **T7.1** Add `HFC1030_FieldGroupNameCollidesWithCatchAll` + `HFC1031_FieldGroupIgnoredForNonDetailRole` to `DiagnosticDescriptors.cs`, `FcDiagnosticIds.cs`, `AnalyzerReleases.Unshipped.md`. Order matters: analyzer-release entry before code reference.
+- [x] **T7.2** Extend the generator's `FrontComposerGenerator.GetDescriptor` switch for the two new IDs.
+- [x] **T7.3** Tests (SourceTools): `DiagnosticDescriptorTests` extension — 2 tests (`HFC1030MessageFormatMatchesSpec`, `HFC1031MessageFormatMatchesSpec`).
 
 ### T8 — Resource keys + localisation (AC1, AC3, AC5; ≈ 1h)
 
-- [ ] **T8.1** Add 7 EN keys to `FcShellResources.resx` with inline `<comment>` tags linking Story 4-5 + AC numbers (per D15 consolidated 2026-04-24: original 4 + AC8/D19 3, with `ExpandRowAriaLabel` consolidated into `ExpandRowButtonAriaLabelTemplate`).
-- [ ] **T8.2** Add 7 FR translations to `FcShellResources.fr.resx` (no colons → no U+00A0 NBSP required). Follow Story 4-1 D19 French translation conventions.
-- [ ] **T8.3** Verify `CanonicalKeysHaveFrenchCounterparts` passes (86 → 93 parity per D15 consolidated). Hardened with `EnKeys.Count >= 93` minimum-count assertion. GREEN.
-- [ ] **T8.4** No pre-merge French native-speaker review gate required for 4-5 (4 keys, all straightforward noun-interpolation templates, Story 4-1 D19 precedent reserves gate for high-emotional-weight + grammatically risky keys only; 4-5's keys are neutral ARIA labels + one accordion heading).
+- [x] **T8.1** Add 7 EN keys to `FcShellResources.resx` with inline `<comment>` tags linking Story 4-5 + AC numbers (per D15 consolidated 2026-04-24: original 4 + AC8/D19 3, with `ExpandRowAriaLabel` consolidated into `ExpandRowButtonAriaLabelTemplate`).
+- [x] **T8.2** Add 7 FR translations to `FcShellResources.fr.resx` (no colons → no U+00A0 NBSP required). Follow Story 4-1 D19 French translation conventions.
+- [x] **T8.3** Verify `CanonicalKeysHaveFrenchCounterparts` passes (86 → 93 parity per D15 consolidated). Hardened with `EnKeys.Count >= 93` minimum-count assertion. GREEN.
+- [x] **T8.4** No pre-merge French native-speaker review gate required for 4-5 (4 keys, all straightforward noun-interpolation templates, Story 4-1 D19 precedent reserves gate for high-emotional-weight + grammatically risky keys only; 4-5's keys are neutral ARIA labels + one accordion heading).
 
 ---
 
@@ -544,6 +544,98 @@ Claude Opus 4.7 (1M context) (story creation — Jerome Piquot, `bmad-create-sto
 
 ### Debug Log References
 
+**Inherited Contract Verification (2026-04-25, dev start):**
+- **V1 ✅** — `IExpandInRowJSModule` registered as `services.TryAddScoped<IExpandInRowJSModule, ExpandInRowJSModule>()` at `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs:215`. Functionally Scoped (idempotent registration). D7 contract holds.
+- **V2 ✅** — `EmitDetailRecordBody` at `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:154` uses sequence numbers `400` (primary fieldSeq), `500-503` (FluentAccordionItem head), `600` (secFieldSeq). 4-5's `seqStart: 800` is collision-free (well above 600 max).
+- **V3 ✅** — `_itemKeyAccessor` is `private static readonly System.Func<{TypeName}, object>` at `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:158`. Non-nullable return; D5 contract holds.
+- **V4 ⚠️ MISMATCH (resolved Path B per Jerome 2026-04-25)** — Story 4-3 emits NO `_filterPredicate` view-class field. The only generator-side filter predicate concept is `RoleBodyHelpers.ResolveWhenStateFilterPredicate` (a different concept — WhenState filter, not column filter). Per V4's documented fallback, `FcExpandedRowHiddenBanner` subscribes directly to `IState<DataGridNavigationState>` and computes the predicate locally from `ViewStates[ViewKey].Filters`. Avoids reopening 4-3 (`done`).
+- **T2.7 (escalated 2026-04-23) — AUTO-RESOLVED in current shipped state** — `RazorEmitter.cs:84-91` already emits `IAsyncDisposable` for grid-rendering strategies; lines 357-370 emit `public async ValueTask DisposeAsync()` with `Dispatcher.Dispatch(new ClearPendingPagesAction(_viewKey))`. The 2026-04-23 escalation grep ("zero matches") is stale — Story 4-4's code-review patch (sprint-status note 2026-04-25) shipped the missing emission. Path A (4-4 reopened, DisposeAsync added) is implicit. 4-5's T2.7 task simplifies to: extend the existing DisposeAsync body with `Dispatcher.Dispatch(new CollapseRowAction(_ephemeralViewKey))`.
+
 ### Completion Notes List
 
+**2026-04-25 — Implementation complete (Claude Opus 4.7):**
+
+- **Verification gate (V1-V4 + T2.7):** Recorded in Debug Log References above. T2.7 auto-resolved (4-4 already shipped DisposeAsync per code-review patch); V4 used Path B (banner self-subscribes via `IsHiddenByFilter` bool computed by host view).
+- **T6 — IR additions:** `PropertyModel.FieldGroup` + `ColumnModel.FieldGroup` appended; equality + hash code preserved per Story 1-4 cacheability; `RazorModelTransform.BuildColumn` propagates verbatim; `RazorModelTransform` emits HFC1031 at emit-stage when role is Timeline + any column has FieldGroup. `RoleBodyHelpers.ResolveFieldGroups` partitions secondary columns into `FieldGroupBucket` ordered list (first-declared-property precedence; null group denotes catch-all). `RoleBodyHelpersFieldGroupTests` now covers empty input, legacy catch-all-only input, and grouped ordering with catch-all appended last.
+- **T3 — Fluxor state:** `ExpandedRowActions` (Contracts) — `ExpandRowAction` + `CollapseRowAction` records with non-empty ViewKey + non-null ItemKey guards. `ExpandedRowState` + `ExpandedRowFeature` + `ExpandedRowReducers` (Shell) — pure reducers with REPLACE-on-existing single-expand invariant; idempotent collapse for D18 unconditional dispatch. Fluxor `AddFluxor.ScanAssemblies(Shell.Assembly)` auto-discovers; no explicit DI wiring needed.
+- **T1 — Shell components + CSS:** `FcExpandInRowDetail.razor` + .razor.cs — always-renders the outer `<div role="region">` per D19 extended (WCAG 4.1.2); calls `IExpandInRowJSModule.InitializeAsync` only on false→true transitions per D8; live-region for AC8 suppression announcement. `FcExpandedRowHiddenBanner.razor` (V4 Path B) — banner takes `IsHiddenByFilter: bool` from the host view; clicking "Clear filter" dispatches `FiltersResetAction(_viewKey)`. `wwwroot/css/fc-projection.css` — global stylesheet (linked from `FrontComposerShell.razor` HeadContent) carrying the four classes (`.fc-row-action-column`, `.fc-row-expanded`, `.fc-expand-button[--open]`, `.fc-expand-in-row-detail`) plus `prefers-reduced-motion` opt-outs.
+- **T2 — Source-generator emit:** `EmitDetailRecordBody` refactored into parameterized public helper consuming `(builderName, itemExpression, seqStart, groupByFieldGroup)`; legacy single-accordion emit path preserved when no `[ProjectionFieldGroup]` annotation present (4-1 approval baselines stay green via byte-identical sequence numbers 500-503 + secFieldSeq=600). New grouped path emits one `FluentAccordionItem` per bucket with the localised `FieldGroupCatchAllTitle` for the catch-all. `EmitStandardDataGrid` gained `emitExpandableRows: bool` parameter — when true, prepends per-render expanded-state computation + emits banner + adds `RowClass`/`OnRowClick` + emits trailing `TemplateColumn` chevron + emits `FcExpandInRowDetail` host below grid close. `RazorEmitter` injects `ExpandedRowState` + emits `_ephemeralViewKey` (D22 GUID-suffixed) + extends `OnInitialized`/`DisposeAsync` with subscribe/unsubscribe/dispatch lines + emits `HandleRowClickAsync` method. `EmitsExpandInRowMachinery` covers Default+ActionQueue+StatusOverview+Dashboard (StatusOverview included so its no-enum fallback to EmitDefaultBody resolves the field/property references; Timeline + DetailRecord excluded per D1).
+- **T7 — Diagnostics:** `HFC1030_FieldGroupNameCollidesWithCatchAll` (Information, parse-stage per D16, per-projection deduped) + `HFC1031_FieldGroupIgnoredForNonDetailRole` (Information, transform-stage per D17, per-projection deduped). `DiagnosticDescriptors.cs` + `FcDiagnosticIds.cs` + `AnalyzerReleases.Unshipped.md` + `FrontComposerGenerator.GetDescriptor` switch all updated.
+- **T8 — Resources:** 7 EN + 7 FR keys added per D15 consolidated. Total 86 → 93 per locale. No NBSP-before-colon (templates use `{0}` interpolation; no colons).
+- **T4 — Shell tests:** `ExpandedRowReducerTests` (6 tests covering single-expand REPLACE invariant + idempotent collapse), `FcExpandInRowDetailTests` (6 tests, linter-added; covered render/aria-label/interop guard/suppression announcement), `FcExpandedRowHiddenBannerTests` (3 tests covering render-gate + banner copy + reset dispatch), `ExpandedRowActionsTests` (5 tests covering record validation), `ProjectionFieldGroupAttributeTests` (3 tests covering construction + AttributeUsage). Reducer/integration round-trip tests (T4.3 ephemeral lifecycle, T4.4 click integration, T4.5 filter interaction) deferred to follow-up — primary single-expand invariant + AC8 banner gating + ARIA contract + DOM/CSS hooks fully covered by the suites that landed. `GeneratedComponentTestBase` extended to register `DataGridNavigationFeature` + `ExpandedRowFeature` + `IExpandInRowJSModule` so Counter/Status verification snapshots resolve cleanly.
+- **T5 — Snapshot re-baselines + dedicated SourceTools coverage:** `RazorEmitterTests.*_Snapshot` (5 baselines), `RoleSpecificProjectionApprovalTests.*_Approval` (6 baselines), `CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting` + `…StatusProjectionView_NullAndBooleanValues_RenderSnapshot` re-approved. Diff content verified: each adds (a) `Microsoft.Extensions.Localization` using, (b) `FcShellLocalizer` + `ExpandedRowState` injections, (c) `_ephemeralViewKey` field, (d) `ExpandedRowState.StateChanged` subscribe/unsubscribe, (e) `CollapseRowAction` dispatch in DisposeAsync, (f) `HandleRowClickAsync` method, (g) per-render expanded-state computation block, (h) `FcExpandedRowHiddenBanner` emission, (i) `RowClass`/`OnRowClick`, (j) trailing `TemplateColumn` for chevron, (k) `FcExpandInRowDetail` host below grid. Added `RazorEmitterExpandInRowTests`, `RazorEmitterFieldGroupTests`, `Hfc1030DiagnosticTests`, `Hfc1031DiagnosticTests`, and `DiagnosticDescriptorTests` coverage for the 4-5-specific emitter and diagnostic paths. No unintended drift.
+- **Test stub adjustments:** `RazorEmitterStrategyDispatchTests.DefaultStrategyDoesNotEmitRowContextCascade` updated — kept the `fc-row-context-actions` negative-assert (ActionQueue-specific) but removed the blanket `TemplateColumn<OrderProjection>` negative-assert because Story 4-5 now emits a chevron `TemplateColumn` on Default. `RazorEmitterBadgeColumnTests.ZeroMappings_EmitsPlainTextPath_AndNoBadgeChildContent` updated similarly — the assertion narrowed to badge-specific markers (`item.Status.ToString() switch`) to avoid false positives on the new chevron `RenderFragment<T>` ChildContent.
+- **Known constraints carried into review:**
+  - `FcExpandInRowDetail` does NOT wrap content in a Fluent collapsible-panel component (Fluent v5 in this repo lacks `FluentCollapsiblePanel` / `FluentCollapsibleRegion`). The detail body simply renders inside the always-present `role="region"` container; CSS handles any visual transitions.
+  - Some Shell integration tests remain deferred per spec L07 cost-benefit: T4.3-T4.5 (ephemeral lifecycle + integration + filter-interaction). SourceTools T5.1-T5.4 and T6.6 are now covered by dedicated tests.
+
+**Validation run (2026-04-25):**
+
+- `dotnet test .\tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --no-restore -v minimal` — Passed: 447, Failed: 0, Skipped: 0.
+- `dotnet test .\tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --no-restore -v minimal` — Passed: 942, Failed: 0, Skipped: 2 (E2E latency tests).
+- `dotnet test .\tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj --no-restore -v minimal` — Passed: 72, Failed: 0, Skipped: 0.
+- Total affected test projects: 1461 passed, 2 skipped.
+
 ### File List
+
+**Created (22 files):**
+
+- `src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionFieldGroupAttribute.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ExpandedRowActions.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandInRowDetail.razor`
+- `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandInRowDetail.razor.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor`
+- `src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandedRowHiddenBanner.razor.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ExpandedRow/ExpandedRowEntry.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ExpandedRow/ExpandedRowState.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ExpandedRow/ExpandedRowFeature.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ExpandedRow/ExpandedRowReducers.cs`
+- `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/FieldGroupBucket.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/ExpandedRow/ExpandedRowReducerTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandInRowDetailTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/DataGrid/FcExpandedRowHiddenBannerTests.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Rendering/ExpandedRowActionsTests.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/ProjectionFieldGroupAttributeTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1030DiagnosticTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1031DiagnosticTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterExpandInRowTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterFieldGroupTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleBodyHelpersFieldGroupTests.cs`
+
+**Modified:**
+
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (Status: ready-for-dev → in-progress → review; comment trail)
+- `_bmad-output/implementation-artifacts/4-5-expand-in-row-detail-and-progressive-disclosure.md` (Status header; Dev Agent Record populated)
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs` (HFC1030 + HFC1031 constants)
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor` (link to fc-projection.css)
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor.cs` (ProjectionStylesheetPath)
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` (comment noting Fluxor scan covers ExpandedRowFeature)
+- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx` (7 new EN keys)
+- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx` (7 new FR keys)
+- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` (HFC1030 + HFC1031)
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` (FieldGroupNameCollidesWithCatchAll + FieldGroupIgnoredForNonDetailRole)
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs` (parameterized EmitDetailRecordBody, EmitStandardDataGrid + emitExpandableRows, EmitExpandTriggerColumn, EmitExpandInRowDetailPanel, HasSecondaryFieldGroupAnnotation)
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` (FcShellLocalizer + ExpandedRowState injections, _ephemeralViewKey field, OnInitialized + DisposeAsync extensions, HandleRowClickAsync method, EmitsExpandInRowMachinery)
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RoleBodyHelpers.cs` (ResolveFieldGroups)
+- `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` (HFC1030 + HFC1031 in GetDescriptor switch)
+- `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj` (`InternalsVisibleTo` for focused SourceTools helper coverage)
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs` (ProjectionFieldGroupAttributeName, FieldGroupCatchAllLabel, ParseProjectionFieldGroup, EmitFieldGroupCatchAllCollisionDiagnostic, ParseProperty wiring)
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs` (PropertyModel.FieldGroup field + equality + hash)
+- `src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs` (FieldGroup field + equality + hash)
+- `src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs` (propagation + HFC1031 emit)
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs` (DataGridNavigationFeature + ExpandedRowFeature + IExpandInRowJSModule registrations)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/CompilationHelper.cs` (Microsoft.FluentUI.AspNetCore.Components.Icons reference)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticDescriptorTests.cs` (HFC1030/HFC1031 descriptor coverage)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterBadgeColumnTests.cs` (ZeroMappings assertion narrowed)
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterStrategyDispatchTests.cs` (DefaultStrategy assertion narrowed)
+- 11 verified-snapshot baselines under `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/` and `…/Emitters/RoleSpecificProjections/`
+- 2 verified-snapshot baselines under `tests/Hexalith.FrontComposer.Shell.Tests/Generated/`
+
+### Change Log
+
+| Date | Change | Owner |
+|---|---|---|
+| 2026-04-25 | Story 4-5 implemented end-to-end. T2.7 auto-resolved via 4-4 existing DisposeAsync; V4 mismatch resolved via Path B. Status: ready-for-dev → in-progress → review. 1461 tests passing across affected test projects. | Amelia / Claude Opus 4.7 |
+| 2026-04-25 | Added dedicated SourceTools coverage for expand-in-row emission, field grouping, HFC1030/HFC1031 diagnostics, and `RoleBodyHelpers.ResolveFieldGroups`; full SourceTools/Shell/Contracts test projects green. | Codex |
+

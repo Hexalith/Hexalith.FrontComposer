@@ -342,4 +342,36 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1030: A <c>[ProjectionFieldGroup]</c> annotation declares a group name that
+    /// case-insensitively collides with the reserved catch-all label "Additional details"
+    /// (Story 4-5 D9 / D16). Information severity — fail-soft pass-through; the colliding
+    /// group renders in the detail accordion alongside the catch-all bucket (visually
+    /// unusual but not broken). Fire once per projection type with all colliding group
+    /// names listed (per-projection dedupe). Fix: rename the group.
+    /// </summary>
+    public static readonly DiagnosticDescriptor FieldGroupNameCollidesWithCatchAll = new(
+        id: "HFC1030",
+        title: "[ProjectionFieldGroup] name collides with reserved catch-all label",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1031: A projection annotated with <c>[ProjectionRole(ProjectionRole.Timeline)]</c>
+    /// also carries one or more <c>[ProjectionFieldGroup]</c> annotations (Story 4-5 D17).
+    /// Information severity — Timeline renders a <c>FluentStack</c> chronological surface
+    /// and has no detail body, so the grouping is silently unused. Fire once per projection
+    /// type (per-projection dedupe). Fix: remove the annotations or change the projection
+    /// role to Default / DetailRecord / ActionQueue / StatusOverview / Dashboard.
+    /// </summary>
+    public static readonly DiagnosticDescriptor FieldGroupIgnoredForNonDetailRole = new(
+        id: "HFC1031",
+        title: "[ProjectionFieldGroup] is ignored for the projection role",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
 }

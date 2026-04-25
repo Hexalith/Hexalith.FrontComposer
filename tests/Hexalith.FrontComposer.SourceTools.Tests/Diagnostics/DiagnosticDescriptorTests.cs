@@ -17,6 +17,8 @@ public class DiagnosticDescriptorTests {
     [InlineData("HFC1022", DiagnosticSeverity.Warning)]
     [InlineData("HFC1023", DiagnosticSeverity.Info)]
     [InlineData("HFC1024", DiagnosticSeverity.Warning)]
+    [InlineData("HFC1030", DiagnosticSeverity.Info)]
+    [InlineData("HFC1031", DiagnosticSeverity.Info)]
     public void AllHFC1xxxIdsHaveAnalyzerReleaseEntries(string id, DiagnosticSeverity expectedSeverity) {
         DiagnosticDescriptor descriptor = GetDescriptor(id);
 
@@ -59,6 +61,28 @@ public class DiagnosticDescriptorTests {
     }
 
     [Fact]
+    public void HFC1030MessageFormatMatchesSpec() {
+        DiagnosticDescriptor descriptor = DiagnosticDescriptors.FieldGroupNameCollidesWithCatchAll;
+
+        descriptor.Id.ShouldBe("HFC1030");
+        descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
+        descriptor.Title.ToString().ShouldContain("ProjectionFieldGroup");
+        descriptor.Title.ToString().ShouldContain("reserved catch-all");
+        descriptor.MessageFormat.ToString().ShouldBe("{0}");
+    }
+
+    [Fact]
+    public void HFC1031MessageFormatMatchesSpec() {
+        DiagnosticDescriptor descriptor = DiagnosticDescriptors.FieldGroupIgnoredForNonDetailRole;
+
+        descriptor.Id.ShouldBe("HFC1031");
+        descriptor.DefaultSeverity.ShouldBe(DiagnosticSeverity.Info);
+        descriptor.Title.ToString().ShouldContain("ProjectionFieldGroup");
+        descriptor.Title.ToString().ShouldContain("ignored");
+        descriptor.MessageFormat.ToString().ShouldBe("{0}");
+    }
+
+    [Fact]
     public void NewDiagnosticsAreReservedInAnalyzerReleasesUnshipped() {
         // Story 4-1 T1.5 — the Unshipped.md gate must list all three new codes.
         string path = Path.Combine(
@@ -72,12 +96,16 @@ public class DiagnosticDescriptorTests {
         contents.ShouldContain("HFC1022");
         contents.ShouldContain("HFC1023");
         contents.ShouldContain("HFC1024");
+        contents.ShouldContain("HFC1030");
+        contents.ShouldContain("HFC1031");
     }
 
     private static DiagnosticDescriptor GetDescriptor(string id) => id switch {
         "HFC1022" => DiagnosticDescriptors.ProjectionWhenStateMemberUnknown,
         "HFC1023" => DiagnosticDescriptors.ProjectionRoleDashboardFallback,
         "HFC1024" => DiagnosticDescriptors.UnknownProjectionRoleValue,
+        "HFC1030" => DiagnosticDescriptors.FieldGroupNameCollidesWithCatchAll,
+        "HFC1031" => DiagnosticDescriptors.FieldGroupIgnoredForNonDetailRole,
         _ => throw new ArgumentException("Unhandled descriptor id: " + id, nameof(id)),
     };
 }

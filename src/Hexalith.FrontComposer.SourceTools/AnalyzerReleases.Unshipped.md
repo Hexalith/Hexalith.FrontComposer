@@ -28,3 +28,5 @@ HFC1026 | HexalithFrontComposer | Warning | Reserved — color-only badge detect
 HFC1027 | HexalithFrontComposer | Info | Projection has collection column which does not support automatic filtering (Story 4-3)
 HFC1028 | HexalithFrontComposer | Info | [ColumnPriority] collision on projection (Story 4-4 — deterministic tiebreaker is declaration order)
 HFC1029 | HexalithFrontComposer | Info | Projection exceeds 15 columns — FcColumnPrioritizer activates (Story 4-4)
+HFC1030 | HexalithFrontComposer | Info | [ProjectionFieldGroup] name collides with reserved catch-all label "Additional details" (Story 4-5)
+HFC1031 | HexalithFrontComposer | Info | [ProjectionFieldGroup] is ignored for non-detail role (Timeline) (Story 4-5)

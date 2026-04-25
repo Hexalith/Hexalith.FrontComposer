@@ -1,0 +1,31 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DataGrid
+@using Microsoft.AspNetCore.Components
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@* Story 4-5 T1.1 / D7 / D19 — wraps the generator-emitted detail render fragment, owns the
+   @ref="_detailRef" element reference for IExpandInRowJSModule.InitializeAsync invocation,
+   and surfaces the always-rendered ARIA region per D19 extended (the detail panel container
+   is always emitted so aria-controls always resolves to a present element — WCAG 4.1.2). *@
+
+<div id="@PanelId"
+     role="region"
+     aria-label="@DetailPanelAriaLabel"
+     class="fc-expand-in-row-detail"
+     @ref="_detailRef">
+    @if (HasExpanded) {
+        @ChildContent
+    }
+</div>
+
+@* Story 4-5 D19 / AC8 — visually-hidden live-region announcing AC8 silent suppression
+   (the user's expanded item was hidden by a filter change). aria-live="polite" queues
+   after the current utterance rather than interrupting screen-reader output. *@
+<div role="status"
+     aria-live="polite"
+     aria-atomic="true"
+     class="fc-expand-in-row-suppression-live-region"
+     style="position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;">
+    @if (SuppressedAnnouncement is { Length: > 0 }) {
+        @SuppressedAnnouncement
+    }
+</div>

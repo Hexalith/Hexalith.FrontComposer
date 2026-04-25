@@ -287,6 +287,11 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IProjectionPageLoader, NullProjectionPageLoader>();
         services.TryAddScoped<DataGridScrollInterop>();
 
+        // Story 4-5 D2 / T3.3 — ExpandedRowFeature is auto-discovered by the AddFluxor
+        // ScanAssemblies(typeof(FrontComposerThemeState).Assembly) call above (line 158).
+        // The static ExpandedRowReducers class is also picked up by the Fluxor reducer
+        // scanner; no explicit registration needed for the ephemeral feature.
+
         // Story 2-2 Decision D24 — register IDerivedValueProvider chain in the exact order:
         // 1. System → 2. ProjectionContext → 3. ExplicitDefault → 4. LastUsed → 5. ConstructorDefault.
         // Registered via AddScoped (scoped per circuit in Blazor Server; per-app in WASM). Providers

@@ -39,7 +39,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-25 (story 4-4 code-review patch findings resolved; status moves review -> done. Verification note: dotnet build/test is blocked by NU1301 repository-signature socket denial for https://api.nuget.org/v3-index/repository-signatures/5.0.0/index.json.)"
+last_updated: "2026-04-25 (story 4-5 development complete. T2.7 auto-resolved via 4-4 existing DisposeAsync emission; V4 mismatch resolved via Path B (banner takes IsHiddenByFilter bool from host view). Full solution build green. 1433 tests passing — 72 Contracts + 942 Shell + 419 SourceTools — with 2 skipped E2E latency tests. Status flipped in-progress -> review. Ready for code-review workflow with a different LLM (per L11 best practice).)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -84,7 +84,7 @@ development_status:
   4-2-status-badge-system: done
   4-3-datagrid-filtering-sorting-and-search: done
   4-4-virtual-scrolling-and-column-prioritization: done
-  4-5-expand-in-row-detail-and-progressive-disclosure: ready-for-dev
+  4-5-expand-in-row-detail-and-progressive-disclosure: review
   4-6-empty-states-field-descriptions-and-unsupported-types: ready-for-dev
   epic-4-retrospective: optional
 

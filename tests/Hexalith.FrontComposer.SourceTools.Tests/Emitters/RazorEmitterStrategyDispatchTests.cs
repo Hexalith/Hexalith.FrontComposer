@@ -295,11 +295,12 @@ public class RazorEmitterStrategyDispatchTests {
 
     [Fact]
     public void DefaultStrategyDoesNotEmitRowContextCascade() {
-        // Story 4-1 AC5 + G12 — Default has no inline-action column; cascade is
-        // emitted ONLY by ActionQueue. Default keeps the pre-Phase-3 footprint.
+        // Story 4-1 AC5 + G12 — Default does NOT emit the ActionQueue-specific
+        // ProjectionContext cascade (`fc-row-context-actions`). The trailing
+        // `TemplateColumn<OrderProjection>` introduced by Story 4-5 (expand-in-row
+        // chevron, class `fc-row-action-column`) is the only TemplateColumn on Default.
         string output = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.Default));
 
-        output.ShouldNotContain("TemplateColumn<OrderProjection>");
         output.ShouldNotContain("fc-row-context-actions");
     }
 

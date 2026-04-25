@@ -355,4 +355,25 @@
   <data name="UnfilteredRowCountTemplate" xml:space="preserve">
     <value>{0} {1}</value>
   </data>
+  <data name="ExpandRowButtonAriaLabelTemplate" xml:space="preserve">
+    <value>Développer les détails pour {0}</value>
+  </data>
+  <data name="CollapseRowButtonAriaLabelTemplate" xml:space="preserve">
+    <value>Réduire les détails pour {0}</value>
+  </data>
+  <data name="ExpandInRowDetailPanelAriaLabelTemplate" xml:space="preserve">
+    <value>Détails pour {0}</value>
+  </data>
+  <data name="FieldGroupCatchAllTitle" xml:space="preserve">
+    <value>Détails supplémentaires</value>
+  </data>
+  <data name="ExpandInRowDetailSuppressedByFilterAnnouncement" xml:space="preserve">
+    <value>L'élément développé est masqué par le filtre actuel</value>
+  </data>
+  <data name="ExpandedRowHiddenByFilterBanner" xml:space="preserve">
+    <value>{0} élément développé masqué par le filtre actuel</value>
+  </data>
+  <data name="ExpandedRowHiddenByFilterBannerClearLink" xml:space="preserve">
+    <value>Effacer le filtre</value>
+  </data>
 </root>

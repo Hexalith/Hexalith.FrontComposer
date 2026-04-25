@@ -41,7 +41,12 @@ public class RazorEmitterBadgeColumnTests {
 
         source.ShouldContain("Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)");
         source.ShouldNotContain("FcStatusBadge");
-        source.ShouldNotContain("ChildContent\", (RenderFragment<OrderProjection>");
+        // Story 4-5 amended: the expand-row chevron TemplateColumn introduces a
+        // RenderFragment<OrderProjection> ChildContent on every Default emission, so the
+        // unconditional negative-assert was relaxed to the badge-specific path. The badge
+        // ChildContent always opens with `b.AddAttribute(colSeq++, "ChildContent",
+        // (RenderFragment<OrderProjection>)(item => (RenderTreeBuilder rb) => { ... item.Status`.
+        source.ShouldNotContain("item.Status.ToString() switch");
     }
 
     /// <summary>

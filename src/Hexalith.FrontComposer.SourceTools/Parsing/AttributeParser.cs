@@ -16,7 +16,15 @@ public static class AttributeParser {
     private const string BadgeSlotEnumName = "Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot";
     private const string ProjectionBadgeAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionBadgeAttribute";
     private const string ColumnPriorityAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ColumnPriorityAttribute";
+    private const string ProjectionFieldGroupAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionFieldGroupAttribute";
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
+
+    /// <summary>
+    /// Story 4-5 D9 / D16 — reserved catch-all label for properties with no
+    /// <c>[ProjectionFieldGroup]</c> annotation. Adopters who name a group with this label
+    /// (case-insensitive) trigger HFC1030 Information at Parse stage.
+    /// </summary>
+    public const string FieldGroupCatchAllLabel = "Additional details";
     private static readonly EquatableArray<BadgeMappingEntry> EmptyBadgeMappings = new(ImmutableArray<BadgeMappingEntry>.Empty);
     private static readonly EquatableArray<DiagnosticInfo> EmptyDiagnostics = new(ImmutableArray<DiagnosticInfo>.Empty);
     private static readonly ParseResult EmptyParseResult = new(null, EmptyDiagnostics);
@@ -93,6 +101,12 @@ public static class AttributeParser {
         // Story 4-4 T6.5 / D15 — HFC1028 per-projection dedupe: fire once per projection that
         // declares ≥ 2 properties with the SAME explicit non-null [ColumnPriority] value.
         EmitColumnPriorityCollisionDiagnostic(typeSymbol, parsedProperties, diagnostics, filePath, linePos);
+
+        // Story 4-5 T6.4 / D9 / D16 — HFC1030 per-projection dedupe: fire once per projection
+        // that declares any [ProjectionFieldGroup] whose name case-insensitively matches the
+        // reserved catch-all label. Information severity; fail-soft pass-through (the group
+        // name is preserved on the IR so emit still renders the colliding accordion).
+        EmitFieldGroupCatchAllCollisionDiagnostic(typeSymbol, parsedProperties, diagnostics, filePath, linePos);
 
         // Story 4-1 T1.4 — validate WhenState CSV against the projection's status-enum type.
         // Emits HFC1022 per unknown member. Unknown members still flow through to the IR
@@ -536,6 +550,9 @@ public static class AttributeParser {
         // Story 4-4 T6.1 / D14 — [ColumnPriority(N)] annotation; null when absent.
         int? columnPriority = ParseColumnPriority(propertySymbol);
 
+        // Story 4-5 T6.4 / D9 — [ProjectionFieldGroup("Name")] annotation; null when absent.
+        string? fieldGroup = ParseProjectionFieldGroup(propertySymbol);
+
         return new PropertyModel(
             propertySymbol.Name,
             resolvedTypeName,
@@ -546,7 +563,73 @@ public static class AttributeParser {
             enumFqn,
             unsupportedFqn,
             enumMemberNames,
-            columnPriority);
+            columnPriority,
+            fieldGroup);
+    }
+
+    /// <summary>
+    /// Story 4-5 T6.4 / D9 — reads <c>[ProjectionFieldGroup(string)]</c> and returns the
+    /// trimmed group name, or <see langword="null"/> when the attribute is absent. Empty /
+    /// whitespace values are filtered to <see langword="null"/> to mirror the runtime guard
+    /// on <c>ProjectionFieldGroupAttribute</c>'s constructor (defence-in-depth).
+    /// </summary>
+    private static string? ParseProjectionFieldGroup(IPropertySymbol propertySymbol) {
+        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == ProjectionFieldGroupAttributeName
+                && attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is string groupName
+                && !string.IsNullOrWhiteSpace(groupName)) {
+                return groupName.Trim();
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Story 4-5 T6.4 / D9 / D16 — fires HFC1030 Information once per projection that declares
+    /// any <c>[ProjectionFieldGroup]</c> whose name case-insensitively matches the reserved
+    /// catch-all label "Additional details". Per-projection dedupe — multiple colliding
+    /// properties produce ONE diagnostic carrying all colliding group names. Fail-soft:
+    /// the group name is preserved on the IR so emit still renders the (visually unusual)
+    /// double-accordion.
+    /// </summary>
+    private static void EmitFieldGroupCatchAllCollisionDiagnostic(
+        INamedTypeSymbol typeSymbol,
+        EquatableArray<PropertyModel> properties,
+        List<DiagnosticInfo> diagnostics,
+        string filePath,
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
+        SortedSet<string>? colliding = null;
+        foreach (PropertyModel property in properties) {
+            if (property.FieldGroup is not string group) {
+                continue;
+            }
+
+            if (!string.Equals(group, FieldGroupCatchAllLabel, StringComparison.OrdinalIgnoreCase)) {
+                continue;
+            }
+
+            colliding ??= new SortedSet<string>(StringComparer.Ordinal);
+            colliding.Add(group);
+        }
+
+        if (colliding is null) {
+            return;
+        }
+
+        string payload = string.Join(", ", colliding);
+        diagnostics.Add(new DiagnosticInfo(
+            "HFC1030",
+            string.Format(
+                "ProjectionFieldGroup name '{0}' on {1} collides with the reserved catch-all group label \"{2}\" — rename the group to prevent visual confusion.",
+                payload,
+                typeSymbol.Name,
+                FieldGroupCatchAllLabel),
+            "Info",
+            filePath,
+            linePos.Line,
+            linePos.Character));
     }
 
     /// <summary>

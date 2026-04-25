@@ -48,6 +48,31 @@ public abstract class GeneratedComponentTestBase : BunitContext
         _ = Services.AddSingleton<Fluxor.IFeature>(
             sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageFeature>());
 
+        // Story 4-4 — generated grid views also inject IState<DataGridNavigationState>. Register
+        // the feature alongside LoadedPageFeature so the Counter / Status projection bUnit tests
+        // can resolve the dependency without scanning the Shell assembly.
+        _ = Services.AddSingleton<Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationFeature>();
+        _ = Services.AddSingleton<Fluxor.IFeature<Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState>>(
+            sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationFeature>());
+        _ = Services.AddSingleton<Fluxor.IFeature>(
+            sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationFeature>());
+
+        // Story 4-5 T1 / D2 — generated grid views inject IState<ExpandedRowState>. Register
+        // the ephemeral feature alongside LoadedPageFeature so bUnit tests covering Default /
+        // ActionQueue / Dashboard strategies can resolve the dependency.
+        _ = Services.AddSingleton<Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowFeature>();
+        _ = Services.AddSingleton<Fluxor.IFeature<Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState>>(
+            sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowFeature>());
+        _ = Services.AddSingleton<Fluxor.IFeature>(
+            sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowFeature>());
+
+        // Story 4-5 T1 / D7 — generated views inject IExpandInRowJSModule for the FcExpandInRowDetail
+        // component. Loose JS interop mode swallows the underlying JS calls; tests that need to
+        // assert the scroll-stabilizer call use NSubstitute to verify dispatch counts.
+        _ = Services.AddScoped<
+            Hexalith.FrontComposer.Shell.Services.IExpandInRowJSModule,
+            Hexalith.FrontComposer.Shell.Services.ExpandInRowJSModule>();
+
         // Zero-delay stub so bUnit tests stay deterministic under CI load.
         _ = Services.Configure<StubCommandServiceOptions>(o =>
         {

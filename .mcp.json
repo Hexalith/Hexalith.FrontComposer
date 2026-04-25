@@ -1,16 +1,25 @@
 {
-    "servers": {
-        "fluent-ui-blazor": {
-            "command": "fluentui-mcp",
-            "type": "stdio"
-        },
-        "aspire": {
-            "command": "aspire",
-            "args": [
-                "mcp",
-                "start"
-            ],
-            "type": "stdio"
-        }
+  "servers": {
+    "fluent-ui-blazor": {
+      "command": "fluentui-mcp",
+      "type": "stdio"
+    },
+    "aspire": {
+      "command": "aspire",
+      "args": [
+        "mcp",
+        "start"
+      ],
+      "type": "stdio"
     }
+  },
+  "mcpServers": {
+    "aspire": {
+      "command": "aspire",
+      "args": [
+        "agent",
+        "mcp"
+      ]
+    }
+  }
 }

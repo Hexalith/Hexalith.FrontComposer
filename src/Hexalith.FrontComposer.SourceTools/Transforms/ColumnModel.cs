@@ -13,7 +13,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
         bool isNullable,
         EquatableArray<BadgeMappingEntry> badgeMappings,
         EquatableArray<string> enumMemberNames = default,
-        int? priority = null) {
+        int? priority = null,
+        string? fieldGroup = null) {
         PropertyName = propertyName;
         Header = header;
         TypeCategory = typeCategory;
@@ -22,6 +23,7 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
         BadgeMappings = badgeMappings;
         EnumMemberNames = enumMemberNames;
         Priority = priority;
+        FieldGroup = fieldGroup;
     }
 
     public string PropertyName { get; }
@@ -45,6 +47,13 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
     /// <c>(Priority ?? int.MaxValue, DeclarationOrder)</c> stable sort.
     /// </summary>
     public int? Priority { get; }
+
+    /// <summary>
+    /// Story 4-5 T6.2 / D9 — declared <c>[ProjectionFieldGroup]</c> group name carried through from
+    /// <see cref="PropertyModel.FieldGroup"/>. <see langword="null"/> when the property is unannotated;
+    /// emitter renders ungrouped properties inside the catch-all "Additional details" accordion.
+    /// </summary>
+    public string? FieldGroup { get; }
 
     /// <summary>
     /// Story 4-3 D14 — derived gate for column-header filter affordance. True for
@@ -76,7 +85,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             && IsNullable == other.IsNullable
             && BadgeMappings == other.BadgeMappings
             && EnumMemberNames == other.EnumMemberNames
-            && Priority == other.Priority;
+            && Priority == other.Priority
+            && FieldGroup == other.FieldGroup;
     }
 
     public override bool Equals(object? obj) => Equals(obj as ColumnModel);
@@ -92,6 +102,7 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             hash = (hash * 31) + BadgeMappings.GetHashCode();
             hash = (hash * 31) + EnumMemberNames.GetHashCode();
             hash = (hash * 31) + (Priority?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
             return hash;
         }
     }

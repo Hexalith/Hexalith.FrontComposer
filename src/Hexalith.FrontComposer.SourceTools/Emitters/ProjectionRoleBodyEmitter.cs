@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
@@ -32,7 +33,11 @@ public static class ProjectionRoleBodyEmitter {
     /// no inline actions, no filter.
     /// </summary>
     public static void EmitDefaultBody(StringBuilder sb, RazorModel model) {
-        EmitStandardDataGrid(sb, model, filteredItemsExpression: "state.Items.AsQueryable()");
+        EmitStandardDataGrid(
+            sb,
+            model,
+            filteredItemsExpression: "state.Items.AsQueryable()",
+            emitExpandableRows: true);
     }
 
     /// <summary>
@@ -65,7 +70,8 @@ public static class ProjectionRoleBodyEmitter {
             model,
             filteredItemsExpression: "filteredItems",
             emitRowContextActionColumn: true,
-            defaultSortPropertyName: defaultSortPropertyName);
+            defaultSortPropertyName: defaultSortPropertyName,
+            emitExpandableRows: true);
     }
 
     private static string ResolveActionQueueFilteredSource(RazorModel model) {
@@ -151,18 +157,58 @@ public static class ProjectionRoleBodyEmitter {
     /// a collapsed <c>FluentAccordion</c>. When total supported properties ≤ 6 the accordion is
     /// omitted to avoid empty-accordion DOM noise (D12).
     /// </summary>
-    public static void EmitDetailRecordBody(StringBuilder sb, RazorModel model) {
+    public static void EmitDetailRecordBody(StringBuilder sb, RazorModel model)
+        => EmitDetailRecordBody(
+            sb,
+            model,
+            builderName: "builder",
+            itemExpression: "state.Items[0]",
+            seqStart: 400,
+            groupByFieldGroup: true);
+
+    /// <summary>
+    /// Story 4-5 T2.2 / D10 — parameterized helper consumed by both Story 4-1's DetailRecord
+    /// role body and Story 4-5's expand-in-row host. The defaults (<c>builderName="builder"</c>,
+    /// <c>itemExpression="state.Items[0]"</c>, <c>seqStart=400</c>, <c>groupByFieldGroup=true</c>)
+    /// produce byte-identical output to the legacy zero-arg overload when no
+    /// <c>[ProjectionFieldGroup]</c> annotations are present — protecting Story 4-1's approval
+    /// baselines. The 4-5 expand-in-row host calls with <c>itemExpression="_expandedItem"</c>
+    /// and <c>seqStart=800</c> to avoid <c>RenderTreeBuilder</c> sequence-number collisions.
+    /// </summary>
+    public static void EmitDetailRecordBody(
+        StringBuilder sb,
+        RazorModel model,
+        string builderName,
+        string itemExpression,
+        int seqStart,
+        bool groupByFieldGroup) {
         int primaryCap = 6;
         int supportedCount = model.Columns.Count;
         int primaryCount = Math.Min(primaryCap, supportedCount);
         bool hasSecondary = supportedCount > primaryCap;
 
-        _ = sb.AppendLine("        var entity = state.Items[0];");
+        // Detect whether ANY secondary column declares a [ProjectionFieldGroup] annotation.
+        // When zero AND groupByFieldGroup is true (the 4-1 default), emit the LEGACY byte-
+        // identical single-accordion layout to preserve the 4-1 approval baselines.
+        bool anySecondaryGrouped = false;
+        if (groupByFieldGroup && hasSecondary) {
+            for (int i = primaryCap; i < supportedCount; i++) {
+                if (model.Columns[i].FieldGroup is not null) {
+                    anySecondaryGrouped = true;
+                    break;
+                }
+            }
+        }
+
+        // Bind itemExpression to the "entity" local — the field-emission helpers
+        // (EmitDetailField) hardcode "entity" as the item identifier; binding here keeps
+        // the helper interface unchanged while letting both call sites pass any item source.
+        _ = sb.AppendLine("        var entity = " + itemExpression + ";");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        builder.OpenComponent<FluentCard>(seq++);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
+        _ = sb.AppendLine("        " + builderName + ".OpenComponent<FluentCard>(seq++);");
+        _ = sb.AppendLine("        " + builderName + ".AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            int fieldSeq = 400;");
+        _ = sb.AppendLine("            int fieldSeq = " + seqStart.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";");
         _ = sb.AppendLine();
 
         for (int i = 0; i < primaryCount; i++) {
@@ -170,19 +216,27 @@ public static class ProjectionRoleBodyEmitter {
         }
 
         _ = sb.AppendLine("        }));");
-        _ = sb.AppendLine("        builder.CloseComponent();");
+        _ = sb.AppendLine("        " + builderName + ".CloseComponent();");
 
-        if (hasSecondary) {
+        if (!hasSecondary) {
+            return;
+        }
+
+        if (!anySecondaryGrouped) {
+            // Story 4-1 legacy layout — single FluentAccordionItem, hardcoded sequence numbers
+            // 500-503 + secFieldSeq=600. Preserves byte-for-byte parity with 4-1's approval
+            // baselines when no [ProjectionFieldGroup] is present (regression gate per D10).
+            int legacySecStart = seqStart + 200;
             _ = sb.AppendLine();
-            _ = sb.AppendLine("        builder.OpenComponent<FluentAccordion>(seq++);");
-            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
+            _ = sb.AppendLine("        " + builderName + ".OpenComponent<FluentAccordion>(seq++);");
+            _ = sb.AppendLine("        " + builderName + ".AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            b.OpenComponent<FluentAccordionItem>(500);");
-            _ = sb.AppendLine("            b.AddAttribute(501, \"Expanded\", false);");
-            _ = sb.AppendLine("            b.AddAttribute(502, \"HeadingLevel\", 3);");
-            _ = sb.AppendLine("            b.AddAttribute(503, \"ChildContent\", (RenderFragment)((RenderTreeBuilder ib) =>");
+            _ = sb.AppendLine("            b.OpenComponent<FluentAccordionItem>(" + (seqStart + 100).ToString(System.Globalization.CultureInfo.InvariantCulture) + ");");
+            _ = sb.AppendLine("            b.AddAttribute(" + (seqStart + 101).ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"Expanded\", false);");
+            _ = sb.AppendLine("            b.AddAttribute(" + (seqStart + 102).ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"HeadingLevel\", 3);");
+            _ = sb.AppendLine("            b.AddAttribute(" + (seqStart + 103).ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"ChildContent\", (RenderFragment)((RenderTreeBuilder ib) =>");
             _ = sb.AppendLine("            {");
-            _ = sb.AppendLine("                int secFieldSeq = 600;");
+            _ = sb.AppendLine("                int secFieldSeq = " + legacySecStart.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";");
 
             for (int i = primaryCap; i < supportedCount; i++) {
                 EmitDetailField(sb, model.Columns[i], depth: 4, builderName: "ib", seqName: "secFieldSeq");
@@ -191,8 +245,83 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine("            }));");
             _ = sb.AppendLine("            b.CloseComponent();");
             _ = sb.AppendLine("        }));");
-            _ = sb.AppendLine("        builder.CloseComponent();");
+            _ = sb.AppendLine("        " + builderName + ".CloseComponent();");
+            return;
         }
+
+        // Story 4-5 D9 / AC5 — grouped emit path. Walk the buckets returned by
+        // ResolveFieldGroups; each bucket renders as its own FluentAccordionItem with the
+        // group name as Heading (catch-all bucket → FieldGroupCatchAllTitle resource).
+        IReadOnlyList<ColumnModel> secondaryColumns = SliceSecondary(model.Columns, primaryCap);
+        IReadOnlyList<FieldGroupBucket> buckets = RoleBodyHelpers.ResolveFieldGroups(secondaryColumns);
+
+        int itemSeqCursor = seqStart + 100;
+        int innerSeqCursor = seqStart + 200;
+
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        " + builderName + ".OpenComponent<FluentAccordion>(seq++);");
+        _ = sb.AppendLine("        " + builderName + ".AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
+        _ = sb.AppendLine("        {");
+
+        for (int bi = 0; bi < buckets.Count; bi++) {
+            FieldGroupBucket bucket = buckets[bi];
+            string headingExpression = bucket.GroupName is null
+                ? ColumnEmitter.ShellLocalizerFieldName + "[\"FieldGroupCatchAllTitle\"].Value"
+                : "\"" + RoleBodyHelpers.EscapeString(bucket.GroupName) + "\"";
+
+            _ = sb.AppendLine("            b.OpenComponent<FluentAccordionItem>(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ");");
+            _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"Heading\", " + headingExpression + ");");
+            _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"Expanded\", false);");
+            _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"HeadingLevel\", 3);");
+            _ = sb.AppendLine("            b.AddAttribute(" + itemSeqCursor++.ToString(System.Globalization.CultureInfo.InvariantCulture) + ", \"ChildContent\", (RenderFragment)((RenderTreeBuilder ib) =>");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                int secFieldSeq = " + innerSeqCursor.ToString(System.Globalization.CultureInfo.InvariantCulture) + ";");
+            innerSeqCursor += 200;
+
+            for (int j = 0; j < bucket.Columns.Count; j++) {
+                EmitDetailField(sb, bucket.Columns[j], depth: 4, builderName: "ib", seqName: "secFieldSeq");
+            }
+
+            _ = sb.AppendLine("            }));");
+            _ = sb.AppendLine("            b.CloseComponent();");
+        }
+
+        _ = sb.AppendLine("        }));");
+        _ = sb.AppendLine("        " + builderName + ".CloseComponent();");
+    }
+
+    private static IReadOnlyList<ColumnModel> SliceSecondary(EquatableArray<ColumnModel> all, int primaryCap) {
+        if (all.Count <= primaryCap) {
+            return Array.Empty<ColumnModel>();
+        }
+
+        ColumnModel[] tail = new ColumnModel[all.Count - primaryCap];
+        for (int i = primaryCap, k = 0; i < all.Count; i++, k++) {
+            tail[k] = all[i];
+        }
+
+        return tail;
+    }
+
+    /// <summary>
+    /// Story 4-5 — returns true when the projection has at least one secondary column
+    /// (positions 7+) carrying a <c>[ProjectionFieldGroup]</c> annotation. Drives the
+    /// conditional <c>FcShellLocalizer</c> injection so non-grouped projections do not
+    /// pick up an unused dependency.
+    /// </summary>
+    public static bool HasSecondaryFieldGroupAnnotation(RazorModel model) {
+        const int primaryCap = 6;
+        if (model.Columns.Count <= primaryCap) {
+            return false;
+        }
+
+        for (int i = primaryCap; i < model.Columns.Count; i++) {
+            if (model.Columns[i].FieldGroup is not null) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -277,7 +406,41 @@ public static class ProjectionRoleBodyEmitter {
         RazorModel model,
         string filteredItemsExpression,
         bool emitRowContextActionColumn = false,
-        string? defaultSortPropertyName = null) {
+        string? defaultSortPropertyName = null,
+        bool emitExpandableRows = false) {
+        // Story 4-5 T2.1 / D2 / D4 / D6 / D19 / D22 / AC1 / AC2 / AC8 — the host view computes
+        // the per-render expansion state OUTSIDE the FluentDataGrid emission so RowClass /
+        // OnRowClick / the trailing TemplateColumn can read coherent fields. Three locals are
+        // produced: _expandedItemKey (boxed key from ExpandedRowState), _expandedItem (the
+        // typed row that matches that key, null when filter has hidden it), and a derived
+        // _expandedItemHiddenByFilter bool that drives FcExpandedRowHiddenBanner.
+        if (emitExpandableRows) {
+            _ = sb.AppendLine("        // Story 4-5 — resolve expanded-row state for this render pass.");
+            _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
+            _ = sb.AppendLine("        object? _expandedItemKey = _expandedEntry?.ItemKey;");
+            _ = sb.AppendLine("        " + model.TypeName + "? _expandedItem = null;");
+            _ = sb.AppendLine("        if (_expandedItemKey is not null)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            foreach (var __candidate in state.Items)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                if (_itemKeyAccessor(__candidate).Equals(_expandedItemKey))");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    _expandedItem = __candidate;");
+            _ = sb.AppendLine("                    break;");
+            _ = sb.AppendLine("                }");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedItem is null;");
+            _ = sb.AppendLine();
+
+            // Banner above the grid (AC8 breadcrumb).
+            _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandedRowHiddenBanner>(seq++);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"IsHiddenByFilter\", _expandedItemHiddenByFilter);");
+            _ = sb.AppendLine("        builder.CloseComponent();");
+            _ = sb.AppendLine();
+        }
+
         _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + model.TypeName + ">>(seq++);");
         // Story 4-4 T2.1 / D1 / D20 — Virtualize default ON. @key on density forces a Virtualize remount
         // when the user toggles density (Fluent v5 reads ItemSize at initialisation).
@@ -295,6 +458,13 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + model.TypeName + ", object>)_itemKeyAccessor);");
+
+        // Story 4-5 D14 / AC1 / AC2 — RowClass highlights the expanded row; OnRowClick toggles.
+        if (emitExpandableRows) {
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RowClass\", (System.Func<" + model.TypeName + ", string?>)(row => _expandedItemKey is not null && _itemKeyAccessor(row).Equals(_expandedItemKey) ? \"fc-row-expanded\" : null));");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OnRowClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<" + model.TypeName + ">>(this, row => row?.Item is null ? System.Threading.Tasks.Task.CompletedTask : HandleRowClickAsync(row.Item)));");
+        }
+
         _ = sb.AppendLine();
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
         _ = sb.AppendLine("        {");
@@ -318,8 +488,84 @@ public static class ProjectionRoleBodyEmitter {
             EmitRowContextActionColumn(sb, model);
         }
 
+        // Story 4-5 T2.1 / D11 / D14 / D19 / D21 / AC1 / AC7 — trailing row-action TemplateColumn
+        // hosting the chevron toggle button. CSS class fc-row-action-column drives the phone-
+        // viewport hide rule; fc-expand-button(--open) drives the chevron rotation.
+        if (emitExpandableRows) {
+            _ = sb.AppendLine();
+            EmitExpandTriggerColumn(sb, model);
+        }
+
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("        builder.CloseComponent();");
+
+        // Story 4-5 T2.1 / D6 / D7 / D19 / AC1 / AC3 — detail panel renders OUTSIDE the
+        // virtualized grid (below it, sibling to the FluentDataGrid) so variable-height
+        // expansion does NOT interfere with Virtualize's constant-ItemSize math (D6).
+        if (emitExpandableRows) {
+            _ = sb.AppendLine();
+            EmitExpandInRowDetailPanel(sb, model);
+        }
+    }
+
+    /// <summary>
+    /// Story 4-5 T2.1 / D11 / D14 / D19 / D21 / AC1 / AC7 — trailing TemplateColumn carrying
+    /// <c>Class="fc-row-action-column"</c> (the phone-viewport hide target per UX-DR62) with
+    /// a single <c>FluentButton</c> chevron whose CSS modifier <c>fc-expand-button--open</c>
+    /// is bound to the per-row expansion state (three-way guard per D19 extended).
+    /// </summary>
+    internal static void EmitExpandTriggerColumn(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("            // Story 4-5 — trailing row-action column hosting the expand chevron.");
+        _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + model.TypeName + ">>(colSeq++);");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-row-action-column\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Width\", \"40px\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + model.TypeName + ">)(item => (RenderTreeBuilder rb) =>");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                bool _isThisRowExpanded = _expandedItemKey is not null && _itemKeyAccessor(item).Equals(_expandedItemKey) && _expandedItem is not null;");
+        _ = sb.AppendLine("                string _buttonClass = _isThisRowExpanded ? \"fc-expand-button fc-expand-button--open\" : \"fc-expand-button\";");
+        _ = sb.AppendLine("                string _ariaLabelKey = _isThisRowExpanded ? \"CollapseRowButtonAriaLabelTemplate\" : \"ExpandRowButtonAriaLabelTemplate\";");
+        _ = sb.AppendLine("                string _ariaLabel = " + ColumnEmitter.ShellLocalizerFieldName + "[_ariaLabelKey, _itemKeyAccessor(item).ToString() ?? string.Empty].Value;");
+        _ = sb.AppendLine("                rb.OpenComponent<global::Microsoft.FluentUI.AspNetCore.Components.FluentButton>(0);");
+        _ = sb.AppendLine("                rb.AddAttribute(1, \"Appearance\", global::Microsoft.FluentUI.AspNetCore.Components.ButtonAppearance.Subtle);");
+        _ = sb.AppendLine("                rb.AddAttribute(2, \"IconStart\", (global::Microsoft.FluentUI.AspNetCore.Components.Icon)new global::Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.ChevronRight());");
+        _ = sb.AppendLine("                rb.AddAttribute(3, \"Class\", _buttonClass);");
+        _ = sb.AppendLine("                rb.AddAttribute(4, \"aria-label\", _ariaLabel);");
+        _ = sb.AppendLine("                rb.AddAttribute(5, \"aria-expanded\", _isThisRowExpanded ? \"true\" : \"false\");");
+        _ = sb.AppendLine("                rb.AddAttribute(6, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleRowClickAsync(item)));");
+        _ = sb.AppendLine("                rb.CloseComponent();");
+        _ = sb.AppendLine("            }));");
+        _ = sb.AppendLine("            b.CloseComponent();");
+    }
+
+    /// <summary>
+    /// Story 4-5 T2.1 / D6 / D10 / D19 / AC1 / AC3 / AC4 / AC5 — emits the FcExpandInRowDetail
+    /// wrapper after the FluentDataGrid closing tag, with the EmitDetailRecordBody output as
+    /// its ChildContent. The wrapper's container is always rendered (D19 extended) so the
+    /// trigger button's <c>aria-controls</c> always resolves.
+    /// </summary>
+    internal static void EmitExpandInRowDetailPanel(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("        // Story 4-5 — detail panel host; ChildContent is the factored EmitDetailRecordBody output.");
+        _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _ephemeralViewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasExpanded\", _expandedItem is not null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DetailPanelAriaLabel\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailPanelAriaLabelTemplate\", _expandedItemKey?.ToString() ?? string.Empty].Value);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressedAnnouncement\", _expandedItemHiddenByFilter ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailSuppressedByFilterAnnouncement\"].Value : null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder builder) =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            if (_expandedItem is null) { return; }");
+        _ = sb.AppendLine("            int seq = 800;");
+
+        EmitDetailRecordBody(
+            sb,
+            model,
+            builderName: "builder",
+            itemExpression: "_expandedItem",
+            seqStart: 800,
+            groupByFieldGroup: true);
+
+        _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
     }
 

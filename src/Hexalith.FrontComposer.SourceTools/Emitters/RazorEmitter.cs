@@ -60,9 +60,12 @@ public static class RazorEmitter {
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components;");
         _ = sb.AppendLine("using Microsoft.AspNetCore.Components.Rendering;");
 
-        // Story 4-2 RF3 — only views that inject IStringLocalizer<FcShellResources> pull in the
-        // namespace; keeps non-badge snapshots byte-for-byte identical to the Story 4-1 baseline.
-        if (HasBadgeMappings(model)) {
+        // Story 4-2 RF3 + Story 4-5 T2.5 — only views that inject IStringLocalizer<FcShellResources>
+        // pull in the namespace; keeps non-badge non-expand-in-row snapshots byte-for-byte identical
+        // to the Story 4-1 baseline. The condition mirrors the EmitInjections needsShellLocalizer guard.
+        if (HasBadgeMappings(model)
+            || EmitsExpandInRowMachinery(model.Strategy)
+            || ProjectionRoleBodyEmitter.HasSecondaryFieldGroupAnnotation(model)) {
             _ = sb.AppendLine("using Microsoft.Extensions.Localization;");
         }
 
@@ -101,11 +104,15 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private NavigationManager Navigation { get; set; } = default!;");
         _ = sb.AppendLine();
 
-        // Story 4-2 RF3 — views that render any badge-annotated enum column resolve the
-        // localised StatusBadgeUnknownStateFallback via IStringLocalizer<FcShellResources>
-        // in the out-of-range default arm. Injected conditionally so projections without
-        // badge mappings do not pick up a superfluous DI dependency.
-        if (HasBadgeMappings(model)) {
+        // Story 4-2 RF3 + Story 4-5 T2.5 — views that render any badge-annotated enum column
+        // OR emit expand-in-row machinery (chevron aria-label, detail panel ARIA, banner copy,
+        // [ProjectionFieldGroup] catch-all heading) resolve the localised resources via
+        // IStringLocalizer<FcShellResources>. Injected conditionally so projections without
+        // either need do not pick up a superfluous DI dependency.
+        bool needsShellLocalizer = HasBadgeMappings(model)
+            || EmitsExpandInRowMachinery(model.Strategy)
+            || ProjectionRoleBodyEmitter.HasSecondaryFieldGroupAnnotation(model);
+        if (needsShellLocalizer) {
             _ = sb.AppendLine("    [Inject]");
             _ = sb.AppendLine("    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> " + ColumnEmitter.ShellLocalizerFieldName + " { get; set; } = default!;");
             _ = sb.AppendLine();
@@ -134,7 +141,34 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }");
             _ = sb.AppendLine();
         }
+
+        // Story 4-5 T2.5 / D2 / D7 — expand-in-row hosts read ExpandedRowState every render and
+        // call IExpandInRowJSModule.InitializeAsync via the FcExpandInRowDetail child component.
+        // Both injections are conditional on the strategy actually emitting expand-in-row
+        // machinery (Default / ActionQueue / Dashboard).
+        if (EmitsExpandInRowMachinery(model.Strategy)) {
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private IState<global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState> ExpandedRowState { get; set; } = default!;");
+            _ = sb.AppendLine();
+        }
     }
+
+    /// <summary>
+    /// Story 4-5 T2.3 / D1 — strategies whose emission goes through
+    /// <see cref="ProjectionRoleBodyEmitter.EmitStandardDataGrid"/> with
+    /// <c>emitExpandableRows: true</c>. Default + ActionQueue dispatch directly; Dashboard
+    /// delegates to <see cref="ProjectionRoleBodyEmitter.EmitDefaultBody"/>. StatusOverview
+    /// is included so its no-enum fallback path (which routes through <c>EmitDefaultBody</c>)
+    /// has the required <c>_ephemeralViewKey</c> field and <c>ExpandedRowState</c> property
+    /// in scope; the normal StatusOverview emission (synthetic <c>StatusOverviewRow</c>) does
+    /// not reference the fields, so the unconditional injection is harmless. Timeline and
+    /// DetailRecord render different shells (no DataGrid) and are excluded per D1.
+    /// </summary>
+    private static bool EmitsExpandInRowMachinery(ProjectionRenderStrategy strategy)
+        => strategy == ProjectionRenderStrategy.Default
+            || strategy == ProjectionRenderStrategy.ActionQueue
+            || strategy == ProjectionRenderStrategy.StatusOverview
+            || strategy == ProjectionRenderStrategy.Dashboard;
 
     private static bool HasBadgeMappings(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
@@ -161,6 +195,15 @@ public static class RazorEmitter {
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
             _ = sb.AppendLine();
+
+            // Story 4-5 T2.5 / D22 — per-component-instance ephemeral view-key. Format extends
+            // Story 2-2 D30 with a Guid suffix so two browser tabs of the same projection do not
+            // share their ephemeral expanded-row state (cross-tab interference fix). Persisted
+            // _viewKey (3-6 / 4-3 / 4-4) is unchanged.
+            if (EmitsExpandInRowMachinery(model.Strategy)) {
+                _ = sb.AppendLine("    private readonly string _ephemeralViewKey = \"" + RoleBodyHelpers.EscapeString(viewKey) + ":\" + System.Guid.NewGuid().ToString(\"N\");");
+                _ = sb.AppendLine();
+            }
 
             // Story 4-4 T2.2 / D6 — emitted only when the projection is column-prioritizer-wrapped
             // (>15 columns). The descriptor list mirrors the IR ColumnModel set in priority-then-
@@ -245,6 +288,9 @@ public static class RazorEmitter {
         if (isGrid) {
             _ = sb.AppendLine("        LoadedPageState.StateChanged += OnStateChanged;");
             _ = sb.AppendLine("        GridNavigationState.StateChanged += OnStateChanged;");
+        }
+        if (EmitsExpandInRowMachinery(model.Strategy)) {
+            _ = sb.AppendLine("        ExpandedRowState.StateChanged += OnStateChanged;");
         }
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -352,16 +398,28 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
 
-            // Story 4-4 T2.6 / D3 — DisposeAsync sweeps pending TCS via ClearPendingPagesAction
-            // and tells the JS throttle to release the per-viewKey Map entry.
+            // Story 4-4 T2.6 / D3 + Story 4-5 T2.7 / D18 — DisposeAsync sweeps pending TCS via
+            // ClearPendingPagesAction, tells the JS throttle to release the per-viewKey Map
+            // entry, AND (for expand-in-row strategies) dispatches CollapseRowAction so the
+            // ephemeral expanded-row entry does not leak across route changes. Dispatches
+            // are unconditional — reducers are idempotent (no state read during teardown).
             _ = sb.AppendLine("    /// <inheritdoc />");
             _ = sb.AppendLine("    public async ValueTask DisposeAsync()");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        LoadedPageState.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        GridNavigationState.StateChanged -= OnStateChanged;");
+            if (EmitsExpandInRowMachinery(model.Strategy)) {
+                _ = sb.AppendLine("        ExpandedRowState.StateChanged -= OnStateChanged;");
+            }
+
             _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }");
             _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
+            if (EmitsExpandInRowMachinery(model.Strategy)) {
+                _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey)); }");
+                _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
+            }
+
             _ = sb.AppendLine("        try { await ScrollInterop.DisposeViewKeyAsync(_viewKey).ConfigureAwait(true); }");
             _ = sb.AppendLine("        catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
             _ = sb.AppendLine("        catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
@@ -369,6 +427,31 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        _dotNetRef = null;");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
+
+            // Story 4-5 T2.5 / D4 / D5 / AC2 — click-toggle dispatch. ExpandRowAction REPLACES
+            // the entry on the reducer side (D4 single-expand invariant); the view does NOT
+            // dispatch CollapseRowAction before expanding a different row. Only the same-row
+            // re-click path emits CollapseRowAction.
+            if (EmitsExpandInRowMachinery(model.Strategy)) {
+                _ = sb.AppendLine("    private System.Threading.Tasks.Task HandleRowClickAsync(" + model.TypeName + " row)");
+                _ = sb.AppendLine("    {");
+                _ = sb.AppendLine("        if (row is null) { return System.Threading.Tasks.Task.CompletedTask; }");
+                _ = sb.AppendLine("        object key = _itemKeyAccessor(row);");
+                _ = sb.AppendLine("        var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
+                _ = sb.AppendLine("        if (entry.HasValue && entry.Value.ItemKey.Equals(key))");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey));");
+                _ = sb.AppendLine("        }");
+                _ = sb.AppendLine("        else");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ExpandRowAction(_ephemeralViewKey, key));");
+                _ = sb.AppendLine("        }");
+                _ = sb.AppendLine();
+                _ = sb.AppendLine("        return System.Threading.Tasks.Task.CompletedTask;");
+                _ = sb.AppendLine("    }");
+                _ = sb.AppendLine();
+            }
+
 
             EmitGridStateHelpers(sb, model);
         }
