@@ -5,6 +5,8 @@ internal interface IProjectionHubConnection : IAsyncDisposable {
 
     IDisposable OnProjectionChanged(Func<string, string, Task> handler);
 
+    IDisposable OnConnectionStateChanged(Func<ProjectionHubConnectionStateChanged, Task> handler);
+
     Task StartAsync(CancellationToken cancellationToken);
 
     Task JoinGroupAsync(string projectionType, string tenantId, CancellationToken cancellationToken);
@@ -17,3 +19,15 @@ internal interface IProjectionHubConnection : IAsyncDisposable {
 internal interface IProjectionHubConnectionFactory {
     IProjectionHubConnection Create(Uri hubUri, Func<CancellationToken, ValueTask<string?>>? accessTokenProvider);
 }
+
+internal enum ProjectionHubConnectionState {
+    Connected,
+    Reconnecting,
+    Reconnected,
+    Closed,
+}
+
+internal sealed record ProjectionHubConnectionStateChanged(
+    ProjectionHubConnectionState State,
+    Exception? Exception = null,
+    string? ConnectionId = null);

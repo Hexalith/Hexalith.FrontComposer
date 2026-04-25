@@ -30,6 +30,7 @@ using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.Logging;
@@ -302,6 +303,8 @@ public static class ServiceCollectionExtensions
         // circuit / per user (mirrors LocalStorageService lifetime). Adopters that wire
         // EventStore via AddHexalithEventStore inherit this default automatically.
         services.TryAddScoped<IETagCache, ETagCacheService>();
+        services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
+        services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
 
         // Story 5-2 D8 — fail-fast default IAuthRedirector. Scoped because adopter
         // implementations typically capture per-circuit NavigationManager. The default throws

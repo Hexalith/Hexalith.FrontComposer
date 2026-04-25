@@ -15,6 +15,7 @@ using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -63,6 +64,7 @@ public abstract class FrontComposerTestBase : BunitContext {
         _ = Services.AddScoped<IBadgeCountService, BadgeCountService>();
         _ = Services.AddScoped<CapabilityDiscoveryEffects>();
         _ = Services.AddSingleton(TimeProvider.System);
+        _ = Services.AddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
 
         // Story 3-6 — Fluxor assembly scan picks up ScopeFlipObserverEffect + DataGridNavigationEffects;
         // their dependencies must be resolvable in the test host.

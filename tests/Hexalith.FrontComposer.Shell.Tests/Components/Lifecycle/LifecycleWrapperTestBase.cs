@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 using Hexalith.FrontComposer.Shell.Options;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,6 +35,7 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
         _ = Services.AddSingleton<NavigationManager>(_ => new TestNavigationManager());
         FakeTime = new FakeTimeProvider(new DateTimeOffset(2026, 4, 16, 12, 0, 0, TimeSpan.Zero));
         _ = Services.AddSingleton<TimeProvider>(FakeTime);
+        _ = Services.AddSingleton<IProjectionConnectionState, ProjectionConnectionStateService>();
     }
 
     /// <summary>The fake clock that drives both <c>GetUtcNow()</c> and registered <c>ITimer</c> callbacks.</summary>

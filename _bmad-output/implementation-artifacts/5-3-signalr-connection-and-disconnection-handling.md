@@ -1,6 +1,6 @@
 # Story 5.3: SignalR Connection & Disconnection Handling
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 5** -- Reliable Real-Time Experience. **FR22** live projection nudges, **FR24** disconnection detection and recovery posture, plus the first user-visible degraded-network behavior on top of Stories 5-1 and 5-2. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, **L10**, **L12**, and **L14**.
 
@@ -46,73 +46,73 @@ so that network interruptions do not disrupt my workflow or lose my unsaved form
 
 ## Tasks / Subtasks
 
-- [ ] T1. Extend the SignalR hub wrapper with connection-state events (AC1, AC2, AC8)
-  - [ ] Read `IProjectionHubConnection`, `SignalRProjectionHubConnectionFactory`, `ProjectionSubscriptionService`, and `ProjectionSubscriptionServiceTests` before editing.
-  - [ ] Add an internal connection-state event surface to `IProjectionHubConnection` or a companion interface. It must expose at least Connected, Reconnecting, Disconnected/Closed, and Reconnected/Started without leaking `Microsoft.AspNetCore.SignalR.Client` types into Contracts.
-  - [ ] Preserve `ProjectionChanged(projectionType, tenantId)` registration and the existing SignalR method names `JoinGroup` / `LeaveGroup`.
-  - [ ] Keep `/hubs/projection-changes` as the default `EventStoreOptions.ProjectionChangesHubPath`; `/projections-hub` may only appear as a configured override test, never as a default or doc recommendation.
-  - [ ] Register handlers before `StartAsync` where SignalR requires it so the first lost-connection event is not missed.
-  - [ ] Keep token acquisition per operation/reconnect path and preserve the current limitation that SignalR's `AccessTokenProvider` does not accept a cancellation token; do not block this story on solving that framework limitation.
+- [x] T1. Extend the SignalR hub wrapper with connection-state events (AC1, AC2, AC8)
+  - [x] Read `IProjectionHubConnection`, `SignalRProjectionHubConnectionFactory`, `ProjectionSubscriptionService`, and `ProjectionSubscriptionServiceTests` before editing.
+  - [x] Add an internal connection-state event surface to `IProjectionHubConnection` or a companion interface. It must expose at least Connected, Reconnecting, Disconnected/Closed, and Reconnected/Started without leaking `Microsoft.AspNetCore.SignalR.Client` types into Contracts.
+  - [x] Preserve `ProjectionChanged(projectionType, tenantId)` registration and the existing SignalR method names `JoinGroup` / `LeaveGroup`.
+  - [x] Keep `/hubs/projection-changes` as the default `EventStoreOptions.ProjectionChangesHubPath`; `/projections-hub` may only appear as a configured override test, never as a default or doc recommendation.
+  - [x] Register handlers before `StartAsync` where SignalR requires it so the first lost-connection event is not missed.
+  - [x] Keep token acquisition per operation/reconnect path and preserve the current limitation that SignalR's `AccessTokenProvider` does not accept a cancellation token; do not block this story on solving that framework limitation.
 
-- [ ] T2. Add a scoped projection connection-state service (AC2, AC6, AC8)
-  - [ ] Create a Shell-owned service, for example under `Shell/Infrastructure/EventStore/ConnectionState/` or `Shell/State/ProjectionConnection/`, that records the current EventStore projection connection state, last transition timestamp, active reconnect attempt count, and last non-sensitive failure category.
-  - [ ] Register it as scoped for Blazor circuit safety. Do not make it singleton and do not capture tenant/user/token state at construction time.
-  - [ ] Expose a minimal subscribe/read API for components/effects. Prefer immutable snapshot records over mutable public properties.
-  - [ ] Bound any retained state/history with an option-backed cap or a single latest snapshot per L14; do not keep an unbounded reconnect event list.
-  - [ ] Log connection-state changes using structured templates and redacted/bounded values only. No bearer tokens, raw tenant IDs, user IDs, group names, command/query payloads, or ProblemDetails bodies in logs.
+- [x] T2. Add a scoped projection connection-state service (AC2, AC6, AC8)
+  - [x] Create a Shell-owned service, for example under `Shell/Infrastructure/EventStore/ConnectionState/` or `Shell/State/ProjectionConnection/`, that records the current EventStore projection connection state, last transition timestamp, active reconnect attempt count, and last non-sensitive failure category.
+  - [x] Register it as scoped for Blazor circuit safety. Do not make it singleton and do not capture tenant/user/token state at construction time.
+  - [x] Expose a minimal subscribe/read API for components/effects. Prefer immutable snapshot records over mutable public properties.
+  - [x] Bound any retained state/history with an option-backed cap or a single latest snapshot per L14; do not keep an unbounded reconnect event list.
+  - [x] Log connection-state changes using structured templates and redacted/bounded values only. No bearer tokens, raw tenant IDs, user IDs, group names, command/query payloads, or ProblemDetails bodies in logs.
 
-- [ ] T3. Wire automatic reconnect and group rejoin behavior without duplicating subscription stacks (AC1, AC2, AC8)
-  - [ ] Use SignalR automatic reconnect behavior through the existing `SignalRProjectionHubConnectionFactory`; default delays may follow SignalR's 0s, 2s, 10s, 30s sequence, but expose an append-only option if tests need deterministic custom delays.
-  - [ ] Treat initial start failure separately from post-connect reconnect. `WithAutomaticReconnect()` does not retry initial `StartAsync` failures; the subscription service must surface initial-start failure as degraded state instead of pretending a reconnect loop exists.
-  - [ ] On reconnect, rejoin all currently active groups exactly once per group after the connection is connected. Reuse `ProjectionSubscriptionService`'s active group set and gate; do not introduce an independent "subscribed groups" collection that can drift.
-  - [ ] Preserve commit-after-join semantics: a group becomes active only after `JoinGroup` succeeds, and failed rejoin leaves the group marked degraded rather than silently active.
-  - [ ] Handle duplicate subscribe/unsubscribe during reconnect, dispose during reconnect, and a nudge arriving after dispose without callbacks after disposal or leaked active groups.
+- [x] T3. Wire automatic reconnect and group rejoin behavior without duplicating subscription stacks (AC1, AC2, AC8)
+  - [x] Use SignalR automatic reconnect behavior through the existing `SignalRProjectionHubConnectionFactory`; default delays may follow SignalR's 0s, 2s, 10s, 30s sequence, but expose an append-only option if tests need deterministic custom delays.
+  - [x] Treat initial start failure separately from post-connect reconnect. `WithAutomaticReconnect()` does not retry initial `StartAsync` failures; the subscription service must surface initial-start failure as degraded state instead of pretending a reconnect loop exists.
+  - [x] On reconnect, rejoin all currently active groups exactly once per group after the connection is connected. Reuse `ProjectionSubscriptionService`'s active group set and gate; do not introduce an independent "subscribed groups" collection that can drift.
+  - [x] Preserve commit-after-join semantics: a group becomes active only after `JoinGroup` succeeds, and failed rejoin leaves the group marked degraded rather than silently active.
+  - [x] Handle duplicate subscribe/unsubscribe during reconnect, dispose during reconnect, and a nudge arriving after dispose without callbacks after disposal or leaked active groups.
 
-- [ ] T4. Route nudges through REST re-query with Story 5-2 cache semantics (AC1, AC7)
-  - [ ] Consume the tenant-aware notifier path (`IProjectionChangeNotifierWithTenant`) when available. Legacy single-argument notifications remain for backward compatibility, but new Story 5-3 consumers must route by tenant when tenant is present.
-  - [ ] Ensure every nudge results in a REST re-query through the Story 5-2 response/cache seam; do not mutate projection state directly from the SignalR payload.
-  - [ ] Re-query only currently visible/subscribed projection lanes. Do not wake unrelated pages or prefetch hidden projections.
-  - [ ] Preserve existing UI state on `304 Not Modified`, 429, 503, auth failures, missing cache, or malformed responses according to Story 5-2's classifier rules.
-  - [ ] Deduplicate bursts of nudges per `(tenantId, projectionType, visible lane)` while a re-query is already in flight. The dedupe window must be bounded and must not drop the final refresh after a failure.
+- [x] T4. Route nudges through REST re-query with Story 5-2 cache semantics (AC1, AC7)
+  - [x] Consume the tenant-aware notifier path (`IProjectionChangeNotifierWithTenant`) when available. Legacy single-argument notifications remain for backward compatibility, but new Story 5-3 consumers must route by tenant when tenant is present.
+  - [x] Ensure every nudge results in a REST re-query through the Story 5-2 response/cache seam; do not mutate projection state directly from the SignalR payload.
+  - [x] Re-query only currently visible/subscribed projection lanes. Do not wake unrelated pages or prefetch hidden projections.
+  - [x] Preserve existing UI state on `304 Not Modified`, 429, 503, auth failures, missing cache, or malformed responses according to Story 5-2's classifier rules.
+  - [x] Deduplicate bursts of nudges per `(tenantId, projectionType, visible lane)` while a re-query is already in flight. The dedupe window must be bounded and must not drop the final refresh after a failure.
 
-- [ ] T5. Add inline disconnected/reconnected UX (AC2, AC6, AC8)
-  - [ ] Add a small Shell component, for example `FcProjectionConnectionStatus`, rather than overloading `FcLifecycleWrapper` or DataGrid notices with global connection copy.
-  - [ ] Render warning intent while reconnecting/disconnected and info/success confirmation briefly on reconnect. Use Fluent UI components already in the Shell stack.
-  - [ ] The indicator is inline in the shell/projection command surface and must not steal focus, block pointer interaction, or shift form fields enough to lose editing context.
-  - [ ] Add `role="status"` and `aria-live="polite"` for reconnecting/reconnected copy. Do not use assertive announcements unless later accessibility review proves users miss critical state.
-  - [ ] Add EN/FR resource keys for the exact copy in AC3 and AC6 if localization resources are already used in the touched component path; otherwise keep hardcoded copy no worse than current `FcLifecycleWrapper` precedent and record the resource follow-up explicitly.
-  - [ ] No decorative visual effects. Keep styling consistent with existing Fluent MessageBar/Badge usage and respect `prefers-reduced-motion`.
+- [x] T5. Add inline disconnected/reconnected UX (AC2, AC6, AC8)
+  - [x] Add a small Shell component, for example `FcProjectionConnectionStatus`, rather than overloading `FcLifecycleWrapper` or DataGrid notices with global connection copy.
+  - [x] Render warning intent while reconnecting/disconnected and info/success confirmation briefly on reconnect. Use Fluent UI components already in the Shell stack.
+  - [x] The indicator is inline in the shell/projection command surface and must not steal focus, block pointer interaction, or shift form fields enough to lose editing context.
+  - [x] Add `role="status"` and `aria-live="polite"` for reconnecting/reconnected copy. Do not use assertive announcements unless later accessibility review proves users miss critical state.
+  - [x] Add EN/FR resource keys for the exact copy in AC3 and AC6 if localization resources are already used in the touched component path; otherwise keep hardcoded copy no worse than current `FcLifecycleWrapper` precedent and record the resource follow-up explicitly.
+  - [x] No decorative visual effects. Keep styling consistent with existing Fluent MessageBar/Badge usage and respect `prefers-reduced-motion`.
 
-- [ ] T6. Wire `FcLifecycleWrapper` disconnected escalation (AC3, AC5, AC8)
-  - [ ] Reuse `LifecycleThresholdTimer`'s existing `isDisconnected` hook instead of adding another timer. Story 2-4 left this hook specifically for Story 5-3.
-  - [ ] Inject/read the new connection-state service into `FcLifecycleWrapper` or a thin adapter so active `Syncing` lifecycles immediately compute `LifecycleTimerPhase.ActionPrompt` when the projection connection is disconnected.
-  - [ ] Update action-prompt copy for the disconnection case to exactly `Connection lost -- unable to confirm sync status`. Do not replace domain rejection or confirmed/idempotent copy.
-  - [ ] Keep existing terminal transition behavior: Confirmed/Rejected still enter terminal and stop timers even if the hub reconnect state changes later.
-  - [ ] If an append-only option is needed to express the epic's "30 seconds" timeout language, wire it as an alias or validator-compatible policy over the existing threshold model; avoid a conflicting second timeout source.
-  - [ ] Add regression tests proving a disconnected hook escalates immediately, reconnect does not falsely confirm a command, and terminal states ignore later connection changes.
+- [x] T6. Wire `FcLifecycleWrapper` disconnected escalation (AC3, AC5, AC8)
+  - [x] Reuse `LifecycleThresholdTimer`'s existing `isDisconnected` hook instead of adding another timer. Story 2-4 left this hook specifically for Story 5-3.
+  - [x] Inject/read the new connection-state service into `FcLifecycleWrapper` or a thin adapter so active `Syncing` lifecycles immediately compute `LifecycleTimerPhase.ActionPrompt` when the projection connection is disconnected.
+  - [x] Update action-prompt copy for the disconnection case to exactly `Connection lost -- unable to confirm sync status`. Do not replace domain rejection or confirmed/idempotent copy.
+  - [x] Keep existing terminal transition behavior: Confirmed/Rejected still enter terminal and stop timers even if the hub reconnect state changes later.
+  - [x] If an append-only option is needed to express the epic's "30 seconds" timeout language, wire it as an alias or validator-compatible policy over the existing threshold model; avoid a conflicting second timeout source.
+  - [x] Add regression tests proving a disconnected hook escalates immediately, reconnect does not falsely confirm a command, and terminal states ignore later connection changes.
 
-- [ ] T7. Preserve generated command form state during projection hub drops (AC4, AC8)
-  - [ ] Read `CommandFormEmitter.cs`, generated form baselines, `FcFormAbandonmentGuard`, and Story 2-5 validation/rejection behavior before editing.
-  - [ ] Ensure disconnected/reconnected indicators do not recreate the generated form component, replace the `EditContext`, clear current model values, or clear unrelated validation state.
-  - [ ] Do not persist raw command drafts to `IStorageService`, ETag cache, query cache, LocalStorage, or logs. Component/EditContext memory is the preservation mechanism for this story.
-  - [ ] Preserve field values across reconnect status changes in bUnit tests by editing fields, simulating connection loss/reconnect, and asserting the model/EditContext values remain unchanged.
-  - [ ] Do not auto-submit, replay, or retry in-flight command forms on reconnect. Command idempotent terminal reconciliation is Story 5-5.
+- [x] T7. Preserve generated command form state during projection hub drops (AC4, AC8)
+  - [x] Read `CommandFormEmitter.cs`, generated form baselines, `FcFormAbandonmentGuard`, and Story 2-5 validation/rejection behavior before editing.
+  - [x] Ensure disconnected/reconnected indicators do not recreate the generated form component, replace the `EditContext`, clear current model values, or clear unrelated validation state.
+  - [x] Do not persist raw command drafts to `IStorageService`, ETag cache, query cache, LocalStorage, or logs. Component/EditContext memory is the preservation mechanism for this story.
+  - [x] Preserve field values across reconnect status changes in bUnit tests by editing fields, simulating connection loss/reconnect, and asserting the model/EditContext values remain unchanged.
+  - [x] Do not auto-submit, replay, or retry in-flight command forms on reconnect. Command idempotent terminal reconciliation is Story 5-5.
 
-- [ ] T8. Add bounded fallback polling for visible projection refresh only (AC7, AC8)
-  - [ ] Add options such as `ProjectionFallbackPollingIntervalSeconds` and `MaxProjectionFallbackPollingLanes` only if Story 5-2 did not already add equivalent settings. Defaults should be conservative and bounded; `0` disables fallback polling.
-  - [ ] Poll only while the hub is reconnecting/disconnected and only for visible projection/count lanes with safe tenant/user/discriminator context.
-  - [ ] Use the same Story 5-2 query/cache seam and response classifier as nudge-driven refresh. No duplicate HTTP status parser.
-  - [ ] Stop polling promptly on reconnect, unsubscribe, component disposal, tenant/user scope loss, or option disablement.
-  - [ ] Do not implement full transparent polling parity, pending-command terminal reconciliation, optimistic badge transitions, or summaries of in-flight command outcomes. Those are Story 5-5.
+- [x] T8. Add bounded fallback polling for visible projection refresh only (AC7, AC8)
+  - [x] Add options such as `ProjectionFallbackPollingIntervalSeconds` and `MaxProjectionFallbackPollingLanes` only if Story 5-2 did not already add equivalent settings. Defaults should be conservative and bounded; `0` disables fallback polling.
+  - [x] Poll only while the hub is reconnecting/disconnected and only for visible projection/count lanes with safe tenant/user/discriminator context.
+  - [x] Use the same Story 5-2 query/cache seam and response classifier as nudge-driven refresh. No duplicate HTTP status parser.
+  - [x] Stop polling promptly on reconnect, unsubscribe, component disposal, tenant/user scope loss, or option disablement.
+  - [x] Do not implement full transparent polling parity, pending-command terminal reconciliation, optimistic badge transitions, or summaries of in-flight command outcomes. Those are Story 5-5.
 
-- [ ] T9. Tests and verification (AC1-AC8)
-  - [ ] Connection wrapper tests: reconnecting/reconnected/closed events, automatic reconnect policy wiring, initial start failure surfaced distinctly, access-token provider behavior preserved.
-  - [ ] Subscription tests: active groups rejoin once after reconnect, duplicate subscribe/unsubscribe races during reconnect, failed rejoin stays degraded, dispose suppresses callbacks/events, tenant-aware nudge delivery.
-  - [ ] Lifecycle tests: disconnected `Syncing` escalates immediately to action prompt, copy matches AC3, pulse stops, terminal Confirmed/Rejected states are not regressed.
-  - [ ] Component/a11y tests: inline indicator copy, `role="status"`, `aria-live="polite"`, no modal/overlay/focus trap, reconnected confirmation auto-clears according to option.
-  - [ ] Generated form tests: edited values and validation state survive connection state changes; no automatic submit/retry; no raw draft persistence.
-  - [ ] Fallback polling tests: bounded lane count, option disablement, ETag validator usage, `304` no-churn, 429/503 preserve visible data, cleanup on reconnect/dispose.
-  - [ ] Diagnostics tests: logs for reconnect/degraded/fallback paths do not contain bearer tokens, raw tenant/user values, group names, command/query payloads, or unbounded exception/problem bodies.
+- [x] T9. Tests and verification (AC1-AC8)
+  - [x] Connection wrapper tests: reconnecting/reconnected/closed events, automatic reconnect policy wiring, initial start failure surfaced distinctly, access-token provider behavior preserved.
+  - [x] Subscription tests: active groups rejoin once after reconnect, duplicate subscribe/unsubscribe races during reconnect, failed rejoin stays degraded, dispose suppresses callbacks/events, tenant-aware nudge delivery.
+  - [x] Lifecycle tests: disconnected `Syncing` escalates immediately to action prompt, copy matches AC3, pulse stops, terminal Confirmed/Rejected states are not regressed.
+  - [x] Component/a11y tests: inline indicator copy, `role="status"`, `aria-live="polite"`, no modal/overlay/focus trap, reconnected confirmation auto-clears according to option.
+  - [x] Generated form tests: edited values and validation state survive connection state changes; no automatic submit/retry; no raw draft persistence.
+  - [x] Fallback polling tests: bounded lane count, option disablement, ETag validator usage, `304` no-churn, 429/503 preserve visible data, cleanup on reconnect/dispose.
+  - [x] Diagnostics tests: logs for reconnect/degraded/fallback paths do not contain bearer tokens, raw tenant/user values, group names, command/query payloads, or unbounded exception/problem bodies.
 
 ---
 
@@ -254,16 +254,53 @@ Do not implement these in Story 5-3:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-04-26: `dotnet build tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj -warnaserror /p:UseSharedCompilation=false` passed.
+- 2026-04-26: `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --no-build` passed: 1113 passed, 3 skipped.
+- 2026-04-26: `dotnet test tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj --no-build` passed: 91 passed.
+- 2026-04-26: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` passed.
+- 2026-04-26: `dotnet test Hexalith.FrontComposer.sln --no-build` passed: Contracts 91/0/0, Shell 1113/0/3, SourceTools 481/0/0, Bench 2/0/0.
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- Added an internal SignalR connection-state event surface and wired `Reconnecting`, `Reconnected`, `Closed`, and post-start `Connected` transitions without leaking SignalR client types into Contracts.
+- Added scoped Shell projection connection state plus bounded visible-lane refresh scheduling for nudge-driven and disconnected fallback re-query through the existing Story 5-2 page-loader/cache seam.
+- Updated `ProjectionSubscriptionService` to surface initial-start degradation, rejoin active groups on reconnect from the existing active set, preserve commit-after-join semantics, and route accepted nudges through tenant-aware notification plus visible-lane refresh.
+- Added inline `FcProjectionConnectionStatus` shell UX with AC6 copy, polite status announcements, and brief reconnected confirmation.
+- Wired `FcLifecycleWrapper` to the existing disconnected timer hook so active `Syncing` lifecycles immediately render `Connection lost -- unable to confirm sync status` and stop the pulse without changing terminal Confirmed/Rejected behavior.
+- Preserved generated form state by keeping connection UI outside the generated form/EditContext and avoiding draft persistence, auto-submit, replay, or retry behavior.
+- Kept AC3/AC6 copy hardcoded in the touched lifecycle/EventStore components, matching current `FcLifecycleWrapper` precedent; localization resource follow-up remains optional for a later broader localization pass.
 
 ### File List
 
-(to be filled in by dev agent)
+- `_bmad-output/implementation-artifacts/5-3-signalr-connection-and-disconnection-handling.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor`
+- `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css`
+- `src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor`
+- `src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor`
+- `src/Hexalith.FrontComposer.Shell/Components/Lifecycle/FcLifecycleWrapper.razor.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/EventStoreServiceExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/IProjectionHubConnection.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/SignalRProjectionHubConnectionFactory.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionState.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Lifecycle/FcLifecycleWrapperDisconnectedTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Lifecycle/LifecycleWrapperTestBase.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/FrontComposerTestBase.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererTestBase.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs`
+
+### Change Log
+
+- 2026-04-26: Implemented Story 5-3 SignalR connection/disconnection handling and moved status to review.

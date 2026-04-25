@@ -210,4 +210,25 @@ public sealed class FcShellOptions {
     /// </summary>
     [Range(0, 10_000, ErrorMessage = "MaxETagCacheEntries must be between 0 and 10000.")]
     public int MaxETagCacheEntries { get; set; } = 200;
+
+    /// <summary>
+    /// Duration (ms) that the EventStore projection connection indicator keeps the non-blocking
+    /// reconnected confirmation visible. Story 5-3 D10.
+    /// </summary>
+    [Range(1_000, 30_000, ErrorMessage = "ProjectionReconnectedNoticeDurationMs must be between 1000 and 30000.")]
+    public int ProjectionReconnectedNoticeDurationMs { get; set; } = 3_000;
+
+    /// <summary>
+    /// Bounded fallback polling interval while the EventStore projection hub is reconnecting or
+    /// disconnected. A value of <c>0</c> disables fallback polling. Story 5-3 D8.
+    /// </summary>
+    [Range(0, 300, ErrorMessage = "ProjectionFallbackPollingIntervalSeconds must be between 0 and 300.")]
+    public int ProjectionFallbackPollingIntervalSeconds { get; set; } = 15;
+
+    /// <summary>
+    /// Maximum number of visible projection lanes the fallback poller may refresh per tick.
+    /// Story 5-3 D8 / L14 bounded runtime state.
+    /// </summary>
+    [Range(1, 100, ErrorMessage = "MaxProjectionFallbackPollingLanes must be between 1 and 100.")]
+    public int MaxProjectionFallbackPollingLanes { get; set; } = 8;
 }

@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -17,9 +18,15 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     private string _boundCorrelationId = string.Empty;
     private IDisposable? _subscription;
     private IDisposable? _optionsChangeRegistration;
+    private IDisposable? _projectionConnectionRegistration;
     private LifecycleThresholdTimer? _timer;
     private ITimer? _dismissTimer;
     private LifecycleUiState _state = LifecycleUiState.Idle;
+    private ProjectionConnectionSnapshot _projectionConnectionSnapshot = new(
+        ProjectionConnectionStatus.Connected,
+        DateTimeOffset.MinValue,
+        ReconnectAttempt: 0,
+        LastFailureCategory: null);
     private int _disposed;
 
     // Review 2026-04-17 P3 — cascaded as WrapperInitiatedNavigation so FcFormAbandonmentGuard
@@ -56,6 +63,9 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     [Inject]
     private ILifecycleStateService LifecycleService { get; set; } = default!;
+
+    [Inject]
+    private IProjectionConnectionState ProjectionConnectionState { get; set; } = default!;
 
     [Inject]
     private IOptionsMonitor<FcShellOptions> ShellOptions { get; set; } = default!;
@@ -98,7 +108,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
             opts.SyncPulseThresholdMs,
             opts.StillSyncingThresholdMs,
             opts.TimeoutActionThresholdMs,
-            isDisconnected: null);
+            isDisconnected: () => ProjectionConnectionState.Current.IsDisconnected);
         _timer.OnPhaseChanged += OnPhaseChangedFromTimer;
         _optionsChangeRegistration = ShellOptions.OnChange((newOpts, _) => {
             _timer?.UpdateThresholds(
@@ -108,6 +118,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
         });
 
         _subscription = LifecycleService.Subscribe(correlationId, OnTransitionFromService);
+        _projectionConnectionRegistration = ProjectionConnectionState.Subscribe(OnProjectionConnectionChanged);
     }
 
     private void UnbindCurrent() {
@@ -116,6 +127,9 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
         IDisposable? changeReg = Interlocked.Exchange(ref _optionsChangeRegistration, null);
         changeReg?.Dispose();
+
+        IDisposable? connectionReg = Interlocked.Exchange(ref _projectionConnectionRegistration, null);
+        connectionReg?.Dispose();
 
         LifecycleThresholdTimer? timer = Interlocked.Exchange(ref _timer, null);
         if (timer is not null) {
@@ -238,6 +252,22 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
                 return;
             }
             _state = _state with { TimerPhase = phase };
+            StateHasChanged();
+        });
+    }
+
+    private void OnProjectionConnectionChanged(ProjectionConnectionSnapshot snapshot) {
+        if (_disposed != 0) {
+            return;
+        }
+
+        _projectionConnectionSnapshot = snapshot;
+        _ = InvokeAsync(() => {
+            if (_state.Current is CommandLifecycleState.Syncing) {
+                LifecycleTimerPhase phase = _timer?.CurrentPhase ?? _state.TimerPhase;
+                _state = _state with { TimerPhase = phase };
+            }
+
             StateHasChanged();
         });
     }

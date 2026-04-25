@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -38,6 +39,8 @@ public static class EventStoreServiceExtensions {
         services.TryAddScoped<EventStoreCommandClient>();
         services.TryAddScoped<EventStoreQueryClient>();
         services.TryAddScoped<IAuthRedirector, NoOpAuthRedirector>();
+        services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
+        services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
         services.TryAddScoped<ProjectionSubscriptionService>();
         services.TryAddScoped<IProjectionHubConnectionFactory, SignalRProjectionHubConnectionFactory>();
         services.TryAddScoped<ProjectionChangeNotifier>();

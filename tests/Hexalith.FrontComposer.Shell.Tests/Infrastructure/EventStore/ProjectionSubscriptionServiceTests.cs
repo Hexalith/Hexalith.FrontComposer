@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -24,6 +25,48 @@ public sealed class ProjectionSubscriptionServiceTests {
         connection.StartCount.ShouldBe(1);
         connection.JoinedGroups.ShouldBe(["orders:acme"]);
         notifier.Changed.ShouldBe(["orders"]);
+    }
+
+    [Fact]
+    public async Task OnNudge_TriggersVisibleLaneRefreshScheduler_WithTenantRoute() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestRefreshScheduler refresh = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier, refreshScheduler: refresh);
+
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        await connection.RaiseAsync("orders", "acme");
+
+        refresh.NudgeRefreshes.ShouldBe([("orders", "acme")]);
+    }
+
+    [Fact]
+    public async Task Reconnected_RejoinsActiveGroupsExactlyOnce_UsingExistingActiveSet() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier);
+
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        connection.JoinedGroups.Clear();
+
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+
+        connection.JoinedGroups.ShouldBe(["orders:acme"]);
+    }
+
+    [Fact]
+    public async Task InitialStartFailure_SurfacesDisconnectedState_WithoutActiveGroup() {
+        FakeProjectionHubConnection connection = new() { StartException = new InvalidOperationException("token expired") };
+        TestNotifier notifier = new();
+        TestProjectionConnectionState state = new();
+        ProjectionSubscriptionService sut = Create(connection, notifier, "/hubs/projection-changes", state);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
+
+        state.Current.Status.ShouldBe(ProjectionConnectionStatus.Disconnected);
+        state.Current.LastFailureCategory.ShouldBe("InitialStartFailed");
+        connection.JoinedGroups.ShouldBeEmpty();
     }
 
     [Fact]
@@ -129,7 +172,16 @@ public sealed class ProjectionSubscriptionServiceTests {
     private static ProjectionSubscriptionService Create(
         FakeProjectionHubConnection connection,
         IProjectionChangeNotifier notifier,
-        string hubPath = "/hubs/projection-changes")
+        string hubPath = "/hubs/projection-changes",
+        IProjectionFallbackRefreshScheduler? refreshScheduler = null)
+        => Create(connection, notifier, hubPath, new TestProjectionConnectionState(), refreshScheduler ?? new TestRefreshScheduler());
+
+    private static ProjectionSubscriptionService Create(
+        FakeProjectionHubConnection connection,
+        IProjectionChangeNotifier notifier,
+        string hubPath,
+        IProjectionConnectionState connectionState,
+        IProjectionFallbackRefreshScheduler? refreshScheduler = null)
         => new(
             global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
                 BaseAddress = new Uri("https://eventstore.test"),
@@ -137,6 +189,8 @@ public sealed class ProjectionSubscriptionServiceTests {
                 ProjectionChangesHubPath = hubPath,
             }),
             new FakeProjectionHubConnectionFactory(connection, $"https://eventstore.test{hubPath}"),
+            connectionState,
+            refreshScheduler ?? new TestRefreshScheduler(),
             notifier,
             NullLogger<ProjectionSubscriptionService>.Instance);
 
@@ -149,10 +203,12 @@ public sealed class ProjectionSubscriptionServiceTests {
 
     private sealed class FakeProjectionHubConnection : IProjectionHubConnection {
         private Func<string, string, Task>? _handler;
+        private Func<ProjectionHubConnectionStateChanged, Task>? _stateHandler;
 
         public bool IsConnected { get; private set; }
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
+        public Exception? StartException { get; init; }
         public Exception? JoinException { get; init; }
         public Exception? LeaveException { get; set; }
         public List<string> JoinedGroups { get; } = [];
@@ -164,8 +220,17 @@ public sealed class ProjectionSubscriptionServiceTests {
             return new Registration(() => _handler = null);
         }
 
+        public IDisposable OnConnectionStateChanged(Func<ProjectionHubConnectionStateChanged, Task> handler) {
+            _stateHandler = handler;
+            return new Registration(() => _stateHandler = null);
+        }
+
         public Task StartAsync(CancellationToken cancellationToken) {
             StartCount++;
+            if (StartException is not null) {
+                throw StartException;
+            }
+
             IsConnected = true;
             return Task.CompletedTask;
         }
@@ -199,6 +264,9 @@ public sealed class ProjectionSubscriptionServiceTests {
 
         public Task RaiseAsync(string projectionType, string tenantId)
             => _handler?.Invoke(projectionType, tenantId) ?? Task.CompletedTask;
+
+        public Task RaiseStateAsync(ProjectionHubConnectionStateChanged change)
+            => _stateHandler?.Invoke(change) ?? Task.CompletedTask;
     }
 
     private sealed class TestNotifier : IProjectionChangeNotifier {
@@ -242,5 +310,43 @@ public sealed class ProjectionSubscriptionServiceTests {
 
     private sealed class Registration(Action dispose) : IDisposable {
         public void Dispose() => dispose();
+    }
+
+    private sealed class TestProjectionConnectionState : IProjectionConnectionState {
+        public ProjectionConnectionSnapshot Current { get; private set; } = new(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null);
+
+        public IDisposable Subscribe(Action<ProjectionConnectionSnapshot> handler, bool replay = true) {
+            if (replay) {
+                handler(Current);
+            }
+
+            return new Registration(() => { });
+        }
+
+        public void Apply(ProjectionConnectionTransition transition)
+            => Current = new ProjectionConnectionSnapshot(
+                transition.Status,
+                DateTimeOffset.UtcNow,
+                transition.ReconnectAttempt,
+                transition.FailureCategory);
+    }
+
+    private sealed class TestRefreshScheduler : IProjectionFallbackRefreshScheduler {
+        public List<(string ProjectionType, string TenantId)> NudgeRefreshes { get; } = [];
+
+        public IDisposable RegisterLane(ProjectionFallbackLane lane)
+            => new Registration(() => { });
+
+        public Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default)
+            => Task.FromResult(0);
+
+        public Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
+            NudgeRefreshes.Add((projectionType, tenantId));
+            return Task.FromResult(1);
+        }
     }
 }

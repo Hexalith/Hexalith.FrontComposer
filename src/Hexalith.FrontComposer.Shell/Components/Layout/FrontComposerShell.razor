@@ -3,6 +3,7 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Components.EventStore
 @using Hexalith.FrontComposer.Shell.Resources
 @inherits Fluxor.Blazor.Web.Components.FluxorComponent
 @implements IAsyncDisposable
@@ -92,6 +93,7 @@
                 <FcDensityApplier />
                 <FcDensityAnnouncer />
                 <div id="fc-main-content" tabindex="-1">
+                    <FcProjectionConnectionStatus />
                     @ChildContent
                 </div>
             </FluentLayoutItem>

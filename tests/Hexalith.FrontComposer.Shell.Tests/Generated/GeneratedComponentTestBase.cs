@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -98,6 +99,7 @@ public abstract class GeneratedComponentTestBase : BunitContext
         // Story 2-4 — FcLifecycleWrapper injects TimeProvider; use the system clock by default
         // so generated-form rendering doesn't block on a fake clock that never ticks.
         _ = Services.AddSingleton(TimeProvider.System);
+        _ = Services.AddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
 
         // Story 4-4 T2.1 / T2.5 — generated grid views inject DataGridScrollInterop and
         // IProjectionPageLoader. Loose JS interop mode swallows the JS calls; generated tests that
