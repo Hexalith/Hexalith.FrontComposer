@@ -17,6 +17,8 @@ Story 5-1 replaces the current stub-only communication seam with explicit, swapp
 
 Endpoint ownership decision: `Hexalith.EventStore` owns the endpoint contract. FrontComposer consumes the pinned EventStore REST and SignalR surface through a configurable adapter; it does not define competing route conventions. Default paths must match the pinned EventStore contract: commands `POST /api/v1/commands`, queries `POST /api/v1/queries`, and projection changes hub `/hubs/projection-changes`. Add options for deployment/versioning overrides, but treat `/projections-hub` only as a configurable non-default alias if a consumer explicitly needs it.
 
+Adopter outcome and done boundary: after Story 5-1, a feature module can opt into EventStore-backed FrontComposer communication by calling `AddHexalithEventStore(...)`, then continue depending on FrontComposer command/query/subscription contracts without referencing Dapr, EventStore implementation packages, SignalR client APIs from Contracts, or persistence-specific APIs. The story ships the contract extensions, default REST/SignalR adapter clients, DI registration, and deterministic test seams; it does not ship projection framework changes, cache persistence, retry UX, EventStore schema policy, or provider/Pact certification.
+
 ---
 
 ## Story
@@ -38,7 +40,7 @@ so that the framework is decoupled from infrastructure providers and I can swap 
 | AC5 | A consumer project references the framework | EventStore services are registered | `AddHexalithEventStore(...)` registers default clients via DI using replaceable interfaces and EventStore-owned default paths. Consumers can override any contract implementation after registration and can override command, query, or projection hub paths through options. |
 | AC6 | Infrastructure is accessed | The implementation is inspected | FrontComposer does not add custom wrappers over DAPR state, pubsub, actors, or secrets. EventStore internals remain inside the EventStore submodule/service; FrontComposer talks through REST, SignalR, and contracts only. |
 | AC7 | Wire constraints are inspected | Requests and group names are built | `TenantId`, required user identity, `ProjectionType`, domain, aggregate/group parts, and other EventStore routing values fail validation before send when missing or colon-containing; serialized UTF-8 HTTP request bodies over 1 MB are rejected before `HttpClient.SendAsync`; command IDs are ULID strings; JSON is camelCase. |
-| AC8 | Tests run | Contract and Shell/EventStore client tests execute | Tests prove DI replacement, EventStore-owned default endpoint paths, configured path overrides, JSON shape, ETag headers, SignalR group join/leave, path configurability, and no dependency from Contracts to infrastructure packages. |
+| AC8 | Tests run | Contract and Shell/EventStore client tests execute | Tests prove DI replacement, EventStore-owned default endpoint paths, configured path overrides, JSON shape, ETag headers, SignalR group join/leave, cancellation propagation, subscription concurrency/disposal behavior, path configurability, and no dependency from Contracts to infrastructure packages. |
 
 ---
 
@@ -97,6 +99,7 @@ so that the framework is decoupled from infrastructure providers and I can swap 
   - [ ] HTTP tests: command uses EventStore default `POST /api/v1/commands`, query uses EventStore default `POST /api/v1/queries`, configured path overrides are honored, camelCase body, exact 1 MB body accepted, 1 MB + 1 byte rejected before send, auth/token hook success and failure behavior, and cancellation token propagation.
   - [ ] SignalR tests: EventStore default hub path `/hubs/projection-changes`, configured hub path overrides, group key validation, join/leave method names, duplicate subscribe/unsubscribe idempotency, concurrent subscribe/unsubscribe behavior, dispose-during-subscribe cleanup, no callback after disposal, and `ProjectionChanged` nudge routing.
   - [ ] Smoke test: `SeamExtractionSmokeTests` resolves EventStore services from a DI provider without starting a live EventStore.
+  - [ ] Test-first sequence: land failing contract/compatibility tests first, then options/DI tests, then HTTP adapter tests, then SignalR lifetime/concurrency tests, then the smoke test.
 
 ---
 
@@ -140,6 +143,7 @@ so that the framework is decoupled from infrastructure providers and I can swap 
 | D11 | ETag overflow rejects before send instead of trimming. | Silent trimming changes caller cache intent and can create misleading no-change results. | Trim to the first or last 10 validators. |
 | D12 | Request-size enforcement measures the serialized UTF-8 HTTP body. | This matches the wire payload the EventStore limit protects and gives deterministic 1 MB boundary tests. | Estimate object graph size; rely on server rejection. |
 | D13 | Auth token failure fails locally before outbound transport. | Empty or failed token acquisition should not degrade into anonymous EventStore calls. | Send without a token and let EventStore decide. |
+| D14 | Story 5-1's done boundary is contract extensions plus the default EventStore adapter, not a new event-sourcing API. | Keeps the story aligned with existing `ICommandService`, `IQueryService`, and `IProjectionSubscription` seams and prevents stream/versioning/product policy from leaking into implementation. | Introduce generic append/read stream abstractions; redesign event envelope taxonomy; certify multiple providers in this story. |
 
 ### Library / Framework Requirements
 
@@ -178,6 +182,7 @@ No new UI components, CSS, source generator outputs, Razor emitters, or localize
 
 - Use xUnit v3, Shouldly, and NSubstitute for unit tests.
 - Use fake `HttpMessageHandler` or equivalent deterministic HTTP handler for REST clients; no live EventStore required.
+- Separate test intent: contract tests guard source compatibility and package boundaries; HTTP handler tests guard REST wire shape; SignalR fakes guard group, lifetime, and concurrency behavior; the smoke test guards DI composition.
 - Do not add Playwright or browser tests for 5-1.
 - Do not run submodule test suites from FrontComposer tests; submodule behavior is consumed as a pinned contract reference.
 - Add at least one dependency/assembly test that proves `Hexalith.FrontComposer.Contracts` does not reference assemblies whose names contain `Dapr`, `SignalR`, `AspNetCore`, `Hosting`, or `EventStore` implementation packages.
@@ -194,6 +199,7 @@ Do not implement these in Story 5-1:
 - Build-time infrastructure enforcement analyzer and OpenTelemetry activity source -- Story 5-6.
 - Fault injection harness -- Story 5-7.
 - Dapr component YAML, actor calls, pub/sub topics, state-store access, or secrets access inside FrontComposer.
+- Generic event append/read stream APIs, expected-revision conflict UX, event naming/versioning policy, snapshot/retention policy, and multi-provider certification.
 
 ### Known Gaps / Follow-Ups
 
@@ -225,6 +231,17 @@ Do not implement these in Story 5-1:
 ---
 
 ## Dev Agent Record
+
+### Party-Mode Review
+
+- Date/time: 2026-04-25T12:55:24.5676224+02:00
+- Selected story key: `5-1-eventstore-service-abstractions`
+- Command/skill invocation used: `/bmad-party-mode 5-1-eventstore-service-abstractions; review;`
+- Participating BMAD agents: Winston (System Architect), John (Product Manager), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor)
+- Findings summary: endpoint ownership and done-boundary language needed to be crisper; existing public communication contracts and source compatibility must remain the implementation anchor; cancellation, tenant/user fail-closed behavior, request-size validation, subscription concurrency/disposal, and package-boundary tests need explicit developer-facing coverage; Pact/live-provider certification and generic append/read stream APIs were judged out of scope for this story.
+- Changes applied: added adopter outcome and done-boundary language; expanded AC8 with cancellation and subscription concurrency/disposal coverage; added explicit test-first sequencing; added D14 to prevent generic event-sourcing API scope creep; clarified test intent by layer; expanded scope guardrails for stream APIs, expected-revision UX, event taxonomy, retention/snapshot policy, and multi-provider certification.
+- Findings deferred: Pact/provider compatibility remains Story 10-3; full response/error UX remains Story 5-2; reconnect and permanent-disconnect UX remain Stories 5-3/5-4; event naming/versioning, snapshot, retention, and multi-provider certification require later architecture/product decisions.
+- Final recommendation: ready-for-dev
 
 ### Agent Model Used
 
