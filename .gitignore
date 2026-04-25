@@ -428,3 +428,7 @@ nupkgs/
 
 # Ignore Cursor AI rules
 .cursor/rules/codacy.mdc
+
+# BMAD scratch output (test redirects, intermediate artifacts)
+_bmad-output/**/_tmp/
+
