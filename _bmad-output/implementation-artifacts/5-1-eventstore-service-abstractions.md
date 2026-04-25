@@ -36,10 +36,10 @@ so that the framework is decoupled from infrastructure providers and I can swap 
 | AC1 | The framework's EventStore communication layer | The service contracts are inspected | Contracts expose command dispatch returning a correlation/message ID plus accepted-response metadata, query execution with ETag and explicit not-modified support, and projection subscription/unsubscription with change nudges. Contracts live in `Hexalith.FrontComposer.Contracts` and have no infrastructure dependencies. |
 | AC2 | The default command implementation | A command is dispatched | It sends `POST /api/v1/commands`, uses camelCase JSON, includes a client-generated ULID message ID, expects `202 Accepted`, captures `Location`, `Retry-After`, and response `correlationId`, and maps the result to existing lifecycle-compatible `CommandResult`. |
 | AC3 | The default query implementation | A query is executed | It sends `POST /api/v1/queries`, sends at most 10 `If-None-Match` values, expects `200 OK + ETag` for changed data, preserves the `304 Not Modified` path for Story 5-2, and uses camelCase JSON. |
-| AC4 | The default subscription implementation | A projection is subscribed | It connects to the configured SignalR hub, defaulting to EventStore-owned `/hubs/projection-changes`, invokes `JoinGroup(projectionType, tenantId)`, invokes `LeaveGroup(...)` when unsubscribing, and raises change nudges from `ProjectionChanged(projectionType, tenantId)` without carrying projection payloads. |
+| AC4 | The default subscription implementation | A projection is subscribed | It connects to the configured SignalR hub, defaulting to EventStore-owned `/hubs/projection-changes`, invokes `JoinGroup(projectionType, tenantId)`, records a subscription as active only after the join succeeds, invokes `LeaveGroup(...)` when unsubscribing an active group, and raises change nudges from `ProjectionChanged(projectionType, tenantId)` without carrying projection payloads or invoking callbacks after disposal. |
 | AC5 | A consumer project references the framework | EventStore services are registered | `AddHexalithEventStore(...)` registers default clients via DI using replaceable interfaces and EventStore-owned default paths. Consumers can override any contract implementation after registration and can override command, query, or projection hub paths through options. |
 | AC6 | Infrastructure is accessed | The implementation is inspected | FrontComposer does not add custom wrappers over DAPR state, pubsub, actors, or secrets. EventStore internals remain inside the EventStore submodule/service; FrontComposer talks through REST, SignalR, and contracts only. |
-| AC7 | Wire constraints are inspected | Requests and group names are built | `TenantId`, required user identity, `ProjectionType`, domain, aggregate/group parts, and other EventStore routing values fail validation before send when missing or colon-containing; serialized UTF-8 HTTP request bodies over 1 MB are rejected before `HttpClient.SendAsync`; command IDs are ULID strings; JSON is camelCase. |
+| AC7 | Wire constraints are inspected | Requests and group names are built | `TenantId`, required user identity, `ProjectionType`, domain, aggregate/group parts, and other EventStore routing values fail validation before send when missing or colon-containing; serialized UTF-8 HTTP request bodies over 1 MB are rejected before `HttpClient.SendAsync`; command IDs are ULID strings; JSON is camelCase; diagnostics redact bearer tokens, raw payload bodies, and PII-bearing routing values. |
 | AC8 | Tests run | Contract and Shell/EventStore client tests execute | Tests prove DI replacement, EventStore-owned default endpoint paths, configured path overrides, JSON shape, ETag headers, SignalR group join/leave, cancellation propagation, subscription concurrency/disposal behavior, path configurability, and no dependency from Contracts to infrastructure packages. |
 
 ---
@@ -62,6 +62,8 @@ so that the framework is decoupled from infrastructure providers and I can swap 
   - [ ] Add `AddHexalithEventStore(this IServiceCollection, Action<EventStoreOptions>?)` in a new `EventStoreServiceExtensions.cs`.
   - [ ] Register REST clients through typed or named `HttpClient` using configured `BaseAddress`, timeout, and token hook; do not hand-new `HttpClient` inside EventStore clients.
   - [ ] Register defaults as `Scoped` for Blazor circuit safety unless a client is demonstrably stateless. Do not register Singleton services that capture tenant/user/token state.
+  - [ ] Resolve tenant/user/token values per operation, not at DI registration or service construction time, so circuit/user changes cannot leak stale identity into later sends.
+  - [ ] Keep all transport diagnostics structured and redacted: never log bearer tokens, serialized command/query payloads, raw tenant/user IDs, or unbounded ProblemDetails bodies from the remote service.
   - [ ] Use `TryAdd*` for default implementations so consumers can replace services. Add tests proving replacement wins.
 
 - [ ] T3. Command client implementation (AC2, AC7)
@@ -89,8 +91,9 @@ so that the framework is decoupled from infrastructure providers and I can swap 
   - [ ] Implement `IAsyncDisposable`; stop/dispose the hub connection when the circuit-scoped service is disposed.
   - [ ] Use idempotent set semantics for duplicate subscribe/unsubscribe calls in Story 5-1; reference-counted leases are deferred unless a later story proves separate subscriber ownership is required.
   - [ ] Flow `CancellationToken` through SignalR start, join, and leave calls where the underlying APIs support it.
+  - [ ] Do not add a group to the active subscription set until `JoinGroup` succeeds. If start/join fails or cancellation fires, leave the service in a no-active-subscription state for that group and make a later `UnsubscribeAsync` a no-op except for safe cleanup.
   - [ ] Track subscribed groups per circuit and rejoin on reconnect only as far as the underlying client provides automatically. User-facing reconnect UX is Story 5-3/5-4.
-  - [ ] Handle concurrent `SubscribeAsync`/`UnsubscribeAsync`, dispose during active subscribe, and `ProjectionChanged` arriving after dispose without unhandled exceptions or callbacks after disposal.
+  - [ ] Handle concurrent `SubscribeAsync`/`UnsubscribeAsync`, duplicate subscribe while a join is in flight, dispose during active subscribe, and `ProjectionChanged` arriving after dispose without unhandled exceptions, leaked active-group entries, or callbacks after disposal.
   - [ ] Raise `IProjectionChangeNotifier.NotifyChanged(projectionType)` and include tenant in a companion event/result where needed for tenant isolation.
 
 - [ ] T6. Tests and verification (AC1-AC8)
@@ -144,6 +147,8 @@ so that the framework is decoupled from infrastructure providers and I can swap 
 | D12 | Request-size enforcement measures the serialized UTF-8 HTTP body. | This matches the wire payload the EventStore limit protects and gives deterministic 1 MB boundary tests. | Estimate object graph size; rely on server rejection. |
 | D13 | Auth token failure fails locally before outbound transport. | Empty or failed token acquisition should not degrade into anonymous EventStore calls. | Send without a token and let EventStore decide. |
 | D14 | Story 5-1's done boundary is contract extensions plus the default EventStore adapter, not a new event-sourcing API. | Keeps the story aligned with existing `ICommandService`, `IQueryService`, and `IProjectionSubscription` seams and prevents stream/versioning/product policy from leaking into implementation. | Introduce generic append/read stream abstractions; redesign event envelope taxonomy; certify multiple providers in this story. |
+| D15 | Transport diagnostics are redacted and bounded. | EventStore requests carry tenant, user, authorization, and business payload data; support logs must prove behavior without becoming a data exfiltration path. | Log raw HTTP bodies and headers for easier debugging; rely on adopters to scrub logs downstream. |
+| D16 | SignalR active-group state is commit-after-join. | Marking a group active before `JoinGroup` succeeds creates false unsubscribe/rejoin behavior after cancellation, hub start failure, or disposal races. | Optimistically mark active before the hub call; rely on later unsubscribe to clean failed joins. |
 
 ### Library / Framework Requirements
 
@@ -186,6 +191,7 @@ No new UI components, CSS, source generator outputs, Razor emitters, or localize
 - Do not add Playwright or browser tests for 5-1.
 - Do not run submodule test suites from FrontComposer tests; submodule behavior is consumed as a pinned contract reference.
 - Add at least one dependency/assembly test that proves `Hexalith.FrontComposer.Contracts` does not reference assemblies whose names contain `Dapr`, `SignalR`, `AspNetCore`, `Hosting`, or `EventStore` implementation packages.
+- Add negative diagnostics tests proving access tokens, raw payload bodies, and raw tenant/user values are absent from captured logs on validation, HTTP failure, and SignalR join failure paths.
 
 ### Scope Guardrails
 
@@ -241,6 +247,18 @@ Do not implement these in Story 5-1:
 - Findings summary: endpoint ownership and done-boundary language needed to be crisper; existing public communication contracts and source compatibility must remain the implementation anchor; cancellation, tenant/user fail-closed behavior, request-size validation, subscription concurrency/disposal, and package-boundary tests need explicit developer-facing coverage; Pact/live-provider certification and generic append/read stream APIs were judged out of scope for this story.
 - Changes applied: added adopter outcome and done-boundary language; expanded AC8 with cancellation and subscription concurrency/disposal coverage; added explicit test-first sequencing; added D14 to prevent generic event-sourcing API scope creep; clarified test intent by layer; expanded scope guardrails for stream APIs, expected-revision UX, event taxonomy, retention/snapshot policy, and multi-provider certification.
 - Findings deferred: Pact/provider compatibility remains Story 10-3; full response/error UX remains Story 5-2; reconnect and permanent-disconnect UX remain Stories 5-3/5-4; event naming/versioning, snapshot, retention, and multi-provider certification require later architecture/product decisions.
+- Final recommendation: ready-for-dev
+
+### Advanced Elicitation
+
+- Date/time: 2026-04-25T14:03:11.7274912+02:00
+- Selected story key: `5-1-eventstore-service-abstractions`
+- Command/skill invocation used: `/bmad-advanced-elicitation 5-1-eventstore-service-abstractions`
+- Batch 1 method names: Pre-mortem Analysis; Red Team vs Blue Team; Failure Mode Analysis; First Principles Analysis; Occam's Razor Application
+- Reshuffled Batch 2 method names: Security Audit Personas; Chaos Monkey Scenarios; Self-Consistency Validation; Comparative Analysis Matrix; Hindsight Reflection
+- Findings summary: the elicitation confirmed that the story's architecture boundary is sound, but implementation traps remained around diagnostics accidentally logging secrets/PII, DI services capturing tenant/user/token context too early, SignalR subscriptions being marked active before `JoinGroup` succeeds, and partial subscribe/cancel/dispose races leaving stale active-group state.
+- Changes applied: added AC-level redaction and commit-after-join requirements; added task guidance to resolve tenant/user/token per operation rather than at construction time; added redacted structured logging rules; added subscription failure/cancellation cleanup requirements; added D15 and D16; added diagnostics negative tests for tokens, payloads, tenant/user values, HTTP failures, and SignalR join failures.
+- Findings deferred: richer reconnect/rejoin policy, user-facing disconnected UX, and permanent failure recovery remain Stories 5-3/5-4; provider/Pact certification remains Story 10-3; full response classification and ProblemDetails body handling remain Story 5-2.
 - Final recommendation: ready-for-dev
 
 ### Agent Model Used
