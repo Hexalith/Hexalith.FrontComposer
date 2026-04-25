@@ -22,7 +22,7 @@ After the operation completes (or aborts), stop immediately. Do not chain anothe
 
 ## Configuration
 
-- `READY_BUFFER_TARGET = 2` — minimum count of `ready-for-dev` stories to maintain.
+- `READY_BUFFER_TARGET = 5` — minimum count of `ready-for-dev` stories to maintain.
 - `ELICITATION_PROMPT_RETRY_LIMIT = 3` — max attempts to recognize a `1-5, r, a, x` option prompt before aborting the elicitation as `blocked`.
 
 ## Inputs
