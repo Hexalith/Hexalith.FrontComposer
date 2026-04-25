@@ -278,7 +278,7 @@ public sealed class ProjectionSubscriptionServiceTests {
         public int StartCount { get; private set; }
         public int StopCount { get; private set; }
         public Exception? StartException { get; init; }
-        public Exception? JoinException { get; init; }
+        public Exception? JoinException { get; set; }
         public Exception? LeaveException { get; set; }
         public List<string> JoinedGroups { get; } = [];
         public List<string> LeftGroups { get; } = [];

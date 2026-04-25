@@ -29,7 +29,7 @@ public sealed class ProjectionFallbackPollingDriverTests {
         sut.Start();
 
         // Initial state is Connected → no polling.
-        await Task.Delay(100, TestContext.Current.CancellationToken);
+        await Task.Delay(100, TestContext.Current.CancellationToken).ConfigureAwait(true);
         scheduler.TriggerCount.ShouldBe(0);
 
         // Disconnect → driver should call TriggerFallbackOnceAsync at least once promptly.
@@ -40,7 +40,7 @@ public sealed class ProjectionFallbackPollingDriverTests {
         // Reconnect → driver loop must exit and stop firing.
         state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
         int countAtReconnect = scheduler.TriggerCount;
-        await Task.Delay(150, TestContext.Current.CancellationToken);
+        await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
         scheduler.TriggerCount.ShouldBeLessThanOrEqualTo(countAtReconnect + 1);
     }
 
@@ -59,7 +59,7 @@ public sealed class ProjectionFallbackPollingDriverTests {
         sut.Start();
 
         state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, FailureCategory: "Closed"));
-        await Task.Delay(150, TestContext.Current.CancellationToken);
+        await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         scheduler.TriggerCount.ShouldBe(0);
     }
@@ -82,7 +82,7 @@ public sealed class ProjectionFallbackPollingDriverTests {
 
         await sut.DisposeAsync();
         int countAtDispose = scheduler.TriggerCount;
-        await Task.Delay(150, TestContext.Current.CancellationToken);
+        await Task.Delay(150, TestContext.Current.CancellationToken).ConfigureAwait(true);
 
         scheduler.TriggerCount.ShouldBe(countAtDispose);
     }
