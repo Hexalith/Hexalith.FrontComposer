@@ -1,6 +1,6 @@
 # Story 4.6: Empty States, Field Descriptions & Unsupported Types
 
-Status: ready-for-dev
+Status: in-progress
 
 > **Epic 4 § 246-283** · **FR9** (explicit placeholder for unsupported types — build warning + docs link + zero silent omissions) · **FR10** (developer field descriptions surface as contextual help in generated views) · **FR11** (meaningful empty states with domain-language guidance and contextual CTAs) · **UX-DR3** (FcFieldPlaceholder anatomy — dashed card + warning + type + docs anchor) · **UX-DR4** (FcEmptyState anatomy — muted icon + "No {entities} yet." + CTA) · **UX-DR55** (auto-generation boundary protocol — never silently omit an unsupported type, always render FcFieldPlaceholder + build warning + dev-mode highlight) · **NFR29-34** (accessibility contract) · applies lessons **L01, L02, L04, L06, L07, L09, L10, L11**. Consumes Story 1-4 Parse-stage (`AttributeParser.ParseDisplayAttribute` extended for `Description`), Story 1-5 `ColumnModel` + `RazorModelTransform` (Unsupported columns STOP being silently dropped — the Transform stage currently `continue`s on `IsUnsupported` at line 29 of `RazorModelTransform.cs`; 4-6 REVERSES this for projections), Story 2-2 `FcShellOptions` (adds `EmptyStateSecondaryTextResourcePrefix` option), Story 3-3 `RenderContext.Mode` (dev-mode consumption hook), Story 3-5 `IFrontComposerRegistry` + bounded-context command discovery (CTA command resolution), Story 4-1 `FcProjectionEmptyPlaceholder` component SHELL (parameter list frozen + append-only per ADR-053 — 4-6 replaces the component BODY with the full CTA flow WITHOUT changing the 3 frozen parameters `ProjectionType` / `EntityPluralOverride` / `Role`; the generator call-site stays byte-identical), Story 4-1 `FcFieldPlaceholder` component (already shipped with `FieldName` + `TypeName` + `IsDevMode` parameters — 4-6 LOCALIZES the hardcoded English body + auto-injects it as a TemplateColumn when Unsupported columns appear), Story 4-3 `FcFilterEmptyState` (already ships the zero-matches filtered case — 4-6 adds NO second variant, just cross-references the distinction), Story 4-4 `FcColumnPrioritizer` unchanged (prioritizer operates on ColumnModels; Unsupported columns carry `Priority=int.MaxValue` so they sink to the overflow panel by default), Story 4-5 `[ProjectionFieldGroup]` unchanged (grouping applies to supported columns; Unsupported placeholders take the catch-all "Additional details" bucket by default).
 
@@ -239,10 +239,10 @@ This section's existence is itself a process pattern worth capturing: **L12 cand
 
 ### T1 — Contracts: attribute + IR extensions (AC1, AC4, AC5, AC6; ≈ 1.5h)
 
-- [ ] **T1.1** Create `src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionEmptyStateCtaAttribute.cs` per D6. `[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited=false, AllowMultiple=false)]`. Constructor `public ProjectionEmptyStateCtaAttribute(string CommandTypeName)` throws `ArgumentException` on null/whitespace.
-- [ ] **T1.2** Extend `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs` — add `string? EmptyStateCtaCommandTypeName` to `DomainModel` (append-only tail param, default null; Equals/GetHashCode updated). Add `string? Description` to `PropertyModel` (append-only tail param, default null; Equals/GetHashCode updated).
-- [ ] **T1.3** Extend `src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs` — add `string? Description` (append-only tail param, default null; Equals/GetHashCode updated).
-- [ ] **T1.4** Tests (Contracts): `ProjectionEmptyStateCtaAttributeTests.cs` per cheat sheet — 3 tests.
+- [x] **T1.1** Create `src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionEmptyStateCtaAttribute.cs` per D6. `[AttributeUsage(AttributeTargets.Class | AttributeTargets.Struct, Inherited=false, AllowMultiple=false)]`. Constructor `public ProjectionEmptyStateCtaAttribute(string CommandTypeName)` throws `ArgumentException` on null/whitespace.
+- [x] **T1.2** Extend `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs` — add `string? EmptyStateCtaCommandTypeName` to `DomainModel` (append-only tail param, default null; Equals/GetHashCode updated). Add `string? Description` to `PropertyModel` (append-only tail param, default null; Equals/GetHashCode updated).
+- [x] **T1.3** Extend `src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs` — add `string? Description` (append-only tail param, default null; Equals/GetHashCode updated).
+- [x] **T1.4** Tests (Contracts): `ProjectionEmptyStateCtaAttributeTests.cs` per cheat sheet — 3 tests.
 
 ### T2 — Parse + Transform + Emit stages (AC1, AC4, AC5, AC6; ≈ 4h)
 
@@ -486,8 +486,11 @@ Before T1 starts, verify these four assumptions against current shipped state. E
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- T1 complete: added `ProjectionEmptyStateCtaAttribute`, append-only `DomainModel.EmptyStateCtaCommandTypeName`, `PropertyModel.Description`, and `ColumnModel.Description` fields with equality/hash participation. Contracts tests pass (76) and SourceTools tests pass (448).
 
 ### File List
 
-(to be filled in by dev agent)
+- `src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionEmptyStateCtaAttribute.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/ProjectionEmptyStateCtaAttributeTests.cs`

@@ -13,7 +13,8 @@ public sealed class RazorModel : IEquatable<RazorModel> {
         ProjectionRenderStrategy strategy = ProjectionRenderStrategy.Default,
         EquatableArray<string> whenStates = default,
         string? entityLabel = null,
-        string? entityPluralLabel = null) {
+        string? entityPluralLabel = null,
+        string? emptyStateCtaCommandName = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -22,6 +23,7 @@ public sealed class RazorModel : IEquatable<RazorModel> {
         WhenStates = whenStates;
         EntityLabel = entityLabel;
         EntityPluralLabel = entityPluralLabel;
+        EmptyStateCtaCommandName = emptyStateCtaCommandName;
     }
 
     public string TypeName { get; }
@@ -48,6 +50,8 @@ public sealed class RazorModel : IEquatable<RazorModel> {
 
     public string? EntityPluralLabel { get; }
 
+    public string? EmptyStateCtaCommandName { get; }
+
     public bool Equals(RazorModel? other) {
         if (other is null) {
             return false;
@@ -64,6 +68,7 @@ public sealed class RazorModel : IEquatable<RazorModel> {
             && WhenStates == other.WhenStates
             && EntityLabel == other.EntityLabel
             && EntityPluralLabel == other.EntityPluralLabel
+            && EmptyStateCtaCommandName == other.EmptyStateCtaCommandName
             && Columns == other.Columns;
     }
 
@@ -79,6 +84,7 @@ public sealed class RazorModel : IEquatable<RazorModel> {
             hash = (hash * 31) + WhenStates.GetHashCode();
             hash = (hash * 31) + (EntityLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + (EntityPluralLabel?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (EmptyStateCtaCommandName?.GetHashCode() ?? 0);
             hash = (hash * 31) + Columns.GetHashCode();
             return hash;
         }

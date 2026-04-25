@@ -274,7 +274,7 @@ public class RazorModelTransformTests {
     }
 
     [Fact]
-    public void Transform_UnsupportedPropertiesSkipped() {
+    public void Transform_UnsupportedPropertiesBecomePlaceholderColumns() {
         PropertyModel[] props =
         [
             Prop("Name", "String"),
@@ -286,7 +286,9 @@ public class RazorModelTransformTests {
             Prop("Dict", "Dictionary<string,int>", isUnsupported: true),
         ];
         RazorModel result = RazorModelTransform.Transform(Model(props));
-        result.Columns.Count.ShouldBe(5);
+        result.Columns.Count.ShouldBe(7);
+        result.Columns[5].TypeCategory.ShouldBe(TypeCategory.Unsupported);
+        result.Columns[6].TypeCategory.ShouldBe(TypeCategory.Unsupported);
     }
 
     private static DomainModel Model(params PropertyModel[] props)

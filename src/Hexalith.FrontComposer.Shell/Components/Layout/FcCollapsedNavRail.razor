@@ -1,6 +1,7 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Shell.Badges
+@using Hexalith.FrontComposer.Shell.Components.Icons
 @using Hexalith.FrontComposer.Shell.Resources
 @using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery
 @using Microsoft.Extensions.Localization
@@ -12,9 +13,7 @@
 @* Story 3-2 Task 7 (D13 / AC4) — 48 px vertical icon rail rendered at CompactDesktop and
    Desktop + manual-collapse. One FluentButton per renderable bounded context wrapped with a
    FluentTooltip anchored by id. Click dispatches SidebarExpandedAction to restore the full
-   sidebar and, at CompactDesktop, opens the hamburger drawer so the expansion is visible.
-   Default icon is Icons.Regular.Size20.Apps until Story 4-1 ships projection-role-hint-based
-   icons. *@
+   sidebar and, at CompactDesktop, opens the hamburger drawer so the expansion is visible. *@
 
 <div class="fc-collapsed-rail" data-testid="fc-collapsed-rail" role="navigation"
      aria-label="@Localizer["NavMenuAriaLabel"].Value">
@@ -34,7 +33,7 @@
            readers announce the bounded-context name once (from the span), not three times. *@
         <FluentButton id="@anchorId" Appearance="@ButtonAppearance.Subtle"
                       OnClick="@(_ => OnRailClicked(manifest.BoundedContext))">
-            <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Apps())" />
+            <FluentIcon Value="@FcFluentIcons.Apps20()" />
             <span class="fc-visually-hidden">@manifest.Name</span>
             @if (aggregateCount > 0)
             {

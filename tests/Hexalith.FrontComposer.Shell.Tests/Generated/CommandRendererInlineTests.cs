@@ -113,11 +113,9 @@ public sealed class CommandRendererInlineTests : CommandRendererTestBase {
         });
     }
 
-    // NOTE: `Renderer_Inline_LeadingIconPresent` deferred — FluentUI v5 RC2 ships without
-    // satellite icon packages (Icons.Regular / Filled / Light / Color), so `IconStart`
-    // resolves to null in this build. The renderer's `ResolveIcon()` is forward-compatible
-    // with the v5 GA icons-in-package shape (uses `Microsoft.FluentUI.AspNetCore.Components.Icons+...`
-    // type path). Re-enable once a v5 GA / icons satellite package is referenced.
+    // NOTE: `Renderer_Inline_LeadingIconPresent` remains deferred because command icons now resolve
+    // through the shell-owned Fluent UI v5 icon factory. Re-enable when the test host asserts
+    // rendered SVG content rather than the old predefined icon type path.
     [Fact]
     public async Task Renderer_OneField_ScrollIntoView_ThenFocusReturnsToTrigger_OnConfirmed() {
         await InitializeStoreAsync();

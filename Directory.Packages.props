@@ -38,10 +38,6 @@
     <!-- Fluent UI v5 RC2 available on public NuGet (Path 1 from story spec).
          ADR-003: build on v5 RC, pin exact version. -->
     <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components" Version="5.0.0-rc.2-26098.1" />
-    <!-- Story 3-2 D13 — Icons package for FcCollapsedNavRail default rail icon
-         (Icons.Regular.Size20.Apps). The Icons package ships independently of the core v5 RC;
-         4.14.0 is compatible with the v5 RC Icon abstraction. -->
-    <PackageVersion Include="Microsoft.FluentUI.AspNetCore.Components.Icons" Version="4.14.0" />
     <PackageVersion Include="Fluxor.Blazor.Web" Version="6.9.0" />
   </ItemGroup>
 

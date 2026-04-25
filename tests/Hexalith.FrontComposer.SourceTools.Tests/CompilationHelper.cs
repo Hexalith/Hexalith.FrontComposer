@@ -13,6 +13,7 @@ internal static class CompilationHelper {
             MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(ProjectionAttribute).Assembly.Location),
+            MetadataReference.CreateFromFile(typeof(System.ComponentModel.DescriptionAttribute).Assembly.Location),
             MetadataReference.CreateFromFile(typeof(System.ComponentModel.DataAnnotations.DisplayAttribute).Assembly.Location),
         ];
 
@@ -38,10 +39,6 @@ internal static class CompilationHelper {
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Localization.IStringLocalizer<>)); // Localization
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Logging.ILogger<>));            // Logging
         TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid<>));   // FluentUI
-        // Story 4-5 T2.1 — generated views reference the Icons.Regular.Size20.ChevronRight icon
-        // type for the row-action chevron button. Lives in a separate assembly from the main
-        // FluentUI package, so the test compilation needs an explicit reference.
-        TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.ChevronRight));
         // Story 2-4 — emitter wraps generated EditForm in FcLifecycleWrapper, so the Shell
         // assembly must be resolvable by the test compilation.
         TryAddAssemblyRef(refs, typeof(Hexalith.FrontComposer.Shell.Components.Lifecycle.FcLifecycleWrapper));

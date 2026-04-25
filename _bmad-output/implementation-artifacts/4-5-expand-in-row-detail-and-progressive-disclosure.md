@@ -1,6 +1,6 @@
 # Story 4.5: Expand-in-Row Detail & Progressive Disclosure
 
-Status: review (2026-04-25 development complete; affected test projects green; 1461 tests passing across Contracts/Shell/SourceTools — 72 + 942 + 447, with 2 skipped E2E latency tests)
+Status: done (2026-04-25 code review patches applied; affected test projects green; 1464 tests passing across Contracts/Shell/SourceTools — 72 + 944 + 448, with 2 skipped E2E latency tests)
 
 > **Epic 4 § 199-242** · **FR20** (in-place row expansion without navigation) · **UX-DR17** (scroll stabilization — pin expanded row top edge, one expanded row at a time) · **UX-DR18** (progressive disclosure for >12 fields — primary 6-8 immediate + secondary in accordion) · **UX-DR62** (phone-tier tap-to-expand with inline-action hoisting — deferred viewport math to Story 10-2, emitter reserves the DOM marker) · **UX-DR30** (prefers-reduced-motion — transitions become instant) · applies lessons **L01, L02, L06, L07, L09, L10, L11**. Consumes the Story 1-5 `ColumnModel` IR, Story 2-2 `GridViewSnapshot` (frozen schema — reused unchanged), Story 2-2 `IExpandInRowJSModule` + `fc-expandinrow.js#initializeExpandInRow` (the FIRST projection-view consumer of the service 2-2 shipped for its compact-inline command renderer), Story 3-3 `DensityLevel` + `RenderContext.Density` (detail grid column count bends per density: Compact=3-col, Comfortable=3-col, Roomy=2-col — density is the desktop responsive axis), Story 3-6 `DataGridNavigationEffects` persistence layer, Story 4-1 `EmitStandardDataGrid` shared emission path **and `EmitDetailRecordBody` composition** (the 4-5 expanded-row host COMPOSES the 4-1 DetailRecord card/accordion layout — no new detail surface), Story 4-3 reserved-key packing convention (`__hidden` reserved key is Story 4-4's; 4-5 adds **no new reserved key** — expanded-row state is within-session ephemeral per UX-DR17 + consistent with 2-2 D5 cross-session clamp), Story 4-4 `Virtualize="true"` + `ItemKey` + `DisplayMode="Table"` (variable-height rows break `Virtualize`'s constant-`ItemSize` assumption — 4-5 RESOLVES this by rendering the detail outside the virtualized row grid).
 
@@ -271,6 +271,14 @@ so that I can inspect and act on items without navigating away and losing my scr
 - [x] **T8.2** Add 7 FR translations to `FcShellResources.fr.resx` (no colons → no U+00A0 NBSP required). Follow Story 4-1 D19 French translation conventions.
 - [x] **T8.3** Verify `CanonicalKeysHaveFrenchCounterparts` passes (86 → 93 parity per D15 consolidated). Hardened with `EnKeys.Count >= 93` minimum-count assertion. GREEN.
 - [x] **T8.4** No pre-merge French native-speaker review gate required for 4-5 (4 keys, all straightforward noun-interpolation templates, Story 4-1 D19 precedent reserves gate for high-emotional-weight + grammatically risky keys only; 4-5's keys are neutral ARIA labels + one accordion heading).
+
+---
+
+### Review Findings
+
+- [x] [Review][Patch] Expand trigger does not emit `aria-controls`, so D19/APG disclosure wiring is incomplete [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:528] — Fixed 2026-04-25. Added generated deterministic `_expandPanelId`, wired `aria-controls` on expand buttons, passed `PanelId` to `FcExpandInRowDetail`, and covered it in `RazorEmitterExpandInRowTests`.
+- [x] [Review][Patch] `StatusOverview` normal path skips expand-in-row emission despite AC1/T2.3 requiring it for all four DataGrid strategies [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:92] — Fixed 2026-04-25. StatusOverview aggregate rows now emit a trailing expand trigger and `FcExpandInRowDetail`; the detail body uses the first source item in the expanded status group.
+- [x] [Review][Patch] AC8 return-path scroll stabilizer guard is documented but not implemented [src/Hexalith.FrontComposer.Shell/Components/DataGrid/FcExpandInRowDetail.razor.cs:32] — Fixed 2026-04-25. Added suppression-return tracking in `FcExpandInRowDetail` and bUnit coverage for suppressed-then-expanded scroll-stabilizer invocation.
 
 ---
 
@@ -638,4 +646,5 @@ Claude Opus 4.7 (1M context) (story creation — Jerome Piquot, `bmad-create-sto
 |---|---|---|
 | 2026-04-25 | Story 4-5 implemented end-to-end. T2.7 auto-resolved via 4-4 existing DisposeAsync; V4 mismatch resolved via Path B. Status: ready-for-dev → in-progress → review. 1461 tests passing across affected test projects. | Amelia / Claude Opus 4.7 |
 | 2026-04-25 | Added dedicated SourceTools coverage for expand-in-row emission, field grouping, HFC1030/HFC1031 diagnostics, and `RoleBodyHelpers.ResolveFieldGroups`; full SourceTools/Shell/Contracts test projects green. | Codex |
+| 2026-04-25 | Resolved code-review findings: deterministic `aria-controls`/panel id wiring, StatusOverview aggregate-row expand surface, AC8 suppression-return scroll-stabilizer guard. Status: review → done. 1464 tests passing across affected test projects. | Codex |
 

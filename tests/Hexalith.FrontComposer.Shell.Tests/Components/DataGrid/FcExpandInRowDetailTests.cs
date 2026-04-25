@@ -59,6 +59,20 @@ public sealed class FcExpandInRowDetailTests : BunitContext {
     }
 
     [Fact]
+    public void Region_UsesProvidedPanelId() {
+        IRenderedComponent<FcExpandInRowDetail> cut = Render<FcExpandInRowDetail>(parameters => parameters
+            .Add(p => p.ViewKey, "orders:view:instance")
+            .Add(p => p.PanelId, "fc-expand-panel-orders")
+            .Add(p => p.HasExpanded, true)
+            .Add(p => p.DetailPanelAriaLabel, "Expanded order")
+            .Add(p => p.ChildContent, ChildContent()));
+
+        cut.Find("div.fc-expand-in-row-detail")
+            .GetAttribute("id")
+            .ShouldBe("fc-expand-panel-orders");
+    }
+
+    [Fact]
     public void Expanding_InvokesScrollStabilizerWithNonDefaultElementReference() {
         IRenderedComponent<FcExpandInRowDetail> cut = RenderDetail(hasExpanded: false);
 
@@ -83,6 +97,25 @@ public sealed class FcExpandInRowDetailTests : BunitContext {
             .Add(p => p.ChildContent, ChildContent("Order details updated")));
 
         _expandInRowModule.Received(1).InitializeAsync(Arg.Any<ElementReference>());
+    }
+
+    [Fact]
+    public void SuppressedThenExpanded_InvokesScrollStabilizerWhenDetailReturns() {
+        IRenderedComponent<FcExpandInRowDetail> cut = Render<FcExpandInRowDetail>(parameters => parameters
+            .Add(p => p.ViewKey, "orders:view:instance")
+            .Add(p => p.HasExpanded, false)
+            .Add(p => p.DetailPanelAriaLabel, "Expanded order")
+            .Add(p => p.SuppressedAnnouncement, "Expanded item hidden by current filter.")
+            .Add(p => p.ChildContent, ChildContent()));
+
+        cut.Render(parameters => parameters
+            .Add(p => p.ViewKey, "orders:view:instance")
+            .Add(p => p.HasExpanded, true)
+            .Add(p => p.DetailPanelAriaLabel, "Expanded order")
+            .Add(p => p.ChildContent, ChildContent()));
+
+        _expandInRowModule.Received(1).InitializeAsync(Arg.Is<ElementReference>(e =>
+            !string.IsNullOrWhiteSpace(e.Id)));
     }
 
     [Fact]

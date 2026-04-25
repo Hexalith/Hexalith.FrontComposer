@@ -290,6 +290,34 @@
     <value>No {0} found</value>
     <comment>Story 4-1 D18 / AC8 — aria-label on the empty placeholder container for AT. {0}=humanized entity plural.</comment>
   </data>
+  <data name="EmptyStateMessageTemplate" xml:space="preserve">
+    <value>No {0} yet.</value>
+    <comment>Story 4-6 — default empty-state primary copy. {0}=humanized entity plural.</comment>
+  </data>
+  <data name="EmptyStateActionQueueMessageTemplate" xml:space="preserve">
+    <value>No {0} awaiting action.</value>
+    <comment>Story 4-6 — ActionQueue empty-state primary copy. {0}=humanized entity plural.</comment>
+  </data>
+  <data name="EmptyStateCtaAriaLabelTemplate" xml:space="preserve">
+    <value>{0}: {1}</value>
+    <comment>Story 4-6 — empty-state CTA aria-label. {0}=entity plural, {1}=command display name.</comment>
+  </data>
+  <data name="FieldPlaceholderMessageTemplate" xml:space="preserve">
+    <value>{0} requires a custom renderer.</value>
+    <comment>Story 4-6 — unsupported field placeholder message. {0}=field name.</comment>
+  </data>
+  <data name="FieldPlaceholderAriaLabelTemplate" xml:space="preserve">
+    <value>{0} with unsupported type {1} requires a custom renderer</value>
+    <comment>Story 4-6 — unsupported field placeholder aria-label. {0}=field name, {1}=type name.</comment>
+  </data>
+  <data name="FieldPlaceholderDocsLinkText" xml:space="preserve">
+    <value>Learn how to customize this field</value>
+    <comment>Story 4-6 — unsupported field placeholder docs link text.</comment>
+  </data>
+  <data name="FieldPlaceholderTypeAnnotationTemplate" xml:space="preserve">
+    <value>Unsupported type: {0}</value>
+    <comment>Story 4-6 — unsupported field placeholder type annotation. {0}=type name.</comment>
+  </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Loading {0}</value>
     <comment>Story 4-1 D18 / AC8 — aria-label on the loading skeleton container (role=status, aria-busy=true). {0}=humanized entity plural.</comment>

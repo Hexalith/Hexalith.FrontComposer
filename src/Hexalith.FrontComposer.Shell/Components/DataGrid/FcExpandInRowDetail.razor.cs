@@ -27,9 +27,10 @@ namespace Hexalith.FrontComposer.Shell.Components.DataGrid;
 /// </para>
 /// </remarks>
 public partial class FcExpandInRowDetail : ComponentBase {
-    private readonly string _panelId = $"fc-expand-panel-{Guid.NewGuid():N}";
+    private readonly string _defaultPanelId = $"fc-expand-panel-{Guid.NewGuid():N}";
     private ElementReference _detailRef;
     private bool _previousHasExpanded;
+    private bool _previousWasSuppressed;
 
     [Inject]
     private IExpandInRowJSModule ExpandInRowJSModule { get; set; } = default!;
@@ -62,18 +63,26 @@ public partial class FcExpandInRowDetail : ComponentBase {
     [Parameter]
     public string? SuppressedAnnouncement { get; set; }
 
-    /// <summary>The deterministic element id consumed by the trigger button's <c>aria-controls</c> attribute.</summary>
-    public string PanelId => _panelId;
+    /// <summary>
+    /// Gets or sets the deterministic element id consumed by the trigger button's
+    /// <c>aria-controls</c> attribute. When omitted, the component falls back to an
+    /// instance-local id for standalone use.
+    /// </summary>
+    [Parameter]
+    public string? PanelId { get; set; }
+
+    private string EffectivePanelId => string.IsNullOrWhiteSpace(PanelId) ? _defaultPanelId : PanelId!;
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
         // D8 extended guard: fire the JS scroll-stabilizer ONLY on transitions into the rendered
-        // state. Skip when (a) HasExpanded was already true and stays true (no-op render churn),
-        // (b) HasExpanded transitioned true → false (collapse — JS handles via Fluent's animation).
-        if (HasExpanded && !_previousHasExpanded) {
+        // state or when a previously suppressed logical expansion reappears after filters clear.
+        bool wasSuppressed = !string.IsNullOrWhiteSpace(SuppressedAnnouncement);
+        if (HasExpanded && (!_previousHasExpanded || _previousWasSuppressed)) {
             await ExpandInRowJSModule.InitializeAsync(_detailRef).ConfigureAwait(true);
         }
 
         _previousHasExpanded = HasExpanded;
+        _previousWasSuppressed = wasSuppressed;
     }
 }

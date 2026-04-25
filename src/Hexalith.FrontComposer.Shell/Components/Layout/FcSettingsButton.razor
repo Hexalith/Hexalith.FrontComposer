@@ -1,4 +1,5 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Components.Icons
 @using Hexalith.FrontComposer.Shell.Resources
 @using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
@@ -13,5 +14,5 @@
               aria-label="@Localizer["SettingsTriggerAriaLabel"].Value"
               data-testid="fc-settings-button"
               OnClick="OpenDialogAsync">
-    <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Settings())" />
+    <FluentIcon Value="@FcFluentIcons.Settings20()" />
 </FluentButton>

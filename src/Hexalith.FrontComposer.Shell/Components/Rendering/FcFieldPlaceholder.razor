@@ -1,12 +1,17 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@using Hexalith.FrontComposer.Shell.Resources
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<FcShellResources> Localizer
 
 <div role="region"
      tabindex="0"
-     aria-label="@($"{FieldName} requires a custom renderer")"
+     aria-label="@AriaLabel"
      class="@CssClass"
      style="border: 2px dashed var(--neutral-stroke-rest, #aaaaaa); padding: 12px; margin: 4px 0; background-color: var(--neutral-fill-rest, #fafafa);">
-    <strong>@FieldName</strong> (@TypeName) — This field requires a custom renderer.
-    <a href="https://hexalith.dev/docs/customization-gradient" target="_blank" rel="noopener">Learn how to customize this field</a>
+    <strong>@FieldName</strong>
+    <span>@Localizer["FieldPlaceholderTypeAnnotationTemplate", TypeName].Value</span>
+    <span>@Localizer["FieldPlaceholderMessageTemplate", FieldName].Value</span>
+    <a href="https://hexalith.dev/docs/customization-gradient" target="_blank" rel="noopener">@Localizer["FieldPlaceholderDocsLinkText"].Value</a>
 </div>
 
 @code {
@@ -18,6 +23,8 @@
 
     /// <summary>Gets or sets a value indicating whether the placeholder is rendered in developer mode (red dashed border).</summary>
     [Parameter] public bool IsDevMode { get; set; }
+
+    private string AriaLabel => Localizer["FieldPlaceholderAriaLabelTemplate", FieldName, TypeName].Value;
 
     private string CssClass => IsDevMode
         ? "fc-field-placeholder fc-field-placeholder-dev"

@@ -44,6 +44,8 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("fc-row-action-column");
         src.ShouldContain("fc-expand-button");
         src.ShouldContain("aria-expanded");
+        src.ShouldContain("aria-controls");
+        src.ShouldContain("_expandPanelId");
         src.ShouldContain("ExpandRowButtonAriaLabelTemplate");
         src.ShouldContain("CollapseRowButtonAriaLabelTemplate");
         src.ShouldContain("ChevronRight");
@@ -62,6 +64,7 @@ public sealed class RazorEmitterExpandInRowTests {
             Col("ShippingStreet", group: "Shipping")));
 
         src.ShouldContain("FcExpandInRowDetail");
+        src.ShouldContain("\"PanelId\", _expandPanelId");
         src.ShouldContain("\"HasExpanded\", _expandedItem is not null");
         src.ShouldContain("DetailPanelAriaLabel");
         src.ShouldContain("ExpandInRowDetailPanelAriaLabelTemplate");
@@ -78,6 +81,23 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("CollapseRowAction(_ephemeralViewKey)");
         src.ShouldContain("ExpandRowAction(_ephemeralViewKey, key)");
         src.ShouldContain("public async ValueTask DisposeAsync()");
+    }
+
+    [Fact]
+    public void StatusOverviewStrategy_EmitsExpandTriggerAndDetailWrapper() {
+        string src = RazorEmitter.Emit(Model(
+            ProjectionRenderStrategy.StatusOverview,
+            Col("Id"),
+            Col("Status", TypeCategory.Enum),
+            Col("Name")));
+
+        src.ShouldContain("OrderProjectionStatusOverviewRow");
+        src.ShouldContain("HandleStatusOverviewRowClickAsync");
+        src.ShouldContain("TemplateColumn<OrderProjectionStatusOverviewRow>");
+        src.ShouldContain("aria-controls\", _expandPanelId");
+        src.ShouldContain("FcExpandInRowDetail");
+        src.ShouldContain("_expandedStatusOverviewItem?.DetailItem is not null");
+        src.ShouldContain("var entity = _expandedStatusOverviewItem.DetailItem;");
     }
 
     [Theory]

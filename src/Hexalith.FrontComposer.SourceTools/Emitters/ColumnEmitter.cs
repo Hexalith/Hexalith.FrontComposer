@@ -47,6 +47,9 @@ internal static class ColumnEmitter {
             case TypeCategory.Collection:
                 EmitCollectionColumn(sb, col, typeName, isDefaultSortColumn);
                 break;
+            case TypeCategory.Unsupported:
+                EmitUnsupportedColumn(sb, col, typeName);
+                break;
         }
     }
 
@@ -58,6 +61,7 @@ internal static class ColumnEmitter {
             _ = sb.AppendLine("            // Guid column: " + col.PropertyName);
             _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+            EmitHeaderDescription(sb, col);
 
             if (col.IsNullable) {
                 _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + " == null ? \"\\u2014\" : x." + col.PropertyName + ".Value.ToString(\"N\").Substring(0, " + length + ")));");
@@ -74,6 +78,7 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine("            // Text column: " + col.PropertyName);
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+        EmitHeaderDescription(sb, col);
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + " ?? \"\\u2014\"));");
         EmitSortAttributes(sb, col, typeName, isDefaultSortColumn);
         _ = sb.AppendLine("            b.CloseComponent();");
@@ -84,6 +89,7 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine("            // Numeric column: " + col.PropertyName);
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+        EmitHeaderDescription(sb, col);
 
         if (col.IsNullable) {
             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? x." + col.PropertyName + ".Value.ToString(\"" + format + "\", CultureInfo.CurrentCulture) : \"\\u2014\"));");
@@ -101,6 +107,7 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine("            // Boolean column: " + col.PropertyName);
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+        EmitHeaderDescription(sb, col);
 
         if (col.IsNullable) {
             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? (x." + col.PropertyName + ".Value ? \"Yes\" : \"No\") : \"\\u2014\"));");
@@ -118,6 +125,7 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine("            // DateTime column: " + col.PropertyName);
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+        EmitHeaderDescription(sb, col);
 
         if (col.IsNullable) {
             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? x." + col.PropertyName + ".Value.ToString(\"" + format + "\", CultureInfo.CurrentCulture) : \"\\u2014\"));");
@@ -134,6 +142,7 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine("            // Enum column: " + col.PropertyName);
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+        EmitHeaderDescription(sb, col);
 
         if (col.IsNullable) {
             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? Truncate(HumanizeEnumLabel(x." + col.PropertyName + ".Value.ToString()), 30) : \"\\u2014\"));");
@@ -316,9 +325,35 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine("            // Collection column: " + col.PropertyName);
         _ = sb.AppendLine("            b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+        EmitHeaderDescription(sb, col);
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + " == null ? \"\\u2014\" : System.Linq.Enumerable.Count(x." + col.PropertyName + ").ToString() + \" items\"));");
         EmitSortAttributes(sb, col, typeName, isDefaultSortColumn);
         _ = sb.AppendLine("            b.CloseComponent();");
+    }
+
+    private static void EmitUnsupportedColumn(StringBuilder sb, ColumnModel col, string typeName) {
+        string unsupportedTypeName = col.UnsupportedTypeFullyQualifiedName ?? col.PropertyName;
+
+        _ = sb.AppendLine("            // Unsupported column: " + col.PropertyName);
+        _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + typeName + ">>(colSeq++);");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+        EmitHeaderDescription(sb, col);
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-col-unsupported\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + typeName + ">)(item => (RenderTreeBuilder rb) =>");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>(0);");
+        _ = sb.AppendLine("                rb.AddAttribute(1, \"FieldName\", \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\");");
+        _ = sb.AppendLine("                rb.AddAttribute(2, \"TypeName\", \"" + RoleBodyHelpers.EscapeString(unsupportedTypeName) + "\");");
+        _ = sb.AppendLine("                rb.AddAttribute(3, \"IsDevMode\", false);");
+        _ = sb.AppendLine("                rb.CloseComponent();");
+        _ = sb.AppendLine("            }));");
+        _ = sb.AppendLine("            b.CloseComponent();");
+    }
+
+    private static void EmitHeaderDescription(StringBuilder sb, ColumnModel col) {
+        if (!string.IsNullOrWhiteSpace(col.Description)) {
+            _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"HeaderTooltip\", \"" + RoleBodyHelpers.EscapeString(col.Description!) + "\");");
+        }
     }
 
     private static void EmitSortAttributes(StringBuilder sb, ColumnModel col, string typeName, bool isDefaultSortColumn) {

@@ -169,6 +169,7 @@ public static class ServiceCollectionExtensions
         services.RemoveAll<IStorageService>();
         _ = services.AddScoped<IStorageService, LocalStorageService>();
         _ = services.AddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
+        services.TryAddScoped<IEmptyStateCtaResolver, EmptyStateCtaResolver>();
 
         // Default stub command service (ADR-010). Adopters replace it via Story 5.1's AddHexalithEventStore().
         services.TryAddScoped<ICommandService, StubCommandService>();

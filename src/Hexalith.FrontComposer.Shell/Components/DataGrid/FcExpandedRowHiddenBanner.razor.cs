@@ -17,7 +17,7 @@ namespace Hexalith.FrontComposer.Shell.Components.DataGrid;
 /// <see cref="FiltersResetAction"/> (Story 4-3) so the suppressed expansion reappears.
 /// </summary>
 /// <remarks>
-/// <b>V4 Path B contract.</b> Per the 2026-04-25 Inherited Contract Verification, Story 4-3
+/// <b>Path B contract.</b> Per the 2026-04-25 Inherited Contract Verification, Story 4-3
 /// emits no <c>_filterPredicate</c> view-class field. Rather than reopen Story 4-3 to add one,
 /// the host view (which has typed access to <c>state.Items</c> and <c>_expandedItem</c>)
 /// computes the <see cref="IsHiddenByFilter"/> boolean and passes it to this banner — the

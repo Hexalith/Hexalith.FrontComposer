@@ -248,6 +248,29 @@
   <data name="HomeEmptyPlaceholderAriaLabel" xml:space="preserve">
     <value>Aucun résultat trouvé pour {0}</value>
   </data>
+  <data name="EmptyStateMessageTemplate" xml:space="preserve">
+    <value>No {0} yet.</value>
+    <comment>Story 4-6 — identity-pass until Story 9-5 ICU pluralization.</comment>
+  </data>
+  <data name="EmptyStateActionQueueMessageTemplate" xml:space="preserve">
+    <value>No {0} awaiting action.</value>
+    <comment>Story 4-6 — identity-pass until Story 9-5 ICU pluralization.</comment>
+  </data>
+  <data name="EmptyStateCtaAriaLabelTemplate" xml:space="preserve">
+    <value>{0} : {1}</value>
+  </data>
+  <data name="FieldPlaceholderMessageTemplate" xml:space="preserve">
+    <value>{0} nécessite un rendu personnalisé.</value>
+  </data>
+  <data name="FieldPlaceholderAriaLabelTemplate" xml:space="preserve">
+    <value>{0} avec le type non pris en charge {1} nécessite un rendu personnalisé</value>
+  </data>
+  <data name="FieldPlaceholderDocsLinkText" xml:space="preserve">
+    <value>Apprendre à personnaliser ce champ</value>
+  </data>
+  <data name="FieldPlaceholderTypeAnnotationTemplate" xml:space="preserve">
+    <value>Type non pris en charge : {0}</value>
+  </data>
   <data name="FcProjectionLoadingSkeletonAriaLabel" xml:space="preserve">
     <value>Chargement de {0}</value>
   </data>

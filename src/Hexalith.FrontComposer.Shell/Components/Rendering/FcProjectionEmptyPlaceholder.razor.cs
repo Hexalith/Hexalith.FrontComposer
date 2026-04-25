@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Shell.Resources;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Localization;
@@ -25,6 +26,9 @@ public partial class FcProjectionEmptyPlaceholder {
     [Inject]
     private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
 
+    [Inject]
+    private IEmptyStateCtaResolver CtaResolver { get; set; } = default!;
+
     /// <summary>Gets or sets the projection type this placeholder represents.</summary>
     [Parameter, EditorRequired]
     public Type ProjectionType { get; set; } = default!;
@@ -45,17 +49,36 @@ public partial class FcProjectionEmptyPlaceholder {
     [Parameter]
     public ProjectionRole? Role { get; set; }
 
+    /// <summary>Gets or sets the optional command name used to render an empty-state CTA.</summary>
+    [Parameter]
+    public string? CtaCommandName { get; set; }
+
+    /// <summary>Gets or sets optional secondary empty-state guidance text.</summary>
+    [Parameter]
+    public string? SecondaryText { get; set; }
+
     private string EntityPlural => EntityPluralOverride ?? PluralizeHumanized(ProjectionType?.Name ?? "items");
+
+    private EmptyStateCta? ResolvedCta => ProjectionType is null
+        ? null
+        : CtaResolver.Resolve(ProjectionType, CtaCommandName);
 
     private string DisplayMessage => string.Format(
         System.Globalization.CultureInfo.CurrentCulture,
-        Localizer["HomeEmptyPlaceholderText"].Value,
+        Localizer[Role == ProjectionRole.ActionQueue ? "EmptyStateActionQueueMessageTemplate" : "EmptyStateMessageTemplate"].Value,
         EntityPlural);
 
     private string ResolvedAriaLabel => string.Format(
         System.Globalization.CultureInfo.CurrentCulture,
         Localizer["HomeEmptyPlaceholderAriaLabel"].Value,
         EntityPlural);
+
+    private string CtaAriaLabel(EmptyStateCta cta)
+        => string.Format(
+            System.Globalization.CultureInfo.CurrentCulture,
+            Localizer["EmptyStateCtaAriaLabelTemplate"].Value,
+            EntityPlural,
+            cta.CommandDisplayName);
 
     private static string PluralizeHumanized(string typeName) {
         string humanized = HumanizeAndStripProjectionSuffix(typeName).ToLowerInvariant();

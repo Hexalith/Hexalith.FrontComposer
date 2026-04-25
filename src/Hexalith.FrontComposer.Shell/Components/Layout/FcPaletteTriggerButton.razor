@@ -1,4 +1,5 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Shell.Components.Icons
 @using Hexalith.FrontComposer.Shell.Resources
 @using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
@@ -11,5 +12,5 @@
               aria-label="@Localizer["PaletteTriggerAriaLabel"].Value"
               data-testid="fc-palette-trigger"
               OnClick="OpenAsync">
-    <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Search())" />
+    <FluentIcon Value="@FcFluentIcons.Search20()" />
 </FluentButton>

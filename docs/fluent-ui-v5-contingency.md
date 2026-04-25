@@ -59,14 +59,14 @@ After a version bump, **every** row below must be verified. A red cell blocks ad
 | # | API / component                                  | Where it is used                                        | Verify                                                                                      | Status |
 |---|--------------------------------------------------|---------------------------------------------------------|---------------------------------------------------------------------------------------------|--------|
 | 1 | `FluentLayout` + `FluentLayoutItem`              | Shell layout (`MainLayout.razor` in `Counter.Web`)      | Shell renders with header / sidebar / content regions; no console errors.                   | ☐ |
-| 2 | `<FluentProviders />` (v5 replacement for v4 `<FluentDesignSystemProvider>`) | App-level provider registration             | Page loads without JS provider-resolution errors in the browser console.                    | ☐ |
+| 2 | `<FluentProviders />` | App-level provider registration             | Page loads without JS provider-resolution errors in the browser console.                    | ☐ |
 | 3 | `DefaultValues` (application-wide component defaults — button appearance, density, etc.) | Shell startup configuration                        | Default appearance for buttons / inputs matches what it was before the bump.                | ☐ |
 | 4 | `FluentDataGrid`                                  | Primary projection rendering                            | Columns render, sorting / virtualization still work, accessibility tree includes `<table>`. | ☐ |
 | 5 | `FluentNav` (renamed from `FluentNavMenu` in v5) | Sidebar navigation                                      | Bounded-context groups render; active item highlights; keyboard nav works.                  | ☐ |
 | 6 | Epic 2 form components: `FluentTextField`, `FluentCheckbox`, `FluentDatePicker`, `FluentSelect`, `FluentNumberField` | Generated command forms (when Epic 2 lands) | Each component binds correctly to the Fluxor store; validation messages display.            | ☐ |
 | 7 | Toast / message bar (`FluentMessageBar`, Toast component in RC2) | Command lifecycle feedback                                  | Success / error notifications render; `IToastService` is **not** referenced (removed in v5). | ☐ |
 
-### Known v4 → v5 breaking changes to watch for
+### Known legacy-provider breaking changes to watch for
 
 - `FluentNavMenu` → `FluentNav` (**renamed**).
 - `IToastService` → **removed**; use `FluentMessageBar` or the new Toast component shipped in RC2.

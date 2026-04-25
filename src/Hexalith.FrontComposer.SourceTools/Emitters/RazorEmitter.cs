@@ -63,9 +63,7 @@ public static class RazorEmitter {
         // Story 4-2 RF3 + Story 4-5 T2.5 — only views that inject IStringLocalizer<FcShellResources>
         // pull in the namespace; keeps non-badge non-expand-in-row snapshots byte-for-byte identical
         // to the Story 4-1 baseline. The condition mirrors the EmitInjections needsShellLocalizer guard.
-        if (HasBadgeMappings(model)
-            || EmitsExpandInRowMachinery(model.Strategy)
-            || ProjectionRoleBodyEmitter.HasSecondaryFieldGroupAnnotation(model)) {
+        if (NeedsShellLocalizer(model)) {
             _ = sb.AppendLine("using Microsoft.Extensions.Localization;");
         }
 
@@ -109,10 +107,7 @@ public static class RazorEmitter {
         // [ProjectionFieldGroup] catch-all heading) resolve the localised resources via
         // IStringLocalizer<FcShellResources>. Injected conditionally so projections without
         // either need do not pick up a superfluous DI dependency.
-        bool needsShellLocalizer = HasBadgeMappings(model)
-            || EmitsExpandInRowMachinery(model.Strategy)
-            || ProjectionRoleBodyEmitter.HasSecondaryFieldGroupAnnotation(model);
-        if (needsShellLocalizer) {
+        if (NeedsShellLocalizer(model)) {
             _ = sb.AppendLine("    [Inject]");
             _ = sb.AppendLine("    private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> " + ColumnEmitter.ShellLocalizerFieldName + " { get; set; } = default!;");
             _ = sb.AppendLine();
@@ -180,6 +175,28 @@ public static class RazorEmitter {
         return false;
     }
 
+    private static bool NeedsShellLocalizer(RazorModel model)
+        // Story 4-6 empty states use a per-projection optional secondary text resource key,
+        // so every generated projection view needs FcShellResources even if it has no badges
+        // or expand-in-row labels.
+        => true;
+
+    private static string ResolveDomIdSuffix(string value) {
+        StringBuilder sb = new(value.Length);
+        foreach (char c in value) {
+            if ((c >= 'a' && c <= 'z')
+                || (c >= 'A' && c <= 'Z')
+                || (c >= '0' && c <= '9')) {
+                _ = sb.Append(c);
+            }
+            else {
+                _ = sb.Append('-');
+            }
+        }
+
+        return sb.ToString();
+    }
+
     private static void EmitStrategyMembers(StringBuilder sb, RazorModel model) {
         // Story 4-4 T2.1 / T2.5 — grid-rendering strategies emit the stable per-view key,
         // the compile-time-resolved item-key accessor, and a DotNetObjectReference for the
@@ -202,6 +219,8 @@ public static class RazorEmitter {
             // _viewKey (3-6 / 4-3 / 4-4) is unchanged.
             if (EmitsExpandInRowMachinery(model.Strategy)) {
                 _ = sb.AppendLine("    private readonly string _ephemeralViewKey = \"" + RoleBodyHelpers.EscapeString(viewKey) + ":\" + System.Guid.NewGuid().ToString(\"N\");");
+                _ = sb.AppendLine();
+                _ = sb.AppendLine("    private const string _expandPanelId = \"fc-expand-panel-" + ResolveDomIdSuffix(viewKey) + "\";");
                 _ = sb.AppendLine();
             }
 
@@ -242,10 +261,26 @@ public static class RazorEmitter {
             _ = sb.AppendLine();
         }
         else if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
-            _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder);");
+            _ = sb.AppendLine("    private sealed record " + model.TypeName + "StatusOverviewRow(Enum? Status, string StatusLabel, int Count, long SortOrder, " + model.TypeName + "? DetailItem);");
             _ = sb.AppendLine();
             EmitStatusOverviewSortHelper(sb, model);
         }
+
+        EmitEmptyStateSecondaryTextResolver(sb, model);
+    }
+
+    private static void EmitEmptyStateSecondaryTextResolver(StringBuilder sb, RazorModel model) {
+        string projectionFqn = string.IsNullOrEmpty(model.Namespace)
+            ? model.TypeName
+            : model.Namespace + "." + model.TypeName;
+        string key = projectionFqn + "_EmptyStateSecondaryText";
+
+        _ = sb.AppendLine("    private string? ResolveEmptyStateSecondaryText()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        var localized = " + ColumnEmitter.ShellLocalizerFieldName + "[\"" + RoleBodyHelpers.EscapeString(key) + "\"];");
+        _ = sb.AppendLine("        return localized.ResourceNotFound ? null : localized.Value;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
     }
 
     private static void EmitStatusOverviewSortHelper(StringBuilder sb, RazorModel model) {
@@ -437,6 +472,26 @@ public static class RazorEmitter {
                 _ = sb.AppendLine("    {");
                 _ = sb.AppendLine("        if (row is null) { return System.Threading.Tasks.Task.CompletedTask; }");
                 _ = sb.AppendLine("        object key = _itemKeyAccessor(row);");
+                _ = sb.AppendLine("        var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
+                _ = sb.AppendLine("        if (entry.HasValue && entry.Value.ItemKey.Equals(key))");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey));");
+                _ = sb.AppendLine("        }");
+                _ = sb.AppendLine("        else");
+                _ = sb.AppendLine("        {");
+                _ = sb.AppendLine("            Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ExpandRowAction(_ephemeralViewKey, key));");
+                _ = sb.AppendLine("        }");
+                _ = sb.AppendLine();
+                _ = sb.AppendLine("        return System.Threading.Tasks.Task.CompletedTask;");
+                _ = sb.AppendLine("    }");
+                _ = sb.AppendLine();
+            }
+
+            if (model.Strategy == ProjectionRenderStrategy.StatusOverview) {
+                _ = sb.AppendLine("    private System.Threading.Tasks.Task HandleStatusOverviewRowClickAsync(" + model.TypeName + "StatusOverviewRow row)");
+                _ = sb.AppendLine("    {");
+                _ = sb.AppendLine("        if (row is null) { return System.Threading.Tasks.Task.CompletedTask; }");
+                _ = sb.AppendLine("        object key = row.StatusLabel;");
                 _ = sb.AppendLine("        var entry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
                 _ = sb.AppendLine("        if (entry.HasValue && entry.Value.ItemKey.Equals(key))");
                 _ = sb.AppendLine("        {");
@@ -842,6 +897,11 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionEmptyPlaceholder>(seq++);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ProjectionType\", typeof(" + model.TypeName + "));");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Role\", " + roleLiteral + ");");
+        if (!string.IsNullOrWhiteSpace(model.EmptyStateCtaCommandName)) {
+            _ = sb.AppendLine("            builder.AddAttribute(seq++, \"CtaCommandName\", \"" + RoleBodyHelpers.EscapeString(model.EmptyStateCtaCommandName!) + "\");");
+        }
+
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"SecondaryText\", ResolveEmptyStateSecondaryText());");
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("            return;");
         _ = sb.AppendLine("        }");

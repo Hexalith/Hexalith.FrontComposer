@@ -4,6 +4,7 @@ using System.Globalization;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Components.Icons;
 using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.AspNetCore.Components;
@@ -33,7 +34,7 @@ namespace Hexalith.FrontComposer.Shell.Components.DataGrid;
 public partial class FcColumnPrioritizer : ComponentBase {
     private readonly string _gearButtonId = $"fc-col-prio-gear-{Guid.NewGuid():N}";
     private readonly string _popoverTitleId = $"fc-col-prio-title-{Guid.NewGuid():N}";
-    private readonly Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.Settings _gearIcon = new();
+    private readonly Icon _gearIcon = FcFluentIcons.Settings20();
     private FluentButton? _gearButton;
     private bool _popoverOpen;
     private string _gearAriaLabel = string.Empty;

@@ -17,6 +17,8 @@ public static class AttributeParser {
     private const string ProjectionBadgeAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionBadgeAttribute";
     private const string ColumnPriorityAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ColumnPriorityAttribute";
     private const string ProjectionFieldGroupAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionFieldGroupAttribute";
+    private const string ProjectionEmptyStateCtaAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionEmptyStateCtaAttribute";
+    private const string DescriptionAttributeName = "System.ComponentModel.DescriptionAttribute";
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
 
     /// <summary>
@@ -73,6 +75,7 @@ public static class AttributeParser {
         string? boundedContext = ParseBoundedContext(typeSymbol, diagnostics, filePath, linePos, out string? boundedContextDisplayLabel);
         string? projectionRole = ParseProjectionRole(typeSymbol, diagnostics, filePath, linePos, out string? projectionRoleWhenState, out AttributeData? roleAttributeData);
         string? displayName = ParseDisplayAttribute(typeSymbol, out string? displayGroupName);
+        string? emptyStateCtaCommandTypeName = ParseProjectionEmptyStateCta(typeSymbol);
 
         if (ct.IsCancellationRequested) {
             return EmptyParseResult;
@@ -132,7 +135,8 @@ public static class AttributeParser {
             displayGroupName,
             filePath,
             linePos.Line,
-            linePos.Character);
+            linePos.Character,
+            emptyStateCtaCommandTypeName);
 
         return new ParseResult(
             model,
@@ -540,8 +544,9 @@ public static class AttributeParser {
 
         string resolvedTypeName = irType ?? propertyType.ToDisplayString();
 
-        // Parse [Display] attribute
-        string? displayName = ParseDisplayAttribute(propertySymbol);
+        // Parse display metadata
+        (string? displayName, string? displayDescription) = ParseDisplayAttribute(propertySymbol);
+        string? description = ParseDescriptionAttribute(propertySymbol) ?? displayDescription;
 
         // Parse [ProjectionBadge] from enum fields (if this property is an enum type)
         EquatableArray<BadgeMappingEntry> badgeMappings = ParseBadgeMappings(propertyType, isEnum, diagnostics, filePath);
@@ -564,7 +569,8 @@ public static class AttributeParser {
             unsupportedFqn,
             enumMemberNames,
             columnPriority,
-            fieldGroup);
+            fieldGroup,
+            description);
     }
 
     /// <summary>
@@ -580,6 +586,22 @@ public static class AttributeParser {
                 && attr.ConstructorArguments[0].Value is string groupName
                 && !string.IsNullOrWhiteSpace(groupName)) {
                 return groupName.Trim();
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Story 4-6 T2.2 — reads the projection-level empty-state CTA command type name.
+    /// </summary>
+    private static string? ParseProjectionEmptyStateCta(INamedTypeSymbol typeSymbol) {
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == ProjectionEmptyStateCtaAttributeName
+                && attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is string commandTypeName
+                && !string.IsNullOrWhiteSpace(commandTypeName)) {
+                return commandTypeName.Trim();
             }
         }
 
@@ -718,19 +740,38 @@ public static class AttributeParser {
         return false;
     }
 
-    private static string? ParseDisplayAttribute(IPropertySymbol propertySymbol) {
+    private static string? ParseDescriptionAttribute(IPropertySymbol propertySymbol) {
         foreach (AttributeData attr in propertySymbol.GetAttributes()) {
-            if (attr.AttributeClass?.ToDisplayString() == DisplayAttributeName) {
-                // DisplayAttribute uses named arguments: Name="...", Description="..."
-                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
-                    if (namedArg.Key == "Name" && namedArg.Value.Value is string name) {
-                        return name;
-                    }
-                }
+            if (attr.AttributeClass?.ToDisplayString() == DescriptionAttributeName
+                && attr.ConstructorArguments.Length > 0
+                && attr.ConstructorArguments[0].Value is string description) {
+                return NormalizeOptionalString(description);
             }
         }
 
         return null;
+    }
+
+    private static (string? DisplayName, string? Description) ParseDisplayAttribute(IPropertySymbol propertySymbol) {
+        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == DisplayAttributeName) {
+                // DisplayAttribute uses named arguments: Name="...", Description="..."
+                string? displayName = null;
+                string? description = null;
+                foreach (KeyValuePair<string, TypedConstant> namedArg in attr.NamedArguments) {
+                    if (namedArg.Key == "Name" && namedArg.Value.Value is string name) {
+                        displayName = name;
+                    }
+                    else if (namedArg.Key == "Description" && namedArg.Value.Value is string rawDescription) {
+                        description = NormalizeOptionalString(rawDescription);
+                    }
+                }
+
+                return (displayName, description);
+            }
+        }
+
+        return (null, null);
     }
 
     private static string? ParseDisplayAttribute(INamedTypeSymbol typeSymbol, out string? groupName) {
@@ -760,6 +801,9 @@ public static class AttributeParser {
 
         return null;
     }
+
+    private static string? NormalizeOptionalString(string value)
+        => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private static EquatableArray<BadgeMappingEntry> ParseBadgeMappings(
         ITypeSymbol propertyType,

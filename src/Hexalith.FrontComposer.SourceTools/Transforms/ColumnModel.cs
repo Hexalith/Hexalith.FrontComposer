@@ -14,7 +14,9 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
         EquatableArray<BadgeMappingEntry> badgeMappings,
         EquatableArray<string> enumMemberNames = default,
         int? priority = null,
-        string? fieldGroup = null) {
+        string? fieldGroup = null,
+        string? description = null,
+        string? unsupportedTypeFullyQualifiedName = null) {
         PropertyName = propertyName;
         Header = header;
         TypeCategory = typeCategory;
@@ -24,6 +26,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
         EnumMemberNames = enumMemberNames;
         Priority = priority;
         FieldGroup = fieldGroup;
+        Description = description;
+        UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
     }
 
     public string PropertyName { get; }
@@ -56,6 +60,18 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
     public string? FieldGroup { get; }
 
     /// <summary>
+    /// Gets the developer-authored field description surfaced as contextual help in
+    /// generated projection views (Story 4-6).
+    /// </summary>
+    public string? Description { get; }
+
+    /// <summary>
+    /// Gets the original fully qualified type name when <see cref="TypeCategory"/> is
+    /// <see cref="TypeCategory.Unsupported"/>. Used by placeholder cell emission.
+    /// </summary>
+    public string? UnsupportedTypeFullyQualifiedName { get; }
+
+    /// <summary>
     /// Story 4-3 D14 — derived gate for column-header filter affordance. True for
     /// Text / Numeric / Enum / DateTime; false for Boolean / Collection / Unsupported.
     /// Derived from <see cref="TypeCategory"/> so IR byte-stability is preserved
@@ -86,7 +102,9 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             && BadgeMappings == other.BadgeMappings
             && EnumMemberNames == other.EnumMemberNames
             && Priority == other.Priority
-            && FieldGroup == other.FieldGroup;
+            && FieldGroup == other.FieldGroup
+            && Description == other.Description
+            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName;
     }
 
     public override bool Equals(object? obj) => Equals(obj as ColumnModel);
@@ -103,6 +121,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             hash = (hash * 31) + EnumMemberNames.GetHashCode();
             hash = (hash * 31) + (Priority?.GetHashCode() ?? 0);
             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
             return hash;
         }
     }

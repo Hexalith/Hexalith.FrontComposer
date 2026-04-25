@@ -9,7 +9,6 @@
       Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
-    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components.Icons" />
     <PackageReference Include="NUlid" />
     <!-- Story 3-5 D5 — explicit dependency for BadgeCountService `Subject<T>` +
          `.AsObservable()` producer/consumer isolation. See Directory.Packages.props note. -->

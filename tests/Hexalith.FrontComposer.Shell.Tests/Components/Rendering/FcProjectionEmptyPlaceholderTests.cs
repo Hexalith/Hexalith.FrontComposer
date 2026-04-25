@@ -4,8 +4,11 @@ using System.Reflection;
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
 using Hexalith.FrontComposer.Shell.Tests.Components.Layout;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 
@@ -66,15 +69,39 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
     }
 
     [Fact]
-    public void RoleParameterIsAcceptedButIgnoredInV1Body() {
-        // Story 4-1 H4 — Role is present + optional + typed ProjectionRole? in 4-1; Story 4.6
-        // will consume it for role-differentiated CTA copy without generator changes.
+    public void ActionQueueRoleUsesRoleSpecificEmptyMessage() {
         IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
             .Add(p => p.ProjectionType, typeof(OrderProjection))
             .Add(p => p.Role, ProjectionRole.ActionQueue));
 
-        cut.Markup.ShouldContain("No orders yet.");
-        // Role not yet rendered into the body in 4-1; only its presence as a parameter matters.
+        cut.Markup.ShouldContain("No orders awaiting action.");
+    }
+
+    [Fact]
+    public void SecondaryTextRendersWhenProvided() {
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.SecondaryText, "Create the first order from an approved quote."));
+
+        cut.Markup.ShouldContain("Create the first order from an approved quote.");
+        cut.Markup.ShouldContain("fc-projection-empty-placeholder-secondary");
+    }
+
+    [Fact]
+    public void CtaRendersWhenResolverFindsCommand() {
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Orders",
+            BoundedContext: "Orders",
+            Projections: [typeof(OrderProjection).FullName!],
+            Commands: ["CreateOrderCommand"]));
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, "CreateOrderCommand"));
+
+        cut.Markup.ShouldContain("Create Order");
+        cut.Markup.ShouldContain("href=\"/domain/orders/create-order-command\"");
+        cut.Markup.ShouldContain("fc-projection-empty-placeholder-cta");
     }
 
     [Fact]
@@ -83,12 +110,18 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
         PropertyInfo? projectionType = t.GetProperty(nameof(FcProjectionEmptyPlaceholder.ProjectionType));
         PropertyInfo? entityPluralOverride = t.GetProperty(nameof(FcProjectionEmptyPlaceholder.EntityPluralOverride));
         PropertyInfo? role = t.GetProperty(nameof(FcProjectionEmptyPlaceholder.Role));
+        PropertyInfo? ctaCommandName = t.GetProperty(nameof(FcProjectionEmptyPlaceholder.CtaCommandName));
+        PropertyInfo? secondaryText = t.GetProperty(nameof(FcProjectionEmptyPlaceholder.SecondaryText));
 
         projectionType.ShouldNotBeNull();
         entityPluralOverride.ShouldNotBeNull();
         role.ShouldNotBeNull();
+        ctaCommandName.ShouldNotBeNull();
+        secondaryText.ShouldNotBeNull();
 
         projectionType!.PropertyType.ShouldBe(typeof(Type));
         role!.PropertyType.ShouldBe(typeof(ProjectionRole?));
+        ctaCommandName!.PropertyType.ShouldBe(typeof(string));
+        secondaryText!.PropertyType.ShouldBe(typeof(string));
     }
 }

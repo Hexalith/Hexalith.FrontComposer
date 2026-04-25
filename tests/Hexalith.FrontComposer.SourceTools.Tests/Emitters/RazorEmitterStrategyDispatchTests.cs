@@ -255,6 +255,24 @@ public class RazorEmitterStrategyDispatchTests {
     }
 
     [Fact]
+    public void EmptyShellEmitsCtaCommandNameAndSecondaryTextResolver() {
+        RazorModel model = new(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(Col("Id", "Id", TypeCategory.Text))),
+            ProjectionRenderStrategy.Default,
+            _noWhenStates,
+            emptyStateCtaCommandName: "CreateOrderCommand");
+
+        string output = RazorEmitter.Emit(model);
+
+        output.ShouldContain("CtaCommandName\", \"CreateOrderCommand\"");
+        output.ShouldContain("SecondaryText\", ResolveEmptyStateSecondaryText()");
+        output.ShouldContain("TestDomain.OrderProjection_EmptyStateSecondaryText");
+    }
+
+    [Fact]
     public void LoadingShellEmitsRoleAwareLayout() {
         string detailCard = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.DetailRecord));
         string timeline = RazorEmitter.Emit(BuildModel(ProjectionRenderStrategy.Timeline));

@@ -19,7 +19,8 @@ public sealed class DomainModel : IEquatable<DomainModel> {
         string? displayGroupName = null,
         string? sourceFilePath = null,
         int sourceLine = -1,
-        int sourceColumn = -1) {
+        int sourceColumn = -1,
+        string? emptyStateCtaCommandTypeName = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -32,6 +33,7 @@ public sealed class DomainModel : IEquatable<DomainModel> {
         SourceFilePath = sourceFilePath ?? string.Empty;
         SourceLine = sourceLine;
         SourceColumn = sourceColumn;
+        EmptyStateCtaCommandTypeName = emptyStateCtaCommandTypeName;
     }
 
     public string TypeName { get; }
@@ -55,6 +57,13 @@ public sealed class DomainModel : IEquatable<DomainModel> {
     public string? ProjectionRole { get; }
 
     public EquatableArray<PropertyModel> Properties { get; }
+
+    /// <summary>
+    /// Gets the optional command type name declared by <c>[ProjectionEmptyStateCta]</c>.
+    /// Story 4-6 carries this as a string to keep the Contracts attribute trim-friendly and
+    /// avoid Roslyn type-operation coupling in the parse stage.
+    /// </summary>
+    public string? EmptyStateCtaCommandTypeName { get; }
 
     /// <summary>
     /// Gets the raw CSV payload of <c>[ProjectionRole(..., WhenState = "A,B")]</c>
@@ -81,6 +90,7 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             && SourceFilePath == other.SourceFilePath
             && SourceLine == other.SourceLine
             && SourceColumn == other.SourceColumn
+            && EmptyStateCtaCommandTypeName == other.EmptyStateCtaCommandTypeName
             && ProjectionRole == other.ProjectionRole
             && ProjectionRoleWhenState == other.ProjectionRoleWhenState
             && Properties == other.Properties;
@@ -100,6 +110,7 @@ public sealed class DomainModel : IEquatable<DomainModel> {
             hash = (hash * 31) + (SourceFilePath?.GetHashCode() ?? 0);
             hash = (hash * 31) + SourceLine.GetHashCode();
             hash = (hash * 31) + SourceColumn.GetHashCode();
+            hash = (hash * 31) + (EmptyStateCtaCommandTypeName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionRole?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ProjectionRoleWhenState?.GetHashCode() ?? 0);
             hash = (hash * 31) + Properties.GetHashCode();
@@ -318,7 +329,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         string? unsupportedTypeFullyQualifiedName = null,
         EquatableArray<string> enumMemberNames = default,
         int? columnPriority = null,
-        string? fieldGroup = null) {
+        string? fieldGroup = null,
+        string? description = null) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -330,6 +342,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         EnumMemberNames = enumMemberNames;
         ColumnPriority = columnPriority;
         FieldGroup = fieldGroup;
+        Description = description;
     }
 
     public string Name { get; }
@@ -341,6 +354,13 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     public bool IsUnsupported { get; }
 
     public string? DisplayName { get; }
+
+    /// <summary>
+    /// Gets the developer-authored property description from <c>[Description]</c> or
+    /// <c>[Display(Description=...)]</c>. Story 4-6 propagates this through Transform and
+    /// Emit to DataGrid header help and detail captions.
+    /// </summary>
+    public string? Description { get; }
 
     public EquatableArray<BadgeMappingEntry> BadgeMappings { get; }
 
@@ -398,7 +418,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName
             && EnumMemberNames == other.EnumMemberNames
             && ColumnPriority == other.ColumnPriority
-            && FieldGroup == other.FieldGroup;
+            && FieldGroup == other.FieldGroup
+            && Description == other.Description;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -417,6 +438,7 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + EnumMemberNames.GetHashCode();
             hash = (hash * 31) + (ColumnPriority?.GetHashCode() ?? 0);
             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
             return hash;
         }
     }

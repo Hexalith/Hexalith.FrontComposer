@@ -26,10 +26,6 @@ public static class RazorModelTransform {
         ImmutableArray<ColumnModel>.Builder columnsBuilder = ImmutableArray.CreateBuilder<ColumnModel>();
 
         foreach (PropertyModel property in model.Properties) {
-            if (property.IsUnsupported) {
-                continue;
-            }
-
             TypeCategory category = MapTypeCategory(property.TypeName);
             string? formatHint = GetFormatHint(property.TypeName, category);
             string header = ResolveHeader(property);
@@ -43,7 +39,9 @@ public static class RazorModelTransform {
                 property.BadgeMappings,
                 property.EnumMemberNames,
                 property.ColumnPriority,
-                property.FieldGroup));
+                property.FieldGroup,
+                property.Description,
+                property.UnsupportedTypeFullyQualifiedName));
         }
 
         // Story 4-4 T6.4 / D17 — stable sort by (Priority ?? int.MaxValue, DeclarationOrder)
@@ -120,7 +118,8 @@ public static class RazorModelTransform {
             strategy,
             whenStates,
             entityLabel,
-            entityPluralLabel);
+            entityPluralLabel,
+            model.EmptyStateCtaCommandTypeName);
     }
 
     /// <summary>

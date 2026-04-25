@@ -1,9 +1,25 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@using Hexalith.FrontComposer.Shell.Components.Icons
 @using Microsoft.FluentUI.AspNetCore.Components
 
 <div role="status"
      aria-label="@ResolvedAriaLabel"
      class="fc-projection-empty-placeholder">
-    <FluentIcon Value="@(new Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size32.DocumentSearch())" Color="Color.Default" />
+    <FluentIcon Value="@FcFluentIcons.DocumentSearch32()" Color="Color.Default" />
     <p class="fc-projection-empty-placeholder-text">@DisplayMessage</p>
+    @if (ResolvedCta is { } cta)
+    {
+        <a href="@cta.CommandRoute"
+           aria-label="@CtaAriaLabel(cta)"
+           class="fc-projection-empty-placeholder-cta">
+            @cta.CommandDisplayName
+        </a>
+    }
+    @if (!string.IsNullOrWhiteSpace(SecondaryText))
+    {
+        <FluentLabel Typography="Typography.Body2"
+                     class="fc-projection-empty-placeholder-secondary">
+            @SecondaryText
+        </FluentLabel>
+    }
 </div>

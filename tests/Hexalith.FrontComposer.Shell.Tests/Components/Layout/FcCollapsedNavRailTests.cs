@@ -28,7 +28,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 /// <summary>
 /// Story 3-2 Task 10.2 — 48 px icon rail rendered at CompactDesktop (and Desktop + manual collapse).
-/// D13 — one FluentButton per manifest with FluentTooltip anchored by id, default Icons.Regular.Size20.Apps,
+/// D13 — one FluentButton per manifest with FluentTooltip anchored by id, default shell-owned Apps icon,
 /// click dispatches SidebarExpandedAction(correlationId).
 /// </summary>
 public sealed class FcCollapsedNavRailTests : LayoutComponentTestBase {

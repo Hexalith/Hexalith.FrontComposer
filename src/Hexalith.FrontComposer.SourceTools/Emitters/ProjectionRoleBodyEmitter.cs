@@ -105,11 +105,28 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            .GroupBy(x => x." + statusProperty + ")");
         _ = sb.AppendLine(
             statusColumn.IsNullable
-                ? "            .Select(g => new " + recordTypeName + "(g.Key.HasValue ? (Enum?)(object)g.Key.Value : null, g.Key.HasValue ? HumanizeEnumLabel(g.Key.Value.ToString()) : \"\\u2014\", g.Count(), g.Key.HasValue ? GetEnumSortOrder((Enum?)(object)g.Key.Value) : long.MaxValue))"
-                : "            .Select(g => new " + recordTypeName + "((Enum?)(object)g.Key, HumanizeEnumLabel(g.Key.ToString()), g.Count(), GetEnumSortOrder((Enum?)(object)g.Key)))");
+                ? "            .Select(g => new " + recordTypeName + "(g.Key.HasValue ? (Enum?)(object)g.Key.Value : null, g.Key.HasValue ? HumanizeEnumLabel(g.Key.Value.ToString()) : \"\\u2014\", g.Count(), g.Key.HasValue ? GetEnumSortOrder((Enum?)(object)g.Key.Value) : long.MaxValue, g.FirstOrDefault()))"
+                : "            .Select(g => new " + recordTypeName + "((Enum?)(object)g.Key, HumanizeEnumLabel(g.Key.ToString()), g.Count(), GetEnumSortOrder((Enum?)(object)g.Key), g.FirstOrDefault()))");
         _ = sb.AppendLine("            .OrderByDescending(g => g.Count)");
         _ = sb.AppendLine("            .ThenBy(g => g.SortOrder)");
         _ = sb.AppendLine("            .ToList();");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        // Story 4-5 — resolve expanded-row state for this StatusOverview render pass.");
+        _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);");
+        _ = sb.AppendLine("        object? _expandedItemKey = _expandedEntry?.ItemKey;");
+        _ = sb.AppendLine("        " + recordTypeName + "? _expandedStatusOverviewItem = null;");
+        _ = sb.AppendLine("        if (_expandedItemKey is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            foreach (var __candidate in groupedItems)");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                if (string.Equals(__candidate.StatusLabel, _expandedItemKey.ToString(), StringComparison.Ordinal))");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    _expandedStatusOverviewItem = __candidate;");
+        _ = sb.AppendLine("                    break;");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        bool _expandedItemHiddenByFilter = _expandedItemKey is not null && _expandedStatusOverviewItem is null;");
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("        builder.OpenComponent<FluentDataGrid<" + recordTypeName + ">>(seq++);");
@@ -121,6 +138,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OverscanCount\", 3);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemKey\", (System.Func<" + recordTypeName + ", object>)(static r => (object)r.StatusLabel));");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RowClass\", (System.Func<" + recordTypeName + ", string?>)(row => _expandedItemKey is not null && string.Equals(row.StatusLabel, _expandedItemKey.ToString(), StringComparison.Ordinal) ? \"fc-row-expanded\" : null));");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder b) =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int colSeq = 300;");
@@ -139,6 +157,8 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + recordTypeName + ", string?>>)(x => x.Count.ToString(\"N0\", CultureInfo.CurrentCulture)));");
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-col-numeric\");");
         _ = sb.AppendLine("            b.CloseComponent();");
+        _ = sb.AppendLine();
+        EmitStatusOverviewExpandTriggerColumn(sb, recordTypeName);
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine();
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OnRowClick\", Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<" + recordTypeName + ">>(this, row =>");
@@ -148,6 +168,8 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            Navigation.NavigateTo(destination);");
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
+        _ = sb.AppendLine();
+        EmitStatusOverviewDetailPanel(sb, model, recordTypeName);
     }
 
     /// <summary>
@@ -529,11 +551,37 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                string _ariaLabel = " + ColumnEmitter.ShellLocalizerFieldName + "[_ariaLabelKey, _itemKeyAccessor(item).ToString() ?? string.Empty].Value;");
         _ = sb.AppendLine("                rb.OpenComponent<global::Microsoft.FluentUI.AspNetCore.Components.FluentButton>(0);");
         _ = sb.AppendLine("                rb.AddAttribute(1, \"Appearance\", global::Microsoft.FluentUI.AspNetCore.Components.ButtonAppearance.Subtle);");
-        _ = sb.AppendLine("                rb.AddAttribute(2, \"IconStart\", (global::Microsoft.FluentUI.AspNetCore.Components.Icon)new global::Microsoft.FluentUI.AspNetCore.Components.Icons.Regular.Size20.ChevronRight());");
+        _ = sb.AppendLine("                rb.AddAttribute(2, \"IconStart\", global::Hexalith.FrontComposer.Shell.Components.Icons.FcFluentIcons.ChevronRight20());");
         _ = sb.AppendLine("                rb.AddAttribute(3, \"Class\", _buttonClass);");
         _ = sb.AppendLine("                rb.AddAttribute(4, \"aria-label\", _ariaLabel);");
         _ = sb.AppendLine("                rb.AddAttribute(5, \"aria-expanded\", _isThisRowExpanded ? \"true\" : \"false\");");
-        _ = sb.AppendLine("                rb.AddAttribute(6, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleRowClickAsync(item)));");
+        _ = sb.AppendLine("                rb.AddAttribute(6, \"aria-controls\", _expandPanelId);");
+        _ = sb.AppendLine("                rb.AddAttribute(7, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleRowClickAsync(item)));");
+        _ = sb.AppendLine("                rb.CloseComponent();");
+        _ = sb.AppendLine("            }));");
+        _ = sb.AppendLine("            b.CloseComponent();");
+    }
+
+    private static void EmitStatusOverviewExpandTriggerColumn(StringBuilder sb, string recordTypeName) {
+        _ = sb.AppendLine("            // Story 4-5 — trailing row-action column hosting the StatusOverview expand chevron.");
+        _ = sb.AppendLine("            b.OpenComponent<TemplateColumn<" + recordTypeName + ">>(colSeq++);");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Class\", \"fc-row-action-column\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Width\", \"40px\");");
+        _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"ChildContent\", (RenderFragment<" + recordTypeName + ">)(item => (RenderTreeBuilder rb) =>");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                bool _isThisRowExpanded = _expandedItemKey is not null && string.Equals(item.StatusLabel, _expandedItemKey.ToString(), StringComparison.Ordinal) && _expandedStatusOverviewItem is not null;");
+        _ = sb.AppendLine("                string _buttonClass = _isThisRowExpanded ? \"fc-expand-button fc-expand-button--open\" : \"fc-expand-button\";");
+        _ = sb.AppendLine("                string _ariaLabelKey = _isThisRowExpanded ? \"CollapseRowButtonAriaLabelTemplate\" : \"ExpandRowButtonAriaLabelTemplate\";");
+        _ = sb.AppendLine("                string _ariaLabel = " + ColumnEmitter.ShellLocalizerFieldName + "[_ariaLabelKey, item.StatusLabel].Value;");
+        _ = sb.AppendLine("                rb.OpenComponent<global::Microsoft.FluentUI.AspNetCore.Components.FluentButton>(0);");
+        _ = sb.AppendLine("                rb.AddAttribute(1, \"Appearance\", global::Microsoft.FluentUI.AspNetCore.Components.ButtonAppearance.Subtle);");
+        _ = sb.AppendLine("                rb.AddAttribute(2, \"IconStart\", global::Hexalith.FrontComposer.Shell.Components.Icons.FcFluentIcons.ChevronRight20());");
+        _ = sb.AppendLine("                rb.AddAttribute(3, \"Class\", _buttonClass);");
+        _ = sb.AppendLine("                rb.AddAttribute(4, \"aria-label\", _ariaLabel);");
+        _ = sb.AppendLine("                rb.AddAttribute(5, \"aria-expanded\", _isThisRowExpanded ? \"true\" : \"false\");");
+        _ = sb.AppendLine("                rb.AddAttribute(6, \"aria-controls\", _expandPanelId);");
+        _ = sb.AppendLine("                rb.AddAttribute(7, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleStatusOverviewRowClickAsync(item)));");
         _ = sb.AppendLine("                rb.CloseComponent();");
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            b.CloseComponent();");
@@ -549,6 +597,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        // Story 4-5 — detail panel host; ChildContent is the factored EmitDetailRecordBody output.");
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _ephemeralViewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"PanelId\", _expandPanelId);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasExpanded\", _expandedItem is not null);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DetailPanelAriaLabel\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailPanelAriaLabelTemplate\", _expandedItemKey?.ToString() ?? string.Empty].Value);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressedAnnouncement\", _expandedItemHiddenByFilter ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailSuppressedByFilterAnnouncement\"].Value : null);");
@@ -562,6 +611,31 @@ public static class ProjectionRoleBodyEmitter {
             model,
             builderName: "builder",
             itemExpression: "_expandedItem",
+            seqStart: 800,
+            groupByFieldGroup: true);
+
+        _ = sb.AppendLine("        }));");
+        _ = sb.AppendLine("        builder.CloseComponent();");
+    }
+
+    private static void EmitStatusOverviewDetailPanel(StringBuilder sb, RazorModel model, string recordTypeName) {
+        _ = sb.AppendLine("        // Story 4-5 — StatusOverview detail panel host; detail body uses the first item in the expanded status group.");
+        _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcExpandInRowDetail>(seq++);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _ephemeralViewKey);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"PanelId\", _expandPanelId);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HasExpanded\", _expandedStatusOverviewItem?.DetailItem is not null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DetailPanelAriaLabel\", " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailPanelAriaLabelTemplate\", _expandedItemKey?.ToString() ?? string.Empty].Value);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"SuppressedAnnouncement\", _expandedItemHiddenByFilter ? " + ColumnEmitter.ShellLocalizerFieldName + "[\"ExpandInRowDetailSuppressedByFilterAnnouncement\"].Value : null);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder builder) =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            if (_expandedStatusOverviewItem?.DetailItem is null) { return; }");
+        _ = sb.AppendLine("            int seq = 800;");
+
+        EmitDetailRecordBody(
+            sb,
+            model,
+            builderName: "builder",
+            itemExpression: "_expandedStatusOverviewItem.DetailItem",
             seqStart: 800,
             groupByFieldGroup: true);
 
@@ -681,6 +755,7 @@ public static class ProjectionRoleBodyEmitter {
                 builderName: builderName,
                 seqVariable: seqName,
                 indent: indent);
+            EmitDetailDescription(sb, col, indent, builderName, seqName);
             _ = sb.AppendLine(indent + builderName + ".CloseElement();");
             return;
         }
@@ -691,7 +766,28 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "    textBuilder.AddContent(0, " + FormatValueExpression(col, "entity") + ");");
         _ = sb.AppendLine(indent + "}));");
         _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
+        EmitDetailDescription(sb, col, indent, builderName, seqName);
         _ = sb.AppendLine(indent + builderName + ".CloseElement();");
+    }
+
+    private static void EmitDetailDescription(
+        StringBuilder sb,
+        ColumnModel col,
+        string indent,
+        string builderName,
+        string seqName) {
+        if (string.IsNullOrWhiteSpace(col.Description)) {
+            return;
+        }
+
+        _ = sb.AppendLine(indent + builderName + ".OpenComponent<FluentLabel>(" + seqName + "++);");
+        _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"Typography\", Typography.Caption);");
+        _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"Class\", \"fc-field-description\");");
+        _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"ChildContent\", (RenderFragment)((RenderTreeBuilder descBuilder) =>");
+        _ = sb.AppendLine(indent + "{");
+        _ = sb.AppendLine(indent + "    descBuilder.AddContent(0, \"" + RoleBodyHelpers.EscapeString(col.Description!) + "\");");
+        _ = sb.AppendLine(indent + "}));");
+        _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
     }
 
     private static string ResolveAggregateIdExpression(RazorModel model, string? aggregateIdProperty) {
