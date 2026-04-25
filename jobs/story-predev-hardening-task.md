@@ -288,6 +288,16 @@ Do not change a story's value in `development_status` during this job UNLESS the
 
 Otherwise leave the status untouched. The `bmad-create-story` skill owns the `backlog → ready-for-dev` transition; do not duplicate it.
 
+## Final Git Sync
+
+When the selected operation is finished and all story artifacts, sprint status updates, traces, and run-log entries are written:
+
+1. Review the working tree.
+2. Commit the changes produced by this job.
+3. Push the commit to the current branch.
+
+Do not mix unrelated user changes into the job commit. If unrelated changes are present, leave them untouched and report that only this job's changes were pushed.
+
 ## Failure Handling
 
 Abort the run immediately when any of these occur:
@@ -323,6 +333,7 @@ trace_location: <path|null>
 fallback_trace_file: <path|null>
 batch_1_methods: <[list]|null>
 batch_2_methods: <[list]|null>
+commit_hash_pushed: <hash|null>
 changes_applied: <[list]>
 deferred_or_blocking: <[list]>
 notes: <string|null>
