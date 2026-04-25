@@ -39,7 +39,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-25 (story 4-6 code-review patches applied via bmad-code-review. 7 decision-needed resolved (D1=companion-interface, D2=IsDevMode bool, D3=conditional emit, D4=overload, D5=component-owned, D6=merged tooltip, D7=no-tabindex), 22 of 26 patches applied, 2 partial (AuthPolicy reflection / D9 visible-tooltip anatomy) tracked as Story 4-7 follow-ups, 1 unapplied (FR NBSP), 2 deferred. All 1,523 tests pass (Contracts 76, Shell 966, SourceTools 481). Status remains review pending human re-pass.)"
+last_updated: "2026-04-25 (story 5-2 created via bmad-create-story — hardens HTTP response handling, bounded ETag caching, and framework-owned command/query response mapping. story 5-1 remains ready-for-dev.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -91,7 +91,7 @@ development_status:
   # Epic 5: Reliable Real-Time Experience
   epic-5: in-progress
   5-1-eventstore-service-abstractions: ready-for-dev
-  5-2-http-response-handling-and-etag-caching: backlog
+  5-2-http-response-handling-and-etag-caching: ready-for-dev
   5-3-signalr-connection-and-disconnection-handling: backlog
   5-4-reconnection-reconciliation-and-batched-updates: backlog
   5-5-command-idempotency-and-optimistic-updates: backlog

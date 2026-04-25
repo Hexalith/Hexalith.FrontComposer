@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types — Pass 2 (2026-04-25 human re-pass)
+
+- **StatusOverview detail "first item" semantics misleading** [`src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:108, 1308-1309, 1412-1435`] — `g.FirstOrDefault()` is cached at `groupedItems` construction. Expanding a status group shows an arbitrary representative entity with no count or "1 of N" affordance. Story 4-5 expand-in-row carry-over (StatusOverview snapshot grew +163 lines under 4-6 patch pass but the detail semantics originate from 4-5). Re-open if UX surfaces complaints; consider count-and-list affordance.
+- **`_expandPanelId` Guid changes across component re-mounts — AT cache regression** [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs ~line 209 of generated emit`] — the per-instance Guid suffix introduced to fix duplicate-id WCAG 4.1.2 collisions also produces a fresh id on every component re-mount under `<Virtualize>` / NavigateTo cycling. AT consumers cached against the previous `aria-controls` will see stale ids. Story 4-5 carry-over. Narrow edge case; revisit if AT user reports surface.
+- **`ProjectionEmptyStateCta` `Struct` target may not flow through generator parser** [`src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionEmptyStateCtaAttribute.cs:7`] — attribute is `AttributeTargets.Class | AttributeTargets.Struct` but `AttributeParser.ParseDomain` may only emit `EmptyStateCtaCommandTypeName` IR for class/record projections. Struct projections are an edge case (projections are typically records/classes). Re-open if a struct-projection adopter surfaces.
+
 ## Deferred from: code review of 4-6-empty-states-field-descriptions-and-unsupported-types (2026-04-25)
 
 - **Snapshot files lost UTF-8 BOM after regeneration** [multiple `.verified.txt` under `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/`] — environment/tooling regression (text-editor or `dotnet test` regeneration encoding); not a Story 4-6 logic defect. Investigate the regeneration toolchain or accept the new BOM-less convention for verified.txt files.

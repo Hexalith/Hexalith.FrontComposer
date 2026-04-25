@@ -40,6 +40,12 @@ Before any selection, verify:
 1. `sprint-status.yaml` exists and parses as YAML.
 2. The artifacts root directory exists.
 3. The lessons ledger exists and is readable.
+4. **Status–artifact consistency.** For each `development_status` entry whose key is neither `epic-*` nor `*-retrospective`, resolve the artifact using the **Story Artifact Resolution** rule. The status and the artifact must agree:
+   - `status == backlog` ⇒ no artifact must exist for that key.
+   - `status` in `{ready-for-dev, in-progress, review, done}` ⇒ an artifact must exist.
+   - `status == blocked` is exempt (blocked stories may legitimately have a partial or no artifact pending human reconciliation).
+
+   On any mismatch, abort with `operation: failed` and `notes: "status-artifact drift on {key}: status={status}, artifact={present|absent}"`. Do not auto-repair: a human must reconcile the yaml and the disk before the next run. This protects against silent overwrite when a prior partial run, a `git reset`, or a manual edit leaves yaml and disk out of sync.
 
 If any check fails, append a `failed` row to the run log, emit the structured output with `operation: failed` and a `notes` field naming the failed check, and stop.
 
