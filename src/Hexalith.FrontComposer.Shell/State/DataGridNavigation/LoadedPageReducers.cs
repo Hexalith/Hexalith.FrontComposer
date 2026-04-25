@@ -95,10 +95,11 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(action);
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
-        if (action.Completion is not null
-            && state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? pending)
-            && !ReferenceEquals(pending, action.Completion)) {
-            return state;
+        if (action.Completion is not null) {
+            if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? pending)
+                || !ReferenceEquals(pending, action.Completion)) {
+                return state;
+            }
         }
 
         if (action.Items is null) {
@@ -154,6 +155,34 @@ public sealed class LoadedPageReducers {
             LastElapsedMsByKey = nextElapsed,
             PageInsertionOrder = nextOrder,
             PendingCompletionsByKey = nextPending,
+        };
+    }
+
+    /// <summary>
+    /// Story 5-2 D4 / AC4 — explicit no-change path for 304 Not Modified responses with a
+    /// compatible cached payload. Resolves the matching TCS from the cached items and
+    /// returns the state UNCHANGED (no <see cref="LoadedPageState.PagesByKey"/> /
+    /// <see cref="LoadedPageState.TotalCountByKey"/> /
+    /// <see cref="LoadedPageState.LastElapsedMsByKey"/> mutation) so the DataGrid emits no
+    /// loading flash, no synthetic success, and no badge animation.
+    /// </summary>
+    [ReducerMethod]
+    public static LoadedPageState ReduceLoadPageNotModified(LoadedPageState state, LoadPageNotModifiedAction action) {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(action);
+
+        (string viewKey, int skip) key = (action.ViewKey, action.Skip);
+        if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
+            return state;
+        }
+
+        if (action.Completion is not null && !ReferenceEquals(tcs, action.Completion)) {
+            return state;
+        }
+
+        tcs.TrySetResult(action.CachedItems);
+        return state with {
+            PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
         };
     }
 

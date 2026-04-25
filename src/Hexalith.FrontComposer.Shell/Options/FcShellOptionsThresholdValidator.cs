@@ -56,6 +56,13 @@ public sealed class FcShellOptionsThresholdValidator : IValidateOptions<FcShellO
             (failures ??= []).Add($"FcShellOptions.VirtualizationServerSideThreshold ({options.VirtualizationServerSideThreshold}) must be strictly less than MaxUnfilteredItems ({options.MaxUnfilteredItems}).");
         }
 
+        // Story 5-2 D2 — the ETag cache is bounded by LocalStorageMaxEntries because it shares the
+        // same browser localStorage budget. Otherwise a busy ETag cache could evict unrelated
+        // persisted state (theme, density, navigation, DataGrid preferences).
+        if (options.MaxETagCacheEntries > options.LocalStorageMaxEntries) {
+            (failures ??= []).Add($"FcShellOptions.MaxETagCacheEntries ({options.MaxETagCacheEntries}) must not exceed LocalStorageMaxEntries ({options.LocalStorageMaxEntries}).");
+        }
+
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

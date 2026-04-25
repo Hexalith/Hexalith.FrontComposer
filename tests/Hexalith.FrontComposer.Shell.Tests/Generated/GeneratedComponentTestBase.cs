@@ -106,6 +106,15 @@ public abstract class GeneratedComponentTestBase : BunitContext
         _ = Services.AddScoped<
             Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader,
             Hexalith.FrontComposer.Shell.State.DataGridNavigation.NullProjectionPageLoader>();
+
+        // Story 5-2 — generated forms inject ICommandFeedbackPublisher (warning channel)
+        // and IAuthRedirector (401 redirect seam).
+        _ = Services.AddScoped<
+            Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher,
+            Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackPublisher>();
+        _ = Services.AddScoped<
+            Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector,
+            Hexalith.FrontComposer.Shell.Services.Auth.NoOpAuthRedirector>();
     }
 
     protected async Task InitializeStoreAsync()

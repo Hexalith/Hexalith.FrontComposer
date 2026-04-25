@@ -36,6 +36,11 @@ public sealed class NFR17ComplianceTripwireTests
         // DensityLevel? (Density migration path — migrated legacy value cast to nullable enum).
         // Regex captures up to the inner close-paren of the cast, leaving the '(DensityLevel?' prefix.
         "(DensityLevel?",
+        // Story 5-2 — ETagCacheService persists framework-derived ETagCacheEntry records
+        // (server response payload + ETag + format/payload metadata). The variable name
+        // captures the in-method `stamped` reassignment; entries are server-derived JSON
+        // and explicitly NOT user-entered command drafts (Story 5-2 D11).
+        "stamped",
     };
 
     private static readonly Regex SetAsyncCall = new(
@@ -74,7 +79,8 @@ public sealed class NFR17ComplianceTripwireTests
     {
         // A second tripwire: the number of SetAsync call sites should not grow silently. If a PR
         // adds a new call site, this count must be bumped AND the argument pattern whitelisted.
-        const int expectedCallSites = 6;
+        // Story 5-2 — ETagCacheService.SetAsync adds 1 new call site (server-derived ETag entry).
+        const int expectedCallSites = 7;
         string stateFolder = LocateStateFolder();
         int actualCallSites = Directory.EnumerateFiles(stateFolder, "*.cs", SearchOption.AllDirectories)
             .Sum(f => SetAsyncCall.Matches(File.ReadAllText(f)).Count);

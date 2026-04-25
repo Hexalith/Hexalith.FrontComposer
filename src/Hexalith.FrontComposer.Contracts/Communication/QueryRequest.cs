@@ -20,6 +20,8 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// <param name="EntityId">Optional EventStore entity identifier for nested projection queries.</param>
 /// <param name="ProjectionActorType">Optional EventStore projection actor type.</param>
 /// <param name="ETags">Optional explicit ETag validator set. When provided, adapters ignore <paramref name="ETag"/>.</param>
+/// <param name="CacheDiscriminator">Story 5-2 — framework-allowlisted ETag cache discriminator. When non-null and accepted by the framework allowlist, the EventStore query client sends <c>If-None-Match</c> from cache and writes 200 OK responses through the cache. Adopter-supplied raw / hashed user input MUST NOT be passed here (Story 5-2 D3 / AC6).</param>
+/// <param name="CachePayloadVersion">Story 5-2 — projection payload contract version used when reading / writing the cache. Cached entries with a lower version are treated as diagnostic misses (Story 5-2 D13). Defaults to <c>1</c>.</param>
 public record QueryRequest(
     string ProjectionType,
     string TenantId,
@@ -38,4 +40,6 @@ public record QueryRequest(
     string? QueryType = null,
     string? EntityId = null,
     string? ProjectionActorType = null,
-    System.Collections.Generic.IReadOnlyList<string>? ETags = null);
+    System.Collections.Generic.IReadOnlyList<string>? ETags = null,
+    string? CacheDiscriminator = null,
+    int CachePayloadVersion = 1);

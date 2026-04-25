@@ -4,11 +4,14 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Badges;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Badges;
+using Hexalith.FrontComposer.Shell.Services.Auth;
+using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.Navigation;
@@ -81,6 +84,11 @@ public abstract class FrontComposerTestBase : BunitContext {
         _ = Services.AddScoped<LoadPageEffects>();
         _ = Services.AddScoped<ScrollPersistenceEffect>();
         _ = Services.AddScoped<ColumnVisibilityPersistenceEffect>();
+
+        // Story 5-2 — generated command forms inject ICommandFeedbackPublisher (warning channel)
+        // and IAuthRedirector (401 redirect seam). Tests render those forms via bUnit.
+        _ = Services.AddScoped<ICommandFeedbackPublisher, CommandFeedbackPublisher>();
+        _ = Services.AddScoped<IAuthRedirector, NoOpAuthRedirector>();
 
         InitializeStoreAsync().GetAwaiter().GetResult();
     }

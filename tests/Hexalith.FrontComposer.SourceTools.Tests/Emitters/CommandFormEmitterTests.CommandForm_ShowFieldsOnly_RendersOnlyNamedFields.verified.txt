@@ -55,13 +55,19 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private ICommandService CommandService { get; set; } = default!;
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
     [Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }
+    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher CommandFeedbackPublisher { get; set; } = default!;
+    [Inject] private global::Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector AuthRedirector { get; set; } = default!;
 
     private Counter.Domain.IncrementCommand _model = new();
     private EditContext? _editContext;
+    private ValidationMessageStore? _serverValidationMessages;
+    private System.Collections.Generic.IReadOnlyList<string> _serverFormLevelErrors = System.Array.Empty<string>();
+    private global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning? _serverWarning;
     private CancellationTokenSource? _cts;
     private bool _disposed;
     private bool _externalSubmitRegistered;
     private string? _submittedCorrelationId;
+    private static readonly global::Hexalith.FrontComposer.Contracts.Communication.ICommandValidationFieldAllowlist _serverValidationAllowlist = new global::Hexalith.FrontComposer.Shell.Services.Validation.ReflectionCommandValidationFieldAllowlist<Counter.Domain.IncrementCommand>();
     /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>
     public bool IsDirty { get; private set; }
 
@@ -73,13 +79,18 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     {
         _model = InitialValue ?? new();
         _editContext = new EditContext(_model);
+        _serverValidationMessages = new ValidationMessageStore(_editContext);
         _editContext.OnFieldChanged += OnEditContextFieldChanged;
         LifecycleState.StateChanged += OnStateChanged;
         // Story 2-5 Task 5.3 — surface the EditContext to the renderer so it can wire D24 validation + abandonment guard.
         if (OnEditContextReady.HasDelegate) { _ = OnEditContextReady.InvokeAsync(_editContext); }
     }
 
-    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) { IsDirty = true; }
+    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) {
+        IsDirty = true;
+        // Story 5-2 D5 — clear stale server-side validation for the edited field.
+        _serverValidationMessages?.Clear(e.FieldIdentifier);
+    }
 
     private CommandLifecycleState _previousLifecycleState = CommandLifecycleState.Idle;
     private void OnStateChanged(object? sender, EventArgs e) {
@@ -183,6 +194,15 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             if (_disposed || _cts.IsCancellationRequested) return;
         }
 
+        // Story 5-2 D5 — clear server-driven validation state from the prior submit.
+        _serverValidationMessages?.Clear();
+        if (_serverFormLevelErrors.Count > 0)
+        {
+            _serverFormLevelErrors = System.Array.Empty<string>();
+        }
+        _serverWarning = null;
+        _editContext?.NotifyValidationStateChanged();
+
         var correlationId = Guid.NewGuid().ToString();
         _submittedCorrelationId = correlationId;
         var cts = _cts;
@@ -219,6 +239,42 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
             Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
             Logger?.LogInformation("Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}", correlationId, result.MessageId);
+        }
+        catch (CommandValidationException ex)
+        {
+            // Story 5-2 D5 — server-side 400 validation. Map allowlisted fields onto the
+            // ValidationMessageStore; surface unknown / global errors form-level. Lifecycle returns to Idle so the user can correct and re-submit (patch P11 mirrors the cancellation path).
+            if (_editContext is not null && _serverValidationMessages is not null)
+            {
+                _serverFormLevelErrors = global::Hexalith.FrontComposer.Shell.Services.Validation.ServerValidationApplicator.Apply(_serverValidationMessages, ex, _serverValidationAllowlist, _model!);
+                _editContext.NotifyValidationStateChanged();
+            }
+            Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
+            Logger?.LogInformation("Command validation failed. CorrelationId={CorrelationId} Title={Title}", correlationId, ex.Problem.Title);
+        }
+        catch (CommandWarningException ex)
+        {
+            // Story 5-2 D6 — 403/404/429 surface through a separate warning channel. Lifecycle is
+            // reset to Idle so the user can react (e.g. wait out a Retry-After) and try again.
+            _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(
+                ex.Kind,
+                ex.Problem.Title,
+                ex.Problem.Detail,
+                ex.Problem.EntityLabel,
+                ex.RetryAfter);
+            CommandFeedbackPublisher.PublishWarning(_serverWarning);
+            Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
+            await InvokeAsync(StateHasChanged);
+            Logger?.LogWarning("Command warning ({WarningKind}). CorrelationId={CorrelationId} Title={Title}", ex.Kind, correlationId, ex.Problem.Title);
+        }
+        catch (AuthRedirectRequiredException ex)
+        {
+            // Story 5-2 D8 — 401: invoke the framework auth redirector. No cache mutation, no
+            // lifecycle rejection, no validation pollution. Lifecycle is reset to Idle so
+            // the form does not stay locked while the host handles the redirect.
+            Dispatcher.Dispatch(new IncrementCommandActions.ResetToIdleAction(correlationId));
+            Logger?.LogInformation("Command requires authentication redirect. CorrelationId={CorrelationId} Reason={Reason}", correlationId, ex.Message);
+            await AuthRedirector.RedirectAsync(returnUrl: null, cancellationToken: cts.Token).ConfigureAwait(false);
         }
         catch (CommandRejectedException ex)
         {
@@ -283,6 +339,46 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             __b.OpenComponent<FluentValidationSummary>(cseq++);
             __b.AddAttribute(cseq++, "Model", (object)_model);
             __b.CloseComponent();
+
+            if (_serverFormLevelErrors.Count > 0)
+            {
+                __b.OpenComponent<FluentMessageBar>(cseq++);
+                __b.AddAttribute(cseq++, "Intent", MessageBarIntent.Error);
+                __b.AddAttribute(cseq++, "Title", "Validation failed");
+                __b.AddAttribute(cseq++, "AllowDismiss", true);
+                __b.AddAttribute(cseq++, "ChildContent", (RenderFragment)(__msg =>
+                {
+                    int mseq = 0;
+                    foreach (string error in _serverFormLevelErrors)
+                    {
+                        __msg.OpenElement(mseq++, "div");
+                        __msg.AddContent(mseq++, error);
+                        __msg.CloseElement();
+                    }
+                }));
+                __b.CloseComponent();
+            }
+
+            if (_serverWarning is not null)
+            {
+                __b.OpenComponent<FluentMessageBar>(cseq++);
+                __b.AddAttribute(cseq++, "Intent", MessageBarIntent.Warning);
+                __b.AddAttribute(cseq++, "Title", _serverWarning.Title ?? _serverWarning.Kind.ToString());
+                __b.AddAttribute(cseq++, "AllowDismiss", true);
+                __b.AddAttribute(cseq++, "ChildContent", (RenderFragment)(__msg =>
+                {
+                    int mseq = 0;
+                    string body = _serverWarning.Detail ?? _serverWarning.EntityLabel ?? "Please review the warning and try again.";
+                    __msg.AddContent(mseq++, body);
+                    if (_serverWarning.RetryAfter is not null)
+                    {
+                        __msg.OpenElement(mseq++, "div");
+                        __msg.AddContent(mseq++, $"Retry after {_serverWarning.RetryAfter.Value.TotalSeconds:0} seconds.");
+                        __msg.CloseElement();
+                    }
+                }));
+                __b.CloseComponent();
+            }
 
             // Field: Amount
             if ((!DerivableFieldsHidden || !IsDerivableField("Amount"))

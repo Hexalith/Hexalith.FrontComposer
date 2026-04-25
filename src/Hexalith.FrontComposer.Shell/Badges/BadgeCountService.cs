@@ -221,11 +221,20 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
 
         ImmutableDictionary<Type, int> current;
         ImmutableDictionary<Type, int> next;
-        do {
+        while (true) {
             current = _counts;
+            // Story 5-2 AC7 — suppress duplicate emissions when the value did not change.
+            // 304 Not Modified responses (and 429 preserve-prior-count flows) MUST NOT emit
+            // a CountChanged notification or trigger a badge animation.
+            if (current.TryGetValue(projectionType, out int previous) && previous == newCount) {
+                return;
+            }
+
             next = current.SetItem(projectionType, newCount);
+            if (Interlocked.CompareExchange(ref _counts, next, current) == current) {
+                break;
+            }
         }
-        while (Interlocked.CompareExchange(ref _counts, next, current) != current);
 
         if (IsDisposed) {
             return;

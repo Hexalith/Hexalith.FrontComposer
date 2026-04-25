@@ -95,6 +95,19 @@ public sealed class LoadPageEffects {
                 action.SearchQuery,
                 action.CancellationToken).ConfigureAwait(false);
             long elapsedMs = (long)_timeProvider.GetElapsedTime(startTicks).TotalMilliseconds;
+
+            // Story 5-2 D4 / AC4 — 304 Not Modified takes the explicit no-change path. The
+            // reducer resolves the TCS from cached items WITHOUT state mutation so the
+            // DataGrid emits no loading flash / synthetic success / badge animation.
+            if (result.IsNotModified) {
+                dispatcher.Dispatch(new LoadPageNotModifiedAction(
+                    viewKey: action.ViewKey,
+                    skip: action.Skip,
+                    cachedItems: result.Items,
+                    completion: action.Completion));
+                return;
+            }
+
             int totalCount = hasRealFilter
                 ? result.TotalCount
                 : Math.Min(result.TotalCount, maxUnfilteredItems);

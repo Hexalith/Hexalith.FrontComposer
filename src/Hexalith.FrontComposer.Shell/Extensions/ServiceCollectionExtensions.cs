@@ -19,12 +19,16 @@ using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
+using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.Validation;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+using Hexalith.FrontComposer.Shell.State.ETagCache;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
@@ -293,6 +297,21 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<ColumnVisibilityPersistenceEffect>();
         services.TryAddScoped<IProjectionPageLoader, NullProjectionPageLoader>();
         services.TryAddScoped<DataGridScrollInterop>();
+
+        // Story 5-2 T2 — opportunistic ETag cache layered on IStorageService. Scoped per
+        // circuit / per user (mirrors LocalStorageService lifetime). Adopters that wire
+        // EventStore via AddHexalithEventStore inherit this default automatically.
+        services.TryAddScoped<IETagCache, ETagCacheService>();
+
+        // Story 5-2 D8 — fail-fast default IAuthRedirector. Scoped because adopter
+        // implementations typically capture per-circuit NavigationManager. The default throws
+        // on invocation so 401 responses never silently disappear.
+        services.TryAddScoped<IAuthRedirector, NoOpAuthRedirector>();
+
+        // Story 5-2 T5 — framework-owned warning publisher. Scoped per circuit; subscribers
+        // detach via the disposable returned by Subscribe. The validation applicator is
+        // exposed as a stateless static helper (no DI registration needed).
+        services.TryAddScoped<ICommandFeedbackPublisher, CommandFeedbackPublisher>();
 
         // Story 4-5 D2 / T3.3 — ExpandedRowFeature is auto-discovered by the AddFluxor
         // ScanAssemblies(typeof(FrontComposerThemeState).Assembly) call above (line 158).

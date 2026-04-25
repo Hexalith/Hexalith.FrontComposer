@@ -37,9 +37,11 @@ public sealed class EventStoreDiagnosticsTests {
             BuildOptions(),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", PiiUserId),
+            EventStoreTestSupport.CreateClassifier(),
             logger);
 
-        _ = await Should.ThrowAsync<HttpRequestException>(
+        // Story 5-2: 400 now surfaces as CommandValidationException rather than HttpRequestException.
+        _ = await Should.ThrowAsync<CommandValidationException>(
             async () => await sut.DispatchAsync(new SecretCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
 
         AssertNoSensitiveLeak(logger);
@@ -56,6 +58,7 @@ public sealed class EventStoreDiagnosticsTests {
             Microsoft.Extensions.Options.Options.Create(options),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", PiiUserId),
+            EventStoreTestSupport.CreateClassifier(),
             logger);
 
         _ = await Should.ThrowAsync<InvalidOperationException>(
@@ -74,6 +77,9 @@ public sealed class EventStoreDiagnosticsTests {
             new SingleClientFactory(handler),
             BuildOptions(),
             new TestUserContextAccessor("acme", PiiUserId),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
             logger);
 
         _ = await Should.ThrowAsync<HttpRequestException>(
@@ -102,6 +108,7 @@ public sealed class EventStoreDiagnosticsTests {
             BuildOptions(),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", PiiUserId),
+            EventStoreTestSupport.CreateClassifier(),
             logger);
 
         _ = await sut.DispatchAsync(new SecretCommand(), TestContext.Current.CancellationToken);

@@ -19,4 +19,16 @@ public record QueryResult<T>(
     /// <param name="etag">The validator returned by the server, when present.</param>
     /// <returns>A not-modified result with no payload items.</returns>
     public static QueryResult<T> NotModified(string? etag = null) => new([], 0, etag, true);
+
+    /// <summary>
+    /// Story 5-2 AC4 — creates a no-change result that reuses cached items so consumers do
+    /// not have to fall back to a fresh fetch. <see cref="IsNotModified"/> stays
+    /// <see langword="true"/> so reducers can take the explicit no-change path (no fake
+    /// success transition / no badge animation).
+    /// </summary>
+    /// <param name="items">The cached payload items.</param>
+    /// <param name="totalCount">The cached total count.</param>
+    /// <param name="etag">The cached validator.</param>
+    public static QueryResult<T> NotModifiedFromCache(IReadOnlyList<T> items, int totalCount, string? etag)
+        => new(items, totalCount, etag, true);
 }

@@ -1,10 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -12,12 +12,25 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 /// <summary>
-/// Default EventStore-backed query service.
+/// Default EventStore-backed query service. Story 5-2 routes every response through
+/// <see cref="EventStoreResponseClassifier"/> so consumers see typed outcomes
+/// (<see cref="QueryResult{T}.NotModified(string?)"/>,
+/// <see cref="QueryResult{T}.NotModifiedFromCache"/>,
+/// <see cref="QueryFailureException"/>, <see cref="AuthRedirectRequiredException"/>) rather
+/// than stringly-typed <see cref="HttpRequestException"/>s. When
+/// <see cref="QueryRequest.CacheDiscriminator"/> is supplied and accepted by the framework
+/// allowlist, the client integrates with <see cref="IETagCache"/>: <c>If-None-Match</c> is
+/// emitted from the cached entry, 200 OK responses are written through the cache
+/// fire-and-forget, and 304 Not Modified responses reuse cached payload while preserving
+/// the no-change signal in <see cref="QueryResult{T}.IsNotModified"/>.
 /// </summary>
 public sealed class EventStoreQueryClient(
     IHttpClientFactory httpClientFactory,
     IOptions<EventStoreOptions> options,
     IUserContextAccessor userContextAccessor,
+    EventStoreResponseClassifier classifier,
+    IETagCache cache,
+    IAuthRedirector authRedirector,
     ILogger<EventStoreQueryClient> logger) : IQueryService {
     internal const string HttpClientName = "Hexalith.FrontComposer.EventStore.Queries";
 
@@ -25,10 +38,34 @@ public sealed class EventStoreQueryClient(
         ArgumentNullException.ThrowIfNull(request);
 
         EventStoreOptions current = options.Value;
-        IReadOnlyList<string> etags = GetETags(request);
-        EventStoreValidation.ValidateETagCount(etags, current.MaxETagCount);
+        (string tenant, string userId) = EventStoreIdentity.RequireUserContext(userContextAccessor, request.TenantId);
+        string? cacheKey = ResolveCacheKey(request, tenant, userId);
+        ETagCacheEntry? cachedEntry = cacheKey is null
+            ? null
+            : await cache.TryGetAsync(cacheKey, request.CachePayloadVersion, cancellationToken).ConfigureAwait(false);
 
-        (string tenant, _) = EventStoreIdentity.RequireUserContext(userContextAccessor, request.TenantId);
+        QueryResult<T> result = await ExecuteAsync<T>(
+            request,
+            current,
+            tenant,
+            cacheKey,
+            cachedEntry,
+            allowProtocolDriftRetry: true,
+            cancellationToken).ConfigureAwait(false);
+        return result;
+    }
+
+    private async Task<QueryResult<T>> ExecuteAsync<T>(
+        QueryRequest request,
+        EventStoreOptions current,
+        string tenant,
+        string? cacheKey,
+        ETagCacheEntry? cachedEntry,
+        bool allowProtocolDriftRetry,
+        CancellationToken cancellationToken) {
+        IReadOnlyList<string> requestEtags = GetRequestEtags(request);
+        EventStoreValidation.ValidateETagCount(requestEtags, current.MaxETagCount);
+
         string domain = EventStoreValidation.RequireNonColonSegment(
             EventStoreIdentity.NormalizeRouteSegment(request.Domain),
             nameof(request.Domain));
@@ -45,16 +82,27 @@ public sealed class EventStoreQueryClient(
 
         using HttpRequestMessage httpRequest = new(HttpMethod.Post, current.QueryEndpointPath);
         await ApplyAuthorizationAsync(httpRequest, current, cancellationToken).ConfigureAwait(false);
-        if (etags.Count > 0) {
-            for (int i = 0; i < etags.Count; i++) {
-                if (ContainsHeaderInjectionChar(etags[i])) {
-                    throw new ArgumentException(
-                        "ETag validators must not contain control characters or CRLF sequences.",
-                        nameof(request));
-                }
+
+        List<string> ifNoneMatch = new(requestEtags.Count + 1);
+        for (int i = 0; i < requestEtags.Count; i++) {
+            if (ContainsHeaderInjectionChar(requestEtags[i])) {
+                throw new ArgumentException(
+                    "ETag validators must not contain control characters or CRLF sequences.",
+                    nameof(request));
             }
 
-            httpRequest.Headers.TryAddWithoutValidation("If-None-Match", etags);
+            ifNoneMatch.Add(requestEtags[i]);
+        }
+
+        if (cachedEntry is not null
+            && !ContainsHeaderInjectionChar(cachedEntry.ETag)
+            && !ifNoneMatch.Contains(cachedEntry.ETag, StringComparer.Ordinal)) {
+            ifNoneMatch.Add(cachedEntry.ETag);
+        }
+
+        if (ifNoneMatch.Count > 0) {
+            EventStoreValidation.ValidateETagCount(ifNoneMatch, current.MaxETagCount);
+            httpRequest.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
         }
 
         JsonElement payload = SerializeQueryPayload(request);
@@ -72,30 +120,130 @@ public sealed class EventStoreQueryClient(
 
         HttpClient client = httpClientFactory.CreateClient(HttpClientName);
         using HttpResponseMessage response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-        string? responseETag = response.Headers.ETag?.Tag ?? TryGetHeader(response.Headers, "ETag");
-        if (response.StatusCode == HttpStatusCode.NotModified) {
-            return QueryResult<T>.NotModified(responseETag);
-        }
+        EventStoreQueryClassification classification = await classifier
+            .ClassifyQueryAsync(response, cancellationToken)
+            .ConfigureAwait(false);
 
-        if (response.StatusCode != HttpStatusCode.OK) {
-            logger.LogWarning(
-                "EventStore query returned unexpected HTTP status {StatusCode}.",
-                (int)response.StatusCode);
-            throw new HttpRequestException("EventStore query did not return 200 OK or 304 Not Modified.", null, response.StatusCode);
-        }
+        switch (classification.Outcome) {
+            case QueryClassificationOutcome.NotModified: {
+                if (cachedEntry is not null) {
+                    return DeserializeNotModifiedFromCache<T>(cachedEntry);
+                }
 
-        using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
-        using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
-        IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
-        return new QueryResult<T>(items, items.Count, responseETag);
+                // Caller did not opt into framework cache integration (no CacheDiscriminator) —
+                // they own their own cache lifecycle. Surface the explicit no-change signal so
+                // their existing handler can take its own path.
+                if (cacheKey is null) {
+                    return QueryResult<T>.NotModified(classification.ETag);
+                }
+
+                // From here on cacheKey is non-null: caller asked for framework cache integration
+                // but no compatible entry was readable, so EventStore is asserting a state the
+                // client doesn't have. AC4 / D10: retry once uncached, fail loudly otherwise.
+                if (!allowProtocolDriftRetry) {
+                    logger.LogWarning(
+                        "EventStore returned 304 Not Modified twice without a matching cache entry — failing loudly to preserve visible UI state.");
+                    throw new HttpRequestException(
+                        "EventStore returned 304 Not Modified but no compatible cached payload exists.",
+                        inner: null,
+                        statusCode: System.Net.HttpStatusCode.NotModified);
+                }
+
+                logger.LogInformation(
+                    "EventStore returned 304 Not Modified without a matching cache entry — retrying once uncached (Story 5-2 D10).");
+                return await ExecuteAsync<T>(
+                    request: request with { ETag = null, ETags = null },
+                    current,
+                    tenant,
+                    cacheKey: cacheKey,
+                    cachedEntry: null,
+                    allowProtocolDriftRetry: false,
+                    cancellationToken).ConfigureAwait(false);
+            }
+
+            case QueryClassificationOutcome.Ok: {
+                string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                using JsonDocument document = JsonDocument.Parse(body);
+                IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
+                int totalCount = ReadTotalCount(document.RootElement, items.Count);
+                string? eTag = classification.ETag;
+                if (cacheKey is not null && eTag is { Length: > 0 } && !ContainsHeaderInjectionChar(eTag)) {
+                    long now = DateTimeOffset.UtcNow.UtcTicks;
+                    ETagCacheEntry entry = new(
+                        ETag: eTag,
+                        Payload: body,
+                        CachedAtUtcTicks: now,
+                        LastAccessedUtcTicks: now,
+                        FormatVersion: ETagCacheEntry.CurrentFormatVersion,
+                        PayloadVersion: request.CachePayloadVersion,
+                        Discriminator: request.CacheDiscriminator ?? string.Empty);
+                    _ = PersistCacheEntryAsync(cacheKey, entry);
+                }
+
+                return new QueryResult<T>(items, totalCount, eTag);
+            }
+
+            case QueryClassificationOutcome.Failure:
+            default: {
+                if (classification.Failure is AuthRedirectRequiredException authRequired) {
+                    await authRedirector.RedirectAsync(returnUrl: null, cancellationToken).ConfigureAwait(false);
+                    throw authRequired;
+                }
+
+                logger.LogWarning(
+                    "EventStore query returned unexpected HTTP status {StatusCode}.",
+                    (int)response.StatusCode);
+                throw classification.Failure!;
+            }
+        }
     }
 
-    private static IReadOnlyList<string> GetETags(QueryRequest request) {
+    private string? ResolveCacheKey(QueryRequest request, string tenant, string userId)
+        => request.CachePayloadVersion >= 1
+            && !HasCacheUnsafeQueryShape(request)
+            && request.CacheDiscriminator is { Length: > 0 } discriminator
+            && cache.TryBuildKey(tenant, userId, discriminator, out string key)
+                ? key
+                : null;
+
+    private async Task PersistCacheEntryAsync(string cacheKey, ETagCacheEntry entry) {
+        try {
+            await cache.SetAsync(cacheKey, entry, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex) {
+            logger.LogWarning(
+                ex,
+                "EventStore query cache write failed after successful 200 OK response.");
+        }
+    }
+
+    private static bool HasCacheUnsafeQueryShape(QueryRequest request) {
+#pragma warning disable CS0618 // Legacy Filter remains part of cache-safety gating until v1.0-rc2.
+        return !string.IsNullOrWhiteSpace(request.Filter)
+            || (request.ColumnFilters is { Count: > 0 })
+            || (request.StatusFilters is { Count: > 0 })
+            || !string.IsNullOrWhiteSpace(request.SearchQuery)
+            || !string.IsNullOrWhiteSpace(request.SortColumn);
+#pragma warning restore CS0618
+    }
+
+    private static IReadOnlyList<string> GetRequestEtags(QueryRequest request) {
         if (request.ETags is not null) {
             return request.ETags;
         }
 
         return string.IsNullOrWhiteSpace(request.ETag) ? [] : [request.ETag];
+    }
+
+    [SuppressMessage(
+        "Trimming",
+        "IL2026:RequiresUnreferencedCode",
+        Justification = "EventStore adapter deserializes adopter projection DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
+    private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry) {
+        using JsonDocument document = JsonDocument.Parse(entry.Payload);
+        IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
+        int totalCount = ReadTotalCount(document.RootElement, items.Count);
+        return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
     }
 
     private static bool ContainsHeaderInjectionChar(string value) {
@@ -113,7 +261,7 @@ public sealed class EventStoreQueryClient(
         return false;
     }
 
-    [UnconditionalSuppressMessage(
+    [SuppressMessage(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter deserializes adopter projection DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
@@ -131,7 +279,17 @@ public sealed class EventStoreQueryClient(
         return item is null ? [] : [item];
     }
 
-    [UnconditionalSuppressMessage(
+    private static int ReadTotalCount(JsonElement root, int defaultCount) {
+        if (root.TryGetProperty("totalCount", out JsonElement totalCount)
+            && totalCount.ValueKind == JsonValueKind.Number
+            && totalCount.TryGetInt32(out int parsed)) {
+            return parsed;
+        }
+
+        return defaultCount;
+    }
+
+    [SuppressMessage(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter serializes query payload metadata through System.Text.Json web defaults.")]
@@ -174,9 +332,6 @@ public sealed class EventStoreQueryClient(
 
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
-
-    private static string? TryGetHeader(HttpResponseHeaders headers, string name)
-        => headers.TryGetValues(name, out IEnumerable<string>? values) ? values.FirstOrDefault() : null;
 
     private sealed record SubmitQueryRequest(
         string Tenant,

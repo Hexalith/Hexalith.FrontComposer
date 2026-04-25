@@ -1,5 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Net;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
@@ -13,13 +12,18 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 /// <summary>
-/// Default EventStore-backed command service.
+/// Default EventStore-backed command service. Story 5-2 routes every non-202 response
+/// through <see cref="EventStoreResponseClassifier"/> so generated forms see a typed
+/// exception (<see cref="CommandValidationException"/>, <see cref="CommandWarningException"/>,
+/// <see cref="AuthRedirectRequiredException"/>, <see cref="CommandRejectedException"/>) instead
+/// of a stringly-typed <see cref="HttpRequestException"/>.
 /// </summary>
 public sealed class EventStoreCommandClient(
     IHttpClientFactory httpClientFactory,
     IOptions<EventStoreOptions> options,
     IUlidFactory ulidFactory,
     IUserContextAccessor userContextAccessor,
+    EventStoreResponseClassifier classifier,
     ILogger<EventStoreCommandClient> logger) : ICommandServiceWithLifecycle {
     internal const string HttpClientName = "Hexalith.FrontComposer.EventStore.Commands";
 
@@ -58,23 +62,27 @@ public sealed class EventStoreCommandClient(
 
         HttpClient client = httpClientFactory.CreateClient(HttpClientName);
         using HttpResponseMessage response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        if (response.StatusCode != HttpStatusCode.Accepted) {
+        EventStoreCommandClassification classification = await classifier
+            .ClassifyCommandAsync(response, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!classification.IsAccepted) {
             logger.LogWarning(
                 "EventStore command dispatch returned unexpected HTTP status {StatusCode}. LocationPath={LocationPath}",
                 (int)response.StatusCode,
                 response.Headers.Location?.GetLeftPart(UriPartial.Path));
-            throw new HttpRequestException("EventStore command dispatch did not return 202 Accepted.", null, response.StatusCode);
+            throw classification.Failure!;
         }
 
-        string? responseCorrelationId = await ReadCorrelationIdAsync(response, logger, cancellationToken).ConfigureAwait(false)
-            ?? TryGetHeader(response.Headers, "X-Correlation-ID");
-        TimeSpan? retryAfter = ResolveRetryAfter(response.Headers.RetryAfter);
+        string? responseCorrelationId = classification.CorrelationId
+            ?? await ReadCorrelationIdAsync(response, logger, cancellationToken).ConfigureAwait(false);
+
         CommandResult result = new(
             messageId,
             "Accepted",
             responseCorrelationId,
-            response.Headers.Location,
-            retryAfter);
+            classification.Location,
+            classification.RetryAfter);
 
         onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, result.CorrelationId ?? result.MessageId);
         return result;
@@ -124,45 +132,29 @@ public sealed class EventStoreCommandClient(
         HttpResponseMessage response,
         ILogger logger,
         CancellationToken cancellationToken) {
+        if (response.Content is null) {
+            return null;
+        }
+
         if (response.Content.Headers.ContentLength == 0) {
             return null;
         }
 
-        using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         try {
+            using Stream stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
             using JsonDocument document = await JsonDocument.ParseAsync(stream, cancellationToken: cancellationToken).ConfigureAwait(false);
             return document.RootElement.TryGetProperty("correlationId", out JsonElement value)
                 ? value.GetString()
                 : null;
         }
         catch (JsonException) {
-            // Reason is intentionally omitted — JsonException.Message can echo response body fragments.
+            // Reason intentionally omitted — JsonException.Message can echo response body fragments.
             logger.LogWarning(
-                "EventStore command response body could not be parsed as JSON; falling back to X-Correlation-ID header. ContentType={ContentType}",
+                "EventStore command response body could not be parsed as JSON; correlationId unavailable. ContentType={ContentType}",
                 response.Content.Headers.ContentType?.MediaType);
             return null;
         }
     }
-
-    private static TimeSpan? ResolveRetryAfter(System.Net.Http.Headers.RetryConditionHeaderValue? header) {
-        if (header is null) {
-            return null;
-        }
-
-        if (header.Delta is { } delta) {
-            return delta;
-        }
-
-        if (header.Date is { } date) {
-            TimeSpan diff = date - DateTimeOffset.UtcNow;
-            return diff > TimeSpan.Zero ? diff : TimeSpan.Zero;
-        }
-
-        return null;
-    }
-
-    private static string? TryGetHeader(HttpResponseHeaders headers, string name)
-        => headers.TryGetValues(name, out IEnumerable<string>? values) ? values.FirstOrDefault() : null;
 
     private sealed record SubmitCommandRequest(
         string MessageId,

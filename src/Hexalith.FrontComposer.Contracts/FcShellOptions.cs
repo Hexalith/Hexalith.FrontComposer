@@ -199,4 +199,15 @@ public sealed class FcShellOptions {
     /// </summary>
     [Range(10, 10_000, ErrorMessage = "MaxCachedPages must be between 10 and 10000.")]
     public int MaxCachedPages { get; set; } = 200;
+
+    /// <summary>
+    /// Story 5-2 D2 — global per-cache LRU entry cap for the opportunistic ETag cache.
+    /// Default 200 entries. <c>0</c> disables the cache entirely (queries still execute, but
+    /// <c>If-None-Match</c> is never sent and 200 responses are not cached). Bounded above by
+    /// <see cref="LocalStorageMaxEntries"/> so a busy ETag cache cannot crowd out unrelated
+    /// persisted preference state. <see cref="FcShellOptionsThresholdValidator"/> enforces the
+    /// upper bound as a cross-property invariant.
+    /// </summary>
+    [Range(0, 10_000, ErrorMessage = "MaxETagCacheEntries must be between 0 and 10000.")]
+    public int MaxETagCacheEntries { get; set; } = 200;
 }

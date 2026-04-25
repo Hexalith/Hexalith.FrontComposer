@@ -28,6 +28,9 @@ public sealed class EventStoreCancellationTests {
             new SingleClientFactory(handler),
             BuildOptions(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
         using CancellationTokenSource cts = new();

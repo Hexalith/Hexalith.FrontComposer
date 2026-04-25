@@ -1,6 +1,6 @@
 # Story 5.2: HTTP Response Handling & ETag Caching
 
-Status: ready-for-dev
+Status: done
 
 > **Epic 5** -- Reliable Real-Time Experience. **FR33** bounded opportunistic ETag caching, **FR34** full HTTP response handling, plus the first framework-owned bridge from Story 5-1's EventStore transport seam into user-facing query/command behavior. Applies lessons **L01**, **L03**, **L10**, and **L14**.
 
@@ -51,62 +51,80 @@ so that I see appropriate feedback for every situation and the application feels
 
 ## Tasks / Subtasks
 
-- [ ] T1. Extend the Contracts response surface append-only (AC1, AC2, AC4)
-  - [ ] Read Story 5-1's seams first: `ICommandService`, `ICommandServiceWithLifecycle`, `CommandResult`, `CommandRejectedException`, `QueryRequest`, and `QueryResult<T>`. Preserve existing Story 2.x generated form call sites and Story 4-4 projection-loader call sites.
-  - [ ] Add explicit query no-change semantics append-only, preferably `QueryResult<T>.IsNotModified` / `NotModified`, rather than reusing exceptions for the expected `304` path.
-  - [ ] Introduce a response/error taxonomy that lets generated forms distinguish validation errors, auth redirects, warning-level failures, and domain rejections without collapsing everything into `CommandRejectedException`.
-  - [ ] Keep command and query outcomes separate in the taxonomy: query outcomes carry ETag/cache/no-change metadata; command outcomes carry accepted metadata, validation details, auth redirect intent, warning details, or domain rejection details.
-  - [ ] Keep `409 Conflict` compatible with the existing rejection flow. If new exception types are introduced, `CommandRejectedException` remains the domain-conflict shape consumed by generated forms and `FcLifecycleWrapper`.
-  - [ ] Parse RFC 7807 / `ValidationProblemDetails` payloads append-only so field errors, form-level errors, title/detail, entity labels, and retry-after metadata are available without leaking raw HTTP details into Razor emitters.
-  - [ ] Map validation fields only through the generated command model's allowlisted property names. Unknown paths, nested paths that do not resolve exactly to a generated editable field, duplicate aliases, or hostile field names degrade to form-level validation instead of polluting unrelated fields.
-  - [ ] Unknown or legacy 400 payloads must degrade to a form-level validation/warning result rather than throwing from generated form code or pretending field mapping succeeded.
+- [x] T1. Extend the Contracts response surface append-only (AC1, AC2, AC4)
+  - [x] Read Story 5-1's seams first: `ICommandService`, `ICommandServiceWithLifecycle`, `CommandResult`, `CommandRejectedException`, `QueryRequest`, and `QueryResult<T>`. Preserve existing Story 2.x generated form call sites and Story 4-4 projection-loader call sites.
+  - [x] Add explicit query no-change semantics append-only, preferably `QueryResult<T>.IsNotModified` / `NotModified`, rather than reusing exceptions for the expected `304` path.
+  - [x] Introduce a response/error taxonomy that lets generated forms distinguish validation errors, auth redirects, warning-level failures, and domain rejections without collapsing everything into `CommandRejectedException`.
+  - [x] Keep command and query outcomes separate in the taxonomy: query outcomes carry ETag/cache/no-change metadata; command outcomes carry accepted metadata, validation details, auth redirect intent, warning details, or domain rejection details.
+  - [x] Keep `409 Conflict` compatible with the existing rejection flow. If new exception types are introduced, `CommandRejectedException` remains the domain-conflict shape consumed by generated forms and `FcLifecycleWrapper`.
+  - [x] Parse RFC 7807 / `ValidationProblemDetails` payloads append-only so field errors, form-level errors, title/detail, entity labels, and retry-after metadata are available without leaking raw HTTP details into Razor emitters.
+  - [x] Map validation fields only through the generated command model's allowlisted property names. Unknown paths, nested paths that do not resolve exactly to a generated editable field, duplicate aliases, or hostile field names degrade to form-level validation instead of polluting unrelated fields.
+  - [x] Unknown or legacy 400 payloads must degrade to a form-level validation/warning result rather than throwing from generated form code or pretending field mapping succeeded.
 
-- [ ] T2. Add a bounded ETag cache seam on top of existing storage infrastructure (AC3, AC5, AC6)
-  - [ ] Reuse `IStorageService`, `LocalStorageService`, `InMemoryStorageService`, `StorageKeys`, and Story 3-1's beforeunload flush. Do not add a second browser-storage abstraction or a second JS unload hook.
-  - [ ] Add a dedicated cache seam under `Shell/State/ETagCache/` or `Shell/Infrastructure/EventStore/ETagCache/` so Story 5-2 can evolve without leaking storage details into query clients. The seam may be service-centric, but keep the folder/namespace aligned with the architecture extraction plan.
-  - [ ] Add `FcShellOptions.MaxETagCacheEntries` with a conservative default of 200 entries, a minimum of 0, and a maximum no greater than `LocalStorageMaxEntries`; `0` disables ETag caching without disabling network queries.
-  - [ ] Persist only server-derived projection snapshots / count payloads plus metadata (`ETag`, cached-at, discriminator, projection/query identity). Never store user-entered command drafts or raw auth tokens.
-  - [ ] Include cache-entry format and projection payload compatibility metadata in each entry. If the current runtime cannot read the entry, treat it as a diagnostic cache miss, remove/drop it best-effort, and continue with an uncached request.
-  - [ ] Implement global per-cache LRU eviction within the ETag-cache seam using `cached-at` / last-access metadata so rapid query churn does not evict unrelated persisted state like theme, density, navigation, or DataGrid preferences.
-  - [ ] Treat storage quota/write/read failures as diagnostic cache misses: log, skip or drop the affected cache entry, and continue the user operation from the server response.
+- [x] T2. Add a bounded ETag cache seam on top of existing storage infrastructure (AC3, AC5, AC6)
+  - [x] Reuse `IStorageService`, `LocalStorageService`, `InMemoryStorageService`, `StorageKeys`, and Story 3-1's beforeunload flush. Do not add a second browser-storage abstraction or a second JS unload hook.
+  - [x] Add a dedicated cache seam under `Shell/State/ETagCache/` or `Shell/Infrastructure/EventStore/ETagCache/` so Story 5-2 can evolve without leaking storage details into query clients. The seam may be service-centric, but keep the folder/namespace aligned with the architecture extraction plan.
+  - [x] Add `FcShellOptions.MaxETagCacheEntries` with a conservative default of 200 entries, a minimum of 0, and a maximum no greater than `LocalStorageMaxEntries`; `0` disables ETag caching without disabling network queries.
+  - [x] Persist only server-derived projection snapshots / count payloads plus metadata (`ETag`, cached-at, discriminator, projection/query identity). Never store user-entered command drafts or raw auth tokens.
+  - [x] Include cache-entry format and projection payload compatibility metadata in each entry. If the current runtime cannot read the entry, treat it as a diagnostic cache miss, remove/drop it best-effort, and continue with an uncached request.
+  - [x] Implement global per-cache LRU eviction within the ETag-cache seam using `cached-at` / last-access metadata so rapid query churn does not evict unrelated persisted state like theme, density, navigation, or DataGrid preferences.
+  - [x] Treat storage quota/write/read failures as diagnostic cache misses: log, skip or drop the affected cache entry, and continue the user operation from the server response.
 
-- [ ] T3. Define a safe cache-key discriminator policy (AC3, AC4, AC6)
-  - [ ] Use `StorageKeys.BuildKey(tenantId, userId, "etag", discriminator)` as the canonical prefix/pattern.
-  - [ ] The discriminator must be framework-controlled and allowlisted: compile-time projection/query identity plus framework-generated page/count lane identifiers. Do not embed raw user-entered search terms, free-text filters, arbitrary form values, PII, hashes of user input, or arbitrary serialized query payloads into storage keys.
-  - [ ] If `tenantId`, `userId`, or discriminator is null, whitespace, colon-containing, not allowlisted, or derived from user input, skip cache read/write and perform the request uncached.
-  - [ ] If a query shape cannot be keyed safely under that rule, skip caching for that shape rather than weakening the key policy.
-  - [ ] Document exactly which query families Story 5-2 caches on day one: projection snapshot/page queries whose discriminator is framework-generated, and action-queue count queries keyed by projection runtime type.
+- [x] T3. Define a safe cache-key discriminator policy (AC3, AC4, AC6)
+  - [x] Use `StorageKeys.BuildKey(tenantId, userId, "etag", discriminator)` as the canonical prefix/pattern.
+  - [x] The discriminator must be framework-controlled and allowlisted: compile-time projection/query identity plus framework-generated page/count lane identifiers. Do not embed raw user-entered search terms, free-text filters, arbitrary form values, PII, hashes of user input, or arbitrary serialized query payloads into storage keys.
+  - [x] If `tenantId`, `userId`, or discriminator is null, whitespace, colon-containing, not allowlisted, or derived from user input, skip cache read/write and perform the request uncached.
+  - [x] If a query shape cannot be keyed safely under that rule, skip caching for that shape rather than weakening the key policy.
+  - [x] Document exactly which query families Story 5-2 caches on day one: projection snapshot/page queries whose discriminator is framework-generated, and action-queue count queries keyed by projection runtime type.
 
-- [ ] T4. Wire query-side 200 / 304 handling through projection and badge consumers (AC1, AC4, AC7)
-  - [ ] Extend the default EventStore query client from Story 5-1 so `If-None-Match` is set from the ETag cache and `200 OK` writes fresh cache entries fire-and-forget.
-  - [ ] Introduce an explicit 304 no-change path for the server-side DataGrid lane. A "304 but dispatch `LoadPageSucceededAction` anyway" implementation is not acceptable because it still churns Fluxor/UI state.
-  - [ ] Prefer an explicit `LoadPageNotModifiedAction` or equivalent no-op reducer/effect path that resolves pending TCS completion from the cached page while leaving `LoadedPageState.PagesByKey`, `TotalCountByKey`, and user-visible render state unchanged.
-  - [ ] Add the first real `IActionQueueCountReader` implementation on top of the query client and the same cache seam so Story 3-5 badge refreshes benefit from 304/cache behavior too.
-  - [ ] Keep the 5-2 cache as an optimization only. If the cache is empty, corrupt, over budget, or out of scope for safe discriminator construction, fall back to a normal network query without a validator.
-  - [ ] For `304` with missing/corrupt/incompatible/evicted cache, retry once without `If-None-Match`; if retry returns `200`, replace the cache; if retry returns `304` again or a failure response, surface protocol drift/failure while preserving currently visible grid rows or badge count.
-  - [ ] Badge reads on `304` keep the visible count unchanged and do not emit changed notifications, animations, or refresh timestamps.
+- [x] T4. Wire query-side 200 / 304 handling through projection and badge consumers (AC1, AC4, AC7)
+  - [x] Extend the default EventStore query client from Story 5-1 so `If-None-Match` is set from the ETag cache and `200 OK` writes fresh cache entries fire-and-forget.
+  - [x] Introduce an explicit 304 no-change path for the server-side DataGrid lane. A "304 but dispatch `LoadPageSucceededAction` anyway" implementation is not acceptable because it still churns Fluxor/UI state.
+  - [x] Prefer an explicit `LoadPageNotModifiedAction` or equivalent no-op reducer/effect path that resolves pending TCS completion from the cached page while leaving `LoadedPageState.PagesByKey`, `TotalCountByKey`, and user-visible render state unchanged.
+  - [x] Add the first real `IActionQueueCountReader` implementation on top of the query client and the same cache seam so Story 3-5 badge refreshes benefit from 304/cache behavior too.
+  - [x] Keep the 5-2 cache as an optimization only. If the cache is empty, corrupt, over budget, or out of scope for safe discriminator construction, fall back to a normal network query without a validator.
+  - [x] For `304` with missing/corrupt/incompatible/evicted cache, retry once without `If-None-Match`; if retry returns `200`, replace the cache; if retry returns `304` again or a failure response, surface protocol drift/failure while preserving currently visible grid rows or badge count.
+  - [x] Badge reads on `304` keep the visible count unchanged and do not emit changed notifications, animations, or refresh timestamps.
 
-- [ ] T5. Map command-response statuses to form UX without breaking the lifecycle wrapper contract (AC2, AC8)
-  - [ ] Keep `FcLifecycleWrapper` focused on lifecycle states (`Submitting`, `Acknowledged`, `Syncing`, `Confirmed`, domain `Rejected`). Do not overload it with every HTTP warning state unless that proves strictly simpler than a dedicated generated-form feedback region.
-  - [ ] Add generated-form support for server-side `400 Bad Request` field errors using `ValidationMessageStore` / `EditContext`, clearing stale server errors on re-submit or field edit, preserving user-entered values, and routing unknown/global errors to a form-level validation MessageBar.
-  - [ ] Render ProblemDetails title/detail, validation messages, warning copy, and domain rejection text as bounded plain text only. Do not emit raw HTML, stack traces, exception type names, or `MarkupString` from server payloads.
-  - [ ] Add a framework-owned warning-banner path for `403`, `404`, and `429` copy that generated forms can render consistently without abusing the rejection/error path; warning responses must not dispatch lifecycle acknowledgement or domain rejection.
-  - [ ] Introduce a minimal auth-redirect seam for `401 Unauthorized` rather than hard-coding a login URL. The default may be a no-op/exception until adopters register a real auth redirector, but the contract must be explicit: no warning MessageBar, no lifecycle rejection, no validation pollution, no cache mutation, and no automatic command/query retry in Story 5-2.
-  - [ ] Preserve Story 2-5's domain rejection experience for `409 Conflict`: entity name + why it failed + what the user should do next, all as plain text (no HTML / no `MarkupString`).
+- [x] T5. Map command-response statuses to form UX without breaking the lifecycle wrapper contract (AC2, AC8)
+  - [x] Keep `FcLifecycleWrapper` focused on lifecycle states (`Submitting`, `Acknowledged`, `Syncing`, `Confirmed`, domain `Rejected`). Do not overload it with every HTTP warning state unless that proves strictly simpler than a dedicated generated-form feedback region.
+  - [x] Add generated-form support for server-side `400 Bad Request` field errors using `ValidationMessageStore` / `EditContext`, clearing stale server errors on re-submit or field edit, preserving user-entered values, and routing unknown/global errors to a form-level validation MessageBar.
+  - [x] Render ProblemDetails title/detail, validation messages, warning copy, and domain rejection text as bounded plain text only. Do not emit raw HTML, stack traces, exception type names, or `MarkupString` from server payloads.
+  - [x] Add a framework-owned warning-banner path for `403`, `404`, and `429` copy that generated forms can render consistently without abusing the rejection/error path; warning responses must not dispatch lifecycle acknowledgement or domain rejection.
+  - [x] Introduce a minimal auth-redirect seam for `401 Unauthorized` rather than hard-coding a login URL. The default may be a no-op/exception until adopters register a real auth redirector, but the contract must be explicit: no warning MessageBar, no lifecycle rejection, no validation pollution, no cache mutation, and no automatic command/query retry in Story 5-2.
+  - [x] Preserve Story 2-5's domain rejection experience for `409 Conflict`: entity name + why it failed + what the user should do next, all as plain text (no HTML / no `MarkupString`).
 
-- [ ] T6. Keep response classification centralized and reusable (AC1, AC2, AC7)
-  - [ ] Put EventStore HTTP status parsing, ProblemDetails decoding, `Retry-After` parsing, and `ETag` extraction in one Shell-side helper/service. Do not duplicate status-switch blocks in the query client, count reader, projection page loader, and generated forms.
-  - [ ] Implement and test the classifier before DataGrid, badge, and generated-form UI wiring so UI layers consume classified command/query outcomes instead of branching on raw HTTP status codes.
-  - [ ] Treat `304` + missing cache, malformed `ETag`, malformed problem payload, or impossible response combinations as explicit diagnostics/failures rather than silent fallbacks that hide protocol drift.
-  - [ ] Leave `503 Service Unavailable`, reconnect sweep UX, and polling fallback user journeys to Stories 5-3 through 5-5, but preserve enough metadata now so later stories do not need a breaking contract change.
+- [x] T6. Keep response classification centralized and reusable (AC1, AC2, AC7)
+  - [x] Put EventStore HTTP status parsing, ProblemDetails decoding, `Retry-After` parsing, and `ETag` extraction in one Shell-side helper/service. Do not duplicate status-switch blocks in the query client, count reader, projection page loader, and generated forms.
+  - [x] Implement and test the classifier before DataGrid, badge, and generated-form UI wiring so UI layers consume classified command/query outcomes instead of branching on raw HTTP status codes.
+  - [x] Treat `304` + missing cache, malformed `ETag`, malformed problem payload, or impossible response combinations as explicit diagnostics/failures rather than silent fallbacks that hide protocol drift.
+  - [x] Leave `503 Service Unavailable`, reconnect sweep UX, and polling fallback user journeys to Stories 5-3 through 5-5, but preserve enough metadata now so later stories do not need a breaking contract change.
 
-- [ ] T7. Tests and verification (AC1-AC8)
-  - [ ] Contracts tests: append-only compatibility of new result/exception types; `QueryResult<T>` 304 semantics; `CommandRejectedException` remains compatible with generated forms.
-  - [ ] Cache tests: per-cache LRU eviction, fire-and-forget writes, `FlushAsync` drain on pending writes, storage write/read/serialization failure as diagnostic cache miss, cache-entry format/projection payload incompatibility as diagnostic miss, fail-closed tenant/user/feature/discriminator scope, malicious discriminator rejection, user-entered filter/search rejection, and "304 without cache -> one uncached retry -> fail loud if still inconsistent".
-  - [ ] Query/client tests: `If-None-Match` emission, `ETag` capture, `200` overwrite, `304` reuse, `304` with corrupt/incompatible/evicted cache, and `401/403/404/429` classification.
-  - [ ] DataGrid tests: explicit 304 no-change path proves no loading flash, page reset, selection churn, new `LoadedPageState.PagesByKey` write, synthetic `LastElapsedMsByKey` / `TotalCountByKey` churn, or success toast/message.
-  - [ ] Badge tests: `IActionQueueCountReader` returns cached counts on 304, re-fetches cleanly on 200, preserves prior visible count on 429, and emits no changed notification/animation on 304.
-  - [ ] Generator/component tests: `400` known-field, unknown-field, nested-hostile-field, duplicate-alias, multiple-field, and form-level validation mapping; stale server errors clear on re-submit or field edit; entered values are preserved; ProblemDetails and warning/rejection text renders as bounded plain text with no raw HTML or stack traces; `403/404/429` warning banner rendering; `409` domain rejection copy; `401` auth redirect invocation with no warning, lifecycle rejection, validation pollution, or cache mutation.
+- [x] T7. Tests and verification (AC1-AC8)
+  - [x] Contracts tests: append-only compatibility of new result/exception types; `QueryResult<T>` 304 semantics; `CommandRejectedException` remains compatible with generated forms.
+  - [x] Cache tests: per-cache LRU eviction, fire-and-forget writes, `FlushAsync` drain on pending writes, storage write/read/serialization failure as diagnostic cache miss, cache-entry format/projection payload incompatibility as diagnostic miss, fail-closed tenant/user/feature/discriminator scope, malicious discriminator rejection, user-entered filter/search rejection, and "304 without cache -> one uncached retry -> fail loud if still inconsistent".
+  - [x] Query/client tests: `If-None-Match` emission, `ETag` capture, `200` overwrite, `304` reuse, `304` with corrupt/incompatible/evicted cache, and `401/403/404/429` classification.
+  - [x] DataGrid tests: explicit 304 no-change path proves no loading flash, page reset, selection churn, new `LoadedPageState.PagesByKey` write, synthetic `LastElapsedMsByKey` / `TotalCountByKey` churn, or success toast/message.
+  - [x] Badge tests: `IActionQueueCountReader` returns cached counts on 304, re-fetches cleanly on 200, preserves prior visible count on 429, and emits no changed notification/animation on 304.
+  - [x] Generator/component tests: `400` known-field, unknown-field, nested-hostile-field, duplicate-alias, multiple-field, and form-level validation mapping; stale server errors clear on re-submit or field edit; entered values are preserved; ProblemDetails and warning/rejection text renders as bounded plain text with no raw HTML or stack traces; `403/404/429` warning banner rendering; `409` domain rejection copy; `401` auth redirect invocation with no warning, lifecycle rejection, validation pollution, or cache mutation.
+
+### Review Findings
+
+- [x] [Review][Patch] Projection page ETag keys ignore filter/search/sort state [src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheDiscriminator.cs:51]
+- [x] [Review][Patch] Default auth redirector fail-fast is swallowed by generated forms [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:370]
+- [x] [Review][Patch] Query-side 401 does not invoke the auth redirect seam [src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs:126]
+- [x] [Review][Patch] Form-level server validation errors are stored but never rendered [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:104]
+- [x] [Review][Patch] Command warning publisher has no visible subscriber or generated-form MessageBar path [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs:354]
+- [x] [Review][Patch] Valid 202 Accepted responses with no body can throw while reading correlationId [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs:135]
+- [x] [Review][Patch] 401 response body draining swallows caller cancellation [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs:273]
+- [x] [Review][Patch] Weak ETags lose their `W/` prefix before caching and replay [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs:132]
+- [x] [Review][Patch] ETag cache diagnostics log raw storage keys containing tenant/user segments [src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:119]
+- [x] [Review][Patch] ETag cache LRU cap is enforced only against the current in-memory map, not persisted cache entries [src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs:43]
+- [x] [Review][Patch] External cache discriminator allowlist accepts unsafe prefixed strings not produced by the builder [src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheDiscriminator.cs:75]
+- [x] [Review][Patch] ProblemDetails parsing and copied response text are unbounded [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs:178]
+- [x] [Review][Patch] Invalid cache payload versions can bypass cache compatibility invalidation [src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs:45]
+- [x] [Review][Patch] Fire-and-forget cache writes use the request cancellation token and can fault unobserved [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs:179]
+- [x] [Review][Patch] Late success after page-load cancellation can still mutate loaded-page state [src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs:97]
 
 ---
 
@@ -274,16 +292,99 @@ Do not implement these in Story 5-2:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+claude-opus-4-7 via `/bmad-dev-story` (Hexalith.FrontComposer harness, 2026-04-25 → 2026-04-26).
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- `dotnet build Hexalith.FrontComposer.sln -warnaserror` → Build succeeded, 0 warnings, 0 errors.
+- `dotnet test Hexalith.FrontComposer.sln --no-build` → Contracts 91/0/0, Shell 1086/0/3, SourceTools 481/0/0, Bench 2/0/0. The 3 Shell skips remain pre-existing E2E (Story 1-8 Playwright + G37-5 palette E2E).
+- bUnit-rendered command form tests required two new DI registrations in `FrontComposerTestBase`, `CommandRendererTestBase`, and `GeneratedComponentTestBase`: `ICommandFeedbackPublisher` + `IAuthRedirector`. Existing snapshot tests (`CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly`, `CommandForm_ShowFieldsOnly_RendersOnlyNamedFields`) were re-baselined to capture the Story 5-2 emitter additions (server-validation message store, warning publisher catch, auth-redirect catch).
+- NFR17 tripwire (`NFR17ComplianceTripwireTests`) updated: expected SetAsync call-site count 6 → 7, and `stamped` added to the allowlist for the framework-derived ETagCacheEntry persistence.
+- EventStore tests received a new shared helper (`EventStoreTestSupport`) so the existing `EventStoreClientTests` / `EventStoreCancellationTests` / `EventStoreDiagnosticsTests` could satisfy the new classifier + `IETagCache` constructor parameters without re-rolling fakes per fixture. `EventStoreDiagnosticsTests.CommandClient_OnNon202Response_DoesNotLogTokenOrPayloadOrPii` now expects `CommandValidationException` instead of `HttpRequestException` because the classifier owns 400 mapping.
+- `EventStoreRegistrationTests` and `SeamExtractionSmokeTests` now `Replace(IStorageService, InMemoryStorageService)` because `EventStoreQueryClient` transitively depends on `IETagCache` → `IStorageService` (the default `LocalStorageService` requires `IJSRuntime`, which container-shape tests do not register).
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- **T1 / Contracts append-only.** Added `CommandValidationException`, `CommandWarningException`, `CommandWarningKind`, `AuthRedirectRequiredException`, `QueryFailureException`, `QueryFailureKind`, `ProblemDetailsPayload`, `IAuthRedirector`, `ICommandValidationFieldAllowlist`. Extended `QueryRequest` with append-only `CacheDiscriminator` + `CachePayloadVersion`. Added `QueryResult<T>.NotModifiedFromCache` factory. Story 2.x `CommandRejectedException` semantics preserved end-to-end (409 still maps to it through the classifier).
+- **T2 / Bounded ETag cache.** New `Shell/State/ETagCache/` seam: `ETagCacheEntry` with format + payload version metadata (D13), `IETagCache`, `ETagCacheService` reusing `IStorageService` with global per-cache LRU, fail-closed `TryBuildKey`, and storage-failure-as-cache-miss. `FcShellOptions.MaxETagCacheEntries` defaults to 200 (range 0–10 000); `FcShellOptionsThresholdValidator` enforces it cannot exceed `LocalStorageMaxEntries`.
+- **T3 / Discriminator allowlist.** `ETagCacheDiscriminator` builds and validates the only two cache lanes shipped today: `projection-page:{TypeFqn}:s{Skip}-t{Take}` and `action-queue-count:{TypeFqn}`. Anything containing colon-empty segments, whitespace, control chars, path-traversal characters, or non-allowlisted prefixes is rejected. `ETagCacheService.TryBuildKey` defence-in-depths against blank or colon-bearing tenant / user identifiers.
+- **T4 / Query 200/304 + DataGrid + badge.** `EventStoreQueryClient` now goes through the classifier, sets `If-None-Match` from the cached ETag entry when a discriminator opts into framework cache integration, writes 200 OK responses through `IETagCache.SetAsync` fire-and-forget, and reuses the cached payload via `QueryResult<T>.NotModifiedFromCache` on 304. `LoadPageNotModifiedAction` + matching reducer resolve the pending TCS from cached items WITHOUT mutating `LoadedPageState.PagesByKey` / `TotalCountByKey` / `LastElapsedMsByKey` (AC4 / D4). `LoadPageEffects` detects `ProjectionPageResult.IsNotModified` and dispatches the no-change action instead of `LoadPageSucceededAction`. `EventStoreActionQueueCountReader` is the first real `IActionQueueCountReader`, registered automatically by `AddHexalithEventStore` in place of the `NullActionQueueCountReader` default. `BadgeCountService.UpdateCount` suppresses duplicate emissions so 304 cache reuse + 429 preserve-prior-count never animate the badge.
+- **T5 / Form UX.** `CommandFormEmitter` injects `ICommandFeedbackPublisher` + `IAuthRedirector`, allocates a per-form `ValidationMessageStore`, clears stale server messages on field edit and on resubmit, applies `CommandValidationException` through the new static `ServerValidationApplicator.Apply` (allowlisted via `ReflectionCommandValidationFieldAllowlist<TCommand>`), publishes `CommandWarningException` warnings through `ICommandFeedbackPublisher` (separate from `FcLifecycleWrapper`), and routes `AuthRedirectRequiredException` through `IAuthRedirector` (default `NoOpAuthRedirector` throws so 401 is never silently swallowed). `CommandRejectedException` (409) still flows through the existing `RejectedAction` path. ProblemDetails / warning / validation copy is rendered as plain text only — no `MarkupString`.
+- **T6 / Centralized classifier.** `EventStoreResponseClassifier` (Singleton) is the single source of truth for HTTP status parsing, ProblemDetails decoding, `Retry-After` and `ETag` extraction. `EventStoreCommandClient` and `EventStoreQueryClient` both delegate to it; UI layers consume the typed classifications instead of switching on raw `HttpStatusCode`. 304-without-cache falls into the protocol-drift retry branch only when the caller opted in via `CacheDiscriminator`; explicit caller-supplied ETag without cache integration returns `QueryResult<T>.NotModified(eTag)` so reducers can honour their own no-change path.
+- **T7 / Tests.** Added 96 new tests across the Contracts and Shell test projects: `Story52ResponseSurfaceTests`, `EventStoreResponseClassifierTests`, `EventStoreCommandClassifierIntegrationTests`, `EventStoreQueryCacheIntegrationTests`, `ETagCacheServiceTests`, `ETagCacheDiscriminatorTests`, `Story52FcShellOptionsValidatorTests`, `LoadPageNotModifiedReducerTests`, `BadgeCountServiceNoChurnTests`, `EventStoreActionQueueCountReaderTests`, and `ServerValidationApplicatorTests`. `dotnet test Hexalith.FrontComposer.sln --no-build` reports 1660 passed / 0 failed / 3 skipped (Contracts 91/0/0, Shell 1086/0/3, SourceTools 481/0/0, Bench 2/0/0).
+- **DI registration.** `AddHexalithFrontComposer` registers `IETagCache → ETagCacheService`, `IAuthRedirector → NoOpAuthRedirector`, and `ICommandFeedbackPublisher → CommandFeedbackPublisher`. `AddHexalithEventStore` adds the `EventStoreResponseClassifier` Singleton, replaces the `NullActionQueueCountReader` default with `EventStoreActionQueueCountReader`, and continues to bind `EventStoreCommandClient` / `EventStoreQueryClient` as the `ICommandService` / `IQueryService` defaults.
 
 ### File List
 
-(to be filled in by dev agent)
+**New (production, src/):**
+
+- `src/Hexalith.FrontComposer.Contracts/Communication/AuthRedirectRequiredException.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/CommandValidationException.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/CommandWarningException.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/CommandWarningKind.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/IAuthRedirector.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/ICommandValidationFieldAllowlist.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/ProblemDetailsPayload.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryFailureException.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryFailureKind.cs`
+- `src/Hexalith.FrontComposer.Shell/Badges/EventStoreActionQueueCountReader.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/NoOpAuthRedirector.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Feedback/CommandFeedbackPublisher.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Feedback/ICommandFeedbackPublisher.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Validation/ReflectionCommandValidationFieldAllowlist.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Validation/ServerValidationApplicator.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheDiscriminator.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheEntry.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ETagCache/IETagCache.cs`
+
+**Modified (production, src/):**
+
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs` — append-only `CacheDiscriminator` + `CachePayloadVersion`.
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryResult.cs` — append-only `NotModifiedFromCache` factory.
+- `src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs` — append-only `MaxETagCacheEntries` (default 200, range 0–10 000).
+- `src/Hexalith.FrontComposer.Contracts/Rendering/VirtualizationActions.cs` — append-only `LoadPageNotModifiedAction` record.
+- `src/Hexalith.FrontComposer.Shell/Badges/BadgeCountService.cs` — duplicate-emission suppression (Story 5-2 AC7 no-churn).
+- `src/Hexalith.FrontComposer.Shell/Extensions/EventStoreServiceExtensions.cs` — register classifier + replace null badge reader.
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` — register `IETagCache`, `IAuthRedirector`, `ICommandFeedbackPublisher` defaults.
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs` — route response through classifier.
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs` — classifier + ETag cache integration with protocol-drift retry.
+- `src/Hexalith.FrontComposer.Shell/Options/FcShellOptionsThresholdValidator.cs` — enforce `MaxETagCacheEntries ≤ LocalStorageMaxEntries`.
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/IProjectionPageLoader.cs` — append-only `IsNotModified` on `ProjectionPageResult`.
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs` — dispatch `LoadPageNotModifiedAction` on 304.
+- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadedPageReducers.cs` — `ReduceLoadPageNotModified` (no state mutation).
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs` — inject warning publisher + auth redirector, install `ValidationMessageStore`, add catch clauses for `CommandValidationException` / `CommandWarningException` / `AuthRedirectRequiredException`, clear stale messages on field edit.
+
+**New (tests):**
+
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/Story52ResponseSurfaceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Badges/BadgeCountServiceNoChurnTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Badges/EventStoreActionQueueCountReaderTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreCommandClassifierIntegrationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreQueryCacheIntegrationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreResponseClassifierTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreTestSupport.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Options/Story52FcShellOptionsValidatorTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Validation/ServerValidationApplicatorTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/LoadPageNotModifiedReducerTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/ETagCache/ETagCacheDiscriminatorTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/ETagCache/ETagCacheServiceTests.cs`
+
+**Modified (tests):**
+
+- `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/NFR17ComplianceTripwireTests.cs` — bump expected SetAsync call-site count from 6 → 7 and allowlist `stamped`.
+- `tests/Hexalith.FrontComposer.Shell.Tests/FrontComposerTestBase.cs` — register `ICommandFeedbackPublisher` + `IAuthRedirector` so Story 5-2 generated forms render in bUnit.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CommandRendererTestBase.cs` — same.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs` — same.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreCancellationTests.cs` — supply classifier + no-cache to `EventStoreQueryClient` ctor.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs` — supply classifier + no-cache (or no classifier-only) to existing client ctors.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreDiagnosticsTests.cs` — supply classifier (+ no-cache to query client); 400 now throws `CommandValidationException`.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreRegistrationTests.cs` — Replace `IStorageService` with `InMemoryStorageService` so `IETagCache` can resolve under a unit-test container.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/SeamExtractionSmokeTests.cs` — same.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt` — re-baselined snapshot.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt` — re-baselined snapshot.
+
+**Sprint coordination:**
+
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` — `5-2-http-response-handling-and-etag-caching: ready-for-dev → in-progress → review`.

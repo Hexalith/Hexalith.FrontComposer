@@ -32,6 +32,7 @@ public sealed class EventStoreClientTests {
             Options(),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         CommandResult result = await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
@@ -63,6 +64,7 @@ public sealed class EventStoreClientTests {
             Microsoft.Extensions.Options.Options.Create(options),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         _ = await Should.ThrowAsync<InvalidOperationException>(
@@ -83,6 +85,7 @@ public sealed class EventStoreClientTests {
             Microsoft.Extensions.Options.Options.Create(options),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         _ = await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
@@ -100,6 +103,7 @@ public sealed class EventStoreClientTests {
             Microsoft.Extensions.Options.Options.Create(options),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         _ = await Should.ThrowAsync<InvalidOperationException>(
@@ -120,6 +124,9 @@ public sealed class EventStoreClientTests {
             new SingleClientFactory(handler),
             Options(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
@@ -148,6 +155,9 @@ public sealed class EventStoreClientTests {
             new SingleClientFactory(handler),
             Microsoft.Extensions.Options.Options.Create(options),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
@@ -170,6 +180,9 @@ public sealed class EventStoreClientTests {
             new SingleClientFactory(handler),
             Options(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
         QueryRequest request = new(
@@ -206,6 +219,7 @@ public sealed class EventStoreClientTests {
             Options(),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         ShipOrderCommand command = new() { TenantId = "victim" };
@@ -223,6 +237,7 @@ public sealed class EventStoreClientTests {
             Options(),
             new FixedUlidFactory(),
             new TestUserContextAccessor(tenantId: null, userId: "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         _ = await Should.ThrowAsync<InvalidOperationException>(
@@ -242,6 +257,7 @@ public sealed class EventStoreClientTests {
             Options(),
             new FixedUlidFactory(),
             new TestUserContextAccessor("Acme_Corp", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         _ = await sut.DispatchAsync(new ShipOrderCommand { TenantId = "Acme_Corp" }, TestContext.Current.CancellationToken);
@@ -264,6 +280,7 @@ public sealed class EventStoreClientTests {
             Options(),
             new FixedUlidFactory(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
         CommandResult result = await sut.DispatchAsync(new ShipOrderCommand(), TestContext.Current.CancellationToken);
@@ -280,6 +297,9 @@ public sealed class EventStoreClientTests {
             new SingleClientFactory(handler),
             Options(),
             new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
             NullLogger<EventStoreQueryClient>.Instance);
 
         QueryRequest request = new(
