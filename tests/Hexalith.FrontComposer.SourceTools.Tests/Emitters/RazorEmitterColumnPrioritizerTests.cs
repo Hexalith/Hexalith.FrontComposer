@@ -43,6 +43,8 @@ public sealed class RazorEmitterColumnPrioritizerTests {
         string src = RazorEmitter.Emit(BuildModel(16));
         src.ShouldContain("FcColumnPrioritizer");
         src.ShouldContain("_allColumnsDescriptor");
+        src.ShouldContain("_defaultHiddenColumns");
+        src.ShouldContain("\"Col11\"");
         src.ShouldContain("MaxVisibleColumns");
     }
 
@@ -52,5 +54,7 @@ public sealed class RazorEmitterColumnPrioritizerTests {
         for (int i = 1; i <= 20; i++) {
             src.ShouldContain("\"Col" + i + "\"");
         }
+
+        src.ShouldContain("if (!hiddenColumnSet.Contains(\"Col20\"))");
     }
 }

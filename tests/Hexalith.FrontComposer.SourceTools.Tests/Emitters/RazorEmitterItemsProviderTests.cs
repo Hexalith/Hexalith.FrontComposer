@@ -27,6 +27,8 @@ public sealed class RazorEmitterItemsProviderTests {
     public void EmitsLoadPageAsyncMethodOnGridStrategies() {
         string src = RazorEmitter.Emit(Model());
         src.ShouldContain("private async ValueTask<global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProviderResult<OrderProjection>> LoadPageAsync");
+        src.ShouldContain("\"ItemsProvider\", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<OrderProjection>)LoadPageAsync");
+        src.ShouldContain("state.Items.Count >= ShellOptions.Value.VirtualizationServerSideThreshold");
     }
 
     [Fact]
@@ -36,6 +38,9 @@ public sealed class RazorEmitterItemsProviderTests {
         src.ShouldContain("viewKey: _viewKey");
         src.ShouldContain("skip: skip");
         src.ShouldContain("take: take");
+        src.ShouldContain("filters: filters");
+        src.ShouldContain("sortColumn: snapshot?.SortColumn");
+        src.ShouldContain("searchQuery: searchQuery");
         src.ShouldContain("completion: completion");
         src.ShouldContain("cancellationToken: ct");
     }

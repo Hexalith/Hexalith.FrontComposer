@@ -10,7 +10,9 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
+using Hexalith.FrontComposer.Contracts;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 
 using NSubstitute;
@@ -27,10 +29,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.DataGridNavigation;
 public sealed class LoadPageEffectIntegrationTests {
     private const string ViewKey = "acme:OrdersProjection";
 
-    private static LoadPageEffects MakeSut(IProjectionPageLoader loader, LoadedPageState? state = null) {
+    private static LoadPageEffects MakeSut(
+        IProjectionPageLoader loader,
+        LoadedPageState? state = null,
+        FcShellOptions? shellOptions = null) {
         IState<LoadedPageState> iState = Substitute.For<IState<LoadedPageState>>();
         iState.Value.Returns(state ?? new LoadedPageState());
-        return new LoadPageEffects(iState, loader, NullLogger<LoadPageEffects>.Instance, new FakeTimeProvider());
+        IOptionsMonitor<FcShellOptions> options = Substitute.For<IOptionsMonitor<FcShellOptions>>();
+        options.CurrentValue.Returns(shellOptions ?? new FcShellOptions());
+        return new LoadPageEffects(iState, loader, NullLogger<LoadPageEffects>.Instance, options, new FakeTimeProvider());
     }
 
     private static LoadPageAction MakeAction(TaskCompletionSource<object> tcs, CancellationToken ct = default) =>
@@ -62,6 +69,57 @@ public sealed class LoadPageEffectIntegrationTests {
         succeeded.Skip.ShouldBe(0);
         succeeded.Items.ShouldBe(items);
         succeeded.TotalCount.ShouldBe(42);
+    }
+
+    [Fact]
+    public async Task UnfilteredRequest_ClampsTakeAndReportedTotalToMaxUnfilteredItems() {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        IReadOnlyList<object> items = new object[] { "tail" };
+        loader.LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+        .Returns(Task.FromResult(new ProjectionPageResult(items, TotalCount: 1_000, ETag: null)));
+
+        LoadPageEffects sut = MakeSut(loader, shellOptions: new FcShellOptions { MaxUnfilteredItems = 100 });
+        RecordingDispatcher dispatcher = new();
+        TaskCompletionSource<object> tcs = new();
+        LoadPageAction action = new(ViewKey, 90, 50, ImmutableDictionary<string, string>.Empty, null, false, null, tcs, CancellationToken.None);
+
+        await sut.HandleLoadPageAsync(action, dispatcher);
+
+        _ = loader.Received(1).LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Is<int>(x => x == 90),
+            Arg.Is<int>(x => x == 10),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+        LoadPageSucceededAction succeeded = dispatcher.Single<LoadPageSucceededAction>();
+        succeeded.TotalCount.ShouldBe(100);
+    }
+
+    [Fact]
+    public async Task UnfilteredRequestPastCap_CompletesWithEmptyPageWithoutCallingLoader() {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        LoadPageEffects sut = MakeSut(loader, shellOptions: new FcShellOptions { MaxUnfilteredItems = 100 });
+        RecordingDispatcher dispatcher = new();
+        TaskCompletionSource<object> tcs = new();
+        LoadPageAction action = new(ViewKey, 100, 50, ImmutableDictionary<string, string>.Empty, null, false, null, tcs, CancellationToken.None);
+
+        await sut.HandleLoadPageAsync(action, dispatcher);
+
+        _ = loader.DidNotReceiveWithAnyArgs().LoadPageAsync(default!, default, default, default!, default, default, default, default);
+        LoadPageSucceededAction succeeded = dispatcher.Single<LoadPageSucceededAction>();
+        succeeded.Items.ShouldBeEmpty();
+        succeeded.TotalCount.ShouldBe(100);
     }
 
     [Fact]

@@ -16,9 +16,9 @@ namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 /// generator-emitted provider callback casts back to <c>IReadOnlyList&lt;T&gt;</c>.
 /// </para>
 /// <para>
-/// Shell ships a no-op default implementation (<see cref="NullProjectionPageLoader"/>) so the
-/// wiring compiles without an adopter-provided implementation; adopters must register a real
-/// loader before the server-side lane activates (D2).
+/// Shell ships a fail-fast default implementation (<see cref="NullProjectionPageLoader"/>) so the
+/// wiring compiles without an adopter-provided implementation while still surfacing a missing
+/// loader clearly when the server-side lane activates (D2).
 /// </para>
 /// </remarks>
 public interface IProjectionPageLoader {
@@ -57,10 +57,10 @@ public sealed record ProjectionPageResult(
     string? ETag);
 
 /// <summary>
-/// Default implementation that returns an empty page — keeps wiring green until adopters
-/// register a typed loader. Under the server-side virtualization lane (Story 4-4 D2), a
-/// projection using this loader will render as empty and surface <see cref="Contracts.Rendering.LoadPageFailedAction"/>
-/// when the threshold is crossed.
+/// Default implementation that fails visibly until adopters register a real loader. Under the
+/// server-side virtualization lane (Story 4-4 D2), silently returning an empty page would hide a
+/// missing integration as "no data", so the default throws and lets <see cref="LoadPageEffects"/>
+/// surface the failure path.
 /// </summary>
 public sealed class NullProjectionPageLoader : IProjectionPageLoader {
     /// <inheritdoc />
@@ -73,5 +73,7 @@ public sealed class NullProjectionPageLoader : IProjectionPageLoader {
         bool sortDescending,
         string? searchQuery,
         CancellationToken cancellationToken)
-        => Task.FromResult(new ProjectionPageResult(Array.Empty<object>(), TotalCount: 0, ETag: null));
+        => throw new InvalidOperationException(
+            "Server-side projection paging requires an IProjectionPageLoader implementation. " +
+            "Register a typed loader before enabling the server-side virtualization lane.");
 }

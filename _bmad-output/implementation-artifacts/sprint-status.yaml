@@ -39,7 +39,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-04-25 (story 4-4 generator emit-stage T2.1–T2.8 + T5.1–T5.4 + T9.7 landed via bmad-dev-story session 4 — Virtualize/DisplayMode/ItemSize/OverscanCount/ItemKey + outer envelope + banners + row count + IAsyncDisposable + LoadPageAsync + scroll capture/restore + conditional FcColumnPrioritizer + phone-viewport HTML comment. 1408 tests pass [+17 new T5 emitter snapshots over baseline 1391; zero regressions]. T4.7/T4.9 explicitly deferred [follow-up session — T4.9 NFR4 ship gate already moved to Epic 10 Story 10-2 Playwright per AC3 revision]; T8.4/T9.6 documentation tasks subsumed into existing Known Gaps body. Status moves in-progress → review.)"
+last_updated: "2026-04-25 (story 4-4 code-review patch findings resolved; status moves review -> done. Verification note: dotnet build/test is blocked by NU1301 repository-signature socket denial for https://api.nuget.org/v3-index/repository-signatures/5.0.0/index.json.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -83,7 +83,7 @@ development_status:
   4-1-projection-role-hints-and-view-rendering: review
   4-2-status-badge-system: done
   4-3-datagrid-filtering-sorting-and-search: done
-  4-4-virtual-scrolling-and-column-prioritization: review
+  4-4-virtual-scrolling-and-column-prioritization: done
   4-5-expand-in-row-detail-and-progressive-disclosure: ready-for-dev
   4-6-empty-states-field-descriptions-and-unsupported-types: ready-for-dev
   epic-4-retrospective: optional

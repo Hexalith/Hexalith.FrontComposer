@@ -131,10 +131,12 @@ public sealed record LoadPageSucceededAction {
         int skip,
         IReadOnlyList<object>? items,
         int totalCount,
-        long elapsedMs) {
+        long elapsedMs,
+        TaskCompletionSource<object>? completion = null) {
         ViewKey = viewKey;
         Skip = skip;
         Items = items;
+        Completion = completion;
         if (totalCount < 0) {
             throw new System.ArgumentOutOfRangeException(nameof(totalCount), totalCount, "TotalCount must be non-negative.");
         }
@@ -174,6 +176,9 @@ public sealed record LoadPageSucceededAction {
     /// <summary>Gets the row payload, or <see langword="null"/> (treated as failure by the reducer's D3 guard).</summary>
     public IReadOnlyList<object>? Items { get; init; }
 
+    /// <summary>Gets the originating TCS, used to reject stale terminal actions for superseded same-page requests.</summary>
+    public TaskCompletionSource<object>? Completion { get; init; }
+
     /// <summary>Gets the server-reported total row count across pages.</summary>
     public int TotalCount { get; init; }
 
@@ -197,10 +202,11 @@ public sealed record LoadPageFailedAction {
     /// <param name="errorMessage">Human-readable error message (never null or whitespace).</param>
     /// <exception cref="System.ArgumentException">Thrown on invalid <paramref name="viewKey"/> or <paramref name="errorMessage"/>.</exception>
     /// <exception cref="System.ArgumentOutOfRangeException">Thrown when <paramref name="skip"/> is negative.</exception>
-    public LoadPageFailedAction(string viewKey, int skip, string errorMessage) {
+    public LoadPageFailedAction(string viewKey, int skip, string errorMessage, TaskCompletionSource<object>? completion = null) {
         ViewKey = viewKey;
         Skip = skip;
         ErrorMessage = errorMessage;
+        Completion = completion;
     }
 
     /// <summary>Gets the stable per-view key.</summary>
@@ -238,6 +244,9 @@ public sealed record LoadPageFailedAction {
             _errorMessage = value;
         }
     }
+
+    /// <summary>Gets the originating TCS, used to reject stale terminal actions for superseded same-page requests.</summary>
+    public TaskCompletionSource<object>? Completion { get; init; }
 }
 
 /// <summary>
@@ -254,9 +263,10 @@ public sealed record LoadPageCancelledAction {
     /// <param name="skip">Non-negative skip offset.</param>
     /// <exception cref="System.ArgumentException">Thrown when <paramref name="viewKey"/> is null, empty, or whitespace.</exception>
     /// <exception cref="System.ArgumentOutOfRangeException">Thrown when <paramref name="skip"/> is negative.</exception>
-    public LoadPageCancelledAction(string viewKey, int skip) {
+    public LoadPageCancelledAction(string viewKey, int skip, TaskCompletionSource<object>? completion = null) {
         ViewKey = viewKey;
         Skip = skip;
+        Completion = completion;
     }
 
     /// <summary>Gets the stable per-view key.</summary>
@@ -282,6 +292,9 @@ public sealed record LoadPageCancelledAction {
             _skip = value;
         }
     }
+
+    /// <summary>Gets the originating TCS, used to reject stale terminal actions for superseded same-page requests.</summary>
+    public TaskCompletionSource<object>? Completion { get; init; }
 }
 
 /// <summary>

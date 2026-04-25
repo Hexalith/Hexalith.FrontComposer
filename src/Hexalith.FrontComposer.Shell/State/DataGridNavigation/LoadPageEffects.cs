@@ -1,10 +1,13 @@
+using System.Collections.Immutable;
 using System.Threading.Tasks;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
@@ -20,24 +23,29 @@ public sealed class LoadPageEffects {
     private readonly IState<LoadedPageState> _state;
     private readonly IProjectionPageLoader _loader;
     private readonly ILogger<LoadPageEffects> _logger;
+    private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly TimeProvider _timeProvider;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageEffects"/> class.</summary>
     /// <param name="state">Read-only <see cref="LoadedPageState"/> for the defensive-finally guard.</param>
     /// <param name="loader">Non-generic projection page loader (Story 4-4 D3 / D16 boundary).</param>
     /// <param name="logger">Logger for the defensive-finally breadcrumb.</param>
+    /// <param name="options">Shell options monitor for virtualization caps.</param>
     /// <param name="timeProvider">Time source for deterministic elapsed measurement.</param>
     public LoadPageEffects(
         IState<LoadedPageState> state,
         IProjectionPageLoader loader,
         ILogger<LoadPageEffects> logger,
+        IOptionsMonitor<FcShellOptions> options,
         TimeProvider? timeProvider = null) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(loader);
         ArgumentNullException.ThrowIfNull(logger);
+        ArgumentNullException.ThrowIfNull(options);
         _state = state;
         _loader = loader;
         _logger = logger;
+        _options = options;
         _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
@@ -52,34 +60,59 @@ public sealed class LoadPageEffects {
 
         try {
             // Route cancellation through the Fluxor pipeline — the reducer handles TCS cleanup.
-            ctr = action.CancellationToken.Register(() =>
-                dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip)));
+            ctr = action.CancellationToken.Register(() => {
+                try {
+                    dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+                }
+                catch (ObjectDisposedException) {
+                    // Store is tearing down; ClearPendingPagesAction bounds the pending TCS lifetime.
+                }
+            });
 
             string projectionTypeFqn = ExtractProjectionTypeFqn(action.ViewKey);
+            bool hasRealFilter = HasRealFilter(action.Filters);
+            int maxUnfilteredItems = Math.Max(0, _options.CurrentValue.MaxUnfilteredItems);
+            int take = ResolveTake(action, hasRealFilter, maxUnfilteredItems);
+            if (take <= 0) {
+                dispatcher.Dispatch(new LoadPageSucceededAction(
+                    viewKey: action.ViewKey,
+                    skip: action.Skip,
+                    items: Array.Empty<object>(),
+                    totalCount: maxUnfilteredItems,
+                    elapsedMs: 0,
+                    completion: action.Completion));
+                return;
+            }
+
             long startTicks = _timeProvider.GetTimestamp();
             ProjectionPageResult result = await _loader.LoadPageAsync(
                 projectionTypeFqn,
                 action.Skip,
-                action.Take,
+                take,
                 action.Filters,
                 action.SortColumn,
                 action.SortDescending,
                 action.SearchQuery,
                 action.CancellationToken).ConfigureAwait(false);
             long elapsedMs = (long)_timeProvider.GetElapsedTime(startTicks).TotalMilliseconds;
+            int totalCount = hasRealFilter
+                ? result.TotalCount
+                : Math.Min(result.TotalCount, maxUnfilteredItems);
 
             dispatcher.Dispatch(new LoadPageSucceededAction(
                 viewKey: action.ViewKey,
                 skip: action.Skip,
                 items: result.Items,
-                totalCount: result.TotalCount,
-                elapsedMs: elapsedMs));
+                totalCount: totalCount,
+                elapsedMs: elapsedMs,
+                completion: action.Completion));
         }
         catch (OperationCanceledException) {
-            dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip));
+            dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
         }
         catch (Exception ex) {
-            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, ex.Message));
+            string message = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, message, action.Completion));
         }
         finally {
             ctr.Dispose();
@@ -92,7 +125,8 @@ public sealed class LoadPageEffects {
                     dispatcher.Dispatch(new LoadPageFailedAction(
                         viewKey: action.ViewKey,
                         skip: action.Skip,
-                        errorMessage: "effect exited without terminal dispatch"));
+                        errorMessage: "effect exited without terminal dispatch",
+                        completion: action.Completion));
                 }
                 catch (Exception defensiveEx) {
                     _logger.LogWarning(
@@ -110,5 +144,25 @@ public sealed class LoadPageEffects {
         return separator > 0 && separator < viewKey.Length - 1
             ? viewKey[(separator + 1)..]
             : viewKey;
+    }
+
+    private static int ResolveTake(LoadPageAction action, bool hasRealFilter, int maxUnfilteredItems) {
+        if (hasRealFilter) {
+            return action.Take;
+        }
+
+        int remaining = maxUnfilteredItems - action.Skip;
+        return remaining <= 0 ? 0 : Math.Min(action.Take, remaining);
+    }
+
+    private static bool HasRealFilter(IImmutableDictionary<string, string> filters) {
+        foreach (KeyValuePair<string, string> filter in filters) {
+            if (!filter.Key.StartsWith("__", StringComparison.Ordinal)
+                && !string.IsNullOrWhiteSpace(filter.Value)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -120,7 +120,7 @@ public sealed class LoadPageReducerTests {
 
         DataGridNavigationState afterRemoveLast = VirtualizationViewStateReducers.ReduceColumnVisibilityChanged(
             afterReveal, new ColumnVisibilityChangedAction(ViewKey, "Priority", isVisible: true));
-        afterRemoveLast.ViewStates[ViewKey].Filters.ContainsKey(VirtualizationReservedKeys.HiddenColumnsKey).ShouldBeFalse();
+        afterRemoveLast.ViewStates[ViewKey].Filters[VirtualizationReservedKeys.HiddenColumnsKey].ShouldBe(string.Empty);
     }
 
     [Fact]

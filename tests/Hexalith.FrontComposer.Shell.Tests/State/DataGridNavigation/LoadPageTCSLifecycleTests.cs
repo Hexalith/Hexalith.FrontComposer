@@ -121,22 +121,29 @@ public sealed class LoadPageTCSLifecycleTests {
     }
 
     [Fact]
-    public async Task DoubleRegistrationIdempotency_TrySetResultOnReplacedEntry_DoesNotThrow() {
+    public void DoubleRegistrationIdempotency_StaleSuccessForReplacedEntry_DoesNotResolveNewTcs() {
         TaskCompletionSource<object> first = new();
         TaskCompletionSource<object> second = new();
         LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, first));
-        state = LoadedPageReducers.ReduceLoadPage(state, MakeLoadPage(ViewKey, 0, second));
+        LoadPageAction secondAction = MakeLoadPage(ViewKey, 0, second);
+        state = LoadedPageReducers.ReduceLoadPage(state, secondAction);
 
-        // Even if a stale success action lands AFTER the first TCS was replaced, TrySetResult
-        // cannot throw (reducer uses TrySet*; the first TCS is already canceled).
+        // A stale success from the replaced first request must not resolve the newer pending TCS.
         LoadedPageReducers reducers = MakeReducers();
         IReadOnlyList<object> items = new object[] { "x" };
-        state = reducers.ReduceLoadPageSucceeded(state, new LoadPageSucceededAction(ViewKey, 0, items, totalCount: 1, elapsedMs: 1));
+        state = reducers.ReduceLoadPageSucceeded(
+            state,
+            new LoadPageSucceededAction(ViewKey, 0, items, totalCount: 1, elapsedMs: 1, completion: first));
 
-        // Second TCS receives the result; first is already canceled.
-        object resolved = await second.Task;
-        resolved.ShouldBe(items);
-        _ = await Should.ThrowAsync<TaskCanceledException>(async () => await first.Task);
+        state.PendingCompletionsByKey[(ViewKey, 0)].ShouldBe(second);
+        second.Task.IsCompleted.ShouldBeFalse();
+        state.PagesByKey.ContainsKey((ViewKey, 0)).ShouldBeFalse();
+
+        state = reducers.ReduceLoadPageSucceeded(
+            state,
+            new LoadPageSucceededAction(ViewKey, 0, items, totalCount: 1, elapsedMs: 1, completion: secondAction.Completion));
+
+        second.Task.IsCompletedSuccessfully.ShouldBeTrue();
     }
 
     [Fact]

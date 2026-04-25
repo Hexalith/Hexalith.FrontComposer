@@ -2,6 +2,7 @@ using Bunit;
 
 using Fluxor;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
@@ -48,6 +49,7 @@ public abstract class FrontComposerTestBase : BunitContext {
         });
         _ = Services.AddSingleton(Substitute.For<IOverrideRegistry>());
         _ = Services.AddLogging();
+        _ = Services.AddOptions<FcShellOptions>();
 
         // Story 3-5 — Fluxor scans the Shell assembly for [EffectMethod] handlers, which auto-
         // registers CapabilityDiscoveryEffects. Its constructor needs the badge services even
@@ -73,7 +75,7 @@ public abstract class FrontComposerTestBase : BunitContext {
 
         // Story 4-4 — Fluxor scan picks up LoadPageEffects + ScrollPersistenceEffect +
         // ColumnVisibilityPersistenceEffect + LoadedPageReducers; their dependencies must resolve
-        // in the test host. Default to the no-op loader (adopter tests override via Services.Replace).
+        // in the test host. Tests crossing the server-side threshold override the default loader.
         _ = Services.AddScoped<IProjectionPageLoader, NullProjectionPageLoader>();
         _ = Services.AddScoped<LoadedPageReducers>();
         _ = Services.AddScoped<LoadPageEffects>();

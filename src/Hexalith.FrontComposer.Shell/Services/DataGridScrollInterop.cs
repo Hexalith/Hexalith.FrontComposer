@@ -37,7 +37,7 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         double scrollTop,
         DotNetObjectReference<object> dotnetRef,
         CancellationToken cancellationToken = default) {
-        IJSObjectReference? module = await GetModuleAsync(cancellationToken).ConfigureAwait(false);
+        IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
         if (module is null) {
             return;
         }
@@ -68,7 +68,7 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         string viewKey,
         double scrollTop,
         CancellationToken cancellationToken = default) {
-        IJSObjectReference? module = await GetModuleAsync(cancellationToken).ConfigureAwait(false);
+        IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
         if (module is null) {
             return;
         }
@@ -92,7 +92,7 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
     /// <param name="viewKey">Per-view key being disposed.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async ValueTask DisposeViewKeyAsync(string viewKey, CancellationToken cancellationToken = default) {
-        IJSObjectReference? module = await GetModuleAsync(cancellationToken).ConfigureAwait(false);
+        IJSObjectReference? module = await TryGetModuleAsync(cancellationToken).ConfigureAwait(false);
         if (module is null) {
             return;
         }
@@ -135,6 +135,32 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
             return _moduleTask ??= _jsRuntime
                 .InvokeAsync<IJSObjectReference>("import", cancellationToken, ModulePath)
                 .AsTask();
+        }
+    }
+
+    private async ValueTask<IJSObjectReference?> TryGetModuleAsync(CancellationToken cancellationToken) {
+        try {
+            return await GetModuleAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (JSDisconnectedException) {
+            ResetFaultedImport();
+            return null;
+        }
+        catch (JSException) {
+            ResetFaultedImport();
+            return null;
+        }
+        catch (OperationCanceledException) {
+            ResetFaultedImport();
+            return null;
+        }
+    }
+
+    private void ResetFaultedImport() {
+        lock (_importGate) {
+            if (_moduleTask is not null && (_moduleTask.IsFaulted || _moduleTask.IsCanceled)) {
+                _moduleTask = null;
+            }
         }
     }
 }

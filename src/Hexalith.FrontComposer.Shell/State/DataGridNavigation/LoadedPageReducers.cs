@@ -95,6 +95,11 @@ public sealed class LoadedPageReducers {
         ArgumentNullException.ThrowIfNull(action);
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
+        if (action.Completion is not null
+            && state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? pending)
+            && !ReferenceEquals(pending, action.Completion)) {
+            return state;
+        }
 
         if (action.Items is null) {
             _logger.LogWarning(
@@ -113,11 +118,14 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
+        bool refreshedExistingPage = state.PagesByKey.ContainsKey(key);
         ImmutableDictionary<(string, int), IReadOnlyList<object>> nextPages =
             state.PagesByKey.SetItem(key, action.Items);
         ImmutableDictionary<string, int> nextTotal = state.TotalCountByKey.SetItem(action.ViewKey, action.TotalCount);
         ImmutableDictionary<string, long> nextElapsed = state.LastElapsedMsByKey.SetItem(action.ViewKey, action.ElapsedMs);
-        ImmutableQueue<(string ViewKey, int Skip)> nextOrder = state.PageInsertionOrder.Enqueue(key);
+        ImmutableQueue<(string ViewKey, int Skip)> nextOrder = refreshedExistingPage
+            ? state.PageInsertionOrder
+            : state.PageInsertionOrder.Enqueue(key);
         ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>> nextPending = state.PendingCompletionsByKey;
 
         if (nextPending.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
@@ -160,6 +168,10 @@ public sealed class LoadedPageReducers {
             return state;
         }
 
+        if (action.Completion is not null && !ReferenceEquals(tcs, action.Completion)) {
+            return state;
+        }
+
         tcs.TrySetException(new InvalidOperationException(action.ErrorMessage));
         return state with {
             PendingCompletionsByKey = state.PendingCompletionsByKey.Remove(key),
@@ -174,6 +186,10 @@ public sealed class LoadedPageReducers {
 
         (string viewKey, int skip) key = (action.ViewKey, action.Skip);
         if (!state.PendingCompletionsByKey.TryGetValue(key, out TaskCompletionSource<object>? tcs)) {
+            return state;
+        }
+
+        if (action.Completion is not null && !ReferenceEquals(tcs, action.Completion)) {
             return state;
         }
 
@@ -242,11 +258,9 @@ public static class VirtualizationViewStateReducers {
             hidden.Add(action.ColumnKey);
         }
 
-        IImmutableDictionary<string, string> nextFilters = hidden.Count == 0
-            ? current.Filters.Remove(VirtualizationReservedKeys.HiddenColumnsKey)
-            : current.Filters.SetItem(
-                VirtualizationReservedKeys.HiddenColumnsKey,
-                string.Join(",", hidden.OrderBy(k => k, StringComparer.Ordinal)));
+        IImmutableDictionary<string, string> nextFilters = current.Filters.SetItem(
+            VirtualizationReservedKeys.HiddenColumnsKey,
+            string.Join(",", hidden.OrderBy(k => k, StringComparer.Ordinal)));
 
         if (ReferenceEquals(nextFilters, current.Filters)) {
             return state;

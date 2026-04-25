@@ -201,6 +201,7 @@ public class ThemeEffectsTests {
         _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.Navigation.ScopeFlipObserverEffect>();
         _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationEffects>();
         // Story 4-4 — Fluxor scan picks up LoadPageEffects + persistence effects; register defaults.
+        // Tests crossing the server-side threshold must replace NullProjectionPageLoader with a real stub.
         _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader,
             Hexalith.FrontComposer.Shell.State.DataGridNavigation.NullProjectionPageLoader>();
         _ = services.AddScoped<Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageReducers>();

@@ -282,7 +282,14 @@ public static class ProjectionRoleBodyEmitter {
         // Story 4-4 T2.1 / D1 / D20 — Virtualize default ON. @key on density forces a Virtualize remount
         // when the user toggles density (Fluent v5 reads ItemSize at initialisation).
         _ = sb.AppendLine("        builder.SetKey(_density);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Items\", " + filteredItemsExpression + ");");
+        _ = sb.AppendLine("        if (state.Items.Count >= ShellOptions.Value.VirtualizationServerSideThreshold)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ItemsProvider\", (global::Microsoft.FluentUI.AspNetCore.Components.GridItemsProvider<" + model.TypeName + ">)LoadPageAsync);");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        else");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Items\", " + filteredItemsExpression + ");");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"Virtualize\", true);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"DisplayMode\", Microsoft.FluentUI.AspNetCore.Components.DataGridDisplayMode.Table);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemSize\", Hexalith.FrontComposer.Shell.Components.Rendering.DataGridDensityMetrics.ResolveRowHeightPx(_density));");
@@ -295,7 +302,15 @@ public static class ProjectionRoleBodyEmitter {
 
         foreach (ColumnModel col in model.Columns) {
             _ = sb.AppendLine();
-            ColumnEmitter.EmitColumn(sb, col, model.TypeName, col.PropertyName == defaultSortPropertyName);
+            if (model.Columns.Count > 15) {
+                _ = sb.AppendLine("            if (!hiddenColumnSet.Contains(\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))");
+                _ = sb.AppendLine("            {");
+                ColumnEmitter.EmitColumn(sb, col, model.TypeName, col.PropertyName == defaultSortPropertyName);
+                _ = sb.AppendLine("            }");
+            }
+            else {
+                ColumnEmitter.EmitColumn(sb, col, model.TypeName, col.PropertyName == defaultSortPropertyName);
+            }
         }
 
         if (emitRowContextActionColumn) {

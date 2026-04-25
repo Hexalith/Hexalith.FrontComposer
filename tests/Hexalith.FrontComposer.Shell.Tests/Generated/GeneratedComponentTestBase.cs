@@ -75,8 +75,8 @@ public abstract class GeneratedComponentTestBase : BunitContext
         _ = Services.AddSingleton(TimeProvider.System);
 
         // Story 4-4 T2.1 / T2.5 — generated grid views inject DataGridScrollInterop and
-        // IProjectionPageLoader. Loose JS interop mode swallows the JS calls; the loader
-        // returns an empty page by default (Story 4-4 NullProjectionPageLoader).
+        // IProjectionPageLoader. Loose JS interop mode swallows the JS calls; generated tests that
+        // cross the server-side threshold must replace NullProjectionPageLoader with a real stub.
         _ = Services.AddScoped<DataGridScrollInterop>();
         _ = Services.AddScoped<
             Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader,

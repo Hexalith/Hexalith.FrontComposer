@@ -278,8 +278,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<Services.DataGridFocusScope>();
 
         // Story 4-4 D2 / D3 / D10 — virtualization effects + page-loader boundary (Story 4-4 D16).
-        // Default no-op loader so wiring compiles without an adopter-provided implementation;
-        // adopters supply a typed loader via services.Replace when the server-side lane is needed.
+        // Default fail-fast loader keeps wiring compilable while surfacing missing adopter paging
+        // integration as an explicit LoadPageFailedAction once the server-side lane is needed.
         services.TryAddScoped<LoadedPageReducers>();
         services.TryAddScoped<LoadPageEffects>();
         services.TryAddScoped<ScrollPersistenceEffect>();

@@ -128,7 +128,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private IState<global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.LoadedPageState> LoadedPageState { get; set; } = default!;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    [Inject]");
-            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.IProjectionPageLoader PageLoader { get; set; } = default!;");
+            _ = sb.AppendLine("    private IState<global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState> GridNavigationState { get; set; } = default!;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    [CascadingParameter]");
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }");
@@ -177,6 +177,15 @@ public static class RazorEmitter {
                         : "(int?)null";
                     string trailingComma = i == model.Columns.Count - 1 ? string.Empty : ",";
                     _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Shell.Components.DataGrid.ColumnDescriptor(" + keyLit + ", " + headerLit + ", " + priorityLit + ")" + trailingComma);
+                }
+
+                _ = sb.AppendLine("    };");
+                _ = sb.AppendLine();
+                _ = sb.AppendLine("    private static readonly System.Collections.Generic.IReadOnlyList<string> _defaultHiddenColumns = new string[]");
+                _ = sb.AppendLine("    {");
+                for (int i = 10; i < model.Columns.Count; i++) {
+                    string trailingComma = i == model.Columns.Count - 1 ? string.Empty : ",";
+                    _ = sb.AppendLine("        \"" + RoleBodyHelpers.EscapeString(model.Columns[i].PropertyName) + "\"" + trailingComma);
                 }
 
                 _ = sb.AppendLine("    };");
@@ -235,6 +244,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged += OnStateChanged;");
         if (isGrid) {
             _ = sb.AppendLine("        LoadedPageState.StateChanged += OnStateChanged;");
+            _ = sb.AppendLine("        GridNavigationState.StateChanged += OnStateChanged;");
         }
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
@@ -259,7 +269,11 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            // Story 4-4 T2.6 / AC7 — within-session scroll restore. Cross-session is clamped to 0 by D5.");
             _ = sb.AppendLine("            try");
             _ = sb.AppendLine("            {");
-            _ = sb.AppendLine("                await ScrollInterop.ScrollToOffsetAsync(_viewKey, scrollTop: 0d).ConfigureAwait(true);");
+            _ = sb.AppendLine("                var snapshot = CurrentGridSnapshot();");
+            _ = sb.AppendLine("                if (snapshot is not null && snapshot.ScrollTop > 0)");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    await ScrollInterop.ScrollToOffsetAsync(_viewKey, snapshot.ScrollTop).ConfigureAwait(true);");
+            _ = sb.AppendLine("                }");
             _ = sb.AppendLine("            }");
             _ = sb.AppendLine("            catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
             _ = sb.AppendLine("            catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
@@ -289,7 +303,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    [global::Microsoft.JSInterop.JSInvokable]");
             _ = sb.AppendLine("    public void HandleScrollAsync(string viewKey, double scrollTop)");
             _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        if (string.IsNullOrEmpty(viewKey) || double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0) { return; }");
+            _ = sb.AppendLine("        if (!string.Equals(viewKey, _viewKey, StringComparison.Ordinal) || double.IsNaN(scrollTop) || double.IsInfinity(scrollTop) || scrollTop < 0) { return; }");
             _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ScrollCapturedAction(viewKey, scrollTop));");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
@@ -302,14 +316,17 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        var completion = new System.Threading.Tasks.TaskCompletionSource<object>(System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);");
             _ = sb.AppendLine("        var skip = request.StartIndex;");
             _ = sb.AppendLine("        var take = request.Count ?? ShellOptions.Value.VirtualizationServerSideThreshold;");
+            _ = sb.AppendLine("        var snapshot = CurrentGridSnapshot();");
+            _ = sb.AppendLine("        var filters = QueryFilters(snapshot);");
+            _ = sb.AppendLine("        var searchQuery = SearchQuery(snapshot);");
             _ = sb.AppendLine("        Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.LoadPageAction(");
             _ = sb.AppendLine("            viewKey: _viewKey,");
             _ = sb.AppendLine("            skip: skip,");
             _ = sb.AppendLine("            take: take,");
-            _ = sb.AppendLine("            filters: System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,");
-            _ = sb.AppendLine("            sortColumn: null,");
-            _ = sb.AppendLine("            sortDescending: false,");
-            _ = sb.AppendLine("            searchQuery: null,");
+            _ = sb.AppendLine("            filters: filters,");
+            _ = sb.AppendLine("            sortColumn: snapshot?.SortColumn,");
+            _ = sb.AppendLine("            sortDescending: snapshot?.SortDescending ?? false,");
+            _ = sb.AppendLine("            searchQuery: searchQuery,");
             _ = sb.AppendLine("            completion: completion,");
             _ = sb.AppendLine("            cancellationToken: ct));");
             _ = sb.AppendLine("        try");
@@ -342,6 +359,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        LoadedPageState.StateChanged -= OnStateChanged;");
+            _ = sb.AppendLine("        GridNavigationState.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }");
             _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
             _ = sb.AppendLine("        try { await ScrollInterop.DisposeViewKeyAsync(_viewKey).ConfigureAwait(true); }");
@@ -351,6 +369,8 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        _dotNetRef = null;");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
+
+            EmitGridStateHelpers(sb, model);
         }
         else {
             _ = sb.AppendLine("    /// <inheritdoc />");
@@ -360,6 +380,59 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
         }
+    }
+
+    private static void EmitGridStateHelpers(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? CurrentGridSnapshot()");
+        _ = sb.AppendLine("        => GridNavigationState.Value.ViewStates.TryGetValue(_viewKey, out var snapshot) ? snapshot : null;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static System.Collections.Immutable.IImmutableDictionary<string, string> QueryFilters(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (snapshot is null) { return System.Collections.Immutable.ImmutableDictionary<string, string>.Empty; }");
+        _ = sb.AppendLine("        return snapshot.Filters");
+        _ = sb.AppendLine("            .Remove(global::Hexalith.FrontComposer.Contracts.Rendering.ReservedFilterKeys.SearchKey)");
+        _ = sb.AppendLine("            .Remove(global::Hexalith.FrontComposer.Contracts.Rendering.VirtualizationReservedKeys.HiddenColumnsKey);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static string? SearchQuery(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+        _ = sb.AppendLine("        => snapshot is not null");
+        _ = sb.AppendLine("            && snapshot.Filters.TryGetValue(global::Hexalith.FrontComposer.Contracts.Rendering.ReservedFilterKeys.SearchKey, out var query)");
+        _ = sb.AppendLine("            && !string.IsNullOrWhiteSpace(query)");
+        _ = sb.AppendLine("                ? query");
+        _ = sb.AppendLine("                : null;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static bool AnyRealFilterActive(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (snapshot is null) { return false; }");
+        _ = sb.AppendLine("        foreach (var filter in snapshot.Filters)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            if (!filter.Key.StartsWith(\"__\", StringComparison.Ordinal) && !string.IsNullOrWhiteSpace(filter.Value))");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                return true;");
+        _ = sb.AppendLine("            }");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        return false;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+
+        if (model.Columns.Count > 15) {
+            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<string> ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (snapshot is null || !snapshot.Filters.TryGetValue(global::Hexalith.FrontComposer.Contracts.Rendering.VirtualizationReservedKeys.HiddenColumnsKey, out var csv))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return _defaultHiddenColumns;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        return string.IsNullOrWhiteSpace(csv)");
+            _ = sb.AppendLine("            ? System.Array.Empty<string>()");
+            _ = sb.AppendLine("            : csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);");
+            _ = sb.AppendLine("    }");
+        }
+        else {
+            _ = sb.AppendLine("    private static System.Collections.Generic.IReadOnlyList<string> ResolveHiddenColumns(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
+            _ = sb.AppendLine("        => System.Array.Empty<string>();");
+        }
+
+        _ = sb.AppendLine();
     }
 
     private static void EmitFormatters(StringBuilder sb) {
@@ -453,6 +526,10 @@ public static class RazorEmitter {
             // are reflected without remount. SetKey on the FluentDataGrid forces internal remount
             // when density actually flips.
             _ = sb.AppendLine("        _density = RenderContext?.DensityLevel ?? global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
+            _ = sb.AppendLine("        var gridSnapshot = CurrentGridSnapshot();");
+            _ = sb.AppendLine("        var hiddenColumns = ResolveHiddenColumns(gridSnapshot);");
+            _ = sb.AppendLine("        var hiddenColumnSet = new System.Collections.Generic.HashSet<string>(hiddenColumns, StringComparer.Ordinal);");
+            _ = sb.AppendLine("        var anyRealFilterActive = AnyRealFilterActive(gridSnapshot);");
         }
 
         _ = sb.AppendLine();
@@ -496,7 +573,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ItemsCount\", state.Items.Count);");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AnyRealFilterActive\", false);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AnyRealFilterActive\", anyRealFilterActive);");
         _ = sb.AppendLine("        builder.CloseComponent();");
         _ = sb.AppendLine();
 
@@ -522,7 +599,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcColumnPrioritizer>(seq++);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ViewKey\", _viewKey);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"AllColumns\", _allColumnsDescriptor);");
-            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HiddenColumns\", System.Array.Empty<string>());");
+            _ = sb.AppendLine("        builder.AddAttribute(seq++, \"HiddenColumns\", hiddenColumns);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"MaxVisibleColumns\", 10);");
             _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment<global::Hexalith.FrontComposer.Shell.Components.DataGrid.ColumnVisibilityContext>)(_ctx => (RenderTreeBuilder gridBuilder) =>");
             _ = sb.AppendLine("        {");

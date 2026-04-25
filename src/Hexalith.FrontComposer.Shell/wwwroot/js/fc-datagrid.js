@@ -13,6 +13,7 @@ export function captureScrollThrottled(viewKey, scrollTop, dotnetRef) {
         return;
     }
 
+    const actualScrollTop = readScrollTop(viewKey, scrollTop);
     const now = performance.now();
     let entry = perViewKey.get(viewKey);
     if (!entry) {
@@ -22,7 +23,7 @@ export function captureScrollThrottled(viewKey, scrollTop, dotnetRef) {
 
     // Always update pending to the latest value; store the dotnetRef so trailing-edge
     // dispatch uses the freshest reference in case the component re-mounts mid-scroll.
-    entry.pendingScrollTop = scrollTop;
+    entry.pendingScrollTop = actualScrollTop;
     entry.dotnetRef = dotnetRef;
 
     const elapsed = now - entry.lastTs;
@@ -30,7 +31,7 @@ export function captureScrollThrottled(viewKey, scrollTop, dotnetRef) {
     if (elapsed >= THROTTLE_INTERVAL_MS && entry.timeoutId === null) {
         // Fire immediately.
         entry.lastTs = now;
-        invokeHandleScroll(entry.dotnetRef, viewKey, scrollTop);
+        invokeHandleScroll(entry.dotnetRef, viewKey, actualScrollTop);
         return;
     }
 
@@ -59,7 +60,7 @@ export function scrollToOffset(viewKey, scrollTop) {
     // Fluent DataGrid internally renders a scrollable div; the outer container carries
     // data-fc-datagrid. Try the scroll container first; if the Fluent internal selector
     // shifted (minor-version drift) fall back to the container itself.
-    const container = document.querySelector(`[data-fc-datagrid="${escapeSelector(viewKey)}"]`);
+    const container = findContainer(viewKey);
     if (!container) {
         console.warn(
             `fc-datagrid: container selector missed for viewKey=${viewKey}. ` +
@@ -68,7 +69,7 @@ export function scrollToOffset(viewKey, scrollTop) {
         return;
     }
 
-    const scroller = container.querySelector('.fluent-data-grid-scroll-container') || container;
+    const scroller = findScroller(container);
     if (!scroller) {
         console.warn(
             `fc-datagrid: scroll container selector missed for viewKey=${viewKey}. ` +
@@ -102,10 +103,27 @@ function invokeHandleScroll(dotnetRef, viewKey, scrollTop) {
     }
 
     try {
-        dotnetRef.invokeMethodAsync('HandleScrollAsync', viewKey, scrollTop);
+        dotnetRef.invokeMethodAsync('HandleScrollAsync', viewKey, scrollTop).catch(() => {});
     } catch (err) {
         // Circuit tearing down or component disposed — ignore.
     }
+}
+
+function readScrollTop(viewKey, fallback) {
+    const container = findContainer(viewKey);
+    if (!container) {
+        return fallback;
+    }
+
+    return findScroller(container)?.scrollTop ?? fallback;
+}
+
+function findContainer(viewKey) {
+    return document.querySelector(`[data-fc-datagrid="${escapeSelector(viewKey)}"]`);
+}
+
+function findScroller(container) {
+    return container.querySelector('.fluent-data-grid-scroll-container') || container;
 }
 
 function escapeSelector(value) {
