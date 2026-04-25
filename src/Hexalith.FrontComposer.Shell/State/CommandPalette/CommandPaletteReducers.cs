@@ -235,7 +235,13 @@ public static class CommandPaletteReducers {
         // P33 (Pass-6 C2-D3): fail-closed clear of all per-scope state on tenant/user change.
         // Aligns with feedback_tenant_isolation_fail_closed — never let cross-tenant Results,
         // Query, or selection survive a scope flip. Hydrate effect repopulates from new scope.
+        // P3 (Pass-1 review): also clear IsOpen so a palette open at flip time does not bleed
+        // OLD-tenant input through ReducePaletteQueryChanged's IsOpen precondition.
+        // P4 (Pass-1 review): reset HydrationState=Idle so the post-flip hydrate properly
+        // broadcasts Hydrating and Story 3-6's StorageReady recovery hook stays rearmed.
         return state with {
+            IsOpen = false,
+            HydrationState = CommandPaletteHydrationState.Idle,
             RecentRouteUrls = ImmutableArray<string>.Empty,
             Results = ImmutableArray<PaletteResult>.Empty,
             Query = string.Empty,

@@ -1,6 +1,8 @@
-// Story 3-7 T2.2 — synthetic 1 000-candidate registry generator. Names are 3-24 char ASCII,
+// Story 3-7 T2.2 — synthetic 1 000-candidate registry generator. Names are 4–38 char ASCII,
 // mixed case, ~10 % dotted (e.g., "Domain.Counter.CounterView"). Seeded so the bench is
-// reproducible run-to-run.
+// reproducible run-to-run. Pass-1 P19 fix: removed the 24-char hard truncation that was
+// producing partial-segment names like "Notification.Workflow.Pe"; the realistic upper
+// bound for adopter projection FQNs comfortably exceeds 24 chars.
 
 namespace Hexalith.FrontComposer.Shell.Tests.Bench;
 
@@ -36,10 +38,6 @@ internal static class SyntheticRegistry {
         }
 
         string name = string.Join('.', parts);
-        if (name.Length > 24) {
-            name = name[..24];
-        }
-
         if (name.Length < 3) {
             name += "Vw";
         }

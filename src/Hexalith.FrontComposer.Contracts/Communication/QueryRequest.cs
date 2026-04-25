@@ -14,6 +14,12 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// <param name="SearchQuery">Story 4-3 D2 — global search query routed to <c>IProjectionSearchProvider&lt;T&gt;</c>.</param>
 /// <param name="SortColumn">Story 4-3 D2 — declared property name selected as the current sort column.</param>
 /// <param name="SortDescending">Story 4-3 D2 — sort direction; <c>false</c> is ascending (the default).</param>
+/// <param name="Domain">Optional EventStore domain name for REST-backed query execution.</param>
+/// <param name="AggregateId">Optional EventStore aggregate identifier for REST-backed query execution.</param>
+/// <param name="QueryType">Optional EventStore query type discriminator. Defaults to <paramref name="ProjectionType"/> when omitted by an adapter.</param>
+/// <param name="EntityId">Optional EventStore entity identifier for nested projection queries.</param>
+/// <param name="ProjectionActorType">Optional EventStore projection actor type.</param>
+/// <param name="ETags">Optional explicit ETag validator set. When provided, adapters ignore <paramref name="ETag"/>.</param>
 public record QueryRequest(
     string ProjectionType,
     string TenantId,
@@ -26,4 +32,10 @@ public record QueryRequest(
     System.Collections.Generic.IReadOnlyList<string>? StatusFilters = null,
     string? SearchQuery = null,
     string? SortColumn = null,
-    bool SortDescending = false);
+    bool SortDescending = false,
+    string? Domain = null,
+    string? AggregateId = null,
+    string? QueryType = null,
+    string? EntityId = null,
+    string? ProjectionActorType = null,
+    System.Collections.Generic.IReadOnlyList<string>? ETags = null);

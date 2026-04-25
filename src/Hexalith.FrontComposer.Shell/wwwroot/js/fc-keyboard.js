@@ -22,14 +22,37 @@ function isEditableElement(element) {
 // Shadow DOM retargets event.target to the shadow host, so a third-party web-component editor
 // wrapping its <input> in a shadow root would bypass plain isEditableElement(event.target).
 // Used by registerShellKeyFilter for the bare-letter chord-prefix guard.
+//
+// P10 (Pass-1 review): three robustness improvements over P17:
+//   (a) Synthetic events with `composedPath() === []` (e.g., manually constructed `KeyboardEvent`s
+//       that omit `bubbles: true`) used to short-circuit to `false`; now they fall through to the
+//       `event.target` fallback so test harnesses and synthetic-event consumers behave correctly.
+//   (b) Closed shadow roots (`attachShadow({ mode: "closed" })`) clip `composedPath()` at the
+//       shadow host. The walker fails open by returning `false`, but `event.target` for a shadow-
+//       DOM event is the host itself; checking `event.target` (and `closest()` on it) catches the
+//       common case where the host is the editable element or has an editable ancestor.
+//   (c) Each `composedPath()` node is also probed for `host`/shadow-root subtrees that the walker
+//       would otherwise skip — best-effort detection where the browser exposes it.
 function isEditableInComposedPath(event) {
+    // (a) + (b): always check the immediate target as a baseline so the closed-shadow / synthetic-
+    // event paths cannot silently bypass the editable guard.
+    if (isEditableElement(event.target)) {
+        return true;
+    }
+
     if (typeof event.composedPath !== "function") {
-        return isEditableElement(event.target);
+        return false;
     }
 
     const path = event.composedPath();
     for (const node of path) {
         if (node instanceof HTMLElement && isEditableElement(node)) {
+            return true;
+        }
+
+        // (c) best-effort probe of any open shadow root the walker exposed via `node.shadowRoot`.
+        if (node && node.shadowRoot && node.shadowRoot.activeElement
+            && isEditableElement(node.shadowRoot.activeElement)) {
             return true;
         }
     }

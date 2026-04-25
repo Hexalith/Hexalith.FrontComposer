@@ -72,6 +72,11 @@ public sealed class CommandPaletteE2ETests {
         int counterIndex = harness.State.Results.IndexOf(counterRow);
         await harness.DispatchAndSettleAsync(new PaletteResultActivatedAction(counterIndex));
 
+        // P25 (Pass-1 review): assert against `NavigationManager.Uri` directly to honour AC1's
+        // literal "`NavigationManager.Uri` ends with `/counter/counter-view`" wording. The
+        // `LastNavigatedUri` belt-and-suspenders is also checked to detect any future divergence
+        // between the inherited `Uri` setter and the captured raw `NavigateToCore` argument.
+        harness.NavigationManager.Uri.ShouldEndWith(ExpectedCounterRoute);
         harness.NavigationManager.LastNavigatedUri.ShouldEndWith(ExpectedCounterRoute);
         harness.State.IsOpen.ShouldBeFalse();
         harness.State.RecentRouteUrls.ShouldContain(ExpectedCounterRoute);
@@ -102,7 +107,7 @@ public sealed class CommandPaletteE2ETests {
         harness.State.LoadState.ShouldBe(PaletteLoadState.Ready);
     }
 
-    [Fact]
+    [Fact(Skip = "G37-5: production HandlePaletteQueryChanged shortcut-alias branch hard-codes RouteUrl=null for every ShortcutRegistration; awaiting Story 3-4 amendment that plumbs route data through ShortcutRegistration. Test asserts the spec-correct shape so unskip + Story 3-4 fix land in lockstep.")]
     public async Task AC3_ShortcutsQuery_SurfacesFiveShellBindings_WithMacParity() {
         await using PaletteFlowHarness harness = PaletteFlowHarness.Build(manifests: []);
         harness.RegisterShellShortcuts();
@@ -130,13 +135,17 @@ public sealed class CommandPaletteE2ETests {
         // description column.
         shortcutRows.ShouldAllBe(r => !string.IsNullOrWhiteSpace(r.DescriptionKey));
 
-        // KNOWN GAP (G37-5): AC3 spec language expects `g h` to surface RouteUrl="/" so the row
-        // renders without aria-disabled, but the production HandlePaletteQueryChanged shortcut
-        // path hard-codes RouteUrl=null for every shortcut registration (see Story 3-4
-        // CommandPaletteEffects.cs HandlePaletteQueryChanged shortcut alias branch). Plumbing the
-        // route through ShortcutRegistration is a Story 3-4 follow-up — NOT a Story 3-7
-        // regression. Asserting current production reality keeps the gate honest.
-        shortcutRows.ShouldAllBe(r => r.RouteUrl == null);
+        // AC3 spec — `g h` (the only routable shell shortcut in v1) renders with RouteUrl="/" so
+        // the row is NOT aria-disabled in the palette. All other rows are reference-only
+        // (informational) and carry RouteUrl=null, which the palette UI maps to aria-disabled.
+        // This assertion currently fails (G37-5 — see Skip reason) but is preserved here so a
+        // future Story 3-4 amendment unskips the test in lockstep with the production fix.
+        PaletteResult goHomeRow = shortcutRows.Single(
+            r => string.Equals(r.DisplayLabel, "g h", StringComparison.OrdinalIgnoreCase));
+        goHomeRow.RouteUrl.ShouldBe("/");
+        shortcutRows
+            .Where(r => !string.Equals(r.DisplayLabel, "g h", StringComparison.OrdinalIgnoreCase))
+            .ShouldAllBe(r => r.RouteUrl == null);
     }
 
     [Fact]

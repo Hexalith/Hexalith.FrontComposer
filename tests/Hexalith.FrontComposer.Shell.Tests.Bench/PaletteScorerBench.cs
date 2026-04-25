@@ -27,10 +27,13 @@ public class PaletteScorerBench {
     public void Setup() => _candidates = SyntheticRegistry.Build(CandidateCount, seed: 42);
 
     /// <summary>
-    /// Scores the query against the full 1 000-candidate registry. BDN's reported median
-    /// is the aggregate-pass nanoseconds; the per-candidate figure is aggregate / 1 000.
+    /// Scores the query against the full 1 000-candidate registry. The
+    /// <c>OperationsPerInvoke = CandidateCount</c> hint instructs BDN to normalise the
+    /// reported statistics by candidate count, so <c>ResultStatistics.Percentiles.P95</c>
+    /// is the per-candidate p95 in nanoseconds (Pass-1 DN6=a fix). The aggregate-pass
+    /// metric is recovered by multiplying back by <see cref="CandidateCount"/>.
     /// </summary>
-    [Benchmark]
+    [Benchmark(OperationsPerInvoke = CandidateCount)]
     public int ScoreFullRegistry() {
         int sum = 0;
         for (int i = 0; i < _candidates.Length; i++) {

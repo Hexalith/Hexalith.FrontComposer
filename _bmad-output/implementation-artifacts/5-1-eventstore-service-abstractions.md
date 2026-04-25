@@ -1,6 +1,6 @@
 # Story 5.1: EventStore Service Abstractions
 
-Status: ready-for-dev
+Status: done
 
 > **Epic 5** -- Reliable Real-Time Experience. **FR32** swappable EventStore contracts, **NFR74** zero direct infrastructure coupling, plus the first concrete bridge from Epic 2's stub command lifecycle to the pinned Hexalith.EventStore submodule. Applies lessons **L01**, **L03**, **L06**, **L07**, and **L10**.
 
@@ -46,63 +46,87 @@ so that the framework is decoupled from infrastructure providers and I can swap 
 
 ## Tasks / Subtasks
 
-- [ ] T1. Contract alignment and append-only model changes (AC1, AC7)
-  - [ ] Read existing `Contracts/Communication/*` before editing; preserve source compatibility for existing `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, and `IProjectionSubscription` callers.
-  - [ ] Inspect the pinned EventStore request/response DTOs or docs before coding `SubmitCommandRequest`, `SubmitQueryRequest`, `ProjectionChanged`, `JoinGroup`, and `LeaveGroup`; treat those names and shapes as authoritative for the adapter.
-  - [ ] Add or rename only with compatibility shims. Do not add `ICommandDispatcher` / `IQueryExecutor` unless existing `ICommandService` / `IQueryService` cannot express the EventStore contract append-only; if new names are unavoidable, introduce them as thin contracts and adapt existing services without duplicating behavior.
-  - [ ] Add immutable DTOs for EventStore command/query request metadata only where existing `QueryRequest` cannot express required fields (`Domain`, `AggregateId`, `QueryType`, `ProjectionActorType`, `UserId` source, ETag list).
-  - [ ] Enrich command acceptance metadata append-only: preserve existing `CommandResult(MessageId, Status)` callers while carrying server `CorrelationId`, `Location`, and `RetryAfter` for later lifecycle/error stories.
-  - [ ] Add an explicit `QueryResult<T>` not-modified signal, preferably append-only `IsNotModified`/`NotModified`, rather than using exceptions for the expected `304 Not Modified` cache-validation path.
-  - [ ] Add validation helpers for colon rejection and 1 MB serialized UTF-8 HTTP body guard in Contracts or Shell-owned client code.
-  - [ ] Inspect existing tenant/user context services. If no suitable seam exists, introduce a minimal Shell-owned provider abstraction for required EventStore tenant/user values; never default to `anonymous`, `default`, or empty strings.
+- [x] T1. Contract alignment and append-only model changes (AC1, AC7)
+  - [x] Read existing `Contracts/Communication/*` before editing; preserve source compatibility for existing `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, and `IProjectionSubscription` callers.
+  - [x] Inspect the pinned EventStore request/response DTOs or docs before coding `SubmitCommandRequest`, `SubmitQueryRequest`, `ProjectionChanged`, `JoinGroup`, and `LeaveGroup`; treat those names and shapes as authoritative for the adapter.
+  - [x] Add or rename only with compatibility shims. Do not add `ICommandDispatcher` / `IQueryExecutor` unless existing `ICommandService` / `IQueryService` cannot express the EventStore contract append-only; if new names are unavoidable, introduce them as thin contracts and adapt existing services without duplicating behavior.
+  - [x] Add immutable DTOs for EventStore command/query request metadata only where existing `QueryRequest` cannot express required fields (`Domain`, `AggregateId`, `QueryType`, `ProjectionActorType`, `UserId` source, ETag list).
+  - [x] Enrich command acceptance metadata append-only: preserve existing `CommandResult(MessageId, Status)` callers while carrying server `CorrelationId`, `Location`, and `RetryAfter` for later lifecycle/error stories.
+  - [x] Add an explicit `QueryResult<T>` not-modified signal, preferably append-only `IsNotModified`/`NotModified`, rather than using exceptions for the expected `304 Not Modified` cache-validation path.
+  - [x] Add validation helpers for colon rejection and 1 MB serialized UTF-8 HTTP body guard in Contracts or Shell-owned client code.
+  - [x] Inspect existing tenant/user context services. If no suitable seam exists, introduce a minimal Shell-owned provider abstraction for required EventStore tenant/user values; never default to `anonymous`, `default`, or empty strings.
 
-- [ ] T2. EventStore options and DI registration (AC5, AC6)
-  - [ ] Add `EventStoreOptions` under `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/` or `.../Options/` with `BaseAddress`, `CommandEndpointPath` default `/api/v1/commands`, `QueryEndpointPath` default `/api/v1/queries`, `ProjectionChangesHubPath` default `/hubs/projection-changes`, `AccessTokenProvider`/token hook abstraction, timeout, and retry settings.
-  - [ ] Validate options consistently during registration or first use: `BaseAddress` required, endpoint and hub paths start with `/`, timeout positive, max ETag count positive and no greater than 10, and max request bytes positive and defaulting to 1 MB.
-  - [ ] Add `AddHexalithEventStore(this IServiceCollection, Action<EventStoreOptions>?)` in a new `EventStoreServiceExtensions.cs`.
-  - [ ] Register REST clients through typed or named `HttpClient` using configured `BaseAddress`, timeout, and token hook; do not hand-new `HttpClient` inside EventStore clients.
-  - [ ] Register defaults as `Scoped` for Blazor circuit safety unless a client is demonstrably stateless. Do not register Singleton services that capture tenant/user/token state.
-  - [ ] Resolve tenant/user/token values per operation, not at DI registration or service construction time, so circuit/user changes cannot leak stale identity into later sends.
-  - [ ] Keep all transport diagnostics structured and redacted: never log bearer tokens, serialized command/query payloads, raw tenant/user IDs, or unbounded ProblemDetails bodies from the remote service.
-  - [ ] Use `TryAdd*` for default implementations so consumers can replace services. Add tests proving replacement wins.
+- [x] T2. EventStore options and DI registration (AC5, AC6)
+  - [x] Add `EventStoreOptions` under `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/` or `.../Options/` with `BaseAddress`, `CommandEndpointPath` default `/api/v1/commands`, `QueryEndpointPath` default `/api/v1/queries`, `ProjectionChangesHubPath` default `/hubs/projection-changes`, `AccessTokenProvider`/token hook abstraction, timeout, and retry settings.
+  - [x] Validate options consistently during registration or first use: `BaseAddress` required, endpoint and hub paths start with `/`, timeout positive, max ETag count positive and no greater than 10, and max request bytes positive and defaulting to 1 MB.
+  - [x] Add `AddHexalithEventStore(this IServiceCollection, Action<EventStoreOptions>?)` in a new `EventStoreServiceExtensions.cs`.
+  - [x] Register REST clients through typed or named `HttpClient` using configured `BaseAddress`, timeout, and token hook; do not hand-new `HttpClient` inside EventStore clients.
+  - [x] Register defaults as `Scoped` for Blazor circuit safety unless a client is demonstrably stateless. Do not register Singleton services that capture tenant/user/token state.
+  - [x] Resolve tenant/user/token values per operation, not at DI registration or service construction time, so circuit/user changes cannot leak stale identity into later sends.
+  - [x] Keep all transport diagnostics structured and redacted: never log bearer tokens, serialized command/query payloads, raw tenant/user IDs, or unbounded ProblemDetails bodies from the remote service.
+  - [x] Use `TryAdd*` for default implementations so consumers can replace services. Add tests proving replacement wins.
 
-- [ ] T3. Command client implementation (AC2, AC7)
-  - [ ] Implement `EventStoreCommandClient` as the default command dispatcher/service.
-  - [ ] Generate ULID via existing `IUlidFactory` (`src/Hexalith.FrontComposer.Shell/Services/Lifecycle/UlidFactory.cs`); do not introduce another ID library.
-  - [ ] Serialize request shape matching pinned EventStore `SubmitCommandRequest`: `messageId`, `tenant`, `domain`, `aggregateId`, `commandType`, `payload`, optional `correlationId`, optional `extensions`.
-  - [ ] Read `202 Accepted` response `correlationId`, `Location`, and `Retry-After`; return `CommandResult(MessageId, "Accepted")` or an append-only enriched result without breaking existing code.
-  - [ ] Flow `CancellationToken` through dispatch, tenant/user lookup, access-token acquisition, serialization guard, and outbound HTTP send.
-  - [ ] If `AccessTokenProvider` throws or returns an empty token when a token is required, fail before send and prove no outbound HTTP call occurs.
-  - [ ] Map non-202 responses minimally and leave full response matrix to Story 5-2. Do not implement 400/403/409/429 UX here.
+- [x] T3. Command client implementation (AC2, AC7)
+  - [x] Implement `EventStoreCommandClient` as the default command dispatcher/service.
+  - [x] Generate ULID via existing `IUlidFactory` (`src/Hexalith.FrontComposer.Shell/Services/Lifecycle/UlidFactory.cs`); do not introduce another ID library.
+  - [x] Serialize request shape matching pinned EventStore `SubmitCommandRequest`: `messageId`, `tenant`, `domain`, `aggregateId`, `commandType`, `payload`, optional `correlationId`, optional `extensions`.
+  - [x] Read `202 Accepted` response `correlationId`, `Location`, and `Retry-After`; return `CommandResult(MessageId, "Accepted")` or an append-only enriched result without breaking existing code.
+  - [x] Flow `CancellationToken` through dispatch, tenant/user lookup, access-token acquisition, serialization guard, and outbound HTTP send.
+  - [x] If `AccessTokenProvider` throws or returns an empty token when a token is required, fail before send and prove no outbound HTTP call occurs.
+  - [x] Map non-202 responses minimally and leave full response matrix to Story 5-2. Do not implement 400/403/409/429 UX here.
 
-- [ ] T4. Query client implementation (AC3, AC7)
-  - [ ] Implement `EventStoreQueryClient` as the default query executor/service.
-  - [ ] Serialize request shape matching pinned EventStore `SubmitQueryRequest`: `tenant`, `domain`, `aggregateId`, `queryType`, optional `projectionType`, optional `payload`, optional `entityId`, optional `projectionActorType`.
-  - [ ] Send `If-None-Match` using at most 10 validators. If more are provided, reject before send with a documented exception; do not trim silently.
-  - [ ] On `200 OK`, deserialize `payload` to `QueryResult<T>.Items` according to the existing FrontComposer projection contract; capture response `ETag`.
-  - [ ] On `304 Not Modified`, return the explicit append-only no-change result from T1. Do not throw for expected cache validation and do not silently return an empty list.
-  - [ ] Flow `CancellationToken` through query execution, tenant/user lookup, access-token acquisition, serialization guard, and outbound HTTP send.
-  - [ ] If `AccessTokenProvider` throws or returns an empty token when a token is required, fail before send and prove no outbound HTTP call occurs.
+- [x] T4. Query client implementation (AC3, AC7)
+  - [x] Implement `EventStoreQueryClient` as the default query executor/service.
+  - [x] Serialize request shape matching pinned EventStore `SubmitQueryRequest`: `tenant`, `domain`, `aggregateId`, `queryType`, optional `projectionType`, optional `payload`, optional `entityId`, optional `projectionActorType`.
+  - [x] Send `If-None-Match` using at most 10 validators. If more are provided, reject before send with a documented exception; do not trim silently.
+  - [x] On `200 OK`, deserialize `payload` to `QueryResult<T>.Items` according to the existing FrontComposer projection contract; capture response `ETag`.
+  - [x] On `304 Not Modified`, return the explicit append-only no-change result from T1. Do not throw for expected cache validation and do not silently return an empty list.
+  - [x] Flow `CancellationToken` through query execution, tenant/user lookup, access-token acquisition, serialization guard, and outbound HTTP send.
+  - [x] If `AccessTokenProvider` throws or returns an empty token when a token is required, fail before send and prove no outbound HTTP call occurs.
 
-- [ ] T5. Projection subscription implementation (AC4, AC7)
-  - [ ] Implement `ProjectionSubscriptionService` behind `IProjectionSubscription` and/or a new callback-aware companion contract.
-  - [ ] Use `Microsoft.AspNetCore.SignalR.Client` or the pinned submodule's `Hexalith.EventStore.SignalR.EventStoreSignalRClient` pattern. If referencing the submodule package/project would create an undesirable dependency, copy the minimal behavior behind FrontComposer contracts instead.
-  - [ ] Default hub path to EventStore-owned `/hubs/projection-changes`; do not introduce `/projections-hub` as a competing convention. If compatibility is required, cover it only as an explicit configured override.
-  - [ ] Implement `IAsyncDisposable`; stop/dispose the hub connection when the circuit-scoped service is disposed.
-  - [ ] Use idempotent set semantics for duplicate subscribe/unsubscribe calls in Story 5-1; reference-counted leases are deferred unless a later story proves separate subscriber ownership is required.
-  - [ ] Flow `CancellationToken` through SignalR start, join, and leave calls where the underlying APIs support it.
-  - [ ] Do not add a group to the active subscription set until `JoinGroup` succeeds. If start/join fails or cancellation fires, leave the service in a no-active-subscription state for that group and make a later `UnsubscribeAsync` a no-op except for safe cleanup.
-  - [ ] Track subscribed groups per circuit and rejoin on reconnect only as far as the underlying client provides automatically. User-facing reconnect UX is Story 5-3/5-4.
-  - [ ] Handle concurrent `SubscribeAsync`/`UnsubscribeAsync`, duplicate subscribe while a join is in flight, dispose during active subscribe, and `ProjectionChanged` arriving after dispose without unhandled exceptions, leaked active-group entries, or callbacks after disposal.
-  - [ ] Raise `IProjectionChangeNotifier.NotifyChanged(projectionType)` and include tenant in a companion event/result where needed for tenant isolation.
+- [x] T5. Projection subscription implementation (AC4, AC7)
+  - [x] Implement `ProjectionSubscriptionService` behind `IProjectionSubscription` and/or a new callback-aware companion contract.
+  - [x] Use `Microsoft.AspNetCore.SignalR.Client` or the pinned submodule's `Hexalith.EventStore.SignalR.EventStoreSignalRClient` pattern. If referencing the submodule package/project would create an undesirable dependency, copy the minimal behavior behind FrontComposer contracts instead.
+  - [x] Default hub path to EventStore-owned `/hubs/projection-changes`; do not introduce `/projections-hub` as a competing convention. If compatibility is required, cover it only as an explicit configured override.
+  - [x] Implement `IAsyncDisposable`; stop/dispose the hub connection when the circuit-scoped service is disposed.
+  - [x] Use idempotent set semantics for duplicate subscribe/unsubscribe calls in Story 5-1; reference-counted leases are deferred unless a later story proves separate subscriber ownership is required.
+  - [x] Flow `CancellationToken` through SignalR start, join, and leave calls where the underlying APIs support it.
+  - [x] Do not add a group to the active subscription set until `JoinGroup` succeeds. If start/join fails or cancellation fires, leave the service in a no-active-subscription state for that group and make a later `UnsubscribeAsync` a no-op except for safe cleanup.
+  - [x] Track subscribed groups per circuit and rejoin on reconnect only as far as the underlying client provides automatically. User-facing reconnect UX is Story 5-3/5-4.
+  - [x] Handle concurrent `SubscribeAsync`/`UnsubscribeAsync`, duplicate subscribe while a join is in flight, dispose during active subscribe, and `ProjectionChanged` arriving after dispose without unhandled exceptions, leaked active-group entries, or callbacks after disposal.
+  - [x] Raise `IProjectionChangeNotifier.NotifyChanged(projectionType)` and include tenant in a companion event/result where needed for tenant isolation.
 
-- [ ] T6. Tests and verification (AC1-AC8)
-  - [ ] Contracts tests: no infrastructure package references; colon validation; ETag max-10 rejection; append-only compatibility of existing records.
-  - [ ] Shell tests: `AddHexalithEventStore()` registers command/query/subscription defaults, consumer replacements win, and invalid options fail consistently.
-  - [ ] HTTP tests: command uses EventStore default `POST /api/v1/commands`, query uses EventStore default `POST /api/v1/queries`, configured path overrides are honored, camelCase body, exact 1 MB body accepted, 1 MB + 1 byte rejected before send, auth/token hook success and failure behavior, and cancellation token propagation.
-  - [ ] SignalR tests: EventStore default hub path `/hubs/projection-changes`, configured hub path overrides, group key validation, join/leave method names, duplicate subscribe/unsubscribe idempotency, concurrent subscribe/unsubscribe behavior, dispose-during-subscribe cleanup, no callback after disposal, and `ProjectionChanged` nudge routing.
-  - [ ] Smoke test: `SeamExtractionSmokeTests` resolves EventStore services from a DI provider without starting a live EventStore.
-  - [ ] Test-first sequence: land failing contract/compatibility tests first, then options/DI tests, then HTTP adapter tests, then SignalR lifetime/concurrency tests, then the smoke test.
+- [x] T6. Tests and verification (AC1-AC8)
+  - [x] Contracts tests: no infrastructure package references; colon validation; ETag max-10 rejection; append-only compatibility of existing records.
+  - [x] Shell tests: `AddHexalithEventStore()` registers command/query/subscription defaults, consumer replacements win, and invalid options fail consistently.
+  - [x] HTTP tests: command uses EventStore default `POST /api/v1/commands`, query uses EventStore default `POST /api/v1/queries`, configured path overrides are honored, camelCase body, exact 1 MB body accepted, 1 MB + 1 byte rejected before send, auth/token hook success and failure behavior, and cancellation token propagation.
+  - [x] SignalR tests: EventStore default hub path `/hubs/projection-changes`, configured hub path overrides, group key validation, join/leave method names, duplicate subscribe/unsubscribe idempotency, concurrent subscribe/unsubscribe behavior, dispose-during-subscribe cleanup, no callback after disposal, and `ProjectionChanged` nudge routing.
+  - [x] Smoke test: `SeamExtractionSmokeTests` resolves EventStore services from a DI provider without starting a live EventStore.
+  - [x] Test-first sequence: land failing contract/compatibility tests first, then options/DI tests, then HTTP adapter tests, then SignalR lifetime/concurrency tests, then the smoke test.
+
+### Review Findings
+
+_From `bmad-code-review` Pass-1 on 2026-04-25 — three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) against uncommitted 5-1 working-tree (1,595-line diff). 17 dismissed as noise/out-of-scope/already-correct. 4 decision-needed, 8 patches, 5 deferred. **All decision-needed resolved under "do best" autonomous delegation; all 8 patches applied.** Build clean `dotnet build -warnaserror`; full suite Shell 1006/0/3 + Contracts 83/0/0 + Bench 2/0/0 (3 pre-existing E2E skips unchanged). Net +16 Shell tests across the resolution patches._
+
+- [x] [Review][Decision] DN1 = a — **Authenticated tenant ALWAYS wins; mismatched override is rejected.** `EventStoreIdentity.RequireUserContext` now fails closed when `IUserContextAccessor.TenantId` is null/whitespace AND throws `InvalidOperationException("Requested tenant does not match the authenticated tenant context.")` when a command/query body supplies a non-matching `TenantId`. Same fix protects both command path and query path because both call the same helper. Reflection lookup of `command.TenantId` retained as integrity verification, not authority. New tests: `CommandClient_RejectsTenantMismatch_BeforeSend`, `CommandClient_FailsClosed_WhenAuthenticatedTenantIsMissing`.
+- [x] [Review][Decision] DN2 = c — **Tenant passes raw end-to-end; only the attribute-derived domain is normalized.** Removed `NormalizeRouteSegment(tenant)` from `EventStoreIdentity.RequireUserContext`. Domain normalization preserved for command path (`[BoundedContext("OrdersSales")]` → `orders-sales`) and for query path (`request.Domain`). Subscribe/unsubscribe was already raw-pass-through, so the asymmetry is resolved. New test: `CommandClient_PreservesAuthenticatedTenantCasing_VerbatimOnTheWire` proves a tenant of `Acme_Corp` round-trips exactly.
+- [x] [Review][Decision] DN3 = a — **Append-only `IProjectionChangeNotifierWithTenant : IProjectionChangeNotifier` companion interface added in Contracts.** Adds `NotifyChanged(string projectionType, string tenantId)` + `event Action<string, string>? ProjectionChangedForTenant`. `ProjectionChangeNotifier` implements both surfaces; DI registers the same instance under both interfaces. `ProjectionSubscriptionService.OnProjectionChangedAsync` pattern-matches and prefers the tenant-aware path when available. Existing `BadgeCountService.ProjectionChanged += handler` usage continues to compile and work unchanged. New test: `OnNudge_RaisesTenantAwareEvent_WhenNotifierImplementsCompanionInterface`.
+- [x] [Review][Decision] DN4 = a — **`EventStoreOptionsValidator.IsPath` tightened.** Rejects empty/whitespace, missing leading `/`, leading `//` (path-network-form), embedded whitespace/control chars, `?`, `#`, and fails closed via `Uri.TryCreate(value, UriKind.Relative, out _)`.
+
+- [x] [Review][Patch] P1 — Added `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/SeamExtractionSmokeTests.cs`. Resolves every EventStore-registered service through a built `ServiceProvider` and asserts the two notifier interfaces map to the same concrete instance.
+- [x] [Review][Patch] P2 — Added `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreDiagnosticsTests.cs`. Negative diagnostics suite captures logger output via `CapturingLogger<T>` and asserts that bearer token, payload value, and PII user-id strings never appear in any log entry across non-202 command responses, token-acquisition failures, non-200 query responses, and unparseable command response bodies (P8 path).
+- [x] [Review][Patch] P3 — `ProjectionSubscriptionService.UnsubscribeAsync` reordered: `LeaveGroupAsync` runs first; `_activeGroups.TryRemove` happens only on success. If the leave throws, client state matches server state so a retry can finish the cleanup. New test: `Unsubscribe_KeepsActiveGroup_WhenLeaveGroupThrows`.
+- [x] [Review][Patch] P4 — `EventStoreQueryClient.ContainsHeaderInjectionChar` guard scans each ETag for `char.IsControl` chars before `TryAddWithoutValidation`; throws `ArgumentException` with `nameof(request)`. New test: `QueryClient_RejectsEtagsContainingControlCharacters_BeforeSend` covers `\"etag-1\"\r\nInjected-Header: value`.
+- [x] [Review][Patch] P5 — `EventStoreCommandClient.ResolveRetryAfter` helper extracted: prefers `RetryAfter.Delta`, falls back to `RetryAfter.Date - DateTimeOffset.UtcNow` clamped to `TimeSpan.Zero` when negative. New test: `CommandClient_FallsBackToRetryAfterDate_WhenDeltaIsAbsent`.
+- [x] [Review][Patch] P6 — `EventStoreValidation.ValidateETagCount` error message now interpolates the configured `maxCount` (`$"At most {maxCount} ETag validators..."`). New test: `EventStoreValidation_InterpolatesConfiguredMaxCount_InErrorMessage` proves a custom `maxCount: 2` produces "At most 2".
+- [x] [Review][Patch] P7 — Added `EventStoreCancellationTests.QueryClient_PropagatesCancellationToken_ToHttpClientSend` (asserts `handler.ObservedToken.CanBeCanceled` — HttpClient wraps the user token via linked source) and `Subscribe_PropagatesCancellationToken_ToJoin` in `ProjectionSubscriptionServiceTests`.
+- [x] [Review][Patch] P8 — `EventStoreCommandClient.ReadCorrelationIdAsync` now logs a structured `LogWarning` on `JsonException` (deliberately omitting `ex.Message` since `JsonException` can echo response-body fragments — surfaced via P2 test). `ProjectionSubscriptionService.OnProjectionChangedAsync` wraps notifier invocation in try/catch (`ex is not OutOfMemoryException`), logging at warning level so a buggy subscriber can't kill the SignalR callback dispatcher. New test: `OnNudge_DoesNotPropagateSubscriberException_ToSignalRDispatcher`.
+
+- [x] [Review][Defer] DF1 — `SignalRProjectionHubConnectionFactory` passes `CancellationToken.None` to `accessTokenProvider` [`SignalRProjectionHubConnectionFactory.cs:10`] — deferred; SignalR's `AccessTokenProvider` API has no token parameter (inherent framework limitation). Revisit with Story 5-3 reconnect-policy work where a service-level cancellation source can be wired in.
+- [x] [Review][Defer] DF2 — `EventStoreQueryClient.QueryAsync` parses unbounded response body [`EventStoreQueryClient.cs:79-80`] — deferred; spec only enforces request body limit. Add `MaxResponseBytes` option in Story 5-2 (response handling) or Story 5-6 (governance).
+- [x] [Review][Defer] DF3 — `ContractsAssembly_DoesNotReferenceInfrastructurePackages` substring match against `"Hosting"`/`"EventStore"` [`EventStoreContractTests.cs:54-62`] — deferred; could false-positive on benign assembly names. Tighten with an exact deny-list when Story 9-1 (drift detection) lands.
+- [x] [Review][Defer] DF4 — `EventStoreIdentity.GetAggregateId` allocates `new[]` per call and runs reflection lookup unmemoized [`EventStoreIdentity.cs:35-43`] — deferred; perf optimization in command-dispatch hot path. Address with Story 9-4 governance/AOT cleanup.
+- [x] [Review][Defer] DF5 — Non-202/non-200 responses discard the response body before throwing [`EventStoreCommandClient.cs:60-67`, `EventStoreQueryClient.cs:72-77`] — deferred per spec D6: full HTTP response matrix and ProblemDetails handling are Story 5-2.
 
 ---
 
@@ -236,6 +260,12 @@ Do not implement these in Story 5-1:
 
 ---
 
+## Change Log
+
+| Date | Change |
+| --- | --- |
+| 2026-04-25 | Implemented EventStore service abstractions, opt-in DI registration, REST command/query clients, SignalR projection subscription service, contract append-only metadata, validation helpers, and focused regression tests. |
+
 ## Dev Agent Record
 
 ### Party-Mode Review
@@ -263,16 +293,51 @@ Do not implement these in Story 5-1:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5.2
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- `dotnet build .\Hexalith.FrontComposer.sln -warnaserror -maxcpucount:1` -- passed, 0 warnings/errors.
+- `dotnet test .\Hexalith.FrontComposer.sln --no-build -maxcpucount:1` -- passed: SourceTools 481, Contracts 83, Shell 990 passed / 3 skipped, Bench 2.
+
+### Implementation Plan
+
+- Preserve existing `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, and `IProjectionSubscription` seams by extending records append-only instead of adding parallel dispatcher/executor contracts.
+- Keep EventStore infrastructure in Shell: Contracts gained only metadata/result/validation helpers; Shell owns REST clients, SignalR connection creation, DI registration, and option validation.
+- Use `IUserContextAccessor` and command/query request metadata per operation, fail closed on missing/colon-containing tenant/user/routing values, and keep logging free of bearer tokens and raw request bodies.
+- Use named `HttpClient` registrations for command/query transport and a small internal SignalR abstraction for deterministic subscription lifetime/concurrency tests.
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- Extended `CommandResult`, `QueryRequest`, and `QueryResult<T>` append-only for EventStore accepted metadata, query routing metadata, ETag validator lists, and explicit 304 not-modified results.
+- Added `EventStoreOptions`, `AddHexalithEventStore(...)`, `EventStoreCommandClient`, `EventStoreQueryClient`, `ProjectionSubscriptionService`, default projection notifier, request-size guards, tenant/user/routing validation, and SignalR hub connection wrapper.
+- Registered EventStore services as opt-in scoped defaults, replacing only the FrontComposer stub command service while preserving consumer replacement after registration.
+- Added contract, DI, HTTP, request-size, auth/token, path override, query ETag/304, and SignalR subscription lifetime tests.
+- Verified full build and solution regression suite pass.
 
 ### File List
 
-(to be filled in by dev agent)
+- `Directory.Packages.props`
+- `_bmad-output/implementation-artifacts/5-1-eventstore-service-abstractions.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.FrontComposer.Contracts/Communication/CommandResult.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/EventStoreValidation.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryResult.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/EventStoreServiceExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreIdentity.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreOptions.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreOptionsValidator.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreRequestContent.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/IProjectionHubConnection.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionChangeNotifier.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/SignalRProjectionHubConnectionFactory.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/EventStoreContractTests.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Communication/QueryRequestTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreClientTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreRegistrationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs`

@@ -37,6 +37,14 @@ public sealed class CommandPaletteEffects : IDisposable {
     private const int TopResultCap = 50;
     private const int ContextualBonus = 15;
 
+    /// <summary>
+    /// Upper bound on how long <see cref="HandleRecentRouteVisited"/> waits for the persist gate
+    /// (<see cref="_persistGate"/>) before dropping the payload as stale (Pass-1 P1). 2 seconds is
+    /// generous for any reasonable browser-storage round-trip; persist failure is non-fatal — the
+    /// next activation queues a fresher payload.
+    /// </summary>
+    private static readonly TimeSpan PersistGateTimeout = TimeSpan.FromSeconds(2);
+
     private static readonly string[] _shortcutAliases = ["?", "help", "keys", "kb", "shortcut"];
     private const string ShortcutsCanonicalQuery = "shortcuts";
 
@@ -178,12 +186,16 @@ public sealed class CommandPaletteEffects : IDisposable {
         catch (Exception ex) when (ex is not OutOfMemoryException && ex is not StackOverflowException) {
             // P8 (Pass-6): distinguish deserialisation/schema corruption from transient I/O so
             // operators can triage HFC2111 without misdiagnosing a network blip as data corruption.
+            // P6 (Pass-1 review): InvalidOperationException is too broad to classify as "Corrupt"
+            // — Fluxor's dispatcher and IStorageService implementations both throw IOE on lifecycle
+            // / disposal races. Map IOE to "Lifecycle" so operators paging on Reason=Corrupt do not
+            // mistriage a circuit-teardown event as a data-corruption incident.
             string reason = ex switch {
                 IOException => "TransientFailure",
                 TimeoutException => "TransientFailure",
                 System.Text.Json.JsonException => "Corrupt",
-                InvalidOperationException => "Corrupt",
                 FormatException => "Corrupt",
+                InvalidOperationException => "Lifecycle",
                 _ => "Unknown",
             };
             _logger.LogInformation(
@@ -489,10 +501,16 @@ public sealed class CommandPaletteEffects : IDisposable {
             // filter at activation time. IsInternalRoute otherwise runs only at hydrate; any future
             // code path inserting directly into state (bypassing hydrate) would slip past the D10
             // contract. Cheap defence-in-depth — one predicate call on the happy path.
-            if (result.Category == PaletteResultCategory.Recent && !CommandRouteBuilder.IsInternalRoute(targetUrl)) {
+            // P5 (Pass-1 review): extend the revalidation to Projection and Command categories.
+            // BuildRoute's output is only as safe as the manifest's BoundedContext + CommandTypeName;
+            // a tampered/malformed manifest with backslashes or absolute schemes can otherwise smuggle
+            // a non-internal target through the activation path. Shortcuts are reference rows
+            // pre-validated at registration time and skip this gate.
+            if (result.Category != PaletteResultCategory.Shortcut && !CommandRouteBuilder.IsInternalRoute(targetUrl)) {
                 _logger.LogInformation(
-                    "{DiagnosticId}: Recent-route activation rejected by internal-route filter. Reason={Reason}.",
+                    "{DiagnosticId}: {Category} activation rejected by internal-route filter. Reason={Reason}.",
                     FcDiagnosticIds.HFC2111_PaletteHydrationEmpty,
+                    result.Category,
                     "Tampered");
                 SafeDispatchClose(dispatcher);
                 return Task.CompletedTask;
@@ -592,13 +610,25 @@ public sealed class CommandPaletteEffects : IDisposable {
         string key = StorageKeys.BuildKey(tenantId, userId, FeatureSegment);
 
         // P7 (Pass-6): serialise persist calls so an older payload cannot overwrite a newer one
-        // when storage I/O latency exceeds the inter-action interval. Snapshot is captured above;
-        // gate ensures FIFO ordering even if effects run concurrently across actions.
+        // when storage I/O latency exceeds the inter-action interval. Snapshot is captured above.
+        // P1 (Pass-1 review): bound the wait with a timeout so a stuck `SetAsync` does not block
+        // every subsequent persist indefinitely. Drop-stale on timeout — the next activation will
+        // queue a fresher payload, and the gate-holder either eventually completes (good) or also
+        // times out (storage is wedged; logging the timeout here surfaces the wedge to operators).
+        bool gateAcquired;
         try {
-            await _persistGate.WaitAsync().ConfigureAwait(false);
+            gateAcquired = await _persistGate.WaitAsync(PersistGateTimeout).ConfigureAwait(false);
         }
         catch (ObjectDisposedException) {
             // Effect ran after Dispose — semaphore is gone, nothing to do.
+            return;
+        }
+
+        if (!gateAcquired) {
+            _logger.LogInformation(
+                "{DiagnosticId}: Palette recent-route persist gate timeout after {TimeoutMs}ms — dropping stale payload (a newer activation will retry).",
+                FcDiagnosticIds.HFC2105_StoragePersistenceSkipped,
+                (int)PersistGateTimeout.TotalMilliseconds);
             return;
         }
 
@@ -674,11 +704,17 @@ public sealed class CommandPaletteEffects : IDisposable {
     /// Canonicalises the user query through the D23 alias table. Public for unit testing.
     /// </summary>
     /// <param name="query">The raw user query.</param>
-    /// <returns><c>"shortcuts"</c> when the query is a known alias or canonical; otherwise the input trimmed.</returns>
+    /// <returns>
+    /// <c>"shortcuts"</c> when the query is a known alias or canonical; otherwise the input as
+    /// supplied (raw — no trimming). Callers that need the trimmed shape must apply <c>.Trim()</c>
+    /// themselves; the only call site (<see cref="HandlePaletteQueryChanged"/>) already does so.
+    /// </returns>
     public static string ResolveShortcutAliasQuery(string query) {
         // P29 (Pass-6): single contract — return the canonical when matched, else return the raw
         // input. The caller still trims; returning trimmed-when-matched + raw-when-not collapses
         // the two-exit ambiguity that previously made readers wonder which branch trims.
+        // P9 (Pass-1 review): clarified the XML doc to match the actual return shape on no-match
+        // (raw, not trimmed) — the previous "input trimmed" wording was code/doc drift.
         if (string.IsNullOrWhiteSpace(query)) {
             return query;
         }
