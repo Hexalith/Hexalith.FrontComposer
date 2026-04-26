@@ -34,14 +34,14 @@ so that the framework remains portable across deployment targets and I can trace
 
 | AC | Given | When | Then |
 | --- | --- | --- | --- |
-| AC1 | Framework assemblies, project files, generated outputs, and source files are inspected in CI | A forbidden direct dependency or namespace appears in FrontComposer framework code | The governance check fails the build with a descriptive message naming the project/file/reference, the forbidden provider family, and the remediation path through EventStore or deployment/AppHost Dapr components. |
-| AC2 | The governance deny-list runs | Redis, Kafka, PostgreSQL/Npgsql, Cosmos DB, Dapr SDK, StackExchange.Redis, Confluent.Kafka, provider-specific Azure/AWS/GCP infrastructure SDKs, or direct database clients are referenced from `Hexalith.FrontComposer.Contracts`, `Hexalith.FrontComposer.SourceTools`, `Hexalith.FrontComposer.Shell`, or generated framework code | The violation is blocked unless the reference is covered by an explicit story-owned allowlist entry. SignalR client remains allowed because Story 5-1/5-3 made it the EventStore projection nudge transport. |
-| AC3 | Infrastructure topology lives in samples, AppHosts, EventStore, or deployment docs | The governance checks scan the repository | AppHost, sample deployment files, EventStore submodule Dapr components, generated bin/obj artifacts, and documentation examples are excluded or separately classified so framework checks do not false-fail on legitimate topology code. |
+| AC1 | Framework assemblies, project files, generated outputs, restored transitive dependency graphs, and source files are inspected in CI | A forbidden direct or transitive dependency or namespace appears in FrontComposer framework code | The governance check fails the build with a descriptive message naming the project/file/reference, the forbidden provider family, and the remediation path through EventStore or deployment/AppHost Dapr components. |
+| AC2 | The governance deny-list runs | Redis, Kafka, PostgreSQL/Npgsql, Cosmos DB, Dapr SDK, StackExchange.Redis, Confluent.Kafka, provider-specific Azure/AWS/GCP infrastructure SDKs, or direct database clients are referenced from `Hexalith.FrontComposer.Contracts`, `Hexalith.FrontComposer.SourceTools`, `Hexalith.FrontComposer.Shell`, or generated framework code | The violation is blocked unless the reference is covered by an exact story-owned allowlist entry. `PrivateAssets`, transitive package flow, aliases, and central package versions must not bypass the deny-list. SignalR client remains allowed because Story 5-1/5-3 made it the EventStore projection nudge transport. |
+| AC3 | Infrastructure topology lives in samples, AppHosts, EventStore, or deployment docs | The governance checks scan the repository | AppHost, sample deployment files, EventStore submodule Dapr components, generated bin/obj artifacts, and documentation examples are excluded or separately classified through normalized root-bound paths so framework checks do not false-fail on legitimate topology code or follow symlink/reparse-point escapes into unrelated folders. |
 | AC4 | Runtime services emit logs | Logs are captured from command dispatch, query execution, lifecycle transitions, projection connection state, rejoin failures, nudge refresh, fallback polling, and pending-command outcome resolution | Every log uses message template plus parameters, stable event IDs or HFC runtime diagnostic constants, and structured fields for `CommandType` or `ProjectionType`, redacted tenant marker, `CorrelationId`/`MessageId` when available, `Outcome`, `ElapsedMs`, `FailureCategory`, and `Transport` where applicable. No string interpolation is used in `ILogger.Log*` calls. |
-| AC5 | Sensitive data redaction tests run | Logs or span tags are inspected after success and failure paths | No bearer token, raw access token, command/query/cache payload, form field value, raw ProblemDetails body, raw exception message that can echo payload data, user ID, or raw tenant ID is emitted. Failure categories are bounded and sanitized. |
-| AC6 | `FrontComposerActivitySource` is used | Command submit, HTTP command dispatch, HTTP query, cache hit/miss/not-modified, projection nudge, fallback polling, lifecycle terminal transition, and UI refresh paths execute | Activities share the source name `Hexalith.FrontComposer`, include consistent operation names and tags, nest under `Activity.Current` when present, and expose enough correlation to trace user click -> backend command -> projection update -> SignalR nudge -> UI update. |
+| AC5 | Sensitive data redaction tests run | Logs or span tags are inspected after success and failure paths | No bearer token, raw access token, command/query/cache payload, form field value, raw ProblemDetails body, raw exception message or stack trace that can echo payload data, user ID, raw tenant ID, full request URI, query string, SignalR group name, or raw ETag is emitted. Failure categories are bounded and sanitized. |
+| AC6 | `FrontComposerActivitySource` is used | Command submit, HTTP command dispatch, HTTP query, cache hit/miss/not-modified, projection nudge, fallback polling, lifecycle terminal transition, and UI refresh paths execute | Activities share the source name `Hexalith.FrontComposer`, include consistent operation names and approved tags, tolerate `StartActivity()` returning `null`, nest under `Activity.Current` when present, propagate through existing `HttpClient` instrumentation without custom header hacks, and expose enough sanitized correlation to trace user click -> backend command -> projection update -> SignalR nudge -> UI update. Telemetry failures must never change command, query, lifecycle, or reducer behavior. |
 | AC7 | An adopter wires OpenTelemetry exporters in a host app | Traces and logs are exported to Grafana/OTLP, Jaeger/OTLP, or Application Insights | Framework activities and logs flow without package-specific exporter references in Contracts/SourceTools/Shell. Exporter packages belong to the host/sample, not the framework assemblies. |
-| AC8 | The CI workflow runs on push or PR | Governance and telemetry tests fail | The build-and-test job fails, uploads test results, and surfaces the exact failing governance/telemetry test. Existing advisory `continue-on-error` behavior is removed or narrowed so this story's gates are blocking. |
+| AC8 | The CI workflow runs on push or PR | Governance and telemetry tests fail | The build-and-test job fails, uploads test results, and surfaces the exact failing governance/telemetry test. Existing advisory `continue-on-error` behavior is removed or narrowed so this story's gates are blocking, and workflow path filters or matrix conditions cannot skip the governance lane for framework source, project, package, generated baseline, or workflow changes. |
 | AC9 | Tests run | Governance, telemetry helper, EventStore clients, connection state, fallback polling, lifecycle wrapper, and generated forms execute | Coverage proves deny-list detection, allowlist precision, bin/obj/doc exclusion, descriptive failure messages, LoggerMessage/message-template usage, redaction, ActivitySource names/tags/parenting, no exporter dependency, and CI gate wiring. |
 
 ---
@@ -52,13 +52,16 @@ so that the framework remains portable across deployment targets and I can trace
   - [ ] Replace the narrow `ContractsAssembly_DoesNotReferenceInfrastructurePackages` substring test with explicit deny-list tests that inspect `ProjectReference`, `PackageReference`, restored assembly references, and source `using`/fully-qualified namespace usage.
   - [ ] Deny at least: `Dapr.*`, `StackExchange.Redis`, `Microsoft.AspNetCore.SignalR.StackExchangeRedis`, `Confluent.Kafka`, `Npgsql`, `Microsoft.Azure.Cosmos`, direct provider database/storage/event-bus SDKs, and namespace roots matching provider clients.
   - [ ] Keep `Microsoft.AspNetCore.SignalR.Client` allowed only in Shell because it is the EventStore nudge transport from Stories 5-1 and 5-3.
+  - [ ] Normalize and root-bound every scanned path before classification. Do not follow symlinks, junctions, reparse points, or submodule worktrees from excluded areas back into framework scope or from framework scope out to unrelated folders.
   - [ ] Exclude generated `bin/`, `obj/`, `.bmad`, `.agents`, `.github/skills`, planning docs, and submodules from framework source scanning unless a test explicitly validates docs/sample topology.
+  - [ ] Limit source namespace scanning to framework-owned `.cs`, `.razor`, `.cshtml`, and approved generated baseline files; do not scan markdown prose as source code except in documentation-specific tests.
   - [ ] Emit failure messages that identify path, reference, provider family, and expected remediation: "route through EventStore contract/client or deployment/AppHost component configuration".
   - [ ] Add exact-match allowlist entries with owner/story comments. Avoid substring matches like `Hosting` or `EventStore` that can false-positive on benign assembly names.
 
 - [ ] T2. Harden package and assembly reference validation (AC1, AC2, AC3, AC9)
   - [ ] Parse project XML using `System.Xml.Linq`; do not use ad hoc string matching for `.csproj` files.
   - [ ] Inspect `Directory.Packages.props` centrally and all framework `.csproj` files for forbidden package IDs.
+  - [ ] Inspect restored dependency graphs (`project.assets.json` or equivalent resolved package references) so transitive provider SDKs and packages hidden behind `PrivateAssets` cannot bypass governance.
   - [ ] Add a runtime assembly reference test for each produced framework assembly: Contracts, SourceTools, and Shell. Shell may reference SignalR client; Contracts and SourceTools may not.
   - [ ] Validate source-generator output baselines and generated command/projection artifacts do not contain forbidden namespace roots.
   - [ ] Keep EventStore submodule Dapr/provider dependencies outside the FrontComposer framework enforcement scope.
@@ -67,13 +70,16 @@ so that the framework remains portable across deployment targets and I can trace
   - [ ] Create a Shell telemetry helper such as `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerTelemetry.cs`.
   - [ ] Instantiate `ActivitySource` using `Hexalith.FrontComposer.Contracts.Telemetry.FrontComposerActivitySource.Name` and `.Version`; keep the constants in Contracts.
   - [ ] Add small methods for starting activities with consistent operation names and tags, for example `frontcomposer.command.dispatch`, `frontcomposer.query.execute`, `frontcomposer.projection.nudge`, `frontcomposer.projection.fallback_poll`, and `frontcomposer.lifecycle.transition`.
+  - [ ] Treat `ActivitySource.StartActivity(...)` returning `null` as the normal no-listener path. Tag helpers must be null-tolerant, allocation-conscious, and side-effect free.
+  - [ ] Keep tag enrichment fail-open: if telemetry metadata cannot be derived safely, omit the tag or emit a bounded failure category; do not throw from telemetry helper code.
   - [ ] Do not add OpenTelemetry exporter packages to Contracts, SourceTools, or Shell. Host/sample code may demonstrate exporter wiring.
   - [ ] Dispose only if a process-lifetime owner is introduced; static framework `ActivitySource` should not be disposed per scoped service lifetime.
 
 - [ ] T4. Instrument EventStore command/query paths (AC4, AC5, AC6, AC9)
   - [ ] Wrap `EventStoreCommandClient.DispatchAsync` in an activity that records sanitized command type, message ID, correlation ID, HTTP outcome/status code, elapsed duration, and failure category.
   - [ ] Wrap `EventStoreQueryClient.QueryAsync`/`ExecuteAsync` in an activity that records sanitized projection/query type, cache discriminator classification, ETag outcome (`hit`, `miss`, `not_modified`, `protocol_drift_retry`), status code, elapsed duration, and failure category.
-  - [ ] Keep request/response payloads, ETags if considered sensitive, token values, raw tenant/user IDs, and ProblemDetails bodies out of log fields and span tags.
+  - [ ] Keep request/response payloads, raw or hashed ETags, token values, raw tenant/user IDs, full request URIs, query strings, route values derived from tenant/user input, exception messages, stack traces, and ProblemDetails bodies out of log fields and span tags.
+  - [ ] Use route templates or bounded operation names rather than full URLs when tagging HTTP work. Outgoing HTTP trace context should rely on standard .NET `HttpClient` instrumentation and `Activity.Current`, not custom correlation headers carrying raw identity.
   - [ ] Add a response-size governance note for DF2: either land `MaxResponseBytes` here or explicitly create a Story 9-4-owned deferred row with blocking rationale before closing 5-6. If landed, instrument response-size rejection as a bounded failure category.
   - [ ] Preserve Story 5-2 no-churn semantics for `304`: telemetry records no-change, but reducers and UI state must not mutate.
 
@@ -81,6 +87,7 @@ so that the framework remains portable across deployment targets and I can trace
   - [ ] Update `ProjectionConnectionStateService`, `SignalRProjectionHubConnectionFactory`, `ProjectionSubscriptionService`, `ProjectionFallbackRefreshScheduler`, and `ProjectionFallbackPollingDriver` to log through shared structured helpers or source-generated LoggerMessage methods.
   - [ ] Add activities for connection state transitions, reconnect/rejoin sweep, nudge refresh, and fallback polling iteration.
   - [ ] Add a lightweight rate-limiting or sampling policy for flapping connection logs, resolving deferred item W1 from Story 5-3 review. The policy must use `TimeProvider`-anchored windows/buckets, must not suppress state transitions from metrics/traces, and must keep terminal failure/recovered transitions visible.
+  - [ ] When repeated logs are suppressed, emit or retain a bounded suppression count in the next visible log record so operators can distinguish quiet recovery from repeated flapping.
   - [ ] Ensure failed rejoin logs include `ProjectionType` and redacted tenant marker only if policy permits; never log raw group names or SignalR exception messages.
   - [ ] Keep fallback polling behavior unchanged: no extra polling loop, no visible-lane registry duplication, and stop promptly on reconnect/disposal.
 
@@ -93,7 +100,7 @@ so that the framework remains portable across deployment targets and I can trace
 - [ ] T7. Add structured logging helpers and regression tests (AC4, AC5, AC9)
   - [ ] Prefer `[LoggerMessage]` source-generated partial methods for high-frequency EventStore/projection/lifecycle logs. For low-frequency code, message-template `logger.Log*("...", arg)` is acceptable.
   - [ ] Centralize telemetry operation-name and tag-key constants in the Shell telemetry helper; tests must prove call sites use the centralized source name/version and approved tag set.
-  - [ ] Add a source scanner test that fails on `logger.Log*( $"...")`, interpolated message templates, string concatenated templates, raw `ex.Message` template arguments on EventStore/projection paths, and direct logging of payload variables.
+  - [ ] Add a source scanner test that fails on `logger.Log*( $"...")`, interpolated message templates, string concatenated templates, raw `ex.Message` template arguments on EventStore/projection paths, `BeginScope` values carrying raw payload/identity data, and direct logging of payload variables.
   - [ ] Add redaction tests extending `EventStoreDiagnosticsTests` to cover token acquisition failures, bad JSON, query failure, rejoin failure, fallback polling failure, lifecycle failure, and telemetry span tags.
   - [ ] Use a capturing `ILogger` and `ActivityListener` test harness. Do not require live OpenTelemetry collectors.
 
@@ -105,6 +112,7 @@ so that the framework remains portable across deployment targets and I can trace
 - [ ] T9. Make CI enforcement blocking (AC8, AC9)
   - [ ] Update `.github/workflows/ci.yml` so the governance/telemetry test lane blocks PR/push. Remove `continue-on-error: true` from `build-and-test` or add a separate blocking governance job.
   - [ ] Add a named step such as `Gate 2b: Infrastructure governance and telemetry contracts` if that keeps output clearer than folding into Gate 3a.
+  - [ ] Add workflow regression coverage for path filters and matrix conditions so governance still runs for changes to framework source, `.csproj`, `Directory.Packages.props`, generated baselines, governance tests, and the workflow itself.
   - [ ] Ensure TRX upload and summary still run on failure.
   - [ ] Keep performance/e2e-palette advisory behavior only if the story explicitly documents why those lanes remain separate from governance.
 
@@ -154,6 +162,15 @@ Party-mode review on 2026-04-26 tightened three implementation contracts before 
 - Connection log rate limiting must be deterministic and testable. It may suppress repeated log records for identical transition/failure buckets, but it must not suppress state changes, terminal lifecycle observations, activity creation, or reducer-visible behavior.
 - DF2 `MaxResponseBytes` cannot close as an ambiguous "maybe later" item. If the response-size guard does not land in Story 5-6, the implementation must append a concrete deferred-work row owned by Story 9-4 with the reason and the remaining risk.
 
+### Advanced Elicitation Hardening Addendum
+
+Advanced elicitation on 2026-04-26 tightened four implementation traps before development:
+
+- Governance must inspect the restored transitive dependency graph, not only direct XML references. `PrivateAssets`, central package management, aliases, and generated baselines cannot hide provider SDK coupling.
+- Source scanning must be path-safe. Normalize every candidate path, stay inside expected framework roots, and avoid symlink/reparse-point traversal surprises before applying include/exclude rules.
+- Telemetry must be fail-open and side-effect free. Missing listeners, null `Activity`, failed tag derivation, or suppressed logs must never alter command/query/lifecycle behavior.
+- Redaction must cover transport-adjacent values, not only obvious payloads: full request URIs, query strings, raw ETags, route values derived from tenant/user input, SignalR group names, exception messages, and stack traces stay out of logs and tags.
+
 ### Binding Decisions
 
 | ID | Decision | Rationale | Rejected alternatives |
@@ -170,6 +187,10 @@ Party-mode review on 2026-04-26 tightened three implementation contracts before 
 | D10 | CI governance must block. | A portability guarantee is not real if the build can stay green. | Leave job-level advisory `continue-on-error` for all tests. |
 | D11 | Response-size protection is either landed here or explicitly deferred with a named owner. | DF2 can create memory pressure in query telemetry paths. | Ignore DF2 because it is "only observability"; read full response bodies into logs/spans. |
 | D12 | Deployment target parity is validated through package neutrality and sample/topology checks, not full cloud deployments in this story. | Local Kubernetes/ACA/ECS/EKS/Cloud Run integration would exceed one story. | Require live cloud deployments in unit CI; skip portability evidence entirely. |
+| D13 | Governance includes restored transitive package graphs and generated baselines. | Direct XML checks miss provider SDKs introduced through central package management, transitive references, generated code, or `PrivateAssets`. | Scan only `.csproj`; rely on NuGet lockfile review. |
+| D14 | Telemetry instrumentation is fail-open and behavior-neutral. | Observability must not be able to break command dispatch, query no-churn semantics, lifecycle transitions, reducers, or UI state. | Throw from telemetry helper failures; use telemetry side effects to drive behavior. |
+| D15 | Tags and log fields use bounded, approved fields only. | Correlation is useful, but full URIs, group names, raw ETags, raw identities, exception details, and payload-like values create PII and cardinality risk. | Emit whatever data makes debugging easiest; rely on exporter-side filters. |
+| D16 | CI governance cannot be bypassed by broad advisory settings or path filters. | A blocking gate still fails as a process control if normal framework changes can skip it. | Keep a blocking test but let workflow filters/matrix conditions silently omit it. |
 
 ### Library / Framework Requirements
 
@@ -213,6 +234,8 @@ Expected new or changed files:
 - Use `ActivityListener` to assert activity names, approved tag keys, status, parent/child linkage, and redaction.
 - Use capturing `ILogger` implementations and inspect structured state, not only formatted strings, when possible.
 - Redaction tests must assert absence of token, raw command/query payload values, raw form values, raw tenant/user IDs, raw ProblemDetails body text, and raw exception messages from sensitive EventStore/projection paths.
+- Governance tests must include synthetic `PrivateAssets`, transitive dependency, central package version, generated-baseline, symlink/reparse-point, and excluded-doc/sample fixtures so the scanner proves both detection and non-overreach.
+- Telemetry tests must include the no-listener path where `StartActivity()` returns `null`, tag derivation failure, log suppression with bounded suppression count, and a thrown logging sink/capturing logger if the local harness can model it without changing production behavior.
 - CI test should inspect workflow YAML text or parsed YAML to prove governance tests are not hidden behind `continue-on-error`.
 
 ### Scope Guardrails
@@ -288,6 +311,39 @@ Do not implement these in Story 5-6:
   - Exact numeric rate-limit defaults and bucket sizes remain implementation choices constrained by `TimeProvider`-based tests.
   - Final OpenTelemetry exporter recipe depth remains owned by Story 9-5 unless 5-6 adds only a host/sample snippet.
   - Broader diagnostic ID catalog governance remains Story 9-4.
+- Final recommendation: ready-for-dev
+
+### Advanced Elicitation
+
+- Date/time: 2026-04-26T09:09:53.4848022+02:00
+- Selected story key: `5-6-build-time-infrastructure-enforcement-and-observability`
+- Command/skill invocation used: `/bmad-advanced-elicitation 5-6-build-time-infrastructure-enforcement-and-observability`
+- Batch 1 method names:
+  - Pre-mortem Analysis
+  - Failure Mode Analysis
+  - Red Team vs Blue Team
+  - Security Audit Personas
+  - Self-Consistency Validation
+- Reshuffled Batch 2 method names:
+  - Chaos Monkey Scenarios
+  - First Principles Analysis
+  - Comparative Analysis Matrix
+  - Hindsight Reflection
+  - Critique and Refine
+- Findings summary:
+  - Governance checks could still miss provider coupling through transitive packages, central package management, `PrivateAssets`, generated baselines, or path traversal edge cases.
+  - Telemetry code needed an explicit fail-open contract so missing listeners, null activities, tag derivation issues, or logging failures cannot alter runtime behavior.
+  - Existing redaction guidance did not name several transport-adjacent leak vectors: full URLs, query strings, raw ETags, route values, SignalR group names, exception messages, and stack traces.
+  - CI blocking needed proof that path filters and matrix conditions do not skip governance for framework source, package, generated baseline, or workflow changes.
+- Changes applied:
+  - Tightened AC1-AC3, T1, and T2 for restored dependency graph inspection, path normalization, symlink/reparse safety, source-scan scope, and exact allowlist behavior.
+  - Tightened AC5-AC6, T3-T5, and T7 for null `Activity` handling, fail-open telemetry helpers, standard `HttpClient` trace propagation, redaction coverage, and suppression-count visibility.
+  - Tightened AC8, T9, and Testing Standards for workflow path-filter coverage, transitive/PrivateAssets fixtures, generated-baseline fixtures, no-listener telemetry tests, and suppression-count tests.
+  - Added Advanced Elicitation Hardening Addendum plus D13-D16 covering transitive governance, behavior-neutral telemetry, approved bounded fields, and non-bypassable CI governance.
+- Findings deferred:
+  - Exact telemetry event ID allocation and numeric log-rate bucket defaults remain implementation choices constrained by the new tests.
+  - Whether `MaxResponseBytes` lands in 5-6 or is deferred remains a story implementation decision, but closure still requires the existing Story 9-4-owned deferred-work row if not landed.
+  - Full exporter recipe documentation, provider/Pact trace propagation, diagnostic analyzer/code-fix governance, and live cloud smoke tests remain with the named follow-up stories.
 - Final recommendation: ready-for-dev
 
 ### Agent Model Used

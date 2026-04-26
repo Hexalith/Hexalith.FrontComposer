@@ -24,3 +24,4 @@
 2026-04-26T08:46:02+02:00	party-mode-review	6-1-level-1-annotation-overrides	ok	party-mode trace recorded and story hardened for annotation contracts
 2026-04-26T08:53:56+02:00	party-mode-review	6-2-level-2-typed-razor-template-overrides	ok	party-mode trace recorded and story hardened for template selection contracts
 2026-04-26T09:04:15+02:00	advanced-elicitation	5-5-command-idempotency-and-optimistic-updates	ok	advanced elicitation trace recorded and story hardened for fallback matching and bounded summaries
+2026-04-26T09:09:53.4848022+02:00	advanced-elicitation	5-6-build-time-infrastructure-enforcement-and-observability	ok	advanced elicitation trace recorded and story hardened for transitive governance and fail-open telemetry
