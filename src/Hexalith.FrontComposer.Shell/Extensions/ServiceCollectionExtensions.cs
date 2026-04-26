@@ -31,6 +31,7 @@ using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.Logging;
@@ -305,6 +306,8 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IETagCache, ETagCacheService>();
         services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
         services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
+        services.TryAddScoped<IReconnectionReconciliationState, ReconnectionReconciliationStateService>();
+        services.TryAddScoped<IReconnectionReconciliationCoordinator, ReconnectionReconciliationCoordinator>();
 
         // Story 5-2 D8 — fail-fast default IAuthRedirector. Scoped because adopter
         // implementations typically capture per-circuit NavigationManager. The default throws

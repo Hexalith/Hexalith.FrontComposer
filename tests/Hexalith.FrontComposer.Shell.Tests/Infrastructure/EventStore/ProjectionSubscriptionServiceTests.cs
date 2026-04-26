@@ -1,6 +1,7 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -53,6 +54,34 @@ public sealed class ProjectionSubscriptionServiceTests {
         await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
 
         connection.JoinedGroups.ShouldBe(["orders:acme"]);
+    }
+
+    [Fact]
+    public async Task Reconnected_StartsReconciliationAfterRejoinCompletes() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestReconciliationCoordinator reconciliation = new();
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(),
+            new TestRefreshScheduler(),
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            fallbackDriver: null,
+            reconciliation);
+
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        connection.JoinedGroups.Clear();
+
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+
+        connection.JoinedGroups.ShouldBe(["orders:acme"]);
+        reconciliation.Calls.ShouldBe(1);
     }
 
     [Fact]
@@ -416,6 +445,15 @@ public sealed class ProjectionSubscriptionServiceTests {
         public Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
             NudgeRefreshes.Add((projectionType, tenantId));
             return Task.FromResult(1);
+        }
+    }
+
+    private sealed class TestReconciliationCoordinator : IReconnectionReconciliationCoordinator {
+        public int Calls { get; private set; }
+
+        public Task<ProjectionReconciliationRefreshResult> ReconcileAsync(CancellationToken cancellationToken = default) {
+            Calls++;
+            return Task.FromResult(ProjectionReconciliationRefreshResult.Empty);
         }
     }
 

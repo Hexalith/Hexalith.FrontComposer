@@ -122,6 +122,100 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task TriggerReconciliationOnce_SnapshotsVisibleLanes_DedupesAndReportsChangedOnlyFor200Delta() {
+        TestConnectionState state = new(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null));
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            "CustomersProjection",
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(Array.Empty<object>(), 0, null, IsNotModified: true)));
+        loader.LoadPageAsync(
+            "OrdersProjection",
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "order-2" }, 1, "\"v2\"")));
+
+        ProjectionFallbackRefreshScheduler sut = new(
+            state,
+            loader,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:CustomersProjection", "CustomersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection:dup", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(42, TestContext.Current.CancellationToken);
+
+        result.RefreshedCount.ShouldBe(2);
+        result.ChangedViewKeys.ShouldBe(["acme:OrdersProjection"]);
+        _ = loader.Received(1).LoadPageAsync(
+            "OrdersProjection",
+            0,
+            20,
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            null,
+            false,
+            null,
+            Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task TriggerReconciliationOnce_RespectsLaneCap() {
+        TestConnectionState state = new(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null));
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "changed" }, 1, "\"v1\"")));
+
+        ProjectionFallbackRefreshScheduler sut = new(
+            state,
+            loader,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 1 }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+        _ = sut.RegisterLane(new ProjectionFallbackLane("b", "BProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("a", "AProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(43, TestContext.Current.CancellationToken);
+
+        result.RefreshedCount.ShouldBe(1);
+        _ = loader.Received(1).LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>());
+    }
+
     private sealed class TestConnectionState(ProjectionConnectionSnapshot snapshot) : IProjectionConnectionState {
         public ProjectionConnectionSnapshot Current { get; private set; } = snapshot;
 

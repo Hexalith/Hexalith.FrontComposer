@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 using Hexalith.FrontComposer.Contracts;
@@ -143,6 +144,26 @@ public sealed class LoadPageEffectIntegrationTests {
 
         LoadPageFailedAction failed = dispatcher.Single<LoadPageFailedAction>();
         failed.ErrorMessage.ShouldBe("loader boom");
+    }
+
+    [Fact]
+    public async Task SchemaMismatch_DispatchesSectionUpdatingCopy() {
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+        .Returns<Task<ProjectionPageResult>>(_ => throw new ProjectionSchemaMismatchException("OrdersProjection"));
+
+        LoadPageEffects sut = MakeSut(loader, new LoadedPageState { PendingCompletionsByKey = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty });
+        RecordingDispatcher dispatcher = new();
+        TaskCompletionSource<object> tcs = new();
+
+        await sut.HandleLoadPageAsync(MakeAction(tcs), dispatcher);
+
+        LoadPageFailedAction failed = dispatcher.Single<LoadPageFailedAction>();
+        failed.ErrorMessage.ShouldBe("This section is being updated");
     }
 
     [Fact]

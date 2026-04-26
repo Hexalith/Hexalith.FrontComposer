@@ -127,7 +127,20 @@ public sealed class EventStoreQueryClient(
         switch (classification.Outcome) {
             case QueryClassificationOutcome.NotModified: {
                 if (cachedEntry is not null) {
-                    return DeserializeNotModifiedFromCache<T>(cachedEntry);
+                    try {
+                        return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
+                    }
+                    catch (ProjectionSchemaMismatchException ex) {
+                        if (cacheKey is not null) {
+                            await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        logger.LogWarning(
+                            "Projection cache payload schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
+                            ex.ProjectionType,
+                            ex.GetType().Name);
+                        throw;
+                    }
                 }
 
                 // Caller did not opt into framework cache integration (no CacheDiscriminator) —
@@ -163,9 +176,25 @@ public sealed class EventStoreQueryClient(
 
             case QueryClassificationOutcome.Ok: {
                 string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                using JsonDocument document = JsonDocument.Parse(body);
-                IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
-                int totalCount = ReadTotalCount(document.RootElement, items.Count);
+                IReadOnlyList<T> items;
+                int totalCount;
+                try {
+                    using JsonDocument document = JsonDocument.Parse(body);
+                    items = ReadPayloadItems<T>(document.RootElement);
+                    totalCount = ReadTotalCount(document.RootElement, items.Count);
+                }
+                catch (JsonException ex) {
+                    if (cacheKey is not null) {
+                        await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+                    }
+
+                    logger.LogWarning(
+                        "Projection response schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
+                        projectionType,
+                        ex.GetType().Name);
+                    throw new ProjectionSchemaMismatchException(projectionType, ex);
+                }
+
                 string? eTag = classification.ETag;
                 if (cacheKey is not null && eTag is { Length: > 0 } && !ContainsHeaderInjectionChar(eTag)) {
                     long now = DateTimeOffset.UtcNow.UtcTicks;
@@ -239,11 +268,16 @@ public sealed class EventStoreQueryClient(
         "Trimming",
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter deserializes adopter projection DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
-    private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry) {
-        using JsonDocument document = JsonDocument.Parse(entry.Payload);
-        IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
-        int totalCount = ReadTotalCount(document.RootElement, items.Count);
-        return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
+    private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry, string projectionType) {
+        try {
+            using JsonDocument document = JsonDocument.Parse(entry.Payload);
+            IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
+            int totalCount = ReadTotalCount(document.RootElement, items.Count);
+            return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
+        }
+        catch (JsonException ex) {
+            throw new ProjectionSchemaMismatchException(projectionType, ex);
+        }
     }
 
     private static bool ContainsHeaderInjectionChar(string value) {

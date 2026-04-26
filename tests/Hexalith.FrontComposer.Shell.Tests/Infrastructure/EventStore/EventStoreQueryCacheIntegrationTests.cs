@@ -207,6 +207,25 @@ public class EventStoreQueryCacheIntegrationTests {
         ex.RetryAfter.ShouldBe(System.TimeSpan.FromSeconds(5));
     }
 
+    [Fact]
+    public async Task QueryAsync_Incompatible200Payload_ThrowsSchemaMismatch() {
+        ScriptedHandler handler = new();
+        handler.Script.Add(_ => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent("{not-json", Encoding.UTF8, "application/json"),
+        });
+        EventStoreQueryClient sut = NewClient(handler);
+
+        ProjectionSchemaMismatchException ex = await Should.ThrowAsync<ProjectionSchemaMismatchException>(
+            async () => await sut.QueryAsync<OrderProjection>(
+                BuildRequest(cacheDiscriminator: ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)),
+                TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .ConfigureAwait(true);
+
+        ex.ProjectionType.ShouldBe(ProjectionType);
+        ETagCacheEntry? cached = await _cache.TryGetAsync(BuildKey(0), 1, TestContext.Current.CancellationToken);
+        cached.ShouldBeNull();
+    }
+
     private static HttpResponseMessage Ok(string payloadArrayJson, string etag) {
         HttpResponseMessage response = new(HttpStatusCode.OK) {
             Content = new StringContent("{\"payload\":" + payloadArrayJson + "}", Encoding.UTF8, "application/json"),

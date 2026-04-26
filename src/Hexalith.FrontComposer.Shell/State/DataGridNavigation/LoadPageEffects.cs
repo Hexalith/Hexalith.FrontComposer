@@ -5,6 +5,7 @@ using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -122,6 +123,9 @@ public sealed class LoadPageEffects {
         }
         catch (OperationCanceledException) {
             dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+        }
+        catch (ProjectionSchemaMismatchException) {
+            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, "This section is being updated", action.Completion));
         }
         catch (Exception ex) {
             string message = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;

@@ -1,3 +1,23 @@
 .fc-projection-connection-status {
     margin-block: var(--design-unit, 0.5rem);
 }
+
+.fc-projection-connection-status-pulse {
+    animation: fc-sync-status-pulse 700ms ease-in-out infinite alternate;
+}
+
+@keyframes fc-sync-status-pulse {
+    from {
+        opacity: 0.72;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-projection-connection-status-pulse {
+        animation: none;
+    }
+}

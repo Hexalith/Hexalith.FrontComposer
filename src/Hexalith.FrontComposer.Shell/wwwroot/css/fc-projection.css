@@ -57,3 +57,28 @@
     display: block;
     margin: calc(var(--fc-spacing-unit, 4px) * 2) 0;
 }
+
+/* Story 5-4 — single lane-level sweep marker after reconnect reconciliation. The
+   marker is intentionally subtle, bounded to 700ms, and does not affect layout. */
+.fc-reconciliation-sweep {
+    animation: fc-reconciliation-sweep 700ms ease-out 1;
+    outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 45%, transparent);
+    outline-offset: -1px;
+}
+
+@keyframes fc-reconciliation-sweep {
+    from {
+        background-color: color-mix(in srgb, var(--accent-fill-rest, #0078d4) 18%, transparent);
+    }
+
+    to {
+        background-color: transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-reconciliation-sweep {
+        animation: none;
+        outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 35%, transparent);
+    }
+}

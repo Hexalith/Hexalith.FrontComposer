@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -22,6 +23,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly IDisposable _connectionStateRegistration;
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ProjectionFallbackPollingDriver? _fallbackDriver;
+    private readonly IReconnectionReconciliationCoordinator? _reconciliationCoordinator;
     private bool _disposed;
 
     public ProjectionSubscriptionService(
@@ -31,7 +33,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         IProjectionFallbackRefreshScheduler refreshScheduler,
         IProjectionChangeNotifier notifier,
         ILogger<ProjectionSubscriptionService> logger,
-        ProjectionFallbackPollingDriver? fallbackDriver = null) {
+        ProjectionFallbackPollingDriver? fallbackDriver = null,
+        IReconnectionReconciliationCoordinator? reconciliationCoordinator = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -43,6 +46,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _notifier = notifier;
         _logger = logger;
         _fallbackDriver = fallbackDriver;
+        _reconciliationCoordinator = reconciliationCoordinator;
         EventStoreOptions current = options.Value;
         Uri hubUri = BuildHubUri(current.BaseAddress ?? throw new InvalidOperationException("EventStore BaseAddress is required."), current.ProjectionChangesHubPath);
         _connection = connectionFactory.Create(hubUri, current.AccessTokenProvider);
@@ -196,12 +200,16 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                 break;
 
             case ProjectionHubConnectionState.Reconnected:
-                _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
                 // DN3 — rejoin runs in the handler chain (so tests and adopters can observe
                 // completion deterministically) but takes the gate with a bounded timeout and the
                 // service disposal token. A blocked subscribe/unsubscribe on the same gate cannot
                 // hang rejoin indefinitely; disposal cancels the sweep promptly.
                 await RejoinActiveGroupsAsync(_disposalCts.Token).ConfigureAwait(false);
+                _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
+                if (_reconciliationCoordinator is not null && !_disposed) {
+                    _ = await _reconciliationCoordinator.ReconcileAsync(_disposalCts.Token).ConfigureAwait(false);
+                }
+
                 break;
 
             case ProjectionHubConnectionState.Closed:

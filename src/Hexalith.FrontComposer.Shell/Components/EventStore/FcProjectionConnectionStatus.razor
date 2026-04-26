@@ -1,5 +1,6 @@
 @namespace Hexalith.FrontComposer.Shell.Components.EventStore
 @using Hexalith.FrontComposer.Shell.State.ProjectionConnection
+@using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation
 @using Microsoft.FluentUI.AspNetCore.Components
 
 @if (_visible) {
@@ -8,22 +9,29 @@
                       role="status"
                       aria-live="polite"
                       data-testid="fc-projection-connection-status"
-                      class="fc-projection-connection-status">
+                      class="@CssClass">
         @Message
     </FluentMessageBar>
 }
 
 @code {
     private bool _visible => _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected
+        || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling
         || _showReconnected;
 
     private MessageBarIntent Intent => _snapshot.Status switch {
         ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => MessageBarIntent.Warning,
-        _ => MessageBarIntent.Success,
+        _ => MessageBarIntent.Info,
     };
 
     private string Message => _snapshot.Status switch {
-        ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => "Connection interrupted -- your work is saved. Reconnecting...",
-        _ => "Reconnected -- you can continue",
+        ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => "Reconnecting...",
+        _ when _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling => "Refreshing data...",
+        _ => "Reconnected -- data refreshed",
     };
+
+    private string CssClass => _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected
+        || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling
+            ? "fc-projection-connection-status fc-projection-connection-status-pulse"
+            : "fc-projection-connection-status";
 }

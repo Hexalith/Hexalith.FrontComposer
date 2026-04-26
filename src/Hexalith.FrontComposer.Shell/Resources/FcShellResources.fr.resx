@@ -410,4 +410,16 @@
   <data name="ExpandedRowHiddenByFilterBannerClearLink" xml:space="preserve">
     <value>Effacer le filtre</value>
   </data>
+  <data name="ReconnectStatusText" xml:space="preserve">
+    <value>Reconnexion...</value>
+  </data>
+  <data name="ReconciliationStatusText" xml:space="preserve">
+    <value>Actualisation des données...</value>
+  </data>
+  <data name="ReconnectedDataRefreshedText" xml:space="preserve">
+    <value>Reconnecté -- données actualisées</value>
+  </data>
+  <data name="SectionUpdatingText" xml:space="preserve">
+    <value>Cette section est en cours de mise à jour</value>
+  </data>
 </root>
