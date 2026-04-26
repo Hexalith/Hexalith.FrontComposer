@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
@@ -24,6 +25,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly ProjectionFallbackPollingDriver? _fallbackDriver;
     private readonly IReconnectionReconciliationCoordinator? _reconciliationCoordinator;
+    private readonly IPendingCommandPollingCoordinator? _pendingCommandPolling;
     private bool _disposed;
 
     public ProjectionSubscriptionService(
@@ -34,7 +36,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         IProjectionChangeNotifier notifier,
         ILogger<ProjectionSubscriptionService> logger,
         ProjectionFallbackPollingDriver? fallbackDriver = null,
-        IReconnectionReconciliationCoordinator? reconciliationCoordinator = null) {
+        IReconnectionReconciliationCoordinator? reconciliationCoordinator = null,
+        IPendingCommandPollingCoordinator? pendingCommandPolling = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -47,6 +50,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _logger = logger;
         _fallbackDriver = fallbackDriver;
         _reconciliationCoordinator = reconciliationCoordinator;
+        _pendingCommandPolling = pendingCommandPolling;
         EventStoreOptions current = options.Value;
         Uri hubUri = BuildHubUri(current.BaseAddress ?? throw new InvalidOperationException("EventStore BaseAddress is required."), current.ProjectionChangesHubPath);
         _connection = connectionFactory.Create(hubUri, current.AccessTokenProvider);
@@ -169,6 +173,14 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                     key.ProjectionType,
                     key.TenantId,
                     _disposalCts.Token).ConfigureAwait(false);
+
+                // Story 5-5 DN1 — feed pending-command resolution from the live nudge path so
+                // commands resolve through the SAME shared resolver/state path that the polling
+                // and reconnect paths use. PollOnceAsync is bounded by FcShellOptions caps and
+                // returns quickly when there are no pending commands.
+                if (_pendingCommandPolling is not null) {
+                    _ = await _pendingCommandPolling.PollOnceAsync(_disposalCts.Token).ConfigureAwait(false);
+                }
             }
             catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
                 // Expected on disposal; swallow.

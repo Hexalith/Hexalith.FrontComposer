@@ -4,10 +4,11 @@
     border-inline-start: 3px solid var(--accent-fill-rest);
     background: color-mix(in srgb, var(--accent-fill-rest) 10%, transparent);
     color: var(--neutral-foreground-rest);
+    transition: opacity 200ms ease, background-color 200ms ease;
 }
 
 @media (prefers-reduced-motion: reduce) {
     .fc-new-item-indicator {
-        transition-duration: 0ms;
+        transition: none;
     }
 }

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.EventStore;
@@ -9,7 +11,11 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.EventStore;
 
 public sealed class FcPendingCommandSummaryTests : LayoutComponentTestBase {
-    public FcPendingCommandSummaryTests() => EnsureStoreInitialized();
+    public FcPendingCommandSummaryTests() {
+        CultureInfo.CurrentUICulture = new CultureInfo("en");
+        CultureInfo.CurrentCulture = new CultureInfo("en");
+        EnsureStoreInitialized();
+    }
 
     [Fact]
     public void RendersBoundedCountsBeforeDetails() {

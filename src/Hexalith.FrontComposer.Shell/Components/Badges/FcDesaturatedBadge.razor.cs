@@ -1,6 +1,10 @@
+using System.Globalization;
+
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Shell.Resources;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 
 namespace Hexalith.FrontComposer.Shell.Components.Badges;
 
@@ -15,9 +19,13 @@ public enum OptimisticBadgeState {
 
 /// <summary>
 /// Story 5-5 optimistic status badge wrapper. Reuses <see cref="FcStatusBadge"/> for semantic color
-/// mapping while adding text-first pending/rejected/idempotent state labels.
+/// mapping while adding text-first pending/rejected/idempotent state labels via
+/// <see cref="IStringLocalizer{T}"/> (DN5).
 /// </summary>
 public partial class FcDesaturatedBadge : ComponentBase {
+    [Inject]
+    private IStringLocalizer<FcShellResources> Localizer { get; set; } = default!;
+
     [Parameter]
     [EditorRequired]
     public BadgeSlot PriorSlot { get; set; }
@@ -45,16 +53,8 @@ public partial class FcDesaturatedBadge : ComponentBase {
 
     protected string ResolvedLabel {
         get {
-            string valueLabel = State == OptimisticBadgeState.Rejected ? PriorLabel : OptimisticLabel;
-            string stateLabel = State switch {
-                OptimisticBadgeState.Confirming => "Confirming",
-                OptimisticBadgeState.Confirmed => "Confirmed",
-                OptimisticBadgeState.Rejected => "Rejected",
-                OptimisticBadgeState.IdempotentConfirmed => "Already applied",
-                OptimisticBadgeState.NeedsReview => "Needs review",
-                _ => "Confirming",
-            };
-
+            string valueLabel = ResolvedValueLabel;
+            string stateLabel = StateLabel;
             return string.IsNullOrWhiteSpace(valueLabel)
                 ? stateLabel
                 : string.Concat(stateLabel, " ", valueLabel);
@@ -65,4 +65,29 @@ public partial class FcDesaturatedBadge : ComponentBase {
         State == OptimisticBadgeState.Confirming
             ? "fc-desaturated-badge fc-desaturated-badge--confirming"
             : "fc-desaturated-badge";
+
+    /// <summary>P10 — wrapper renders its own aria-label so tests assert the contract independently of FcStatusBadge internals.</summary>
+    protected string AriaLabel {
+        get {
+            string column = string.IsNullOrWhiteSpace(ColumnHeader) ? "Status" : ColumnHeader!;
+            return string.Format(
+                CultureInfo.CurrentUICulture,
+                Localizer["OptimisticBadgeAriaLabelTemplate"].Value,
+                column,
+                StateLabel,
+                ResolvedValueLabel);
+        }
+    }
+
+    private string ResolvedValueLabel =>
+        State == OptimisticBadgeState.Rejected ? PriorLabel : OptimisticLabel;
+
+    private string StateLabel => State switch {
+        OptimisticBadgeState.Confirming => Localizer["OptimisticBadgeConfirmingLabel"].Value,
+        OptimisticBadgeState.Confirmed => Localizer["OptimisticBadgeConfirmedLabel"].Value,
+        OptimisticBadgeState.Rejected => Localizer["OptimisticBadgeRejectedLabel"].Value,
+        OptimisticBadgeState.IdempotentConfirmed => Localizer["OptimisticBadgeAlreadyAppliedLabel"].Value,
+        OptimisticBadgeState.NeedsReview => Localizer["OptimisticBadgeNeedsReviewLabel"].Value,
+        _ => Localizer["OptimisticBadgeConfirmingLabel"].Value,
+    };
 }

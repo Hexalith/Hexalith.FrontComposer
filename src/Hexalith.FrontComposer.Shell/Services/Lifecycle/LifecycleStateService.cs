@@ -166,7 +166,15 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
     public IEnumerable<string> GetActiveCorrelationIds() => [.. _entries.Keys];
 
     /// <inheritdoc/>
-    public void Transition(string correlationId, CommandLifecycleState newState, string? messageId = null) {
+    public void Transition(string correlationId, CommandLifecycleState newState, string? messageId = null)
+        => Transition(correlationId, newState, messageId, idempotencyResolved: false);
+
+    /// <inheritdoc/>
+    public void Transition(
+        string correlationId,
+        CommandLifecycleState newState,
+        string? messageId,
+        bool idempotencyResolved) {
         if (correlationId is null) {
             throw new ArgumentNullException(nameof(correlationId));
         }
@@ -201,7 +209,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
         CommandLifecycleState previous;
         CommandLifecycleState applied;
         bool isTerminalFirstEntry;
-        bool idempotencyResolved;
+        bool computedIdempotencyResolved;
         bool dropped;
         DateTimeOffset originalAt;
 
@@ -248,14 +256,14 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             if (IsTerminal(newState)) {
                 int prior = Interlocked.CompareExchange(ref entry.OutcomeNotifications, 1, 0);
                 isTerminalFirstEntry = prior == 0;
-                idempotencyResolved = !isTerminalFirstEntry;
+                computedIdempotencyResolved = !isTerminalFirstEntry;
                 // Decision D8 — duplicate terminal for same CorrelationId is silently absorbed
                 // (no second outcome notification). FR30 "≤1 user-visible outcome" invariant.
                 dropped = prior != 0 && previous == newState;
             }
             else {
                 isTerminalFirstEntry = false;
-                idempotencyResolved = false;
+                computedIdempotencyResolved = false;
                 dropped = false;
             }
         }
@@ -268,6 +276,11 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             RecordMessageId(messageId);
         }
 
+        // P8 — caller-supplied flag wins over the auto-detected duplicate-terminal flag so the
+        // pending-command resolver can mark IdempotentConfirmed outcomes as already-applied even
+        // on the first observed terminal for this correlation.
+        bool effectiveIdempotencyResolved = computedIdempotencyResolved || idempotencyResolved;
+
         CommandLifecycleTransition transition = new(
             CorrelationId: correlationId,
             PreviousState: previous,
@@ -275,7 +288,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             MessageId: messageId ?? entry.MessageId,
             TimestampUtc: now,
             LastTransitionAt: originalAt,
-            IdempotencyResolved: idempotencyResolved);
+            IdempotencyResolved: effectiveIdempotencyResolved);
 
         InvokeSubscribers(correlationId, transition);
     }

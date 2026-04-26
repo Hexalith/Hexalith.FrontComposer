@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Bunit;
 
 using Hexalith.FrontComposer.Shell.Components.DataGrid;
@@ -11,16 +13,30 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Components.DataGrid;
 
 public sealed class FcNewItemIndicatorTests : LayoutComponentTestBase {
-    public FcNewItemIndicatorTests() => EnsureStoreInitialized();
+    public FcNewItemIndicatorTests() {
+        CultureInfo.CurrentUICulture = new CultureInfo("en");
+        CultureInfo.CurrentCulture = new CultureInfo("en");
+        EnsureStoreInitialized();
+    }
 
     [Fact]
     public void RendersAccessiblePoliteIndicatorCopy() {
-        IRenderedComponent<FcNewItemIndicator> cut = Render<FcNewItemIndicator>(parameters => parameters
-            .Add(p => p.IndicatorId, "new-counter-1"));
+        IRenderedComponent<FcNewItemIndicator> cut = Render<FcNewItemIndicator>();
 
         cut.Markup.ShouldContain("New item. It may not match current filters yet.");
         cut.Markup.ShouldContain("aria-live=\"polite\"");
-        cut.Markup.ShouldContain("aria-describedby=\"new-counter-1-description\"");
+        cut.Markup.ShouldContain("aria-label=\"New item added outside current filters\"");
+        cut.Markup.ShouldContain("role=\"status\"");
+    }
+
+    [Fact]
+    public void AcceptsAdopterOverrideForVisibleTextAndAriaLabel() {
+        IRenderedComponent<FcNewItemIndicator> cut = Render<FcNewItemIndicator>(parameters => parameters
+            .Add(p => p.Text, "Custom row arrived")
+            .Add(p => p.AriaLabelOverride, "Custom row label"));
+
+        cut.Markup.ShouldContain("Custom row arrived");
+        cut.Markup.ShouldContain("aria-label=\"Custom row label\"");
     }
 
     [Fact]

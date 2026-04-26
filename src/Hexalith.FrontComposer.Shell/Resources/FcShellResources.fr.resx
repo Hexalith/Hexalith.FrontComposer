@@ -422,4 +422,54 @@
   <data name="SectionUpdatingText" xml:space="preserve">
     <value>Cette section est en cours de mise à jour</value>
   </data>
+
+  <!-- Story 5-5 DN5 — French parity for pending-command optimistic and reconnect-summary copy. -->
+  <data name="OptimisticBadgeConfirmingLabel" xml:space="preserve">
+    <value>Confirmation en cours</value>
+  </data>
+  <data name="OptimisticBadgeConfirmedLabel" xml:space="preserve">
+    <value>Confirmé</value>
+  </data>
+  <data name="OptimisticBadgeRejectedLabel" xml:space="preserve">
+    <value>Rejeté</value>
+  </data>
+  <data name="OptimisticBadgeAlreadyAppliedLabel" xml:space="preserve">
+    <value>Déjà appliqué</value>
+  </data>
+  <data name="OptimisticBadgeNeedsReviewLabel" xml:space="preserve">
+    <value>À vérifier</value>
+  </data>
+  <data name="OptimisticBadgeAriaLabelTemplate" xml:space="preserve">
+    <value>{0}&#160;: {1} {2}</value>
+  </data>
+  <data name="NewItemIndicatorText" xml:space="preserve">
+    <value>Nouvel élément. Il pourrait ne pas correspondre aux filtres actuels.</value>
+  </data>
+  <data name="NewItemIndicatorAriaLabel" xml:space="preserve">
+    <value>Nouvel élément ajouté hors des filtres actuels</value>
+  </data>
+  <data name="PendingCommandSummaryCountsTemplate" xml:space="preserve">
+    <value>{0} confirmées, {1} rejetées, {2} non résolues</value>
+  </data>
+  <data name="PendingCommandSummaryConfirmedTemplate" xml:space="preserve">
+    <value>{0}&#160;: confirmée.</value>
+  </data>
+  <data name="PendingCommandSummaryAlreadyAppliedTemplate" xml:space="preserve">
+    <value>{0}&#160;: déjà appliquée.</value>
+  </data>
+  <data name="PendingCommandSummaryNeedsReviewTemplate" xml:space="preserve">
+    <value>{0}&#160;: non résolue. Vérifiez les données actuelles avant toute nouvelle tentative.</value>
+  </data>
+  <data name="PendingCommandSummaryRejectedTitleTemplate" xml:space="preserve">
+    <value>{0} a échoué</value>
+  </data>
+  <data name="PendingCommandSummaryRejectedBodyTemplate" xml:space="preserve">
+    <value>{0}&#160;: {1}. {2}</value>
+  </data>
+  <data name="PendingCommandSummaryDataImpactDefault" xml:space="preserve">
+    <value>Aucune donnée modifiée.</value>
+  </data>
+  <data name="PendingCommandSummaryOverflowTemplate" xml:space="preserve">
+    <value>{0} commande(s) résolue(s) supplémentaire(s)</value>
+  </data>
 </root>

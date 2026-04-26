@@ -378,3 +378,14 @@ These two defects sit in the Counter-sample lifecycle wiring — the generated e
 
 
 - **DN3 — Visible-lane RegisterLane callsites** [DataGrid emit path + BadgeCountService] — The DataGrid view-host is source-generator emitted into adopter-namespace `.razor.g.cs` files. Wiring `IProjectionFallbackRefreshScheduler.RegisterLane`/`UnregisterLane` callsites requires emit-path changes in `Hexalith.FrontComposer.SourceTools` plus a parallel registration in `BadgeCountService`. Story 5-4 ships the coordinator + scheduler + sweep dispatch + family cache invalidation + schema-mismatch fallback fully functional, but the source-generator-emit lift warrants its own story. **AC2/AC4/AC5 explicit narrowing for 5-4:** visible-lane reconciliation does NOT auto-fire on reconnect for DataGrid or badge-count surfaces; existing Story 5-2 query/cache path keeps these surfaces loading correctly on reconnect. **Defer target:** Story 5-5 visible-lane wiring or a dedicated wiring story; supersedes the existing `G53-3` known-gap from the 5-3 review.
+
+## Deferred from: code review of 5-5-command-idempotency-and-optimistic-updates (2026-04-26)
+
+- **D1 — ETag/304/429/503 polling parity** [`PendingCommandPollingCoordinator.cs`] — Real `IPendingCommandStatusQuery` not registered in this story (DN4 governs); ETag plumbing has no callsite to exercise. Move with the real status query implementation.
+- **D2 — Three overlapping status enums** [`OptimisticBadgeState/PendingCommandStatus/PendingCommandTerminalOutcome`] — Refactor opportunity, not a defect. Track as Story 9-4 (governance) follow-up.
+- **D3 — `ProjectionFallbackPollingDriver` positional parameter ordering hazard** [`ProjectionFallbackPollingDriver.cs:1147-1162`] — Optional trailing parameter is conventional; existing tests pass. Document in adopter migration notes.
+- **D4 — Resolve-before-Register grace window** [`PendingCommandStateService.cs:980-985`] — Buffering design needs cross-team alignment; current behavior (drop unknown observation) is documented per spec.
+- **D5 — Reconnect-epoch awareness for stale terminals** [`PendingCommandOutcomeResolver.cs`] — Deferred to Story 5-4 epoch counter exposure or Story 5-7 fault-injection harness.
+- **D6 — Long-running Confirming has no escalation** [`FcDesaturatedBadge.razor.cs`] — UX-DR concern (StillSyncing escalation) needs broader UX alignment; Story 5-5 budget exhausted.
+- **D7 — Adopter Singleton override of `NewItemIndicatorStateService` leaks timers** [`Shell/Extensions/ServiceCollectionExtensions.cs:308-340`] — DI lifetime guard is broader than Story 5-5; track as Story 9-4 governance.
+- **D8 — Counter golden snapshot SVG markup change** [`tests/.../Generated/CounterStoryVerificationTests.*.verified.txt`] — Verify whether the change is from a Fluent UI version bump or an unintended regression in render output for existing components; not introduced by Story 5-5 logic.

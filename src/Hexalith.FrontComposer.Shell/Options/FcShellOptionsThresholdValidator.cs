@@ -63,6 +63,13 @@ public sealed class FcShellOptionsThresholdValidator : IValidateOptions<FcShellO
             (failures ??= []).Add($"FcShellOptions.MaxETagCacheEntries ({options.MaxETagCacheEntries}) must not exceed LocalStorageMaxEntries ({options.LocalStorageMaxEntries}).");
         }
 
+        // Story 5-5 P19 — pending-command polling can never tick more entries than the cap allows
+        // to live concurrently, otherwise the poller would ask the server about commands the
+        // client has already evicted and could never apply the response to.
+        if (options.MaxPendingCommandPollingPerTick > options.MaxPendingCommandEntries) {
+            (failures ??= []).Add($"FcShellOptions.MaxPendingCommandPollingPerTick ({options.MaxPendingCommandPollingPerTick}) must not exceed MaxPendingCommandEntries ({options.MaxPendingCommandEntries}).");
+        }
+
         return failures is null ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
     }
 }

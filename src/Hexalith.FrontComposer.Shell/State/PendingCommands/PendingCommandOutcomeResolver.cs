@@ -34,7 +34,8 @@ public sealed record PendingCommandOutcomeObservation(
     string? EntityKey = null,
     string? ExpectedStatusSlot = null,
     string? RejectionTitle = null,
-    string? RejectionDetail = null);
+    string? RejectionDetail = null,
+    string? RejectionDataImpact = null);
 
 /// <summary>Result returned by the shared pending-command outcome resolver.</summary>
 public sealed record PendingCommandOutcomeResolutionResult(
@@ -111,7 +112,8 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
             messageId,
             observation.Outcome,
             observation.RejectionTitle,
-            observation.RejectionDetail);
+            observation.RejectionDetail,
+            observation.RejectionDataImpact);
 
     private static bool Matches(PendingCommandEntry entry, PendingCommandOutcomeObservation observation) {
         if (string.IsNullOrWhiteSpace(observation.EntityKey)) {

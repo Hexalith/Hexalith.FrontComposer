@@ -1,5 +1,6 @@
 using Fluxor;
 
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.Logging;
@@ -23,6 +24,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
     private readonly IReconnectionReconciliationState _state;
     private readonly IDispatcher _dispatcher;
     private readonly TimeProvider _timeProvider;
+    private readonly IPendingCommandPollingCoordinator? _pendingCommandPolling;
     private readonly ILogger<ReconnectionReconciliationCoordinator> _logger;
     private readonly object _sync = new();
     private CancellationTokenSource? _activeCts;
@@ -35,7 +37,8 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
         IReconnectionReconciliationState state,
         IDispatcher dispatcher,
         TimeProvider timeProvider,
-        ILogger<ReconnectionReconciliationCoordinator> logger) {
+        ILogger<ReconnectionReconciliationCoordinator> logger,
+        IPendingCommandPollingCoordinator? pendingCommandPolling = null) {
         ArgumentNullException.ThrowIfNull(refreshScheduler);
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(dispatcher);
@@ -45,6 +48,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
         _state = state;
         _dispatcher = dispatcher;
         _timeProvider = timeProvider;
+        _pendingCommandPolling = pendingCommandPolling;
         _logger = logger;
     }
 
@@ -131,6 +135,25 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             _state.Complete(epoch, result.ChangedViewKeys.Count > 0);
 
             ScheduleSweepCleanup(epoch);
+
+            // Story 5-5 DN1 — feed the shared pending-command resolver from the reconnect path so
+            // commands accepted during the disconnected window resolve through the SAME path the
+            // polling fallback uses. Failures are logged and swallowed; the reconciliation result
+            // is independent of pending-command outcome.
+            if (_pendingCommandPolling is not null) {
+                try {
+                    _ = await _pendingCommandPolling.PollOnceAsync(linked.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (linked.IsCancellationRequested) {
+                    // Disposal or epoch supersession; nothing to do.
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                    _logger.LogWarning(
+                        "Pending command resolution from reconnect failed. Epoch={Epoch} FailureCategory={FailureCategory}",
+                        epoch,
+                        ex.GetType().Name);
+                }
+            }
         }
 
         DisposeCompletedCts(linked);

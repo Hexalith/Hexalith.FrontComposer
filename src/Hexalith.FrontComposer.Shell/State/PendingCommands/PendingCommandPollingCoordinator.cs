@@ -62,9 +62,17 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
         int processed = 0;
         foreach (PendingCommandEntry entry in pending) {
             cancellationToken.ThrowIfCancellationRequested();
+
+            // P16 — a live nudge or reconnect reconciliation may have resolved the entry between
+            // snapshot and query; re-check the current state to avoid wasted HTTP load.
+            PendingCommandEntry? current = _pendingCommands.GetByMessageId(entry.MessageId);
+            if (current is null || current.Status != PendingCommandStatus.Pending) {
+                continue;
+            }
+
             try {
                 PendingCommandOutcomeObservation? observation = await _statusQuery
-                    .QueryAsync(entry, cancellationToken)
+                    .QueryAsync(current, cancellationToken)
                     .ConfigureAwait(false);
 
                 if (observation is null) {
@@ -72,18 +80,37 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
                 }
 
                 PendingCommandOutcomeResolutionResult result = _resolver.Resolve(observation);
-                if (result.Status is PendingCommandOutcomeResolutionStatus.Resolved
-                    or PendingCommandOutcomeResolutionStatus.DuplicateIgnored) {
-                    processed++;
+                switch (result.Status) {
+                    case PendingCommandOutcomeResolutionStatus.Resolved:
+                        // P7 — count only successful terminal applications toward the success
+                        // tally. Duplicate observations are healthy idempotency, not throughput.
+                        processed++;
+                        break;
+                    case PendingCommandOutcomeResolutionStatus.DuplicateIgnored:
+                        _logger.LogDebug(
+                            "Pending command polling observed duplicate terminal. MessageId={MessageId}",
+                            entry.MessageId);
+                        break;
+                    default:
+                        _logger.LogWarning(
+                            "Pending command polling produced non-resolved status. Status={Status} MessageId={MessageId}",
+                            result.Status,
+                            entry.MessageId);
+                        break;
                 }
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
-            catch (Exception ex) when (ex is not OutOfMemoryException) {
+            // P9 — preserve stack trace by passing the exception to the logger; narrower filter
+            // keeps OOM exceptions and explicit cancellation propagating while letting all other
+            // failures surface with full diagnostics.
+            catch (Exception ex) {
                 _logger.LogWarning(
-                    "Pending command polling failed. FailureCategory={FailureCategory}",
-                    ex.GetType().Name);
+                    ex,
+                    "Pending command polling failed. FailureCategory={FailureCategory} MessageId={MessageId}",
+                    ex.GetType().Name,
+                    entry.MessageId);
             }
         }
 

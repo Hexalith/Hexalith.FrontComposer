@@ -502,4 +502,71 @@
     <value>This section is being updated</value>
     <comment>Story 5-4 AC7 — lane-scoped schema mismatch fallback copy.</comment>
   </data>
+
+  <!-- Story 5-5 DN5 — pending command optimistic-state and reconnect-summary copy. Whole strings
+       (no concatenation) so French / future locales translate freely. -->
+  <data name="OptimisticBadgeConfirmingLabel" xml:space="preserve">
+    <value>Confirming</value>
+    <comment>Story 5-5 — optimistic badge state while a command is awaiting terminal outcome.</comment>
+  </data>
+  <data name="OptimisticBadgeConfirmedLabel" xml:space="preserve">
+    <value>Confirmed</value>
+    <comment>Story 5-5 — optimistic badge state after the server confirms.</comment>
+  </data>
+  <data name="OptimisticBadgeRejectedLabel" xml:space="preserve">
+    <value>Rejected</value>
+    <comment>Story 5-5 — optimistic badge state after the server rejects.</comment>
+  </data>
+  <data name="OptimisticBadgeAlreadyAppliedLabel" xml:space="preserve">
+    <value>Already applied</value>
+    <comment>Story 5-5 — optimistic badge state for an idempotent-confirmed terminal.</comment>
+  </data>
+  <data name="OptimisticBadgeNeedsReviewLabel" xml:space="preserve">
+    <value>Needs review</value>
+    <comment>Story 5-5 — optimistic badge state for an unresolved or evicted command.</comment>
+  </data>
+  <data name="OptimisticBadgeAriaLabelTemplate" xml:space="preserve">
+    <value>{0}: {1} {2}</value>
+    <comment>Story 5-5 — accessible label combining {0}=column header, {1}=state, {2}=value text.</comment>
+  </data>
+  <data name="NewItemIndicatorText" xml:space="preserve">
+    <value>New item. It may not match current filters yet.</value>
+    <comment>Story 5-5 AC5 — visible copy for the lane-scoped new-item indicator.</comment>
+  </data>
+  <data name="NewItemIndicatorAriaLabel" xml:space="preserve">
+    <value>New item added outside current filters</value>
+    <comment>Story 5-5 P12 — distinct accessible label for the role=status indicator.</comment>
+  </data>
+  <data name="PendingCommandSummaryCountsTemplate" xml:space="preserve">
+    <value>{0} confirmed, {1} rejected, {2} unresolved</value>
+    <comment>Story 5-5 AC8 — bounded count summary header. Numeric placeholders only.</comment>
+  </data>
+  <data name="PendingCommandSummaryConfirmedTemplate" xml:space="preserve">
+    <value>{0}: confirmed.</value>
+    <comment>Story 5-5 — confirmed entry; {0} = command type display name.</comment>
+  </data>
+  <data name="PendingCommandSummaryAlreadyAppliedTemplate" xml:space="preserve">
+    <value>{0}: already applied.</value>
+    <comment>Story 5-5 — idempotent-confirmed entry; {0} = command type display name.</comment>
+  </data>
+  <data name="PendingCommandSummaryNeedsReviewTemplate" xml:space="preserve">
+    <value>{0}: unresolved. Review the current data before retrying.</value>
+    <comment>Story 5-5 — needs-review entry; {0} = command type display name.</comment>
+  </data>
+  <data name="PendingCommandSummaryRejectedTitleTemplate" xml:space="preserve">
+    <value>{0} failed</value>
+    <comment>Story 5-5 — fallback Danger MessageBar title when no server-supplied title is available; {0} = command type display name.</comment>
+  </data>
+  <data name="PendingCommandSummaryRejectedBodyTemplate" xml:space="preserve">
+    <value>{0}: {1}. {2}</value>
+    <comment>Story 5-5 DN6 — three-clause rejection format: {0}=title, {1}=detail, {2}=data impact.</comment>
+  </data>
+  <data name="PendingCommandSummaryDataImpactDefault" xml:space="preserve">
+    <value>No data changed.</value>
+    <comment>Story 5-5 DN6 — default localizable third clause when the server omits a data-impact statement.</comment>
+  </data>
+  <data name="PendingCommandSummaryOverflowTemplate" xml:space="preserve">
+    <value>{0} additional resolved commands</value>
+    <comment>Story 5-5 — overflow line when bounded MaxDetails truncates the visible list.</comment>
+  </data>
 </root>

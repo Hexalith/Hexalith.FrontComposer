@@ -69,4 +69,19 @@ public interface ILifecycleStateService : IDisposable {
     /// <param name="newState">The target lifecycle state.</param>
     /// <param name="messageId">The ULID MessageId (required from <see cref="CommandLifecycleState.Acknowledged"/> onward).</param>
     void Transition(string correlationId, CommandLifecycleState newState, string? messageId = null);
+
+    /// <summary>
+    /// Story 5-5 P8 — applies a terminal transition with an explicit idempotency-resolved flag so
+    /// callers (e.g. the pending-command resolver handling an
+    /// <c>PendingCommandStatus.IdempotentConfirmed</c> outcome) can suppress the duplicate-celebration
+    /// UI even when this is the first observed terminal for the correlation. <see langword="true"/>
+    /// overrides the auto-computed flag and instructs <see cref="CommandLifecycleTransition.IdempotencyResolved"/>
+    /// consumers to render the "already confirmed" path. Implementations that do not need this flag
+    /// can simply forward to the three-arg overload.
+    /// </summary>
+    void Transition(
+        string correlationId,
+        CommandLifecycleState newState,
+        string? messageId,
+        bool idempotencyResolved);
 }

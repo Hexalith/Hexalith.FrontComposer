@@ -6,16 +6,54 @@ namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 /// Registration metadata for an accepted command. This intentionally excludes raw command payloads,
 /// form values, tenant IDs, user IDs, and validation messages.
 /// </summary>
-public sealed record PendingCommandRegistration(
-    string CorrelationId,
-    string MessageId,
-    string CommandTypeName,
-    string? ProjectionTypeName = null,
-    string? LaneKey = null,
-    string? EntityKey = null,
-    string? ExpectedStatusSlot = null,
-    string? PriorStatusSlot = null,
-    DateTimeOffset? SubmittedAt = null);
+/// <remarks>
+/// P11 — primary-constructor validation: <c>CorrelationId</c>, <c>MessageId</c>, and
+/// <c>CommandTypeName</c> are required non-null/non-whitespace. Failure surfaces at registration
+/// rather than deeper in the resolver.
+/// </remarks>
+public sealed record PendingCommandRegistration {
+    public PendingCommandRegistration(
+        string CorrelationId,
+        string MessageId,
+        string CommandTypeName,
+        string? ProjectionTypeName = null,
+        string? LaneKey = null,
+        string? EntityKey = null,
+        string? ExpectedStatusSlot = null,
+        string? PriorStatusSlot = null,
+        DateTimeOffset? SubmittedAt = null) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(CorrelationId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(MessageId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(CommandTypeName);
+        this.CorrelationId = CorrelationId;
+        this.MessageId = MessageId;
+        this.CommandTypeName = CommandTypeName;
+        this.ProjectionTypeName = ProjectionTypeName;
+        this.LaneKey = LaneKey;
+        this.EntityKey = EntityKey;
+        this.ExpectedStatusSlot = ExpectedStatusSlot;
+        this.PriorStatusSlot = PriorStatusSlot;
+        this.SubmittedAt = SubmittedAt;
+    }
+
+    public string CorrelationId { get; init; }
+
+    public string MessageId { get; init; }
+
+    public string CommandTypeName { get; init; }
+
+    public string? ProjectionTypeName { get; init; }
+
+    public string? LaneKey { get; init; }
+
+    public string? EntityKey { get; init; }
+
+    public string? ExpectedStatusSlot { get; init; }
+
+    public string? PriorStatusSlot { get; init; }
+
+    public DateTimeOffset? SubmittedAt { get; init; }
+}
 
 /// <summary>Runtime state for a pending command entry.</summary>
 public enum PendingCommandStatus {
@@ -38,6 +76,8 @@ public enum PendingCommandTerminalOutcome {
 public enum PendingCommandRegistrationStatus {
     Registered,
     Merged,
+    /// <summary>P17 — second registration observed after the entry already reached a terminal outcome.</summary>
+    MergedTerminal,
     InvalidMessageId,
     ConflictingMetadata,
     Disposed,
@@ -67,6 +107,7 @@ public sealed record PendingCommandEntry(
     PendingCommandStatus Status,
     string? RejectionTitle = null,
     string? RejectionDetail = null,
+    string? RejectionDataImpact = null,
     DateTimeOffset? TerminalAt = null,
     int DuplicateTerminalObservations = 0) {
     internal bool HasSameFrameworkMetadata(PendingCommandRegistration registration) =>
@@ -90,6 +131,10 @@ public sealed record PendingCommandRegistrationResult(
     public static PendingCommandRegistrationResult Merged(PendingCommandEntry entry) =>
         new(PendingCommandRegistrationStatus.Merged, entry);
 
+    /// <summary>P17 — the existing entry is already terminal; callers should skip duplicate acknowledged dispatch.</summary>
+    public static PendingCommandRegistrationResult MergedTerminal(PendingCommandEntry entry) =>
+        new(PendingCommandRegistrationStatus.MergedTerminal, entry);
+
     public static PendingCommandRegistrationResult InvalidMessageId() =>
         new(PendingCommandRegistrationStatus.InvalidMessageId);
 
@@ -105,15 +150,16 @@ public sealed record PendingCommandTerminalObservation(
     string MessageId,
     PendingCommandTerminalOutcome Outcome,
     string? RejectionTitle = null,
-    string? RejectionDetail = null) {
+    string? RejectionDetail = null,
+    string? RejectionDataImpact = null) {
     public static PendingCommandTerminalObservation Confirmed(string messageId) =>
         new(messageId, PendingCommandTerminalOutcome.Confirmed);
 
     public static PendingCommandTerminalObservation IdempotentConfirmed(string messageId) =>
         new(messageId, PendingCommandTerminalOutcome.IdempotentConfirmed);
 
-    public static PendingCommandTerminalObservation Rejected(string messageId, string title, string detail) =>
-        new(messageId, PendingCommandTerminalOutcome.Rejected, title, detail);
+    public static PendingCommandTerminalObservation Rejected(string messageId, string title, string detail, string? dataImpact = null) =>
+        new(messageId, PendingCommandTerminalOutcome.Rejected, title, detail, dataImpact);
 
     public static PendingCommandTerminalObservation NeedsReview(string messageId) =>
         new(messageId, PendingCommandTerminalOutcome.NeedsReview);

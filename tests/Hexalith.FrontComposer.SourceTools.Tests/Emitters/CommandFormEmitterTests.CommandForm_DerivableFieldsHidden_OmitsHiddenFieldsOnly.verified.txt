@@ -238,9 +238,17 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 },
                 cancellationToken: cts.Token);
 
+            // Story 5-5 P6 — generator-known framework metadata is limited to CorrelationId,
+            // MessageId, and CommandTypeName at form-emit time. ProjectionTypeName / LaneKey /
+            // EntityKey / ExpectedStatusSlot / PriorStatusSlot would require runtime context
+            // that the source generator does not have; adopters that need framework-controlled
+            // entity-key fallback matching must populate them via a custom dispatch hook. The
+            // MessageId path remains the primary resolution route because EventStore echoes the
+            // ULID in projection rows.
+            global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationResult? pendingRegistration = null;
             if (string.Equals(result.Status, "Accepted", StringComparison.OrdinalIgnoreCase))
             {
-                var pendingRegistration = PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(
+                pendingRegistration = PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(
                     CorrelationId: correlationId,
                     MessageId: result.MessageId,
                     CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand)));
@@ -251,8 +259,23 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 }
             }
 
-            Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
-            Logger?.LogInformation("Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}", correlationId, result.MessageId);
+            // Story 5-5 P17 / P18 — skip duplicate AcknowledgedAction dispatch when the resolver
+            // already moved this MessageId to a terminal state on a parallel path, or when the
+            // pending registry rejected the MessageId as malformed. The lifecycle service would
+            // otherwise transition Acknowledged on top of an already-terminal entry, breaking the
+            // exactly-once UI invariant.
+            bool skipAcknowledged = pendingRegistration is { Status:
+                global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
+                or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal };
+            if (!skipAcknowledged)
+            {
+                Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
+                Logger?.LogInformation("Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}", correlationId, result.MessageId);
+            }
+            else
+            {
+                Logger?.LogInformation("Command acknowledged dispatch skipped (pending status: {Status}). CorrelationId={CorrelationId}", pendingRegistration?.Status, correlationId);
+            }
         }
         catch (CommandValidationException ex)
         {
