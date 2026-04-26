@@ -13,3 +13,4 @@
 2026-04-25T23:07:55.4817199+02:00	create-story	5-3-signalr-connection-and-disconnection-handling	ok	created ready-for-dev story to restore ready buffer
 2026-04-26T00:06:29.6508840+02:00	create-story	5-4-reconnection-reconciliation-and-batched-updates	ok	created ready-for-dev story to restore ready buffer
 2026-04-26T01:04:41.5992474+02:00	create-story	5-5-command-idempotency-and-optimistic-updates	ok	created ready-for-dev story to restore ready buffer
+2026-04-26T02:08:38.2097338+02:00	create-story	5-6-build-time-infrastructure-enforcement-and-observability	ok	created story artifact and marked ready-for-dev
