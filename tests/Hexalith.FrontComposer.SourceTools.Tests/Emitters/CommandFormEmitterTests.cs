@@ -113,6 +113,28 @@ public class CommandFormEmitterTests {
     }
 
     [Fact]
+    public void Emit_RegistersPendingCommandOnlyAfterAcceptedDispatchResult() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("[Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;");
+        source.ShouldContain("if (string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase))");
+        source.ShouldContain("PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
+        source.ShouldContain("CorrelationId: correlationId,");
+        source.ShouldContain("MessageId: result.MessageId,");
+        source.ShouldContain("CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand)");
+
+        int dispatchResultIndex = source.IndexOf("var result = await CommandService.DispatchAsync(", StringComparison.Ordinal);
+        int registerIndex = source.IndexOf("PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(", StringComparison.Ordinal);
+        int acknowledgedIndex = source.IndexOf("IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId)", StringComparison.Ordinal);
+
+        registerIndex.ShouldBeGreaterThan(dispatchResultIndex);
+        acknowledgedIndex.ShouldBeGreaterThan(registerIndex);
+    }
+
+    [Fact]
     public void Emit_SubmitEnsuresLastUsedSubscriberBeforeSubmittedDispatch() {
         CommandFormModel form = BuildForm([
             new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),

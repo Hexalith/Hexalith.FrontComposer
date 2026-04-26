@@ -1,6 +1,6 @@
 # Story 5.5: Command Idempotency & Optimistic Updates
 
-Status: ready-for-dev
+Status: in-progress
 
 > **Epic 5** -- Reliable Real-Time Experience. **FR28-FR29 / FR31** pending command outcome reconciliation, idempotent terminal handling, optimistic status badges, new-item visibility, and polling parity after Stories 5-1 through 5-4. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, **L10**, **L12**, and **L14**.
 

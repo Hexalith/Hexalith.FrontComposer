@@ -92,6 +92,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("    [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ICommandService CommandService { get; set; } = default!;");
+        _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IStringLocalizer<" + commandFqn + "> Localizer { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private ILogger<" + componentName + ">? Logger { get; set; }");
         // Story 5-2 T5 — server-driven warning publication + auth-redirect seam (validation is applied via a stateless static helper).
@@ -256,6 +257,8 @@ public static class CommandFormEmitter {
     }
 
     private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor) {
+        string commandFqn = form.CommandFullyQualifiedName;
+
         _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        // Story 2-2 code-review P35 — guard against invocation via RegisterExternalSubmit after form disposal.");
@@ -333,6 +336,19 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("                    }");
         _ = sb.AppendLine("                },");
         _ = sb.AppendLine("                cancellationToken: cts.Token);");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("            if (string.Equals(result.Status, \"Accepted\", StringComparison.OrdinalIgnoreCase))");
+        _ = sb.AppendLine("            {");
+        _ = sb.AppendLine("                var pendingRegistration = PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(");
+        _ = sb.AppendLine("                    CorrelationId: correlationId,");
+        _ = sb.AppendLine("                    MessageId: result.MessageId,");
+        _ = sb.AppendLine("                    CommandTypeName: typeof(" + commandFqn + ").FullName ?? nameof(" + commandFqn + ")));");
+        _ = sb.AppendLine("                if (pendingRegistration.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId");
+        _ = sb.AppendLine("                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata)");
+        _ = sb.AppendLine("                {");
+        _ = sb.AppendLine("                    Logger?.LogWarning(\"Pending command registration skipped. CorrelationId={CorrelationId} Status={Status}\", correlationId, pendingRegistration.Status);");
+        _ = sb.AppendLine("                }");
+        _ = sb.AppendLine("            }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".AcknowledgedAction(correlationId, result.MessageId));");
         _ = sb.AppendLine("            Logger?.LogInformation(\"Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}\", correlationId, result.MessageId);");

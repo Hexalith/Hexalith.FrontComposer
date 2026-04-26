@@ -231,4 +231,11 @@ public sealed class FcShellOptions {
     /// </summary>
     [Range(1, 100, ErrorMessage = "MaxProjectionFallbackPollingLanes must be between 1 and 100.")]
     public int MaxProjectionFallbackPollingLanes { get; set; } = 8;
+
+    /// <summary>
+    /// Maximum number of unresolved pending command entries retained in the circuit-local shell state.
+    /// Story 5-5 D12 / L14. Eviction marks the oldest command as unresolved instead of confirming it.
+    /// </summary>
+    [Range(1, 1_000, ErrorMessage = "MaxPendingCommandEntries must be between 1 and 1000.")]
+    public int MaxPendingCommandEntries { get; set; } = 100;
 }

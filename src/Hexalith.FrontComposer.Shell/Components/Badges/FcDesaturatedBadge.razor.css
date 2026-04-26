@@ -1,0 +1,21 @@
+.fc-desaturated-badge {
+    display: inline-flex;
+    align-items: center;
+}
+
+.fc-desaturated-badge--confirming {
+    filter: saturate(0.5);
+    transition: filter 200ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-desaturated-badge--confirming {
+        transition-duration: 0ms;
+    }
+}
+
+@media (forced-colors: active) {
+    .fc-desaturated-badge--confirming {
+        filter: none;
+    }
+}

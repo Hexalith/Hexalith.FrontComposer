@@ -30,6 +30,7 @@ using Hexalith.FrontComposer.Shell.State.CommandPalette;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 using Hexalith.FrontComposer.Shell.State.Navigation;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 using Hexalith.FrontComposer.Shell.State.Theme;
@@ -308,6 +309,9 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
         services.TryAddScoped<IReconnectionReconciliationState, ReconnectionReconciliationStateService>();
         services.TryAddScoped<IReconnectionReconciliationCoordinator, ReconnectionReconciliationCoordinator>();
+        services.TryAddScoped<IPendingCommandStateService, PendingCommandStateService>();
+        services.TryAddScoped<IPendingCommandOutcomeResolver, PendingCommandOutcomeResolver>();
+        services.TryAddScoped<INewItemIndicatorStateService, NewItemIndicatorStateService>();
 
         // Story 5-2 D8 — fail-fast default IAuthRedirector. Scoped because adopter
         // implementations typically capture per-circuit NavigationManager. The default throws

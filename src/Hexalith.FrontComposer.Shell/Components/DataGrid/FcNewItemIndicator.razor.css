@@ -1,0 +1,13 @@
+.fc-new-item-indicator {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    border-inline-start: 3px solid var(--accent-fill-rest);
+    background: color-mix(in srgb, var(--accent-fill-rest) 10%, transparent);
+    color: var(--neutral-foreground-rest);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-new-item-indicator {
+        transition-duration: 0ms;
+    }
+}
