@@ -35,15 +35,15 @@ so that I am never confused by duplicate outcomes, stale badges, or missing stat
 
 | AC | Given | When | Then |
 | --- | --- | --- | --- |
-| AC1 | A command was accepted with a framework-generated ULID `MessageId` before or during EventStore projection-hub degradation | The command terminal outcome is observed through SignalR nudge refresh, reconnect reconciliation, fallback polling, or an EventStore idempotency/query response | The matching lifecycle resolves to exactly one terminal state (`Confirmed`, `Rejected`, or idempotent confirmed), no duplicate success/rejection notification is shown, the pending entry is removed or marked terminal once, and no command is replayed automatically. |
-| AC2 | A duplicate terminal outcome arrives for the same `MessageId` or the same command is re-observed after reconnection | The pending-command resolver processes it | The outcome is treated as idempotent, user-visible messaging says the work was already applied only once, `CommandLifecycleTransition.IdempotencyResolved` is preserved when applicable, and no second row insert, badge animation, toast, or lifecycle terminal callback is emitted. |
-| AC3 | A command predicts a status change for a visible row or badge lane | The command is acknowledged and enters `Syncing` or degraded pending state | `FcDesaturatedBadge` immediately renders the target state with `filter: saturate(0.5)`, keeps the text label visible, adds an aria label suffix like `(confirming)`, and uses the prior confirmed state as the rollback value. |
-| AC4 | An optimistic status update confirms, rejects, or resolves idempotently | The terminal outcome is applied | Confirmed restores full saturation with a 200 ms CSS transition; Rejected reverts to the prior confirmed status without losing form input; IdempotentConfirmed skips the revert animation and saturates directly; `prefers-reduced-motion: reduce` makes every transition instantaneous. |
-| AC5 | A create command confirms a new entity that is visible in the current DataGrid lane but does not match the active filter/search/sort criteria | The projection page is reconciled or polled after the command outcome | `FcNewItemIndicator` renders the new row at the top of the grid lane with text `New -- may not match current filters`, uses `aria-live="polite"` and `aria-describedby`, highlights subtly with Fluent info styling, and auto-dismisses after 10 seconds or immediately on the next filter/search/sort change. |
+| AC1 | A command was accepted with a framework-generated ULID `MessageId` before or during EventStore projection-hub degradation | The command terminal outcome is observed through SignalR nudge refresh, reconnect reconciliation, fallback polling, or an EventStore idempotency/query response | The UI resolves the pending command to exactly one terminal user-visible outcome per `MessageId` (`Confirmed`, `Rejected`, or `IdempotentConfirmed`), the lifecycle receives at most one terminal transition, the pending entry is removed or marked terminal once, and no command is replayed automatically. |
+| AC2 | A duplicate, stale, out-of-order, or repeated terminal outcome arrives for the same `MessageId` after live nudge, reconnect, or polling | The pending-command resolver processes it after a terminal outcome already won | The first terminal outcome wins; later observations are idempotent no-ops except for bounded already-applied summary metadata, `CommandLifecycleTransition.IdempotencyResolved` is preserved when applicable, and no second row insert, badge animation, toast, lifecycle terminal callback, or new-item indicator is emitted. |
+| AC3 | A command predicts a status change for a visible row or badge lane | The command is acknowledged and enters `Syncing` or degraded pending state | `FcDesaturatedBadge` immediately renders a localizable visible state label such as `Confirming`, keeps the target status text visible, adds an equivalent localizable accessible label, uses `filter: saturate(0.5)`, remains understandable in grayscale and forced-colors mode, and stores the prior confirmed state as the rollback value. |
+| AC4 | An optimistic status update confirms, rejects, or resolves idempotently | The terminal outcome is applied | Confirmed restores full saturation with a 200 ms CSS transition; Rejected reverts to the prior confirmed status, shows durable plain-text rejection context, and preserves form input; IdempotentConfirmed skips the revert animation and saturates directly; `prefers-reduced-motion: reduce` makes badge and indicator transitions instantaneous without relying on color flashes. |
+| AC5 | A create command confirms a new entity that is visible in the current DataGrid lane but does not match the active filter/search/sort criteria | The projection page is reconciled or polled after the command outcome | `FcNewItemIndicator` renders the new row at the top of the grid lane with a full localizable string such as `New item. It may not match current filters yet.`, uses `aria-live="polite"` and `aria-describedby`, highlights subtly with Fluent info styling, remains meaningful without motion or color alone, and auto-dismisses after 10 seconds or immediately on the next filter/search/sort change. |
 | AC6 | A domain-specific rejection is discovered during degraded network recovery | The rejection reaches the client after reconnect or fallback polling | The message format is `[What failed]: [Why]. [What happened to the data].`, renders as plain text in a Danger `FluentMessageBar`, does not auto-dismiss, preserves form model/EditContext values, and does not clear optimistic context until the rollback is visible. |
-| AC7 | SignalR remains unavailable after the disconnected fallback threshold | The polling fallback activates | ETag-gated polling queries at configured bounded intervals maintain projection and command-outcome correctness for visible lanes and pending commands; polling preserves the same visible behavior as SignalR-confirmed outcomes; polling stops on reconnect, unsubscribe, disposal, tenant/user loss, or option disablement. |
-| AC8 | A user returns from a disconnection with commands in flight | Reconnect reconciliation and pending-command resolution complete | A clear non-blocking summary lists each pending command as confirmed, rejected, or already applied; no manual page refresh is needed; no raw command payload, tenant/user value, token, or unbounded server problem detail is shown or logged. |
-| AC9 | Tests run | Contracts, Shell services, reducers/effects, generated command forms, badges, DataGrid indicators, and polling paths execute | Coverage proves exactly-once terminal resolution, duplicate/idempotent handling, optimistic badge confirm/reject/idempotent paths, reduced-motion CSS, new-item indicator lifetime/filter dismissal, degraded rejection copy and form preservation, bounded polling parity, redacted diagnostics, and no raw draft persistence. |
+| AC7 | SignalR remains unavailable after the disconnected fallback threshold | The polling fallback activates | ETag-gated polling queries at configured bounded intervals feed the same pending-command outcome reducer used by SignalR nudge refresh and reconnect reconciliation; polling preserves terminal outcome parity for visible lanes and pending commands, keeps no-churn behavior on 304/429/503, and stops on reconnect, unsubscribe, disposal, tenant/user loss, or option disablement. |
+| AC8 | A user returns from a disconnection with commands in flight | Reconnect reconciliation and pending-command resolution complete | A clear non-blocking summary covers only commands accepted during the degraded session, presents counts first and accessible details second, lists each resolved command as confirmed, rejected, or already applied, includes a clear next-action fallback for rejections, requires no manual page refresh, and shows/logs no raw command payload, form value, tenant/user value, token, or unbounded server problem detail. |
+| AC9 | Tests run | Contracts, Shell services, reducers/effects, generated command forms, badges, DataGrid indicators, and polling paths execute | Coverage proves exactly-once UI terminal resolution per `MessageId`, duplicate/out-of-order/idempotent handling, live/reconnect/polling reducer parity, optimistic badge confirm/reject/idempotent paths, reduced-motion/forced-colors behavior, new-item indicator lifetime/filter dismissal, degraded rejection copy and form preservation, bounded polling parity, redacted diagnostics with sensitive-looking fixtures, deterministic fake-clock scheduling, and no raw draft persistence. |
 
 ---
 
@@ -55,6 +55,8 @@ so that I am never confused by duplicate outcomes, stale badges, or missing stat
   - [ ] Store only framework metadata required for resolution: correlation ID, message ID, command type name, expected projection type/lane, optional aggregate/entity key, expected status slot, prior status slot, submit time, and bounded last outcome. Do not store raw command payloads or field values.
   - [ ] Add an option-backed cap such as `MaxPendingCommandEntries` and FIFO/LRU eviction diagnostics per L14. Eviction must mark the command unresolved/degraded, not silently confirmed.
   - [ ] Resolve terminal outcomes exactly once using atomic state transitions. Duplicate outcomes for a terminal entry must be no-ops except for optional idempotent summary metadata.
+  - [ ] Define duplicate registration behavior explicitly: same `MessageId` merges metadata only when framework-controlled fields agree; conflicting metadata rejects the second registration and logs a redacted warning.
+  - [ ] Unknown terminal outcomes for untracked `MessageId` values must be ignored or summarized as external activity without mutating pending-command state.
   - [ ] Dispose/clear per-circuit state on service disposal and tenant/user scope loss.
 
 - [ ] T2. Register pending commands from generated command forms without remounting forms (AC1, AC6, AC9)
@@ -68,6 +70,8 @@ so that I am never confused by duplicate outcomes, stale badges, or missing stat
   - [ ] Reuse Story 5-3 `ProjectionFallbackRefreshScheduler` and Story 5-4 reconciliation results as input signals. Do not add another visible-lane registry.
   - [ ] Define a small resolver interface that accepts projection/query outcome metadata and matches it to pending commands by `MessageId`, correlation ID, or a framework-controlled entity/aggregate key when EventStore does not echo `MessageId` in projection rows.
   - [ ] If the EventStore API exposes an idempotency/status query, call it through the existing `IQueryService`/`EventStoreQueryClient` and response classifier. If not, resolve only from projection state and record any unresolved ambiguity as a deferred follow-up rather than inventing a new provider contract.
+  - [ ] Route live nudge refresh, reconnect reconciliation, idempotency/status query results, and fallback polling through one reducer/service method so ordering, duplicate, and redaction rules cannot drift by delivery path.
+  - [ ] Apply a first-terminal-wins rule for conflicting outcomes. If `Rejected` and `Confirmed` race for the same unresolved `MessageId`, the first reducer-accepted terminal state is authoritative and the later observation is recorded only as redacted diagnostic metadata.
   - [ ] Confirmed outcomes transition `ILifecycleStateService` to `Confirmed`; rejected outcomes transition to `Rejected` with Story 5-2 rejection copy; idempotent confirmed outcomes preserve idempotency metadata so `FcLifecycleWrapper` can avoid a second celebration.
   - [ ] Preserve current visible data on 304, 429, 503, auth failures, malformed responses, and schema mismatch according to Stories 5-2 through 5-4.
   - [ ] Log bounded failure categories only. No raw tenant IDs, user IDs, group names, command/query payloads, tokens, or ProblemDetails bodies.
@@ -76,6 +80,7 @@ so that I am never confused by duplicate outcomes, stale badges, or missing stat
   - [ ] Reuse `FcStatusBadge` and `SlotAppearanceTable` rather than adding a second badge color system.
   - [ ] Add a thin wrapper component, for example `Components/Badges/FcDesaturatedBadge.razor`, that accepts prior slot/label, optimistic slot/label, confirmation state, column header, and motion mode.
   - [ ] Always render text. Color/desaturation must never be the only status signal.
+  - [ ] Model the visible optimistic states as localizable whole strings (`Confirming`, `Confirmed`, `Rejected`, `Already applied`, `Needs review` or equivalent). Do not concatenate localized visible text or aria suffix fragments.
   - [ ] Add `filter: saturate(0.5)` while confirming and a 200 ms saturation transition on confirmed. Add `@media (prefers-reduced-motion: reduce)` to disable transition timing.
   - [ ] Ensure rejected rollback restores the previous confirmed slot/label and does not leave stale `(confirming)` aria copy.
   - [ ] Avoid row-wide styling here. Row/new-item highlighting belongs to T5.
@@ -85,12 +90,14 @@ so that I am never confused by duplicate outcomes, stale badges, or missing stat
   - [ ] Add a bounded transient state slice keyed by view/lane and entity key/message ID. Use `TimeProvider` for the 10-second auto-dismiss; do not use wall-clock sleeps.
   - [ ] Render the indicator row at the top of the current visible lane only when the confirmed entity is relevant to the lane but outside active filter/search/sort criteria.
   - [ ] Dismiss on timer expiry, next filter/search/sort change, lane disposal, tenant/user loss, or explicit row interaction if the implementation adds one.
-  - [ ] Use `aria-live="polite"` on the row and `aria-describedby` for the indicator text. The visible copy must be exactly `New -- may not match current filters`.
+  - [ ] Use `aria-live="polite"` on the row and `aria-describedby` for the indicator text. The visible copy must be a full localizable string, not assembled punctuation fragments; suggested English text: `New item. It may not match current filters yet.`
   - [ ] Keep highlight subtle and non-decorative. Use Fluent info background at low opacity and respect reduced motion for fade-out.
 
 - [ ] T6. Render degraded rejection and reconnect outcome summary (AC6, AC8, AC9)
   - [ ] Reuse Story 5-2 `CommandRejectedException` and warning/feedback publisher seams. Do not branch on raw HTTP status in UI components.
   - [ ] Add a small summary component under `Components/EventStore/` or `Components/Lifecycle/` that reads the bounded pending-command terminal outcomes for the current circuit.
+  - [ ] Limit the reconnect summary to commands accepted during the degraded session. It is not a global event history, audit log, or observability panel.
+  - [ ] Render a concise count summary first in a polite live region, then accessible details only when expanded or otherwise navigated to.
   - [ ] Show confirmed, rejected, and already-applied rows with concise plain text. Do not show raw command JSON, payload values, stack traces, or raw ProblemDetails.
   - [ ] Use Danger `FluentMessageBar` for degraded rejection with no auto-dismiss. Confirmed/already-applied summary should be Info/Success and non-blocking.
   - [ ] Preserve form values and validation state after a rejection discovered during reconnect. The summary may reference the command display name, but must not clear or remount the form.
@@ -99,14 +106,15 @@ so that I am never confused by duplicate outcomes, stale badges, or missing stat
   - [ ] Extend the existing Story 5-3 fallback scheduler instead of creating a second polling loop.
   - [ ] Add bounded pending-command polling only while SignalR is unavailable and only for accepted commands whose terminal outcome is unresolved.
   - [ ] Use ETag-gated query paths and safe framework-controlled discriminators. If a pending command cannot be safely keyed, mark it degraded/unresolved rather than constructing a key from raw user input.
+  - [ ] Reuse the same resolver contract tests for live nudge, reconnect reconciliation, and polling. Polling parity means identical terminal user outcomes, not identical transport behavior.
   - [ ] Keep interval/lane/pending caps option-backed. `0` should disable polling if an option is added.
   - [ ] Stop promptly on reconnect, terminal resolution, command eviction, route disposal, tenant/user loss, or cancellation.
 
 - [ ] T8. Tests and verification (AC1-AC9)
-  - [ ] Pending-command tests: accepted registration, no registration before acceptance, cap/eviction behavior, disposal cleanup, tenant/user fail-closed, exactly-once terminal transition, duplicate terminal no-op, and idempotent metadata preservation.
+  - [ ] Pending-command tests: accepted registration, no registration before acceptance, duplicate registration merge/reject behavior, unknown `MessageId` ignore/external summary behavior, cap/eviction behavior, disposal cleanup, tenant/user fail-closed, exactly-once terminal transition, duplicate terminal no-op, and idempotent metadata preservation.
   - [ ] Generated form tests: accepted command registers metadata, dispatch failure does not register, field values and server-validation state survive reconnect/resolution/rejection, and no raw draft is persisted.
-  - [ ] Resolver tests: nudge refresh, reconnect reconciliation, fallback polling, idempotency/status query if available, projection-only matching, unresolved ambiguity, cancellation, and stale/superseded reconnect epoch cleanup.
-  - [ ] Badge tests: desaturated confirming state, label remains visible, aria `(confirming)` suffix, confirmed 200 ms transition, rejected rollback, idempotent-confirmed direct saturation, and reduced-motion CSS.
+  - [ ] Resolver tests: nudge refresh, reconnect reconciliation, fallback polling, idempotency/status query if available, projection-only matching, unresolved ambiguity, duplicate/out-of-order terminals, reconnect-plus-polling race, rejection after optimistic success, success after rejection, cancellation, and stale/superseded reconnect epoch cleanup.
+  - [ ] Badge tests: desaturated confirming state, localizable state label remains visible, accessible label parity, forced-colors/grayscale readability, confirmed 200 ms transition, rejected rollback, idempotent-confirmed direct saturation, and reduced-motion CSS.
   - [ ] New-item tests: indicator placement, exact copy, 10-second auto-dismiss via fake time, filter/search/sort dismissal, `aria-live`/`aria-describedby`, and no duplicate row after duplicate terminal outcome.
   - [ ] Summary/rejection tests: confirmed/rejected/already-applied summary rows, Danger rejection copy format, no auto-dismiss for rejection, no raw payload/problem details, and no form remount.
   - [ ] Polling tests: interval option, pending cap, ETag validator usage, 304 no-churn, 429/503 preserve visible state, cleanup on reconnect/dispose, and no duplicate polling loop.
@@ -142,6 +150,25 @@ so that I am never confused by duplicate outcomes, stale badges, or missing stat
 | Optimistic status badge | Story 4-2 badge system | 5-5 UI | Wrap `FcStatusBadge`; text remains mandatory. |
 | New-item visibility | Story 4 DataGrid lanes | 5-5 indicator | Add transient row indicator without changing filter semantics. |
 | Build-time observability | Story 5-6 | 5-5 | 5-5 logs redacted local diagnostics only; distributed traces remain 5-6. |
+
+### Contract Assumptions and Outcome State Matrix
+
+Party-mode review on 2026-04-26 tightened the implementation contract before development:
+
+- `MessageId` is the single idempotency key for client-visible pending-command resolution. Correlation ID is supporting metadata, not a second dedupe axis.
+- Terminal outcomes are immutable once accepted by the Shell reducer/service: first terminal outcome wins; duplicate, stale, and out-of-order observations become no-ops except for bounded redacted summary metadata.
+- Live SignalR nudge refresh, reconnect reconciliation, fallback polling, and optional idempotency/status query results must enter the same pending-command outcome reducer/service method.
+- Reconnect reconciliation and fallback polling must never replay commands. They only observe projection/status outcomes and reconcile visible state.
+- A pending command with no terminal result remains pending until timeout/degraded policy, eviction, disposal, tenant/user loss, or explicit unresolved handling applies.
+- Unknown `MessageId` outcomes are ignored or summarized as external activity; they must not mutate pending-command state.
+
+| State | Trigger | Visible badge/status | Summary behavior | Rollback / data behavior |
+| --- | --- | --- | --- | --- |
+| `Confirming` | Accepted command enters `Syncing` or degraded pending state | Localizable visible label plus target status text; desaturated; not color-only | No terminal summary yet | Prior confirmed value retained for rollback |
+| `Confirmed` | First accepted terminal success for `MessageId` | Full saturation; target status becomes confirmed | Counted/listed once as confirmed | No replay; pending entry terminal/removed |
+| `IdempotentConfirmed` / `AlreadyApplied` | Duplicate success or server says work already applied | Full saturation without second animation | Counted/listed once as already applied | No duplicate row, toast, lifecycle callback, or new-item indicator |
+| `Rejected` | First accepted terminal rejection for `MessageId` | Prior confirmed status restored; rejection context shown | Counted/listed once as rejected with next-action fallback | Form values and validation state preserved |
+| `NeedsReview` / unresolved | Polling/reconnect cannot safely match or command is evicted unresolved | Pending/degraded state remains understandable | Summarized as unresolved/degraded, redacted | No invented confirmation; no raw key construction from user input |
 
 ### Binding Decisions
 
@@ -269,3 +296,40 @@ Do not implement these in Story 5-5:
 
 (to be filled in by dev agent)
 
+## Party-Mode Review
+
+Date/time: 2026-04-26T06:05:58+02:00
+
+Selected story key: `5-5-command-idempotency-and-optimistic-updates`
+
+Command/skill invocation used: `/bmad-party-mode 5-5-command-idempotency-and-optimistic-updates; review;`
+
+Participating BMAD agents:
+
+- Winston (System Architect)
+- John (Product Manager)
+- Sally (UX Designer)
+- Murat (Master Test Architect and Quality Advisor)
+
+Findings summary:
+
+- Cross-story contracts from Stories 5-1 through 5-4 were carrying too much implicit risk. The story needed explicit assumptions for `MessageId` lifetime, terminal outcome immutability, reconnect precedence, and shared resolver-path parity.
+- "Exactly once" needed to be scoped to exactly-once UI terminal resolution per `MessageId`, not distributed exactly-once delivery.
+- Optimistic badge, rollback, already-applied, unresolved, and reconnect-summary states needed visible/accessibility/localization contracts before implementation.
+- Fallback polling needed to be defined as terminal outcome parity through the same resolver, not a separate transport behavior.
+- Race and redaction tests needed to cover duplicate, stale, out-of-order, live/reconnect/polling overlap, sensitive-looking values, and fake-clock timing.
+
+Changes applied:
+
+- Tightened AC1-AC2 to define first-terminal-wins, duplicate/stale/out-of-order no-op behavior, and exactly-once UI terminal resolution per `MessageId`.
+- Tightened AC3-AC5 and AC8-AC9 for localizable visible state labels, forced-colors/grayscale/reduced-motion behavior, accessible summaries, redaction, and deterministic fake-clock coverage.
+- Added a Contract Assumptions and Outcome State Matrix that defines `Confirming`, `Confirmed`, `IdempotentConfirmed` / `AlreadyApplied`, `Rejected`, and `NeedsReview` / unresolved behavior.
+- Added task guidance for duplicate registration, unknown `MessageId` handling, one shared resolver method across live/reconnect/polling, first-terminal-wins conflict handling, localizable whole strings, scoped reconnect summary limits, and shared resolver contract tests.
+
+Findings deferred:
+
+- Exact visual container for reconnect summary (inline panel vs toast vs expandable details) remains an implementation/design choice as long as the accessible behavior is met.
+- Final microcopy polish remains deferred to localization hardening, but the state/copy intent and whole-string localization contract are now explicit.
+- Durable pending-command persistence across browser refresh, automatic command replay, global idempotency infrastructure, rich reconnect diff UX, distributed tracing, and broad chaos/load harness work remain out of scope for Story 5-5.
+
+Final recommendation: ready-for-dev
