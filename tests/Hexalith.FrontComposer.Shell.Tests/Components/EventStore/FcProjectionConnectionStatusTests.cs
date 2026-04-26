@@ -113,6 +113,28 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
         cut.Markup.ShouldNotContain("Reconnected -- data refreshed");
     }
 
+    private sealed class StubShellLocalizer : IStringLocalizer<FcShellResources> {
+        private static readonly Dictionary<string, string> Strings = new(StringComparer.Ordinal) {
+            ["ReconnectStatusText"] = "Reconnecting...",
+            ["ReconciliationStatusText"] = "Refreshing data...",
+            ["ReconnectedDataRefreshedText"] = "Reconnected -- data refreshed",
+            ["SectionUpdatingText"] = "This section is being updated",
+        };
+
+        public LocalizedString this[string name]
+            => Strings.TryGetValue(name, out string? value)
+                ? new LocalizedString(name, value)
+                : new LocalizedString(name, name, resourceNotFound: true);
+
+        public LocalizedString this[string name, params object[] arguments]
+            => Strings.TryGetValue(name, out string? value)
+                ? new LocalizedString(name, string.Format(CultureInfo.InvariantCulture, value, arguments))
+                : new LocalizedString(name, name, resourceNotFound: true);
+
+        public IEnumerable<LocalizedString> GetAllStrings(bool includeParentCultures)
+            => Strings.Select(kv => new LocalizedString(kv.Key, kv.Value));
+    }
+
     [Fact]
     public void ReconciliationCompletes_AnnouncesOnceForEpoch() {
         // P48 — live-region announcement coalesces once per reconnect epoch. Multiple Complete

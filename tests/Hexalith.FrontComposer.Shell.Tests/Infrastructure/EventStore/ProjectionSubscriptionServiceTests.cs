@@ -85,6 +85,46 @@ public sealed class ProjectionSubscriptionServiceTests {
     }
 
     [Fact]
+    public async Task Reconnected_AppliesConnectedStateAfterRejoin_PerOrderingContract() {
+        // P9 / DN5=a — the observable transition order on Reconnected is: rejoin completes → state
+        // applies Connected → reconciliation fires. This locks the ordering contract so adopters
+        // observing IProjectionConnectionState transitions cannot see Connected before rejoin.
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestRefreshScheduler refresh = new();
+        TestReconciliationCoordinator reconciliation = new();
+        TestProjectionConnectionState state = new();
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            state,
+            refresh,
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            fallbackDriver: null,
+            reconciliation);
+
+        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
+        await sut.SubscribeAsync("billing", "acme", TestContext.Current.CancellationToken);
+        connection.JoinedGroups.Clear();
+
+        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
+
+        // P49 — multi-group at-most-once join per epoch. Two distinct groups → exactly two joins.
+        connection.JoinedGroups.OrderBy(static g => g, StringComparer.Ordinal)
+            .ShouldBe(new[] { "billing:acme", "orders:acme" });
+        // DN5=a — Connected applied unconditionally after rejoin completes (here both rejoins
+        // succeed; per-group degradation in the failed-rejoin scenario is covered by
+        // FailedRejoin_MarksGroupDegraded below).
+        state.Current.Status.ShouldBe(ProjectionConnectionStatus.Connected);
+        reconciliation.Calls.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task InitialStartFailure_SurfacesDisconnectedState_WithoutActiveGroup() {
         FakeProjectionHubConnection connection = new() { StartException = new InvalidOperationException("token expired") };
         TestNotifier notifier = new();
