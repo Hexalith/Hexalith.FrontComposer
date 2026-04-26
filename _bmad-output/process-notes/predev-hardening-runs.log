@@ -23,3 +23,4 @@
 2026-04-26T08:29:28.7951879+02:00	create-story	6-2-level-2-typed-razor-template-overrides	ok	created story artifact and marked ready-for-dev
 2026-04-26T08:46:02+02:00	party-mode-review	6-1-level-1-annotation-overrides	ok	party-mode trace recorded and story hardened for annotation contracts
 2026-04-26T08:53:56+02:00	party-mode-review	6-2-level-2-typed-razor-template-overrides	ok	party-mode trace recorded and story hardened for template selection contracts
+2026-04-26T09:04:15+02:00	advanced-elicitation	5-5-command-idempotency-and-optimistic-updates	ok	advanced elicitation trace recorded and story hardened for fallback matching and bounded summaries
