@@ -28,3 +28,4 @@
 2026-04-26T09:24:34.8679058+02:00	advanced-elicitation	5-7-signalr-fault-injection-test-harness	ok	advanced elicitation trace recorded and story hardened for bounded deterministic harness behavior
 2026-04-26T09:32:37+02:00	advanced-elicitation	6-1-level-1-annotation-overrides	ok	advanced elicitation trace recorded and story hardened for annotation conflicts and deterministic formatting
 2026-04-26T09:49:55+02:00	advanced-elicitation	6-2-level-2-typed-razor-template-overrides	ok	advanced elicitation trace recorded and story hardened for context cache isolation
+2026-04-26T10:03:20+02:00	none	-	none	ready-for-dev buffer full and all ready stories already have party-mode and advanced-elicitation traces
