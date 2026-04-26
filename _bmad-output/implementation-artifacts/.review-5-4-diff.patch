@@ -1,0 +1,1802 @@
+commit 89a73711b86c03b968d34da3341480140f26053c
+Author: Jérôme Piquot <jpiquot@itaneo.com>
+Date:   Sun Apr 26 08:41:07 2026 +0200
+
+    Promote story 5-4 to review
+
+diff --git a/_bmad-output/implementation-artifacts/5-4-reconnection-reconciliation-and-batched-updates.md b/_bmad-output/implementation-artifacts/5-4-reconnection-reconciliation-and-batched-updates.md
+index 6d8012c..1eea1ce 100644
+--- a/_bmad-output/implementation-artifacts/5-4-reconnection-reconciliation-and-batched-updates.md
++++ b/_bmad-output/implementation-artifacts/5-4-reconnection-reconciliation-and-batched-updates.md
+@@ -1,6 +1,6 @@
+ # Story 5.4: Reconnection, Reconciliation & Batched Updates
+ 
+-Status: ready-for-dev
++Status: review
+ 
+ > **Epic 5** -- Reliable Real-Time Experience. **FR25-FR27** reconnect catch-up, stale-data reconciliation, batched update feedback, and schema-mismatch safety after Stories 5-1 through 5-3. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, **L10**, **L12**, and **L14**.
+ 
+@@ -48,78 +48,78 @@ so that I trust the data I see is current without needing to manually refresh.
+ 
+ ## Tasks / Subtasks
+ 
+-- [ ] T1. Extend the 5-3 connection-state surface with a reconciliation trigger (AC1, AC6, AC9)
+-  - [ ] Read Story 5-3 first. If 5-3 has not yet been implemented, implement only against the story's promised seam names after verifying current code; do not bypass or replace the 5-3 service.
+-  - [ ] Expose a Shell-scoped `Reconnected` transition with enough metadata for a coordinator to start exactly one reconciliation pass per reconnect epoch.
+-  - [ ] Treat reconnect/rejoin/reconcile/sweep results as epoch-scoped. Results from superseded epochs must be discarded and must not update cache, header state, lane markers, diagnostics, or visible data.
+-  - [ ] Track reconnect epoch/correlation in memory only. Do not persist reconnect history to LocalStorage or the ETag cache.
+-  - [ ] Bound retained state to the latest active reconciliation snapshot plus latest user-visible status per L14.
+-  - [ ] Keep diagnostics structured and redacted: no raw tenant IDs, user IDs, group names, access tokens, query payloads, cache payloads, or ProblemDetails bodies.
+-
+-- [ ] T2. Rejoin active projection groups through `ProjectionSubscriptionService` (AC1, AC9)
+-  - [ ] Extend `IProjectionHubConnection` or its companion interface only as needed to surface `Reconnecting`, `Reconnected`, and `Closed` events without leaking SignalR types into Contracts.
+-  - [ ] Reuse `ProjectionSubscriptionService`'s active group set as the single source of truth. Do not introduce a parallel "groups to rejoin" collection in UI state.
+-  - [ ] On reconnect, snapshot active groups for the epoch and call `JoinGroup` at most once per snapshotted active group after the hub reports connected/reconnected. Groups added after the snapshot use the normal subscription path instead of the reconnect batch.
+-  - [ ] Preserve commit-after-join semantics from Story 5-1 and Story 5-3. A failed rejoin remains registered in `ProjectionSubscriptionService`, is marked `DegradedRejoinFailed`, is excluded from successful reconciliation for that epoch, and is retried by the next explicit reconnect/reconcile cycle or subscribe call, not marked active by optimism.
+-  - [ ] Handle duplicate subscribe/unsubscribe during rejoin, disposal during rejoin, failed `JoinGroup`, and a nudge arriving mid-rejoin without callbacks after disposal.
+-
+-- [ ] T3. Build a visible-lane reconciliation coordinator (AC2, AC5, AC9)
+-  - [ ] Create a Shell service/effect under `Shell/State/ReconnectionReconciliation/` or the adjacent EventStore state folder that owns reconciliation orchestration only.
+-  - [ ] Consume existing visible lane sources: `LoadedPageState.LaneByKey` / current DataGrid view keys, action-queue badge registrations, and any 5-3 visible projection lane registry. Add a small visible-lane registry only if no reliable source exists.
+-  - [ ] Snapshot visible lanes at reconciliation start. Eligible visible lanes are mounted and user-visible in the active composer view. Do not chase lanes that become visible later in the same pass; they can load normally through existing page/badge flows.
+-  - [ ] Bound the number of lanes reconciled per pass with an option-backed cap if the existing visible-lane count is not already bounded.
+-  - [ ] Deduplicate by `(tenantId, projectionType, discriminator/laneKey)` so a badge and page sharing a projection do not issue duplicate catch-up work unless their discriminators differ.
+-  - [ ] Stop promptly on reconnect epoch superseded, unsubscribe, component disposal, tenant/user loss, or cancellation.
+-
+-- [ ] T4. Route catch-up refreshes through Story 5-2 query/cache seams (AC2, AC5, AC9)
+-  - [ ] Use `IQueryService` / `EventStoreQueryClient`, `IProjectionPageLoader`, `IActionQueueCountReader`, `IETagCache`, and existing `QueryRequest.CacheDiscriminator` policy. Do not add a second HTTP client, classifier, or ETag cache.
+-  - [ ] `304 Not Modified` must dispatch the existing no-change path (`LoadPageNotModifiedAction` or equivalent) and must not mutate `LoadedPageState.PagesByKey`, `TotalCountByKey`, `LastElapsedMsByKey`, badge count, refresh timestamps, or success/toast state.
+-  - [ ] `200 OK` updates the normal page/badge state through existing success paths and returns enough result metadata to mark the lane changed only when a reducer-visible data delta is successfully applied. Schema-mismatch/degraded outcomes do not display `Reconnected -- data refreshed` unless another visible lane actually changed.
+-  - [ ] 401/403/404/429/503 and protocol-drift responses preserve currently visible data and surface degraded/failure state consistently with 5-2/5-3; they must not clear rows as an empty success.
+-  - [ ] Respect cache fail-closed rules for missing/blank/colon-containing tenant/user/discriminator values. If a lane cannot be keyed safely, perform a normal uncached query only when the query itself is safe; otherwise mark degraded.
+-
+-- [ ] T5. Implement the batched sweep marker and reduced-motion styling (AC3, AC9)
+-  - [ ] Prefer a small Fluxor state slice such as `ReconciliationSweepState` keyed by view/lane and reconnect epoch, with a short TTL controlled by `TimeProvider`.
+-  - [ ] Apply one sweep marker per changed lane in the same render cycle. Do not schedule one timer per row; use one shared sweep expiry mechanism bounded by the number of changed lanes.
+-  - [ ] If existing item-key accessors can identify row identity and a lightweight in-memory comparison is available, mark changed rows. If not, mark the visible lane as changed and sweep its visible rows as a single batch.
+-  - [ ] Keep comparison transient and in memory. Do not persist row hashes, serialized rows, business data, or user data to storage or logs.
+-  - [ ] Add scoped CSS next to the affected component(s). Use `@media (prefers-reduced-motion: reduce)` to disable animation and render the final state immediately while leaving data application, batching, and the 3-second message duration unchanged.
+-  - [ ] Avoid decorative effects. The sweep should be subtle, consistent with Fluent info styling, and must not rely on color alone.
+-
+-- [ ] T6. Add `FcSyncIndicator` / header reconnect + reconciliation UX (AC4, AC5, AC6, AC9)
+-  - [ ] Reuse the existing Shell header/status area if one exists; otherwise add a small Shell component such as `FcSyncIndicator` under `Components/Layout/` or `Components/EventStore/`.
+-  - [ ] Show `Reconnecting...` during 5-3 reconnecting state and `Refreshing data...` while the 5-4 reconciliation pass is active.
+-  - [ ] When changes were found, render Info `FluentMessageBar` copy exactly `Reconnected -- data refreshed` and auto-dismiss after 3 seconds using `TimeProvider` in tests.
+-  - [ ] When no changes were found, clear status silently. Do not show "no changes" toast or success message.
+-  - [ ] Apply state precedence consistently: schema mismatch for an affected lane/section wins locally over refreshed sweep; global header state uses reconnecting before reconciling before refreshed/idle; stale epoch results never re-open a cleared status.
+-  - [ ] Set `role="status"` and `aria-live="polite"` on status and toast content. Do not use assertive announcements unless later accessibility review changes the policy.
+-  - [ ] Keep the indicator non-blocking: no modal, overlay, focus trap, scroll jump, route change, form remount, or pointer blocking.
+-  - [ ] Add EN/FR resource keys when touching the localized Shell resource path: `ReconnectStatusText`, `ReconciliationStatusText`, `ReconnectedDataRefreshedText`, and `SectionUpdatingText`. If the touched path is not localized yet, keep the exact English copy inline and record the resource follow-up.
+-
+-- [ ] T7. Add schema mismatch detection and cache invalidation policy (AC7, AC8, AC9)
+-  - [ ] Reuse Story 5-2 `ETagCacheEntry.FormatVersion`, `PayloadVersion`, and discriminator metadata before adding new schema metadata.
+-  - [ ] Define a Shell-side `ProjectionSchemaMismatchException` or result state only if existing `QueryFailureException` cannot express the condition without ambiguity.
+-  - [ ] Detect mismatch from cache compatibility rejection, query deserialization failure, explicit projection payload version mismatch, or a configured projection schema hash mismatch if that metadata exists.
+-  - [ ] Invalidate all ETag cache entries for the affected projection type/discriminator family best-effort after an incompatible cache entry or incompatible `200 OK` payload. A `304 Not Modified` never invalidates or mutates cache/state.
+-  - [ ] Render the exact user copy `This section is being updated` in the affected view/badge region; do not show empty state, stale rows, raw exception details, or a global failure state when only one lane is affected.
+-  - [ ] Log one structured diagnostic with projection type or a redacted/hash-safe identifier only if the existing logging policy allows it. Do not log payload bodies or user data.
+-
+-- [ ] T8. Add bidirectional schema compatibility fixtures (AC8, AC9)
+-  - [ ] Add fixture payloads for current and prior-minor projection shapes where the repo has shipped projection contracts. If no versioned fixture archive exists, create a minimal story-owned fixture folder and document ownership.
+-  - [ ] Prove current code reads prior-minor payloads and ignores unknown forward fields according to the repo's `System.Text.Json` web/default options.
+-  - [ ] Add one incompatible fixture that must produce the schema-mismatch path and cache invalidation, not silent empty data.
+-  - [ ] Keep fixture payloads synthetic and non-PII. Do not copy real tenant/customer data into test fixtures.
+-  - [ ] Defer full event-envelope version negotiation to Story 5-6 or Story 9-4 if it requires architecture policy beyond projection payload compatibility.
+-
+-- [ ] T9. Tests and verification (AC1-AC9)
+-  - [ ] Connection/rejoin tests: reconnect event starts one pass, ordered fake-hub log proves at-most-one join per active group per epoch, failed rejoin is degraded, duplicate subscribe/unsubscribe races are safe, stale epoch callbacks are ignored, and disposal cancels the pass.
+-  - [ ] Reconciliation coordinator tests: visible-lane snapshot, hidden/collapsed/offscreen lane skip, newly visible lane deferred, lane cap, dedupe, cancellation, tenant/user fail-closed, and superseded reconnect epoch cleanup.
+-  - [ ] Query/cache tests: ETag validators used, `304` no-churn, `200` changed-lane marker only after reducer-visible data delta, 401/403/404/429/503 preserve visible state, protocol drift fails loudly without empty success.
+-  - [ ] Reducer/effect tests: sweep markers are batch-scoped, TTL clears markers, one shared expiry mechanism replaces per-row timer fan-out, reduced-motion path produces immediate final state.
+-  - [ ] Component/a11y tests: header `Reconnecting...`, `Refreshing data...`, Info message copy, `role="status"`, `aria-live="polite"`, live-region announcements coalesced once per epoch, 3-second auto-dismiss, silent no-change completion, no modal/overlay/focus trap.
+-  - [ ] Schema tests: backward fixture read, unknown forward field tolerance, incompatible fixture triggers `This section is being updated`, ETag invalidation, and redacted diagnostic.
+-  - [ ] Shared deterministic harness: fake hub, fake visible-lane registry, fake query/cache, fake diagnostics sink, fake time, and an explicit async drain/advance helper so timer/cancellation continuations are deterministic.
+-  - [ ] Regression suite: run targeted Shell/EventStore/DataGrid/ETag tests plus `dotnet build -warnaserror` unless the current working tree contains unrelated failing dev work.
++- [x] T1. Extend the 5-3 connection-state surface with a reconciliation trigger (AC1, AC6, AC9)
++  - [x] Read Story 5-3 first. If 5-3 has not yet been implemented, implement only against the story's promised seam names after verifying current code; do not bypass or replace the 5-3 service.
++  - [x] Expose a Shell-scoped `Reconnected` transition with enough metadata for a coordinator to start exactly one reconciliation pass per reconnect epoch.
++  - [x] Treat reconnect/rejoin/reconcile/sweep results as epoch-scoped. Results from superseded epochs must be discarded and must not update cache, header state, lane markers, diagnostics, or visible data.
++  - [x] Track reconnect epoch/correlation in memory only. Do not persist reconnect history to LocalStorage or the ETag cache.
++  - [x] Bound retained state to the latest active reconciliation snapshot plus latest user-visible status per L14.
++  - [x] Keep diagnostics structured and redacted: no raw tenant IDs, user IDs, group names, access tokens, query payloads, cache payloads, or ProblemDetails bodies.
++
++- [x] T2. Rejoin active projection groups through `ProjectionSubscriptionService` (AC1, AC9)
++  - [x] Extend `IProjectionHubConnection` or its companion interface only as needed to surface `Reconnecting`, `Reconnected`, and `Closed` events without leaking SignalR types into Contracts.
++  - [x] Reuse `ProjectionSubscriptionService`'s active group set as the single source of truth. Do not introduce a parallel "groups to rejoin" collection in UI state.
++  - [x] On reconnect, snapshot active groups for the epoch and call `JoinGroup` at most once per snapshotted active group after the hub reports connected/reconnected. Groups added after the snapshot use the normal subscription path instead of the reconnect batch.
++  - [x] Preserve commit-after-join semantics from Story 5-1 and Story 5-3. A failed rejoin remains registered in `ProjectionSubscriptionService`, is marked `DegradedRejoinFailed`, is excluded from successful reconciliation for that epoch, and is retried by the next explicit reconnect/reconcile cycle or subscribe call, not marked active by optimism.
++  - [x] Handle duplicate subscribe/unsubscribe during rejoin, disposal during rejoin, failed `JoinGroup`, and a nudge arriving mid-rejoin without callbacks after disposal.
++
++- [x] T3. Build a visible-lane reconciliation coordinator (AC2, AC5, AC9)
++  - [x] Create a Shell service/effect under `Shell/State/ReconnectionReconciliation/` or the adjacent EventStore state folder that owns reconciliation orchestration only.
++  - [x] Consume existing visible lane sources: `LoadedPageState.LaneByKey` / current DataGrid view keys, action-queue badge registrations, and any 5-3 visible projection lane registry. Add a small visible-lane registry only if no reliable source exists.
++  - [x] Snapshot visible lanes at reconciliation start. Eligible visible lanes are mounted and user-visible in the active composer view. Do not chase lanes that become visible later in the same pass; they can load normally through existing page/badge flows.
++  - [x] Bound the number of lanes reconciled per pass with an option-backed cap if the existing visible-lane count is not already bounded.
++  - [x] Deduplicate by `(tenantId, projectionType, discriminator/laneKey)` so a badge and page sharing a projection do not issue duplicate catch-up work unless their discriminators differ.
++  - [x] Stop promptly on reconnect epoch superseded, unsubscribe, component disposal, tenant/user loss, or cancellation.
++
++- [x] T4. Route catch-up refreshes through Story 5-2 query/cache seams (AC2, AC5, AC9)
++  - [x] Use `IQueryService` / `EventStoreQueryClient`, `IProjectionPageLoader`, `IActionQueueCountReader`, `IETagCache`, and existing `QueryRequest.CacheDiscriminator` policy. Do not add a second HTTP client, classifier, or ETag cache.
++  - [x] `304 Not Modified` must dispatch the existing no-change path (`LoadPageNotModifiedAction` or equivalent) and must not mutate `LoadedPageState.PagesByKey`, `TotalCountByKey`, `LastElapsedMsByKey`, badge count, refresh timestamps, or success/toast state.
++  - [x] `200 OK` updates the normal page/badge state through existing success paths and returns enough result metadata to mark the lane changed only when a reducer-visible data delta is successfully applied. Schema-mismatch/degraded outcomes do not display `Reconnected -- data refreshed` unless another visible lane actually changed.
++  - [x] 401/403/404/429/503 and protocol-drift responses preserve currently visible data and surface degraded/failure state consistently with 5-2/5-3; they must not clear rows as an empty success.
++  - [x] Respect cache fail-closed rules for missing/blank/colon-containing tenant/user/discriminator values. If a lane cannot be keyed safely, perform a normal uncached query only when the query itself is safe; otherwise mark degraded.
++
++- [x] T5. Implement the batched sweep marker and reduced-motion styling (AC3, AC9)
++  - [x] Prefer a small Fluxor state slice such as `ReconciliationSweepState` keyed by view/lane and reconnect epoch, with a short TTL controlled by `TimeProvider`.
++  - [x] Apply one sweep marker per changed lane in the same render cycle. Do not schedule one timer per row; use one shared sweep expiry mechanism bounded by the number of changed lanes.
++  - [x] If existing item-key accessors can identify row identity and a lightweight in-memory comparison is available, mark changed rows. If not, mark the visible lane as changed and sweep its visible rows as a single batch.
++  - [x] Keep comparison transient and in memory. Do not persist row hashes, serialized rows, business data, or user data to storage or logs.
++  - [x] Add scoped CSS next to the affected component(s). Use `@media (prefers-reduced-motion: reduce)` to disable animation and render the final state immediately while leaving data application, batching, and the 3-second message duration unchanged.
++  - [x] Avoid decorative effects. The sweep should be subtle, consistent with Fluent info styling, and must not rely on color alone.
++
++- [x] T6. Add `FcSyncIndicator` / header reconnect + reconciliation UX (AC4, AC5, AC6, AC9)
++  - [x] Reuse the existing Shell header/status area if one exists; otherwise add a small Shell component such as `FcSyncIndicator` under `Components/Layout/` or `Components/EventStore/`.
++  - [x] Show `Reconnecting...` during 5-3 reconnecting state and `Refreshing data...` while the 5-4 reconciliation pass is active.
++  - [x] When changes were found, render Info `FluentMessageBar` copy exactly `Reconnected -- data refreshed` and auto-dismiss after 3 seconds using `TimeProvider` in tests.
++  - [x] When no changes were found, clear status silently. Do not show "no changes" toast or success message.
++  - [x] Apply state precedence consistently: schema mismatch for an affected lane/section wins locally over refreshed sweep; global header state uses reconnecting before reconciling before refreshed/idle; stale epoch results never re-open a cleared status.
++  - [x] Set `role="status"` and `aria-live="polite"` on status and toast content. Do not use assertive announcements unless later accessibility review changes the policy.
++  - [x] Keep the indicator non-blocking: no modal, overlay, focus trap, scroll jump, route change, form remount, or pointer blocking.
++  - [x] Add EN/FR resource keys when touching the localized Shell resource path: `ReconnectStatusText`, `ReconciliationStatusText`, `ReconnectedDataRefreshedText`, and `SectionUpdatingText`. If the touched path is not localized yet, keep the exact English copy inline and record the resource follow-up.
++
++- [x] T7. Add schema mismatch detection and cache invalidation policy (AC7, AC8, AC9)
++  - [x] Reuse Story 5-2 `ETagCacheEntry.FormatVersion`, `PayloadVersion`, and discriminator metadata before adding new schema metadata.
++  - [x] Define a Shell-side `ProjectionSchemaMismatchException` or result state only if existing `QueryFailureException` cannot express the condition without ambiguity.
++  - [x] Detect mismatch from cache compatibility rejection, query deserialization failure, explicit projection payload version mismatch, or a configured projection schema hash mismatch if that metadata exists.
++  - [x] Invalidate all ETag cache entries for the affected projection type/discriminator family best-effort after an incompatible cache entry or incompatible `200 OK` payload. A `304 Not Modified` never invalidates or mutates cache/state.
++  - [x] Render the exact user copy `This section is being updated` in the affected view/badge region; do not show empty state, stale rows, raw exception details, or a global failure state when only one lane is affected.
++  - [x] Log one structured diagnostic with projection type or a redacted/hash-safe identifier only if the existing logging policy allows it. Do not log payload bodies or user data.
++
++- [x] T8. Add bidirectional schema compatibility fixtures (AC8, AC9)
++  - [x] Add fixture payloads for current and prior-minor projection shapes where the repo has shipped projection contracts. If no versioned fixture archive exists, create a minimal story-owned fixture folder and document ownership.
++  - [x] Prove current code reads prior-minor payloads and ignores unknown forward fields according to the repo's `System.Text.Json` web/default options.
++  - [x] Add one incompatible fixture that must produce the schema-mismatch path and cache invalidation, not silent empty data.
++  - [x] Keep fixture payloads synthetic and non-PII. Do not copy real tenant/customer data into test fixtures.
++  - [x] Defer full event-envelope version negotiation to Story 5-6 or Story 9-4 if it requires architecture policy beyond projection payload compatibility.
++
++- [x] T9. Tests and verification (AC1-AC9)
++  - [x] Connection/rejoin tests: reconnect event starts one pass, ordered fake-hub log proves at-most-one join per active group per epoch, failed rejoin is degraded, duplicate subscribe/unsubscribe races are safe, stale epoch callbacks are ignored, and disposal cancels the pass.
++  - [x] Reconciliation coordinator tests: visible-lane snapshot, hidden/collapsed/offscreen lane skip, newly visible lane deferred, lane cap, dedupe, cancellation, tenant/user fail-closed, and superseded reconnect epoch cleanup.
++  - [x] Query/cache tests: ETag validators used, `304` no-churn, `200` changed-lane marker only after reducer-visible data delta, 401/403/404/429/503 preserve visible state, protocol drift fails loudly without empty success.
++  - [x] Reducer/effect tests: sweep markers are batch-scoped, TTL clears markers, one shared expiry mechanism replaces per-row timer fan-out, reduced-motion path produces immediate final state.
++  - [x] Component/a11y tests: header `Reconnecting...`, `Refreshing data...`, Info message copy, `role="status"`, `aria-live="polite"`, live-region announcements coalesced once per epoch, 3-second auto-dismiss, silent no-change completion, no modal/overlay/focus trap.
++  - [x] Schema tests: backward fixture read, unknown forward field tolerance, incompatible fixture triggers `This section is being updated`, ETag invalidation, and redacted diagnostic.
++  - [x] Shared deterministic harness: fake hub, fake visible-lane registry, fake query/cache, fake diagnostics sink, fake time, and an explicit async drain/advance helper so timer/cancellation continuations are deterministic.
++  - [x] Regression suite: run targeted Shell/EventStore/DataGrid/ETag tests plus `dotnet build -warnaserror` unless the current working tree contains unrelated failing dev work.
+ 
+ ---
+ 
+@@ -295,16 +295,53 @@ Do not implement these in Story 5-4:
+ 
+ ### Agent Model Used
+ 
+-(to be filled in by dev agent)
++GPT-5
+ 
+ ### Debug Log References
+ 
+-(to be filled in by dev agent)
++- 2026-04-26: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` passed.
++- 2026-04-26: `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj` passed: 1,135 passed / 0 failed / 3 skipped.
++- 2026-04-26: `dotnet test Hexalith.FrontComposer.sln --no-build` passed: Contracts 91/0/0, Shell 1,135/0/3, SourceTools 481/0/0, Bench 2/0/0.
+ 
+ ### Completion Notes List
+ 
+-(to be filled in by dev agent)
++- Implemented epoch-scoped reconnect reconciliation after `ProjectionSubscriptionService` completes active-group rejoin, reusing the existing hub events, active group set, and visible-lane scheduler.
++- Added transient reconciliation state and lane-level sweep state, bounded by the existing visible-lane cap and in-memory only.
++- Updated the existing connection status component to show `Reconnecting...`, `Refreshing data...`, and the 3-second Info message `Reconnected -- data refreshed` only when changed visible lanes are found.
++- Extended visible-lane refresh to distinguish `304` no-change from compatible `200 OK` reducer-visible deltas and to dedupe lanes during reconnect catch-up.
++- Added schema mismatch handling for incompatible query/cache payloads with `ProjectionSchemaMismatchException`, best-effort cache removal, redacted diagnostics, and the user-safe copy `This section is being updated`.
++- Added EN/FR resource keys and synthetic schema compatibility fixtures for current, prior-minor, forward-compatible, and incompatible projection payloads.
+ 
+ ### File List
+ 
+-(to be filled in by dev agent)
++- `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor`
++- `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs`
++- `src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css`
++- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs`
++- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`
++- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSchemaMismatchException.cs`
++- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs`
++- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx`
++- `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx`
++- `src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs`
++- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs`
++- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs`
++- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationState.cs`
++- `src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepState.cs`
++- `src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css`
++- `tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreQueryCacheIntegrationTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSchemaCompatibilityFixtureTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/LoadPageEffectIntegrationTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/State/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconciliationSweepReducersTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/current-order-projection.json`
++- `tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/forward-order-projection.json`
++- `tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/incompatible-order-projection.json`
++- `tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/prior-minor-order-projection.json`
++
++### Change Log
++
++- 2026-04-26: Implemented Story 5-4 reconnect reconciliation, batched sweep state, sync status UX, schema mismatch handling, compatibility fixtures, and focused regression coverage.
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 9903ed0..4cf5a77 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -1,5 +1,5 @@
+ # generated: 2026-04-12
+-# last_updated: 2026-04-25 (story 3-7 Pass-1 code-review via bmad-code-review COMPLETED. Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on commit 8cd9214 found 6 decision-needed + 30 patches + 3 deferred + 5 dismissed. All 6 DNs resolved under "do best" autonomous delegation: DN1=b (accept bundled Pass-6 production patches; D1 amended in 3-7 spec to record the override + new L01 cross-story contract row); DN2=b (accept 3-4 closure flip); DN3=b (amend AC1/AC4 spec text to honestly describe what bUnit verifies vs what live-browser verifies); DN4=c (rewrite AC3 test to spec-correct shape — `g h` row carries `RouteUrl="/"`; all other shortcut rows carry `RouteUrl=null` — and skip with `[Fact(Skip="G37-5")]` so the unskip + Story 3-4 amendment land in lockstep; G37-5 promoted to Story 3-4 known-gaps file row); DN5=c (amend AC6 spec text to describe in-process determinism; live-browser parity verified out-of-band; wiring `aspire` CLI into CI deferred to Story 5-7 SignalR fault-injection harness); DN6=a (rewrite PaletteScorerBenchAdapter to read `report.ResultStatistics.Percentiles.P95` directly via `[Benchmark(OperationsPerInvoke = CandidateCount)]`; new `PaletteScorerAggregate_IsUnder_200Milliseconds_PerPass` Fact gates AC5 100 ms aggregate at D4 2× headroom). 12 patches applied this pass: P1 (`_persistGate.WaitAsync()` bounded with 2 s `PersistGateTimeout`); P3 (`ReducePaletteScopeChanged` clears `IsOpen`); P4 (`ReducePaletteScopeChanged` resets `HydrationState=Idle`); P5 (`HandlePaletteResultActivated` revalidates ALL non-Shortcut categories via `IsInternalRoute` — defense-in-depth); P6 (`InvalidOperationException → "Lifecycle"` reason instead of "Corrupt"); P9 (`ResolveShortcutAliasQuery` XML doc rewritten to match raw-on-no-match return); P10 (`isEditableInComposedPath` always probes `event.target` baseline + closed-shadow + per-node `shadowRoot.activeElement` walk); P16 (Bench project `AssemblyInfo.cs` disables xunit collection parallelism); P19 (`SyntheticRegistry.NextName` 24-char truncation removed — bench now measures realistic 4–38 char shapes); P25 (AC1 asserts `NavigationManager.Uri` directly + belt-and-suspenders `LastNavigatedUri`); P28 (G37-5 known-gap row added to 3-4 known-gaps file); P34 (AC3 test rewritten + `Skip="G37-5"`); P36 (bench p95 + aggregate Facts). 18 patches deferred to follow-up commits with clear ownership (deferred-work.md updated): P2 mitigated by P1, P7/P8 → Story 9-4 diagnostic governance, P11/P12 → Story 3-4 v1.x reducer fixes, P13/P14 → Story 3-5 cosmetic, P15/P20/P21/P22 → test coverage gaps, P17/P18 → bench project hygiene, P23/P24 → test seam improvements, P27/P29 → process-doc patches. P26 resolved via DN5 amendment; P30 resolved here. Build clean `dotnet build -warnaserror`; regression test suite: Contracts 76/0/0, SourceTools 481/0/0, Shell default 972/0/2 (Story 1-8 Playwright skips unchanged), Shell e2e-palette 3/0/1 (AC3 skipped per G37-5), Shell.Tests.Bench 2/0/0. Net 1 534 → 1 534 passing + 1 new bench Fact + 1 newly skipped. Story 3-7 status flipped `review → done`. Epic 3 wholly done — epic-3-retrospective optional trigger surfaces here.)
++# last_updated: 2026-04-26 (story 5-4 completed via bmad-dev-story; status in-progress -> review. Reconnect reconciliation coordinator, visible-lane catch-up, batched sweep state, sync header UX, schema mismatch fallback, EN/FR resources, synthetic compatibility fixtures, and focused tests shipped. Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false; dotnet test Hexalith.FrontComposer.sln --no-build: Contracts 91/0/0, Shell 1135/0/3, SourceTools 481/0/0, Bench 2/0/0.)
+ # previous: 2026-04-24 (story 4-6 created via bmad-create-story — ships Empty States, Field Descriptions & Unsupported Types. 19 binding decisions (6-decision L06 buffer remaining), 8 ACs in tabular form, ≈58-test target (3 Contracts attribute + 7 FcEmptyStateBody + 7 FcProjectionEmptyPlaceholder body + 5 FcFieldPlaceholder localization + 7 EmptyStateCtaResolver + 7 Description parser + 5 Unsupported column Transform + 6 Unsupported column Emit + 7 Description tooltip Emit + 5 Description Transform + 0 resource parity auto-discovery). Cross-story contract table covers 9 seams: new ProjectionEmptyStateCtaAttribute (class-level string-based CommandTypeName, non-empty required), new PropertyModel.Description + ColumnModel.Description IR fields (append-only, IR byte-stability preserved), new DomainModel.EmptyStateCtaCommandTypeName IR field, new IEmptyStateCtaResolver Shell service + EmptyStateCtaResolver impl (Scoped, async signature anticipating Epic 5 registry wire-queries), new FcEmptyStateBody internal helper component, FcProjectionEmptyPlaceholder parameter surface gains 2 APPEND-ONLY params (CtaCommandName + SecondaryText) preserving Story 4-1 ADR-053 frozen parameters, FcFieldPlaceholder localized (body hardcoded English → IStringLocalizer; adds .fc-field-placeholder-dev CSS class for UX-DR3 dev-mode highlight; parameter surface unchanged), RazorModelTransform.Transform Unsupported-column DROP at line 29 is REMOVED (the critical FR9 + UX-DR55 fix — Unsupported columns flow to placeholder emission instead of silent omission), new FcShellOptions.EmptyStateSecondaryTextResourcePrefix adopter-override option. Consumes Story 1-4/1-5 Parse/Transform/Emit pipeline + IR cacheability discipline, Story 3-5 IFrontComposerRegistry for CTA bounded-context discovery, Story 4-1 ADR-053 FcProjectionEmptyPlaceholder frozen parameters + Role generator-emit contract (H4), Story 4-1 EmitDetailRecordBody factored helper (V1 verification: 4-5 must merge first) for description emission in detail/expand-in-row surfaces, Story 4-3 FcFilterEmptyState unchanged (filter-empty case NOT duplicated; AC3 regression gate), Story 4-4 ColumnPriority stable sort unchanged (Unsupported columns carry Priority=null → sink to int.MaxValue), Story 4-5 [ProjectionFieldGroup] unchanged (grouping orthogonal to TypeCategory). Reserves NO new HFC diagnostic IDs (HFC1002 REUSED for now-visible placeholder path per D19; fail-soft ILogger Warning for empty-state CTA command-not-found). Scope guardrails explicitly exclude FcDevModeOverlay activation+panel (Epic 6-5 — 4-6 ships CSS class wiring only), custom empty-state icons per projection (Epic 6-1), per-projection custom empty-state templates (Epic 6-2), slot-level empty-state field replacement (Epic 6-3), ICU pluralization (Epic 9-5), description-on-command-forms (Epic 6 backlog), adopter [FieldDescription] custom attribute (rejected — use .NET standard [Description] / [Display(Description=)]), runtime description editing (Epic 8/9), [ProjectionEmptyStateCta] with icon param (Epic 6-1), phone-viewport visual specimen verification (Story 10-2), destructive-command-only BC CTA fallback filter (Epic 6 backlog entry — flagged). Adds 11 EN+FR resource keys (EmptyStateMessageTemplate / EmptyStateActionQueueMessageTemplate / EmptyStateCtaTemplate / EmptyStateAriaLabelTemplate / FieldPlaceholderMessageTemplate / FieldPlaceholderAriaLabelTemplate / FieldPlaceholderTypeAnnotationTemplate / FieldPlaceholderDocsLinkText / FieldDescriptionTooltipAriaSuffix / ColumnHeaderWithDescriptionAriaTemplate / UnsupportedColumnHeaderSuffix — all {0}-interpolated, no colons, no French NBSP requirements). Description precedence per D2: [System.ComponentModel.DescriptionAttribute] wins over [Display(Description=)]. Empty-state role-differentiated copy via TWO templates (ActionQueue-specific + generic) per D3. Known Gaps linked to owning stories (L10) — dev-mode overlay panel → Epic 6-5, custom icons → Epic 6-1, custom templates → Epic 6-2, slot replacement → Epic 6-3, ICU plurals → Epic 9-5, forms descriptions → Epic 6 backlog, visual specimen → Story 10-2, destructive-only BC filter → Epic 6 backlog.)
+ # previous: 2026-04-23 (story 4-5 created via bmad-create-story — ships Expand-in-Row Detail & Progressive Disclosure. 20 binding decisions (5-decision L06 buffer remaining), 8 ACs in tabular form, ~47-test target (4 Contracts attributes/actions + 12 Shell components+reducers + 8 integration/ephemeral-lifecycle/filter-interaction + 13 emitter snapshots + 6 HFC1030/HFC1031 diagnostic + 4 resource parity). Cross-story contract table covers 12 seams: new ProjectionFieldGroupAttribute (property-level, non-empty GroupName; case-insensitive collision with reserved "Additional details" emits HFC1030 Information fail-soft), 2 new Fluxor action records (ExpandRowAction / CollapseRowAction), new Shell-scoped ExpandedRowState Fluxor feature (ExpandedByViewKey: ImmutableDictionary<string, ExpandedRowEntry>; EPHEMERAL — no LocalStorage persistence, no cross-session restore, DisposeAsync dispatches CollapseRowAction per D18), new FcExpandInRowDetail Shell component (wraps FluentCollapsiblePanel + @ref-based JS interop call to Story 2-2's IExpandInRowJSModule), 4 new scoped CSS classes (fc-row-action-column + fc-row-expanded + fc-expand-button[--open] + fc-expand-in-row-detail) in new fc-projection.scoped.css with @media (max-width: 767px) phone-viewport hide rule + @media (prefers-reduced-motion: reduce) opt-out. Consumes Story 2-2 IExpandInRowJSModule + fc-expandinrow.js#initializeExpandInRow UNCHANGED (4-5 is the FIRST projection-view consumer — 2-2 shipped the module for compact-inline command forms; now both surfaces share the scroll-stabilizer), Story 4-4 _itemKeyAccessor + ordered AfterRenderHooks (adds Order=300 expand-in-row JS init hook) + DisposeAsync disposal discipline (adds CollapseRowAction dispatch alongside 4-4's ClearPendingPagesAction), Story 4-1 EmitDetailRecordBody REFACTORED to parameterized helper (shared emission — 4-1 DetailRecord role body + 4-5 expand-in-row host consume the same emit path; 4-1 approval baselines stay green when [ProjectionFieldGroup] absent), Story 4-3 data-fc-datagrid attribute + reserved-key convention unchanged (4-5 adds NO reserved key), Story 4-4 Virtualize+DisplayMode+ItemKey unchanged. Detail panel renders OUTSIDE virtualized grid (below closing tag per D6 — preserves Virtualize constant-ItemSize invariant). GridViewSnapshot + GridViewPersistenceBlob schema UNCHANGED (ephemeral state means zero persistence surface per D3 — BlobSerializesToExpectedJsonShape regression stays green). Single-expand invariant enforced at REDUCER level (D4 — dispatching ExpandRowAction for viewKey REPLACES existing entry; view does NOT dispatch explicit collapse before expanding new row). Scope guardrails explicitly exclude multi-expand comparison (v2), expanded-row edit mode (Epic 6-2), drag-to-reorder detail fields (Epic 6-3), SignalR live-refresh of expanded detail (Epic 5-4), phone-viewport visual specimen (Story 10-2 — 4-5 ships DOM+CSS hook only), cross-session restore (anti-pattern — D3), nested expand-in-row (DetailRecord role HFC1031 emit-stage smoke). Reserves HFC1030 (Information, Parse-stage, reserved catch-all "Additional details" name collision) + HFC1031 (Information, emit-stage, [ProjectionFieldGroup] on Timeline role — ignored because Timeline has no detail surface). Adds 4 EN+FR resource keys (ExpandRowButtonAriaLabelTemplate + CollapseRowButtonAriaLabelTemplate + ExpandInRowDetailPanelAriaLabelTemplate + FieldGroupCatchAllTitle — all {0}-interpolated, no colons, no French NBSP requirements) — 87 → 91 per locale. Known Gaps linked to owning stories (L10) — phone-viewport visual → Story 10-2, detail-inside-virtualized adopter override → Epic 6-3/9-4, multi-expand v2 → post-v1, edit mode → Epic 6-2, SignalR live-refresh → Epic 5-4, AOT boxing → Epic 9-4, density-responsive detail grid → Story 10-2, CSS :has() fallback → Epic 10-2 browser docs. Strategy dispatch: Default/ActionQueue/StatusOverview/Dashboard emit expand-in-row unconditionally; Timeline+DetailRecord skip (Timeline uses FluentStack; DetailRecord IS the detail). Story 4-4 planning metadata retained in yaml comments above.)
+ # previous: 2026-04-23 (story 4-4 created via bmad-create-story — ships Virtual Scrolling & Column Prioritization. 22 binding decisions (3-decision L06 buffer remaining), 7 ACs in tabular form, ~53-test target (12 Shell components + 13 reducer/effect/round-trip/scroll-restore + 12 emitter snapshots + 6 HFC1028/HFC1029 diagnostic + 7 contracts/options + 3 resource parity). Cross-story contract table covers 15 seams: new ColumnPriorityAttribute (property-level, nullable int priority — lower = higher display priority; unannotated = null → int.MaxValue at sort), 5 new Fluxor action records (LoadPage / LoadPageSucceeded / LoadPageFailed / ColumnVisibilityChanged / ScrollCaptured), new VirtualizationReservedKeys.HiddenColumnsKey="__hidden" (packs column-visibility CSV into GridViewSnapshot.Filters per D7 — schema UNCHANGED, extending the 4-3 D3 reserved-key convention), new LoadedPageState Fluxor feature (PagesByKey + TotalCountByKey + LastElapsedMsByKey + PendingCompletionsByKey with TCS<object> boundary per D16), GridViewSnapshot.ScrollTop field (Story 2-2 reserved — 4-4 finally ships the producer via 150ms TimeProvider-anchored scroll debounce), 3 new Shell components under Components/DataGrid/ (FcColumnPrioritizer + FcSlowQueryNotice + FcMaxItemsCapNotice), 3 new FcShellOptions (MaxUnfilteredItems=10000 / SlowQueryThresholdMs=2000 / VirtualizationServerSideThreshold=500 with cross-property invariant Threshold<Cap), DataGridScrollInterop JS bridge (reuses Story 4-3 data-fc-datagrid DOM attribute — no new selector scheme). Consumes Story 2-2 CaptureGridStateAction + ScrollTop field contracts unchanged, Story 3-6 DataGridNavigationEffects (zero new persistence effects — filter/scroll reducers chain via CaptureGridStateAction), Story 4-1 EmitStandardDataGrid shared emission path, Story 4-3 reserved-key convention + 4-3 @onscroll container. Emits Virtualize="true" + DisplayMode="Table" (D21 — Fluent-recommended pairing for virtualize correctness) + density-driven ItemSize (32/44/56px per Story 3-3 Compact/Comfortable/Roomy resolved at render time) + OverscanCount="3" + ItemKey bound to Id/AggregateId/Key/fallback. Reserves HFC1028 (Information, ColumnPriority collision — parse stage, per-projection dedupe) + HFC1029 (Information, >15 columns activates prioritizer — emit stage, per-projection dedupe). Scope guardrails explicitly exclude expand-in-row (4-5), FcEmptyState CTA (4-6), FcFieldPlaceholder (4-6), drag-to-reorder (Epic 6-3), responsive phone variant (Story 10-2), pre-fetch/read-ahead (Epic 5 SignalR), virtualize in DetailRecord/Timeline (FluentCard/Stack don't need it per D12), unfiltered-cap acknowledgment UI (4-6), ETag-per-page invalidation (Epic 5), FcNewItemIndicator (3-5 follow-up). Cross-session ScrollTop clamped to 0 at hydrate per D5 (within-session only; hours-later scroll restore is disorienting anti-pattern). Adds 8 EN+FR resource keys (PrioritizerMoreColumnsButtonLabelTemplate / PrioritizerMoreColumnsAriaLabelTemplate / PrioritizerColumnsPanelTitle / PrioritizerColumnCheckboxAriaLabelTemplate / SlowQueryNoticeMessage / MaxItemsCapNoticeTemplate / VirtualizedSkeletonRowAriaLabel / UnfilteredRowCountTemplate) — 78 → 86 per locale. Known Gaps linked to owning stories (L10) — drag-to-reorder → Epic 6-3, phone responsive → Story 10-2, cross-browser scroll → Playwright CI/Story 10-2, P99/100k-row harness → Story 10-2+Epic 5, page-cache LRU → Epic 9-6 backlog, TaskCompletionSource<object> AOT analyzer → Epic 9-4, ICU plurals → Epic 9-5. NFR4 performance benchmark (P95<300ms on 500 virtualized rows) lands in T4.9 under [Category("performance")] CI lane.)
+@@ -97,7 +97,7 @@ development_status:
+   5-1-eventstore-service-abstractions: done
+   5-2-http-response-handling-and-etag-caching: done
+   5-3-signalr-connection-and-disconnection-handling: done
+-  5-4-reconnection-reconciliation-and-batched-updates: ready-for-dev
++  5-4-reconnection-reconciliation-and-batched-updates: review
+   5-5-command-idempotency-and-optimistic-updates: ready-for-dev
+   5-6-build-time-infrastructure-enforcement-and-observability: ready-for-dev
+   5-7-signalr-fault-injection-test-harness: ready-for-dev
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor b/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor
+index 7a6f648..d5a5f9a 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor
++++ b/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor
+@@ -1,5 +1,6 @@
+ @namespace Hexalith.FrontComposer.Shell.Components.EventStore
+ @using Hexalith.FrontComposer.Shell.State.ProjectionConnection
++@using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation
+ @using Microsoft.FluentUI.AspNetCore.Components
+ 
+ @if (_visible) {
+@@ -8,22 +9,29 @@
+                       role="status"
+                       aria-live="polite"
+                       data-testid="fc-projection-connection-status"
+-                      class="fc-projection-connection-status">
++                      class="@CssClass">
+         @Message
+     </FluentMessageBar>
+ }
+ 
+ @code {
+     private bool _visible => _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected
++        || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling
+         || _showReconnected;
+ 
+     private MessageBarIntent Intent => _snapshot.Status switch {
+         ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => MessageBarIntent.Warning,
+-        _ => MessageBarIntent.Success,
++        _ => MessageBarIntent.Info,
+     };
+ 
+     private string Message => _snapshot.Status switch {
+-        ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => "Connection interrupted -- your work is saved. Reconnecting...",
+-        _ => "Reconnected -- you can continue",
++        ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => "Reconnecting...",
++        _ when _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling => "Refreshing data...",
++        _ => "Reconnected -- data refreshed",
+     };
++
++    private string CssClass => _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected
++        || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling
++            ? "fc-projection-connection-status fc-projection-connection-status-pulse"
++            : "fc-projection-connection-status";
+ }
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs b/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs
+index 9a808ce..5428067 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs
++++ b/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.cs
+@@ -1,5 +1,6 @@
+ using Hexalith.FrontComposer.Contracts;
+ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
++using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+ 
+ using Microsoft.AspNetCore.Components;
+ using Microsoft.Extensions.Options;
+@@ -9,6 +10,7 @@ namespace Hexalith.FrontComposer.Shell.Components.EventStore;
+ /// <summary>Inline EventStore projection connection status indicator.</summary>
+ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
+     private IDisposable? _subscription;
++    private IDisposable? _reconciliationSubscription;
+     private ITimer? _clearTimer;
+     private long _clearTimerGeneration;
+     private ProjectionConnectionSnapshot _snapshot = new(
+@@ -17,11 +19,19 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
+         ReconnectAttempt: 0,
+         LastFailureCategory: null);
+     private bool _showReconnected;
++    private ReconnectionReconciliationSnapshot _reconciliation = new(
++        ReconnectionReconciliationStatus.Idle,
++        Epoch: 0,
++        Changed: false,
++        LastTransitionAt: DateTimeOffset.MinValue);
+     private int _disposed;
+ 
+     [Inject]
+     private IProjectionConnectionState ConnectionState { get; set; } = default!;
+ 
++    [Inject]
++    private IReconnectionReconciliationState ReconciliationState { get; set; } = default!;
++
+     [Inject]
+     private IOptionsMonitor<FcShellOptions> Options { get; set; } = default!;
+ 
+@@ -29,8 +39,10 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
+     private TimeProvider Time { get; set; } = default!;
+ 
+     /// <inheritdoc />
+-    protected override void OnInitialized()
+-        => _subscription = ConnectionState.Subscribe(OnConnectionChanged);
++    protected override void OnInitialized() {
++        _subscription = ConnectionState.Subscribe(OnConnectionChanged);
++        _reconciliationSubscription = ReconciliationState.Subscribe(OnReconciliationChanged);
++    }
+ 
+     private void OnConnectionChanged(ProjectionConnectionSnapshot snapshot) {
+         if (_disposed != 0) {
+@@ -42,39 +54,60 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
+                 return;
+             }
+ 
+-            bool wasUnavailable = _snapshot.IsDisconnected;
+             _snapshot = snapshot;
++            if (snapshot.IsDisconnected || _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling) {
++                CancelClearTimer();
++                _showReconnected = false;
++            }
++
++            StateHasChanged();
++        });
++    }
++
++    private void OnReconciliationChanged(ReconnectionReconciliationSnapshot snapshot) {
++        if (_disposed != 0) {
++            return;
++        }
++
++        _ = InvokeAsync(() => {
++            if (_disposed != 0) {
++                return;
++            }
++
++            _reconciliation = snapshot;
+             CancelClearTimer();
+-            _showReconnected = wasUnavailable && snapshot.Status is ProjectionConnectionStatus.Connected;
++            _showReconnected = snapshot.Status is ReconnectionReconciliationStatus.Refreshed && snapshot.Changed;
+             if (_showReconnected) {
+-                // P8 — capture the generation that owns this timer. The timer callback only
+-                // mutates state when the generation it captured still matches the current
+-                // generation; stale callbacks from prior reconnect cycles are no-ops.
+-                long generation = Interlocked.Increment(ref _clearTimerGeneration);
+-                _clearTimer = Time.CreateTimer(
+-                    _ => {
+-                        if (_disposed != 0) {
+-                            return;
+-                        }
+-
+-                        _ = InvokeAsync(() => {
+-                            if (_disposed != 0 || Interlocked.Read(ref _clearTimerGeneration) != generation) {
+-                                return;
+-                            }
+-
+-                            _showReconnected = false;
+-                            StateHasChanged();
+-                        });
+-                    },
+-                    state: null,
+-                    dueTime: TimeSpan.FromMilliseconds(Options.CurrentValue.ProjectionReconnectedNoticeDurationMs),
+-                    period: Timeout.InfiniteTimeSpan);
++                StartClearTimer();
+             }
+ 
+             StateHasChanged();
+         });
+     }
+ 
++    private void StartClearTimer() {
++        long generation = Interlocked.Increment(ref _clearTimerGeneration);
++        _clearTimer = Time.CreateTimer(
++            _ => {
++                if (_disposed != 0) {
++                    return;
++                }
++
++                _ = InvokeAsync(() => {
++                    if (_disposed != 0 || Interlocked.Read(ref _clearTimerGeneration) != generation) {
++                        return;
++                    }
++
++                    _showReconnected = false;
++                    ReconciliationState.Reset();
++                    StateHasChanged();
++                });
++            },
++            state: null,
++            dueTime: TimeSpan.FromMilliseconds(Options.CurrentValue.ProjectionReconnectedNoticeDurationMs),
++            period: Timeout.InfiniteTimeSpan);
++    }
++
+     private void CancelClearTimer() {
+         // Bumping the generation invalidates any in-flight callback from the previous timer
+         // before disposing it.
+@@ -90,6 +123,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
+         }
+ 
+         _subscription?.Dispose();
++        _reconciliationSubscription?.Dispose();
+         CancelClearTimer();
+         GC.SuppressFinalize(this);
+     }
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css b/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css
+index d94e72a..c7af020 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css
++++ b/src/Hexalith.FrontComposer.Shell/Components/EventStore/FcProjectionConnectionStatus.razor.css
+@@ -1,3 +1,23 @@
+ .fc-projection-connection-status {
+     margin-block: var(--design-unit, 0.5rem);
+ }
++
++.fc-projection-connection-status-pulse {
++    animation: fc-sync-status-pulse 700ms ease-in-out infinite alternate;
++}
++
++@keyframes fc-sync-status-pulse {
++    from {
++        opacity: 0.72;
++    }
++
++    to {
++        opacity: 1;
++    }
++}
++
++@media (prefers-reduced-motion: reduce) {
++    .fc-projection-connection-status-pulse {
++        animation: none;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+index 7b63dd5..6dfb7e3 100644
+--- a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+@@ -31,6 +31,7 @@ using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+ using Hexalith.FrontComposer.Shell.State.ETagCache;
+ using Hexalith.FrontComposer.Shell.State.Navigation;
+ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
++using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+ using Hexalith.FrontComposer.Shell.State.Theme;
+ 
+ using Microsoft.Extensions.Logging;
+@@ -305,6 +306,8 @@ public static class ServiceCollectionExtensions
+         services.TryAddScoped<IETagCache, ETagCacheService>();
+         services.TryAddScoped<IProjectionConnectionState, ProjectionConnectionStateService>();
+         services.TryAddScoped<IProjectionFallbackRefreshScheduler, ProjectionFallbackRefreshScheduler>();
++        services.TryAddScoped<IReconnectionReconciliationState, ReconnectionReconciliationStateService>();
++        services.TryAddScoped<IReconnectionReconciliationCoordinator, ReconnectionReconciliationCoordinator>();
+ 
+         // Story 5-2 D8 — fail-fast default IAuthRedirector. Scoped because adopter
+         // implementations typically capture per-circuit NavigationManager. The default throws
+diff --git a/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs
+index 7f6b65b..074874a 100644
+--- a/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs
++++ b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs
+@@ -127,7 +127,20 @@ public sealed class EventStoreQueryClient(
+         switch (classification.Outcome) {
+             case QueryClassificationOutcome.NotModified: {
+                 if (cachedEntry is not null) {
+-                    return DeserializeNotModifiedFromCache<T>(cachedEntry);
++                    try {
++                        return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
++                    }
++                    catch (ProjectionSchemaMismatchException ex) {
++                        if (cacheKey is not null) {
++                            await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
++                        }
++
++                        logger.LogWarning(
++                            "Projection cache payload schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
++                            ex.ProjectionType,
++                            ex.GetType().Name);
++                        throw;
++                    }
+                 }
+ 
+                 // Caller did not opt into framework cache integration (no CacheDiscriminator) —
+@@ -163,9 +176,25 @@ public sealed class EventStoreQueryClient(
+ 
+             case QueryClassificationOutcome.Ok: {
+                 string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+-                using JsonDocument document = JsonDocument.Parse(body);
+-                IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
+-                int totalCount = ReadTotalCount(document.RootElement, items.Count);
++                IReadOnlyList<T> items;
++                int totalCount;
++                try {
++                    using JsonDocument document = JsonDocument.Parse(body);
++                    items = ReadPayloadItems<T>(document.RootElement);
++                    totalCount = ReadTotalCount(document.RootElement, items.Count);
++                }
++                catch (JsonException ex) {
++                    if (cacheKey is not null) {
++                        await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
++                    }
++
++                    logger.LogWarning(
++                        "Projection response schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
++                        projectionType,
++                        ex.GetType().Name);
++                    throw new ProjectionSchemaMismatchException(projectionType, ex);
++                }
++
+                 string? eTag = classification.ETag;
+                 if (cacheKey is not null && eTag is { Length: > 0 } && !ContainsHeaderInjectionChar(eTag)) {
+                     long now = DateTimeOffset.UtcNow.UtcTicks;
+@@ -239,11 +268,16 @@ public sealed class EventStoreQueryClient(
+         "Trimming",
+         "IL2026:RequiresUnreferencedCode",
+         Justification = "EventStore adapter deserializes adopter projection DTOs at runtime; AOT-specific contexts are deferred to Story 9-4.")]
+-    private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry) {
+-        using JsonDocument document = JsonDocument.Parse(entry.Payload);
+-        IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
+-        int totalCount = ReadTotalCount(document.RootElement, items.Count);
+-        return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
++    private static QueryResult<T> DeserializeNotModifiedFromCache<T>(ETagCacheEntry entry, string projectionType) {
++        try {
++            using JsonDocument document = JsonDocument.Parse(entry.Payload);
++            IReadOnlyList<T> items = ReadPayloadItems<T>(document.RootElement);
++            int totalCount = ReadTotalCount(document.RootElement, items.Count);
++            return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
++        }
++        catch (JsonException ex) {
++            throw new ProjectionSchemaMismatchException(projectionType, ex);
++        }
+     }
+ 
+     private static bool ContainsHeaderInjectionChar(string value) {
+diff --git a/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSchemaMismatchException.cs b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSchemaMismatchException.cs
+new file mode 100644
+index 0000000..d0923d8
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSchemaMismatchException.cs
+@@ -0,0 +1,13 @@
++namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
++
++/// <summary>
++/// Raised when a projection payload or cached projection entry cannot be consumed safely by
++/// the current Shell runtime.
++/// </summary>
++public sealed class ProjectionSchemaMismatchException : Exception {
++    public ProjectionSchemaMismatchException(string projectionType, Exception? innerException = null)
++        : base("Projection payload schema is incompatible with the current client.", innerException)
++        => ProjectionType = projectionType;
++
++    public string ProjectionType { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs
+index e3cdfc5..3701e06 100644
+--- a/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs
++++ b/src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs
+@@ -1,5 +1,6 @@
+ using Hexalith.FrontComposer.Contracts.Communication;
+ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
++using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+ 
+ using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Options;
+@@ -22,6 +23,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
+     private readonly IDisposable _connectionStateRegistration;
+     private readonly CancellationTokenSource _disposalCts = new();
+     private readonly ProjectionFallbackPollingDriver? _fallbackDriver;
++    private readonly IReconnectionReconciliationCoordinator? _reconciliationCoordinator;
+     private bool _disposed;
+ 
+     public ProjectionSubscriptionService(
+@@ -31,7 +33,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
+         IProjectionFallbackRefreshScheduler refreshScheduler,
+         IProjectionChangeNotifier notifier,
+         ILogger<ProjectionSubscriptionService> logger,
+-        ProjectionFallbackPollingDriver? fallbackDriver = null) {
++        ProjectionFallbackPollingDriver? fallbackDriver = null,
++        IReconnectionReconciliationCoordinator? reconciliationCoordinator = null) {
+         ArgumentNullException.ThrowIfNull(options);
+         ArgumentNullException.ThrowIfNull(connectionFactory);
+         ArgumentNullException.ThrowIfNull(connectionState);
+@@ -43,6 +46,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
+         _notifier = notifier;
+         _logger = logger;
+         _fallbackDriver = fallbackDriver;
++        _reconciliationCoordinator = reconciliationCoordinator;
+         EventStoreOptions current = options.Value;
+         Uri hubUri = BuildHubUri(current.BaseAddress ?? throw new InvalidOperationException("EventStore BaseAddress is required."), current.ProjectionChangesHubPath);
+         _connection = connectionFactory.Create(hubUri, current.AccessTokenProvider);
+@@ -196,12 +200,16 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
+                 break;
+ 
+             case ProjectionHubConnectionState.Reconnected:
+-                _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
+                 // DN3 — rejoin runs in the handler chain (so tests and adopters can observe
+                 // completion deterministically) but takes the gate with a bounded timeout and the
+                 // service disposal token. A blocked subscribe/unsubscribe on the same gate cannot
+                 // hang rejoin indefinitely; disposal cancels the sweep promptly.
+                 await RejoinActiveGroupsAsync(_disposalCts.Token).ConfigureAwait(false);
++                _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
++                if (_reconciliationCoordinator is not null && !_disposed) {
++                    _ = await _reconciliationCoordinator.ReconcileAsync(_disposalCts.Token).ConfigureAwait(false);
++                }
++
+                 break;
+ 
+             case ProjectionHubConnectionState.Closed:
+diff --git a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+index e067152..197ef50 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+@@ -410,4 +410,16 @@
+   <data name="ExpandedRowHiddenByFilterBannerClearLink" xml:space="preserve">
+     <value>Effacer le filtre</value>
+   </data>
++  <data name="ReconnectStatusText" xml:space="preserve">
++    <value>Reconnexion...</value>
++  </data>
++  <data name="ReconciliationStatusText" xml:space="preserve">
++    <value>Actualisation des données...</value>
++  </data>
++  <data name="ReconnectedDataRefreshedText" xml:space="preserve">
++    <value>Reconnecté -- données actualisées</value>
++  </data>
++  <data name="SectionUpdatingText" xml:space="preserve">
++    <value>Cette section est en cours de mise à jour</value>
++  </data>
+ </root>
+diff --git a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+index de0e006..82de541 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+@@ -486,4 +486,20 @@
+     <value>Clear filter</value>
+     <comment>Story 4-5 D15 / AC8 — banner action link dispatching FiltersResetAction (Story 4-3).</comment>
+   </data>
++  <data name="ReconnectStatusText" xml:space="preserve">
++    <value>Reconnecting...</value>
++    <comment>Story 5-4 AC6 — Shell header text while SignalR automatic reconnect is active.</comment>
++  </data>
++  <data name="ReconciliationStatusText" xml:space="preserve">
++    <value>Refreshing data...</value>
++    <comment>Story 5-4 AC6 — Shell header text while visible lanes are being reconciled.</comment>
++  </data>
++  <data name="ReconnectedDataRefreshedText" xml:space="preserve">
++    <value>Reconnected -- data refreshed</value>
++    <comment>Story 5-4 AC4 — info message after reconnect reconciliation finds changed visible data.</comment>
++  </data>
++  <data name="SectionUpdatingText" xml:space="preserve">
++    <value>This section is being updated</value>
++    <comment>Story 5-4 AC7 — lane-scoped schema mismatch fallback copy.</comment>
++  </data>
+ </root>
+diff --git a/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs
+index 5a624fe..ef203bd 100644
+--- a/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs
++++ b/src/Hexalith.FrontComposer.Shell/State/DataGridNavigation/LoadPageEffects.cs
+@@ -5,6 +5,7 @@ using Fluxor;
+ 
+ using Hexalith.FrontComposer.Contracts;
+ using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+ 
+ using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Options;
+@@ -123,6 +124,9 @@ public sealed class LoadPageEffects {
+         catch (OperationCanceledException) {
+             dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
+         }
++        catch (ProjectionSchemaMismatchException) {
++            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, "This section is being updated", action.Completion));
++        }
+         catch (Exception ex) {
+             string message = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;
+             dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, message, action.Completion));
+diff --git a/src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs b/src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs
+index 2aa363a..6ae4652 100644
+--- a/src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs
++++ b/src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs
+@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Contracts;
+ using Hexalith.FrontComposer.Contracts.Communication;
+ using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+ 
++using Fluxor;
+ using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Options;
+ 
+@@ -34,6 +35,14 @@ public interface IProjectionFallbackRefreshScheduler {
+     Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default);
+ 
+     Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default);
++
++    Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default)
++        => Task.FromResult(ProjectionReconciliationRefreshResult.Empty);
++}
++
++/// <summary>Summary returned by an epoch-scoped reconnect reconciliation pass.</summary>
++public sealed record ProjectionReconciliationRefreshResult(int RefreshedCount, IReadOnlyList<string> ChangedViewKeys) {
++    public static ProjectionReconciliationRefreshResult Empty { get; } = new(0, []);
+ }
+ 
+ /// <summary>Bounded fallback refresh scheduler that reuses the Story 5-2 page loader seam.</summary>
+@@ -41,7 +50,8 @@ public sealed class ProjectionFallbackRefreshScheduler(
+     IProjectionConnectionState connectionState,
+     IProjectionPageLoader loader,
+     IOptionsMonitor<FcShellOptions> options,
+-    ILogger<ProjectionFallbackRefreshScheduler> logger) : IProjectionFallbackRefreshScheduler {
++    ILogger<ProjectionFallbackRefreshScheduler> logger,
++    IState<LoadedPageState>? loadedPages = null) : IProjectionFallbackRefreshScheduler {
+     private readonly ConcurrentDictionary<string, LaneEntry> _lanes = new(StringComparer.Ordinal);
+     private readonly ConcurrentDictionary<string, byte> _inFlight = new(StringComparer.Ordinal);
+     private readonly ConcurrentDictionary<string, byte> _pendingRetry = new(StringComparer.Ordinal);
+@@ -86,7 +96,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
+                 break;
+             }
+ 
+-            if (await RefreshLaneAsync(entry.Lane, cancellationToken).ConfigureAwait(false)) {
++            if (await RefreshLaneAsync(entry.Lane, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
+                 refreshed++;
+             }
+         }
+@@ -109,7 +119,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
+                 break;
+             }
+ 
+-            if (await RefreshLaneAsync(entry.Lane, cancellationToken).ConfigureAwait(false)) {
++            if (await RefreshLaneAsync(entry.Lane, cancellationToken).ConfigureAwait(false) is not ProjectionLaneRefreshResult.Skipped) {
+                 refreshed++;
+             }
+         }
+@@ -117,18 +127,53 @@ public sealed class ProjectionFallbackRefreshScheduler(
+         return refreshed;
+     }
+ 
+-    private async Task<bool> RefreshLaneAsync(ProjectionFallbackLane lane, CancellationToken cancellationToken) {
++    /// <inheritdoc />
++    public async Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default) {
++        cancellationToken.ThrowIfCancellationRequested();
++        int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
++        List<string> changed = [];
++        int refreshed = 0;
++        IEnumerable<ProjectionFallbackLane> snapshot = _lanes.Values
++            .Select(static entry => entry.Lane)
++            .OrderBy(static lane => lane.ViewKey, StringComparer.Ordinal)
++            .Take(budget)
++            .ToArray();
++
++        HashSet<string> seen = new(StringComparer.Ordinal);
++        foreach (ProjectionFallbackLane lane in snapshot) {
++            cancellationToken.ThrowIfCancellationRequested();
++            if (!seen.Add(BuildDedupeKey(lane))) {
++                continue;
++            }
++
++            ProjectionLaneRefreshResult result = await RefreshLaneAsync(lane, cancellationToken).ConfigureAwait(false);
++            if (result is ProjectionLaneRefreshResult.Skipped) {
++                continue;
++            }
++
++            refreshed++;
++            if (result is ProjectionLaneRefreshResult.Changed) {
++                changed.Add(lane.ViewKey);
++            }
++        }
++
++        return refreshed == 0 && changed.Count == 0
++            ? ProjectionReconciliationRefreshResult.Empty
++            : new ProjectionReconciliationRefreshResult(refreshed, changed);
++    }
++
++    private async Task<ProjectionLaneRefreshResult> RefreshLaneAsync(ProjectionFallbackLane lane, CancellationToken cancellationToken) {
+         cancellationToken.ThrowIfCancellationRequested();
+         if (!_inFlight.TryAdd(lane.ViewKey, 0)) {
+             // P1 — mark pending so the final nudge gets a replay after the in-flight refresh
+             // resolves. The dedupe window must not drop the last nudge after a failure.
+             _pendingRetry[lane.ViewKey] = 0;
+-            return false;
++            return ProjectionLaneRefreshResult.Skipped;
+         }
+ 
+-        bool succeeded;
++        ProjectionLaneRefreshResult outcome;
+         try {
+-            _ = await loader.LoadPageAsync(
++            ProjectionPageResult result = await loader.LoadPageAsync(
+                 lane.ProjectionType,
+                 lane.Skip,
+                 lane.Take,
+@@ -137,7 +182,11 @@ public sealed class ProjectionFallbackRefreshScheduler(
+                 lane.SortDescending,
+                 lane.SearchQuery,
+                 cancellationToken).ConfigureAwait(false);
+-            succeeded = true;
++            outcome = result.IsNotModified
++                ? ProjectionLaneRefreshResult.NotModified
++                : IsReducerVisibleDelta(lane, result)
++                    ? ProjectionLaneRefreshResult.Changed
++                    : ProjectionLaneRefreshResult.NotModified;
+         }
+         catch (Exception ex) when (ex is not OperationCanceledException) {
+             // P5 — log only the redacted exception type. Raw exception messages can carry
+@@ -145,7 +194,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
+             logger.LogWarning(
+                 "Projection refresh failed. FailureCategory={FailureCategory}",
+                 ex.GetType().Name);
+-            succeeded = false;
++            outcome = ProjectionLaneRefreshResult.Skipped;
+         }
+         finally {
+             _ = _inFlight.TryRemove(lane.ViewKey, out _);
+@@ -158,7 +207,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
+             return await RefreshLaneAsync(lane, cancellationToken).ConfigureAwait(false);
+         }
+ 
+-        return succeeded;
++        return outcome;
+     }
+ 
+     private void DecrementLane(string viewKey, LaneEntry expected) {
+@@ -201,11 +250,59 @@ public sealed class ProjectionFallbackRefreshScheduler(
+         }
+     }
+ 
++    private bool IsReducerVisibleDelta(ProjectionFallbackLane lane, ProjectionPageResult result) {
++        if (loadedPages?.Value is not { } state) {
++            return result.TotalCount > 0 || result.Items.Count > 0;
++        }
++
++        bool hasPreviousPage = state.PagesByKey.TryGetValue((lane.ViewKey, lane.Skip), out IReadOnlyList<object>? previousItems);
++        bool hasPreviousTotal = state.TotalCountByKey.TryGetValue(lane.ViewKey, out int previousTotal);
++        if (!hasPreviousPage && !hasPreviousTotal) {
++            return result.TotalCount > 0 || result.Items.Count > 0;
++        }
++
++        if (hasPreviousTotal && previousTotal != result.TotalCount) {
++            return true;
++        }
++
++        if (!hasPreviousPage) {
++            return result.Items.Count > 0;
++        }
++
++        if (previousItems!.Count != result.Items.Count) {
++            return true;
++        }
++
++        for (int i = 0; i < previousItems.Count; i++) {
++            if (!Equals(previousItems[i], result.Items[i])) {
++                return true;
++            }
++        }
++
++        return false;
++    }
++
++    private static string BuildDedupeKey(ProjectionFallbackLane lane)
++        => string.Concat(
++            lane.TenantId ?? string.Empty,
++            "|",
++            lane.ProjectionType,
++            "|",
++            lane.Skip.ToString(System.Globalization.CultureInfo.InvariantCulture),
++            "|",
++            lane.Take.ToString(System.Globalization.CultureInfo.InvariantCulture));
++
+     private sealed class LaneEntry(ProjectionFallbackLane lane) {
+         public ProjectionFallbackLane Lane { get; } = lane;
+         public int RefCount = 1;
+     }
+ 
++    private enum ProjectionLaneRefreshResult {
++        Skipped,
++        NotModified,
++        Changed,
++    }
++
+     private sealed class Registration(Action dispose) : IDisposable {
+         private int _disposed;
+ 
+diff --git a/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepState.cs b/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepState.cs
+new file mode 100644
+index 0000000..8abf035
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconciliationSweepState.cs
+@@ -0,0 +1,57 @@
++using System.Collections.Immutable;
++
++using Fluxor;
++
++namespace Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
++
++/// <summary>Lane-level sweep markers for a single reconnect epoch.</summary>
++public sealed record ReconciliationSweepState {
++    public ImmutableDictionary<string, ReconciliationSweepMarker> MarkersByViewKey { get; init; }
++        = ImmutableDictionary<string, ReconciliationSweepMarker>.Empty;
++}
++
++/// <summary>Transient marker for a changed visible lane.</summary>
++public sealed record ReconciliationSweepMarker(long Epoch, DateTimeOffset ExpiresAt);
++
++public sealed record MarkReconciliationSweepAction(long Epoch, IReadOnlyList<string> ViewKeys, DateTimeOffset ExpiresAt);
++
++public sealed record ClearExpiredReconciliationSweepsAction(DateTimeOffset Now);
++
++public sealed class ReconciliationSweepFeature : Feature<ReconciliationSweepState> {
++    public override string GetName() => typeof(ReconciliationSweepState).FullName!;
++
++    protected override ReconciliationSweepState GetInitialState() => new();
++}
++
++public static class ReconciliationSweepReducers {
++    [ReducerMethod]
++    public static ReconciliationSweepState ReduceMark(ReconciliationSweepState state, MarkReconciliationSweepAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++
++        ImmutableDictionary<string, ReconciliationSweepMarker> next = state.MarkersByViewKey;
++        foreach (string viewKey in action.ViewKeys.Distinct(StringComparer.Ordinal)) {
++            if (string.IsNullOrWhiteSpace(viewKey)) {
++                continue;
++            }
++
++            next = next.SetItem(viewKey, new ReconciliationSweepMarker(action.Epoch, action.ExpiresAt));
++        }
++
++        return ReferenceEquals(next, state.MarkersByViewKey) ? state : state with { MarkersByViewKey = next };
++    }
++
++    [ReducerMethod]
++    public static ReconciliationSweepState ReduceClearExpired(ReconciliationSweepState state, ClearExpiredReconciliationSweepsAction action) {
++        ArgumentNullException.ThrowIfNull(state);
++        ArgumentNullException.ThrowIfNull(action);
++        ImmutableDictionary<string, ReconciliationSweepMarker> next = state.MarkersByViewKey;
++        foreach (KeyValuePair<string, ReconciliationSweepMarker> marker in state.MarkersByViewKey) {
++            if (marker.Value.ExpiresAt <= action.Now) {
++                next = next.Remove(marker.Key);
++            }
++        }
++
++        return ReferenceEquals(next, state.MarkersByViewKey) ? state : state with { MarkersByViewKey = next };
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs b/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs
+new file mode 100644
+index 0000000..a82c49a
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinator.cs
+@@ -0,0 +1,93 @@
++using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
++
++using Microsoft.Extensions.Logging;
++
++namespace Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
++
++/// <summary>Runs one visible-lane catch-up pass after the projection hub reconnects.</summary>
++public interface IReconnectionReconciliationCoordinator {
++    Task<ProjectionReconciliationRefreshResult> ReconcileAsync(CancellationToken cancellationToken = default);
++}
++
++/// <summary>
++/// Epoch-scoped reconciliation coordinator. It owns orchestration only; visible lane ownership
++/// remains in <see cref="IProjectionFallbackRefreshScheduler"/>.
++/// </summary>
++public sealed class ReconnectionReconciliationCoordinator(
++    IProjectionFallbackRefreshScheduler refreshScheduler,
++    IReconnectionReconciliationState state,
++    ILogger<ReconnectionReconciliationCoordinator> logger) : IReconnectionReconciliationCoordinator, IDisposable {
++    private readonly object _sync = new();
++    private CancellationTokenSource? _activeCts;
++    private long _latestEpoch;
++    private int _disposed;
++
++    public async Task<ProjectionReconciliationRefreshResult> ReconcileAsync(CancellationToken cancellationToken = default) {
++        ThrowIfDisposed();
++        CancellationTokenSource linked;
++        long epoch;
++        lock (_sync) {
++            _activeCts?.Cancel();
++            _activeCts?.Dispose();
++            _activeCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
++            linked = _activeCts;
++            epoch = ++_latestEpoch;
++        }
++
++        state.Start(epoch);
++        try {
++            ProjectionReconciliationRefreshResult result = await refreshScheduler
++                .TriggerReconciliationOnceAsync(epoch, linked.Token)
++                .ConfigureAwait(false);
++            if (IsCurrent(epoch)) {
++                state.Complete(epoch, result.ChangedViewKeys.Count > 0);
++            }
++
++            return result;
++        }
++        catch (OperationCanceledException) when (linked.IsCancellationRequested) {
++            if (IsCurrent(epoch)) {
++                state.Complete(epoch, changed: false);
++            }
++
++            return ProjectionReconciliationRefreshResult.Empty;
++        }
++        catch (Exception ex) when (ex is not OutOfMemoryException) {
++            logger.LogWarning(
++                "Reconnection reconciliation failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
++                epoch,
++                ex.GetType().Name);
++            if (IsCurrent(epoch)) {
++                state.Complete(epoch, changed: false);
++            }
++
++            return ProjectionReconciliationRefreshResult.Empty;
++        }
++    }
++
++    public void Dispose() {
++        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
++            return;
++        }
++
++        lock (_sync) {
++            _activeCts?.Cancel();
++            _activeCts?.Dispose();
++            _activeCts = null;
++        }
++
++        state.Reset();
++    }
++
++    private bool IsCurrent(long epoch) {
++        lock (_sync) {
++            return epoch == _latestEpoch && _disposed == 0;
++        }
++    }
++
++    private void ThrowIfDisposed() {
++        if (_disposed != 0) {
++            throw new ObjectDisposedException(nameof(ReconnectionReconciliationCoordinator));
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationState.cs b/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationState.cs
+new file mode 100644
+index 0000000..3a63f44
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/State/ReconnectionReconciliation/ReconnectionReconciliationState.cs
+@@ -0,0 +1,136 @@
++using Microsoft.Extensions.Logging;
++
++namespace Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
++
++/// <summary>Transient status for the active reconnect reconciliation pass.</summary>
++public enum ReconnectionReconciliationStatus {
++    Idle,
++    Reconciling,
++    Refreshed,
++}
++
++/// <summary>Immutable snapshot consumed by Shell status components.</summary>
++public sealed record ReconnectionReconciliationSnapshot(
++    ReconnectionReconciliationStatus Status,
++    long Epoch,
++    bool Changed,
++    DateTimeOffset LastTransitionAt);
++
++/// <summary>Scoped per-circuit reconciliation state.</summary>
++public interface IReconnectionReconciliationState {
++    ReconnectionReconciliationSnapshot Current { get; }
++
++    IDisposable Subscribe(Action<ReconnectionReconciliationSnapshot> handler, bool replay = true);
++
++    void Start(long epoch);
++
++    void Complete(long epoch, bool changed);
++
++    void Reset();
++}
++
++/// <summary>In-memory reconciliation status service. History is intentionally not persisted.</summary>
++public sealed class ReconnectionReconciliationStateService(
++    TimeProvider timeProvider,
++    ILogger<ReconnectionReconciliationStateService> logger) : IReconnectionReconciliationState {
++    private readonly object _sync = new();
++    private readonly List<Action<ReconnectionReconciliationSnapshot>> _handlers = [];
++    private ReconnectionReconciliationSnapshot _current = new(
++        ReconnectionReconciliationStatus.Idle,
++        Epoch: 0,
++        Changed: false,
++        LastTransitionAt: timeProvider.GetUtcNow());
++
++    public ReconnectionReconciliationSnapshot Current {
++        get {
++            lock (_sync) {
++                return _current;
++            }
++        }
++    }
++
++    public IDisposable Subscribe(Action<ReconnectionReconciliationSnapshot> handler, bool replay = true) {
++        ArgumentNullException.ThrowIfNull(handler);
++        lock (_sync) {
++            _handlers.Add(handler);
++            if (replay) {
++                InvokeSafe(handler, _current);
++            }
++        }
++
++        return new Subscription(this, handler);
++    }
++
++    public void Start(long epoch)
++        => Apply(new ReconnectionReconciliationSnapshot(
++            ReconnectionReconciliationStatus.Reconciling,
++            epoch,
++            Changed: false,
++            timeProvider.GetUtcNow()));
++
++    public void Complete(long epoch, bool changed) {
++        lock (_sync) {
++            if (epoch != _current.Epoch) {
++                return;
++            }
++        }
++
++        Apply(new ReconnectionReconciliationSnapshot(
++            changed ? ReconnectionReconciliationStatus.Refreshed : ReconnectionReconciliationStatus.Idle,
++            epoch,
++            changed,
++            timeProvider.GetUtcNow()));
++    }
++
++    public void Reset()
++        => Apply(new ReconnectionReconciliationSnapshot(
++            ReconnectionReconciliationStatus.Idle,
++            _current.Epoch,
++            Changed: false,
++            timeProvider.GetUtcNow()));
++
++    private void Apply(ReconnectionReconciliationSnapshot snapshot) {
++        Action<ReconnectionReconciliationSnapshot>[] handlers;
++        lock (_sync) {
++            if (_current.Status == snapshot.Status
++                && _current.Epoch == snapshot.Epoch
++                && _current.Changed == snapshot.Changed) {
++                return;
++            }
++
++            _current = snapshot;
++            handlers = [.. _handlers];
++        }
++
++        foreach (Action<ReconnectionReconciliationSnapshot> handler in handlers) {
++            InvokeSafe(handler, snapshot);
++        }
++    }
++
++    private void InvokeSafe(Action<ReconnectionReconciliationSnapshot> handler, ReconnectionReconciliationSnapshot snapshot) {
++        try {
++            handler(snapshot);
++        }
++        catch (Exception ex) when (ex is not OutOfMemoryException) {
++            logger.LogWarning(
++                "Reconnection reconciliation state subscriber threw. FailureCategory={FailureCategory}",
++                ex.GetType().Name);
++        }
++    }
++
++    private void Unsubscribe(Action<ReconnectionReconciliationSnapshot> handler) {
++        lock (_sync) {
++            _ = _handlers.Remove(handler);
++        }
++    }
++
++    private sealed class Subscription(ReconnectionReconciliationStateService owner, Action<ReconnectionReconciliationSnapshot> handler) : IDisposable {
++        private int _disposed;
++
++        public void Dispose() {
++            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
++                owner.Unsubscribe(handler);
++            }
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css b/src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css
+index 73dacf1..297d61e 100644
+--- a/src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css
++++ b/src/Hexalith.FrontComposer.Shell/wwwroot/css/fc-projection.css
+@@ -57,3 +57,28 @@
+     display: block;
+     margin: calc(var(--fc-spacing-unit, 4px) * 2) 0;
+ }
++
++/* Story 5-4 — single lane-level sweep marker after reconnect reconciliation. The
++   marker is intentionally subtle, bounded to 700ms, and does not affect layout. */
++.fc-reconciliation-sweep {
++    animation: fc-reconciliation-sweep 700ms ease-out 1;
++    outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 45%, transparent);
++    outline-offset: -1px;
++}
++
++@keyframes fc-reconciliation-sweep {
++    from {
++        background-color: color-mix(in srgb, var(--accent-fill-rest, #0078d4) 18%, transparent);
++    }
++
++    to {
++        background-color: transparent;
++    }
++}
++
++@media (prefers-reduced-motion: reduce) {
++    .fc-reconciliation-sweep {
++        animation: none;
++        outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 35%, transparent);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs
+index b9ce078..fa2e85d 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Components/EventStore/FcProjectionConnectionStatusTests.cs
+@@ -3,6 +3,7 @@ using Bunit;
+ using Hexalith.FrontComposer.Contracts;
+ using Hexalith.FrontComposer.Shell.Components.EventStore;
+ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
++using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+ 
+ using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.Extensions.Options;
+@@ -18,6 +19,7 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.EventStore;
+ public sealed class FcProjectionConnectionStatusTests : BunitContext {
+     private readonly FakeTimeProvider _time = new(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
+     private readonly ProjectionConnectionStateService _state;
++    private readonly ReconnectionReconciliationStateService _reconciliation;
+ 
+     public FcProjectionConnectionStatusTests() {
+         JSInterop.Mode = JSRuntimeMode.Loose;
+@@ -25,7 +27,9 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
+         Services.AddFluentUIComponents();
+         Services.AddSingleton<TimeProvider>(_time);
+         _state = ActivatorUtilities.CreateInstance<ProjectionConnectionStateService>(Services.BuildServiceProvider());
++        _reconciliation = ActivatorUtilities.CreateInstance<ReconnectionReconciliationStateService>(Services.BuildServiceProvider());
+         Services.AddSingleton<IProjectionConnectionState>(_state);
++        Services.AddSingleton<IReconnectionReconciliationState>(_reconciliation);
+         IOptionsMonitor<FcShellOptions> options = Substitute.For<IOptionsMonitor<FcShellOptions>>();
+         options.CurrentValue.Returns(new FcShellOptions { ProjectionReconnectedNoticeDurationMs = 1_000 });
+         Services.AddSingleton(options);
+@@ -38,7 +42,7 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
+         _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Reconnecting, "TimeoutException"));
+ 
+         cut.WaitForAssertion(() => {
+-            cut.Markup.ShouldContain("Connection interrupted -- your work is saved. Reconnecting...");
++            cut.Markup.ShouldContain("Reconnecting...");
+             cut.Find("[data-testid='fc-projection-connection-status']").GetAttribute("role").ShouldBe("status");
+             cut.Find("[data-testid='fc-projection-connection-status']").GetAttribute("aria-live").ShouldBe("polite");
+             cut.FindAll("[role='dialog']").ShouldBeEmpty();
+@@ -46,15 +50,36 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
+     }
+ 
+     [Fact]
+-    public void Reconnected_RendersBriefConfirmation_ThenAutoClears() {
++    public void Reconciling_RendersRefreshingStatus() {
+         IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+-        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Disconnected, "Closed"));
+-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Connection interrupted"));
++        _reconciliation.Start(epoch: 7);
+ 
++        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Refreshing data..."));
++        cut.Find("[data-testid='fc-projection-connection-status']").GetAttribute("role").ShouldBe("status");
++        cut.Find("[data-testid='fc-projection-connection-status']").GetAttribute("aria-live").ShouldBe("polite");
++    }
++
++    [Fact]
++    public void ReconciledWithChanges_RendersBriefConfirmation_ThenAutoClears() {
++        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+         _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
++        _reconciliation.Start(epoch: 8);
++        _reconciliation.Complete(epoch: 8, changed: true);
+ 
+-        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Reconnected -- you can continue"));
++        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Reconnected -- data refreshed"));
+         _time.Advance(TimeSpan.FromMilliseconds(1_100));
+-        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Reconnected -- you can continue"));
++        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Reconnected -- data refreshed"));
++    }
++
++    [Fact]
++    public void ReconciledWithoutChanges_ClearsSilently() {
++        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
++        _reconciliation.Start(epoch: 9);
++        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Refreshing data..."));
++
++        _reconciliation.Complete(epoch: 9, changed: false);
++
++        cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Reconnected -- data refreshed"));
++        cut.Markup.ShouldNotContain("No changes");
+     }
+ }
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreQueryCacheIntegrationTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreQueryCacheIntegrationTests.cs
+index ba8b5dc..f415629 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreQueryCacheIntegrationTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreQueryCacheIntegrationTests.cs
+@@ -207,6 +207,25 @@ public class EventStoreQueryCacheIntegrationTests {
+         ex.RetryAfter.ShouldBe(System.TimeSpan.FromSeconds(5));
+     }
+ 
++    [Fact]
++    public async Task QueryAsync_Incompatible200Payload_ThrowsSchemaMismatch() {
++        ScriptedHandler handler = new();
++        handler.Script.Add(_ => new HttpResponseMessage(HttpStatusCode.OK) {
++            Content = new StringContent("{not-json", Encoding.UTF8, "application/json"),
++        });
++        EventStoreQueryClient sut = NewClient(handler);
++
++        ProjectionSchemaMismatchException ex = await Should.ThrowAsync<ProjectionSchemaMismatchException>(
++            async () => await sut.QueryAsync<OrderProjection>(
++                BuildRequest(cacheDiscriminator: ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)),
++                TestContext.Current.CancellationToken).ConfigureAwait(true))
++            .ConfigureAwait(true);
++
++        ex.ProjectionType.ShouldBe(ProjectionType);
++        ETagCacheEntry? cached = await _cache.TryGetAsync(BuildKey(0), 1, TestContext.Current.CancellationToken);
++        cached.ShouldBeNull();
++    }
++
+     private static HttpResponseMessage Ok(string payloadArrayJson, string etag) {
+         HttpResponseMessage response = new(HttpStatusCode.OK) {
+             Content = new StringContent("{\"payload\":" + payloadArrayJson + "}", Encoding.UTF8, "application/json"),
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSchemaCompatibilityFixtureTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSchemaCompatibilityFixtureTests.cs
+new file mode 100644
+index 0000000..7ea7424
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSchemaCompatibilityFixtureTests.cs
+@@ -0,0 +1,51 @@
++using System.Text.Json;
++
++using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
++
++public sealed class ProjectionSchemaCompatibilityFixtureTests {
++    [Theory]
++    [InlineData("current-order-projection.json", "order-current")]
++    [InlineData("prior-minor-order-projection.json", "order-prior")]
++    [InlineData("forward-order-projection.json", "order-forward")]
++    public void SupportedProjectionFixtures_DeserializeWithWebDefaults(string fileName, string expectedId) {
++        string json = ReadFixture(fileName);
++
++        FixtureOrderProjection? projection = JsonSerializer.Deserialize<FixtureOrderProjection>(
++            json,
++            EventStoreRequestContent.JsonOptions);
++
++        projection.ShouldNotBeNull();
++        projection!.Id.ShouldBe(expectedId);
++    }
++
++    [Fact]
++    public void IncompatibleProjectionFixture_MapsToSchemaMismatchPath() {
++        string json = ReadFixture("incompatible-order-projection.json");
++
++        JsonException ex = Should.Throw<JsonException>(() => JsonSerializer.Deserialize<FixtureOrderProjection>(
++            json,
++            EventStoreRequestContent.JsonOptions));
++
++        ProjectionSchemaMismatchException mismatch = new("FixtureOrderProjection", ex);
++        mismatch.ProjectionType.ShouldBe("FixtureOrderProjection");
++        mismatch.InnerException.ShouldBe(ex);
++    }
++
++    private static string ReadFixture(string fileName) {
++        string path = Path.GetFullPath(Path.Combine(
++            AppContext.BaseDirectory,
++            "..",
++            "..",
++            "..",
++            "TestData",
++            "SchemaCompatibility",
++            fileName));
++        return File.ReadAllText(path);
++    }
++
++    private sealed record FixtureOrderProjection(string Id, string? Status = null);
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs
+index a9cb79d..2570470 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs
+@@ -1,6 +1,7 @@
+ using Hexalith.FrontComposer.Contracts.Communication;
+ using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
++using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+ 
+ using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Logging.Abstractions;
+@@ -55,6 +56,34 @@ public sealed class ProjectionSubscriptionServiceTests {
+         connection.JoinedGroups.ShouldBe(["orders:acme"]);
+     }
+ 
++    [Fact]
++    public async Task Reconnected_StartsReconciliationAfterRejoinCompletes() {
++        FakeProjectionHubConnection connection = new();
++        TestNotifier notifier = new();
++        TestReconciliationCoordinator reconciliation = new();
++        ProjectionSubscriptionService sut = new(
++            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
++                BaseAddress = new Uri("https://eventstore.test"),
++                RequireAccessToken = false,
++                ProjectionChangesHubPath = "/hubs/projection-changes",
++            }),
++            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
++            new TestProjectionConnectionState(),
++            new TestRefreshScheduler(),
++            notifier,
++            NullLogger<ProjectionSubscriptionService>.Instance,
++            fallbackDriver: null,
++            reconciliation);
++
++        await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken);
++        connection.JoinedGroups.Clear();
++
++        await connection.RaiseStateAsync(new ProjectionHubConnectionStateChanged(ProjectionHubConnectionState.Reconnected));
++
++        connection.JoinedGroups.ShouldBe(["orders:acme"]);
++        reconciliation.Calls.ShouldBe(1);
++    }
++
+     [Fact]
+     public async Task InitialStartFailure_SurfacesDisconnectedState_WithoutActiveGroup() {
+         FakeProjectionHubConnection connection = new() { StartException = new InvalidOperationException("token expired") };
+@@ -419,6 +448,15 @@ public sealed class ProjectionSubscriptionServiceTests {
+         }
+     }
+ 
++    private sealed class TestReconciliationCoordinator : IReconnectionReconciliationCoordinator {
++        public int Calls { get; private set; }
++
++        public Task<ProjectionReconciliationRefreshResult> ReconcileAsync(CancellationToken cancellationToken = default) {
++            Calls++;
++            return Task.FromResult(ProjectionReconciliationRefreshResult.Empty);
++        }
++    }
++
+     private sealed class CapturingLogger<T> : ILogger<T> {
+         public List<Entry> Entries { get; } = [];
+ 
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/LoadPageEffectIntegrationTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/LoadPageEffectIntegrationTests.cs
+index 91aa57c..7d091ad 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/LoadPageEffectIntegrationTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/DataGridNavigation/LoadPageEffectIntegrationTests.cs
+@@ -8,6 +8,7 @@ using System.Threading.Tasks;
+ using Fluxor;
+ 
+ using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+ using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
+ 
+ using Hexalith.FrontComposer.Contracts;
+@@ -145,6 +146,26 @@ public sealed class LoadPageEffectIntegrationTests {
+         failed.ErrorMessage.ShouldBe("loader boom");
+     }
+ 
++    [Fact]
++    public async Task SchemaMismatch_DispatchesSectionUpdatingCopy() {
++        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
++        loader.LoadPageAsync(
++            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
++            Arg.Any<IImmutableDictionary<string, string>>(),
++            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(),
++            Arg.Any<CancellationToken>())
++        .Returns<Task<ProjectionPageResult>>(_ => throw new ProjectionSchemaMismatchException("OrdersProjection"));
++
++        LoadPageEffects sut = MakeSut(loader, new LoadedPageState { PendingCompletionsByKey = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty });
++        RecordingDispatcher dispatcher = new();
++        TaskCompletionSource<object> tcs = new();
++
++        await sut.HandleLoadPageAsync(MakeAction(tcs), dispatcher);
++
++        LoadPageFailedAction failed = dispatcher.Single<LoadPageFailedAction>();
++        failed.ErrorMessage.ShouldBe("This section is being updated");
++    }
++
+     [Fact]
+     public async Task CancellationPath_DispatchesLoadPageCancelled() {
+         IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs
+index 3a32055..c3b43d4 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/State/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/ProjectionConnection/ProjectionFallbackRefreshSchedulerTests.cs
+@@ -122,6 +122,100 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
+             Arg.Any<CancellationToken>());
+     }
+ 
++    [Fact]
++    public async Task TriggerReconciliationOnce_SnapshotsVisibleLanes_DedupesAndReportsChangedOnlyFor200Delta() {
++        TestConnectionState state = new(new ProjectionConnectionSnapshot(
++            ProjectionConnectionStatus.Connected,
++            DateTimeOffset.UtcNow,
++            ReconnectAttempt: 0,
++            LastFailureCategory: null));
++        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
++        loader.LoadPageAsync(
++            "CustomersProjection",
++            Arg.Any<int>(),
++            Arg.Any<int>(),
++            Arg.Any<IImmutableDictionary<string, string>>(),
++            Arg.Any<string?>(),
++            Arg.Any<bool>(),
++            Arg.Any<string?>(),
++            Arg.Any<CancellationToken>())
++            .Returns(Task.FromResult(new ProjectionPageResult(Array.Empty<object>(), 0, null, IsNotModified: true)));
++        loader.LoadPageAsync(
++            "OrdersProjection",
++            Arg.Any<int>(),
++            Arg.Any<int>(),
++            Arg.Any<IImmutableDictionary<string, string>>(),
++            Arg.Any<string?>(),
++            Arg.Any<bool>(),
++            Arg.Any<string?>(),
++            Arg.Any<CancellationToken>())
++            .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "order-2" }, 1, "\"v2\"")));
++
++        ProjectionFallbackRefreshScheduler sut = new(
++            state,
++            loader,
++            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
++            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
++        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:CustomersProjection", "CustomersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
++        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
++        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection:dup", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
++
++        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(42, TestContext.Current.CancellationToken);
++
++        result.RefreshedCount.ShouldBe(2);
++        result.ChangedViewKeys.ShouldBe(["acme:OrdersProjection"]);
++        _ = loader.Received(1).LoadPageAsync(
++            "OrdersProjection",
++            0,
++            20,
++            Arg.Any<IImmutableDictionary<string, string>>(),
++            null,
++            false,
++            null,
++            Arg.Any<CancellationToken>());
++    }
++
++    [Fact]
++    public async Task TriggerReconciliationOnce_RespectsLaneCap() {
++        TestConnectionState state = new(new ProjectionConnectionSnapshot(
++            ProjectionConnectionStatus.Connected,
++            DateTimeOffset.UtcNow,
++            ReconnectAttempt: 0,
++            LastFailureCategory: null));
++        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
++        loader.LoadPageAsync(
++            Arg.Any<string>(),
++            Arg.Any<int>(),
++            Arg.Any<int>(),
++            Arg.Any<IImmutableDictionary<string, string>>(),
++            Arg.Any<string?>(),
++            Arg.Any<bool>(),
++            Arg.Any<string?>(),
++            Arg.Any<CancellationToken>())
++            .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "changed" }, 1, "\"v1\"")));
++
++        ProjectionFallbackRefreshScheduler sut = new(
++            state,
++            loader,
++            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 1 }).ToMonitor(),
++            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
++        _ = sut.RegisterLane(new ProjectionFallbackLane("b", "BProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
++        _ = sut.RegisterLane(new ProjectionFallbackLane("a", "AProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
++
++        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(43, TestContext.Current.CancellationToken);
++
++        result.RefreshedCount.ShouldBe(1);
++        _ = loader.Received(1).LoadPageAsync(
++            Arg.Any<string>(),
++            Arg.Any<int>(),
++            Arg.Any<int>(),
++            Arg.Any<IImmutableDictionary<string, string>>(),
++            Arg.Any<string?>(),
++            Arg.Any<bool>(),
++            Arg.Any<string?>(),
++            Arg.Any<CancellationToken>());
++    }
++
+     private sealed class TestConnectionState(ProjectionConnectionSnapshot snapshot) : IProjectionConnectionState {
+         public ProjectionConnectionSnapshot Current { get; private set; } = snapshot;
+ 
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconciliationSweepReducersTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconciliationSweepReducersTests.cs
+new file mode 100644
+index 0000000..4ed9772
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconciliationSweepReducersTests.cs
+@@ -0,0 +1,37 @@
++using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.ReconnectionReconciliation;
++
++public sealed class ReconciliationSweepReducersTests {
++    [Fact]
++    public void MarkReconciliationSweepAction_AddsOneMarkerPerDistinctLaneForEpoch() {
++        DateTimeOffset expires = new(2026, 4, 26, 12, 0, 1, TimeSpan.Zero);
++
++        ReconciliationSweepState next = ReconciliationSweepReducers.ReduceMark(
++            new ReconciliationSweepState(),
++            new MarkReconciliationSweepAction(12, ["orders", "orders", "customers"], expires));
++
++        next.MarkersByViewKey.Keys.OrderBy(static x => x, StringComparer.Ordinal).ShouldBe(["customers", "orders"]);
++        next.MarkersByViewKey["orders"].Epoch.ShouldBe(12);
++        next.MarkersByViewKey["orders"].ExpiresAt.ShouldBe(expires);
++    }
++
++    [Fact]
++    public void ClearExpiredReconciliationSweeps_RemovesExpiredMarkersOnly() {
++        DateTimeOffset now = new(2026, 4, 26, 12, 0, 1, TimeSpan.Zero);
++        ReconciliationSweepState state = new() {
++            MarkersByViewKey = System.Collections.Immutable.ImmutableDictionary<string, ReconciliationSweepMarker>.Empty
++                .Add("expired", new ReconciliationSweepMarker(1, now))
++                .Add("active", new ReconciliationSweepMarker(1, now.AddMilliseconds(1))),
++        };
++
++        ReconciliationSweepState next = ReconciliationSweepReducers.ReduceClearExpired(
++            state,
++            new ClearExpiredReconciliationSweepsAction(now));
++
++        next.MarkersByViewKey.ContainsKey("expired").ShouldBeFalse();
++        next.MarkersByViewKey.ContainsKey("active").ShouldBeTrue();
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs
+new file mode 100644
+index 0000000..6b6582b
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/ReconnectionReconciliation/ReconnectionReconciliationCoordinatorTests.cs
+@@ -0,0 +1,104 @@
++using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
++using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
++
++using Microsoft.Extensions.Logging.Abstractions;
++using Microsoft.Extensions.Time.Testing;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.State.ReconnectionReconciliation;
++
++public sealed class ReconnectionReconciliationCoordinatorTests {
++    [Fact]
++    public async Task ReconcileAsync_StartsEpochAndCompletesWithChangedResult() {
++        TestScheduler scheduler = new(new ProjectionReconciliationRefreshResult(1, ["orders"]));
++        ReconnectionReconciliationStateService state = NewState();
++        ReconnectionReconciliationCoordinator sut = new(
++            scheduler,
++            state,
++            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
++
++        ProjectionReconciliationRefreshResult result = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
++
++        result.ChangedViewKeys.ShouldBe(["orders"]);
++        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Refreshed);
++        state.Current.Changed.ShouldBeTrue();
++        scheduler.Epochs.ShouldBe([1]);
++    }
++
++    [Fact]
++    public async Task ReconcileAsync_NoChangedLanesClearsSilently() {
++        TestScheduler scheduler = new(new ProjectionReconciliationRefreshResult(1, []));
++        ReconnectionReconciliationStateService state = NewState();
++        ReconnectionReconciliationCoordinator sut = new(
++            scheduler,
++            state,
++            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
++
++        _ = await sut.ReconcileAsync(TestContext.Current.CancellationToken);
++
++        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
++        state.Current.Changed.ShouldBeFalse();
++    }
++
++    [Fact]
++    public async Task ReconcileAsync_DisposeCancelsActivePassWithoutLeakingStatus() {
++        BlockingScheduler scheduler = new();
++        ReconnectionReconciliationStateService state = NewState();
++        ReconnectionReconciliationCoordinator sut = new(
++            scheduler,
++            state,
++            NullLogger<ReconnectionReconciliationCoordinator>.Instance);
++
++        Task<ProjectionReconciliationRefreshResult> pass = sut.ReconcileAsync(TestContext.Current.CancellationToken);
++        await scheduler.Started.Task.WaitAsync(TestContext.Current.CancellationToken);
++        sut.Dispose();
++        ProjectionReconciliationRefreshResult result = await pass.WaitAsync(TestContext.Current.CancellationToken);
++
++        result.ShouldBe(ProjectionReconciliationRefreshResult.Empty);
++        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Idle);
++    }
++
++    private static ReconnectionReconciliationStateService NewState()
++        => new(
++            new FakeTimeProvider(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero)),
++            NullLogger<ReconnectionReconciliationStateService>.Instance);
++
++    private sealed class TestScheduler(ProjectionReconciliationRefreshResult result) : IProjectionFallbackRefreshScheduler {
++        public List<long> Epochs { get; } = [];
++
++        public IDisposable RegisterLane(ProjectionFallbackLane lane) => new Registration();
++
++        public Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
++
++        public Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
++            => Task.FromResult(0);
++
++        public Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default) {
++            Epochs.Add(epoch);
++            return Task.FromResult(result);
++        }
++    }
++
++    private sealed class BlockingScheduler : IProjectionFallbackRefreshScheduler {
++        public TaskCompletionSource Started { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
++
++        public IDisposable RegisterLane(ProjectionFallbackLane lane) => new Registration();
++
++        public Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
++
++        public Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default)
++            => Task.FromResult(0);
++
++        public async Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default) {
++            Started.TrySetResult();
++            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken).ConfigureAwait(false);
++            return ProjectionReconciliationRefreshResult.Empty;
++        }
++    }
++
++    private sealed class Registration : IDisposable {
++        public void Dispose() {
++        }
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/current-order-projection.json b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/current-order-projection.json
+new file mode 100644
+index 0000000..b39acf9
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/current-order-projection.json
+@@ -0,0 +1 @@
++{"id":"order-current","status":"Open"}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/forward-order-projection.json b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/forward-order-projection.json
+new file mode 100644
+index 0000000..7dad3ef
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/forward-order-projection.json
+@@ -0,0 +1 @@
++{"id":"order-forward","status":"Open","futureField":"ignored"}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/incompatible-order-projection.json b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/incompatible-order-projection.json
+new file mode 100644
+index 0000000..89d4d25
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/incompatible-order-projection.json
+@@ -0,0 +1 @@
++{not-json
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/prior-minor-order-projection.json b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/prior-minor-order-projection.json
+new file mode 100644
+index 0000000..e59a42a
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/TestData/SchemaCompatibility/prior-minor-order-projection.json
+@@ -0,0 +1 @@
++{"id":"order-prior"}
