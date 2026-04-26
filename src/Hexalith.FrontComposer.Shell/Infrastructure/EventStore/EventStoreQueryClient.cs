@@ -131,9 +131,11 @@ public sealed class EventStoreQueryClient(
                         return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
                     }
                     catch (ProjectionSchemaMismatchException ex) {
-                        if (cacheKey is not null) {
-                            await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
-                        }
+                        // P1 — best-effort cache invalidation; never let a cache-removal failure
+                        // mask the original schema-mismatch exception we are about to rethrow.
+                        // DN2 — invalidate the projection-type/discriminator FAMILY, not just this
+                        // exact key. Sibling pages of the same projection may share the bad shape.
+                        await TryInvalidateSchemaMismatchAsync(cacheKey, ex.ProjectionType, cancellationToken).ConfigureAwait(false);
 
                         logger.LogWarning(
                             "Projection cache payload schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
@@ -183,16 +185,21 @@ public sealed class EventStoreQueryClient(
                     items = ReadPayloadItems<T>(document.RootElement);
                     totalCount = ReadTotalCount(document.RootElement, items.Count);
                 }
-                catch (JsonException ex) {
-                    if (cacheKey is not null) {
-                        await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
-                    }
+                catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
+                    // P2 — broaden beyond JsonException so type-shape mismatches surfaced by
+                    // ReadPayloadItems<T>.Deserialize (InvalidOperationException, NotSupportedException,
+                    // ArgumentException) flow through the schema-mismatch path instead of bubbling raw.
+                    // P4 — null-guard the diagnostic field; request.ProjectionType is normalized non-null
+                    // earlier but logging the literal "null" is still preferable to a NullReferenceException.
+                    string diagnosticProjectionType = projectionType ?? string.Empty;
+                    // DN2 — invalidate the projection family, not just this single cache key.
+                    await TryInvalidateSchemaMismatchAsync(cacheKey, diagnosticProjectionType, cancellationToken).ConfigureAwait(false);
 
                     logger.LogWarning(
                         "Projection response schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
-                        projectionType,
+                        diagnosticProjectionType,
                         ex.GetType().Name);
-                    throw new ProjectionSchemaMismatchException(projectionType, ex);
+                    throw new ProjectionSchemaMismatchException(diagnosticProjectionType, ex);
                 }
 
                 string? eTag = classification.ETag;
