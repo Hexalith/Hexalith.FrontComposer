@@ -47,6 +47,7 @@ so that I can rearrange section layouts while preserving generated field renderi
 | AC12 | A template marker or generated manifest is invalid, stale, duplicated, or version-incompatible | The project builds or the generated view attempts template lookup | Diagnostics follow the explicit severity contract in Dev Notes, name the template/projection types, include expected/got/fix/docs-link teaching text, and state whether rebuild is required. |
 | AC13 | A developer edits a Level 2 template during the dev loop | The change is Razor markup only, marker metadata, projection type, manifest shape, deletion, or a duplicate marker | The hot reload / rebuild matrix in Dev Notes defines the expected behavior. Razor body edits may hot reload when the host supports it; marker, projection, manifest, and duplicate-resolution changes require rebuild evidence and must not be silently ignored. |
 | AC14 | A developer follows the documented happy path for `CounterProjection` | They author a typed template, rebuild, inspect generated registration, and run the sample | The sample proves one valid override, one fallback/default projection, one invalid-marker diagnostic, preserved localized labels/help text, preserved accessible names/roles/focus order, and no hard-coded English strings in generated template plumbing. |
+| AC15 | A template renders under different tenants, users, cultures, densities, or item sets | The registry and generated delegates select and execute the template repeatedly | Generated descriptors remain type/role metadata only; no tenant/user/item payload or rendered fragment output is cached across renders, and tests prove context values cannot bleed between renders or users. |
 
 ---
 
@@ -58,6 +59,7 @@ so that I can rearrange section layouts while preserving generated field renderi
   - [ ] Document the allowed member boundary in code docs and tests: stable rendering inputs only; no Shell services, no mutable Fluxor state, no source-generator internals, no raw `RazorModel`, and no public registry mutation surface.
   - [ ] Expose localized labels/help text and culture-aware display metadata through the same generated descriptor path used by Level 1 annotations so template authors are not pushed toward hard-coded strings.
   - [ ] Keep the context immutable or read-only; templates must not mutate Fluxor state or DataGrid navigation state directly.
+  - [ ] Construct `ProjectionTemplateContext<TProjection>` per render from the current generated view state; do not store tenant/user/item/culture data in generated manifests, singleton descriptors, static fields, or registry caches.
   - [ ] Add a typed template interface or base contract, for example `IProjectionTemplate<TProjection>`, only if it removes ambiguity. Avoid a large hierarchy.
   - [ ] Use `RenderFragment<ProjectionTemplateContext<TProjection>>` / typed child content patterns aligned with Blazor templated components.
 
@@ -73,7 +75,7 @@ so that I can rearrange section layouts while preserving generated field renderi
   - [ ] Emit a template manifest/registration artifact in the consuming compilation.
   - [ ] Ensure generated template registration is deterministic by projection FQN and template FQN, independent of file system order, absolute project path, rebuild order, and generic type display quirks.
   - [ ] Include a manifest schema/contract version and generated artifact name that are stable and inspectable by adopters during development.
-  - [ ] Do not emit timestamps, absolute local paths, or machine-specific content into generated template registrations.
+  - [ ] Do not emit timestamps, absolute local paths, machine-specific content, tenant/user identifiers, localized runtime strings, or sample item payloads into generated template registrations.
   - [ ] Add diagnostics with new reserved HFC10xx IDs; document them in `DiagnosticDescriptors` and `FcDiagnosticIds` if public symbolic constants are needed.
   - [ ] Diagnostics must include expected/got/fix/docs-link content per FR45.
 
@@ -85,6 +87,7 @@ so that I can rearrange section layouts while preserving generated field renderi
   - [ ] Keep the existing `IOverrideRegistry` placeholder untouched unless it is intentionally adapted behind the typed facade. Do not expose its stringly API as the Level 2 developer experience.
   - [ ] Define duplicate-template behavior: one warning/error at build time where possible; runtime registry should fail predictably if duplicate descriptors survive.
   - [ ] Runtime lookup must never scan loaded assemblies for `ProjectionTemplateAttribute`; missing generated manifests fall back predictably or emit the configured diagnostic path.
+  - [ ] Registry entries store template descriptors and component types only; they must not cache `ProjectionTemplateContext<TProjection>`, `RenderFragment` output, row collections, `RenderContext`, tenant IDs, user IDs, or culture-specific display values.
 
 - [ ] T5. Integrate template selection into generated projection views (AC2, AC4)
   - [ ] Extend `RazorEmitter` / `ProjectionRoleBodyEmitter` so each generated projection view checks for a matching Level 2 template before default role-specific body emission.
@@ -93,6 +96,7 @@ so that I can rearrange section layouts while preserving generated field renderi
   - [ ] Implement the precedence matrix from Dev Notes: valid matching Level 2 template, otherwise default generated role body; invalid, duplicate, or incompatible template descriptors must not be selected silently.
   - [ ] Templates can rearrange generated sections, but individual field rendering must call framework delegates so badge, description, unsupported placeholder, empty-state, relative/currency formatting, filter/sort metadata, and accessibility behavior remain owned by FrontComposer.
   - [ ] Avoid direct `RenderTreeBuilder` sequence manipulation in adopter templates. Adopters write normal Razor markup; generated code handles low-level builder output.
+  - [ ] Ensure template-selected rendering preserves the same wrapper-owned authorization/tenant context, lifecycle state, heading order, focus order, and localized accessible names as the default generated body.
 
 - [ ] T6. Preserve role and DataGrid contracts inside templates (AC2, AC4, AC10)
   - [ ] Define which role surfaces Level 2 can override in v1: Default, ActionQueue, StatusOverview, DetailRecord, Timeline, and Dashboard fallback.
@@ -128,6 +132,7 @@ so that I can rearrange section layouts while preserving generated field renderi
   - [ ] Shell tests for `IProjectionTemplateRegistry` registration, lookup, duplicate handling, and disposal-safe rendering.
   - [ ] bUnit/sample tests for Counter template rendering and preservation of generated field fragments.
   - [ ] Regression tests proving Level 1 annotation output, generated field fallback, DataGrid virtualization/navigation, empty states, unsupported placeholders, role contracts, localized resources, accessible names/roles, keyboard focus order, and validation/empty-state semantics remain intact through the template path.
+  - [ ] Regression tests proving repeated template renders with different tenant/user/culture/item inputs do not reuse stale `ProjectionTemplateContext<TProjection>` values, rendered fragments, or descriptor state.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
   - [ ] Targeted tests: Contracts, SourceTools template tests, Shell registry/rendering tests, and Counter sample build.
 
@@ -163,6 +168,7 @@ so that I can rearrange section layouts while preserving generated field renderi
 | Starter template generator | Story 6-5 | Level 2 contracts | 6-2 supplies descriptors/context shape; 6-5 builds overlay UI and clipboard copy. |
 | Build-time diagnostics | Architecture + prior HFC10xx IDs | Template validation | Reserve new HFC10xx diagnostics with teaching messages and docs links. |
 | Future Level 3 slots | Story 6-3 | Templates | Level 2 must not add slot-level lambda registration or field component replacement. |
+| Tenant/user render context | Stories 5-1 and 7-2 | Template render context | Descriptor generation is compile-time type metadata only; tenant/user/culture/item state is assembled per render and never cached in generated registrations or registry state. |
 
 ### Party-Mode Review Contract Addendum
 
@@ -204,6 +210,17 @@ Party-mode review on 2026-04-26 tightened Story 6-2 before development:
 | Registry visibility | Internal generated plumbing for Story 6-2; public customization remains the marker + typed Razor template. |
 | Runtime lookup | Cheap dictionary-style lookup by projection/role; no per-render allocation-heavy scans and no assembly reflection marker discovery. |
 | Failure behavior | Duplicate/incompatible descriptors are diagnosed at build time where possible and fail predictably at runtime if still present. |
+| Cache boundary | Registry and generated manifests cache only type/role/schema metadata. Per-render context, row data, tenant/user IDs, culture-localized display values, and rendered fragments are rebuilt from current view state on each render. |
+
+### Render Context And Cache Safety
+
+Advanced elicitation on 2026-04-26 added a hard boundary for security and robustness:
+
+- Generated manifests are compile-time artifacts and must never include tenant IDs, user IDs, row payloads, culture-specific resolved strings, timestamps, absolute paths, or rendered markup.
+- `IProjectionTemplateRegistry` can cache descriptor lookup by projection and role, but it cannot cache `ProjectionTemplateContext<TProjection>`, `RenderContext`, `IReadOnlyList<TProjection>`, `RenderFragment` output, or localized display values.
+- Generated views build the template context from current wrapper state on each render so tenant/user/culture/density/read-only/dev-mode changes cannot reuse stale values.
+- Template-selected rendering remains inside the same lifecycle/authorization/tenant wrapper as the default generated body. Level 2 cannot become a bypass around wrapper-owned loading, empty state, degraded state, or future authorization checks.
+- Tests must include at least one repeated-render case that changes tenant/user/culture/item values and proves the second render does not reuse first-render context or markup.
 
 ### Diagnostics Severity Contract
 
@@ -258,6 +275,7 @@ The implementation evidence must include a concise happy path:
 | D12 | Accessibility contracts stay inherited from generated fragments where possible. | Avoids asking adopters to recreate field ARIA labels and descriptions for simple layout changes. | Make templates fully responsible for all accessible names. |
 | D13 | Template registry lookup must be cheap and bounded. | Generated views render often; lookup cannot allocate heavily or scan assemblies. | Reflection discovery per render; unbounded dictionary growth. |
 | D14 | Contracts stay dependency-light; Shell owns Blazor-specific runtime helpers where needed. | Domain assemblies should not gain avoidable dependency weight. | Put Shell services in Contracts; put marker attributes in Shell. |
+| D15 | Template descriptors are cacheable, but template render context and rendered output are not. | Prevents cross-tenant/user/culture bleed and stale row rendering while keeping lookup cheap. | Cache `RenderFragment` output by projection; store `RenderContext` or item lists in registry descriptors. |
 
 ### Library / Framework Requirements
 
@@ -421,5 +439,53 @@ Findings deferred:
 - Rich design-time tooling, starter template overlay/clipboard flow, and dev-mode UX remain owned by Story 6-5.
 - User-facing rebuild/restart polish beyond stale-manifest diagnostics remains owned by Story 6-6.
 - Slot-level replacement, full component replacement, and command-form templates remain out of scope for Stories 6-3, 6-4, or future backlog.
+
+Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+Date/time: 2026-04-26T09:49:55+02:00
+
+Selected story key: `6-2-level-2-typed-razor-template-overrides`
+
+Command/skill invocation used: `/bmad-advanced-elicitation 6-2-level-2-typed-razor-template-overrides`
+
+Batch 1 method names:
+
+- Red Team vs Blue Team
+- Failure Mode Analysis
+- Security Audit Personas
+- First Principles Analysis
+- Comparative Analysis Matrix
+
+Reshuffled Batch 2 method names:
+
+- Chaos Monkey Scenarios
+- Pre-mortem Analysis
+- Occam's Razor Application
+- Socratic Questioning
+- Hindsight Reflection
+
+Findings summary:
+
+- Template selection and diagnostics were already well hardened by party-mode, but the render-context boundary still allowed an implementer to accidentally cache per-user data through descriptors, static fields, registry state, or rendered fragment output.
+- Generated manifests needed an explicit "type metadata only" rule so SourceTools output cannot capture tenant IDs, user IDs, item payloads, localized runtime strings, timestamps, or local paths.
+- Registry performance guidance needed to distinguish safe descriptor caching from unsafe caching of `ProjectionTemplateContext<TProjection>`, `RenderContext`, item lists, culture-specific display values, or rendered markup.
+- Template-selected rendering needed an explicit statement that it remains inside the same wrapper-owned lifecycle, tenant, authorization, loading, empty-state, and future degraded-state boundaries as default generated output.
+- Test guidance needed a repeated-render regression that changes tenant/user/culture/item values and proves no stale first-render context or markup is reused.
+
+Changes applied:
+
+- Added AC15 for cross-render tenant/user/culture/item isolation and no rendered-fragment cache bleed.
+- Added task requirements for per-render `ProjectionTemplateContext<TProjection>` construction and descriptor-only registry storage.
+- Expanded generated manifest requirements to forbid tenant/user identifiers, localized runtime strings, and sample payloads.
+- Added the `Render Context And Cache Safety` Dev Notes section and cross-story seam for tenant/user render context.
+- Added Binding Decision D15 clarifying that descriptors are cacheable but template context and rendered output are not.
+- Expanded test requirements for repeated template renders with changed tenant/user/culture/item inputs.
+
+Findings deferred:
+
+- Full authorization-policy integration remains owned by Epic 7; Story 6-2 only preserves the wrapper boundary and must not invent authorization behavior.
+- Rich runtime diagnostics for stale metadata edits remain owned by Story 6-6 beyond the warning text already required here.
 
 Final recommendation: ready-for-dev

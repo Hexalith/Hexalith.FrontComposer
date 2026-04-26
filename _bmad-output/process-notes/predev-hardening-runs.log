@@ -27,3 +27,4 @@
 2026-04-26T09:09:53.4848022+02:00	advanced-elicitation	5-6-build-time-infrastructure-enforcement-and-observability	ok	advanced elicitation trace recorded and story hardened for transitive governance and fail-open telemetry
 2026-04-26T09:24:34.8679058+02:00	advanced-elicitation	5-7-signalr-fault-injection-test-harness	ok	advanced elicitation trace recorded and story hardened for bounded deterministic harness behavior
 2026-04-26T09:32:37+02:00	advanced-elicitation	6-1-level-1-annotation-overrides	ok	advanced elicitation trace recorded and story hardened for annotation conflicts and deterministic formatting
+2026-04-26T09:49:55+02:00	advanced-elicitation	6-2-level-2-typed-razor-template-overrides	ok	advanced elicitation trace recorded and story hardened for context cache isolation
