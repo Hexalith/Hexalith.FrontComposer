@@ -25,22 +25,28 @@ As a developer,
 I want to override field rendering via declarative attributes without writing custom components,
 so that I can adjust labels, formatting, column priority, and display hints with a one-line attribute change and immediate dev-loop feedback.
 
+### Adopter Job To Preserve
+
+Generated projection fields should carry common display intent from the domain model into the generated UI without requiring adopters to edit generated Razor, register runtime renderers, or create custom components. Level 1 is compile-time metadata only: annotations enrich SourceTools IR and the existing emitters choose the established rendering path.
+
 ---
 
 ## Acceptance Criteria
 
 | AC | Given | When | Then |
 | --- | --- | --- | --- |
-| AC1 | A projection property has `[Display(Name = "Order Date")]` | The generated DataGrid renders | The column header uses `Order Date`; this explicit name wins over humanized property names and enum humanization. |
-| AC2 | A projection property has `[Display(Description = "...")]` or `[Description("...")]` | The generated DataGrid renders | Existing header tooltip/help emission still surfaces the description; `[Description]` wins over `Display.Description` when both are present. |
-| AC3 | A projection property has `[ColumnPriority(1)]` | `FcColumnPrioritizer` activates for a projection with more than 15 columns | Lower priority numbers appear first in the default visible set; equal priorities remain declaration-order stable and keep HFC1028 Information behavior. |
-| AC4 | A `DateTime` or `DateTimeOffset` projection property has `[RelativeTime]` | The generated DataGrid cell renders | Values within the configured relative window render as fixed-width abbreviated relative text such as `3h ago`; values older than 7 days render with the existing absolute date format. |
+| AC1 | A projection property has `[Display(Name = "Order Date")]` | The generated DataGrid renders without template edits | The column header uses `Order Date`; this explicit annotation wins over humanized property names and enum humanization. |
+| AC2 | A projection property has `[Display(Description = "...")]` or `[Description("...")]` | The generated DataGrid renders | Existing header tooltip/help metadata still surfaces through the current accessible description path; `[Description]` wins over `Display.Description` when both are present. |
+| AC3 | A projection property has `[ColumnPriority(1)]` | `FcColumnPrioritizer` activates for a projection with more than 15 columns | Lower priority numbers appear first in the default visible set; unannotated columns sort after explicit priorities; equal priorities remain declaration-order stable and keep HFC1028 Information behavior. |
+| AC4 | A `DateTime`, `DateTimeOffset`, or nullable variant projection property has `[RelativeTime]` | The generated DataGrid cell renders using a deterministic clock seam | Values within the configured relative window render as fixed-width abbreviated relative text such as `3h ago`; values older than 7 days render with the existing absolute date format; UTC, Local, and Unspecified `DateTime.Kind` behavior is covered by tests. |
 | AC5 | A nullable relative-time field has no value | The generated DataGrid cell renders | The cell renders the same null dash fallback used by existing date columns and emits no relative-time exception. |
-| AC6 | A `decimal`, `double`, or `float` projection property has `[Currency]` | The generated DataGrid cell renders | The value is formatted with the current culture's currency format, remains right-aligned with `fc-col-numeric`, and preserves null fallback behavior. |
-| AC7 | `[RelativeTime]` is applied to a non-DateTime-like field or `[Currency]` to a non-numeric field | The source generator runs | A warning diagnostic names the property, expected type family, actual type, fix, and docs link; the field falls back to the existing default formatter. |
-| AC8 | A developer changes a Level 1 annotation while `dotnet watch` is running | The project rebuilds incrementally | The running sample reflects the new header/priority/formatting without manual generated-file edits or runtime registration. |
-| AC9 | Level 1 annotations are evaluated as a customization-gradient level | The app starts and renders generated views | No runtime override registry, custom component, slot registration, or template file is required. |
-| AC10 | The Counter sample is used as a reference implementation | The sample domain is built and rendered | At least one projection property demonstrates a Level 1 override, and tests cover the generated output. |
+| AC6 | A `decimal`, `double`, `float`, or nullable variant projection property has `[Currency]` | The generated DataGrid cell renders | The value is formatted with the current culture's standard currency format, remains right-aligned with `fc-col-numeric`, preserves null fallback behavior, and keeps sort/filter semantics on the raw numeric value. |
+| AC7 | `[RelativeTime]` is applied to a non-DateTime-like field or `[Currency]` to a non-numeric field | The source generator runs | A stable warning diagnostic ID names the property, attribute, expected type family, actual type, fix, docs link, and fallback behavior; generated code still compiles, the column remains emitted, and the existing default formatter applies. |
+| AC8 | A field uses supported Level 1 display metadata | The generated UI renders under localized/culture-sensitive contexts | The story preserves existing `DisplayAttribute` and shell localization behavior, currency uses `CultureInfo.CurrentCulture`, and no new custom field-resource system is introduced. |
+| AC9 | A developer changes, removes, or changes constructor arguments for a Level 1 annotation while `dotnet watch` is running | The project rebuilds incrementally | The affected generated projection output changes and the running sample reflects the new header/priority/formatting without manual generated-file edits or runtime registration. |
+| AC10 | Level 1 annotations are evaluated as a customization-gradient level | The app starts and renders generated views | No runtime override registry, custom component, slot registration, template file, custom format-provider registry, or DI-per-domain renderer is required. |
+| AC11 | The Counter sample is used as a reference implementation | The sample domain is built and rendered | At least one simple metadata annotation and one format annotation demonstrate the adopter path, and tests cover the generated output. |
+| AC12 | Level 1 annotation metadata crosses SourceTools boundaries | Parse, transform, and emit stages run | Header, description, priority, relative-time, and currency metadata survive through IR into generated output without tying the IR contract to a specific runtime component implementation. |
 
 ---
 
@@ -50,23 +56,26 @@ so that I can adjust labels, formatting, column priority, and display hints with
   - [ ] Keep `System.ComponentModel.DataAnnotations.DisplayAttribute` as the standard label attribute. Do not add a FrontComposer-specific display-name attribute.
   - [ ] Keep `System.ComponentModel.DescriptionAttribute` and `DisplayAttribute.Description` feeding `PropertyModel.Description`.
   - [ ] Preserve current precedence: `[Description]` beats `Display.Description`; `Display.Name` beats `CamelCaseHumanizer`; raw property name is the final fallback.
+  - [ ] Preserve existing accessible description propagation through `HeaderTooltip` / generated description metadata; do not create tooltip-only behavior that bypasses the current accessibility path.
   - [ ] Preserve `ColumnPriorityAttribute` semantics: any signed int is accepted, lower is earlier, null materializes as `int.MaxValue`, collisions emit HFC1028 Information and fall back to declaration order.
+  - [ ] Document that Story 6-1 preserves existing `DisplayAttribute` localization behavior but does not add a new field-display resource system.
   - [ ] Add or tighten tests around parse, transform, and emit so these behaviors are visibly owned by Story 6-1.
 
-- [ ] T2. Add Contracts attributes for new format hints (AC4, AC6, AC7, AC9)
+- [ ] T2. Add Contracts attributes for new format hints (AC4, AC6, AC7, AC10)
   - [ ] Add `RelativeTimeAttribute` under `src/Hexalith.FrontComposer.Contracts/Attributes/`.
   - [ ] Add `CurrencyAttribute` under the same namespace.
   - [ ] Use `[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]` for both.
   - [ ] Keep attributes dependency-free and trim-friendly. Constructors should only capture primitive/string values.
   - [ ] For `[RelativeTime]`, default the relative window to 7 days; allow a bounded integer override only if it stays simple and testable.
-  - [ ] For `[Currency]`, default to the current culture currency format. Optional ISO currency-code support is allowed only if it does not require new package dependencies or a runtime service.
+  - [ ] For `[Currency]`, default to the current culture standard currency format. Defer ISO currency-code conversion, custom currency providers, and arbitrary format strings unless already supported by existing code without new runtime services.
 
 - [ ] T3. Extend Parse-stage IR without breaking existing equality/caching contracts (AC4, AC6, AC7)
   - [ ] Extend `PropertyModel` with a small format-hint value, enum, or record that can represent default, relative-time, and currency.
   - [ ] Parse `[RelativeTime]` and `[Currency]` in `AttributeParser.ParseProperty`.
   - [ ] Include the new field in `PropertyModel.Equals` and `GetHashCode`; update `DomainModelCacheEqualityTests` if needed.
-  - [ ] Emit warning diagnostics for incompatible type usage. Reserve new SourceTools IDs in the HFC10xx range, documenting them in `DiagnosticDescriptors`, `FcDiagnosticIds` if needed, and analyzer release notes.
-  - [ ] Warnings must be fail-soft: keep generating the column with the prior default format rather than dropping the field.
+  - [ ] Emit warning diagnostics for incompatible type usage. Reserve stable SourceTools IDs in the HFC10xx range, documenting them in `DiagnosticDescriptors`, `FcDiagnosticIds` if needed, and analyzer release notes.
+  - [ ] Diagnostics must include field, attribute, expected type family, actual type, fix guidance, docs link, and fallback behavior.
+  - [ ] Warnings must be fail-soft: keep generated code compiling, keep the column emitted, and use the prior default format rather than dropping the field.
 
 - [ ] T4. Extend Transform-stage column metadata (AC4, AC6, AC7)
   - [ ] Extend `ColumnModel` to carry the Level 1 format override.
@@ -76,13 +85,14 @@ so that I can adjust labels, formatting, column priority, and display hints with
     - No annotation -> existing defaults (`N0`, `N2`, `d`, `t`, `Humanize:30`, etc.).
   - [ ] Preserve stable column sorting by priority and declaration order. Format overrides must not affect column ordering.
   - [ ] Add tests proving explicit `Display.Name` still controls headers when a format annotation is also present.
+  - [ ] Keep IR names UI-agnostic (`DisplayFormat`, `Header`, `Description`, `Priority` style). Do not introduce `Component`, `Renderer`, or runtime override terminology into the Level 1 metadata contract.
 
 - [ ] T5. Emit currency formatting through the existing numeric column path (AC6)
   - [ ] Reuse `ColumnEmitter.EmitNumericColumn` rather than creating a second numeric component.
   - [ ] Format non-null values with the .NET currency standard format string and `CultureInfo.CurrentCulture`.
   - [ ] Keep `Class = "fc-col-numeric"` so existing right-alignment and DataGrid styling apply.
   - [ ] Preserve sort behavior over the underlying numeric property, not the formatted string.
-  - [ ] Add EN/FR culture tests where the existing test harness can switch `CurrentCulture` safely.
+  - [ ] Add EN/FR culture tests where the existing test harness can switch `CurrentCulture` safely; include negative values, zero, nullable values, and supported floating-point/numeric variants.
 
 - [ ] T6. Emit relative-time formatting deterministically (AC4, AC5)
   - [ ] Prefer a small generated helper method or Shell helper that accepts the value and a `DateTimeOffset now` from an injected `TimeProvider`.
@@ -90,6 +100,7 @@ so that I can adjust labels, formatting, column priority, and display hints with
   - [ ] Use fixed-width abbreviated labels for the relative window: examples such as `5m ago`, `3h ago`, `2d ago`. Keep copy concise and stable for DataGrid scanning.
   - [ ] After 7 days, fall back to the same absolute date format used by unannotated DateTime columns.
   - [ ] Respect nullable fallback with the existing dash representation.
+  - [ ] Cover `DateTimeOffset`, `DateTime`, nullable variants, UTC, Local, Unspecified, future timestamps, and boundary values with deterministic tests.
   - [ ] Avoid per-cell timers in v1. Values may update on render/query refresh; continuous live ticking is out of scope.
 
 - [ ] T7. Preserve generated DataGrid and role-specific surfaces (AC1-AC7)
@@ -97,23 +108,24 @@ so that I can adjust labels, formatting, column priority, and display hints with
   - [ ] If a role-specific path cannot yet use the new formatter safely, document and test the intentional fallback rather than silently diverging.
   - [ ] Do not alter badge mapping, unsupported placeholder emission, empty-state CTA behavior, or grouping semantics.
 
-- [ ] T8. Add Counter sample reference override (AC8, AC10)
-  - [ ] Add a minimal Level 1 annotation to `samples/Counter/Counter.Domain/CounterProjection.cs`; recommended: `[Display(Name = "Last changed")]` or `[RelativeTime]` on `LastUpdated`.
+- [ ] T8. Add Counter sample reference override (AC11)
+  - [ ] Add minimal Level 1 annotations to `samples/Counter/Counter.Domain/CounterProjection.cs`; recommended: `[Display(Name = "Last changed")]` plus `[RelativeTime]` on `LastUpdated`.
   - [ ] Keep the sample small. Do not introduce Orders/TaskTracker solely for this story.
   - [ ] Update snapshot or generated-output tests that assert Counter projection headers/formatting.
   - [ ] Add a short comment only if needed to explain why the sample uses the annotation.
 
-- [ ] T9. Dev-loop and hot-reload evidence (AC8)
-  - [ ] Add a focused test proving generator output changes when an annotation changes between two compilations.
-  - [ ] If practical, add an integration note or test fixture documenting `dotnet watch` incremental rebuild behavior for attribute changes.
+- [ ] T9. Dev-loop and hot-reload evidence (AC9)
+  - [ ] Add focused tests proving generator output changes when an annotation is added, removed, or has a constructor argument changed between two compilations.
+  - [ ] If practical, add an integration note or test fixture documenting `dotnet watch` incremental rebuild behavior for attribute changes and the expected affected generated output count.
   - [ ] Do not promise pure CLR/Razor hot reload for source-generator input changes. If a scenario needs restart/rebuild messaging, add it to Known Gaps with Story 6-6 ownership.
 
-- [ ] T10. Tests and verification (AC1-AC10)
+- [ ] T10. Tests and verification (AC1-AC12)
   - [ ] Contracts tests for `RelativeTimeAttribute`, `CurrencyAttribute`, and existing `ColumnPriorityAttribute` behavior.
-  - [ ] Parse tests for valid attributes, invalid-type warnings, and precedence with `Display`/`Description`.
-  - [ ] Transform tests for `ColumnModel` metadata, display-name precedence, priority sorting, and fallback formatting.
+  - [ ] Parse tests for valid attributes, invalid-type warnings, diagnostic IDs/source spans, and precedence with `Display`/`Description`.
+  - [ ] Transform tests for `ColumnModel` metadata, display-name precedence, priority sorting, UI-agnostic IR naming, and fallback formatting.
   - [ ] Emitter approval tests for currency and relative-time columns, including nullable cases.
   - [ ] Shell/component tests for relative-time helper output and culture-sensitive currency formatting.
+  - [ ] Negative tests proving no runtime registry, template registration, DI-per-domain renderer, or custom component hook is introduced by Story 6-1.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
   - [ ] Targeted tests: Contracts attribute tests, SourceTools parse/transform/emit tests, and Shell formatting tests. Run full solution tests if the working tree is otherwise clean.
 
@@ -146,6 +158,16 @@ so that I can adjust labels, formatting, column priority, and display hints with
 | Localization/culture | Shell resources + current culture | Currency and relative-time text | Currency follows `CultureInfo.CurrentCulture`; relative-time abbreviations must be concise and testable. |
 | Hot reload / generator rebuild | Architecture source-generator constraint | Developer dev-loop | `dotnet watch` incremental rebuild is the evidence path; Story 6-6 owns unsupported hot reload messaging. |
 | Future Levels 2-4 | Epic 6 Stories 6-2 to 6-4 | Override gradient | Level 1 cannot introduce runtime registry or custom component contracts. |
+
+### Type Compatibility Matrix
+
+| Attribute | Valid source types | Invalid-source behavior | Explicitly out of scope |
+| --- | --- | --- | --- |
+| `[Display(Name = ...)]` | Any projection property | Existing display metadata fallback applies. | New FrontComposer-specific display-name attribute. |
+| `[Display(Description = ...)]` / `[Description(...)]` | Any projection property | Existing description fallback applies. | New tooltip-only description surface or custom field-resource system. |
+| `[ColumnPriority(...)]` | Any projection property | Existing HFC1028 collision behavior remains Information-level and stable. | Replacing priority with `DisplayAttribute.Order`. |
+| `[RelativeTime]` | `DateTime`, `DateTimeOffset`, and nullable variants | Stable warning diagnostic; generated code compiles; column remains emitted with existing date/time formatting. | Per-cell live ticking, custom grammar/localized relative phrases, runtime date formatter registry. |
+| `[Currency]` | `decimal`, `double`, `float`, and nullable variants | Stable warning diagnostic; generated code compiles; column remains emitted with existing numeric formatting. | Currency conversion, ISO currency-provider services, arbitrary runtime format providers. |
 
 ### Binding Decisions
 
@@ -216,6 +238,7 @@ Expected new or changed files:
 
 Do not implement these in Story 6-1:
 
+- Runtime override registry, DI-per-domain rendering, or generated component lookup by domain.
 - Level 2 typed Razor templates.
 - Level 3 slot-level field replacement or `IOverrideRegistry`.
 - Level 4 full component replacement.
@@ -224,6 +247,7 @@ Do not implement these in Story 6-1:
 - Runtime error boundaries for faulty overrides.
 - A custom localization/resource system for field display names.
 - Per-cell live ticking timers for relative time.
+- Currency conversion, ISO currency-provider services, or arbitrary runtime format-provider registries.
 - A new sample domain solely for customization.
 - Changes to EventStore, SignalR, ETag cache, command lifecycle, or reconnect behavior.
 
@@ -281,6 +305,29 @@ Do not implement these in Story 6-1:
 ### Completion Notes List
 
 (to be filled in by dev agent)
+
+### Party-Mode Review
+
+- Date: 2026-04-26T08:44:07+02:00
+- Selected story key: 6-1-level-1-annotation-overrides
+- Command/skill invocation used: `/bmad-party-mode 6-1-level-1-annotation-overrides; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), John (Product Manager)
+- Findings summary:
+  - Keep the compile-time Level 1 boundary explicit: no runtime registry, template registration, custom components, custom format-provider registry, or DI-per-domain renderer.
+  - Make `RelativeTime` and `Currency` contracts testable with explicit valid type families, nullable behavior, deterministic diagnostics, and fail-soft fallback requirements.
+  - Preserve accessibility/localization expectations by using the current description metadata path and `CultureInfo.CurrentCulture`, while deferring any new field-resource system.
+  - Add parse -> IR -> transform -> emit evidence so metadata survival is not only asserted through final markup snapshots.
+  - Tighten dev-loop evidence to cover add/remove/constructor-argument annotation changes and affected generated output.
+- Changes applied:
+  - Added adopter job framing and expanded ACs from AC1-AC10 to AC1-AC12.
+  - Added deterministic fallback/diagnostic requirements, culture/time boundaries, and accessibility/localization preservation language.
+  - Added a type compatibility matrix and Level 1 non-goals for runtime extension points and currency-provider scope.
+  - Tightened tasks for diagnostics, IR naming, Counter sample evidence, incremental rebuild checks, and negative tests.
+- Findings deferred:
+  - Robustness/security edge cases remain for the later advanced-elicitation pass per L08.
+  - Pure source-generator hot reload messaging remains owned by Story 6-6.
+  - Custom localized relative-time grammar, currency conversion, ISO provider services, Level 2+ templates/slots/replacements, and field-resource systems remain out of scope.
+- Final recommendation: ready-for-dev
 
 ### File List
 
