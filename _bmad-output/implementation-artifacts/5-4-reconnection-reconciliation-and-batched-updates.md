@@ -345,3 +345,96 @@ GPT-5
 ### Change Log
 
 - 2026-04-26: Implemented Story 5-4 reconnect reconciliation, batched sweep state, sync status UX, schema mismatch handling, compatibility fixtures, and focused regression coverage.
+
+### Review Findings
+
+Pass-1 code-review via `bmad-code-review` on commit `89a7371` (29 files, +1126 / -136). Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor). Raw findings ≈105; deduplicated to 73 unique. Triage: 5 decision-needed, 51 patch, 9 defer, 8 dismiss.
+
+#### Decision-Needed (resolved 2026-04-26 under "do best" autonomous delegation)
+
+- [ ] [Review][Patch] DN1=a — Wire batched sweep dispatch + CSS application — Inject `IDispatcher` into `ReconnectionReconciliationCoordinator`; dispatch `MarkReconciliationSweepAction(changedViewKeys, expiresAt)` after `state.Complete(...)`; bind `.fc-reconciliation-sweep` on the DataGrid view-host component via `IState<ReconciliationSweepState>`. Adds a periodic `ClearExpiredReconciliationSweepsAction` dispatch (closes W8 simultaneously). [`ReconnectionReconciliationCoordinator.cs`, DataGrid host component, `ReconciliationSweepState.cs`]
+- [ ] [Review][Patch] DN2=a — Add `Task RemoveByPrefixAsync(string prefix, CancellationToken)` to `IETagCache` and bounded-LRU implementation; call with `$"{projectionType}:"` after schema mismatch in `EventStoreQueryClient` (replaces single-key `RemoveAsync` at lines 135 + 195). [`IETagCache.cs`, `ETagCacheService.cs`, `EventStoreQueryClient.cs:135,195`]
+- [ ] [Review][Patch] DN3=b — Wire `RegisterLane`/`UnregisterLane` in the DataGrid view-host (`OnAfterRenderAsync` first paint and `DisposeAsync`). Badge-count lane registration deferred to Story 5-5 (recorded as known-gap below). [DataGrid host component]
+- [ ] [Review][Patch] DN4=b — Replace `Equals(prevItems[i], items[i])` per-item comparison with response-ETag-vs-cached-ETag comparison in `IsReducerVisibleDelta`. Requires plumbing the response ETag through `ProjectionLaneRefreshResult` so the scheduler can read previous-vs-new ETag for the same lane key. [`ProjectionFallbackRefreshScheduler.cs:253-283`, `ProjectionLaneRefreshResult` type]
+- [ ] [Review][Patch] DN5=a — Keep `Apply(Connected)` unconditional in `ProjectionSubscriptionService.OnConnectionStateChangedAsync`. Per-group degradation surfaces through existing `GroupHealth.Degraded` markers (Story 5-3 P9) and per-lane reconciliation failure marking. Add a regression test asserting Connected applies even when all snapshotted groups failed rejoin. [`ProjectionSubscriptionServiceTests.cs`]
+
+##### New known-gap: Badge-count lane registration deferred to Story 5-5
+
+`BadgeCountService` lane registration is required to satisfy AC2's "visible action-queue badge/count lanes" clause end-to-end. Story 5-4 ships DataGrid lane wiring; badge wiring is deferred to Story 5-5 alongside its `BadgeCountService` work. This narrows AC2 for this story to DataGrid-only visible lanes; badge lanes still load through the existing Story 5-2 query/cache path on reconnect, just not through the coordinated reconciliation sweep.
+
+#### Patch findings
+
+- [ ] [Review][Patch] P1 — Wrap `cache.RemoveAsync` in 304 schema-mismatch path with try/catch (best-effort) [src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs:135]
+- [ ] [Review][Patch] P2 — Broaden 200 OK schema-mismatch catch beyond `JsonException` to `InvalidOperationException` + `NotSupportedException` [EventStoreQueryClient.cs:188]
+- [ ] [Review][Patch] P3 — Broaden 304 cache deserialize catch similarly [EventStoreQueryClient.cs:271-280]
+- [ ] [Review][Patch] P4 — Null-guard on `request.ProjectionType` before exception/log construction [EventStoreQueryClient.cs:131]
+- [ ] [Review][Patch] P5 — `ArgumentException.ThrowIfNullOrWhiteSpace(projectionType)` in `ProjectionSchemaMismatchException` ctor [ProjectionSchemaMismatchException.cs:8]
+- [ ] [Review][Patch] P6 — Wrap `_reconciliationCoordinator.ReconcileAsync` in try/catch in hub callback [ProjectionSubscriptionService.cs:207-211]
+- [ ] [Review][Patch] P7 — Re-check `_disposed` / cancellation before awaiting reconcile [ProjectionSubscriptionService.cs:207-211]
+- [ ] [Review][Patch] P8 — Log Information once when `_reconciliationCoordinator` is null on Reconnected [ProjectionSubscriptionService.cs:209]
+- [ ] [Review][Patch] P9 — Add ordered fake-hub assertion: rejoin → Connected → reconciliation [ProjectionSubscriptionServiceTests.cs:1431+]
+- [ ] [Review][Patch] P10 — Defer CTS Dispose to old completion in coordinator (cancel-then-detach) [ReconnectionReconciliationCoordinator.cs:30-31, 39-41]
+- [ ] [Review][Patch] P11 — OCE catch filter must accept caller `cancellationToken` not just `linked.IsCancellationRequested` [ReconnectionReconciliationCoordinator.cs:48]
+- [ ] [Review][Patch] P12 — Wrap `state.Start` in try/catch and revert epoch on subscriber exception [ReconnectionReconciliationCoordinator.cs:37]
+- [ ] [Review][Patch] P13 — Move `Apply` call inside `_sync` lock in `Complete` (atomic epoch-check + write) [ReconnectionReconciliationState.cs:71-82]
+- [ ] [Review][Patch] P14 — Read `_current.Epoch` inside lock in `Reset` [ReconnectionReconciliationState.cs:77-81]
+- [ ] [Review][Patch] P15 — Re-add status==Reconciling guard to `Complete` (don't overwrite once Refreshed/Idle) [ReconnectionReconciliationState.cs:71-82]
+- [ ] [Review][Patch] P16 — `InvokeSafe` should log full message+stack at Warning level (not just exception type name) [ReconnectionReconciliationState.cs:105-112]
+- [ ] [Review][Patch] P17 — `ArgumentNullException.ThrowIfNull(action.ViewKeys)` in `ReduceMark` [ReconciliationSweepState.cs:30]
+- [ ] [Review][Patch] P18 — Validate `action.Now != default` in `ReduceClearExpired` [ReconciliationSweepState.cs:43-49]
+- [ ] [Review][Patch] P19 — Drop `ReferenceEquals` shortcut (dead code on happy path) [ReconciliationSweepState.cs:36-40]
+- [ ] [Review][Patch] P20 — Skip markers with `ExpiresAt < Now` in `ReduceMark` [ReconciliationSweepState.cs:32]
+- [ ] [Review][Patch] P21 — Use `epoch` parameter for early-return guard against superseded passes [ProjectionFallbackRefreshScheduler.cs:131]
+- [ ] [Review][Patch] P22 — Log Warning when `MaxProjectionFallbackPollingLanes==0` [ProjectionFallbackRefreshScheduler.cs:133-139]
+- [ ] [Review][Patch] P23 — Null-guard on `result.Items` before Equals loop in `IsReducerVisibleDelta` [ProjectionFallbackRefreshScheduler.cs:185-189, 253-283]
+- [ ] [Review][Patch] P24 — Bound pending-retry recursion (depth ≤ 1) [ProjectionFallbackRefreshScheduler.cs:206]
+- [ ] [Review][Patch] P25 — Treat negative `TotalCount` as protocol failure, not Changed [ProjectionFallbackRefreshScheduler.cs:264]
+- [ ] [Review][Patch] P26 — `BuildDedupeKey` must include Filters/SortColumn/SearchQuery [ProjectionFallbackRefreshScheduler.cs:286-294]
+- [ ] [Review][Patch] P27 — `BuildDedupeKey` must fail-closed on null/empty `TenantId` (per memory rule `feedback_tenant_isolation_fail_closed`) [ProjectionFallbackRefreshScheduler.cs:288]
+- [ ] [Review][Patch] P28 — Apply lane cap AFTER dedupe, not before [ProjectionFallbackRefreshScheduler.cs:137-156]
+- [ ] [Review][Patch] P29 — Explicit fail-closed gate per-lane for missing tenant during reconciliation [ProjectionFallbackRefreshScheduler.cs:131+]
+- [ ] [Review][Patch] P30 — Cleanup first subscription if second `Subscribe` throws in `OnInitialized` [FcProjectionConnectionStatus.razor.cs:42-45]
+- [ ] [Review][Patch] P31 — Refreshed snapshot must check `IsDisconnected`/`Reconnecting` precedence and stale-epoch [FcProjectionConnectionStatus.razor.cs:67-86, :79]
+- [ ] [Review][Patch] P32 — Clamp `ProjectionReconnectedNoticeDurationMs` to [1, 60_000] before timer creation [FcProjectionConnectionStatus.razor.cs:88-109]
+- [ ] [Review][Patch] P33 — `StartClearTimer` uses `Interlocked.Exchange` to atomically dispose previous timer [FcProjectionConnectionStatus.razor.cs:90]
+- [ ] [Review][Patch] P34 — Re-entrancy guard around timer-callback `Reset()` [FcProjectionConnectionStatus.razor.cs:102, 116-119]
+- [ ] [Review][Patch] P35 — Bound pulse animation iteration-count and add `@supports`/color fallback for `color-mix` [fc-projection.css:60-86, FcProjectionConnectionStatus.razor.css:5]
+- [ ] [Review][Patch] P36 — Use `IStringLocalizer` for "This section is being updated" (resource key `SectionUpdatingText` already added) [LoadPageEffects.cs:127-129]
+- [ ] [Review][Patch] P37 — Add structured Warning log on schema mismatch in LoadPageEffects with redacted projection type [LoadPageEffects.cs:127]
+- [ ] [Review][Patch] P38 — Replace hardcoded literals (`Reconnecting...`, `Refreshing data...`, `Reconnected -- data refreshed`) with `IStringLocalizer`-resolved keys [FcProjectionConnectionStatus.razor:27-31]
+- [ ] [Review][Patch] P39 — Register `IState<LoadedPageState>` for `ProjectionFallbackRefreshScheduler` OR mark `loadedPages` required (interacts with DN4) [ServiceCollectionExtensions.cs:309-310]
+- [ ] [Review][Patch] P40 — Add exclusion assertion to `Reconciling_RendersRefreshingStatus` (no "Reconnecting...") [FcProjectionConnectionStatusTests.cs:53-60]
+- [ ] [Review][Patch] P41 — Remove tautological "No changes" absence assert [FcProjectionConnectionStatusTests.cs:1325]
+- [ ] [Review][Patch] P42 — Rewrite `IncompatibleProjectionFixture_MapsToSchemaMismatchPath` to drive the actual `EventStoreQueryClient` path [ProjectionSchemaCompatibilityFixtureTests.cs:31-39]
+- [ ] [Review][Patch] P43 — Replace `incompatible-order-projection.json` content with schema-shape mismatch (e.g., id as object), keep syntactic-error coverage in a separate fixture [TestData/SchemaCompatibility/incompatible-order-projection.json]
+- [ ] [Review][Patch] P44 — Add explicit JsonOptions assertion for forward-compat unknown-field tolerance [ProjectionSchemaCompatibilityFixtureTests.cs:12-19]
+- [ ] [Review][Patch] P45 — Add ordering test (rejoin → Connected → reconciliation) [ProjectionSubscriptionServiceTests.cs] (extends P9)
+- [ ] [Review][Patch] P46 — Add hidden/collapsed/offscreen-skip + newly-visible-deferred + tenant-fail-closed + superseded-epoch coordinator tests (T9 coverage gap) [ReconnectionReconciliationCoordinatorTests.cs]
+- [ ] [Review][Patch] P47 — Add reduced-motion CSS class snapshot assertion (T9 coverage gap) [FcProjectionConnectionStatusTests.cs]
+- [ ] [Review][Patch] P48 — Add live-region announcement coalesce-once-per-epoch test (T9 coverage gap) [FcProjectionConnectionStatusTests.cs]
+- [ ] [Review][Patch] P49 — Add multi-group at-most-once-join-per-epoch test with ordered hub log [ProjectionSubscriptionServiceTests.cs]
+- [ ] [Review][Patch] P50 — Replace `Task.Delay(Infinite)` with TaskCompletionSource pattern in `ReconcileAsync_DisposeCancels` test [ReconnectionReconciliationCoordinatorTests.cs:59-72]
+- [ ] [Review][Patch] P51 — Pass `IState<LoadedPageState>` in `TriggerReconciliationOnce_Snapshots…` test to exercise delta-comparison branch [ProjectionFallbackRefreshSchedulerTests.cs:122-176]
+
+#### Defer findings
+
+- [x] [Review][Defer] W1 — Synchronous handler dispatch in `ReconnectionReconciliationStateService.Apply` can block hub callback (existing pattern across Fluxor handlers) [ReconnectionReconciliationState.cs:105-107] — deferred, existing pattern
+- [x] [Review][Defer] W2 — Handler added during `Apply` silently misses transition due to snapshot-iteration pattern (conventional concurrency tradeoff) [ReconnectionReconciliationState.cs:90-103] — deferred, existing pattern
+- [x] [Review][Defer] W3 — `IState<LoadedPageState>` dependency in `ProjectionFallbackRefreshScheduler` is a Fluxor anti-pattern (services should observe state via reducers/effects) → Story 5-5 or 5-6 [ProjectionFallbackRefreshScheduler.cs:8] — deferred, architectural cleanup
+- [x] [Review][Defer] W4 — `LoadPageFailedAction` reducer's TCS-resolution behavior on schema mismatch must be verified (could leave `PendingCompletionsByKey` TCS unresolved) [LoadPageEffects.cs:127] — deferred, requires reducer audit pass
+- [x] [Review][Defer] W5 — `TryAddScoped` for `IReconnectionReconciliationCoordinator` allows silent override (existing DI pattern across the Shell extension) [ServiceCollectionExtensions.cs:309-310] — deferred, existing pattern
+- [x] [Review][Defer] W6 — `ProjectionSchemaMismatchException` preserves payload-derived `JsonException.Message` on `InnerException`; redaction at log site is clean but caller-side handling is uncontrolled [ProjectionSchemaMismatchException.cs] — deferred, caller-controlled
+- [x] [Review][Defer] W7 — AC7 startup-time schema-mismatch detection absent (AC7 "or" satisfied via query/cache paths) → Story 5-6 or 9-4 [EventStoreQueryClient] — deferred, AC7 minimally satisfied
+- [x] [Review][Defer] W8 — `ReconciliationSweepState` markers unbounded if no scheduled `ClearExpiredReconciliationSweepsAction` dispatch (gated on DN1 wiring decision) [ReconciliationSweepState.cs] — deferred, gated on DN1
+- [x] [Review][Defer] W9 — `ReconnectionReconciliationCoordinator.Dispose` calls `state.Reset` which fires subscribers off-circuit (low risk; per-circuit scoped) [ReconnectionReconciliationCoordinator.cs:75] — deferred, low risk
+
+#### Dismissed (8 — recorded for traceability)
+
+- R1 — `IState<LoadedPageState>?` optional ctor parameter as binary-compat risk: Shell is internal, not a published binary contract.
+- R2 — "Agent Model Used: GPT-5" in Dev Agent Record: provenance metadata, not actionable.
+- R3 — `_latestEpoch` long overflow: theoretical (~2^63 reconnects).
+- R4 — Snapshot equality excludes `LastTransitionAt`: intentional dedupe rule (Story 5-3 P9).
+- R5 — Pulse class persists momentarily after Reset: cosmetic.
+- R6 — "1135 passed" test count claim: informational; not falsifiable from diff alone.
+- R7 — `SignalRProjectionHubConnectionFactory.cs` File List entry unmet: 5-3 already wired Reconnecting/Reconnected/Closed events.
+- R8 — Reconciling-state Intent reading aid: no violation observed.
