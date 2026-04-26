@@ -100,7 +100,7 @@ development_status:
   5-4-reconnection-reconciliation-and-batched-updates: ready-for-dev
   5-5-command-idempotency-and-optimistic-updates: ready-for-dev
   5-6-build-time-infrastructure-enforcement-and-observability: ready-for-dev
-  5-7-signalr-fault-injection-test-harness: backlog
+  5-7-signalr-fault-injection-test-harness: ready-for-dev
   epic-5-retrospective: optional
 
   # Epic 6: Developer Customization Gradient
