@@ -1,6 +1,6 @@
 # Story 5.4: Reconnection, Reconciliation & Batched Updates
 
-Status: review
+Status: in-progress
 
 > **Epic 5** -- Reliable Real-Time Experience. **FR25-FR27** reconnect catch-up, stale-data reconciliation, batched update feedback, and schema-mismatch safety after Stories 5-1 through 5-3. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, **L10**, **L12**, and **L14**.
 
