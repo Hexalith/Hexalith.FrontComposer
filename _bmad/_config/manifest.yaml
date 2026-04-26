@@ -1,26 +1,26 @@
 installation:
   version: 6.5.0
   installDate: 2026-04-06T06:52:40.598Z
-  lastUpdated: 2026-04-26T07:34:59.114Z
+  lastUpdated: 2026-04-26T07:40:21.441Z
 modules:
   - name: core
     version: 6.5.0
     installDate: 2026-04-06T06:52:38.953Z
-    lastUpdated: 2026-04-26T07:34:59.039Z
+    lastUpdated: 2026-04-26T07:40:21.350Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmm
     version: 6.5.0
     installDate: 2026-04-06T06:52:25.130Z
-    lastUpdated: 2026-04-26T07:34:59.040Z
+    lastUpdated: 2026-04-26T07:40:21.351Z
     source: built-in
     npmPackage: null
     repoUrl: null
   - name: bmb
     version: main
     installDate: 2026-04-06T06:52:27.428Z
-    lastUpdated: 2026-04-26T07:34:59.055Z
+    lastUpdated: 2026-04-26T07:40:21.369Z
     source: external
     npmPackage: bmad-builder
     repoUrl: https://github.com/bmad-code-org/bmad-builder
@@ -29,7 +29,7 @@ modules:
   - name: cis
     version: main
     installDate: 2026-04-06T06:52:29.018Z
-    lastUpdated: 2026-04-26T07:34:59.070Z
+    lastUpdated: 2026-04-26T07:40:21.387Z
     source: external
     npmPackage: bmad-creative-intelligence-suite
     repoUrl: https://github.com/bmad-code-org/bmad-module-creative-intelligence-suite
@@ -38,7 +38,7 @@ modules:
   - name: tea
     version: main
     installDate: 2026-04-06T06:52:31.585Z
-    lastUpdated: 2026-04-26T07:34:59.086Z
+    lastUpdated: 2026-04-26T07:40:21.405Z
     source: external
     npmPackage: bmad-method-test-architecture-enterprise
     repoUrl: https://github.com/bmad-code-org/bmad-method-test-architecture-enterprise
@@ -47,7 +47,7 @@ modules:
   - name: wds
     version: main
     installDate: 2026-04-06T06:52:34.144Z
-    lastUpdated: 2026-04-26T07:34:59.114Z
+    lastUpdated: 2026-04-26T07:40:21.441Z
     source: community
     npmPackage: bmad-method-wds-expansion
     repoUrl: https://github.com/bmad-code-org/bmad-method-wds-expansion
@@ -56,7 +56,5 @@ modules:
     registryApprovedTag: v0.1.0
 ides:
   - claude-code
-  - cursor
   - codex
   - github-copilot
-  - antigravity
