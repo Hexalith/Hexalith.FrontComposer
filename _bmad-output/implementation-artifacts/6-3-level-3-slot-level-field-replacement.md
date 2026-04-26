@@ -31,6 +31,8 @@ so that I can fix one domain-specific rendering problem without owning the whole
 
 A backend-focused developer should be able to customize exactly one problematic field, keep compile-time safety on field identity, and still inherit the shell's navigation, lifecycle, accessibility, density, localization, and generated rendering conventions everywhere else.
 
+The feature promise is deliberately narrow: replace a single generated field renderer for a known descriptor slot without taking ownership of the surrounding component, layout, lifecycle, navigation, authorization, localization, density, accessibility, or generated data conventions.
+
 ---
 
 ## Acceptance Criteria
@@ -47,10 +49,10 @@ A backend-focused developer should be able to customize exactly one problematic 
 | AC8 | A slot override renders inside a DataGrid column | Sorting, filtering, virtualization, row keys, column priority, badge counts, empty states, unsupported placeholders, and expand-in-row cleanup execute | The slot changes cell content only; grid behavior still uses generated metadata and raw projection values. |
 | AC9 | A Level 1 annotation and a Level 3 slot both apply to a field | The slot context is built | The context exposes the generated label, description, priority, badge/format hints, unsupported-type metadata, and localization-aware help text so the custom component can preserve framework semantics. |
 | AC10 | A Level 2 template uses generated field delegates | One delegated field has a Level 3 override | The template still calls the field delegate, and the delegate resolves the slot override before falling back to generated default rendering. |
-| AC11 | A slot override component throws during render | The generated view renders | The failure is isolated to the affected field as far as Story 6-3 can support; the story records remaining runtime error-boundary polish as Story 6-6 ownership. No exception may corrupt unrelated field output or cached registry state. |
-| AC12 | The developer edits the custom slot component Razor markup under `dotnet watch` | The host supports Blazor hot reload | The field rendering updates without application restart; changes to registration expressions or component type metadata require rebuild and must be documented. |
+| AC11 | A slot override component throws during render | The generated view renders | Field renderer exceptions must not corrupt slot registry state or prevent generated fallback on the next render. Rich error-boundary UI, diagnostic surfacing, and recovery polish remain Story 6-6 ownership. |
+| AC12 | The developer edits slot registration or slot component code during development | The host rebuilds or supports Blazor hot reload | CI must verify rebuild/startup behavior for adding, changing, and removing slot registration metadata. Local hot-reload smoke evidence for Razor body edits is supporting evidence only and must not become a flaky CI gate. |
 | AC13 | Duplicate slot overrides are registered for the same projection, role, and field | The registry validates descriptors | Duplicate behavior is deterministic: either last registration is rejected with a diagnostic, or build/startup fails with an explicit HFC error. Silent last-writer-wins is forbidden. |
-| AC14 | The same projection is rendered for different tenants, users, cultures, densities, and read-only states | Slot contexts are created repeatedly | The registry caches descriptors only; it must never cache `FieldSlotContext`, parent item values, rendered fragments, tenant/user data, culture-specific text, or default-render output across renders. |
+| AC14 | The same projection is rendered for different tenants, users, cultures, densities, and read-only states | Slot contexts are created repeatedly | The registry caches descriptors only; it must never cache `FieldSlotContext`, parent item values, rendered fragments, tenant/user data, culture-specific text, or default-render output across renders. Tenant, user, culture, request, density, and read-only state must not influence slot registration identity or component selection. |
 | AC15 | The Counter sample is used as reference evidence | The sample renders with a slot override | One field uses a custom slot component, adjacent fields remain generated, Level 1 labels/formatting still flow into context, and targeted tests prove default fallback plus invalid-registration diagnostics. |
 | AC16 | The story is evaluated as Level 3 in the customization gradient | A developer compares it to Levels 1, 2, and 4 | Level 3 is field-level replacement only. It does not add full component replacement, command-form customization, dev-mode overlay UI, starter-template generation, or public stringly override APIs. |
 
@@ -224,7 +226,21 @@ The exact names may change during implementation, but the invariants do not:
 - registry descriptors are cacheable, contexts/rendered fragments are not;
 - invalid slots fail soft to generated rendering unless the failure is a duplicate/ambiguous registration that must be fixed.
 
+### Contract Ownership Boundary
+
+Contracts owns `FieldSlotContext<TProjection,TField>`, immutable descriptor/version shapes, and typed registration extension signatures. Shell owns descriptor storage, duplicate validation, component compatibility checks, slot lookup, render host behavior, diagnostics routing, and fallback to generated rendering. SourceTools owns generated field-boundary calls and no-slot baseline preservation. Counter sample code must consume only public APIs and must not introduce sample-specific seams back into the core contract.
+
+### Component Compatibility Contract
+
+`componentType` must be a Razor component assignable to the repository's component contract and must expose the agreed `Context` parameter compatible with `FieldSlotContext<TProjection,TField>`. Validation must happen before render use when the descriptor is registered or resolved; incompatible component types, missing context parameters, open generics that cannot be closed deterministically from `TProjection` and `TField`, and nullable/non-nullable field mismatches emit deterministic diagnostics and fall back to generated rendering. Duplicate exact valid registrations remain deterministic errors.
+
+### Adopter Proof
+
+The Counter sample is an integration proof, not the design driver. It must replace exactly one generated field renderer and demonstrate that sibling fields, generated validation/navigation flow where present, localization labels, density, accessibility attributes, role behavior, and default fallback remain generated-owned.
+
 ### Selector Validation Matrix
+
+Selector validation is part of the public contract, not an emitter convenience. The `field` expression must reduce to direct member access on the `TProjection` parameter, for example `x => x.Priority`. Conversions may be stripped only when the remaining node is still a direct projection member known to generated projection metadata. Nested paths, conversions that hide invalid expressions, method calls, indexers, computed expressions, captured values, and member access on anything other than the projection parameter are invalid and must produce deterministic diagnostics.
 
 | Selector | Expected behavior |
 | --- | --- |
@@ -244,13 +260,38 @@ The exact names may change during implementation, but the invariants do not:
 | --- | --- |
 | Valid role-specific slot for `(projection, role, field)` | Use role-specific slot. |
 | No role-specific slot, valid role-agnostic slot for `(projection, field)` | Use role-agnostic slot. |
+| Both role-specific and role-agnostic slots exist for the same projection field | Role-specific wins for that role; both registrations are allowed because their keys differ. |
 | No valid slot | Use generated default field renderer. |
 | Duplicate exact slot descriptors | Emit deterministic diagnostic/error; do not pick one silently. |
 | Invalid component descriptor | Emit diagnostic and use generated default renderer. |
-| Slot render throws | Isolate to field where possible; fallback/error-boundary polish deferred to Story 6-6. |
+| Slot render throws | Prevent registry-state corruption and allow generated fallback on the next render; fallback/error-boundary UI polish is deferred to Story 6-6. |
 | Full view override exists in future Story 6-4 | Story 6-4 defines final precedence; 6-3 must not pre-empt it. |
 
+### Render Pipeline Order
+
+Field rendering resolves in this order:
+
+1. Establish generated field metadata and role/DataGrid behavior first. Column identity, sort/filter metadata, virtualization behavior, row keys, priority, descriptors, unsupported-placeholder decisions, and generated lifecycle remain framework-owned.
+2. Invoke the shared field-render helper at the field boundary. The helper checks a Level 3 slot descriptor for `(projection, role, field)` and falls back to `(projection, field)` when no role-specific descriptor exists.
+3. If a valid slot is selected, build a fresh `FieldSlotContext<TProjection,TField>` for the current render and pass the default-render delegate to the slot.
+4. `RenderDefault` invokes the same generated or Level 2 field delegate that would have run without the slot and must not re-enter Level 3 slot lookup for the same field.
+5. If no valid slot is selected, render the generated default field path unchanged.
+
+### Role Hosting Matrix
+
+| Role or surface | Story 6-3 expectation |
+| --- | --- |
+| DataGrid | Slot may replace cell content only; grid semantics remain generated. |
+| DetailRecord | Slot may replace individual field content inside the generated detail surface. |
+| ActionQueue | Slot may replace field content without taking command lifecycle or navigation ownership. |
+| StatusOverview | Slot may replace field content while preserving generated badge/status metadata. |
+| Dashboard | Slot may replace field content only where the generated field boundary exists; unsupported dashboard placements must emit a diagnostic or documented fallback. |
+| Timeline | Slot support must be explicit; if the current Timeline renderer has no safe field boundary, emit a diagnostic or documented fallback rather than silently ignoring the slot. |
+| Level 2 template field delegates | Delegates call the same shared helper, so templates automatically honor Level 3 slots. |
+
 ### Render Context And Cache Safety
+
+The slot registry is descriptor-only and scoped to the FrontComposer configuration/rendering service instance. It must not use static mutable process state for registered slot descriptors, and it must not register per-tenant or per-user descriptors. Runtime render context values influence the per-render `FieldSlotContext`; they do not influence descriptor identity or component selection.
 
 Descriptor caching is allowed:
 
@@ -283,10 +324,12 @@ Caching is forbidden:
 
 ### Hot Reload / Rebuild Matrix
 
+CI must validate the deterministic rebuild/startup path for slot registration metadata changes. Razor body hot reload is useful developer evidence but remains a local/manual smoke check unless the repository already has a stable hot-reload harness.
+
 | Change | Expected dev-loop behavior |
 | --- | --- |
-| Slot component Razor body markup | Hot reload where Blazor supports the edit. |
-| Slot component CSS isolation | Hot reload or browser refresh per host tooling; no framework restart requirement beyond Blazor behavior. |
+| Slot component Razor body markup | Local hot reload smoke evidence where Blazor supports the edit; not a blocking CI gate. |
+| Slot component CSS isolation | Local hot reload or browser refresh per host tooling; not a blocking CI gate. |
 | Registration expression changes field | Rebuild required; expression metadata changed. |
 | Registration component type changes | Rebuild required; descriptor changed. |
 | Context generic type changes | Rebuild required; component contract changed. |
@@ -355,12 +398,17 @@ Expected new or changed files:
 
 ### Testing Standards
 
+- Release-blocking P0 coverage: selector validation, typed component compatibility, duplicate detection, descriptor-only cache isolation, no-slot emitter baseline preservation, DataGrid behavior preservation, Level 2 delegate compatibility, and render-exception isolation to the extent owned by Story 6-3.
+- Keep the matrix CI-safe. Each added automated test must map to one AC and one risk; broad role/culture/density permutations need an explicit risk justification instead of exhaustive combinatorics.
+- Required gate evidence: contracts tests, registry/cache isolation tests, deterministic diagnostics tests, no-slot emitter baseline tests, DataGrid preservation tests, Level 2 integration tests, bUnit render-isolation tests, targeted Counter sample build/render tests, and `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+- Supporting evidence: Counter sample screenshots/manual notes and local hot-reload smoke notes. Supporting evidence cannot substitute for automated proof of behavioral contracts.
 - Test direct property expression parsing exhaustively; expression parser bugs are high-risk because they defeat the refactor-safety promise.
 - Keep registry tests independent of render output. Prove descriptor lookup and duplicate behavior before component tests.
 - Test repeated renders with different `RenderContext`, culture, density, read-only state, and parent item values to catch stale context caching.
 - For DataGrid, assert behavior metadata remains generated: sort expressions, filter support, priority descriptors, row keys, and virtualization plumbing.
 - For accessibility, assert the Counter slot preserves accessible name/visible text and does not suppress focus styles where inspectable.
 - For localization, assert slot context labels/descriptions come from generated metadata and not hard-coded sample strings.
+- Diagnostic assertions must verify stable diagnostic ID, severity, target member/component, and deterministic ordering. Avoid brittle full-message assertions except for the critical expected/got/fix/docs-link teaching shape.
 - Use targeted tests first. Run full build with warnings as errors before closure.
 
 ### Scope Guardrails
@@ -378,6 +426,17 @@ Do not implement these in Story 6-3:
 - Rich runtime diagnostic panels and full override error boundaries beyond minimal field isolation.
 - A new sample domain solely for slots.
 - EventStore, SignalR, ETag cache, command idempotency, or observability changes.
+
+### Non-Goals With Owning Stories
+
+| Non-goal | Owner |
+| --- | --- |
+| Full component replacement and final Level 4 precedence over field slots. | Story 6-4 |
+| Dev-mode overlay, annotation outlines, detail drawer, before/after toggle, and starter-template clipboard generation. | Story 6-5 |
+| Rich runtime error-boundary UI, diagnostic surfacing, recovery polish, and complete custom-component accessibility analyzer enforcement. | Story 6-6 |
+| Slot cookbook examples across Levels 1-4 and unsupported-field replacement. | Story 9-5 |
+| Component test host utilities for adopter slot components. | Story 10-1 |
+| Visual specimen coverage across theme, density, accessibility, and forced-colors modes. | Story 10-2 |
 
 ### Known Gaps / Follow-Ups
 
@@ -420,6 +479,19 @@ Do not implement these in Story 6-3:
 - [Source: Microsoft Learn: Razor component generic type support](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/generic-type-support?view=aspnetcore-10.0) - generic component constraints.
 - [Source: Microsoft Learn: ASP.NET Core Hot Reload](https://learn.microsoft.com/en-us/aspnet/core/test/hot-reload) - hot reload behavior and limits.
 - [Source: Microsoft Learn: C# expression trees](https://learn.microsoft.com/en-us/dotnet/csharp/advanced-topics/expression-trees/) - selector expression parsing basis.
+
+---
+
+## Party-Mode Review
+
+- Date/time: 2026-04-26T12:10:28.5115364+02:00
+- Selected story key: `6-3-level-3-slot-level-field-replacement`
+- Command/skill invocation used: `/bmad-party-mode 6-3-level-3-slot-level-field-replacement; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Test Architect)
+- Findings summary: The review found the story direction sound but identified contract ambiguity around selector grammar, Level 2/Level 3 render pipeline order, role-specific precedence, component compatibility validation, descriptor registry scoping, exception-isolation boundaries, hot-reload evidence, and CI-safe test prioritization.
+- Changes applied: Narrowed the adopter promise to one known descriptor slot; clarified selector grammar; added component compatibility and contract ownership boundaries; defined render pipeline order and role hosting expectations; strengthened descriptor-only cache/registry scoping; narrowed render exception and hot-reload expectations; added release-blocking P0 test priorities, diagnostic assertion rules, required/supporting evidence, and named non-goal owners.
+- Findings deferred: Full Level 4 precedence remains Story 6-4; dev overlay and starter generation remain Story 6-5; rich runtime error-boundary UI, diagnostic surfacing, recovery polish, and complete accessibility analyzer enforcement remain Story 6-6; cookbook documentation remains Story 9-5; adopter slot component test host utilities remain Story 10-1; visual specimen coverage remains Story 10-2.
+- Final recommendation: ready-for-dev
 
 ---
 
