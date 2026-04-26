@@ -81,6 +81,17 @@ public sealed class PendingCommandOutcomeResolver : IPendingCommandOutcomeResolv
                 observation.MessageId)));
         }
 
+        // P2-P10 — both anchors absent means the upstream payload is structurally broken; warn so
+        // the silent drop is observable in diagnostics. EntityKey alone is not sufficient
+        // identification (Matches enforces that), but losing this without trace is the dangerous part.
+        if (string.IsNullOrWhiteSpace(observation.EntityKey)) {
+            _logger.LogWarning(
+                "Pending command outcome dropped because both MessageId and EntityKey were absent. Source={Source} Outcome={Outcome}",
+                observation.Source,
+                observation.Outcome);
+            return new PendingCommandOutcomeResolutionResult(PendingCommandOutcomeResolutionStatus.Unknown);
+        }
+
         PendingCommandEntry[] matches = [.. _pendingCommands.Snapshot()
             .Where(entry => entry.Status == PendingCommandStatus.Pending)
             .Where(entry => Matches(entry, observation))];

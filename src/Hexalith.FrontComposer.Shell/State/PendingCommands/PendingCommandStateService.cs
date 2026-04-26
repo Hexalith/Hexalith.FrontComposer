@@ -62,6 +62,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         // registration belongs to the new scope, not a leaked previous one.
         EnforceScopeBoundary();
 
+        PendingCommandEntry registered;
+        PendingCommandEntry? evicted;
+        List<PendingCommandEntry> evictionList;
         lock (_gate) {
             if (_disposed) {
                 return PendingCommandRegistrationResult.Disposed();
@@ -101,9 +104,20 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             // P3/P4 — eviction may need to drain more than one entry when the cap is exceeded by
             // bursts; the most-recently evicted entry is reported to the caller so the generated
             // form / summary can reflect the unresolved state.
-            PendingCommandEntry? evicted = DrainEvictionsLocked();
-            return PendingCommandRegistrationResult.Registered(entry, evicted);
+            evictionList = DrainEvictionsLocked();
+            evicted = evictionList.Count > 0 ? evictionList[^1] : null;
+            registered = entry;
         }
+
+        // P2-P4 — dispatch lifecycle on the calling thread (typically the renderer dispatcher for
+        // form submissions) instead of an off-thread `ThreadPool.UnsafeQueueUserWorkItem`. The
+        // previous off-thread dispatch broke when subscribers called StateHasChanged and dropped
+        // ExecutionContext for AsyncLocal accessors.
+        if (evictionList.Count > 0) {
+            DispatchEvictedLifecycle(evictionList);
+        }
+
+        return PendingCommandRegistrationResult.Registered(registered, evicted);
     }
 
     /// <inheritdoc />
@@ -149,13 +163,13 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 };
                 _byMessageId[canonicalMessageId] = terminal;
                 duplicate = false;
-            }
-        }
 
-        // P5 — once terminal we no longer need the entry to participate in the eviction queue;
-        // drop it so a steady stream of pending commands does not leak _insertionOrder slots.
-        if (!duplicate) {
-            PurgeFromInsertionOrder(canonicalMessageId);
+                // P2-P6 — purge insertion order under the same lock that wrote the terminal status.
+                // Releasing then re-acquiring the gate (the previous PurgeFromInsertionOrder call)
+                // exposed a TOCTOU window where a concurrent Register could mutate _insertionOrder
+                // between the unlock/relock pair and break FIFO eviction guarantees.
+                PurgeFromInsertionOrderLocked(canonicalMessageId);
+            }
         }
 
         if (duplicate) {
@@ -233,7 +247,9 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         // Dispatch lifecycle transitions OUTSIDE the gate to avoid deadlocking with subscribers
         // who synchronously call back into this service.
         foreach (PendingCommandEntry entry in outstanding) {
-            DispatchNeedsReviewLifecycle(entry, "Clear");
+            if (!DispatchNeedsReviewLifecycle(entry, "Clear")) {
+                break;
+            }
         }
 
         _logger.LogInformation(
@@ -259,22 +275,23 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
 
         foreach (PendingCommandEntry entry in outstanding) {
-            DispatchNeedsReviewLifecycle(entry, "Dispose");
+            if (!DispatchNeedsReviewLifecycle(entry, "Dispose")) {
+                break;
+            }
         }
     }
 
-    private PendingCommandEntry? DrainEvictionsLocked() {
+    private List<PendingCommandEntry> DrainEvictionsLocked() {
         // The cap applies to PENDING entries only. Terminal entries (Confirmed / Rejected /
         // IdempotentConfirmed / NeedsReview) are immutable history and must remain visible to
         // Snapshot/FcPendingCommandSummary even after eviction (P3).
         int pendingCount = CountPendingLocked();
+        List<PendingCommandEntry> evictedQueue = [];
         if (pendingCount <= _options.MaxPendingCommandEntries) {
-            return null;
+            return evictedQueue;
         }
 
         // P4 — drain every excess entry, not just the first one.
-        PendingCommandEntry? lastEvicted = null;
-        List<PendingCommandEntry> evictedQueue = [];
         while (pendingCount > _options.MaxPendingCommandEntries
             && _insertionOrder.TryDequeue(out string? oldestMessageId)) {
             if (!_byMessageId.TryGetValue(oldestMessageId, out PendingCommandEntry? oldest)) {
@@ -292,22 +309,17 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             };
 
             // P3 — re-insert the evicted record as terminal so Snapshot()/FcPendingCommandSummary
-            // surfaces the unresolved tail; lifecycle dispatch happens after we exit the gate.
+            // surfaces the unresolved tail; lifecycle dispatch happens after the caller exits the
+            // gate (P2-P4 — synchronous on the calling thread, no off-thread queue).
             _byMessageId[evicted.MessageId] = evicted;
             evictedQueue.Add(evicted);
-            lastEvicted = evicted;
             pendingCount--;
             _logger.LogWarning(
                 "Pending command evicted unresolved because MaxPendingCommandEntries was exceeded. MessageId={MessageId}",
                 evicted.MessageId);
         }
 
-        // Schedule lifecycle dispatches once we leave the gate.
-        if (evictedQueue.Count > 0) {
-            ThreadPool.UnsafeQueueUserWorkItem(static state => state.Self.DispatchEvictedLifecycle(state.Evicted), (Self: this, Evicted: evictedQueue), preferLocal: true);
-        }
-
-        return lastEvicted;
+        return evictedQueue;
     }
 
     private int CountPendingLocked() {
@@ -323,17 +335,52 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
     private void DispatchEvictedLifecycle(IReadOnlyList<PendingCommandEntry> evicted) {
         foreach (PendingCommandEntry entry in evicted) {
-            DispatchNeedsReviewLifecycle(entry, "Evicted");
+            // P2-P5 — re-check the entry's current status before transitioning. A concurrent
+            // ResolveTerminal may have moved this MessageId to Confirmed in the gap between the
+            // gate-protected drain and this dispatch; in that case the transition would dispatch
+            // Rejected over an already-Confirmed lifecycle.
+            PendingCommandEntry? current;
+            lock (_gate) {
+                if (_disposed) {
+                    return;
+                }
+
+                current = _byMessageId.TryGetValue(entry.MessageId, out PendingCommandEntry? c) ? c : null;
+            }
+
+            if (current is null || current.Status != PendingCommandStatus.NeedsReview) {
+                _logger.LogDebug(
+                    "Skipping evicted lifecycle dispatch because the entry is no longer in NeedsReview state. MessageId={MessageId} CurrentStatus={CurrentStatus}",
+                    entry.MessageId,
+                    current?.Status);
+                continue;
+            }
+
+            if (!DispatchNeedsReviewLifecycle(entry, "Evicted")) {
+                // Lifecycle service is disposed or unrecoverable; do not iterate further.
+                return;
+            }
         }
     }
 
-    private void DispatchNeedsReviewLifecycle(PendingCommandEntry entry, string reason) {
+    private bool DispatchNeedsReviewLifecycle(PendingCommandEntry entry, string reason) {
         try {
             // The lifecycle service treats Rejected as a terminal-only state; NeedsReview is
             // surfaced as Rejected to the lifecycle wrapper so the UI does not stay locked in
             // Acknowledged/Syncing forever. The pending-command summary still shows the explicit
-            // NeedsReview status from PendingCommandStatus.
+            // NeedsReview status from PendingCommandStatus. The 3-arg overload forwards to the
+            // 4-arg with idempotencyResolved=false; an explicit "evicted" reason flag is a
+            // follow-up extension to the lifecycle API (P2-P18 is deferred — see deferred-work).
             _lifecycle.Transition(entry.CorrelationId, CommandLifecycleState.Rejected, entry.MessageId);
+            return true;
+        }
+        catch (ObjectDisposedException) {
+            // P2-P9 — the lifecycle service may have been disposed first during circuit teardown;
+            // the rest of the iteration would only repeat the same warning per entry.
+            _logger.LogDebug(
+                "Pending command lifecycle dispatch skipped because LifecycleStateService is disposed. Reason={Reason}",
+                reason);
+            return false;
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogWarning(
@@ -341,6 +388,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
                 "Pending command lifecycle dispatch failed during {Reason}. MessageId={MessageId}",
                 reason,
                 entry.MessageId);
+            return true;
         }
     }
 
@@ -349,17 +397,31 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             return;
         }
 
-        (string? Tenant, string? User) current = (_userContext.TenantId, _userContext.UserId);
         bool needsClear;
         lock (_gate) {
-            if (_scopeSnapshot is null) {
+            // P2-P8 — read tenant/user inside the lock so a concurrent transition cannot mutate
+            // the values between the read and the snapshot comparison.
+            (string? Tenant, string? User) current = (_userContext.TenantId, _userContext.UserId);
+
+            // P2-P7 — fail-closed on missing tenant/user. (null, null) must NEVER be cached as a
+            // baseline; otherwise the first real (tenant, user) value looks like a "transition"
+            // and flushes legitimate pending state. memory:feedback_tenant_isolation_fail_closed.
+            bool currentIsValid = !string.IsNullOrWhiteSpace(current.Tenant)
+                && !string.IsNullOrWhiteSpace(current.User);
+            if (!currentIsValid) {
+                // If we previously held a valid scope, this is a transition out — flush.
+                needsClear = _scopeSnapshot is not null;
+                _scopeSnapshot = null;
+            }
+            else if (_scopeSnapshot is null) {
                 _scopeSnapshot = current;
                 return;
             }
-
-            needsClear = !ScopeMatches(_scopeSnapshot.Value, current);
-            if (needsClear) {
-                _scopeSnapshot = current;
+            else {
+                needsClear = !ScopeMatches(_scopeSnapshot.Value, current);
+                if (needsClear) {
+                    _scopeSnapshot = current;
+                }
             }
         }
 
@@ -376,26 +438,25 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         => string.Equals(a.Tenant, b.Tenant, StringComparison.Ordinal)
             && string.Equals(a.User, b.User, StringComparison.Ordinal);
 
-    private void PurgeFromInsertionOrder(string messageId) {
+    /// <summary>P2-P6 — must be invoked while holding <see cref="_gate"/>; the queue rebuild and the terminal-status write must be in the same critical section.</summary>
+    private void PurgeFromInsertionOrderLocked(string messageId) {
         // The Queue<string> does not support O(1) removal; rebuild on demand. Cost is bounded by
         // MaxPendingCommandEntries and only paid on terminal resolution.
-        lock (_gate) {
-            if (_disposed || _insertionOrder.Count == 0) {
-                return;
+        if (_insertionOrder.Count == 0) {
+            return;
+        }
+
+        int original = _insertionOrder.Count;
+        for (int i = 0; i < original; i++) {
+            if (!_insertionOrder.TryDequeue(out string? candidate)) {
+                break;
             }
 
-            int original = _insertionOrder.Count;
-            for (int i = 0; i < original; i++) {
-                if (!_insertionOrder.TryDequeue(out string? candidate)) {
-                    break;
-                }
-
-                if (string.Equals(candidate, messageId, StringComparison.Ordinal)) {
-                    continue;
-                }
-
-                _insertionOrder.Enqueue(candidate);
+            if (string.Equals(candidate, messageId, StringComparison.Ordinal)) {
+                continue;
             }
+
+            _insertionOrder.Enqueue(candidate);
         }
     }
 

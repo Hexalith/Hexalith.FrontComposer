@@ -60,29 +60,49 @@ public sealed class NewItemIndicatorStateService : INewItemIndicatorStateService
 
         EnforceScopeBoundary();
 
+        // P1 — generation token guards against a stale timer callback dismissing a freshly
+        // re-added entry. The new tracked entry stamps a fresh generation; the timer callback
+        // below ignores fires whose generation no longer matches the stored value.
+        long generation = Interlocked.Increment(ref _generationCounter);
+
+        // P2-P15 — create the timer first so the TrackedEntry is constructed in one shot,
+        // avoiding the transient `Timer: null!` placeholder that the previous code held while a
+        // concurrent `Snapshot()` call could observe the dictionary mid-write. The DefaultLifetime
+        // dueTime ensures no callback fires before the entry is stored under the gate.
+        ITimer timer = _time.CreateTimer(
+            static state => {
+                TimerState ctx = (TimerState)state!;
+                ctx.Owner.OnTimerFired(ctx.ViewKey, ctx.EntityKey, ctx.Generation);
+            },
+            new TimerState(this, entry.ViewKey, entry.EntityKey, generation),
+            DefaultLifetime,
+            Timeout.InfiniteTimeSpan);
+
         ITimer? previous = null;
-        lock (_gate) {
-            ThrowIfDisposed();
-            (string ViewKey, string EntityKey) key = (entry.ViewKey, entry.EntityKey);
-            if (_entries.Remove(key, out TrackedEntry? existing)) {
-                previous = existing.Timer;
+        bool installed = false;
+        try {
+            lock (_gate) {
+                // P2-P17 — re-check _disposed after creating the timer so a Dispose() that ran
+                // between EnforceScopeBoundary and lock acquisition does not leave the new timer
+                // outliving the service. Disposed dictionary will not receive the new entry.
+                if (_disposed) {
+                    return;
+                }
+
+                (string ViewKey, string EntityKey) key = (entry.ViewKey, entry.EntityKey);
+                if (_entries.Remove(key, out TrackedEntry? existing)) {
+                    previous = existing.Timer;
+                }
+
+                _entries[key] = new TrackedEntry(entry, timer, generation);
+                installed = true;
             }
-
-            // P1 — generation token guards against a stale timer callback dismissing a freshly
-            // re-added entry. The new tracked entry stamps a fresh generation; the timer
-            // callback below ignores fires whose generation no longer matches the stored value.
-            long generation = Interlocked.Increment(ref _generationCounter);
-            TrackedEntry tracked = new(entry, Timer: null!, generation);
-            ITimer timer = _time.CreateTimer(
-                static state => {
-                    TimerState ctx = (TimerState)state!;
-                    ctx.Owner.OnTimerFired(ctx.ViewKey, ctx.EntityKey, ctx.Generation);
-                },
-                new TimerState(this, entry.ViewKey, entry.EntityKey, generation),
-                DefaultLifetime,
-                Timeout.InfiniteTimeSpan);
-
-            _entries[key] = tracked with { Timer = timer };
+        }
+        finally {
+            if (!installed) {
+                // Service was disposed between timer creation and lock — clean up to prevent leak.
+                timer.Dispose();
+            }
         }
 
         previous?.Dispose();

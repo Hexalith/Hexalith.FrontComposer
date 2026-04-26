@@ -259,14 +259,18 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                 }
             }
 
-            // Story 5-5 P17 / P18 — skip duplicate AcknowledgedAction dispatch when the resolver
-            // already moved this MessageId to a terminal state on a parallel path, or when the
-            // pending registry rejected the MessageId as malformed. The lifecycle service would
-            // otherwise transition Acknowledged on top of an already-terminal entry, breaking the
-            // exactly-once UI invariant.
+            // Story 5-5 P17 / P18 / P2-P2 / P2-P3 — skip duplicate AcknowledgedAction dispatch only when:
+            //   - InvalidMessageId: pending registry rejected the MessageId as malformed; lifecycle has nothing to acknowledge.
+            //   - ConflictingMetadata: the registration was rejected because metadata conflicts with an existing entry; the new correlationId is unknown to the pending state.
+            //   - MergedTerminal with the SAME correlationId: re-mount of the original form on a terminal entry; would re-acknowledge a known-terminal lifecycle.
+            // MergedTerminal with a DIFFERENT correlationId means a second form submission for the same MessageId; the new correlationId must advance through Acknowledged so its Fluxor state does not stay in Submitting.
             bool skipAcknowledged = pendingRegistration is { Status:
                 global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
-                or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal };
+                or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata };
+            if (!skipAcknowledged && pendingRegistration is { Status: global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.MergedTerminal, Entry: { } mergedEntry } && string.Equals(mergedEntry.CorrelationId, correlationId, System.StringComparison.Ordinal))
+            {
+                skipAcknowledged = true;
+            }
             if (!skipAcknowledged)
             {
                 Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));

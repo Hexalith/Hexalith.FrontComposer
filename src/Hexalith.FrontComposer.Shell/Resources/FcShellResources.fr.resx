@@ -442,6 +442,9 @@
   <data name="OptimisticBadgeAriaLabelTemplate" xml:space="preserve">
     <value>{0}&#160;: {1} {2}</value>
   </data>
+  <data name="OptimisticBadgeDefaultColumnHeader" xml:space="preserve">
+    <value>Statut</value>
+  </data>
   <data name="NewItemIndicatorText" xml:space="preserve">
     <value>Nouvel élément. Il pourrait ne pas correspondre aux filtres actuels.</value>
   </data>

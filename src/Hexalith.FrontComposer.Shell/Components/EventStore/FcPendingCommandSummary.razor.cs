@@ -31,10 +31,11 @@ public partial class FcPendingCommandSummary : ComponentBase {
     /// <summary>P19 — guard against zero/negative <see cref="MaxDetails"/> from adopter callers.</summary>
     protected int EffectiveMaxDetails => MaxDetails <= 0 ? 5 : MaxDetails;
 
+    /// <summary>P2-P1 — most-recent terminal first; reconnect summaries focus on what just resolved.</summary>
     protected IReadOnlyList<PendingCommandEntry> TerminalEntries =>
         [.. EffectiveEntries
             .Where(static entry => entry.Status != PendingCommandStatus.Pending)
-            .OrderBy(static entry => entry.TerminalAt ?? entry.SubmittedAt)];
+            .OrderByDescending(static entry => entry.TerminalAt ?? entry.SubmittedAt)];
 
     protected IReadOnlyList<PendingCommandEntry> VisibleEntries =>
         [.. TerminalEntries.Take(EffectiveMaxDetails)];
@@ -83,16 +84,18 @@ public partial class FcPendingCommandSummary : ComponentBase {
     protected string FormatRejected(PendingCommandEntry entry) {
         ArgumentNullException.ThrowIfNull(entry);
 
-        string title = string.IsNullOrWhiteSpace(entry.RejectionTitle)
+        string title = NormalizeClause(string.IsNullOrWhiteSpace(entry.RejectionTitle)
             ? string.Format(
                 CultureInfo.CurrentUICulture,
                 Localizer["PendingCommandSummaryRejectedTitleTemplate"].Value,
                 DisplayName(entry))
-            : entry.RejectionTitle!;
-        string detail = string.IsNullOrWhiteSpace(entry.RejectionDetail)
+            : entry.RejectionTitle!);
+        string detail = NormalizeClause(string.IsNullOrWhiteSpace(entry.RejectionDetail)
             ? Localizer["PendingCommandSummaryDataImpactDefault"].Value
-            : entry.RejectionDetail!.TrimEnd('.', ' ');
-        string? dataImpact = string.IsNullOrWhiteSpace(entry.RejectionDataImpact) ? null : entry.RejectionDataImpact;
+            : entry.RejectionDetail!);
+        string? dataImpact = string.IsNullOrWhiteSpace(entry.RejectionDataImpact)
+            ? null
+            : NormalizeClause(entry.RejectionDataImpact);
         return dataImpact is null
             ? string.Concat(title, ": ", detail, ".")
             : string.Format(
@@ -103,8 +106,27 @@ public partial class FcPendingCommandSummary : ComponentBase {
                 dataImpact);
     }
 
-    private static string DisplayName(PendingCommandEntry entry) =>
-        entry.CommandTypeName.Contains('.', StringComparison.Ordinal)
-            ? entry.CommandTypeName[(entry.CommandTypeName.LastIndexOf('.') + 1)..]
-            : entry.CommandTypeName;
+    /// <summary>P2-P13 — strip trailing periods and Unicode whitespace (incl. NBSP) before re-templating.</summary>
+    private static string NormalizeClause(string value) =>
+        value.AsSpan().TrimEnd(s_trailingPunctuation).ToString();
+
+    private static readonly char[] s_trailingPunctuation = ['.', ' ', '\t', ' ', ' ', ' '];
+
+    /// <summary>
+    /// P2-P14 — strip namespace and any generic-arity / nested-type / assembly-qualified suffix.
+    /// Generic <c>Type.FullName</c> contains <c>`</c>, <c>+</c>, and <c>[</c>, all of which mark the
+    /// end of the simple name; <see cref="string.LastIndexOf(char)"/> on <c>'.'</c> mis-strips into
+    /// the assembly-qualified inner name.
+    /// </summary>
+    private static string DisplayName(PendingCommandEntry entry) {
+        string fqn = entry.CommandTypeName;
+        if (string.IsNullOrEmpty(fqn)) {
+            return fqn;
+        }
+
+        int boundary = fqn.IndexOfAny(['`', '[', '+', ',']);
+        ReadOnlySpan<char> head = boundary >= 0 ? fqn.AsSpan(0, boundary) : fqn.AsSpan();
+        int lastDot = head.LastIndexOf('.');
+        return lastDot >= 0 ? head[(lastDot + 1)..].ToString() : head.ToString();
+    }
 }

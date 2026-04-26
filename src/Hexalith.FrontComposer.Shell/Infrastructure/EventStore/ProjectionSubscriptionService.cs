@@ -26,6 +26,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly ProjectionFallbackPollingDriver? _fallbackDriver;
     private readonly IReconnectionReconciliationCoordinator? _reconciliationCoordinator;
     private readonly IPendingCommandPollingCoordinator? _pendingCommandPolling;
+    /// <summary>P2-P19 — debounces concurrent live-nudge invocations so a burst of N nudges produces at most one in-flight `PollOnceAsync`.</summary>
+    private int _pendingPollInFlight;
     private bool _disposed;
 
     public ProjectionSubscriptionService(
@@ -178,8 +180,18 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                 // commands resolve through the SAME shared resolver/state path that the polling
                 // and reconnect paths use. PollOnceAsync is bounded by FcShellOptions caps and
                 // returns quickly when there are no pending commands.
-                if (_pendingCommandPolling is not null) {
-                    _ = await _pendingCommandPolling.PollOnceAsync(_disposalCts.Token).ConfigureAwait(false);
+                // P2-P19 — coalesce bursty live nudges. Each nudge would otherwise trigger its
+                // own PollOnceAsync; with default budget=25 and 50 concurrent nudges this fans
+                // out to ~1,250 status queries. The in-flight flag swallows concurrent invocations
+                // so a burst produces at most one running poll.
+                if (_pendingCommandPolling is not null
+                    && Interlocked.CompareExchange(ref _pendingPollInFlight, 1, 0) == 0) {
+                    try {
+                        _ = await _pendingCommandPolling.PollOnceAsync(_disposalCts.Token).ConfigureAwait(false);
+                    }
+                    finally {
+                        _ = Interlocked.Exchange(ref _pendingPollInFlight, 0);
+                    }
                 }
             }
             catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {

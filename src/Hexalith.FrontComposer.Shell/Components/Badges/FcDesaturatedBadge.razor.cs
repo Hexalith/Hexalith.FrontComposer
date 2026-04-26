@@ -48,8 +48,11 @@ public partial class FcDesaturatedBadge : ComponentBase {
     [Parameter]
     public string? ColumnHeader { get; set; }
 
+    /// <summary>P2-P12 — Rejected and NeedsReview both fall back to the prior slot so colour and text agree (NeedsReview is a "we don't know" outcome, not a success).</summary>
     protected BadgeSlot ResolvedSlot =>
-        State == OptimisticBadgeState.Rejected ? PriorSlot : OptimisticSlot;
+        State is OptimisticBadgeState.Rejected or OptimisticBadgeState.NeedsReview
+            ? PriorSlot
+            : OptimisticSlot;
 
     protected string ResolvedLabel {
         get {
@@ -66,10 +69,12 @@ public partial class FcDesaturatedBadge : ComponentBase {
             ? "fc-desaturated-badge fc-desaturated-badge--confirming"
             : "fc-desaturated-badge";
 
-    /// <summary>P10 — wrapper renders its own aria-label so tests assert the contract independently of FcStatusBadge internals.</summary>
+    /// <summary>P10 — wrapper renders its own aria-label so tests assert the contract independently of FcStatusBadge internals. P2-P11 — fallback header is localized so French parity holds.</summary>
     protected string AriaLabel {
         get {
-            string column = string.IsNullOrWhiteSpace(ColumnHeader) ? "Status" : ColumnHeader!;
+            string column = string.IsNullOrWhiteSpace(ColumnHeader)
+                ? Localizer["OptimisticBadgeDefaultColumnHeader"].Value
+                : ColumnHeader!;
             return string.Format(
                 CultureInfo.CurrentUICulture,
                 Localizer["OptimisticBadgeAriaLabelTemplate"].Value,
@@ -80,7 +85,9 @@ public partial class FcDesaturatedBadge : ComponentBase {
     }
 
     private string ResolvedValueLabel =>
-        State == OptimisticBadgeState.Rejected ? PriorLabel : OptimisticLabel;
+        State is OptimisticBadgeState.Rejected or OptimisticBadgeState.NeedsReview
+            ? PriorLabel
+            : OptimisticLabel;
 
     private string StateLabel => State switch {
         OptimisticBadgeState.Confirming => Localizer["OptimisticBadgeConfirmingLabel"].Value,

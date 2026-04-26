@@ -529,6 +529,10 @@
     <value>{0}: {1} {2}</value>
     <comment>Story 5-5 — accessible label combining {0}=column header, {1}=state, {2}=value text.</comment>
   </data>
+  <data name="OptimisticBadgeDefaultColumnHeader" xml:space="preserve">
+    <value>Status</value>
+    <comment>Story 5-5 P2-P11 — localized fallback for FcDesaturatedBadge column-header aria text when the host omits ColumnHeader.</comment>
+  </data>
   <data name="NewItemIndicatorText" xml:space="preserve">
     <value>New item. It may not match current filters yet.</value>
     <comment>Story 5-5 AC5 — visible copy for the lane-scoped new-item indicator.</comment>
