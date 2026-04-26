@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,7 @@ namespace Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
     private readonly IProjectionConnectionState _connectionState;
     private readonly IProjectionFallbackRefreshScheduler _scheduler;
+    private readonly IPendingCommandPollingCoordinator? _pendingCommandPolling;
     private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly ILogger<ProjectionFallbackPollingDriver> _logger;
     private readonly CancellationTokenSource _disposalCts = new();
@@ -30,7 +32,8 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
         IProjectionConnectionState connectionState,
         IProjectionFallbackRefreshScheduler scheduler,
         IOptionsMonitor<FcShellOptions> options,
-        ILogger<ProjectionFallbackPollingDriver> logger) {
+        ILogger<ProjectionFallbackPollingDriver> logger,
+        IPendingCommandPollingCoordinator? pendingCommandPolling = null) {
         ArgumentNullException.ThrowIfNull(connectionState);
         ArgumentNullException.ThrowIfNull(scheduler);
         ArgumentNullException.ThrowIfNull(options);
@@ -40,6 +43,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
         _scheduler = scheduler;
         _options = options;
         _logger = logger;
+        _pendingCommandPolling = pendingCommandPolling;
     }
 
     /// <summary>Starts subscribing to connection-state transitions. Idempotent.</summary>
@@ -153,6 +157,9 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
 
                 try {
                     _ = await _scheduler.TriggerFallbackOnceAsync(cancellationToken).ConfigureAwait(false);
+                    if (_pendingCommandPolling is not null) {
+                        _ = await _pendingCommandPolling.PollOnceAsync(cancellationToken).ConfigureAwait(false);
+                    }
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                     return;

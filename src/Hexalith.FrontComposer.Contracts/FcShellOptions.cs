@@ -238,4 +238,11 @@ public sealed class FcShellOptions {
     /// </summary>
     [Range(1, 1_000, ErrorMessage = "MaxPendingCommandEntries must be between 1 and 1000.")]
     public int MaxPendingCommandEntries { get; set; } = 100;
+
+    /// <summary>
+    /// Maximum unresolved pending commands processed per fallback polling tick. A value of 0 disables
+    /// pending-command status polling while leaving visible-lane fallback polling intact.
+    /// </summary>
+    [Range(0, 1_000, ErrorMessage = "MaxPendingCommandPollingPerTick must be between 0 and 1000.")]
+    public int MaxPendingCommandPollingPerTick { get; set; } = 25;
 }

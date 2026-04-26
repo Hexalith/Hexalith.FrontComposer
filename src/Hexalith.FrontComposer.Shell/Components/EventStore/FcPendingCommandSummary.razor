@@ -1,0 +1,33 @@
+@namespace Hexalith.FrontComposer.Shell.Components.EventStore
+@using Hexalith.FrontComposer.Shell.State.PendingCommands
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@if (TerminalEntries.Count > 0)
+{
+    <section class="fc-pending-command-summary"
+             aria-live="polite"
+             data-testid="fc-pending-command-summary">
+        <div class="fc-pending-command-summary__counts">@SummaryText</div>
+        <div class="fc-pending-command-summary__details">
+            @foreach (PendingCommandEntry entry in VisibleEntries)
+            {
+                if (entry.Status == PendingCommandStatus.Rejected)
+                {
+                    <FluentMessageBar Intent="MessageBarIntent.Error"
+                                      AllowDismiss="false"
+                                      data-allow-dismiss="false">
+                        @FormatRejected(entry)
+                    </FluentMessageBar>
+                }
+                else
+                {
+                    <div class="fc-pending-command-summary__row">@FormatEntry(entry)</div>
+                }
+            }
+            @if (OverflowCount > 0)
+            {
+                <div class="fc-pending-command-summary__overflow">@OverflowCount additional resolved commands</div>
+            }
+        </div>
+    </section>
+}

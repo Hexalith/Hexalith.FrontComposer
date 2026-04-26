@@ -53,6 +53,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
     [Inject] private ILastUsedSubscriberRegistry LastUsedSubscriberRegistry { get; set; } = default!;
     [Inject] private global::Hexalith.FrontComposer.Contracts.Lifecycle.ILifecycleBridgeRegistry LifecycleBridgeRegistry { get; set; } = default!;
     [Inject] private ICommandService CommandService { get; set; } = default!;
+    [Inject] private global::Hexalith.FrontComposer.Shell.State.PendingCommands.IPendingCommandStateService PendingCommandState { get; set; } = default!;
     [Inject] private IStringLocalizer<Counter.Domain.IncrementCommand> Localizer { get; set; } = default!;
     [Inject] private ILogger<IncrementCommandForm>? Logger { get; set; }
     [Inject] private global::Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher CommandFeedbackPublisher { get; set; } = default!;
@@ -236,6 +237,19 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
                     }
                 },
                 cancellationToken: cts.Token);
+
+            if (string.Equals(result.Status, "Accepted", StringComparison.OrdinalIgnoreCase))
+            {
+                var pendingRegistration = PendingCommandState.Register(new global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistration(
+                    CorrelationId: correlationId,
+                    MessageId: result.MessageId,
+                    CommandTypeName: typeof(Counter.Domain.IncrementCommand).FullName ?? nameof(Counter.Domain.IncrementCommand)));
+                if (pendingRegistration.Status is global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.InvalidMessageId
+                    or global::Hexalith.FrontComposer.Shell.State.PendingCommands.PendingCommandRegistrationStatus.ConflictingMetadata)
+                {
+                    Logger?.LogWarning("Pending command registration skipped. CorrelationId={CorrelationId} Status={Status}", correlationId, pendingRegistration.Status);
+                }
+            }
 
             Dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId));
             Logger?.LogInformation("Command acknowledged. CorrelationId={CorrelationId} MessageId={MessageId}", correlationId, result.MessageId);

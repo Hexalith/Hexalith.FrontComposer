@@ -1,0 +1,18 @@
+.fc-pending-command-summary {
+    display: grid;
+    gap: 0.5rem;
+}
+
+.fc-pending-command-summary__counts {
+    font-weight: 600;
+}
+
+.fc-pending-command-summary__details {
+    display: grid;
+    gap: 0.375rem;
+}
+
+.fc-pending-command-summary__row,
+.fc-pending-command-summary__overflow {
+    color: var(--neutral-foreground-rest);
+}

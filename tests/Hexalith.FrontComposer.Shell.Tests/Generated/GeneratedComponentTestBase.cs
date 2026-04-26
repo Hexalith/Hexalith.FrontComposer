@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
@@ -128,6 +129,7 @@ public abstract class GeneratedComponentTestBase : BunitContext
         _ = Services.AddScoped<
             Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector,
             Hexalith.FrontComposer.Shell.Services.Auth.NoOpAuthRedirector>();
+        _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
     }
 
     protected async Task InitializeStoreAsync()

@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -68,6 +69,7 @@ public abstract class CommandRendererTestBase : BunitContext {
         // Story 5-2 — generated forms inject the warning publisher + auth-redirect seam.
         _ = Services.AddScoped<ICommandFeedbackPublisher, CommandFeedbackPublisher>();
         _ = Services.AddScoped<IAuthRedirector, NoOpAuthRedirector>();
+        _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
 
         Services.Replace(ServiceDescriptor.Scoped<IUserContextAccessor>(_ => _userContext));
         Services.Replace(ServiceDescriptor.Scoped<ICommandPageContext>(_ => _pageContext));
