@@ -58,6 +58,18 @@ The 2026-04-26 party-mode review tightened Story 5-7 around deterministic accept
 - **Redaction contract:** AC9 forbids bearer/access tokens, raw tenant/user values, raw group strings, command/query/cache payloads, raw ProblemDetails bodies, raw SignalR exception messages, and connection IDs unless explicitly redacted or categorized. Allowed fields are bounded failure category, projection type when non-sensitive, redacted tenant marker, reconnect attempt, connection state, outcome, and approved correlation identifiers.
 - **Package decision:** the harness remains internal to Shell.Tests for this story. Shared package naming, public API compatibility, and adopter-facing versioning are deferred until a future Testing-package extraction story validates the API shape.
 
+### Advanced Elicitation Hardening Addendum
+
+The 2026-04-26 advanced elicitation pass applied two batches of robustness methods to the party-mode-hardened story. These clarifications are binding for `bmad-dev-story` and are intended to keep the harness deterministic, bounded, and implementation-shaped rather than speculative:
+
+- **Compile-first seam validation:** the first implementation step must compile the reusable fake directly against the current `IProjectionHubConnection` signature before broad scenario work starts. Do not introduce an adapter shim to make the harness shape easier; if the seam is awkward, the story must document the mismatch and adjust the test-support API around the production abstraction.
+- **Bounded script state:** delayed nudges, reordered nudges, outstanding checkpoints, active handler registrations, and pending operations must all have explicit per-scenario bounds or disposal assertions. A scenario that leaves queued work behind fails fast with a diagnostic naming the checkpoint/fault selector, but without raw tenant, group, payload, token, or connection data.
+- **Cancellation outcome matrix:** the README/XML docs must include a small matrix covering `StartAsync`, `JoinGroupAsync`, `LeaveGroupAsync`, nudge publication, fallback trigger, reconnect rejoin, and disposal. Each row states whether cancellation completes canceled, faults with `OperationCanceledException`, suppresses callbacks, preserves state, or rolls back a staged fault.
+- **Forbidden-transition oracles:** consumer tests must assert negative transitions, not just expected happy-path outcomes: reconnect alone must not confirm a command; delayed or duplicate terminal outcomes must not replay commands; a failed rejoin must not degrade unrelated groups; fallback polling must not run after reconnect/dispose; terminal confirmed/rejected states must not be reopened by later connection loss.
+- **Handler isolation and ordering:** thrown subscriber callbacks, duplicate subscriptions, unsubscribe during reconnect, and disposal during queued publication must be first-class harness scenarios. The fake may record bounded failure categories for assertions, but it must not let one handler failure prevent later handlers or corrupt queued operations.
+- **Minimal selector policy:** adding a new fault selector requires a concrete FR24-FR29 row, owner test class, and observable state-machine assertion. Unsupported selector requests fail closed with a bounded diagnostic instead of silently becoming a no-op or a global "flaky hub" mode.
+- **Default-lane evidence discipline:** AC8 is not satisfied by comments, broad line coverage, or live smoke alone. Each counted FR24-FR29 row needs a deterministic unit/component test path in the default lane, or an explicit non-default live-smoke follow-up that does not count toward the 90 percent denominator.
+
 ---
 
 ## Tasks / Subtasks
@@ -76,8 +88,10 @@ The 2026-04-26 party-mode review tightened Story 5-7 around deterministic accept
   - [ ] Implement all coordination with `TaskCompletionSource` created with `RunContinuationsAsynchronously`.
   - [ ] Accept cancellation tokens and propagate them exactly as the production abstraction expects.
   - [ ] Document per-operation cancellation behavior for `StartAsync`, `JoinGroupAsync`, `LeaveGroupAsync`, nudge publication, fallback trigger, and disposal: whether the task faults with `OperationCanceledException`, completes canceled, suppresses callbacks, or leaves connection state unchanged.
+  - [ ] Add the cancellation outcome matrix from the advanced elicitation addendum to the harness README/XML docs before consumer migrations rely on those semantics.
   - [ ] Add timeout helpers only for test failure diagnostics; production behavior must not depend on real sleeps.
   - [ ] Add a fixture-level scenario registry or theory data source that enumerates every supported fault selector so AC1 cannot pass with undocumented one-off behavior.
+  - [ ] Enforce per-scenario bounds for outstanding checkpoints, delayed publications, reordered publications, pending operations, and registered callbacks; disposal must fail tests with sanitized diagnostics when bounds or cleanup expectations are violated.
 
 - [ ] T3. Model connection states and retry outcomes (AC1, AC3, AC5, AC8)
   - [ ] Simulate `Connected`, `Reconnecting`, `Reconnected`, and `Closed` through `ProjectionHubConnectionStateChanged`.
@@ -94,12 +108,14 @@ The 2026-04-26 party-mode review tightened Story 5-7 around deterministic accept
   - [ ] Never include projection payloads, command payloads, raw tenant/user data, or ProblemDetails bodies in harness events or diagnostics.
   - [ ] Add assertions or helper guards proving the harness only publishes lightweight nudges.
   - [ ] Add negative tests proving payload-bearing SignalR messages are impossible through the harness API or fail closed at scenario setup.
+  - [ ] Add handler-isolation tests proving one throwing nudge subscriber is categorized and isolated without blocking later handlers or corrupting the deterministic reorder/delay queue.
 
 - [ ] T5. Refactor existing story-local fakes to consume the harness (AC3, AC5, AC8)
   - [ ] Migrate the existing inline fake in `ProjectionSubscriptionServiceTests` first, before adding new coverage; the migration validates the API against known expectations and prevents over-general fake design.
   - [ ] Replace or adapt the inline `FakeProjectionHubConnection` in `ProjectionSubscriptionServiceTests` with the reusable harness.
   - [ ] Preserve existing tests: subscribe commit-after-join, nudge tenant route, rejoin exactly once, initial start failure, join failure, unsubscribe leave failure, tenant-aware notifier, subscriber isolation, degraded-group skip, and redacted rejoin logs.
   - [ ] Add race tests that were deferred from Story 5-3: duplicate subscribe/unsubscribe during reconnect, dispose during rejoin, failed rejoin stays degraded until next successful reconnect, and callback suppression after disposal.
+  - [ ] Compile the first reusable fake directly against the current `IProjectionHubConnection` before adding broad scenario helpers; do not hide seam mismatches behind an adapter shim.
   - [ ] Add SignalR wrapper coverage that was deferred from Story 5-3 only if testable without reflection/unsupported `HubConnection` mocking. Otherwise prove the wrapper boundary through the factory plus harness and document why direct private-wrapper tests remain out of scope.
 
 - [ ] T6. Add lifecycle and form-preservation harness scenarios (AC3, AC4, AC8)
@@ -136,6 +152,7 @@ The 2026-04-26 party-mode review tightened Story 5-7 around deterministic accept
   - [ ] Consumer tests: `ProjectionSubscriptionService`, connection state, lifecycle wrapper, fallback scheduler/driver, reconnect reconciliation if present, pending command resolver if present, and telemetry/redaction.
   - [ ] Cleanup tests: prove harness disposal clears checkpoint queues, pending tasks, fake subscriptions, timer handles, and callbacks; test runs must be parallel-safe with unique synthetic group/session ids and no shared static fake state.
   - [ ] Determinism enforcement: harness code paths must not use `Task.Delay`, `Thread.Sleep`, real timers, unbounded waits, or wall-clock reads except through injected `TimeProvider` / `FakeTimeProvider` and named checkpoint advancement.
+  - [ ] Forbidden-transition tests: reconnect alone does not confirm, duplicate terminal outcomes do not replay, failed rejoin does not degrade unrelated groups, fallback polling does not run after reconnect/dispose, and later connection loss does not reopen terminal command states.
   - [ ] Accessibility-adjacent assertions: disconnected and reconnecting UI remains non-modal, no overlay/focus trap, status messages retain `role="status"` / `aria-live="polite"` where existing components own those attributes.
   - [ ] Regression suite: run `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` and targeted Shell tests for EventStore/projection/lifecycle/fallback paths. Run full solution tests if unrelated local work is not already dirty/failing.
 
@@ -188,6 +205,11 @@ The 2026-04-26 party-mode review tightened Story 5-7 around deterministic accept
 | D13 | Harness code is parallel-safe by construction. | CI must tolerate default xUnit parallelism and repeated runs. | Disable test parallelism for the entire Shell suite; rely on static shared fake state. |
 | D14 | Timeout and wait helpers are diagnostic-only. | Ordering must come from explicit checkpoints to avoid flakiness. | Use timeout duration as the synchronization mechanism. |
 | D15 | Telemetry assertions target bounded categories and explicit forbidden data. | Fault paths are high-risk leak points, but broad telemetry policy belongs to Story 5-6 / governance. | Assert formatted log text only; create a new telemetry policy inside this story. |
+| D16 | The harness fake must compile directly against `IProjectionHubConnection` before broad helper APIs are added. | The production seam should shape the test harness, not the other way around. | Add an adapter shim that hides mismatch between the fake and production abstraction. |
+| D17 | Scripted fault state is bounded per scenario and verified on disposal. | Reorder/delay/checkpoint queues are otherwise an unbounded memory leak in long-running or parallel test sessions. | Let queued work accumulate and rely on process teardown. |
+| D18 | Cancellation behavior is documented as an operation matrix. | Reconnect tests often confuse canceled, faulted, suppressed, and state-preserving outcomes. | Leave cancellation semantics implied by each individual test. |
+| D19 | New fault selectors require traceability plus an observable owner assertion. | Prevents the harness from becoming a speculative "flaky hub" simulator with weak acceptance value. | Add generic selectors without FR24-FR29 ownership or negative transition checks. |
+| D20 | Subscriber failure is an isolated fault scenario. | Real SignalR consumer chains must survive one bad callback without losing later callbacks or corrupting state. | Treat throwing handlers as out of scope or assert only that no exception escapes. |
 
 ### Library / Framework Requirements
 
@@ -226,6 +248,8 @@ Expected new or changed files:
 - Prefer service-level tests for sequencing and bUnit tests for visible lifecycle/connection UI. Use Playwright only for a deliberately separate live smoke.
 - Every harness test that blocks a checkpoint must release or cancel it in `finally`/async disposal.
 - All harness APIs should produce diagnostic failure messages naming the checkpoint and outstanding operations when a test times out.
+- Diagnostic messages must be sanitized: checkpoint names and bounded failure categories are allowed; raw tenant/user values, group strings, tokens, payloads, ProblemDetails bodies, exception messages, and connection IDs are not.
+- Each new fault selector must have a traceability row and at least one consumer-level forbidden-transition or state-oracle assertion before it counts toward AC8.
 - Redaction tests should inspect structured logger state and activity tags when available, not just formatted text.
 - Test filters should keep default CI fast. Live smoke, if any, must have a category trait and a clear non-default invocation.
 - Requirement traceability for AC8 lives in the story artifact or harness README until code comments can link to concrete test names. Each row should be updated as tests land rather than inferred after the fact.
@@ -311,6 +335,39 @@ Do not implement these in Story 5-7:
 - Final live smoke suite decision remains optional and non-default; no live infrastructure is required by this story.
 - Broader telemetry policy remains owned by Story 5-6 / governance; this story only asserts bounded fault-path categories and forbidden raw data.
 - A project-wide test-pyramid decision for UI/component versus service coverage is deferred; Story 5-7 only proves deterministic harness-driven coverage.
+
+---
+
+## Advanced Elicitation
+
+| Field | Value |
+| --- | --- |
+| Date/time | 2026-04-26T09:24:34.8679058+02:00 |
+| Selected story | 5-7-signalr-fault-injection-test-harness |
+| Command / skill invocation | `/bmad-advanced-elicitation 5-7-signalr-fault-injection-test-harness` |
+| Batch 1 methods | Red Team vs Blue Team; Failure Mode Analysis; Security Audit Personas; Self-Consistency Validation; Occam's Razor Application |
+| Batch 2 methods | Chaos Monkey Scenarios; Pre-mortem Analysis; First Principles Analysis; Comparative Analysis Matrix; Hindsight Reflection |
+| Final recommendation | ready-for-dev |
+
+### Findings Summary
+
+- The party-mode draft correctly bounded the harness, but still needed explicit protection against unbounded delayed/reordered queues and pending checkpoint leaks.
+- Cancellation behavior was specified as required documentation, but not yet as a concrete operation matrix that implementation and tests can verify.
+- AC8 could still be gamed by broad comments, global coverage, or live smoke; the story now requires deterministic default-lane evidence for counted FR24-FR29 rows.
+- The first implementation step needed to prove the fake against the actual production seam before broad builder APIs make mismatches harder to see.
+- Handler failures and forbidden state transitions needed to be explicit test scenarios, not incidental outcomes of larger consumer tests.
+
+### Changes Applied
+
+- Added the Advanced Elicitation Hardening Addendum covering compile-first seam validation, bounded script state, cancellation matrix requirements, forbidden-transition oracles, handler isolation, minimal selector policy, and default-lane evidence discipline.
+- Hardened T2, T4, T5, and T10 with cancellation docs, queue/checkpoint bounds, sanitized disposal diagnostics, direct `IProjectionHubConnection` compilation, handler isolation, and forbidden-transition tests.
+- Added D16-D20 for seam validation, bounded state, cancellation matrix, selector traceability, and subscriber-failure isolation.
+- Tightened Testing Standards so diagnostics are sanitized and new fault selectors require traceability plus consumer-level state-oracle assertions before counting toward AC8.
+
+### Findings Deferred
+
+- No product scope, production SignalR contract, or cross-story architecture policy changes were applied.
+- Shared Testing-package compatibility, live-smoke strategy, and broad telemetry policy remain deferred to their existing owner stories.
 
 ---
 
