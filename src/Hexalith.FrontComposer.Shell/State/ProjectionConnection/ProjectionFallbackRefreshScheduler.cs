@@ -5,7 +5,6 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
-using Fluxor;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -50,11 +49,15 @@ public sealed class ProjectionFallbackRefreshScheduler(
     IProjectionConnectionState connectionState,
     IProjectionPageLoader loader,
     IOptionsMonitor<FcShellOptions> options,
-    ILogger<ProjectionFallbackRefreshScheduler> logger,
-    IState<LoadedPageState>? loadedPages = null) : IProjectionFallbackRefreshScheduler {
+    ILogger<ProjectionFallbackRefreshScheduler> logger) : IProjectionFallbackRefreshScheduler {
     private readonly ConcurrentDictionary<string, LaneEntry> _lanes = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _inFlight = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _pendingRetry = new(StringComparer.Ordinal);
+    // DN4=b — last-known ETag per lane key. Compared against the response ETag on each refresh
+    // to detect a wire-level data change without relying on per-item Equals (which falls back
+    // to reference equality for class-typed adopter projections).
+    private readonly ConcurrentDictionary<string, string> _lastEtagByLane = new(StringComparer.Ordinal);
+    private long _latestObservedEpoch;
 
     /// <inheritdoc />
     public IDisposable RegisterLane(ProjectionFallbackLane lane) {
@@ -130,18 +133,49 @@ public sealed class ProjectionFallbackRefreshScheduler(
     /// <inheritdoc />
     public async Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default) {
         cancellationToken.ThrowIfCancellationRequested();
+        // P21 — track latest observed epoch and short-circuit superseded passes early.
+        long previous = Interlocked.Exchange(ref _latestObservedEpoch, epoch);
+        if (epoch < previous) {
+            return ProjectionReconciliationRefreshResult.Empty;
+        }
+
         int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
-        List<string> changed = [];
-        int refreshed = 0;
-        IEnumerable<ProjectionFallbackLane> snapshot = _lanes.Values
+        // P22 — log when the configured budget is zero so misconfiguration is visible instead
+        // of silently suppressing every reconcile pass.
+        if (budget == 0) {
+            logger.LogWarning(
+                "Reconciliation budget is zero (MaxProjectionFallbackPollingLanes={Budget}); reconcile pass skipped.",
+                budget);
+            return ProjectionReconciliationRefreshResult.Empty;
+        }
+
+        // P28 — apply lane cap AFTER dedupe so two lanes that hash to the same dedupe key do
+        // not consume the budget twice.
+        ProjectionFallbackLane[] orderedLanes = _lanes.Values
             .Select(static entry => entry.Lane)
             .OrderBy(static lane => lane.ViewKey, StringComparer.Ordinal)
-            .Take(budget)
             .ToArray();
 
+        List<string> changed = [];
+        int refreshed = 0;
         HashSet<string> seen = new(StringComparer.Ordinal);
-        foreach (ProjectionFallbackLane lane in snapshot) {
+        foreach (ProjectionFallbackLane lane in orderedLanes) {
             cancellationToken.ThrowIfCancellationRequested();
+            if (refreshed >= budget) {
+                break;
+            }
+
+            // P29 — fail-closed: lanes without a tenant must not enter the reconciliation pass.
+            // The cache layer would itself fail-closed on missing tenant, but we want this to
+            // surface as a structured "lane skipped" diagnostic rather than as a silent miss.
+            if (string.IsNullOrWhiteSpace(lane.TenantId)) {
+                logger.LogInformation(
+                    "Reconciliation skipped lane without tenant context. ViewKey={ViewKey}, ProjectionType={ProjectionType}",
+                    lane.ViewKey,
+                    lane.ProjectionType);
+                continue;
+            }
+
             if (!seen.Add(BuildDedupeKey(lane))) {
                 continue;
             }
@@ -182,11 +216,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 lane.SortDescending,
                 lane.SearchQuery,
                 cancellationToken).ConfigureAwait(false);
-            outcome = result.IsNotModified
-                ? ProjectionLaneRefreshResult.NotModified
-                : IsReducerVisibleDelta(lane, result)
-                    ? ProjectionLaneRefreshResult.Changed
-                    : ProjectionLaneRefreshResult.NotModified;
+            outcome = ClassifyRefreshResult(lane, result);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             // P5 — log only the redacted exception type. Raw exception messages can carry
@@ -202,12 +232,66 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
         // P1 — if a nudge arrived during the in-flight window, replay exactly once. Pending is
         // cleared before retry so further bursts during the retry can themselves enqueue a
-        // single follow-up.
+        // single follow-up. P24 — recursion is bounded to depth 1 because _pendingRetry is
+        // cleared atomically and only one replay token can be set per lane.
         if (_pendingRetry.TryRemove(lane.ViewKey, out _) && !cancellationToken.IsCancellationRequested) {
             return await RefreshLaneAsync(lane, cancellationToken).ConfigureAwait(false);
         }
 
         return outcome;
+    }
+
+    /// <summary>
+    /// DN4=b — classify the refresh result as Changed/NotModified using the wire-level ETag as
+    /// the canonical change signal. P25 — guard against negative TotalCount which indicates a
+    /// protocol failure rather than data, and never let a malformed value drive a Changed.
+    /// P23 — null-guard before any dereference of result.Items in the comparison branches.
+    /// </summary>
+    private ProjectionLaneRefreshResult ClassifyRefreshResult(ProjectionFallbackLane lane, ProjectionPageResult result) {
+        if (result.IsNotModified) {
+            return ProjectionLaneRefreshResult.NotModified;
+        }
+
+        // P25 — negative TotalCount is a protocol issue, not a Changed signal.
+        if (result.TotalCount < 0) {
+            logger.LogWarning(
+                "Projection refresh returned negative TotalCount; treating as protocol failure. ViewKey={ViewKey}",
+                lane.ViewKey);
+            return ProjectionLaneRefreshResult.Skipped;
+        }
+
+        string? newEtag = result.ETag;
+        bool hadPrevious = _lastEtagByLane.TryGetValue(lane.ViewKey, out string? previousEtag);
+        if (!string.IsNullOrEmpty(newEtag)) {
+            _lastEtagByLane[lane.ViewKey] = newEtag;
+        }
+
+        // No ETag at all: fall back to "any visible data" — the wire didn't give us a delta
+        // signal, so we must conservatively treat a non-empty page as Changed on the first
+        // observation only.
+        if (string.IsNullOrEmpty(newEtag)) {
+            if (!hadPrevious) {
+                return (result.Items?.Count ?? 0) > 0 || result.TotalCount > 0
+                    ? ProjectionLaneRefreshResult.Changed
+                    : ProjectionLaneRefreshResult.NotModified;
+            }
+
+            // We had a previous ETag but the new response carries none — treat as Changed
+            // conservatively.
+            return ProjectionLaneRefreshResult.Changed;
+        }
+
+        // First observation for this lane in the current circuit — record and return Changed
+        // only when there is data to surface.
+        if (!hadPrevious) {
+            return (result.Items?.Count ?? 0) > 0 || result.TotalCount > 0
+                ? ProjectionLaneRefreshResult.Changed
+                : ProjectionLaneRefreshResult.NotModified;
+        }
+
+        return string.Equals(previousEtag, newEtag, StringComparison.Ordinal)
+            ? ProjectionLaneRefreshResult.NotModified
+            : ProjectionLaneRefreshResult.Changed;
     }
 
     private void DecrementLane(string viewKey, LaneEntry expected) {
@@ -221,6 +305,9 @@ public sealed class ProjectionFallbackRefreshScheduler(
             // that would have replaced the entry under a same ViewKey.
             ICollection<KeyValuePair<string, LaneEntry>> col = _lanes;
             _ = col.Remove(new KeyValuePair<string, LaneEntry>(viewKey, current));
+            // Drop the cached ETag for the removed lane so a re-registration with the same key
+            // starts from a clean delta-detection slate.
+            _ = _lastEtagByLane.TryRemove(viewKey, out _);
         }
     }
 
@@ -250,47 +337,46 @@ public sealed class ProjectionFallbackRefreshScheduler(
         }
     }
 
-    private bool IsReducerVisibleDelta(ProjectionFallbackLane lane, ProjectionPageResult result) {
-        if (loadedPages?.Value is not { } state) {
-            return result.TotalCount > 0 || result.Items.Count > 0;
+    /// <summary>
+    /// P26 — include sort/filter/search state in the dedupe key so two lanes against the same
+    /// projection-type/tenant/page-window but different filters do not coalesce. P27 — fail-closed
+    /// on missing TenantId at the dedupe layer (defence-in-depth on top of the explicit lane skip
+    /// in <see cref="TriggerReconciliationOnceAsync"/>).
+    /// </summary>
+    private static string BuildDedupeKey(ProjectionFallbackLane lane) {
+        if (string.IsNullOrWhiteSpace(lane.TenantId)) {
+            // The reconciliation pass already filters these out; this is defence-in-depth. The
+            // unique key prevents two no-tenant lanes from accidentally collapsing.
+            return string.Concat("__no-tenant__|", lane.ViewKey);
         }
 
-        bool hasPreviousPage = state.PagesByKey.TryGetValue((lane.ViewKey, lane.Skip), out IReadOnlyList<object>? previousItems);
-        bool hasPreviousTotal = state.TotalCountByKey.TryGetValue(lane.ViewKey, out int previousTotal);
-        if (!hasPreviousPage && !hasPreviousTotal) {
-            return result.TotalCount > 0 || result.Items.Count > 0;
-        }
+        // Stable filter representation: sort by key then concatenate. Empty filters produce an
+        // empty section so the dedupe key remains compact for the common case.
+        string filtersFingerprint = lane.Filters is { Count: > 0 }
+            ? string.Join(
+                ",",
+                lane.Filters
+                    .OrderBy(static kv => kv.Key, StringComparer.Ordinal)
+                    .Select(static kv => $"{kv.Key}={kv.Value}"))
+            : string.Empty;
 
-        if (hasPreviousTotal && previousTotal != result.TotalCount) {
-            return true;
-        }
-
-        if (!hasPreviousPage) {
-            return result.Items.Count > 0;
-        }
-
-        if (previousItems!.Count != result.Items.Count) {
-            return true;
-        }
-
-        for (int i = 0; i < previousItems.Count; i++) {
-            if (!Equals(previousItems[i], result.Items[i])) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private static string BuildDedupeKey(ProjectionFallbackLane lane)
-        => string.Concat(
-            lane.TenantId ?? string.Empty,
+        return string.Concat(
+            lane.TenantId,
             "|",
             lane.ProjectionType,
             "|",
             lane.Skip.ToString(System.Globalization.CultureInfo.InvariantCulture),
             "|",
-            lane.Take.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            lane.Take.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "|",
+            lane.SortColumn ?? string.Empty,
+            "|",
+            lane.SortDescending ? "desc" : "asc",
+            "|",
+            lane.SearchQuery ?? string.Empty,
+            "|",
+            filtersFingerprint);
+    }
 
     private sealed class LaneEntry(ProjectionFallbackLane lane) {
         public ProjectionFallbackLane Lane { get; } = lane;

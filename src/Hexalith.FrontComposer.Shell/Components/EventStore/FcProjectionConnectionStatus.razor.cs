@@ -40,8 +40,16 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
 
     /// <inheritdoc />
     protected override void OnInitialized() {
+        // P30 — if the second Subscribe throws, ensure the first subscription does not leak.
         _subscription = ConnectionState.Subscribe(OnConnectionChanged);
-        _reconciliationSubscription = ReconciliationState.Subscribe(OnReconciliationChanged);
+        try {
+            _reconciliationSubscription = ReconciliationState.Subscribe(OnReconciliationChanged);
+        }
+        catch {
+            _subscription?.Dispose();
+            _subscription = null;
+            throw;
+        }
     }
 
     private void OnConnectionChanged(ProjectionConnectionSnapshot snapshot) {
@@ -74,6 +82,17 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
                 return;
             }
 
+            // P31 — connection-status precedence wins. A late Refreshed snapshot from a
+            // superseded reconnect epoch must never reopen a cleared status while we are
+            // already disconnected/reconnecting. Stale-epoch snapshots are also ignored:
+            // if a Refreshed lands for an older epoch than what we already saw, drop it.
+            if (snapshot.Status is ReconnectionReconciliationStatus.Refreshed
+                && (_snapshot.IsDisconnected
+                    || _snapshot.Status is ProjectionConnectionStatus.Reconnecting
+                    || snapshot.Epoch < _reconciliation.Epoch)) {
+                return;
+            }
+
             _reconciliation = snapshot;
             CancelClearTimer();
             _showReconnected = snapshot.Status is ReconnectionReconciliationStatus.Refreshed && snapshot.Changed;
@@ -86,8 +105,16 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
     }
 
     private void StartClearTimer() {
+        // P32 — clamp the configured duration to a sane window. ITimer.CreateTimer with a
+        // negative TimeSpan throws ArgumentOutOfRangeException, and a one-hour ceiling caps
+        // any pathological misconfiguration.
+        long configuredMs = Options.CurrentValue.ProjectionReconnectedNoticeDurationMs;
+        long boundedMs = Math.Clamp(configuredMs, 1, 60_000);
         long generation = Interlocked.Increment(ref _clearTimerGeneration);
-        _clearTimer = Time.CreateTimer(
+
+        // P33 — atomically replace the timer reference so a second StartClearTimer call cannot
+        // leak a previously-allocated timer between the assignment and CancelClearTimer.
+        ITimer newTimer = Time.CreateTimer(
             _ => {
                 if (_disposed != 0) {
                     return;
@@ -99,13 +126,21 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
                     }
 
                     _showReconnected = false;
+                    // P34 — generation counter breaks the loop. ReconciliationState.Reset()
+                    // synchronously notifies subscribers; OnReconciliationChanged queues a
+                    // follow-up InvokeAsync but its check sees the bumped generation as stale
+                    // (CancelClearTimer increments it before the second continuation runs) so
+                    // no new timer is started.
                     ReconciliationState.Reset();
                     StateHasChanged();
                 });
             },
             state: null,
-            dueTime: TimeSpan.FromMilliseconds(Options.CurrentValue.ProjectionReconnectedNoticeDurationMs),
+            dueTime: TimeSpan.FromMilliseconds(boundedMs),
             period: Timeout.InfiniteTimeSpan);
+
+        ITimer? previous = Interlocked.Exchange(ref _clearTimer, newTimer);
+        previous?.Dispose();
     }
 
     private void CancelClearTimer() {

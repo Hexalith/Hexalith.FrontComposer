@@ -282,8 +282,35 @@ public sealed class EventStoreQueryClient(
             int totalCount = ReadTotalCount(document.RootElement, items.Count);
             return QueryResult<T>.NotModifiedFromCache(items, totalCount, entry.ETag);
         }
-        catch (JsonException ex) {
-            throw new ProjectionSchemaMismatchException(projectionType, ex);
+        // P3 — broaden parity with the 200 OK path so type-shape mismatches in cached payload
+        // also map to schema-mismatch instead of propagating raw.
+        catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
+            throw new ProjectionSchemaMismatchException(projectionType ?? string.Empty, ex);
+        }
+    }
+
+    /// <summary>
+    /// DN2 — best-effort family-level cache invalidation on schema mismatch. AC7 specifies
+    /// "all entries for the affected projection type/discriminator family". Wrapped in try/catch
+    /// per P1 — a cache-removal failure must never replace the schema-mismatch we are surfacing.
+    /// </summary>
+    private async Task TryInvalidateSchemaMismatchAsync(string? cacheKey, string projectionType, CancellationToken cancellationToken) {
+        try {
+            if (!string.IsNullOrEmpty(projectionType)) {
+                await cache.RemoveByProjectionTypeAsync(projectionType, cancellationToken).ConfigureAwait(false);
+            }
+
+            if (!string.IsNullOrEmpty(cacheKey)) {
+                await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+            }
+        }
+        catch (OperationCanceledException) {
+            throw;
+        }
+        catch (Exception ex) {
+            logger.LogWarning(
+                "Best-effort projection cache invalidation failed during schema-mismatch handling. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
         }
     }
 

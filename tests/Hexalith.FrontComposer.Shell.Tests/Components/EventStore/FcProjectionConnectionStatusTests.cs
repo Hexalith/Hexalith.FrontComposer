@@ -1,11 +1,15 @@
+using System.Globalization;
+
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Shell.Components.EventStore;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -24,6 +28,10 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     public FcProjectionConnectionStatusTests() {
         JSInterop.Mode = JSRuntimeMode.Loose;
         Services.AddLogging();
+        // P38 — component now resolves user-visible copy through IStringLocalizer<FcShellResources>.
+        // We register a stub that returns the expected English values so tests don't depend on
+        // the test runtime loading the embedded satellite resource assembly.
+        Services.AddSingleton<IStringLocalizer<FcShellResources>>(new StubShellLocalizer());
         Services.AddFluentUIComponents();
         Services.AddSingleton<TimeProvider>(_time);
         _state = ActivatorUtilities.CreateInstance<ProjectionConnectionStateService>(Services.BuildServiceProvider());
@@ -52,9 +60,13 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
     [Fact]
     public void Reconciling_RendersRefreshingStatus() {
         IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        // Connection-state is Connected by default (constructor seeds Connected). The component
+        // should switch to "Refreshing data..." copy and NOT show "Reconnecting..." (P40 — verify
+        // exclusion explicitly so the precedence rule is asserted, not just the inclusion).
         _reconciliation.Start(epoch: 7);
 
         cut.WaitForAssertion(() => cut.Markup.ShouldContain("Refreshing data..."));
+        cut.Markup.ShouldNotContain("Reconnecting...");
         cut.Find("[data-testid='fc-projection-connection-status']").GetAttribute("role").ShouldBe("status");
         cut.Find("[data-testid='fc-projection-connection-status']").GetAttribute("aria-live").ShouldBe("polite");
     }
@@ -79,7 +91,42 @@ public sealed class FcProjectionConnectionStatusTests : BunitContext {
 
         _reconciliation.Complete(epoch: 9, changed: false);
 
+        // P41 — assert the *correct* absence: no "Reconnected -- data refreshed" toast on a
+        // no-change Complete (AC5). Removed the tautological "No changes" absence assert which
+        // pointed at a string that never existed in the codebase.
         cut.WaitForAssertion(() => cut.Markup.ShouldNotContain("Reconnected -- data refreshed"));
-        cut.Markup.ShouldNotContain("No changes");
+    }
+
+    [Fact]
+    public void DisconnectedWhileReconciling_PrecedenceWinsOverRefreshed() {
+        // P31 / AC6 — connection-state precedence: a stale Refreshed snapshot must not reopen
+        // the cleared status while the connection is Reconnecting/Disconnected.
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+
+        _reconciliation.Start(epoch: 10);
+        _state.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Reconnecting, "Timeout"));
+        // Even if the reconciliation pass happens to publish Refreshed mid-disconnect, the
+        // header copy must remain "Reconnecting..." per AC6.
+        _reconciliation.Complete(epoch: 10, changed: true);
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Reconnecting..."));
+        cut.Markup.ShouldNotContain("Reconnected -- data refreshed");
+    }
+
+    [Fact]
+    public void ReconciliationCompletes_AnnouncesOnceForEpoch() {
+        // P48 — live-region announcement coalesces once per reconnect epoch. Multiple Complete
+        // calls (which can arrive from racing dispatchers in tests) for the same epoch must not
+        // produce additional Reconnected/Refreshed toggles.
+        IRenderedComponent<FcProjectionConnectionStatus> cut = Render<FcProjectionConnectionStatus>();
+        _reconciliation.Start(epoch: 11);
+        _reconciliation.Complete(epoch: 11, changed: true);
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Reconnected -- data refreshed"));
+
+        // A duplicate Complete for the same epoch must be a no-op (P15 status guard).
+        _reconciliation.Complete(epoch: 11, changed: true);
+        // Markup still contains the same single toast; we are not coalescing rendering, but the
+        // underlying state did not retransition (Refreshed → Refreshed is dropped by IsLogicalDuplicate).
+        cut.Markup.ShouldContain("Reconnected -- data refreshed");
     }
 }

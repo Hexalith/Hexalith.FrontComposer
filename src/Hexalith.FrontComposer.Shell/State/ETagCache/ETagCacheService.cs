@@ -213,6 +213,52 @@ public sealed class ETagCacheService : IETagCache {
         }
     }
 
+    /// <inheritdoc />
+    public async Task RemoveByProjectionTypeAsync(string projectionType, CancellationToken cancellationToken = default) {
+        ArgumentException.ThrowIfNullOrEmpty(projectionType);
+
+        // DN2 — family invalidation. Read each tracked entry, match by stored discriminator,
+        // and remove. We seed the LRU lazily so the first call after boot covers persisted
+        // entries written by previous sessions.
+        await EnsurePersistedLruSeededAsync(cancellationToken).ConfigureAwait(false);
+
+        // Pre-built match-anchors for both lane shapes built by ETagCacheDiscriminator.
+        string projectionPageAnchor = $"{ETagCacheDiscriminator.ProjectionPageLanePrefix}:{projectionType}:";
+        string actionQueueCountAnchor = $"{ETagCacheDiscriminator.ActionQueueCountLanePrefix}:{projectionType}";
+
+        // Snapshot to avoid mutating-during-enumeration. The work is bounded by MaxETagCacheEntries.
+        string[] keys = [.. _lru.Keys];
+        foreach (string key in keys) {
+            cancellationToken.ThrowIfCancellationRequested();
+            ETagCacheEntry? entry;
+            try {
+                entry = await _storage.GetAsync<ETagCacheEntry>(key, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                throw;
+            }
+            catch (Exception ex) {
+                _logger.LogWarning(
+                    ex,
+                    "ETagCacheService: family invalidation read failed for redacted key {KeyHash} — skipping.",
+                    RedactKey(key));
+                continue;
+            }
+
+            if (entry is null || string.IsNullOrEmpty(entry.Discriminator)) {
+                continue;
+            }
+
+            bool matches = entry.Discriminator.StartsWith(projectionPageAnchor, StringComparison.Ordinal)
+                || string.Equals(entry.Discriminator, actionQueueCountAnchor, StringComparison.Ordinal);
+            if (!matches) {
+                continue;
+            }
+
+            await RemoveAsync(key, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
     private async Task EnsurePersistedLruSeededAsync(CancellationToken cancellationToken) {
         if (Interlocked.Exchange(ref _lruSeeded, 1) != 0) {
             return;

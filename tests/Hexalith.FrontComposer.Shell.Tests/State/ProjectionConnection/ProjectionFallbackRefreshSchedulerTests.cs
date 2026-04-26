@@ -216,6 +216,141 @@ public sealed class ProjectionFallbackRefreshSchedulerTests {
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task TriggerReconciliationOnce_DetectsChangeViaETagComparison() {
+        // P51 / DN4=b — wire-level ETag is the canonical change signal. First refresh records the
+        // ETag and reports Changed (initial observation with items). Second refresh with the SAME
+        // ETag must report NotModified — no false positives for class-typed projections that lack
+        // value-equality semantics.
+        TestConnectionState state = new(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null));
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            "OrdersProjection",
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(new object[] { "order-1" }, 1, "\"v1\"")));
+
+        ProjectionFallbackRefreshScheduler sut = new(
+            state,
+            loader,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+
+        ProjectionReconciliationRefreshResult firstPass = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+        ProjectionReconciliationRefreshResult secondPass = await sut.TriggerReconciliationOnceAsync(2, TestContext.Current.CancellationToken);
+
+        // First pass: first observation with items → Changed.
+        firstPass.ChangedViewKeys.ShouldBe(["acme:OrdersProjection"]);
+        // Second pass: same ETag → NotModified, no false-positive Changed.
+        secondPass.ChangedViewKeys.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task TriggerReconciliationOnce_SkipsLanesWithoutTenant() {
+        // P29 / P46 — fail-closed: a lane registered without a tenant is skipped during the
+        // reconciliation pass and does not consume any of the loader's mock budget.
+        TestConnectionState state = new(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null));
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(Array.Empty<object>(), 0, null, IsNotModified: true)));
+
+        ProjectionFallbackRefreshScheduler sut = new(
+            state,
+            loader,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+        // Lane WITHOUT tenant — must be skipped by reconciliation but still permitted for
+        // registration so that disconnected fallback polling can pick it up later if/when
+        // a tenant becomes available.
+        _ = sut.RegisterLane(new ProjectionFallbackLane("anon:OrdersProjection", "OrdersProjection", null, 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(99, TestContext.Current.CancellationToken);
+
+        // Only the tenant-bearing lane was reconciled.
+        result.RefreshedCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TriggerReconciliationOnce_BudgetZero_SkipsAllLanes() {
+        // P22 — budget==0 produces a single warning and skips the pass entirely.
+        TestConnectionState state = new(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null));
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        ProjectionFallbackRefreshScheduler sut = new(
+            state,
+            loader,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 0 }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:OrdersProjection", "OrdersProjection", "acme", 0, 20, ImmutableDictionary<string, string>.Empty, null, false, null));
+
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(1, TestContext.Current.CancellationToken);
+
+        result.ShouldBe(ProjectionReconciliationRefreshResult.Empty);
+        _ = loader.DidNotReceiveWithAnyArgs().LoadPageAsync(default!, default, default, default!, default, default, default, TestContext.Current.CancellationToken);
+    }
+
+    [Fact]
+    public async Task TriggerReconciliationOnce_DistinctFiltersBypassDedupe() {
+        // P26 — two lanes with the same projection-type/tenant/page but different filters must
+        // NOT collapse via dedupe.
+        TestConnectionState state = new(new ProjectionConnectionSnapshot(
+            ProjectionConnectionStatus.Connected,
+            DateTimeOffset.UtcNow,
+            ReconnectAttempt: 0,
+            LastFailureCategory: null));
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(),
+            Arg.Any<int>(),
+            Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(),
+            Arg.Any<bool>(),
+            Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+            .Returns(Task.FromResult(new ProjectionPageResult(Array.Empty<object>(), 0, null, IsNotModified: true)));
+
+        ProjectionFallbackRefreshScheduler sut = new(
+            state,
+            loader,
+            Microsoft.Extensions.Options.Options.Create(new FcShellOptions { MaxProjectionFallbackPollingLanes = 10 }).ToMonitor(),
+            NullLogger<ProjectionFallbackRefreshScheduler>.Instance);
+        ImmutableDictionary<string, string> filtersA = ImmutableDictionary<string, string>.Empty.Add("status", "open");
+        ImmutableDictionary<string, string> filtersB = ImmutableDictionary<string, string>.Empty.Add("status", "closed");
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:Orders:open", "OrdersProjection", "acme", 0, 20, filtersA, null, false, null));
+        _ = sut.RegisterLane(new ProjectionFallbackLane("acme:Orders:closed", "OrdersProjection", "acme", 0, 20, filtersB, null, false, null));
+
+        ProjectionReconciliationRefreshResult result = await sut.TriggerReconciliationOnceAsync(101, TestContext.Current.CancellationToken);
+
+        result.RefreshedCount.ShouldBe(2);
+    }
+
     private sealed class TestConnectionState(ProjectionConnectionSnapshot snapshot) : IProjectionConnectionState {
         public ProjectionConnectionSnapshot Current { get; private set; } = snapshot;
 

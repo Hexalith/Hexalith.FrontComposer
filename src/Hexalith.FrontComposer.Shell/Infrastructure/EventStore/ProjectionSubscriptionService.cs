@@ -205,9 +205,35 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                 // service disposal token. A blocked subscribe/unsubscribe on the same gate cannot
                 // hang rejoin indefinitely; disposal cancels the sweep promptly.
                 await RejoinActiveGroupsAsync(_disposalCts.Token).ConfigureAwait(false);
+                // DN5=a — Apply Connected unconditionally; per-group degradation surfaces through
+                // GroupHealth.Degraded (Story 5-3 P9) and per-lane reconciliation failures.
                 _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
-                if (_reconciliationCoordinator is not null && !_disposed) {
+                // P7 — re-check disposal/cancellation between rejoin completion and reconcile.
+                if (_reconciliationCoordinator is null) {
+                    // P8 — log once when DI did not provide the coordinator so a regression is
+                    // visible instead of silently no-op'ing reconciliation.
+                    _logger.LogInformation(
+                        "Projection reconciliation coordinator is not registered. Reconnect catch-up will not run.");
+                    break;
+                }
+
+                if (_disposed || _disposalCts.IsCancellationRequested) {
+                    break;
+                }
+
+                try {
+                    // P6 — wrap the coordinator call so a buggy reconciliation cannot escape into
+                    // the SignalR hub state-changed dispatcher (which would terminate the callback
+                    // chain and prevent further state transitions from propagating).
                     _ = await _reconciliationCoordinator.ReconcileAsync(_disposalCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
+                    // Expected on disposal.
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                    _logger.LogWarning(
+                        "Reconnection reconciliation threw out of the hub callback. FailureCategory={FailureCategory}",
+                        ex.GetType().Name);
                 }
 
                 break;

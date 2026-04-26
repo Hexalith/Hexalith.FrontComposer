@@ -2,8 +2,11 @@
     margin-block: var(--design-unit, 0.5rem);
 }
 
+/* P35 — bound pulse iterations to keep prolonged disconnect from running an indefinite
+   visual loop. 24 alternating iterations at 700ms ≈ 17s, which covers the SignalR
+   automatic-reconnect retry budget (0/2/10/30s) and then settles to a steady state. */
 .fc-projection-connection-status-pulse {
-    animation: fc-sync-status-pulse 700ms ease-in-out infinite alternate;
+    animation: fc-sync-status-pulse 700ms ease-in-out 24 alternate;
 }
 
 @keyframes fc-sync-status-pulse {

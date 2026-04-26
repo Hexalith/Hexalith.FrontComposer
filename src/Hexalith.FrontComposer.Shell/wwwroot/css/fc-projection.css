@@ -59,16 +59,26 @@
 }
 
 /* Story 5-4 — single lane-level sweep marker after reconnect reconciliation. The
-   marker is intentionally subtle, bounded to 700ms, and does not affect layout. */
+   marker is intentionally subtle, bounded to 700ms, and does not affect layout.
+   P35 — provide solid-rgba fallbacks before the color-mix() declarations so legacy
+   browsers (Safari < 16.2, older Edge) still render a visible outline + flash even
+   without color-mix support. The @supports block lets capable browsers use the
+   theme-aware accent variant. */
 .fc-reconciliation-sweep {
     animation: fc-reconciliation-sweep 700ms ease-out 1;
-    outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 45%, transparent);
+    outline: 1px solid rgba(0, 120, 212, 0.45);
     outline-offset: -1px;
+}
+
+@supports (color: color-mix(in srgb, red, blue)) {
+    .fc-reconciliation-sweep {
+        outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 45%, transparent);
+    }
 }
 
 @keyframes fc-reconciliation-sweep {
     from {
-        background-color: color-mix(in srgb, var(--accent-fill-rest, #0078d4) 18%, transparent);
+        background-color: rgba(0, 120, 212, 0.18);
     }
 
     to {
@@ -76,9 +86,27 @@
     }
 }
 
+@supports (color: color-mix(in srgb, red, blue)) {
+    @keyframes fc-reconciliation-sweep {
+        from {
+            background-color: color-mix(in srgb, var(--accent-fill-rest, #0078d4) 18%, transparent);
+        }
+
+        to {
+            background-color: transparent;
+        }
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .fc-reconciliation-sweep {
         animation: none;
-        outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 35%, transparent);
+        outline: 1px solid rgba(0, 120, 212, 0.35);
+    }
+
+    @supports (color: color-mix(in srgb, red, blue)) {
+        .fc-reconciliation-sweep {
+            outline: 1px solid color-mix(in srgb, var(--accent-fill-rest, #0078d4) 35%, transparent);
+        }
     }
 }

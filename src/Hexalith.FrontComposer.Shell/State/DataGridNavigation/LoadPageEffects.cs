@@ -6,7 +6,9 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Resources;
 
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -26,6 +28,7 @@ public sealed class LoadPageEffects {
     private readonly ILogger<LoadPageEffects> _logger;
     private readonly IOptionsMonitor<FcShellOptions> _options;
     private readonly TimeProvider _timeProvider;
+    private readonly IStringLocalizer<FcShellResources>? _localizer;
 
     /// <summary>Initializes a new instance of the <see cref="LoadPageEffects"/> class.</summary>
     /// <param name="state">Read-only <see cref="LoadedPageState"/> for the defensive-finally guard.</param>
@@ -33,12 +36,14 @@ public sealed class LoadPageEffects {
     /// <param name="logger">Logger for the defensive-finally breadcrumb.</param>
     /// <param name="options">Shell options monitor for virtualization caps.</param>
     /// <param name="timeProvider">Time source for deterministic elapsed measurement.</param>
+    /// <param name="localizer">Optional shell-resources localizer; when present, schema-mismatch user copy is resolved through it.</param>
     public LoadPageEffects(
         IState<LoadedPageState> state,
         IProjectionPageLoader loader,
         ILogger<LoadPageEffects> logger,
         IOptionsMonitor<FcShellOptions> options,
-        TimeProvider? timeProvider = null) {
+        TimeProvider? timeProvider = null,
+        IStringLocalizer<FcShellResources>? localizer = null) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(loader);
         ArgumentNullException.ThrowIfNull(logger);
@@ -48,6 +53,7 @@ public sealed class LoadPageEffects {
         _logger = logger;
         _options = options;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _localizer = localizer;
     }
 
     /// <summary>Handles <see cref="LoadPageAction"/> per Story 4-4 D3 re-revised.</summary>
@@ -124,8 +130,22 @@ public sealed class LoadPageEffects {
         catch (OperationCanceledException) {
             dispatcher.Dispatch(new LoadPageCancelledAction(action.ViewKey, action.Skip, action.Completion));
         }
-        catch (ProjectionSchemaMismatchException) {
-            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, "This section is being updated", action.Completion));
+        catch (ProjectionSchemaMismatchException ex) {
+            // P36 — resolve the user-visible copy through IStringLocalizer when registered so
+            // French-locale users see the translated `SectionUpdatingText` instead of the
+            // English literal. The localizer is optional: hosts that have not opted in to
+            // shell localization still get a sensible English fallback.
+            string sectionUpdatingCopy = _localizer is null
+                ? "This section is being updated"
+                : _localizer["SectionUpdatingText"];
+            // P37 — structured Warning log on the schema-mismatch path. Diagnostic is bounded
+            // to redacted projection type + exception type — no payload bodies, no stack-traces
+            // (the EventStore client already logged the FailureCategory at the wire boundary).
+            _logger.LogWarning(
+                "Projection load failed schema check. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
+                ex.ProjectionType,
+                ex.GetType().Name);
+            dispatcher.Dispatch(new LoadPageFailedAction(action.ViewKey, action.Skip, sectionUpdatingCopy, action.Completion));
         }
         catch (Exception ex) {
             string message = string.IsNullOrWhiteSpace(ex.Message) ? ex.GetType().Name : ex.Message;

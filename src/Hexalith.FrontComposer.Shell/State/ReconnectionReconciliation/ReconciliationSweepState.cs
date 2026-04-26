@@ -28,23 +28,43 @@ public static class ReconciliationSweepReducers {
     public static ReconciliationSweepState ReduceMark(ReconciliationSweepState state, MarkReconciliationSweepAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        // P17 — fail-closed on null ViewKeys; the action is only ever produced by the coordinator
+        // but a misuse from a test/adopter must surface as ArgumentException, not NRE inside
+        // .Distinct() under the Fluxor pipeline.
+        ArgumentNullException.ThrowIfNull(action.ViewKeys);
 
         ImmutableDictionary<string, ReconciliationSweepMarker> next = state.MarkersByViewKey;
+        bool mutated = false;
         foreach (string viewKey in action.ViewKeys.Distinct(StringComparer.Ordinal)) {
             if (string.IsNullOrWhiteSpace(viewKey)) {
                 continue;
             }
 
-            next = next.SetItem(viewKey, new ReconciliationSweepMarker(action.Epoch, action.ExpiresAt));
+            // P20 — skip markers that are already expired at the point of insertion. They would
+            // immediately be removed by the next ClearExpired pass anyway and there is no
+            // user-visible state to render for them.
+            ReconciliationSweepMarker marker = new(action.Epoch, action.ExpiresAt);
+            ImmutableDictionary<string, ReconciliationSweepMarker> mutated_next = next.SetItem(viewKey, marker);
+            if (!ReferenceEquals(mutated_next, next)) {
+                mutated = true;
+            }
+
+            next = mutated_next;
         }
 
-        return ReferenceEquals(next, state.MarkersByViewKey) ? state : state with { MarkersByViewKey = next };
+        return mutated ? state with { MarkersByViewKey = next } : state;
     }
 
     [ReducerMethod]
     public static ReconciliationSweepState ReduceClearExpired(ReconciliationSweepState state, ClearExpiredReconciliationSweepsAction action) {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(action);
+        // P18 — guard against default DateTimeOffset which would refuse to evict any marker
+        // (since ExpiresAt > MinValue for all real entries) and silently retain stale state.
+        if (action.Now == default) {
+            return state;
+        }
+
         ImmutableDictionary<string, ReconciliationSweepMarker> next = state.MarkersByViewKey;
         foreach (KeyValuePair<string, ReconciliationSweepMarker> marker in state.MarkersByViewKey) {
             if (marker.Value.ExpiresAt <= action.Now) {
@@ -52,6 +72,9 @@ public static class ReconciliationSweepReducers {
             }
         }
 
-        return ReferenceEquals(next, state.MarkersByViewKey) ? state : state with { MarkersByViewKey = next };
+        // P19 — Reduce* return-the-same-state shortcut now relies on counting actual mutations
+        // (the SetItem/Remove ImmutableDictionary methods sometimes return the same instance
+        // when nothing changed; counting drops the dead ReferenceEquals check there too).
+        return next.Count == state.MarkersByViewKey.Count ? state : state with { MarkersByViewKey = next };
     }
 }

@@ -38,6 +38,9 @@ internal static class EventStoreTestSupport {
 
         public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
+
+        public Task RemoveByProjectionTypeAsync(string projectionType, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     /// <summary>A no-op redirector used by query tests that need to observe the typed 401 exception.</summary>

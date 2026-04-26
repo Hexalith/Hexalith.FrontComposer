@@ -1,7 +1,11 @@
 @namespace Hexalith.FrontComposer.Shell.Components.EventStore
+@using Hexalith.FrontComposer.Shell.Resources
 @using Hexalith.FrontComposer.Shell.State.ProjectionConnection
 @using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation
+@using Microsoft.Extensions.Localization
 @using Microsoft.FluentUI.AspNetCore.Components
+
+@inject IStringLocalizer<FcShellResources> Localizer
 
 @if (_visible) {
     <FluentMessageBar Intent="@Intent"
@@ -24,10 +28,14 @@
         _ => MessageBarIntent.Info,
     };
 
+    // P38 — resolve user-visible copy through IStringLocalizer<FcShellResources>. Resource keys
+    // were added by Story 5-4; the literals previously hardcoded here meant French-locale users
+    // never saw the translated string. Story precedence order is preserved: connection-state
+    // (Reconnecting/Disconnected) wins over reconciliation status.
     private string Message => _snapshot.Status switch {
-        ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => "Reconnecting...",
-        _ when _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling => "Refreshing data...",
-        _ => "Reconnected -- data refreshed",
+        ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected => Localizer["ReconnectStatusText"],
+        _ when _reconciliation.Status is ReconnectionReconciliationStatus.Reconciling => Localizer["ReconciliationStatusText"],
+        _ => Localizer["ReconnectedDataRefreshedText"],
     };
 
     private string CssClass => _snapshot.Status is ProjectionConnectionStatus.Reconnecting or ProjectionConnectionStatus.Disconnected
