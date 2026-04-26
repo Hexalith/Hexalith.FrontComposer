@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -66,6 +67,16 @@ public abstract class GeneratedComponentTestBase : BunitContext
             sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowFeature>());
         _ = Services.AddSingleton<Fluxor.IFeature>(
             sp => sp.GetRequiredService<Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowFeature>());
+
+        // Story 5-4 Pass-2 — generated grid views inject IState<ReconciliationSweepState>
+        // and IProjectionFallbackRefreshScheduler for visible-lane reconciliation. Register
+        // the feature directly so generated bUnit tests can render without scanning Shell.
+        _ = Services.AddSingleton<ReconciliationSweepFeature>();
+        _ = Services.AddSingleton<Fluxor.IFeature<ReconciliationSweepState>>(
+            sp => sp.GetRequiredService<ReconciliationSweepFeature>());
+        _ = Services.AddSingleton<Fluxor.IFeature>(
+            sp => sp.GetRequiredService<ReconciliationSweepFeature>());
+        _ = Services.AddScoped<IProjectionFallbackRefreshScheduler, NoopProjectionFallbackRefreshScheduler>();
 
         // Story 4-5 T1 / D7 — generated views inject IExpandInRowJSModule for the FcExpandInRowDetail
         // component. Loose JS interop mode swallows the underlying JS calls; tests that need to
@@ -142,6 +153,27 @@ public abstract class GeneratedComponentTestBase : BunitContext
     {
         public void Ensure<TBridge>() where TBridge : class, IDisposable
         {
+        }
+    }
+
+    private sealed class NoopProjectionFallbackRefreshScheduler : IProjectionFallbackRefreshScheduler
+    {
+        public IDisposable RegisterLane(ProjectionFallbackLane lane) => NoopDisposable.Instance;
+
+        public Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default) => Task.FromResult(0);
+
+        public Task<int> TriggerNudgeRefreshAsync(
+            string projectionType,
+            string tenantId,
+            CancellationToken cancellationToken = default) => Task.FromResult(0);
+
+        private sealed class NoopDisposable : IDisposable
+        {
+            public static NoopDisposable Instance { get; } = new();
+
+            public void Dispose()
+            {
+            }
         }
     }
 }

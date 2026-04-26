@@ -35,7 +35,10 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
         // DN1 — sweep marker dispatched for the changed lane.
         dispatcher.Actions.OfType<MarkReconciliationSweepAction>().ShouldHaveSingleItem()
             .ViewKeys.ShouldBe(["orders"]);
-        // DN1 — periodic ClearExpired dispatched after Complete to bound marker state.
+        dispatcher.Actions.OfType<ClearExpiredReconciliationSweepsAction>().ShouldBeEmpty();
+        time.Advance(TimeSpan.FromMilliseconds(701));
+        await Task.Yield();
+        // DN1 — ClearExpired dispatches after the sweep TTL, not before it can expire.
         dispatcher.Actions.OfType<ClearExpiredReconciliationSweepsAction>().ShouldHaveSingleItem();
     }
 
@@ -134,6 +137,18 @@ public sealed class ReconnectionReconciliationCoordinatorTests {
         // Idempotent re-Complete for the same epoch must NOT downgrade Refreshed to Idle.
         state.Complete(state.Current.Epoch, changed: false);
         state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Refreshed);
+    }
+
+    [Fact]
+    public void Reset_WithStaleExpectedEpoch_DoesNotClearFreshReconcilingState() {
+        ReconnectionReconciliationStateService state = NewState();
+
+        state.Start(1);
+        state.Start(2);
+        state.Reset(expectedEpoch: 1);
+
+        state.Current.Epoch.ShouldBe(2);
+        state.Current.Status.ShouldBe(ReconnectionReconciliationStatus.Reconciling);
     }
 
     private static ReconnectionReconciliationStateService NewState()

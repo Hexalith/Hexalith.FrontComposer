@@ -131,7 +131,7 @@ public partial class FcProjectionConnectionStatus : ComponentBase, IDisposable {
                     // follow-up InvokeAsync but its check sees the bumped generation as stale
                     // (CancelClearTimer increments it before the second continuation runs) so
                     // no new timer is started.
-                    ReconciliationState.Reset();
+                    ReconciliationState.Reset(_reconciliation.Epoch);
                     StateHasChanged();
                 });
             },

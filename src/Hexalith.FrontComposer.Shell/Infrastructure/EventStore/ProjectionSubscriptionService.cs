@@ -205,6 +205,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                 // service disposal token. A blocked subscribe/unsubscribe on the same gate cannot
                 // hang rejoin indefinitely; disposal cancels the sweep promptly.
                 await RejoinActiveGroupsAsync(_disposalCts.Token).ConfigureAwait(false);
+                _refreshScheduler.SetReconciliationGroupHealth(SnapshotGroupHealth());
                 // DN5=a — Apply Connected unconditionally; per-group degradation surfaces through
                 // GroupHealth.Degraded (Story 5-3 P9) and per-lane reconciliation failures.
                 _connectionState.Apply(new ProjectionConnectionTransition(ProjectionConnectionStatus.Connected));
@@ -300,6 +301,15 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         finally {
             _ = _gate.Release();
         }
+    }
+
+    private IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> SnapshotGroupHealth() {
+        Dictionary<ProjectionFallbackGroupKey, bool> snapshot = new();
+        foreach (KeyValuePair<GroupKey, GroupHealth> group in _activeGroups) {
+            snapshot[new ProjectionFallbackGroupKey(group.Key.ProjectionType, group.Key.TenantId)] = group.Value == GroupHealth.Active;
+        }
+
+        return snapshot;
     }
 
     private void ThrowIfDisposed() {

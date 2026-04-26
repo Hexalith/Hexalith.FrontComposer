@@ -47,6 +47,15 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
     [Inject]
     private IState<global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState> GridNavigationState { get; set; } = default!;
 
+    [Inject]
+    private IState<global::Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation.ReconciliationSweepState> ReconciliationSweepState { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler ProjectionFallbackRefreshScheduler { get; set; } = default!;
+
+    [Inject]
+    private TimeProvider TimeProvider { get; set; } = default!;
+
     [CascadingParameter]
     private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }
 
@@ -58,6 +67,10 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
     private static readonly System.Func<ActionQueueNoEnumProjection, object> _itemKeyAccessor = static x => (object)x.Id!;
 
     private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;
+
+    private IDisposable? _projectionFallbackLaneRegistration;
+
+    private string? _registeredProjectionFallbackLaneKey;
 
     private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
 
@@ -74,6 +87,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         ActionQueueNoEnumProjectionState.StateChanged += OnStateChanged;
         LoadedPageState.StateChanged += OnStateChanged;
         GridNavigationState.StateChanged += OnStateChanged;
+        ReconciliationSweepState.StateChanged += OnStateChanged;
         ExpandedRowState.StateChanged += OnStateChanged;
     }
 
@@ -100,6 +114,8 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
             catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }
             catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }
         }
+
+        RegisterVisibleProjectionLane();
     }
 
     private async Task OnScrollAsync()
@@ -170,7 +186,11 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         ActionQueueNoEnumProjectionState.StateChanged -= OnStateChanged;
         LoadedPageState.StateChanged -= OnStateChanged;
         GridNavigationState.StateChanged -= OnStateChanged;
+        ReconciliationSweepState.StateChanged -= OnStateChanged;
         ExpandedRowState.StateChanged -= OnStateChanged;
+        _projectionFallbackLaneRegistration?.Dispose();
+        _projectionFallbackLaneRegistration = null;
+        _registeredProjectionFallbackLaneKey = null;
         try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }
         catch (System.ObjectDisposedException) { /* store already disposed */ }
         try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.CollapseRowAction(_ephemeralViewKey)); }
@@ -216,6 +236,53 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
             && !string.IsNullOrWhiteSpace(query)
                 ? query
                 : null;
+
+    private static string ProjectionTypeFromViewKey()
+    {
+        int separator = _viewKey.IndexOf(':');
+        return separator > 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;
+    }
+
+    private void RegisterVisibleProjectionLane()
+    {
+        if (string.IsNullOrWhiteSpace(RenderContext?.TenantId))
+        {
+            return;
+        }
+
+        var snapshot = CurrentGridSnapshot();
+        var filters = QueryFilters(snapshot);
+        var searchQuery = SearchQuery(snapshot);
+        int take = ShellOptions.Value.VirtualizationServerSideThreshold;
+        string laneKey = string.Join("\u001d", RenderContext.TenantId, ProjectionTypeFromViewKey(), "0", take.ToString(System.Globalization.CultureInfo.InvariantCulture), snapshot?.SortColumn ?? string.Empty, snapshot?.SortDescending == true ? "desc" : "asc", searchQuery ?? string.Empty, string.Join("\u001f", filters.OrderBy(static kv => kv.Key, StringComparer.Ordinal).Select(static kv => kv.Key + "\u001e" + kv.Value)));
+        if (string.Equals(_registeredProjectionFallbackLaneKey, laneKey, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _projectionFallbackLaneRegistration?.Dispose();
+        _projectionFallbackLaneRegistration = ProjectionFallbackRefreshScheduler.RegisterLane(new global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLane(
+            _viewKey,
+            ProjectionTypeFromViewKey(),
+            RenderContext.TenantId,
+            0,
+            take,
+            filters,
+            snapshot?.SortColumn,
+            snapshot?.SortDescending ?? false,
+            searchQuery));
+        _registeredProjectionFallbackLaneKey = laneKey;
+    }
+
+    private string GridHostClass()
+    {
+        if (ReconciliationSweepState.Value.MarkersByViewKey.TryGetValue(_viewKey, out var marker) && marker.ExpiresAt > TimeProvider.GetUtcNow())
+        {
+            return "fc-datagrid-host fc-reconciliation-sweep";
+        }
+
+        return "fc-datagrid-host";
+    }
 
     private static bool AnyRealFilterActive(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)
     {
@@ -370,7 +437,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         builder.CloseElement();
 
         builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", "fc-datagrid-host");
+        builder.AddAttribute(seq++, "class", GridHostClass());
         builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
         builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
 

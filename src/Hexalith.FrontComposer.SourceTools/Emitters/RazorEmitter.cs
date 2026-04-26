@@ -132,6 +132,15 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    [Inject]");
             _ = sb.AppendLine("    private IState<global::Hexalith.FrontComposer.Shell.State.DataGridNavigation.DataGridNavigationState> GridNavigationState { get; set; } = default!;");
             _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private IState<global::Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation.ReconciliationSweepState> ReconciliationSweepState { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.IProjectionFallbackRefreshScheduler ProjectionFallbackRefreshScheduler { get; set; } = default!;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private TimeProvider TimeProvider { get; set; } = default!;");
+            _ = sb.AppendLine();
             _ = sb.AppendLine("    [CascadingParameter]");
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }");
             _ = sb.AppendLine();
@@ -233,6 +242,10 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private static readonly System.Func<" + model.TypeName + ", object> _itemKeyAccessor = static x => " + itemKeyExpr + ";");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Microsoft.JSInterop.DotNetObjectReference<object>? _dotNetRef;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private IDisposable? _projectionFallbackLaneRegistration;");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private string? _registeredProjectionFallbackLaneKey;");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel _density = global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;");
             _ = sb.AppendLine();
@@ -338,6 +351,7 @@ public static class RazorEmitter {
         if (isGrid) {
             _ = sb.AppendLine("        LoadedPageState.StateChanged += OnStateChanged;");
             _ = sb.AppendLine("        GridNavigationState.StateChanged += OnStateChanged;");
+            _ = sb.AppendLine("        ReconciliationSweepState.StateChanged += OnStateChanged;");
         }
         if (EmitsExpandInRowMachinery(model.Strategy)) {
             _ = sb.AppendLine("        ExpandedRowState.StateChanged += OnStateChanged;");
@@ -374,6 +388,8 @@ public static class RazorEmitter {
             _ = sb.AppendLine("            catch (global::Microsoft.JSInterop.JSDisconnectedException) { /* circuit teardown */ }");
             _ = sb.AppendLine("            catch (System.Threading.Tasks.TaskCanceledException) { /* circuit teardown */ }");
             _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        RegisterVisibleProjectionLane();");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
 
@@ -459,10 +475,14 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        " + model.TypeName + "State.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        LoadedPageState.StateChanged -= OnStateChanged;");
             _ = sb.AppendLine("        GridNavigationState.StateChanged -= OnStateChanged;");
+            _ = sb.AppendLine("        ReconciliationSweepState.StateChanged -= OnStateChanged;");
             if (EmitsExpandInRowMachinery(model.Strategy)) {
                 _ = sb.AppendLine("        ExpandedRowState.StateChanged -= OnStateChanged;");
             }
 
+            _ = sb.AppendLine("        _projectionFallbackLaneRegistration?.Dispose();");
+            _ = sb.AppendLine("        _projectionFallbackLaneRegistration = null;");
+            _ = sb.AppendLine("        _registeredProjectionFallbackLaneKey = null;");
             _ = sb.AppendLine("        try { Dispatcher.Dispatch(new global::Hexalith.FrontComposer.Contracts.Rendering.ClearPendingPagesAction(_viewKey)); }");
             _ = sb.AppendLine("        catch (System.ObjectDisposedException) { /* store already disposed */ }");
             if (EmitsExpandInRowMachinery(model.Strategy)) {
@@ -553,6 +573,53 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            && !string.IsNullOrWhiteSpace(query)");
         _ = sb.AppendLine("                ? query");
         _ = sb.AppendLine("                : null;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private static string ProjectionTypeFromViewKey()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        int separator = _viewKey.IndexOf(':');");
+        _ = sb.AppendLine("        return separator > 0 && separator < _viewKey.Length - 1 ? _viewKey[(separator + 1)..] : _viewKey;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private void RegisterVisibleProjectionLane()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (string.IsNullOrWhiteSpace(RenderContext?.TenantId))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        var snapshot = CurrentGridSnapshot();");
+        _ = sb.AppendLine("        var filters = QueryFilters(snapshot);");
+        _ = sb.AppendLine("        var searchQuery = SearchQuery(snapshot);");
+        _ = sb.AppendLine("        int take = ShellOptions.Value.VirtualizationServerSideThreshold;");
+        _ = sb.AppendLine("        string laneKey = string.Join(\"\\u001d\", RenderContext.TenantId, ProjectionTypeFromViewKey(), \"0\", take.ToString(System.Globalization.CultureInfo.InvariantCulture), snapshot?.SortColumn ?? string.Empty, snapshot?.SortDescending == true ? \"desc\" : \"asc\", searchQuery ?? string.Empty, string.Join(\"\\u001f\", filters.OrderBy(static kv => kv.Key, StringComparer.Ordinal).Select(static kv => kv.Key + \"\\u001e\" + kv.Value)));");
+        _ = sb.AppendLine("        if (string.Equals(_registeredProjectionFallbackLaneKey, laneKey, StringComparison.Ordinal))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return;");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        _projectionFallbackLaneRegistration?.Dispose();");
+        _ = sb.AppendLine("        _projectionFallbackLaneRegistration = ProjectionFallbackRefreshScheduler.RegisterLane(new global::Hexalith.FrontComposer.Shell.State.ProjectionConnection.ProjectionFallbackLane(");
+        _ = sb.AppendLine("            _viewKey,");
+        _ = sb.AppendLine("            ProjectionTypeFromViewKey(),");
+        _ = sb.AppendLine("            RenderContext.TenantId,");
+        _ = sb.AppendLine("            0,");
+        _ = sb.AppendLine("            take,");
+        _ = sb.AppendLine("            filters,");
+        _ = sb.AppendLine("            snapshot?.SortColumn,");
+        _ = sb.AppendLine("            snapshot?.SortDescending ?? false,");
+        _ = sb.AppendLine("            searchQuery));");
+        _ = sb.AppendLine("        _registeredProjectionFallbackLaneKey = laneKey;");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private string GridHostClass()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (ReconciliationSweepState.Value.MarkersByViewKey.TryGetValue(_viewKey, out var marker) && marker.ExpiresAt > TimeProvider.GetUtcNow())");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return \"fc-datagrid-host fc-reconciliation-sweep\";");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        return \"fc-datagrid-host\";");
+        _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    private static bool AnyRealFilterActive(global::Hexalith.FrontComposer.Contracts.Rendering.GridViewSnapshot? snapshot)");
         _ = sb.AppendLine("    {");
@@ -740,7 +807,7 @@ public static class RazorEmitter {
         // Story 4-4 T2.5 — outer scroll container; data-fc-datagrid attribute is consumed by
         // fc-datagrid.js to locate the Fluent scroll viewport.
         _ = sb.AppendLine("        builder.OpenElement(seq++, \"div\");");
-        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", \"fc-datagrid-host\");");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"class\", GridHostClass());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"data-fc-datagrid\", _viewKey);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"onscroll\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));");
         _ = sb.AppendLine();

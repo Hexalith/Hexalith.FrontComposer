@@ -1,8 +1,12 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Text.Json;
+
+using Fluxor;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 using Microsoft.Extensions.Logging;
@@ -25,7 +29,18 @@ public sealed record ProjectionFallbackLane(
     IImmutableDictionary<string, string> Filters,
     string? SortColumn,
     bool SortDescending,
-    string? SearchQuery);
+    string? SearchQuery,
+    Func<CancellationToken, ValueTask<ProjectionFallbackLaneRefreshOutcome>>? RefreshAsync = null);
+
+/// <summary>Result produced by custom visible-lane refresh callbacks.</summary>
+public enum ProjectionFallbackLaneRefreshOutcome {
+    Skipped,
+    NotModified,
+    Changed,
+}
+
+/// <summary>Projection group health observed during the latest reconnect rejoin pass.</summary>
+public readonly record struct ProjectionFallbackGroupKey(string ProjectionType, string TenantId);
 
 /// <summary>Registers visible projection lanes and refreshes them while realtime is unavailable.</summary>
 public interface IProjectionFallbackRefreshScheduler {
@@ -37,6 +52,9 @@ public interface IProjectionFallbackRefreshScheduler {
 
     Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default)
         => Task.FromResult(ProjectionReconciliationRefreshResult.Empty);
+
+    void SetReconciliationGroupHealth(IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> activeGroups) {
+    }
 }
 
 /// <summary>Summary returned by an epoch-scoped reconnect reconciliation pass.</summary>
@@ -48,16 +66,28 @@ public sealed record ProjectionReconciliationRefreshResult(int RefreshedCount, I
 public sealed class ProjectionFallbackRefreshScheduler(
     IProjectionConnectionState connectionState,
     IProjectionPageLoader loader,
+    IDispatcher dispatcher,
+    IState<LoadedPageState> loadedPages,
     IOptionsMonitor<FcShellOptions> options,
     ILogger<ProjectionFallbackRefreshScheduler> logger) : IProjectionFallbackRefreshScheduler {
     private readonly ConcurrentDictionary<string, LaneEntry> _lanes = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _inFlight = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, byte> _pendingRetry = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<ProjectionFallbackGroupKey, bool> _activeGroups = new();
     // DN4=b — last-known ETag per lane key. Compared against the response ETag on each refresh
     // to detect a wire-level data change without relying on per-item Equals (which falls back
     // to reference equality for class-typed adopter projections).
     private readonly ConcurrentDictionary<string, string> _lastEtagByLane = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, string> _lastNoEtagSignatureByLane = new(StringComparer.Ordinal);
     private long _latestObservedEpoch;
+
+    public ProjectionFallbackRefreshScheduler(
+        IProjectionConnectionState connectionState,
+        IProjectionPageLoader loader,
+        IOptionsMonitor<FcShellOptions> options,
+        ILogger<ProjectionFallbackRefreshScheduler> logger)
+        : this(connectionState, loader, new NoopDispatcher(), new StaticLoadedPageState(), options, logger) {
+    }
 
     /// <inheritdoc />
     public IDisposable RegisterLane(ProjectionFallbackLane lane) {
@@ -77,6 +107,15 @@ public sealed class ProjectionFallbackRefreshScheduler(
             lane);
 
         return new Registration(() => DecrementLane(lane.ViewKey, entry));
+    }
+
+    /// <inheritdoc />
+    public void SetReconciliationGroupHealth(IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> activeGroups) {
+        ArgumentNullException.ThrowIfNull(activeGroups);
+        _activeGroups.Clear();
+        foreach (KeyValuePair<ProjectionFallbackGroupKey, bool> group in activeGroups) {
+            _activeGroups[group.Key] = group.Value;
+        }
     }
 
     /// <inheritdoc />
@@ -133,9 +172,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
     /// <inheritdoc />
     public async Task<ProjectionReconciliationRefreshResult> TriggerReconciliationOnceAsync(long epoch, CancellationToken cancellationToken = default) {
         cancellationToken.ThrowIfCancellationRequested();
-        // P21 — track latest observed epoch and short-circuit superseded passes early.
-        long previous = Interlocked.Exchange(ref _latestObservedEpoch, epoch);
-        if (epoch < previous) {
+        if (!TryObserveEpoch(epoch)) {
             return ProjectionReconciliationRefreshResult.Empty;
         }
 
@@ -180,6 +217,14 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 continue;
             }
 
+            if (!IsGroupEligibleForReconciliation(lane)) {
+                logger.LogInformation(
+                    "Reconciliation skipped lane for degraded projection group. ViewKey={ViewKey}, ProjectionType={ProjectionType}",
+                    lane.ViewKey,
+                    lane.ProjectionType);
+                continue;
+            }
+
             ProjectionLaneRefreshResult result = await RefreshLaneAsync(lane, cancellationToken).ConfigureAwait(false);
             if (result is ProjectionLaneRefreshResult.Skipped) {
                 continue;
@@ -207,16 +252,21 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
         ProjectionLaneRefreshResult outcome;
         try {
-            ProjectionPageResult result = await loader.LoadPageAsync(
-                lane.ProjectionType,
-                lane.Skip,
-                lane.Take,
-                lane.Filters,
-                lane.SortColumn,
-                lane.SortDescending,
-                lane.SearchQuery,
-                cancellationToken).ConfigureAwait(false);
-            outcome = ClassifyRefreshResult(lane, result);
+            if (lane.RefreshAsync is not null) {
+                outcome = MapCustomOutcome(await lane.RefreshAsync(cancellationToken).ConfigureAwait(false));
+            }
+            else {
+                ProjectionPageResult result = await loader.LoadPageAsync(
+                    lane.ProjectionType,
+                    lane.Skip,
+                    lane.Take,
+                    lane.Filters,
+                    lane.SortColumn,
+                    lane.SortDescending,
+                    lane.SearchQuery,
+                    cancellationToken).ConfigureAwait(false);
+                outcome = ClassifyRefreshResult(lane, result);
+            }
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             // P5 — log only the redacted exception type. Raw exception messages can carry
@@ -249,6 +299,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
     /// </summary>
     private ProjectionLaneRefreshResult ClassifyRefreshResult(ProjectionFallbackLane lane, ProjectionPageResult result) {
         if (result.IsNotModified) {
+            dispatcher.Dispatch(new LoadPageNotModifiedAction(lane.ViewKey, lane.Skip, result.Items ?? []));
             return ProjectionLaneRefreshResult.NotModified;
         }
 
@@ -260,38 +311,37 @@ public sealed class ProjectionFallbackRefreshScheduler(
             return ProjectionLaneRefreshResult.Skipped;
         }
 
+        string laneIdentity = BuildDedupeKey(lane);
         string? newEtag = result.ETag;
-        bool hadPrevious = _lastEtagByLane.TryGetValue(lane.ViewKey, out string? previousEtag);
+        bool hadPrevious = _lastEtagByLane.TryGetValue(laneIdentity, out string? previousEtag);
         if (!string.IsNullOrEmpty(newEtag)) {
-            _lastEtagByLane[lane.ViewKey] = newEtag;
+            _lastEtagByLane[laneIdentity] = newEtag;
         }
 
-        // No ETag at all: fall back to "any visible data" — the wire didn't give us a delta
-        // signal, so we must conservatively treat a non-empty page as Changed on the first
-        // observation only.
+        bool reducerVisibleDelta = HasReducerVisibleDelta(lane, result);
         if (string.IsNullOrEmpty(newEtag)) {
-            if (!hadPrevious) {
-                return (result.Items?.Count ?? 0) > 0 || result.TotalCount > 0
-                    ? ProjectionLaneRefreshResult.Changed
-                    : ProjectionLaneRefreshResult.NotModified;
+            string signature = BuildNoEtagSignature(result);
+            bool signatureChanged = !_lastNoEtagSignatureByLane.TryGetValue(laneIdentity, out string? previousSignature)
+                || !string.Equals(previousSignature, signature, StringComparison.Ordinal);
+            _lastNoEtagSignatureByLane[laneIdentity] = signature;
+            if (signatureChanged && reducerVisibleDelta) {
+                DispatchPageSuccess(lane, result);
+                return ProjectionLaneRefreshResult.Changed;
             }
 
-            // We had a previous ETag but the new response carries none — treat as Changed
-            // conservatively.
-            return ProjectionLaneRefreshResult.Changed;
+            return ProjectionLaneRefreshResult.NotModified;
         }
 
-        // First observation for this lane in the current circuit — record and return Changed
-        // only when there is data to surface.
-        if (!hadPrevious) {
-            return (result.Items?.Count ?? 0) > 0 || result.TotalCount > 0
-                ? ProjectionLaneRefreshResult.Changed
-                : ProjectionLaneRefreshResult.NotModified;
+        if (!hadPrevious || !string.Equals(previousEtag, newEtag, StringComparison.Ordinal)) {
+            if (reducerVisibleDelta) {
+                DispatchPageSuccess(lane, result);
+                return ProjectionLaneRefreshResult.Changed;
+            }
+
+            return ProjectionLaneRefreshResult.NotModified;
         }
 
-        return string.Equals(previousEtag, newEtag, StringComparison.Ordinal)
-            ? ProjectionLaneRefreshResult.NotModified
-            : ProjectionLaneRefreshResult.Changed;
+        return ProjectionLaneRefreshResult.NotModified;
     }
 
     private void DecrementLane(string viewKey, LaneEntry expected) {
@@ -307,7 +357,9 @@ public sealed class ProjectionFallbackRefreshScheduler(
             _ = col.Remove(new KeyValuePair<string, LaneEntry>(viewKey, current));
             // Drop the cached ETag for the removed lane so a re-registration with the same key
             // starts from a clean delta-detection slate.
-            _ = _lastEtagByLane.TryRemove(viewKey, out _);
+            string laneIdentity = BuildDedupeKey(expected.Lane);
+            _ = _lastEtagByLane.TryRemove(laneIdentity, out _);
+            _ = _lastNoEtagSignatureByLane.TryRemove(laneIdentity, out _);
         }
     }
 
@@ -347,36 +399,90 @@ public sealed class ProjectionFallbackRefreshScheduler(
         if (string.IsNullOrWhiteSpace(lane.TenantId)) {
             // The reconciliation pass already filters these out; this is defence-in-depth. The
             // unique key prevents two no-tenant lanes from accidentally collapsing.
-            return string.Concat("__no-tenant__|", lane.ViewKey);
+            return string.Concat("__no-tenant__|", JsonEncodedText.Encode(lane.ViewKey).ToString());
         }
 
-        // Stable filter representation: sort by key then concatenate. Empty filters produce an
-        // empty section so the dedupe key remains compact for the common case.
+        // Stable filter representation with JSON escaping so delimiter characters in keys/values
+        // cannot collapse distinct logical lanes.
         string filtersFingerprint = lane.Filters is { Count: > 0 }
             ? string.Join(
-                ",",
+                "\u001f",
                 lane.Filters
                     .OrderBy(static kv => kv.Key, StringComparer.Ordinal)
-                    .Select(static kv => $"{kv.Key}={kv.Value}"))
+                    .Select(static kv => string.Concat(
+                        JsonEncodedText.Encode(kv.Key).ToString(),
+                        "\u001e",
+                        JsonEncodedText.Encode(kv.Value).ToString())))
             : string.Empty;
 
-        return string.Concat(
-            lane.TenantId,
-            "|",
-            lane.ProjectionType,
-            "|",
+        return string.Join(
+            "\u001d",
+            JsonEncodedText.Encode(lane.TenantId!).ToString(),
+            JsonEncodedText.Encode(lane.ProjectionType).ToString(),
             lane.Skip.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            "|",
             lane.Take.ToString(System.Globalization.CultureInfo.InvariantCulture),
-            "|",
-            lane.SortColumn ?? string.Empty,
-            "|",
+            JsonEncodedText.Encode(lane.SortColumn ?? string.Empty).ToString(),
             lane.SortDescending ? "desc" : "asc",
-            "|",
-            lane.SearchQuery ?? string.Empty,
-            "|",
+            JsonEncodedText.Encode(lane.SearchQuery ?? string.Empty).ToString(),
             filtersFingerprint);
     }
+
+    private bool TryObserveEpoch(long epoch) {
+        while (true) {
+            long observed = Volatile.Read(ref _latestObservedEpoch);
+            if (epoch < observed) {
+                return false;
+            }
+
+            if (Interlocked.CompareExchange(ref _latestObservedEpoch, epoch, observed) == observed) {
+                return true;
+            }
+        }
+    }
+
+    private bool IsGroupEligibleForReconciliation(ProjectionFallbackLane lane) {
+        if (string.IsNullOrWhiteSpace(lane.TenantId) || _activeGroups.IsEmpty) {
+            return true;
+        }
+
+        ProjectionFallbackGroupKey key = new(lane.ProjectionType, lane.TenantId);
+        return !_activeGroups.TryGetValue(key, out bool active) || active;
+    }
+
+    private bool HasReducerVisibleDelta(ProjectionFallbackLane lane, ProjectionPageResult result) {
+        (string ViewKey, int Skip) pageKey = (lane.ViewKey, lane.Skip);
+        LoadedPageState state = loadedPages.Value;
+        bool hasPage = state.PagesByKey.TryGetValue(pageKey, out IReadOnlyList<object>? currentItems);
+        bool totalSame = state.TotalCountByKey.TryGetValue(lane.ViewKey, out int currentTotal)
+            && currentTotal == result.TotalCount;
+
+        if (!hasPage) {
+            return (result.Items?.Count ?? 0) > 0 || result.TotalCount > 0;
+        }
+
+        return !totalSame || !ReferenceEquals(currentItems, result.Items);
+    }
+
+    private void DispatchPageSuccess(ProjectionFallbackLane lane, ProjectionPageResult result)
+        => dispatcher.Dispatch(new LoadPageSucceededAction(
+            lane.ViewKey,
+            lane.Skip,
+            result.Items,
+            result.TotalCount,
+            elapsedMs: 0));
+
+    private static ProjectionLaneRefreshResult MapCustomOutcome(ProjectionFallbackLaneRefreshOutcome outcome)
+        => outcome switch {
+            ProjectionFallbackLaneRefreshOutcome.Changed => ProjectionLaneRefreshResult.Changed,
+            ProjectionFallbackLaneRefreshOutcome.NotModified => ProjectionLaneRefreshResult.NotModified,
+            _ => ProjectionLaneRefreshResult.Skipped,
+        };
+
+    private static string BuildNoEtagSignature(ProjectionPageResult result)
+        => string.Concat(
+            result.TotalCount.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            "|",
+            (result.Items?.Count ?? 0).ToString(System.Globalization.CultureInfo.InvariantCulture));
 
     private sealed class LaneEntry(ProjectionFallbackLane lane) {
         public ProjectionFallbackLane Lane { get; } = lane;
@@ -397,5 +503,22 @@ public sealed class ProjectionFallbackRefreshScheduler(
                 dispose();
             }
         }
+    }
+
+    private sealed class NoopDispatcher : IDispatcher {
+#pragma warning disable CS0067 // Required by Fluxor IDispatcher; no subscribers for fallback constructor.
+        public event EventHandler<ActionDispatchedEventArgs>? ActionDispatched;
+#pragma warning restore CS0067
+
+        public void Dispatch(object action) {
+        }
+    }
+
+    private sealed class StaticLoadedPageState : IState<LoadedPageState> {
+        public LoadedPageState Value { get; } = new();
+
+#pragma warning disable CS0067 // Static state never changes.
+        public event EventHandler? StateChanged;
+#pragma warning restore CS0067
     }
 }

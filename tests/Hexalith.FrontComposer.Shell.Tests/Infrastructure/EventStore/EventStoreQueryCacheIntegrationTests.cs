@@ -226,6 +226,37 @@ public class EventStoreQueryCacheIntegrationTests {
         cached.ShouldBeNull();
     }
 
+    [Fact]
+    public async Task QueryAsync_304WithIncompatibleCachedPayload_DoesNotInvalidateCache() {
+        string key = BuildKey(0);
+        await _storage.SetAsync(
+            key,
+            new ETagCacheEntry(
+                ETag: "\"v1\"",
+                Payload: "{not-json",
+                CachedAtUtcTicks: 1,
+                LastAccessedUtcTicks: 1,
+                FormatVersion: ETagCacheEntry.CurrentFormatVersion,
+                PayloadVersion: 1,
+                Discriminator: ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!),
+            TestContext.Current.CancellationToken);
+        ScriptedHandler handler = new();
+        handler.Script.Add(_ => new HttpResponseMessage(HttpStatusCode.NotModified) {
+            Headers = { ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"v1\"") },
+        });
+        EventStoreQueryClient sut = NewClient(handler);
+
+        _ = await Should.ThrowAsync<ProjectionSchemaMismatchException>(
+            async () => await sut.QueryAsync<OrderProjection>(
+                BuildRequest(cacheDiscriminator: ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)),
+                TestContext.Current.CancellationToken).ConfigureAwait(true))
+            .ConfigureAwait(true);
+
+        ETagCacheEntry? stored = await _storage.GetAsync<ETagCacheEntry>(key, TestContext.Current.CancellationToken);
+        stored.ShouldNotBeNull();
+        stored!.Payload.ShouldBe("{not-json");
+    }
+
     private static HttpResponseMessage Ok(string payloadArrayJson, string etag) {
         HttpResponseMessage response = new(HttpStatusCode.OK) {
             Content = new StringContent("{\"payload\":" + payloadArrayJson + "}", Encoding.UTF8, "application/json"),

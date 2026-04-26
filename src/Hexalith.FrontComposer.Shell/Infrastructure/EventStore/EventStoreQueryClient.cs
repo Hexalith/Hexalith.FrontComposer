@@ -131,12 +131,6 @@ public sealed class EventStoreQueryClient(
                         return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
                     }
                     catch (ProjectionSchemaMismatchException ex) {
-                        // P1 — best-effort cache invalidation; never let a cache-removal failure
-                        // mask the original schema-mismatch exception we are about to rethrow.
-                        // DN2 — invalidate the projection-type/discriminator FAMILY, not just this
-                        // exact key. Sibling pages of the same projection may share the bad shape.
-                        await TryInvalidateSchemaMismatchAsync(cacheKey, ex.ProjectionType, cancellationToken).ConfigureAwait(false);
-
                         logger.LogWarning(
                             "Projection cache payload schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
                             ex.ProjectionType,

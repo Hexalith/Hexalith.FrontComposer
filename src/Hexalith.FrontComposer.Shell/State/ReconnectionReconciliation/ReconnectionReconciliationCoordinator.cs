@@ -26,6 +26,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
     private readonly ILogger<ReconnectionReconciliationCoordinator> _logger;
     private readonly object _sync = new();
     private CancellationTokenSource? _activeCts;
+    private ITimer? _sweepCleanupTimer;
     private long _latestEpoch;
     private int _disposed;
 
@@ -95,8 +96,7 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 _state.Complete(epoch, changed: false);
             }
 
-            // Best-effort dispose of the now-superseded previous CTS.
-            previous?.Dispose();
+            DisposeCompletedCts(linked);
             return ProjectionReconciliationRefreshResult.Empty;
         }
         catch (Exception ex) when (ex is not OutOfMemoryException) {
@@ -108,12 +108,9 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
                 _state.Complete(epoch, changed: false);
             }
 
-            previous?.Dispose();
+            DisposeCompletedCts(linked);
             return ProjectionReconciliationRefreshResult.Empty;
         }
-
-        // Dispose the previous CTS now that the new pass has progressed past the await.
-        previous?.Dispose();
 
         if (IsCurrent(epoch)) {
             // DN1=a — dispatch sweep markers for changed lanes BEFORE Complete so subscribers
@@ -133,19 +130,10 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
 
             _state.Complete(epoch, result.ChangedViewKeys.Count > 0);
 
-            // Schedule expired-sweep cleanup on the same render path so the marker state never
-            // grows unbounded. The reducer is a no-op when no markers have expired (W8).
-            try {
-                _dispatcher.Dispatch(new ClearExpiredReconciliationSweepsAction(_timeProvider.GetUtcNow()));
-            }
-            catch (Exception ex) when (ex is not OutOfMemoryException) {
-                _logger.LogWarning(
-                    "Sweep cleanup dispatch failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
-                    epoch,
-                    ex.GetType().Name);
-            }
+            ScheduleSweepCleanup(epoch);
         }
 
+        DisposeCompletedCts(linked);
         return result;
     }
 
@@ -171,6 +159,9 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             toDispose.Dispose();
         }
 
+        ITimer? cleanup = Interlocked.Exchange(ref _sweepCleanupTimer, null);
+        cleanup?.Dispose();
+
         // W9 — Reset() publishes Idle to subscribers; per-circuit scoping makes the off-thread
         // notification safe in practice. Wrapped to keep dispose robust.
         try {
@@ -187,6 +178,41 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
         lock (_sync) {
             return epoch == _latestEpoch && _disposed == 0;
         }
+    }
+
+    private void ScheduleSweepCleanup(long epoch) {
+        ITimer timer = _timeProvider.CreateTimer(
+            _ => {
+                if (_disposed != 0 || !IsCurrent(epoch)) {
+                    return;
+                }
+
+                try {
+                    _dispatcher.Dispatch(new ClearExpiredReconciliationSweepsAction(_timeProvider.GetUtcNow()));
+                }
+                catch (Exception ex) when (ex is not OutOfMemoryException) {
+                    _logger.LogWarning(
+                        "Sweep cleanup dispatch failed. Epoch={Epoch}, FailureCategory={FailureCategory}",
+                        epoch,
+                        ex.GetType().Name);
+                }
+            },
+            state: null,
+            dueTime: SweepTtl,
+            period: Timeout.InfiniteTimeSpan);
+
+        ITimer? previous = Interlocked.Exchange(ref _sweepCleanupTimer, timer);
+        previous?.Dispose();
+    }
+
+    private void DisposeCompletedCts(CancellationTokenSource linked) {
+        lock (_sync) {
+            if (ReferenceEquals(_activeCts, linked)) {
+                _activeCts = null;
+            }
+        }
+
+        linked.Dispose();
     }
 
     private void ThrowIfDisposed() {

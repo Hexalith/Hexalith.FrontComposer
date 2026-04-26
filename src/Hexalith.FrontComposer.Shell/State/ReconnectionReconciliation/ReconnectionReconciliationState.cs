@@ -26,7 +26,7 @@ public interface IReconnectionReconciliationState {
 
     void Complete(long epoch, bool changed);
 
-    void Reset();
+    void Reset(long? expectedEpoch = null);
 }
 
 /// <summary>In-memory reconciliation status service. History is intentionally not persisted.</summary>
@@ -102,13 +102,17 @@ public sealed class ReconnectionReconciliationStateService(
         }
     }
 
-    public void Reset() {
+    public void Reset(long? expectedEpoch = null) {
         // P14 — read the latest epoch and publish under the same lock. A stale Reset that
         // races with a fresh Start cannot clobber the new pass because the snapshot it builds
         // carries the now-current epoch.
         ReconnectionReconciliationSnapshot? next = null;
         Action<ReconnectionReconciliationSnapshot>[] handlers = [];
         lock (_sync) {
+            if (expectedEpoch.HasValue && expectedEpoch.Value != _current.Epoch) {
+                return;
+            }
+
             ReconnectionReconciliationSnapshot snapshot = new(
                 ReconnectionReconciliationStatus.Idle,
                 _current.Epoch,

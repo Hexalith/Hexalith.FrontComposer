@@ -6,6 +6,8 @@ using System.Reactive.Subjects;
 using Hexalith.FrontComposer.Contracts.Badges;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
+using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -51,6 +53,8 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
     private readonly IActionQueueProjectionCatalog _catalog;
     private readonly IActionQueueCountReader _reader;
     private readonly IProjectionChangeNotifier? _notifier;
+    private readonly IProjectionFallbackRefreshScheduler? _reconciliationScheduler;
+    private readonly IUserContextAccessor? _userContextAccessor;
     private readonly ILogger<BadgeCountService> _logger;
     private readonly TimeProvider _timeProvider;
     private readonly Subject<BadgeCountChangedArgs> _subject = new();
@@ -58,6 +62,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         new(StringComparer.Ordinal);
     private readonly CancellationTokenSource _lifetimeCts = new();
     private readonly object _unresolvedSync = new();
+    private readonly ConcurrentDictionary<Type, IDisposable> _reconciliationRegistrations = new();
 
     private ImmutableDictionary<Type, int> _counts = ImmutableDictionary<Type, int>.Empty;
     private int _disposedFlag;
@@ -89,6 +94,8 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         _logger = logger;
         _timeProvider = timeProvider;
         _notifier = serviceProvider.GetService<IProjectionChangeNotifier>();
+        _reconciliationScheduler = serviceProvider.GetService<IProjectionFallbackRefreshScheduler>();
+        _userContextAccessor = serviceProvider.GetService<IUserContextAccessor>();
         if (_notifier is not null) {
             _notifier.ProjectionChanged += OnProjectionChanged;
         }
@@ -143,6 +150,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
 
         Task[] tasks = new Task[types.Count];
         for (int i = 0; i < types.Count; i++) {
+            RegisterReconciliationLane(types[i]);
             tasks[i] = FetchOneAsync(types[i], cts.Token);
         }
 
@@ -179,6 +187,11 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         }
 
         _lifetimeCts.Dispose();
+        foreach (IDisposable registration in _reconciliationRegistrations.Values) {
+            registration.Dispose();
+        }
+
+        _reconciliationRegistrations.Clear();
 
         _subject.OnCompleted();
         _subject.Dispose();
@@ -207,7 +220,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         }
     }
 
-    private void UpdateCount(Type projectionType, int newCount) {
+    private bool UpdateCount(Type projectionType, int newCount) {
         if (newCount < 0) {
             // Reader contract implies non-negative counts; drop and log rather than publish
             // negative values through CountChanged (would skew TotalActionableItems sums).
@@ -216,7 +229,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
                 FcDiagnosticIds.HFC2112_BadgeInitialFetchFault,
                 newCount,
                 projectionType.FullName);
-            return;
+            return false;
         }
 
         ImmutableDictionary<Type, int> current;
@@ -227,7 +240,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
             // 304 Not Modified responses (and 429 preserve-prior-count flows) MUST NOT emit
             // a CountChanged notification or trigger a badge animation.
             if (current.TryGetValue(projectionType, out int previous) && previous == newCount) {
-                return;
+                return false;
             }
 
             next = current.SetItem(projectionType, newCount);
@@ -237,7 +250,7 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         }
 
         if (IsDisposed) {
-            return;
+            return false;
         }
 
         try {
@@ -246,6 +259,42 @@ public sealed class BadgeCountService : IBadgeCountService, IDisposable, IAsyncD
         catch (ObjectDisposedException) {
             // Race with DisposeAsync — safe to drop the emission.
         }
+
+        return true;
+    }
+
+    private void RegisterReconciliationLane(Type projectionType) {
+        if (_reconciliationScheduler is null || _userContextAccessor is null || string.IsNullOrWhiteSpace(_userContextAccessor.TenantId)) {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(projectionType.FullName)) {
+            return;
+        }
+
+        _ = _reconciliationRegistrations.GetOrAdd(projectionType, type => _reconciliationScheduler.RegisterLane(
+            new ProjectionFallbackLane(
+                ViewKey: string.Concat("action-queue-count:", type.FullName),
+                ProjectionType: type.FullName!,
+                TenantId: _userContextAccessor.TenantId,
+                Skip: 0,
+                Take: 1,
+                Filters: ImmutableDictionary<string, string>.Empty,
+                SortColumn: null,
+                SortDescending: false,
+                SearchQuery: null,
+                RefreshAsync: token => RefreshCountLaneAsync(type, token))));
+    }
+
+    private async ValueTask<ProjectionFallbackLaneRefreshOutcome> RefreshCountLaneAsync(Type projectionType, CancellationToken cancellationToken) {
+        int count = await _reader.GetCountAsync(projectionType, cancellationToken).ConfigureAwait(false);
+        if (IsDisposed) {
+            return ProjectionFallbackLaneRefreshOutcome.Skipped;
+        }
+
+        return UpdateCount(projectionType, count)
+            ? ProjectionFallbackLaneRefreshOutcome.Changed
+            : ProjectionFallbackLaneRefreshOutcome.NotModified;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage(
