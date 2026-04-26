@@ -81,6 +81,7 @@ The feature promise is deliberately narrow: replace a single generated field ren
     - `bool IsDevMode`
     - `RenderFragment<FieldSlotContext<TProjection,TField>>? RenderDefault` or an equivalent default-render delegate.
   - [ ] Keep the context immutable/read-only after construction.
+  - [ ] Define `RenderDefault` as a generated-default delegate that bypasses Level 3 lookup for the same `(projection, role, field)` so a slot cannot recursively render itself.
   - [ ] Add a minimal component contract if needed, for example an interface or marker that requires a `Context` parameter. Do not create a broad renderer hierarchy.
   - [ ] Ensure context values are constructed per render and are never stored in the registry.
   - [ ] Provide XML docs warning slot authors not to mutate parent projection objects or cache render context across tenants/users.
@@ -91,6 +92,7 @@ The feature promise is deliberately narrow: replace a single generated field ren
   - [ ] If the existing `IOverrideRegistry` is reused internally, hide string keys behind typed extension methods and typed descriptor validation.
   - [ ] Runtime lookup should be O(1) or bounded dictionary lookup by `(projectionType, role, fieldName)` with fallback to role-agnostic registration.
   - [ ] Registry entries must be descriptor-only. Do not cache parent item, context, service provider scoped values, or rendered markup.
+  - [ ] Freeze descriptor collections before render-time use; concurrent renders must observe immutable snapshots and must not mutate registry dictionaries.
   - [ ] Validate duplicate descriptors deterministically and name both registrations/components in diagnostics where possible.
   - [ ] Do not scan loaded assemblies for slot components at render time.
 
@@ -107,6 +109,7 @@ The feature promise is deliberately narrow: replace a single generated field ren
   - [ ] Integrate at the field boundary in `ColumnEmitter`, `ProjectionRoleBodyEmitter`, and any shared field/section delegates used by Level 2 templates.
   - [ ] Preserve existing `PropertyColumn` sort/filter expressions or generated metadata so a custom cell renderer does not change DataGrid behavior.
   - [ ] For DataGrid cells, render the slot through a `TemplateColumn` or equivalent only when a slot is actually present; no-slot output should remain as close to existing output as possible.
+  - [ ] Preserve deterministic slot host keys for virtualized rows, using generated row identity plus field identity where the host needs `@key`; never key by localized label text or rendered value.
   - [ ] For non-grid roles, wrap exactly the generated field content, not the entire card/row/timeline item.
   - [ ] Preserve unsupported placeholder behavior: a slot can replace the field renderer, but invalid/missing slot must still show `FcFieldPlaceholder` for unsupported types.
   - [ ] Preserve badge, relative-time, currency, label, description, priority, grouping, empty-state, and accessibility metadata in default rendering and context.
@@ -115,6 +118,7 @@ The feature promise is deliberately narrow: replace a single generated field ren
   - [ ] Ensure Level 2 field delegates call the same field-render helper used by default generated layouts.
   - [ ] A template author should not need separate slot lookup code.
   - [ ] Template field delegates should pass the same `FieldSlotContext` metadata that default views pass.
+  - [ ] Template default delegates used by `RenderDefault` must bypass the active slot descriptor for the same field to prevent Level 2 + Level 3 recursion.
   - [ ] Add tests proving a Level 2 template still renders a Level 3 slot for one field and default generated delegates for adjacent fields.
 
 - [ ] T7. Role and precedence matrix (AC7, AC13, AC16)
@@ -148,12 +152,12 @@ The feature promise is deliberately narrow: replace a single generated field ren
 
 - [ ] T11. Tests and verification (AC1-AC16)
   - [ ] Contracts tests for `FieldSlotContext<TProjection,TField>`, descriptor immutability, and registration extension shape.
-  - [ ] Expression validation tests for direct property, nullable property, nested member rejection, method-call rejection, captured-variable rejection, indexer rejection, and conversion handling.
-  - [ ] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, descriptor-only caching, and no render-context cache bleed.
+  - [ ] Expression validation tests for direct property, inherited property, interface-implemented property, shadowed-property disambiguation, nullable property, nested member rejection, method-call rejection, captured-variable rejection, indexer rejection, and conversion handling.
+  - [ ] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, descriptor-only caching, immutable snapshot reads under concurrent render, and no render-context cache bleed.
   - [ ] SourceTools/emitter tests proving default output remains unchanged when no slots exist and slot output is used only for the overridden field.
   - [ ] DataGrid tests proving sort/filter/virtualization/row key/priority metadata remain generated when a slot renders cell content.
   - [ ] Level 2 integration tests proving template field delegates honor Level 3 slots.
-  - [ ] bUnit tests for custom slot component context values, default fallback delegate, accessibility label preservation, and render exception isolation.
+  - [ ] bUnit tests for custom slot component context values, default fallback delegate without slot recursion, deterministic slot host keys under row reuse, accessibility label preservation, and render exception isolation.
   - [ ] Counter sample build/render tests for one valid slot and one invalid-registration diagnostic.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
   - [ ] Targeted tests: Contracts, SourceTools slot parser/emitter tests, Shell registry/rendering tests, and Counter sample tests.
@@ -275,7 +279,8 @@ Field rendering resolves in this order:
 2. Invoke the shared field-render helper at the field boundary. The helper checks a Level 3 slot descriptor for `(projection, role, field)` and falls back to `(projection, field)` when no role-specific descriptor exists.
 3. If a valid slot is selected, build a fresh `FieldSlotContext<TProjection,TField>` for the current render and pass the default-render delegate to the slot.
 4. `RenderDefault` invokes the same generated or Level 2 field delegate that would have run without the slot and must not re-enter Level 3 slot lookup for the same field.
-5. If no valid slot is selected, render the generated default field path unchanged.
+5. If a host component needs `@key`, key the slot boundary from generated row identity plus canonical field identity. Do not key slot components by localized label text, formatted values, or component type alone.
+6. If no valid slot is selected, render the generated default field path unchanged.
 
 ### Role Hosting Matrix
 
@@ -292,6 +297,8 @@ Field rendering resolves in this order:
 ### Render Context And Cache Safety
 
 The slot registry is descriptor-only and scoped to the FrontComposer configuration/rendering service instance. It must not use static mutable process state for registered slot descriptors, and it must not register per-tenant or per-user descriptors. Runtime render context values influence the per-render `FieldSlotContext`; they do not influence descriptor identity or component selection.
+
+Registry construction may validate and aggregate descriptors during app startup or generated configuration wiring, but the render-time registry view must be immutable. Concurrent renders should read the same frozen snapshot without locks around per-field lookup and without any mutation caused by component resolution.
 
 Descriptor caching is allowed:
 
@@ -354,6 +361,9 @@ CI must validate the deterministic rebuild/startup path for slot registration me
 | D12 | Slot components use typed `Context` parameter rather than broad service injection. | Keeps the component contract visible and testable. | Require slot components to inject registry/render services. |
 | D13 | Direct property selectors are the only supported v1 selector shape. | Keeps expression parsing robust and explainable. | Support nested paths and computed fields in v1. |
 | D14 | Unsupported fields remain visible without a slot. | Story 4-6 no-silent-omission rule stays binding. | Hide unsupported fields until a slot exists. |
+| D15 | `RenderDefault` bypasses Level 3 lookup for the active field. | Prevents a slot from recursively resolving itself when wrapping generated output. | Let fallback call the public field helper and rely on caller discipline. |
+| D16 | Render-time slot lookup reads an immutable descriptor snapshot. | Avoids cross-render races and keeps the registry descriptor-only under concurrent Blazor rendering. | Mutate dictionaries during render; rebuild the registry per row. |
+| D17 | Slot host keys are generated from row identity plus canonical field identity when keys are required. | Prevents virtualized row reuse from leaking component state between fields or rows. | Key by localized labels, formatted values, or component type alone. |
 
 ### Library / Framework Requirements
 
@@ -403,8 +413,11 @@ Expected new or changed files:
 - Required gate evidence: contracts tests, registry/cache isolation tests, deterministic diagnostics tests, no-slot emitter baseline tests, DataGrid preservation tests, Level 2 integration tests, bUnit render-isolation tests, targeted Counter sample build/render tests, and `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
 - Supporting evidence: Counter sample screenshots/manual notes and local hot-reload smoke notes. Supporting evidence cannot substitute for automated proof of behavioral contracts.
 - Test direct property expression parsing exhaustively; expression parser bugs are high-risk because they defeat the refactor-safety promise.
+- Include selector fixtures for inherited members, explicit interface implementations, and shadowed properties so the canonical metadata key cannot drift from the expression member.
 - Keep registry tests independent of render output. Prove descriptor lookup and duplicate behavior before component tests.
+- Add a recursion guard test where a custom slot calls `RenderDefault`; the assertion should prove generated fallback renders once and does not re-enter slot resolution for the same field.
 - Test repeated renders with different `RenderContext`, culture, density, read-only state, and parent item values to catch stale context caching.
+- Add a virtualization-style row reuse test for deterministic slot host keys when parent identity and field identity change.
 - For DataGrid, assert behavior metadata remains generated: sort expressions, filter support, priority descriptors, row keys, and virtualization plumbing.
 - For accessibility, assert the Counter slot preserves accessible name/visible text and does not suppress focus styles where inspectable.
 - For localization, assert slot context labels/descriptions come from generated metadata and not hard-coded sample strings.
@@ -491,6 +504,20 @@ Do not implement these in Story 6-3:
 - Findings summary: The review found the story direction sound but identified contract ambiguity around selector grammar, Level 2/Level 3 render pipeline order, role-specific precedence, component compatibility validation, descriptor registry scoping, exception-isolation boundaries, hot-reload evidence, and CI-safe test prioritization.
 - Changes applied: Narrowed the adopter promise to one known descriptor slot; clarified selector grammar; added component compatibility and contract ownership boundaries; defined render pipeline order and role hosting expectations; strengthened descriptor-only cache/registry scoping; narrowed render exception and hot-reload expectations; added release-blocking P0 test priorities, diagnostic assertion rules, required/supporting evidence, and named non-goal owners.
 - Findings deferred: Full Level 4 precedence remains Story 6-4; dev overlay and starter generation remain Story 6-5; rich runtime error-boundary UI, diagnostic surfacing, recovery polish, and complete accessibility analyzer enforcement remain Story 6-6; cookbook documentation remains Story 9-5; adopter slot component test host utilities remain Story 10-1; visual specimen coverage remains Story 10-2.
+- Final recommendation: ready-for-dev
+
+---
+
+## Advanced Elicitation
+
+- Date/time: 2026-04-26T13:12:25.8327176+02:00
+- Selected story key: `6-3-level-3-slot-level-field-replacement`
+- Command/skill invocation used: `/bmad-advanced-elicitation 6-3-level-3-slot-level-field-replacement`
+- Batch 1 method names: Pre-mortem Analysis; Red Team vs Blue Team; Failure Mode Analysis; Security Audit Personas; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: First Principles Analysis; Comparative Analysis Matrix; Occam's Razor Application; Hindsight Reflection; User Persona Focus Group.
+- Findings summary: The elicitation found the story ready but still vulnerable to implementation traps around `RenderDefault` recursion, virtualized row component-state leakage, concurrent registry mutation, and selector canonicalization for inherited/interface/shadowed members.
+- Changes applied: Added explicit `RenderDefault` same-field lookup bypass requirements; required immutable render-time descriptor snapshots; added deterministic slot host key guidance for virtualized rows; expanded selector, registry, bUnit, Level 2, and DataGrid test expectations to cover those risks; added binding decisions D15-D17.
+- Findings deferred: No new product or architecture deferrals were introduced. Existing deferrals remain with their named owners: Level 4 precedence in Story 6-4, dev overlay/starter generation in Story 6-5, rich error-boundary/accessibility analyzer polish in Story 6-6, cookbook material in Story 9-5, adopter test-host utilities in Story 10-1, and visual specimens in Story 10-2.
 - Final recommendation: ready-for-dev
 
 ---
