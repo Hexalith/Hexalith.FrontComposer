@@ -74,13 +74,13 @@ so that the framework remains portable across deployment targets and I can trace
   - [ ] Wrap `EventStoreCommandClient.DispatchAsync` in an activity that records sanitized command type, message ID, correlation ID, HTTP outcome/status code, elapsed duration, and failure category.
   - [ ] Wrap `EventStoreQueryClient.QueryAsync`/`ExecuteAsync` in an activity that records sanitized projection/query type, cache discriminator classification, ETag outcome (`hit`, `miss`, `not_modified`, `protocol_drift_retry`), status code, elapsed duration, and failure category.
   - [ ] Keep request/response payloads, ETags if considered sensitive, token values, raw tenant/user IDs, and ProblemDetails bodies out of log fields and span tags.
-  - [ ] Add a response-size governance note for DF2: either land `MaxResponseBytes` here or explicitly create a story-owned deferred row with blocking rationale. If landed, instrument response-size rejection as a bounded failure category.
+  - [ ] Add a response-size governance note for DF2: either land `MaxResponseBytes` here or explicitly create a Story 9-4-owned deferred row with blocking rationale before closing 5-6. If landed, instrument response-size rejection as a bounded failure category.
   - [ ] Preserve Story 5-2 no-churn semantics for `304`: telemetry records no-change, but reducers and UI state must not mutate.
 
 - [ ] T5. Instrument projection connection, rejoin, and fallback polling (AC4, AC5, AC6, AC9)
   - [ ] Update `ProjectionConnectionStateService`, `SignalRProjectionHubConnectionFactory`, `ProjectionSubscriptionService`, `ProjectionFallbackRefreshScheduler`, and `ProjectionFallbackPollingDriver` to log through shared structured helpers or source-generated LoggerMessage methods.
   - [ ] Add activities for connection state transitions, reconnect/rejoin sweep, nudge refresh, and fallback polling iteration.
-  - [ ] Add a lightweight rate-limiting or sampling policy for flapping connection logs, resolving deferred item W1 from Story 5-3 review. The policy must not suppress state transitions from metrics/traces.
+  - [ ] Add a lightweight rate-limiting or sampling policy for flapping connection logs, resolving deferred item W1 from Story 5-3 review. The policy must use `TimeProvider`-anchored windows/buckets, must not suppress state transitions from metrics/traces, and must keep terminal failure/recovered transitions visible.
   - [ ] Ensure failed rejoin logs include `ProjectionType` and redacted tenant marker only if policy permits; never log raw group names or SignalR exception messages.
   - [ ] Keep fallback polling behavior unchanged: no extra polling loop, no visible-lane registry duplication, and stop promptly on reconnect/disposal.
 
@@ -92,6 +92,7 @@ so that the framework remains portable across deployment targets and I can trace
 
 - [ ] T7. Add structured logging helpers and regression tests (AC4, AC5, AC9)
   - [ ] Prefer `[LoggerMessage]` source-generated partial methods for high-frequency EventStore/projection/lifecycle logs. For low-frequency code, message-template `logger.Log*("...", arg)` is acceptable.
+  - [ ] Centralize telemetry operation-name and tag-key constants in the Shell telemetry helper; tests must prove call sites use the centralized source name/version and approved tag set.
   - [ ] Add a source scanner test that fails on `logger.Log*( $"...")`, interpolated message templates, string concatenated templates, raw `ex.Message` template arguments on EventStore/projection paths, and direct logging of payload variables.
   - [ ] Add redaction tests extending `EventStoreDiagnosticsTests` to cover token acquisition failures, bad JSON, query failure, rejoin failure, fallback polling failure, lifecycle failure, and telemetry span tags.
   - [ ] Use a capturing `ILogger` and `ActivityListener` test harness. Do not require live OpenTelemetry collectors.
@@ -144,6 +145,14 @@ so that the framework remains portable across deployment targets and I can trace
 | Pending command outcomes | Story 5-5 | Lifecycle/pending telemetry | Instrument exactly-once outcomes if the seam exists; do not implement pending-command behavior here. |
 | Diagnostic ID governance | Architecture + Story 9-4 | Runtime log IDs | Add only story-owned HFC/runtime IDs needed now; deeper analyzer/deprecation governance remains Story 9-4. |
 | Deployment portability | PRD NFR73/NFR74 | CI governance | Framework package closure must be provider-neutral; deployment/AppHost files may choose providers through Dapr/EventStore topology. |
+
+### Party-Mode Hardening Addendum
+
+Party-mode review on 2026-04-26 tightened three implementation contracts before development:
+
+- Telemetry names and tags are story-owned API. The implementation must centralize operation names and tag keys in the Shell telemetry helper, test them with `ActivityListener`, and avoid ad hoc string literals at call sites except through that helper.
+- Connection log rate limiting must be deterministic and testable. It may suppress repeated log records for identical transition/failure buckets, but it must not suppress state changes, terminal lifecycle observations, activity creation, or reducer-visible behavior.
+- DF2 `MaxResponseBytes` cannot close as an ambiguous "maybe later" item. If the response-size guard does not land in Story 5-6, the implementation must append a concrete deferred-work row owned by Story 9-4 with the reason and the remaining risk.
 
 ### Binding Decisions
 
@@ -201,7 +210,7 @@ Expected new or changed files:
 
 - Governance tests should be deterministic and file-system based. Build synthetic project/source snippets under test temp directories when testing deny-list failures.
 - Do not require Docker, Dapr, EventStore, SignalR server, Kubernetes, Azure, Jaeger, Grafana, or Application Insights in tests.
-- Use `ActivityListener` to assert activity names, tags, status, parent/child linkage, and redaction.
+- Use `ActivityListener` to assert activity names, approved tag keys, status, parent/child linkage, and redaction.
 - Use capturing `ILogger` implementations and inspect structured state, not only formatted strings, when possible.
 - Redaction tests must assert absence of token, raw command/query payload values, raw form values, raw tenant/user IDs, raw ProblemDetails body text, and raw exception messages from sensitive EventStore/projection paths.
 - CI test should inspect workflow YAML text or parsed YAML to prove governance tests are not hidden behind `continue-on-error`.
@@ -229,7 +238,7 @@ Do not implement these in Story 5-6:
 | Provider/Pact verification of EventStore HTTP/SignalR behavior and trace propagation. | Story 10-3 |
 | Live cloud deployment smoke tests for Kubernetes, Azure Container Apps, ECS/EKS, and Cloud Run. | Story 10-2 or deployment validation story |
 | OpenTelemetry exporter recipe docs in Diataxis documentation site. | Story 9-5 |
-| Response body `MaxResponseBytes` if not completed in this story. | Story 5-6 follow-up or Story 9-4 governance/AOT cleanup |
+| Response body `MaxResponseBytes` if not completed in this story. | Story 9-4 governance/AOT cleanup, with a deferred-work row created before 5-6 closes |
 
 ---
 
@@ -259,6 +268,27 @@ Do not implement these in Story 5-6:
 ---
 
 ## Dev Agent Record
+
+### Party-Mode Review
+
+- Date/time: 2026-04-26T07:04:31.7376522+02:00
+- Selected story key: `5-6-build-time-infrastructure-enforcement-and-observability`
+- Command/skill invocation used: `/bmad-party-mode 5-6-build-time-infrastructure-enforcement-and-observability; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Mary (Business Analyst), John (Product Manager)
+- Findings summary:
+  - Architecture: telemetry operation names and tag keys needed one centralized contract to prevent drift across EventStore, projection, lifecycle, and pending-command call sites.
+  - Implementation: connection-log rate limiting was directionally correct but needed deterministic `TimeProvider`-anchored windows/buckets and explicit terminal-transition visibility.
+  - Test strategy: `ActivityListener` coverage should assert approved tag keys, not only activity names and redaction absence.
+  - Scope / L10: DF2 `MaxResponseBytes` had an ambiguous owner if not completed in this story; closure now requires a Story 9-4-owned deferred-work row.
+- Changes applied:
+  - Added a Party-Mode Hardening Addendum for telemetry constants, deterministic rate limiting, and DF2 ownership.
+  - Tightened T4, T5, T7, and Testing Standards around `MaxResponseBytes`, rate-limit semantics, centralized telemetry constants, and approved tag-key tests.
+  - Tightened Known Gaps so deferred response-size protection has a concrete Story 9-4 owner.
+- Findings deferred:
+  - Exact numeric rate-limit defaults and bucket sizes remain implementation choices constrained by `TimeProvider`-based tests.
+  - Final OpenTelemetry exporter recipe depth remains owned by Story 9-5 unless 5-6 adds only a host/sample snippet.
+  - Broader diagnostic ID catalog governance remains Story 9-4.
+- Final recommendation: ready-for-dev
 
 ### Agent Model Used
 
