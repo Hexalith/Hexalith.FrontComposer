@@ -979,6 +979,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("            builder.OpenComponent<" + ProjectionRoleBodyEmitter.ShellRenderingNamespace + ".FcProjectionEmptyPlaceholder>(seq++);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"ProjectionType\", typeof(" + model.TypeName + "));");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Role\", " + roleLiteral + ");");
+        string entityPluralLiteral = "\"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\"";
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"EntityPluralOverride\", " + entityPluralLiteral + ");");
         string ctaCommandNameLiteral = string.IsNullOrWhiteSpace(model.EmptyStateCtaCommandName)
             ? "(string?)null"
             : "\"" + RoleBodyHelpers.EscapeString(model.EmptyStateCtaCommandName!) + "\"";

@@ -175,6 +175,23 @@ public class RazorModelTransformTests {
     }
 
     [Fact]
+    public void Transform_PluralizesDisplayName_WhenDisplayGroupNameIsAbsent() {
+        var model = new DomainModel(
+            "OrderProjection",
+            "MyApp.Orders",
+            "Orders",
+            null,
+            "Default",
+            new EquatableArray<PropertyModel>(ImmutableArray.Create(Prop("Name", "String"))),
+            displayName: "Order");
+
+        RazorModel result = RazorModelTransform.Transform(model);
+
+        result.EntityLabel.ShouldBe("Order");
+        result.EntityPluralLabel.ShouldBe("orders");
+    }
+
+    [Fact]
     public void Transform_ActionQueueWithoutStatusDriver_EmitsHFC1022WithSourceLocation() {
         DomainModel model = new(
             "QueueProjection",

@@ -118,7 +118,6 @@ public static class AttributeParser {
             typeSymbol,
             projectionRoleWhenState,
             parsedProperties,
-            roleAttributeData,
             diagnostics,
             filePath,
             linePos);
@@ -323,7 +322,6 @@ public static class AttributeParser {
         INamedTypeSymbol typeSymbol,
         string? whenState,
         EquatableArray<PropertyModel> properties,
-        AttributeData? roleAttribute,
         List<DiagnosticInfo> diagnostics,
         string filePath,
         Microsoft.CodeAnalysis.Text.LinePosition linePos) {
@@ -334,39 +332,25 @@ public static class AttributeParser {
         // Find the status-enum property using D10/D11 tiebreaker: prefer enum-typed property
         // whose enum type declares any [ProjectionBadge]-annotated member; else first enum
         // property in declaration order.
-        string? statusEnumFqn = null;
+        PropertyModel? statusProperty = null;
         foreach (PropertyModel property in properties) {
             if (property.EnumFullyQualifiedName is null) {
                 continue;
             }
 
             if (property.BadgeMappings.Count > 0) {
-                statusEnumFqn = property.EnumFullyQualifiedName;
+                statusProperty = property;
                 break;
             }
 
-            statusEnumFqn ??= property.EnumFullyQualifiedName;
+            statusProperty ??= property;
         }
 
-        if (statusEnumFqn is null || roleAttribute?.AttributeClass is null) {
+        if (statusProperty is null) {
             return;
         }
 
-        // Resolve the enum symbol via the compilation to enumerate members.
-        IAssemblySymbol roleAssembly = roleAttribute.AttributeClass!.ContainingAssembly;
-        INamedTypeSymbol? enumType = typeSymbol.ContainingAssembly.GetTypeByMetadataName(statusEnumFqn)
-            ?? ResolveTypeAcrossAssemblies(typeSymbol.ContainingAssembly, statusEnumFqn)
-            ?? ResolveTypeAcrossAssemblies(roleAssembly, statusEnumFqn);
-        if (enumType is null || enumType.TypeKind != TypeKind.Enum) {
-            return;
-        }
-
-        List<string> validMembers = new();
-        foreach (ISymbol member in enumType.GetMembers()) {
-            if (member is IFieldSymbol field && field.HasConstantValue) {
-                validMembers.Add(field.Name);
-            }
-        }
+        List<string> validMembers = [.. statusProperty.EnumMemberNames];
 
         if (validMembers.Count == 0) {
             return;
@@ -415,24 +399,6 @@ public static class AttributeParser {
         int overflow = sorted.Length - 10;
         string head = string.Join(", ", sorted, 0, 10);
         return string.Format("{0}, ... and {1} more", head, overflow);
-    }
-
-    private static INamedTypeSymbol? ResolveTypeAcrossAssemblies(IAssemblySymbol seed, string metadataName) {
-        INamedTypeSymbol? resolved = seed.GetTypeByMetadataName(metadataName);
-        if (resolved is not null) {
-            return resolved;
-        }
-
-        foreach (IModuleSymbol module in seed.Modules) {
-            foreach (IAssemblySymbol referenced in module.ReferencedAssemblySymbols) {
-                resolved = referenced.GetTypeByMetadataName(metadataName);
-                if (resolved is not null) {
-                    return resolved;
-                }
-            }
-        }
-
-        return null;
     }
 
     /// <summary>

@@ -409,6 +409,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(seq++);
             builder.AddAttribute(seq++, "ProjectionType", typeof(OrderProjection));
             builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+            builder.AddAttribute(seq++, "EntityPluralOverride", "orders");
             builder.AddAttribute(seq++, "CtaCommandName", (string?)null);
             builder.CloseComponent();
             return;
@@ -519,6 +520,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 rb.AddAttribute(5, "aria-expanded", _isThisRowExpanded ? "true" : "false");
                 rb.AddAttribute(6, "aria-controls", _expandPanelId);
                 rb.AddAttribute(7, "OnClick", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleRowClickAsync(item)));
+                global::Microsoft.AspNetCore.Components.Web.WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, "onclick", true);
                 rb.CloseComponent();
             }));
             b.CloseComponent();

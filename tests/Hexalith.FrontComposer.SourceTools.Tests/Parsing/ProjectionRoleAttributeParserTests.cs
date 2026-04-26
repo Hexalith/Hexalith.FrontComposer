@@ -180,6 +180,35 @@ public class ProjectionRoleAttributeParserTests {
     }
 
     [Fact]
+    public void NestedEnumMembersValidateWhenState() {
+        ParseResult result = CompilationHelper.ParseProjection(
+            """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            public static class OrderStates
+            {
+                public enum Lifecycle
+                {
+                    Pending,
+                    Submitted,
+                }
+            }
+
+            [Projection]
+            [ProjectionRole(ProjectionRole.ActionQueue, WhenState = "Pending")]
+            public partial class NestedStatusProjection
+            {
+                public OrderStates.Lifecycle Status { get; set; }
+            }
+            """,
+            "TestDomain.NestedStatusProjection");
+
+        result.Diagnostics.ShouldNotContain(d => d.Id == "HFC1022");
+    }
+
+    [Fact]
     public void ProjectionTypeDisplayAttribute_IsCaptured() {
         ParseResult result = CompilationHelper.ParseProjection(
             TestSources.ProjectionDisplayAttributeProjection,

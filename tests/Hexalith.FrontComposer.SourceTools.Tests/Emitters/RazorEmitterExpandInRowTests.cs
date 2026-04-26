@@ -49,6 +49,7 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("ExpandRowButtonAriaLabelTemplate");
         src.ShouldContain("CollapseRowButtonAriaLabelTemplate");
         src.ShouldContain("ChevronRight");
+        src.ShouldContain("WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
     }
 
     [Fact]
@@ -95,6 +96,7 @@ public sealed class RazorEmitterExpandInRowTests {
         src.ShouldContain("HandleStatusOverviewRowClickAsync");
         src.ShouldContain("TemplateColumn<OrderProjectionStatusOverviewRow>");
         src.ShouldContain("aria-controls\", _expandPanelId");
+        src.ShouldContain("WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
         src.ShouldContain("FcExpandInRowDetail");
         src.ShouldContain("_expandedStatusOverviewItem?.DetailItem is not null");
         src.ShouldContain("var entity = _expandedStatusOverviewItem.DetailItem;");

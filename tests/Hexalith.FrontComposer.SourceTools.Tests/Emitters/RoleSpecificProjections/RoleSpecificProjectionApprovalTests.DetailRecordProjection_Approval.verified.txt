@@ -151,6 +151,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
             builder.OpenComponent<Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionEmptyPlaceholder>(seq++);
             builder.AddAttribute(seq++, "ProjectionType", typeof(DetailRecordProjection));
             builder.AddAttribute(seq++, "Role", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
+            builder.AddAttribute(seq++, "EntityPluralOverride", "detail records");
             builder.AddAttribute(seq++, "CtaCommandName", (string?)null);
             builder.CloseComponent();
             return;

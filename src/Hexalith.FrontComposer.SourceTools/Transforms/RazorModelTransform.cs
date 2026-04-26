@@ -359,10 +359,6 @@ public static class RazorModelTransform {
             return model.DisplayGroupName!;
         }
 
-        if (!string.IsNullOrWhiteSpace(model.DisplayName)) {
-            return model.DisplayName!;
-        }
-
         string plural = entityLabel.ToLowerInvariant();
         return plural.EndsWith("s", StringComparison.Ordinal) ? plural : plural + "s";
     }

@@ -1,6 +1,6 @@
 # Story 4.1: Projection Role Hints & View Rendering
 
-Status: review
+Status: done
 
 > **Epic 4 § 5-54** · **FR4** · **UX-DR44** · **UX-DR45** · **UX-DR55** (loading/empty handoff) · **NFR4** (generated-view render budget) · applies lessons **L01, L02, L04, L06, L07, L09, L10, L11**. Extends the reducer-only `ProjectionRoleAttribute` contract frozen in Story 1-2, the source-generator Parse/Transform/Emit pipeline from Stories 1-4/1-5, and the `IBadgeCountService` producer seam shipped in Story 3-5. Opens the first contract surface on which Stories 4.2–4.6 layer (badges, filtering, virtual scrolling, expand-in-row, empty-states).
 
@@ -821,6 +821,14 @@ Story **remains in-progress** pending French pre-pass + D14 per-row cascade work
 - [x] \[Review\]\[Patch\] Strengthen the HFC diagnostic regression lock beyond ID-only assertions [tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.cs:76-94; 121-134]
 - [x] \[Review\]\[Patch\] Add the behavioral AC1d bUnit navigation proof instead of closing it with a source-shape scan [_bmad-output/implementation-artifacts/4-1-projection-role-hints-and-view-rendering.md:686]
 - [x] \[Review\]\[Patch\] Stop approving Timeline rows that render `item.Id` instead of a domain label [tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.TimelineProjection_Approval.verified.txt:171]
+
+### Review Findings (2026-04-26 production-source chunk)
+
+- [x] [Review][Patch] Generated empty placeholders ignore the resolved entity plural label, so `[Display(GroupName=...)]` and localized projection labels fall back to CLR type-name pluralization [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:981]
+- [x] [Review][Patch] Display `Name` is reused as a plural label when `GroupName` is absent, producing copy such as `3 Order` instead of a pluralized entity label [src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs:362]
+- [x] [Review][Patch] `WhenState` validation still misses nested status enums because it reconstructs the enum via metadata-name lookup instead of using the enum member names already captured on `PropertyModel` [src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:357]
+- [x] [Review][Patch] Generated expand chevron buttons do not stop `onclick` propagation, so clicking a chevron can also trigger the grid row click handler and navigate or double-toggle the same row [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:559]
+- [x] [Review][Patch] `StatusOverview` route emission injects the bounded-context route into a generated string literal without `EscapeString`, so unusual route values can generate invalid C# [src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:167]
 
 <!-- markdownlint-disable MD060 -->
 

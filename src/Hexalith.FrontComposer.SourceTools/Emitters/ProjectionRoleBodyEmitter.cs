@@ -164,7 +164,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"OnRowClick\", Microsoft.AspNetCore.Components.EventCallback.Factory.Create<FluentDataGridRow<" + recordTypeName + ">>(this, row =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            if (row?.Item?.Status is not Enum status) { return; }");
-        _ = sb.AppendLine("            var destination = " + ShellRenderingNamespace + ".FcProjectionRoutes.StatusFilter(\"" + bcRoute + "\", status);");
+        _ = sb.AppendLine("            var destination = " + ShellRenderingNamespace + ".FcProjectionRoutes.StatusFilter(\"" + RoleBodyHelpers.EscapeString(bcRoute) + "\", status);");
         _ = sb.AppendLine("            Navigation.NavigateTo(destination);");
         _ = sb.AppendLine("        }));");
         _ = sb.AppendLine("        builder.CloseComponent();");
@@ -557,6 +557,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                rb.AddAttribute(5, \"aria-expanded\", _isThisRowExpanded ? \"true\" : \"false\");");
         _ = sb.AppendLine("                rb.AddAttribute(6, \"aria-controls\", _expandPanelId);");
         _ = sb.AppendLine("                rb.AddAttribute(7, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleRowClickAsync(item)));");
+        _ = sb.AppendLine("                global::Microsoft.AspNetCore.Components.Web.WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
         _ = sb.AppendLine("                rb.CloseComponent();");
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            b.CloseComponent();");
@@ -582,6 +583,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                rb.AddAttribute(5, \"aria-expanded\", _isThisRowExpanded ? \"true\" : \"false\");");
         _ = sb.AppendLine("                rb.AddAttribute(6, \"aria-controls\", _expandPanelId);");
         _ = sb.AppendLine("                rb.AddAttribute(7, \"OnClick\", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create<global::Microsoft.AspNetCore.Components.Web.MouseEventArgs>(this, _ => HandleStatusOverviewRowClickAsync(item)));");
+        _ = sb.AppendLine("                global::Microsoft.AspNetCore.Components.Web.WebRenderTreeBuilderExtensions.AddEventStopPropagationAttribute(rb, 8, \"onclick\", true);");
         _ = sb.AppendLine("                rb.CloseComponent();");
         _ = sb.AppendLine("            }));");
         _ = sb.AppendLine("            b.CloseComponent();");

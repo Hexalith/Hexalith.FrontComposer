@@ -66,6 +66,38 @@ public class RazorEmitterTests {
     }
 
     [Fact]
+    public void EmittedCode_PassesEntityPluralOverrideToEmptyPlaceholder() {
+        var model = new RazorModel(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(Col("Name", "Name", TypeCategory.Text))),
+            entityPluralLabel: "Purchase orders");
+
+        string source = RazorEmitter.Emit(model);
+
+        source.ShouldContain("builder.AddAttribute(seq++, \"EntityPluralOverride\", \"Purchase orders\");");
+    }
+
+    [Fact]
+    public void EmittedCode_EscapesStatusOverviewRouteLiteral() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        var model = new RazorModel(
+            "OrderProjection",
+            "TestDomain",
+            "Orders\"North",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                Col("Id", "Id", TypeCategory.Text),
+                Col("Status", "Status", TypeCategory.Enum))),
+            ProjectionRenderStrategy.StatusOverview);
+
+        string source = RazorEmitter.Emit(model);
+
+        source.ShouldContain("FcProjectionRoutes.StatusFilter(\"/Orders\\\"North\", status)");
+        CSharpSyntaxTree.ParseText(source, cancellationToken: ct).GetDiagnostics(ct).ShouldBeEmpty();
+    }
+
+    [Fact]
     public void EmittedCode_UsesCorrectNumericFormats() {
         var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
             new EquatableArray<ColumnModel>(ImmutableArray.Create(
