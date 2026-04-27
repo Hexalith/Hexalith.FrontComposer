@@ -39,17 +39,17 @@ A developer should be able to take full control over one projection's rendered b
 | --- | --- | --- | --- |
 | AC1 | A developer registers a full view override for a projection type and optional role | The project builds and the app starts | The registration is typed by projection/component type, runtime-resolved from immutable descriptors, and does not require string projection names as the primary API. |
 | AC2 | A projection has a valid Level 4 replacement | The generated view renders data | The replacement component renders instead of the default role body, Level 2 template, or Level 3 field-slot path for that projection/role. |
-| AC3 | A full replacement renders | FrontComposer composes the generated view | The lifecycle wrapper, shell navigation, breadcrumbs, theme, density, render context, loading shell, empty-state policy, authorization boundary, telemetry context, and error isolation remain framework-owned outside the replacement. |
-| AC4 | A replacement component receives its context | The component renders | It receives a typed `ProjectionViewContext<TProjection>` or equivalent containing projection metadata, items, current `RenderContext`, role, lifecycle state, generated descriptors, localization-safe labels/help text, and explicit default-render delegates where supported. |
+| AC3 | A full replacement renders | FrontComposer composes the generated view | The replacement owns only the projection-view body content region. The lifecycle wrapper, shell navigation, page title, breadcrumbs, theme, density, render context, loading shell, empty-state policy, authorization boundary, telemetry context, diagnostics hooks, disposal hooks, and error isolation remain framework-owned outside the replacement and cannot be suppressed by replacement markup. |
+| AC4 | A replacement component receives its context | The component renders | It receives a fresh typed `ProjectionViewContext<TProjection>` or equivalent per render containing projection metadata, items, current `RenderContext`, role, lifecycle state, generated descriptors, localization-safe labels/help text with documented fallback behavior, and explicit default-render delegates where supported. |
 | AC5 | A replacement is registered for one role only | The same projection renders in another role | Role-specific precedence applies: valid role-specific replacement wins for that role; otherwise a valid role-agnostic replacement wins; otherwise the existing generated path runs. |
-| AC6 | A Level 4 replacement and Level 2/Level 3 overrides all exist for the same projection/role | The projection renders | Level 4 wins by default. Lower-level overrides are available only through explicit context/default delegates, not by accidental parallel rendering. |
-| AC7 | The replacement component is incompatible, open generic without deterministic closure, missing required context, not a Razor component, duplicated for the same projection/role, or version-incompatible | Validation runs | A deterministic HFC diagnostic names expected/got/fix/docs link and the invalid replacement is not silently selected. Duplicate exact replacements are errors or startup failures, not last-writer-wins. |
-| AC8 | A valid replacement throws during render | The view renders | The fault is isolated to the affected replacement boundary; the shell and navigation remain usable, the fallback UI includes a diagnostic ID, and rich recovery polish remains Story 6-6 ownership. |
-| AC9 | A replacement component is evaluated against the custom-component accessibility contract | Build/startup validation and tests run | The six requirements are enforced or explicitly warned: accessible name, keyboard reachability, focus visibility, aria-live parity, reduced motion, and forced-colors support. |
+| AC6 | A Level 4 replacement and Level 2/Level 3 overrides all exist for the same projection/role | The projection renders | Level 4 wins by default. Lower-level overrides are skipped unless invoked through named safe context/default delegates that bypass the active Level 4 descriptor, preserve Level 2/3 recursion guards, and do not bypass authorization or privileged framework actions. |
+| AC7 | The replacement component is incompatible, open generic without deterministic closure, missing required context, not a Razor component, duplicated for the same projection/role, or version-incompatible | Validation runs | A deterministic HFC diagnostic names ID, severity, validation phase, target component/projection, expected/got/fix/docs link, and the invalid replacement is not silently selected. Ambiguous duplicate exact replacements are deterministic hard diagnostics/startup failures and neither candidate is selected. |
+| AC8 | A valid replacement throws during render | The view renders | The fault is isolated to the affected replacement boundary; the shell, navigation, and sibling/next projection surfaces remain usable, the fallback UI includes a diagnostic ID, and sanitized logs include component type, projection type, role, and exception category without item payloads or generated field values. Rich recovery polish remains Story 6-6 ownership. |
+| AC9 | A replacement component is evaluated against the custom-component accessibility contract | Build/startup validation and tests run | The six requirements are enforced, warned, or tested with explicit oracles: accessible name source, keyboard path into/out of the replacement, visible focus, aria-live category parity for lifecycle/loading/empty states, reduced-motion behavior, and forced-colors support. |
 | AC10 | The developer edits replacement Razor markup during development | `dotnet watch` / hot reload is active | Razor body edits refresh where Blazor supports hot reload. Registration metadata, contract version, generic context, and component type changes are rebuild-triggering and must not be described as pure hot reload. |
-| AC11 | The same projection renders under different tenants, users, cultures, densities, themes, read-only states, and item sets | The registry and replacement host execute repeatedly | Descriptor caching is allowed; `ProjectionViewContext<TProjection>`, items, `RenderContext`, localized strings, rendered fragments, and scoped services are never cached across renders or users. |
-| AC12 | The Counter sample is used as reference evidence | The sample renders | One projection uses a full replacement, one projection/role still falls back to generated output, lifecycle wrapper semantics are preserved, and automated tests cover accessibility, diagnostics, fallback, and context isolation. |
-| AC13 | Story 6-5 later asks for a Level 4 starter template | It consumes 6-4 contracts | The 6-4 context exposes enough metadata and default-render information for starter generation, but 6-4 does not implement overlay UI, drawer UX, or clipboard copy. |
+| AC11 | The same projection renders under different tenants, users, cultures, densities, themes, read-only states, and item sets | The registry and replacement host execute repeatedly | Descriptor caching is allowed only for immutable registration metadata. `ProjectionViewContext<TProjection>`, item collections, `RenderContext`, localized strings, rendered fragments, scoped services, delegates, and per-render diagnostics are never cached across renders or users. |
+| AC12 | The Counter sample is used as reference evidence | The sample renders | One projection uses a typed full replacement, one projection/role still falls back to generated output, one replacement demonstrates safe default-delegate fallback, lifecycle wrapper semantics are preserved, and automated tests cover accessibility, diagnostics, fallback, and context isolation. |
+| AC13 | Story 6-5 later asks for a Level 4 starter template | It consumes 6-4 contracts | The 6-4 context exposes stable starter inputs: projection metadata, role, field/section descriptors, localized accessible names/labels/help text, current render flags, and safe default-render delegates where available. 6-4 does not implement overlay UI, drawer UX, or clipboard copy. |
 | AC14 | The feature is evaluated as Level 4 in the customization gradient | A developer compares Levels 1-4 | Level 4 is full projection-view body replacement only. It does not add command-form replacement, shell replacement, runtime theming, DataGrid behavior rewrites, dev-mode overlay, or arbitrary CSS/design-token override APIs. |
 
 ---
@@ -58,7 +58,7 @@ A developer should be able to take full control over one projection's rendered b
 
 - [ ] T1. Define the public Level 4 registration contract (AC1, AC5, AC7)
   - [ ] Add a typed registration API such as `AddViewOverride<TProjection,TComponent>(ProjectionRole? role = null)` over a typed registry/facade.
-  - [ ] Keep the existing `IOverrideRegistry` string surface internal/provisional for Level 4; do not make `Register("Projection", "view", ...)` the adopter path.
+  - [ ] Keep the existing `IOverrideRegistry` string surface internal/provisional or test-only for Level 4; the only supported adopter registration path is typed/generic.
   - [ ] Store projection type, optional role, component type, expected contract version, diagnostic state, and registration source in immutable descriptors.
   - [ ] Reject duplicate exact `(projection, role)` replacements deterministically. Name both component types where possible.
   - [ ] Define role-specific precedence: role-specific Level 4, role-agnostic Level 4, generated customization pipeline.
@@ -67,7 +67,8 @@ A developer should be able to take full control over one projection's rendered b
 - [ ] T2. Introduce `ProjectionViewContext<TProjection>` (AC3, AC4, AC6, AC11, AC13)
   - [ ] Add the context under `src/Hexalith.FrontComposer.Contracts/Rendering/`.
   - [ ] Include `ProjectionType`, `BoundedContext`, `ProjectionRole`, `IReadOnlyList<TProjection> Items`, `RenderContext`, density/read-only/dev-mode accessors, generated field/section descriptors, lifecycle summary, and localization-safe labels/descriptions.
-  - [ ] Expose optional default-render delegates only where the framework can prevent recursion. A default delegate for the same projection/role must bypass the selected Level 4 replacement.
+  - [ ] Expose optional default-render delegates only where the framework can prevent recursion. A default delegate for the same projection/role must bypass the selected Level 4 replacement and preserve lower-level recursion guards.
+  - [ ] Define localized label/help-text fallback behavior. Sample replacements must consume context-provided strings and avoid hard-coded user-facing copy except test fixtures.
   - [ ] Keep the context immutable/read-only after construction.
   - [ ] Construct context per render from current state. Do not store tenant/user/item/culture payloads in registry descriptors or static fields.
   - [ ] Document that custom components must not mutate projection records, dispatch Fluxor state directly, or cache `RenderContext` across users.
@@ -77,7 +78,7 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] Register generated/runtime descriptors during app startup through a typed intake API.
   - [ ] Validate component type compatibility: Blazor component, required `Context` parameter, compatible `ProjectionViewContext<TProjection>`, deterministic generic closure, and expected contract version.
   - [ ] Keep validation deterministic across filesystem order, DI registration order, and parallel test execution.
-  - [ ] Ignore invalid descriptors after diagnostics and fall back to generated rendering unless the failure is an ambiguous duplicate.
+  - [ ] Ignore invalid descriptors after diagnostics and fall back to generated rendering unless the failure is an ambiguous duplicate. Ambiguous duplicates fail hard and select neither candidate.
   - [ ] Avoid reflection scans during each render. Reflection/metadata inspection, if needed, happens during descriptor validation and is cached as descriptor metadata only.
 
 - [ ] T4. Integrate replacement selection into generated projection views (AC2, AC3, AC5, AC6)
@@ -86,6 +87,7 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] When no replacement exists, preserve generated output behavior and snapshots where possible.
   - [ ] If a replacement exists for a grid role, keep outer framework-owned containers that are required for scroll capture, reconciliation lanes, row-count banners, and density behavior. The replacement owns the body content, not the shell's state plumbing.
   - [ ] Ensure Level 2 and Level 3 resolution do not also run accidentally under Level 4. They are available only through explicit context/default delegates.
+  - [ ] Assert that active Level 4 output contains no generated fields, sections, commands, or fallback body markup except through explicit default-render delegates.
   - [ ] Add recursion guards for replacement components that ask for default rendering.
 
 - [ ] T5. Preserve lifecycle, shell, authorization, and telemetry boundaries (AC3, AC8)
@@ -93,13 +95,13 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] Preserve navigation routes, breadcrumbs, render context, density/theme cascades, and generated disposal cleanup.
   - [ ] Preserve authorization boundaries already provided by the shell. Do not invent Epic 7 policy behavior in this story.
   - [ ] Wrap replacement render faults in a narrow error boundary that renders a diagnostic fallback with HFC ID and keeps the rest of the shell usable.
-  - [ ] Log failures with component type, projection type, role, tenant/user redacted or hashed per existing telemetry policy, and exception category.
+  - [ ] Log failures with component type, projection type, role, tenant/user redacted or hashed per existing telemetry policy, and exception category. Do not log item payloads, generated field values, localized user text, or replacement render fragments.
 
 - [ ] T6. Enforce the custom-component accessibility contract (AC9)
   - [ ] Validate or warn for missing accessible name via visible text or `aria-label` where static analysis can see it.
-  - [ ] Require keyboard reachability for interactive replacement surfaces; tests should assert focusable controls stay in DOM order.
+  - [ ] Require keyboard reachability for interactive replacement surfaces; tests should assert focusable controls stay in DOM order and that focus can move into and out of the replacement.
   - [ ] Forbid suppressing Fluent focus visibility in generated samples and component CSS; do not override `--colorStrokeFocus2`.
-  - [ ] Require lifecycle/status announcements to use the same polite/assertive categories as the framework.
+  - [ ] Require lifecycle/loading/empty/status announcements to use the same polite/assertive categories as the framework.
   - [ ] Require `prefers-reduced-motion` support for custom animations.
   - [ ] Require forced-colors support through system color keywords where custom CSS is present.
   - [ ] Defer broad Roslyn analyzer coverage and richer remediation UI to Story 6-6, but keep 6-4's sample/test path executable.
@@ -108,6 +110,7 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] Reserve stable HFC10xx SourceTools diagnostics for invalid registrations, incompatible context, version drift, and accessibility warnings when discovered at build time.
   - [ ] Reserve HFC20xx Shell diagnostics for runtime/startup validation and replacement render failures.
   - [ ] Follow the teaching shape: What happened, Expected, Got, Fix, DocsLink.
+  - [ ] Before implementation closes, record a diagnostic oracle table in this story or test fixtures covering ID, severity, validation phase, assertion point, target component/projection, and fallback behavior for invalid registration, incompatible context, duplicate descriptor, version drift, accessibility warning, and render failure.
   - [ ] Include contract version metadata shared with Stories 6-2 and 6-3 where practical.
   - [ ] Diagnostic assertions must verify ID, severity, target component/projection, deterministic ordering, and expected/got/fix/docs-link content.
 
@@ -130,9 +133,10 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, immutable snapshot lookup, and no context/cache bleed.
   - [ ] SourceTools/emitter tests proving no-replacement fallback remains unchanged and replacement selection happens before Level 2/3 paths.
   - [ ] Shell/bUnit tests proving context values, lifecycle wrapper preservation, error boundary isolation, default-render recursion guard, and density/theme/render-context propagation.
+  - [ ] Shell/bUnit tests proving authorization boundary preservation, breadcrumbs/navigation shell preservation, loading/empty shell preservation, disposal cleanup, telemetry context propagation, and that render exceptions leave sibling/next projection surfaces usable.
   - [ ] Accessibility tests for accessible names, keyboard reachability, focus visibility, reduced motion, forced-colors CSS, and live-region category preservation in the sample replacement.
-  - [ ] Repeated-render tests changing tenant, user, culture, density, read-only state, item list, and theme to prove no stale context/render output is reused.
-  - [ ] Counter sample tests for valid replacement, generated fallback, invalid-registration diagnostic, and lifecycle/accessibility preservation.
+  - [ ] Targeted repeated-render tests changing two tenants, two users, two cultures, one theme/density variation, read-only state, item list, and scoped-service instances to prove no stale context/render output/delegate/service is reused without full cross-product expansion.
+  - [ ] Counter sample tests for valid typed replacement, generated fallback role, safe default-delegate fallback, invalid-registration diagnostic, lifecycle/accessibility preservation, localization-safe labels, and context isolation.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
   - [ ] Targeted tests: Contracts, SourceTools replacement/diagnostic tests, Shell registry/rendering tests, and Counter sample build/render tests.
 
@@ -337,6 +341,38 @@ Do not implement these in Story 6-4:
 - [Source: Microsoft Learn: Blazor error handling](https://learn.microsoft.com/en-us/aspnet/core/blazor/fundamentals/handle-errors?view=aspnetcore-10.0) - error-boundary behavior.
 - [Source: Microsoft Learn: Blazor CSS isolation](https://learn.microsoft.com/en-us/aspnet/core/blazor/components/css-isolation?view=aspnetcore-10.0) - component CSS scoping and build-time selector rewriting.
 - [Source: Microsoft Learn: ASP.NET Core Hot Reload](https://learn.microsoft.com/en-us/aspnet/core/test/hot-reload) - hot reload behavior and limits.
+
+---
+
+## Party-Mode Review
+
+Date/time: 2026-04-27T02:10:08+02:00
+
+Selected story: `6-4-level-4-full-component-replacement`
+
+Command/skill invocation used: `/bmad-party-mode 6-4-level-4-full-component-replacement; review;`
+
+Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Sally (UX Designer)
+
+Findings summary:
+
+- Architecture: Level 4 boundary ownership needed tighter wording so replacement code cannot suppress shell, lifecycle, auth, telemetry, loading/empty/error policy, or framework-owned grid/state envelopes.
+- Implementation: typed public registration, Level 2/3 skip behavior, default-render delegate recursion bypass, context immutability, and sanitized error logging needed executable acceptance hooks.
+- Test strategy: AC7/AC8/AC9/AC11/AC12 needed sharper diagnostic, render-fault, accessibility, repeated-render, and Counter sample oracles without creating a combinatorial matrix.
+- UX/accessibility: localized labels/help text, keyboard path, focus visibility, aria-live parity, reduced motion, forced colors, and safe default-state behavior needed to be testable before development.
+
+Changes applied:
+
+- Hardened AC3, AC4, AC6, AC7, AC8, AC9, AC11, AC12, and AC13 for body-only replacement, per-render context, non-recursive default delegates, deterministic duplicate diagnostics, sanitized render-fault logging, explicit accessibility oracles, descriptor-only caching, Counter fallback evidence, and stable Story 6-5 starter metadata.
+- Hardened T1-T7 and T10 for typed-only public API, localized context strings, duplicate hard-fail behavior, no generated body markup under active Level 4 except safe delegates, telemetry redaction, focus/live-region/reduced-motion/forced-colors assertions, diagnostic oracle table, shell-preservation tests, repeated-render isolation, and Counter sample evidence.
+
+Findings deferred:
+
+- Exact contract-version representation (integer, semantic version, or marker interface) remains an implementation decision constrained by T7.
+- Exact default-render delegate granularity (whole body, section, or field) remains an implementation decision constrained by AC6 and T2.
+- Overlay UI, starter drawer UX, clipboard flow, rich diagnostics panel, broad accessibility analyzer coverage, and visual specimen coverage remain owned by Stories 6-5, 6-6, and 10-2.
+
+Final recommendation: `ready-for-dev`
 
 ---
 

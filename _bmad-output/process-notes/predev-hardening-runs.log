@@ -37,3 +37,4 @@
 2026-04-26T16:13:22.8216147+02:00	none	-	none	ready-for-dev buffer full and all ready stories already have party-mode and advanced-elicitation traces
 2026-04-26T17:06:10.8685857+02:00	none	-	none	ready-for-dev buffer full and all ready stories already have party-mode and advanced-elicitation traces
 2026-04-26T20:15:43.0611925+02:00	create-story	6-4-level-4-full-component-replacement	ok	story created and marked ready-for-dev
+2026-04-27T02:10:08.5805466+02:00	party-mode-review	6-4-level-4-full-component-replacement	ok	party-mode trace recorded and story hardened for Level 4 boundary diagnostics accessibility and isolation
