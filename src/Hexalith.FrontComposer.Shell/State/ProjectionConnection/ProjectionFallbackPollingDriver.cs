@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 using Microsoft.Extensions.Logging;
@@ -165,9 +166,7 @@ public sealed class ProjectionFallbackPollingDriver : IAsyncDisposable {
                     return;
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException) {
-                    _logger.LogWarning(
-                        "Projection fallback polling iteration failed. FailureCategory={FailureCategory}",
-                        ex.GetType().Name);
+                    FrontComposerLog.ProjectionFallbackPollingIterationFailed(_logger, ex.GetType().Name);
                 }
 
                 try {

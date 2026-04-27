@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -6,6 +7,7 @@ using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
@@ -161,6 +163,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         // DN2 — only Active groups receive nudge refresh. Degraded groups (failed rejoin)
         // wait for the next reconnect cycle to attempt recovery.
         if (_activeGroups.TryGetValue(key, out GroupHealth health) && health == GroupHealth.Active) {
+            using Activity? activity = FrontComposerTelemetry.StartProjectionNudge(
+                key.ProjectionType,
+                FrontComposerTelemetry.TenantMarker(key.TenantId));
             try {
                 if (_notifier is IProjectionChangeNotifierWithTenant tenantAware) {
                     tenantAware.NotifyChanged(key.ProjectionType, key.TenantId);
@@ -193,12 +198,15 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                         _ = Interlocked.Exchange(ref _pendingPollInFlight, 0);
                     }
                 }
+                FrontComposerTelemetry.SetOutcome(activity, "handled");
             }
             catch (OperationCanceledException) when (_disposalCts.IsCancellationRequested) {
                 // Expected on disposal; swallow.
+                FrontComposerTelemetry.SetOutcome(activity, "canceled");
             }
             catch (Exception ex) when (ex is not OutOfMemoryException) {
                 // A buggy subscriber must not kill the SignalR callback dispatcher.
+                FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
                 _logger.LogWarning(
                     "Projection change subscriber threw while handling nudge. FailureCategory={FailureCategory}",
                     ex.GetType().Name);
@@ -304,9 +312,13 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                     break;
                 }
 
+                using Activity? activity = FrontComposerTelemetry.StartProjectionRejoin(
+                    key.ProjectionType,
+                    FrontComposerTelemetry.TenantMarker(key.TenantId));
                 try {
                     await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
                     _activeGroups[key] = GroupHealth.Active;
+                    FrontComposerTelemetry.SetOutcome(activity, "active");
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                     return;
@@ -316,9 +328,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                     _activeGroups[key] = GroupHealth.Degraded;
                     // P5 — exception type only. Raw exception messages can carry group/tenant
                     // arguments embedded in stack frames or framework-formatted text.
-                    _logger.LogWarning(
-                        "EventStore projection group rejoin failed. FailureCategory={FailureCategory}",
-                        ex.GetType().Name);
+                    FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+                    FrontComposerLog.ProjectionRejoinFailed(_logger, key.ProjectionType, ex.GetType().Name);
                 }
             }
         }

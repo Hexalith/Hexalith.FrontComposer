@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -102,15 +103,10 @@ public sealed class PendingCommandPollingCoordinator : IPendingCommandPollingCoo
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
                 throw;
             }
-            // P9 — preserve stack trace by passing the exception to the logger; narrower filter
-            // keeps OOM exceptions and explicit cancellation propagating while letting all other
-            // failures surface with full diagnostics.
             catch (Exception ex) {
-                _logger.LogWarning(
-                    ex,
-                    "Pending command polling failed. FailureCategory={FailureCategory} MessageId={MessageId}",
-                    ex.GetType().Name,
-                    entry.MessageId);
+                // Exception objects are intentionally not passed to the logger here; status-query
+                // failures can echo transport or payload data through exception messages.
+                FrontComposerLog.PendingCommandPollingFailed(_logger, ex.GetType().Name, entry.MessageId);
             }
         }
 

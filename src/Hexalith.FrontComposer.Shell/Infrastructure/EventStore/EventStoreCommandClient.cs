@@ -1,10 +1,12 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -45,47 +47,76 @@ public sealed class EventStoreCommandClient(
             ReadStringProperty(command, "TenantId"));
         string domain = EventStoreIdentity.GetDomain(typeof(TCommand));
         string aggregateId = EventStoreIdentity.GetAggregateId(command);
-
-        using HttpRequestMessage request = new(HttpMethod.Post, current.CommandEndpointPath);
-        await ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
-
-        JsonElement payload = SerializeCommandPayload(command);
-        request.Content = EventStoreRequestContent.Create(
-            new SubmitCommandRequest(
-                messageId,
-                tenant,
-                domain,
-                aggregateId,
-                typeof(TCommand).FullName ?? typeof(TCommand).Name,
-                payload),
-            current.MaxRequestBytes);
-
-        HttpClient client = httpClientFactory.CreateClient(HttpClientName);
-        using HttpResponseMessage response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        EventStoreCommandClassification classification = await classifier
-            .ClassifyCommandAsync(response, cancellationToken)
-            .ConfigureAwait(false);
-
-        if (!classification.IsAccepted) {
-            logger.LogWarning(
-                "EventStore command dispatch returned unexpected HTTP status {StatusCode}. LocationPath={LocationPath}",
-                (int)response.StatusCode,
-                response.Headers.Location?.GetLeftPart(UriPartial.Path));
-            throw classification.Failure!;
-        }
-
-        string? responseCorrelationId = classification.CorrelationId
-            ?? await ReadCorrelationIdAsync(response, logger, cancellationToken).ConfigureAwait(false);
-
-        CommandResult result = new(
+        string commandTypeName = typeof(TCommand).FullName ?? typeof(TCommand).Name;
+        long startedAt = Stopwatch.GetTimestamp();
+        using Activity? activity = FrontComposerTelemetry.StartCommandDispatch(
+            commandTypeName,
             messageId,
-            "Accepted",
-            responseCorrelationId,
-            classification.Location,
-            classification.RetryAfter);
+            FrontComposerTelemetry.TenantMarker(tenant));
 
-        onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, result.CorrelationId ?? result.MessageId);
-        return result;
+        try {
+            using HttpRequestMessage request = new(HttpMethod.Post, current.CommandEndpointPath);
+            await ApplyAuthorizationAsync(request, current, cancellationToken).ConfigureAwait(false);
+
+            JsonElement payload = SerializeCommandPayload(command);
+            request.Content = EventStoreRequestContent.Create(
+                new SubmitCommandRequest(
+                    messageId,
+                    tenant,
+                    domain,
+                    aggregateId,
+                    commandTypeName,
+                    payload),
+                current.MaxRequestBytes);
+
+            HttpClient client = httpClientFactory.CreateClient(HttpClientName);
+            using HttpResponseMessage response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
+            EventStoreCommandClassification classification = await classifier
+                .ClassifyCommandAsync(response, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!classification.IsAccepted) {
+                string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
+                FrontComposerTelemetry.SetOutcome(activity, "rejected");
+                FrontComposerTelemetry.SetFailure(activity, failureCategory);
+                FrontComposerLog.CommandUnexpectedStatus(
+                    logger,
+                    (int)response.StatusCode,
+                    response.Headers.Location?.GetLeftPart(UriPartial.Path),
+                    commandTypeName,
+                    messageId,
+                    failureCategory,
+                    Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+                throw classification.Failure!;
+            }
+
+            string? responseCorrelationId = classification.CorrelationId
+                ?? await ReadCorrelationIdAsync(response, logger, commandTypeName, messageId, cancellationToken).ConfigureAwait(false);
+            FrontComposerTelemetry.SetCorrelation(activity, responseCorrelationId);
+
+            CommandResult result = new(
+                messageId,
+                "Accepted",
+                responseCorrelationId,
+                classification.Location,
+                classification.RetryAfter);
+
+            onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, result.CorrelationId ?? result.MessageId);
+            FrontComposerTelemetry.SetOutcome(activity, "accepted");
+            return result;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            FrontComposerTelemetry.SetOutcome(activity, "canceled");
+            throw;
+        }
+        catch (Exception ex) {
+            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            throw;
+        }
+        finally {
+            FrontComposerTelemetry.SetElapsed(activity, Stopwatch.GetElapsedTime(startedAt));
+        }
     }
 
     [UnconditionalSuppressMessage(
@@ -131,6 +162,8 @@ public sealed class EventStoreCommandClient(
     private static async Task<string?> ReadCorrelationIdAsync(
         HttpResponseMessage response,
         ILogger logger,
+        string commandType,
+        string messageId,
         CancellationToken cancellationToken) {
         if (response.Content is null) {
             return null;
@@ -149,9 +182,11 @@ public sealed class EventStoreCommandClient(
         }
         catch (JsonException) {
             // Reason intentionally omitted — JsonException.Message can echo response body fragments.
-            logger.LogWarning(
-                "EventStore command response body could not be parsed as JSON; correlationId unavailable. ContentType={ContentType}",
-                response.Content.Headers.ContentType?.MediaType);
+            FrontComposerLog.CommandCorrelationBodyParseFailed(
+                logger,
+                response.Content.Headers.ContentType?.MediaType,
+                commandType,
+                messageId);
             return null;
         }
     }

@@ -32,8 +32,8 @@ public sealed class UlidFactory : IUlidFactory {
         }
         catch (System.Security.Cryptography.CryptographicException ex) {
             _logger.LogWarning(
-                ex,
-                "NUlid generation failed; falling back to Guid. Time-sortable MessageId lost for this submission.");
+                "NUlid generation failed; falling back to Guid. Time-sortable MessageId lost for this submission. FailureCategory={FailureCategory}",
+                ex.GetType().Name);
             return Guid.NewGuid().ToString("N");
         }
     }

@@ -226,9 +226,9 @@ public sealed class EventStoreResponseClassifier {
         catch (JsonException ex) {
             // Body intentionally not echoed: JsonException.Message can leak server payload fragments.
             _logger.LogWarning(
-                ex,
-                "EventStoreResponseClassifier: ProblemDetails parse failed (Content-Type={ContentType}); falling back to empty payload.",
-                response.Content?.Headers.ContentType?.MediaType);
+                "EventStoreResponseClassifier: ProblemDetails parse failed (Content-Type={ContentType}); falling back to empty payload. FailureCategory={FailureCategory}",
+                response.Content?.Headers.ContentType?.MediaType,
+                ex.GetType().Name);
             return ProblemDetailsPayload.Empty;
         }
     }

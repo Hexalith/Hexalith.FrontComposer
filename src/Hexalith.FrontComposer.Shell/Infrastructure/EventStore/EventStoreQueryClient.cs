@@ -1,9 +1,11 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Microsoft.Extensions.Logging;
@@ -80,151 +82,185 @@ public sealed class EventStoreQueryClient(
             _ = EventStoreValidation.RequireNonColonSegment(request.ProjectionActorType, nameof(request.ProjectionActorType));
         }
 
-        using HttpRequestMessage httpRequest = new(HttpMethod.Post, current.QueryEndpointPath);
-        await ApplyAuthorizationAsync(httpRequest, current, cancellationToken).ConfigureAwait(false);
+        string initialCacheOutcome = cachedEntry is not null ? "hit" : cacheKey is null ? "disabled" : "miss";
+        long startedAt = Stopwatch.GetTimestamp();
+        using Activity? activity = FrontComposerTelemetry.StartQueryExecute(
+            projectionType,
+            queryType,
+            initialCacheOutcome,
+            FrontComposerTelemetry.TenantMarker(tenant));
 
-        List<string> ifNoneMatch = new(requestEtags.Count + 1);
-        for (int i = 0; i < requestEtags.Count; i++) {
-            if (ContainsHeaderInjectionChar(requestEtags[i])) {
-                throw new ArgumentException(
-                    "ETag validators must not contain control characters or CRLF sequences.",
-                    nameof(request));
+        try {
+            using HttpRequestMessage httpRequest = new(HttpMethod.Post, current.QueryEndpointPath);
+            await ApplyAuthorizationAsync(httpRequest, current, cancellationToken).ConfigureAwait(false);
+
+            List<string> ifNoneMatch = new(requestEtags.Count + 1);
+            for (int i = 0; i < requestEtags.Count; i++) {
+                if (ContainsHeaderInjectionChar(requestEtags[i])) {
+                    throw new ArgumentException(
+                        "ETag validators must not contain control characters or CRLF sequences.",
+                        nameof(request));
+                }
+
+                ifNoneMatch.Add(requestEtags[i]);
             }
 
-            ifNoneMatch.Add(requestEtags[i]);
-        }
+            if (cachedEntry is not null
+                && !ContainsHeaderInjectionChar(cachedEntry.ETag)
+                && !ifNoneMatch.Contains(cachedEntry.ETag, StringComparer.Ordinal)) {
+                ifNoneMatch.Add(cachedEntry.ETag);
+            }
 
-        if (cachedEntry is not null
-            && !ContainsHeaderInjectionChar(cachedEntry.ETag)
-            && !ifNoneMatch.Contains(cachedEntry.ETag, StringComparer.Ordinal)) {
-            ifNoneMatch.Add(cachedEntry.ETag);
-        }
+            if (ifNoneMatch.Count > 0) {
+                EventStoreValidation.ValidateETagCount(ifNoneMatch, current.MaxETagCount);
+                httpRequest.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
+            }
 
-        if (ifNoneMatch.Count > 0) {
-            EventStoreValidation.ValidateETagCount(ifNoneMatch, current.MaxETagCount);
-            httpRequest.Headers.TryAddWithoutValidation("If-None-Match", ifNoneMatch);
-        }
-
-        JsonElement payload = SerializeQueryPayload(request);
-        httpRequest.Content = EventStoreRequestContent.Create(
-            new SubmitQueryRequest(
-                tenant,
-                domain,
-                aggregateId,
-                queryType,
-                projectionType,
-                payload,
-                request.EntityId,
-                request.ProjectionActorType),
-            current.MaxRequestBytes);
-
-        HttpClient client = httpClientFactory.CreateClient(HttpClientName);
-        using HttpResponseMessage response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-        EventStoreQueryClassification classification = await classifier
-            .ClassifyQueryAsync(response, cancellationToken)
-            .ConfigureAwait(false);
-
-        switch (classification.Outcome) {
-            case QueryClassificationOutcome.NotModified: {
-                if (cachedEntry is not null) {
-                    try {
-                        return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
-                    }
-                    catch (ProjectionSchemaMismatchException ex) {
-                        logger.LogWarning(
-                            "Projection cache payload schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
-                            ex.ProjectionType,
-                            ex.GetType().Name);
-                        throw;
-                    }
-                }
-
-                // Caller did not opt into framework cache integration (no CacheDiscriminator) —
-                // they own their own cache lifecycle. Surface the explicit no-change signal so
-                // their existing handler can take its own path.
-                if (cacheKey is null) {
-                    return QueryResult<T>.NotModified(classification.ETag);
-                }
-
-                // From here on cacheKey is non-null: caller asked for framework cache integration
-                // but no compatible entry was readable, so EventStore is asserting a state the
-                // client doesn't have. AC4 / D10: retry once uncached, fail loudly otherwise.
-                if (!allowProtocolDriftRetry) {
-                    logger.LogWarning(
-                        "EventStore returned 304 Not Modified twice without a matching cache entry — failing loudly to preserve visible UI state.");
-                    throw new HttpRequestException(
-                        "EventStore returned 304 Not Modified but no compatible cached payload exists.",
-                        inner: null,
-                        statusCode: System.Net.HttpStatusCode.NotModified);
-                }
-
-                logger.LogInformation(
-                    "EventStore returned 304 Not Modified without a matching cache entry — retrying once uncached (Story 5-2 D10).");
-                return await ExecuteAsync<T>(
-                    request: request with { ETag = null, ETags = null },
-                    current,
+            JsonElement payload = SerializeQueryPayload(request);
+            httpRequest.Content = EventStoreRequestContent.Create(
+                new SubmitQueryRequest(
                     tenant,
-                    cacheKey: cacheKey,
-                    cachedEntry: null,
-                    allowProtocolDriftRetry: false,
-                    cancellationToken).ConfigureAwait(false);
+                    domain,
+                    aggregateId,
+                    queryType,
+                    projectionType,
+                    payload,
+                    request.EntityId,
+                    request.ProjectionActorType),
+                current.MaxRequestBytes);
+
+            HttpClient client = httpClientFactory.CreateClient(HttpClientName);
+            using HttpResponseMessage response = await client.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+            FrontComposerTelemetry.SetHttpStatus(activity, (int)response.StatusCode);
+            EventStoreQueryClassification classification = await classifier
+                .ClassifyQueryAsync(response, cancellationToken)
+                .ConfigureAwait(false);
+
+            switch (classification.Outcome) {
+                case QueryClassificationOutcome.NotModified: {
+                    FrontComposerTelemetry.SetOutcome(activity, "not_modified");
+                    if (cachedEntry is not null) {
+                        try {
+                            return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
+                        }
+                        catch (ProjectionSchemaMismatchException ex) {
+                            FrontComposerLog.QuerySchemaMismatch(
+                                logger,
+                                ex.ProjectionType,
+                                ex.GetType().Name);
+                            throw;
+                        }
+                    }
+
+                    // Caller did not opt into framework cache integration (no CacheDiscriminator) —
+                    // they own their own cache lifecycle. Surface the explicit no-change signal so
+                    // their existing handler can take its own path.
+                    if (cacheKey is null) {
+                        return QueryResult<T>.NotModified(classification.ETag);
+                    }
+
+                    // From here on cacheKey is non-null: caller asked for framework cache integration
+                    // but no compatible entry was readable, so EventStore is asserting a state the
+                    // client doesn't have. AC4 / D10: retry once uncached, fail loudly otherwise.
+                    if (!allowProtocolDriftRetry) {
+                        FrontComposerTelemetry.SetFailure(activity, "ProtocolDriftNoCache");
+                        logger.LogWarning(
+                            "EventStore returned 304 Not Modified twice without a matching cache entry — failing loudly to preserve visible UI state.");
+                        throw new HttpRequestException(
+                            "EventStore returned 304 Not Modified but no compatible cached payload exists.",
+                            inner: null,
+                            statusCode: System.Net.HttpStatusCode.NotModified);
+                    }
+
+                    FrontComposerTelemetry.SetOutcome(activity, "protocol_drift_retry");
+                    logger.LogInformation(
+                        "EventStore returned 304 Not Modified without a matching cache entry — retrying once uncached (Story 5-2 D10).");
+                    return await ExecuteAsync<T>(
+                        request: request with { ETag = null, ETags = null },
+                        current,
+                        tenant,
+                        cacheKey: cacheKey,
+                        cachedEntry: null,
+                        allowProtocolDriftRetry: false,
+                        cancellationToken).ConfigureAwait(false);
+                }
+
+                case QueryClassificationOutcome.Ok: {
+                    FrontComposerTelemetry.SetOutcome(activity, "ok");
+                    string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    IReadOnlyList<T> items;
+                    int totalCount;
+                    try {
+                        using JsonDocument document = JsonDocument.Parse(body);
+                        items = ReadPayloadItems<T>(document.RootElement);
+                        totalCount = ReadTotalCount(document.RootElement, items.Count);
+                    }
+                    catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
+                        // P2 — broaden beyond JsonException so type-shape mismatches surfaced by
+                        // ReadPayloadItems<T>.Deserialize (InvalidOperationException, NotSupportedException,
+                        // ArgumentException) flow through the schema-mismatch path instead of bubbling raw.
+                        // P4 — null-guard the diagnostic field; request.ProjectionType is normalized non-null
+                        // earlier but logging the literal "null" is still preferable to a NullReferenceException.
+                        string diagnosticProjectionType = projectionType ?? string.Empty;
+                        // DN2 — invalidate the projection family, not just this single cache key.
+                        await TryInvalidateSchemaMismatchAsync(cacheKey, diagnosticProjectionType, cancellationToken).ConfigureAwait(false);
+
+                        FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+                        FrontComposerLog.QuerySchemaMismatch(
+                            logger,
+                            diagnosticProjectionType,
+                            ex.GetType().Name);
+                        throw new ProjectionSchemaMismatchException(diagnosticProjectionType, ex);
+                    }
+
+                    string? eTag = classification.ETag;
+                    if (cacheKey is not null && eTag is { Length: > 0 } && !ContainsHeaderInjectionChar(eTag)) {
+                        long now = DateTimeOffset.UtcNow.UtcTicks;
+                        ETagCacheEntry entry = new(
+                            ETag: eTag,
+                            Payload: body,
+                            CachedAtUtcTicks: now,
+                            LastAccessedUtcTicks: now,
+                            FormatVersion: ETagCacheEntry.CurrentFormatVersion,
+                            PayloadVersion: request.CachePayloadVersion,
+                            Discriminator: request.CacheDiscriminator ?? string.Empty);
+                        _ = PersistCacheEntryAsync(cacheKey, entry);
+                    }
+
+                    return new QueryResult<T>(items, totalCount, eTag);
+                }
+
+                case QueryClassificationOutcome.Failure:
+                default: {
+                    string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
+                    FrontComposerTelemetry.SetOutcome(activity, "failure");
+                    FrontComposerTelemetry.SetFailure(activity, failureCategory);
+                    if (classification.Failure is AuthRedirectRequiredException authRequired) {
+                        await authRedirector.RedirectAsync(returnUrl: null, cancellationToken).ConfigureAwait(false);
+                        throw authRequired;
+                    }
+
+                    FrontComposerLog.QueryUnexpectedStatus(
+                        logger,
+                        (int)response.StatusCode,
+                        projectionType,
+                        queryType,
+                        failureCategory,
+                        Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
+                    throw classification.Failure!;
+                }
             }
-
-            case QueryClassificationOutcome.Ok: {
-                string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                IReadOnlyList<T> items;
-                int totalCount;
-                try {
-                    using JsonDocument document = JsonDocument.Parse(body);
-                    items = ReadPayloadItems<T>(document.RootElement);
-                    totalCount = ReadTotalCount(document.RootElement, items.Count);
-                }
-                catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException or ArgumentException) {
-                    // P2 — broaden beyond JsonException so type-shape mismatches surfaced by
-                    // ReadPayloadItems<T>.Deserialize (InvalidOperationException, NotSupportedException,
-                    // ArgumentException) flow through the schema-mismatch path instead of bubbling raw.
-                    // P4 — null-guard the diagnostic field; request.ProjectionType is normalized non-null
-                    // earlier but logging the literal "null" is still preferable to a NullReferenceException.
-                    string diagnosticProjectionType = projectionType ?? string.Empty;
-                    // DN2 — invalidate the projection family, not just this single cache key.
-                    await TryInvalidateSchemaMismatchAsync(cacheKey, diagnosticProjectionType, cancellationToken).ConfigureAwait(false);
-
-                    logger.LogWarning(
-                        "Projection response schema mismatch. ProjectionType={ProjectionType}, FailureCategory={FailureCategory}",
-                        diagnosticProjectionType,
-                        ex.GetType().Name);
-                    throw new ProjectionSchemaMismatchException(diagnosticProjectionType, ex);
-                }
-
-                string? eTag = classification.ETag;
-                if (cacheKey is not null && eTag is { Length: > 0 } && !ContainsHeaderInjectionChar(eTag)) {
-                    long now = DateTimeOffset.UtcNow.UtcTicks;
-                    ETagCacheEntry entry = new(
-                        ETag: eTag,
-                        Payload: body,
-                        CachedAtUtcTicks: now,
-                        LastAccessedUtcTicks: now,
-                        FormatVersion: ETagCacheEntry.CurrentFormatVersion,
-                        PayloadVersion: request.CachePayloadVersion,
-                        Discriminator: request.CacheDiscriminator ?? string.Empty);
-                    _ = PersistCacheEntryAsync(cacheKey, entry);
-                }
-
-                return new QueryResult<T>(items, totalCount, eTag);
-            }
-
-            case QueryClassificationOutcome.Failure:
-            default: {
-                if (classification.Failure is AuthRedirectRequiredException authRequired) {
-                    await authRedirector.RedirectAsync(returnUrl: null, cancellationToken).ConfigureAwait(false);
-                    throw authRequired;
-                }
-
-                logger.LogWarning(
-                    "EventStore query returned unexpected HTTP status {StatusCode}.",
-                    (int)response.StatusCode);
-                throw classification.Failure!;
-            }
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+            FrontComposerTelemetry.SetOutcome(activity, "canceled");
+            throw;
+        }
+        catch (Exception ex) {
+            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            throw;
+        }
+        finally {
+            FrontComposerTelemetry.SetElapsed(activity, Stopwatch.GetElapsedTime(startedAt));
         }
     }
 
@@ -241,9 +277,7 @@ public sealed class EventStoreQueryClient(
             await cache.SetAsync(cacheKey, entry, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex) {
-            logger.LogWarning(
-                ex,
-                "EventStore query cache write failed after successful 200 OK response.");
+            FrontComposerLog.QueryCacheWriteFailed(logger, ex.GetType().Name);
         }
     }
 
@@ -302,9 +336,7 @@ public sealed class EventStoreQueryClient(
             throw;
         }
         catch (Exception ex) {
-            logger.LogWarning(
-                "Best-effort projection cache invalidation failed during schema-mismatch handling. FailureCategory={FailureCategory}",
-                ex.GetType().Name);
+            FrontComposerLog.QuerySchemaMismatchInvalidationFailed(logger, ex.GetType().Name);
         }
     }
 

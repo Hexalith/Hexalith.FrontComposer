@@ -1,6 +1,6 @@
 # Story 5.6: Build-Time Infrastructure Enforcement & Observability
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 5** - Reliable Real-Time Experience. **FR48 / FR72** build-time portability enforcement, structured logging, and distributed trace continuity after Stories 5-1 through 5-5. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, **L10**, and **L14**.
 
@@ -48,81 +48,81 @@ so that the framework remains portable across deployment targets and I can trace
 
 ## Tasks / Subtasks
 
-- [ ] T1. Build the framework infrastructure-coupling governance suite (AC1, AC2, AC3, AC9)
-  - [ ] Replace the narrow `ContractsAssembly_DoesNotReferenceInfrastructurePackages` substring test with explicit deny-list tests that inspect `ProjectReference`, `PackageReference`, restored assembly references, and source `using`/fully-qualified namespace usage.
-  - [ ] Deny at least: `Dapr.*`, `StackExchange.Redis`, `Microsoft.AspNetCore.SignalR.StackExchangeRedis`, `Confluent.Kafka`, `Npgsql`, `Microsoft.Azure.Cosmos`, direct provider database/storage/event-bus SDKs, and namespace roots matching provider clients.
-  - [ ] Keep `Microsoft.AspNetCore.SignalR.Client` allowed only in Shell because it is the EventStore nudge transport from Stories 5-1 and 5-3.
-  - [ ] Normalize and root-bound every scanned path before classification. Do not follow symlinks, junctions, reparse points, or submodule worktrees from excluded areas back into framework scope or from framework scope out to unrelated folders.
-  - [ ] Exclude generated `bin/`, `obj/`, `.bmad`, `.agents`, `.github/skills`, planning docs, and submodules from framework source scanning unless a test explicitly validates docs/sample topology.
-  - [ ] Limit source namespace scanning to framework-owned `.cs`, `.razor`, `.cshtml`, and approved generated baseline files; do not scan markdown prose as source code except in documentation-specific tests.
-  - [ ] Emit failure messages that identify path, reference, provider family, and expected remediation: "route through EventStore contract/client or deployment/AppHost component configuration".
-  - [ ] Add exact-match allowlist entries with owner/story comments. Avoid substring matches like `Hosting` or `EventStore` that can false-positive on benign assembly names.
+- [x] T1. Build the framework infrastructure-coupling governance suite (AC1, AC2, AC3, AC9)
+  - [x] Replace the narrow `ContractsAssembly_DoesNotReferenceInfrastructurePackages` substring test with explicit deny-list tests that inspect `ProjectReference`, `PackageReference`, restored assembly references, and source `using`/fully-qualified namespace usage.
+  - [x] Deny at least: `Dapr.*`, `StackExchange.Redis`, `Microsoft.AspNetCore.SignalR.StackExchangeRedis`, `Confluent.Kafka`, `Npgsql`, `Microsoft.Azure.Cosmos`, direct provider database/storage/event-bus SDKs, and namespace roots matching provider clients.
+  - [x] Keep `Microsoft.AspNetCore.SignalR.Client` allowed only in Shell because it is the EventStore nudge transport from Stories 5-1 and 5-3.
+  - [x] Normalize and root-bound every scanned path before classification. Do not follow symlinks, junctions, reparse points, or submodule worktrees from excluded areas back into framework scope or from framework scope out to unrelated folders.
+  - [x] Exclude generated `bin/`, `obj/`, `.bmad`, `.agents`, `.github/skills`, planning docs, and submodules from framework source scanning unless a test explicitly validates docs/sample topology.
+  - [x] Limit source namespace scanning to framework-owned `.cs`, `.razor`, `.cshtml`, and approved generated baseline files; do not scan markdown prose as source code except in documentation-specific tests.
+  - [x] Emit failure messages that identify path, reference, provider family, and expected remediation: "route through EventStore contract/client or deployment/AppHost component configuration".
+  - [x] Add exact-match allowlist entries with owner/story comments. Avoid substring matches like `Hosting` or `EventStore` that can false-positive on benign assembly names.
 
-- [ ] T2. Harden package and assembly reference validation (AC1, AC2, AC3, AC9)
-  - [ ] Parse project XML using `System.Xml.Linq`; do not use ad hoc string matching for `.csproj` files.
-  - [ ] Inspect `Directory.Packages.props` centrally and all framework `.csproj` files for forbidden package IDs.
-  - [ ] Inspect restored dependency graphs (`project.assets.json` or equivalent resolved package references) so transitive provider SDKs and packages hidden behind `PrivateAssets` cannot bypass governance.
-  - [ ] Add a runtime assembly reference test for each produced framework assembly: Contracts, SourceTools, and Shell. Shell may reference SignalR client; Contracts and SourceTools may not.
-  - [ ] Validate source-generator output baselines and generated command/projection artifacts do not contain forbidden namespace roots.
-  - [ ] Keep EventStore submodule Dapr/provider dependencies outside the FrontComposer framework enforcement scope.
+- [x] T2. Harden package and assembly reference validation (AC1, AC2, AC3, AC9)
+  - [x] Parse project XML using `System.Xml.Linq`; do not use ad hoc string matching for `.csproj` files.
+  - [x] Inspect `Directory.Packages.props` centrally and all framework `.csproj` files for forbidden package IDs.
+  - [x] Inspect restored dependency graphs (`project.assets.json` or equivalent resolved package references) so transitive provider SDKs and packages hidden behind `PrivateAssets` cannot bypass governance.
+  - [x] Add a runtime assembly reference test for each produced framework assembly: Contracts, SourceTools, and Shell. Shell may reference SignalR client; Contracts and SourceTools may not.
+  - [x] Validate source-generator output baselines and generated command/projection artifacts do not contain forbidden namespace roots.
+  - [x] Keep EventStore submodule Dapr/provider dependencies outside the FrontComposer framework enforcement scope.
 
-- [ ] T3. Add Shell telemetry infrastructure without exporter dependencies (AC6, AC7, AC9)
-  - [ ] Create a Shell telemetry helper such as `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerTelemetry.cs`.
-  - [ ] Instantiate `ActivitySource` using `Hexalith.FrontComposer.Contracts.Telemetry.FrontComposerActivitySource.Name` and `.Version`; keep the constants in Contracts.
-  - [ ] Add small methods for starting activities with consistent operation names and tags, for example `frontcomposer.command.dispatch`, `frontcomposer.query.execute`, `frontcomposer.projection.nudge`, `frontcomposer.projection.fallback_poll`, and `frontcomposer.lifecycle.transition`.
-  - [ ] Treat `ActivitySource.StartActivity(...)` returning `null` as the normal no-listener path. Tag helpers must be null-tolerant, allocation-conscious, and side-effect free.
-  - [ ] Keep tag enrichment fail-open: if telemetry metadata cannot be derived safely, omit the tag or emit a bounded failure category; do not throw from telemetry helper code.
-  - [ ] Do not add OpenTelemetry exporter packages to Contracts, SourceTools, or Shell. Host/sample code may demonstrate exporter wiring.
-  - [ ] Dispose only if a process-lifetime owner is introduced; static framework `ActivitySource` should not be disposed per scoped service lifetime.
+- [x] T3. Add Shell telemetry infrastructure without exporter dependencies (AC6, AC7, AC9)
+  - [x] Create a Shell telemetry helper such as `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerTelemetry.cs`.
+  - [x] Instantiate `ActivitySource` using `Hexalith.FrontComposer.Contracts.Telemetry.FrontComposerActivitySource.Name` and `.Version`; keep the constants in Contracts.
+  - [x] Add small methods for starting activities with consistent operation names and tags, for example `frontcomposer.command.dispatch`, `frontcomposer.query.execute`, `frontcomposer.projection.nudge`, `frontcomposer.projection.fallback_poll`, and `frontcomposer.lifecycle.transition`.
+  - [x] Treat `ActivitySource.StartActivity(...)` returning `null` as the normal no-listener path. Tag helpers must be null-tolerant, allocation-conscious, and side-effect free.
+  - [x] Keep tag enrichment fail-open: if telemetry metadata cannot be derived safely, omit the tag or emit a bounded failure category; do not throw from telemetry helper code.
+  - [x] Do not add OpenTelemetry exporter packages to Contracts, SourceTools, or Shell. Host/sample code may demonstrate exporter wiring.
+  - [x] Dispose only if a process-lifetime owner is introduced; static framework `ActivitySource` should not be disposed per scoped service lifetime.
 
-- [ ] T4. Instrument EventStore command/query paths (AC4, AC5, AC6, AC9)
-  - [ ] Wrap `EventStoreCommandClient.DispatchAsync` in an activity that records sanitized command type, message ID, correlation ID, HTTP outcome/status code, elapsed duration, and failure category.
-  - [ ] Wrap `EventStoreQueryClient.QueryAsync`/`ExecuteAsync` in an activity that records sanitized projection/query type, cache discriminator classification, ETag outcome (`hit`, `miss`, `not_modified`, `protocol_drift_retry`), status code, elapsed duration, and failure category.
-  - [ ] Keep request/response payloads, raw or hashed ETags, token values, raw tenant/user IDs, full request URIs, query strings, route values derived from tenant/user input, exception messages, stack traces, and ProblemDetails bodies out of log fields and span tags.
-  - [ ] Use route templates or bounded operation names rather than full URLs when tagging HTTP work. Outgoing HTTP trace context should rely on standard .NET `HttpClient` instrumentation and `Activity.Current`, not custom correlation headers carrying raw identity.
-  - [ ] Add a response-size governance note for DF2: either land `MaxResponseBytes` here or explicitly create a Story 9-4-owned deferred row with blocking rationale before closing 5-6. If landed, instrument response-size rejection as a bounded failure category.
-  - [ ] Preserve Story 5-2 no-churn semantics for `304`: telemetry records no-change, but reducers and UI state must not mutate.
+- [x] T4. Instrument EventStore command/query paths (AC4, AC5, AC6, AC9)
+  - [x] Wrap `EventStoreCommandClient.DispatchAsync` in an activity that records sanitized command type, message ID, correlation ID, HTTP outcome/status code, elapsed duration, and failure category.
+  - [x] Wrap `EventStoreQueryClient.QueryAsync`/`ExecuteAsync` in an activity that records sanitized projection/query type, cache discriminator classification, ETag outcome (`hit`, `miss`, `not_modified`, `protocol_drift_retry`), status code, elapsed duration, and failure category.
+  - [x] Keep request/response payloads, raw or hashed ETags, token values, raw tenant/user IDs, full request URIs, query strings, route values derived from tenant/user input, exception messages, stack traces, and ProblemDetails bodies out of log fields and span tags.
+  - [x] Use route templates or bounded operation names rather than full URLs when tagging HTTP work. Outgoing HTTP trace context should rely on standard .NET `HttpClient` instrumentation and `Activity.Current`, not custom correlation headers carrying raw identity.
+  - [x] Add a response-size governance note for DF2: either land `MaxResponseBytes` here or explicitly create a Story 9-4-owned deferred row with blocking rationale before closing 5-6. If landed, instrument response-size rejection as a bounded failure category.
+  - [x] Preserve Story 5-2 no-churn semantics for `304`: telemetry records no-change, but reducers and UI state must not mutate.
 
-- [ ] T5. Instrument projection connection, rejoin, and fallback polling (AC4, AC5, AC6, AC9)
-  - [ ] Update `ProjectionConnectionStateService`, `SignalRProjectionHubConnectionFactory`, `ProjectionSubscriptionService`, `ProjectionFallbackRefreshScheduler`, and `ProjectionFallbackPollingDriver` to log through shared structured helpers or source-generated LoggerMessage methods.
-  - [ ] Add activities for connection state transitions, reconnect/rejoin sweep, nudge refresh, and fallback polling iteration.
-  - [ ] Add a lightweight rate-limiting or sampling policy for flapping connection logs, resolving deferred item W1 from Story 5-3 review. The policy must use `TimeProvider`-anchored windows/buckets, must not suppress state transitions from metrics/traces, and must keep terminal failure/recovered transitions visible.
-  - [ ] When repeated logs are suppressed, emit or retain a bounded suppression count in the next visible log record so operators can distinguish quiet recovery from repeated flapping.
-  - [ ] Ensure failed rejoin logs include `ProjectionType` and redacted tenant marker only if policy permits; never log raw group names or SignalR exception messages.
-  - [ ] Keep fallback polling behavior unchanged: no extra polling loop, no visible-lane registry duplication, and stop promptly on reconnect/disposal.
+- [x] T5. Instrument projection connection, rejoin, and fallback polling (AC4, AC5, AC6, AC9)
+  - [x] Update `ProjectionConnectionStateService`, `SignalRProjectionHubConnectionFactory`, `ProjectionSubscriptionService`, `ProjectionFallbackRefreshScheduler`, and `ProjectionFallbackPollingDriver` to log through shared structured helpers or source-generated LoggerMessage methods.
+  - [x] Add activities for connection state transitions, reconnect/rejoin sweep, nudge refresh, and fallback polling iteration.
+  - [x] Add a lightweight rate-limiting or sampling policy for flapping connection logs, resolving deferred item W1 from Story 5-3 review. The policy must use `TimeProvider`-anchored windows/buckets, must not suppress state transitions from metrics/traces, and must keep terminal failure/recovered transitions visible.
+  - [x] When repeated logs are suppressed, emit or retain a bounded suppression count in the next visible log record so operators can distinguish quiet recovery from repeated flapping.
+  - [x] Ensure failed rejoin logs include `ProjectionType` and redacted tenant marker only if policy permits; never log raw group names or SignalR exception messages.
+  - [x] Keep fallback polling behavior unchanged: no extra polling loop, no visible-lane registry duplication, and stop promptly on reconnect/disposal.
 
-- [ ] T6. Standardize lifecycle and pending-command logs/spans (AC4, AC5, AC6, AC9)
-  - [ ] Instrument `LifecycleStateService`, `FcLifecycleWrapper`, and the Story 5-5 pending-command resolver/summary seams if present.
-  - [ ] Include `CommandType`, `CorrelationId`, `MessageId`, terminal state, idempotency flag, elapsed threshold bucket, and failure category where available.
-  - [ ] Keep user-facing copy and lifecycle behavior unchanged. Telemetry must observe outcomes, not trigger duplicate lifecycle transitions or UI notifications.
-  - [ ] If Story 5-5 has not yet implemented pending-command services, document the expected instrumentation seam and add tests around existing lifecycle service only.
+- [x] T6. Standardize lifecycle and pending-command logs/spans (AC4, AC5, AC6, AC9)
+  - [x] Instrument `LifecycleStateService`, `FcLifecycleWrapper`, and the Story 5-5 pending-command resolver/summary seams if present.
+  - [x] Include `CommandType`, `CorrelationId`, `MessageId`, terminal state, idempotency flag, elapsed threshold bucket, and failure category where available.
+  - [x] Keep user-facing copy and lifecycle behavior unchanged. Telemetry must observe outcomes, not trigger duplicate lifecycle transitions or UI notifications.
+  - [x] If Story 5-5 has not yet implemented pending-command services, document the expected instrumentation seam and add tests around existing lifecycle service only.
 
-- [ ] T7. Add structured logging helpers and regression tests (AC4, AC5, AC9)
-  - [ ] Prefer `[LoggerMessage]` source-generated partial methods for high-frequency EventStore/projection/lifecycle logs. For low-frequency code, message-template `logger.Log*("...", arg)` is acceptable.
-  - [ ] Centralize telemetry operation-name and tag-key constants in the Shell telemetry helper; tests must prove call sites use the centralized source name/version and approved tag set.
-  - [ ] Add a source scanner test that fails on `logger.Log*( $"...")`, interpolated message templates, string concatenated templates, raw `ex.Message` template arguments on EventStore/projection paths, `BeginScope` values carrying raw payload/identity data, and direct logging of payload variables.
-  - [ ] Add redaction tests extending `EventStoreDiagnosticsTests` to cover token acquisition failures, bad JSON, query failure, rejoin failure, fallback polling failure, lifecycle failure, and telemetry span tags.
-  - [ ] Use a capturing `ILogger` and `ActivityListener` test harness. Do not require live OpenTelemetry collectors.
+- [x] T7. Add structured logging helpers and regression tests (AC4, AC5, AC9)
+  - [x] Prefer `[LoggerMessage]` source-generated partial methods for high-frequency EventStore/projection/lifecycle logs. For low-frequency code, message-template `logger.Log*("...", arg)` is acceptable.
+  - [x] Centralize telemetry operation-name and tag-key constants in the Shell telemetry helper; tests must prove call sites use the centralized source name/version and approved tag set.
+  - [x] Add a source scanner test that fails on `logger.Log*( $"...")`, interpolated message templates, string concatenated templates, raw `ex.Message` template arguments on EventStore/projection paths, `BeginScope` values carrying raw payload/identity data, and direct logging of payload variables.
+  - [x] Add redaction tests extending `EventStoreDiagnosticsTests` to cover token acquisition failures, bad JSON, query failure, rejoin failure, fallback polling failure, lifecycle failure, and telemetry span tags.
+  - [x] Use a capturing `ILogger` and `ActivityListener` test harness. Do not require live OpenTelemetry collectors.
 
-- [ ] T8. Demonstrate host exporter compatibility without framework coupling (AC7, AC9)
-  - [ ] Add or update a sample/host-only snippet that registers OpenTelemetry tracing/logging against `Hexalith.FrontComposer` ActivitySource. Keep exporter packages in the sample host if a concrete exporter is demonstrated.
-  - [ ] Cover OTLP compatibility for Grafana/Tempo or Jaeger and Application Insights compatibility by standard OpenTelemetry exporter configuration, not framework-specific runtime dependencies.
-  - [ ] If sample host dependencies would bloat this story, create documentation-only guidance and a governance test proving framework packages remain exporter-free.
+- [x] T8. Demonstrate host exporter compatibility without framework coupling (AC7, AC9)
+  - [x] Add or update a sample/host-only snippet that registers OpenTelemetry tracing/logging against `Hexalith.FrontComposer` ActivitySource. Keep exporter packages in the sample host if a concrete exporter is demonstrated.
+  - [x] Cover OTLP compatibility for Grafana/Tempo or Jaeger and Application Insights compatibility by standard OpenTelemetry exporter configuration, not framework-specific runtime dependencies.
+  - [x] If sample host dependencies would bloat this story, create documentation-only guidance and a governance test proving framework packages remain exporter-free.
 
-- [ ] T9. Make CI enforcement blocking (AC8, AC9)
-  - [ ] Update `.github/workflows/ci.yml` so the governance/telemetry test lane blocks PR/push. Remove `continue-on-error: true` from `build-and-test` or add a separate blocking governance job.
-  - [ ] Add a named step such as `Gate 2b: Infrastructure governance and telemetry contracts` if that keeps output clearer than folding into Gate 3a.
-  - [ ] Add workflow regression coverage for path filters and matrix conditions so governance still runs for changes to framework source, `.csproj`, `Directory.Packages.props`, generated baselines, governance tests, and the workflow itself.
-  - [ ] Ensure TRX upload and summary still run on failure.
-  - [ ] Keep performance/e2e-palette advisory behavior only if the story explicitly documents why those lanes remain separate from governance.
+- [x] T9. Make CI enforcement blocking (AC8, AC9)
+  - [x] Update `.github/workflows/ci.yml` so the governance/telemetry test lane blocks PR/push. Remove `continue-on-error: true` from `build-and-test` or add a separate blocking governance job.
+  - [x] Add a named step such as `Gate 2b: Infrastructure governance and telemetry contracts` if that keeps output clearer than folding into Gate 3a.
+  - [x] Add workflow regression coverage for path filters and matrix conditions so governance still runs for changes to framework source, `.csproj`, `Directory.Packages.props`, generated baselines, governance tests, and the workflow itself.
+  - [x] Ensure TRX upload and summary still run on failure.
+  - [x] Keep performance/e2e-palette advisory behavior only if the story explicitly documents why those lanes remain separate from governance.
 
-- [ ] T10. Tests and verification (AC1-AC9)
-  - [ ] Governance tests: forbidden package in a synthetic project fails, allowed SignalR Shell reference passes, docs/bin/obj/submodules are excluded, exact allowlist entries work, and failure messages are actionable.
-  - [ ] Assembly tests: Contracts and SourceTools have no infrastructure/provider references; Shell has only approved runtime references.
-  - [ ] Logging tests: message-template usage, event ID/HFC constant presence, required structured fields, no interpolated templates, no raw exception messages on sensitive paths.
-  - [ ] Activity tests: source name/version, operation names, parent/child behavior, key tags, no payload/token/user/raw tenant tags, and no exporter package reference.
-  - [ ] CI tests: workflow contains blocking governance execution and does not hide failing governance tests behind job-level `continue-on-error`.
-  - [ ] Regression suite: run `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` and targeted Contracts/Shell/SourceTools tests. Run full solution tests if the working tree is otherwise clean.
+- [x] T10. Tests and verification (AC1-AC9)
+  - [x] Governance tests: forbidden package in a synthetic project fails, allowed SignalR Shell reference passes, docs/bin/obj/submodules are excluded, exact allowlist entries work, and failure messages are actionable.
+  - [x] Assembly tests: Contracts and SourceTools have no infrastructure/provider references; Shell has only approved runtime references.
+  - [x] Logging tests: message-template usage, event ID/HFC constant presence, required structured fields, no interpolated templates, no raw exception messages on sensitive paths.
+  - [x] Activity tests: source name/version, operation names, parent/child behavior, key tags, no payload/token/user/raw tenant tags, and no exporter package reference.
+  - [x] CI tests: workflow contains blocking governance execution and does not hide failing governance tests behind job-level `continue-on-error`.
+  - [x] Regression suite: run `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` and targeted Contracts/Shell/SourceTools tests. Run full solution tests if the working tree is otherwise clean.
 
 ---
 
@@ -348,16 +348,51 @@ Do not implement these in Story 5-6:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` — passed.
+- `dotnet test Hexalith.FrontComposer.sln --no-build --filter "Category=Governance"` — passed, 20/0/0 in Shell governance lane.
+- `dotnet test tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj --no-build` — passed, 91/0/0.
+- `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --no-build` — passed, 486/0/0.
+- `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --no-build` — passed, 1204/0/3.
+- `dotnet test Hexalith.FrontComposer.sln --no-build` — passed, Contracts 91/0/0, SourceTools 486/0/0, Shell 1204/0/3, Bench 2/0/0.
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- Added deterministic infrastructure governance tests for framework project XML, central package versions, restored `project.assets.json` transitive packages, runtime assembly references, framework source namespaces, generated baselines, exact Shell SignalR allowlist behavior, source logging discipline, and CI workflow blocking behavior.
+- Added Shell-owned telemetry primitives using the Contracts `FrontComposerActivitySource` name/version, centralized operation/tag constants, source-generated logging helpers, null-tolerant activity helpers, bounded failure categories, and sanitized tenant markers.
+- Instrumented EventStore command and query paths with activities, structured outcomes, status codes, elapsed duration, correlation/message IDs where allowed, and redaction-preserving logs without payloads, raw ETags, full URLs, raw identities, raw exception messages, or exception objects in sensitive paths.
+- Instrumented projection nudge, fallback polling, reconnect/rejoin, lifecycle transitions, and pending-command terminal seams. Added deterministic TimeProvider-anchored connection-log rate limiting with suppression counts while keeping state transitions and activities observable.
+- Updated CI so `build-and-test` is blocking and added `Gate 2b: Infrastructure governance and telemetry contracts`; palette/performance lanes remain step-level advisory per their existing variance rationale.
+- Did not implement query `MaxResponseBytes`; logged concrete Story 9-4-owned deferred row `5-6-DF1` with rationale and remaining risk.
 
 ### File List
 
-(to be filled in by dev agent)
+- `.github/workflows/ci.yml`
+- `_bmad-output/implementation-artifacts/5-6-build-time-infrastructure-enforcement-and-observability.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerLog.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerTelemetry.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Lifecycle/LifecycleStateService.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Lifecycle/UlidFactory.cs`
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandPollingCoordinator.cs`
+- `src/Hexalith.FrontComposer.Shell/State/PendingCommands/PendingCommandStateService.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionConnectionState.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackPollingDriver.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ProjectionConnection/ProjectionFallbackRefreshScheduler.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/InfrastructureGovernanceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/EventStoreTelemetryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/FrontComposerTelemetryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/State/ProjectionConnection/ProjectionConnectionTelemetryTests.cs`
+
+### Change Log
+
+- 2026-04-26 — Implemented Story 5-6 governance, telemetry, structured logging, CI blocking gate, and verification coverage; moved story to review.

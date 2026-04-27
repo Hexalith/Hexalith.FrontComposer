@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Text.Json;
 
 using Fluxor;
@@ -7,6 +8,7 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 using Hexalith.FrontComposer.Shell.State.DataGridNavigation;
 
 using Microsoft.Extensions.Logging;
@@ -120,8 +122,10 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
     /// <inheritdoc />
     public async Task<int> TriggerFallbackOnceAsync(CancellationToken cancellationToken = default) {
+        using Activity? activity = FrontComposerTelemetry.StartProjectionFallbackPoll();
         FcShellOptions current = options.CurrentValue;
         if (current.ProjectionFallbackPollingIntervalSeconds <= 0 || !connectionState.Current.IsDisconnected) {
+            FrontComposerTelemetry.SetOutcome(activity, "skipped");
             return 0;
         }
 
@@ -143,6 +147,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
         }
 
+        FrontComposerTelemetry.SetOutcome(activity, refreshed > 0 ? "refreshed" : "empty");
         return refreshed;
     }
 
@@ -150,6 +155,9 @@ public sealed class ProjectionFallbackRefreshScheduler(
     public async Task<int> TriggerNudgeRefreshAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
         string safeProjectionType = EventStoreValidation.RequireNonColonSegment(projectionType, nameof(projectionType));
         string safeTenantId = EventStoreValidation.RequireNonColonSegment(tenantId, nameof(tenantId));
+        using Activity? activity = FrontComposerTelemetry.StartProjectionNudge(
+            safeProjectionType,
+            FrontComposerTelemetry.TenantMarker(safeTenantId));
         int budget = Math.Max(0, options.CurrentValue.MaxProjectionFallbackPollingLanes);
         int refreshed = 0;
         IEnumerable<LaneEntry> matches = _lanes.Values
@@ -166,6 +174,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
         }
 
+        FrontComposerTelemetry.SetOutcome(activity, refreshed > 0 ? "refreshed" : "empty");
         return refreshed;
     }
 
@@ -271,9 +280,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
         catch (Exception ex) when (ex is not OperationCanceledException) {
             // P5 — log only the redacted exception type. Raw exception messages can carry
             // tenant/group/payload data; structured `FailureCategory` keeps logs bounded.
-            logger.LogWarning(
-                "Projection refresh failed. FailureCategory={FailureCategory}",
-                ex.GetType().Name);
+            FrontComposerLog.ProjectionRefreshFailed(logger, lane.ProjectionType, ex.GetType().Name);
             outcome = ProjectionLaneRefreshResult.Skipped;
         }
         finally {

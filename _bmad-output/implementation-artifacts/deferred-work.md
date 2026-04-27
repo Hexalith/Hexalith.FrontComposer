@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: 5-6-build-time-infrastructure-enforcement-and-observability (2026-04-26 bmad-dev-story)
+
+- **5-6-DF1 — Query response `MaxResponseBytes` guard remains unimplemented** [`src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`] — Story 5-6 added telemetry around query outcomes and preserved Story 5-2 no-churn semantics, but did not add a response-size rejection path because that would change the HTTP/query classification contract and requires an option default, migration guidance, and AOT/governance review. **Owner: Story 9-4 diagnostic/governance/AOT cleanup.** Remaining risk: a hostile or buggy EventStore endpoint can return an oversized 200 OK body before JSON parsing fails; telemetry must continue to avoid logging response bodies or raw exception messages.
+
 ## Deferred from: code review of 5-1-eventstore-service-abstractions (2026-04-25 bmad-code-review)
 
 - **DF1 — `SignalRProjectionHubConnectionFactory` passes `CancellationToken.None` to `accessTokenProvider`** [`src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/SignalRProjectionHubConnectionFactory.cs:10`] — SignalR's `HttpConnectionOptions.AccessTokenProvider` API has signature `Func<Task<string?>>` with no `CancellationToken` parameter. A slow IdP refresh during connect/reconnect cannot be aborted by user navigation or app shutdown. Inherent framework limitation; revisit with Story 5-3 reconnect policy where a service-level `CancellationTokenSource` can wrap the call.

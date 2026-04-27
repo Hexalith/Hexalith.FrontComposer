@@ -1,3 +1,7 @@
+using System.Diagnostics;
+
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.State.ProjectionConnection;
@@ -47,6 +51,7 @@ public sealed class ProjectionConnectionStateService(
     ILogger<ProjectionConnectionStateService> logger) : IProjectionConnectionState {
     private readonly object _sync = new();
     private readonly List<Action<ProjectionConnectionSnapshot>> _handlers = [];
+    private readonly Dictionary<string, ConnectionLogBucket> _logBuckets = new(StringComparer.Ordinal);
     private ProjectionConnectionSnapshot _current = new(
         ProjectionConnectionStatus.Connected,
         timeProvider.GetUtcNow(),
@@ -114,11 +119,20 @@ public sealed class ProjectionConnectionStateService(
             handlers = [.. _handlers];
         }
 
-        logger.LogInformation(
-            "EventStore projection connection state changed. Status={Status}, Attempt={Attempt}, FailureCategory={FailureCategory}",
-            snapshot.Status,
+        int suppressedCount = ShouldLogConnectionTransition(snapshot, out bool emitLog);
+        using Activity? activity = FrontComposerTelemetry.StartProjectionConnectionTransition(
+            snapshot.Status.ToString(),
+            snapshot.LastFailureCategory,
             snapshot.ReconnectAttempt,
-            snapshot.LastFailureCategory ?? "none");
+            suppressedCount);
+        if (emitLog) {
+            FrontComposerLog.ProjectionConnectionChanged(
+                logger,
+                snapshot.Status.ToString(),
+                snapshot.ReconnectAttempt,
+                snapshot.LastFailureCategory ?? "none",
+                suppressedCount);
+        }
 
         // P7 — wrap handler invocations: a single throwing subscriber must not skip the rest
         // of the chain or escalate up the SignalR dispatcher. Failures are logged at warning
@@ -150,6 +164,33 @@ public sealed class ProjectionConnectionStateService(
         }
     }
 
+    private int ShouldLogConnectionTransition(ProjectionConnectionSnapshot snapshot, out bool emitLog) {
+        if (snapshot.Status is ProjectionConnectionStatus.Connected or ProjectionConnectionStatus.Disconnected) {
+            lock (_sync) {
+                int suppressed = _logBuckets.Values.Sum(static bucket => bucket.SuppressedCount);
+                _logBuckets.Clear();
+                emitLog = true;
+                return suppressed;
+            }
+        }
+
+        string key = string.Concat(snapshot.Status, "|", snapshot.LastFailureCategory ?? "none");
+        DateTimeOffset now = timeProvider.GetUtcNow();
+        lock (_sync) {
+            if (!_logBuckets.TryGetValue(key, out ConnectionLogBucket? bucket)
+                || now - bucket.WindowStartedAt >= TimeSpan.FromSeconds(30)) {
+                int suppressed = bucket?.SuppressedCount ?? 0;
+                _logBuckets[key] = new ConnectionLogBucket(now, 0);
+                emitLog = true;
+                return suppressed;
+            }
+
+            bucket.SuppressedCount++;
+            emitLog = false;
+            return bucket.SuppressedCount;
+        }
+    }
+
     private static string? BoundCategory(string? value) {
         if (string.IsNullOrWhiteSpace(value)) {
             return null;
@@ -177,5 +218,10 @@ public sealed class ProjectionConnectionStateService(
                 owner.Unsubscribe(handler);
             }
         }
+    }
+
+    private sealed class ConnectionLogBucket(DateTimeOffset windowStartedAt, int suppressedCount) {
+        public DateTimeOffset WindowStartedAt { get; } = windowStartedAt;
+        public int SuppressedCount { get; set; } = suppressedCount;
     }
 }

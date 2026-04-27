@@ -54,9 +54,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # DIVERGENCE 3: Advisory mode -- gates report but do not block merges during Epic 1.
-    # TODO(Epic 2): Remove continue-on-error to harden gates to blocking.
-    continue-on-error: true
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -97,6 +94,12 @@ jobs:
       - name: 'Gate 2: Solution Build'
         run: dotnet build Hexalith.FrontComposer.sln --configuration Release --no-restore
 
+      # Gate 2b: Infrastructure governance and telemetry contracts
+      - name: 'Gate 2b: Infrastructure governance and telemetry contracts'
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
+
       # Gate 3: All tests pass
       # DIVERGENCE 4: Solution-level testing -- FrontComposer runs a single `dotnet test` on the
       # whole solution (all tests are Tier 1, no DAPR/Aspire tiers). EventStore runs 12 separate
@@ -107,7 +110,8 @@ jobs:
       #   - Gate 3a (default):   excludes both Performance and e2e-palette traits.
       #   - Gate 3b (palette):   `Category=e2e-palette` (Story 3-7 T1 — bUnit-level flow gate).
       #   - Gate 3c (perf bench): `Category=Performance` (Story 1-8 + Story 3-7 T2 BDN bench).
-      # The job-level `continue-on-error: true` (line 59) keeps perf regressions advisory.
+      # Palette/performance lanes remain advisory while Story 3-7 stabilizes browser and latency
+      # variance; governance and default unit/bUnit lanes above are blocking.
       - name: 'Gate 3a: Unit + bUnit (default lane)'
         env:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
@@ -116,11 +120,13 @@ jobs:
         run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: 'Gate 3b: Palette E2E (e2e-palette lane)'
+        continue-on-error: true
         env:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results-e2e-palette.trx"
 
       - name: 'Gate 3c: Performance bench (Performance lane)'
+        continue-on-error: true
         env:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Performance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-performance.trx"

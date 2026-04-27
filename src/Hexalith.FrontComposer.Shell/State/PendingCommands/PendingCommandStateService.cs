@@ -1,8 +1,10 @@
 using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -173,9 +175,19 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
 
         if (duplicate) {
+            using Activity? duplicateActivity = FrontComposerTelemetry.StartPendingCommandOutcome(
+                "duplicate_ignored",
+                terminal.CommandTypeName,
+                terminal.MessageId,
+                terminal.CorrelationId);
             return PendingCommandResolutionResult.DuplicateIgnored(terminal);
         }
 
+        using Activity? activity = FrontComposerTelemetry.StartPendingCommandOutcome(
+            terminal.Status.ToString(),
+            terminal.CommandTypeName,
+            terminal.MessageId,
+            terminal.CorrelationId);
         try {
             CommandLifecycleState lifecycleState = terminal.Status == PendingCommandStatus.Rejected
                 ? CommandLifecycleState.Rejected
@@ -186,14 +198,16 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
             _lifecycle.Transition(terminal.CorrelationId, lifecycleState, terminal.MessageId, idempotencyResolved);
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
-            _logger.LogError(
-                ex,
-                "Pending command lifecycle terminal dispatch failed. MessageId={MessageId} Outcome={Outcome}",
+            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            FrontComposerLog.PendingCommandLifecycleTerminalDispatchFailed(
+                _logger,
                 terminal.MessageId,
-                terminal.Status);
+                terminal.Status.ToString(),
+                ex.GetType().Name);
             return PendingCommandResolutionResult.LifecycleDispatchFailed(terminal);
         }
 
+        FrontComposerTelemetry.SetOutcome(activity, "resolved");
         return PendingCommandResolutionResult.Resolved(terminal);
     }
 
@@ -384,10 +398,10 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
         catch (Exception ex) when (ex is not OperationCanceledException) {
             _logger.LogWarning(
-                ex,
-                "Pending command lifecycle dispatch failed during {Reason}. MessageId={MessageId}",
+                "Pending command lifecycle dispatch failed during {Reason}. MessageId={MessageId} FailureCategory={FailureCategory}",
                 reason,
-                entry.MessageId);
+                entry.MessageId,
+                ex.GetType().Name);
             return true;
         }
     }

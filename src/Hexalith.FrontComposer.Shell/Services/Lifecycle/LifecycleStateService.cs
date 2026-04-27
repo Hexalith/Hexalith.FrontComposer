@@ -1,9 +1,11 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
 using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -123,9 +125,9 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 _logger.LogError(
-                    ex,
-                    "Lifecycle subscribe replay callback faulted. CorrelationId={CorrelationId}",
-                    correlationId);
+                    "Lifecycle subscribe replay callback faulted. CorrelationId={CorrelationId} FailureCategory={FailureCategory}",
+                    correlationId,
+                    ex.GetType().Name);
             }
         }
 
@@ -289,6 +291,17 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             TimestampUtc: now,
             LastTransitionAt: originalAt,
             IdempotencyResolved: effectiveIdempotencyResolved);
+        using Activity? activity = FrontComposerTelemetry.StartLifecycleTransition(
+            applied.ToString(),
+            correlationId,
+            transition.MessageId,
+            effectiveIdempotencyResolved);
+        FrontComposerLog.LifecycleTransitionObserved(
+            _logger,
+            correlationId,
+            transition.MessageId,
+            applied.ToString(),
+            effectiveIdempotencyResolved);
 
         InvokeSubscribers(correlationId, transition);
     }
@@ -309,10 +322,10 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             }
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 _logger.LogError(
-                    ex,
-                    "Lifecycle subscriber callback faulted. CorrelationId={CorrelationId} NewState={NewState}",
+                    "Lifecycle subscriber callback faulted. CorrelationId={CorrelationId} NewState={NewState} FailureCategory={FailureCategory}",
                     correlationId,
-                    transition.NewState);
+                    transition.NewState,
+                    ex.GetType().Name);
             }
         }
     }
