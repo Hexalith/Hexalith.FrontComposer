@@ -138,8 +138,12 @@ public sealed class EventStoreQueryClient(
 
             switch (classification.Outcome) {
                 case QueryClassificationOutcome.NotModified: {
+                    // F28 — distinguish "served cached payload after 304" (from_cache) from
+                    // "no-change signal returned to caller" (not_modified). Default to
+                    // not_modified; the cached branch overrides to from_cache.
                     FrontComposerTelemetry.SetOutcome(activity, "not_modified");
                     if (cachedEntry is not null) {
+                        FrontComposerTelemetry.SetOutcome(activity, "from_cache");
                         try {
                             return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
                         }
@@ -251,12 +255,25 @@ public sealed class EventStoreQueryClient(
                 }
             }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+        catch (OperationCanceledException oce) when (cancellationToken.IsCancellationRequested
+            || oce.CancellationToken.IsCancellationRequested) {
+            // F18 — broaden the canceled filter so a linked-CTS leaf cancellation classifies
+            // as canceled rather than failure.
             FrontComposerTelemetry.SetOutcome(activity, "canceled");
             throw;
         }
         catch (Exception ex) {
-            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            // F19/F23/F30 — only set outcome/failure if the explicit branch above did not
+            // already tag them. This preserves "protocol_drift_retry" / "rejected" /
+            // "schema_mismatch" outcomes set before the recursive call or throw bubbles here.
+            if (activity?.GetTagItem(FrontComposerTelemetry.OutcomeTag) is null) {
+                FrontComposerTelemetry.SetOutcome(activity, "failed");
+            }
+
+            if (activity?.GetTagItem(FrontComposerTelemetry.FailureCategoryTag) is null) {
+                FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            }
+
             throw;
         }
         finally {

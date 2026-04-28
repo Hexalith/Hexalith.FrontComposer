@@ -48,10 +48,16 @@ public interface IProjectionConnectionState {
 /// <summary>Scoped per-circuit projection connection state service.</summary>
 public sealed class ProjectionConnectionStateService(
     TimeProvider timeProvider,
-    ILogger<ProjectionConnectionStateService> logger) : IProjectionConnectionState {
+    ILogger<ProjectionConnectionStateService> logger) : IProjectionConnectionState, IDisposable, IAsyncDisposable {
+    /// <summary>F16 — cap on distinct bucket keys to prevent unbounded growth under churning
+    /// failure categories. When the cap is hit, the oldest bucket is evicted (its suppressed
+    /// count is preserved on the next visible log via the closing flush).</summary>
+    private const int MaxLogBuckets = 16;
+
     private readonly object _sync = new();
     private readonly List<Action<ProjectionConnectionSnapshot>> _handlers = [];
     private readonly Dictionary<string, ConnectionLogBucket> _logBuckets = new(StringComparer.Ordinal);
+    private int _disposed;
     private ProjectionConnectionSnapshot _current = new(
         ProjectionConnectionStatus.Connected,
         timeProvider.GetUtcNow(),
@@ -166,12 +172,20 @@ public sealed class ProjectionConnectionStateService(
 
     private int ShouldLogConnectionTransition(ProjectionConnectionSnapshot snapshot, out bool emitLog) {
         if (snapshot.Status is ProjectionConnectionStatus.Connected or ProjectionConnectionStatus.Disconnected) {
+            int suppressed = 0;
             lock (_sync) {
-                int suppressed = _logBuckets.Values.Sum(static bucket => bucket.SuppressedCount);
+                // F15 — sum + clear under lock without LINQ allocation. The previous
+                // _logBuckets.Values.Sum(...) call allocated an enumerator on every Connected
+                // or Disconnected transition (the chatty branch under reconnect storms).
+                foreach (ConnectionLogBucket bucket in _logBuckets.Values) {
+                    suppressed += bucket.SuppressedCount;
+                }
+
                 _logBuckets.Clear();
-                emitLog = true;
-                return suppressed;
             }
+
+            emitLog = true;
+            return suppressed;
         }
 
         string key = string.Concat(snapshot.Status, "|", snapshot.LastFailureCategory ?? "none");
@@ -180,6 +194,26 @@ public sealed class ProjectionConnectionStateService(
             if (!_logBuckets.TryGetValue(key, out ConnectionLogBucket? bucket)
                 || now - bucket.WindowStartedAt >= TimeSpan.FromSeconds(30)) {
                 int suppressed = bucket?.SuppressedCount ?? 0;
+                // F16 — evict the oldest bucket when the cap is hit so churning failure
+                // categories cannot grow the dictionary unbounded. The evicted bucket's
+                // suppressed count is folded into the about-to-emit window so operators
+                // never lose the suppression signal.
+                if (bucket is null && _logBuckets.Count >= MaxLogBuckets) {
+                    KeyValuePair<string, ConnectionLogBucket> oldest = default;
+                    DateTimeOffset oldestStart = DateTimeOffset.MaxValue;
+                    foreach (KeyValuePair<string, ConnectionLogBucket> entry in _logBuckets) {
+                        if (entry.Value.WindowStartedAt < oldestStart) {
+                            oldestStart = entry.Value.WindowStartedAt;
+                            oldest = entry;
+                        }
+                    }
+
+                    if (oldest.Key is not null) {
+                        suppressed += oldest.Value.SuppressedCount;
+                        _ = _logBuckets.Remove(oldest.Key);
+                    }
+                }
+
                 _logBuckets[key] = new ConnectionLogBucket(now, 0);
                 emitLog = true;
                 return suppressed;
@@ -189,6 +223,49 @@ public sealed class ProjectionConnectionStateService(
             emitLog = false;
             return bucket.SuppressedCount;
         }
+    }
+
+    /// <summary>F07 — flush the suppression-count totals on circuit/process teardown so
+    /// operators never see a "1 reconnect log, then silence" pattern when the host disposes
+    /// before the next visible Connected/Disconnected transition.</summary>
+    public void Dispose() {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
+            return;
+        }
+
+        int suppressed;
+        ProjectionConnectionStatus lastStatus;
+        string? lastFailure;
+        int lastAttempt;
+        lock (_sync) {
+            if (_logBuckets.Count == 0) {
+                return;
+            }
+
+            suppressed = 0;
+            foreach (ConnectionLogBucket bucket in _logBuckets.Values) {
+                suppressed += bucket.SuppressedCount;
+            }
+
+            _logBuckets.Clear();
+            lastStatus = _current.Status;
+            lastFailure = _current.LastFailureCategory;
+            lastAttempt = _current.ReconnectAttempt;
+        }
+
+        if (suppressed > 0) {
+            FrontComposerLog.ProjectionConnectionChanged(
+                logger,
+                lastStatus.ToString(),
+                lastAttempt,
+                lastFailure ?? "none",
+                suppressed);
+        }
+    }
+
+    public ValueTask DisposeAsync() {
+        Dispose();
+        return ValueTask.CompletedTask;
     }
 
     private static string? BoundCategory(string? value) {

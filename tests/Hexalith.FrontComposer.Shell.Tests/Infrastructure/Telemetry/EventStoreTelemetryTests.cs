@@ -44,15 +44,91 @@ public sealed class EventStoreTelemetryTests {
             FrontComposerTelemetry.CommandDispatchOperation,
             activity => string.Equals(
                 activity.GetTagItem(FrontComposerTelemetry.MessageIdTag) as string,
-                "01HVTESTULID",
+                "01HVTELEMETRY01",
                 StringComparison.Ordinal));
         activity.GetTagItem(FrontComposerTelemetry.CommandTypeTag).ShouldBe(typeof(ShipOrderCommand).FullName);
-        activity.GetTagItem(FrontComposerTelemetry.MessageIdTag).ShouldBe("01HVTESTULID");
+        activity.GetTagItem(FrontComposerTelemetry.MessageIdTag).ShouldBe("01HVTELEMETRY01");
         activity.GetTagItem(FrontComposerTelemetry.CorrelationIdTag).ShouldBe("corr-1");
         activity.GetTagItem(FrontComposerTelemetry.TenantMarkerTag).ShouldBe("present");
         activity.Tags.Select(static tag => tag.Value).ShouldNotContain(token);
         activity.Tags.Select(static tag => tag.Value).ShouldNotContain("tenant-secret");
         activity.Tags.Select(static tag => tag.Value).ShouldNotContain("user-secret");
+
+        // F20 — assert the token was actually transmitted in the Authorization header so the
+        // negative tag-redaction assertion above is non-vacuous (we proved it CAN leak; we then
+        // proved it does NOT leak into span tags). Without this positive proof the prior
+        // assertion would pass even if no token were ever sent.
+        handler.LastRequest.ShouldNotBeNull();
+        handler.LastRequest!.Headers.Authorization.ShouldNotBeNull();
+        handler.LastRequest.Headers.Authorization!.Parameter.ShouldBe(token);
+    }
+
+    [Fact]
+    public async Task QueryNotModifiedTwiceWithoutCache_TagsProtocolDriftRetry() {
+        // F39 — the protocol_drift_retry cache outcome is otherwise covered only by an
+        // operational log line; surface it through ActivityListener so dashboards see a
+        // distinct outcome value when EventStore returns 304 twice without a matching cache.
+        int requestCount = 0;
+        RecordingHandler handler = new(_ => {
+            requestCount++;
+            return new HttpResponseMessage(HttpStatusCode.NotModified);
+        });
+        EventStoreQueryClient sut = new(
+            new SingleClientFactory(handler),
+            Options(),
+            new TestUserContextAccessor("tenant-secret", "user-secret"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EmptyKeyedCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
+            NullLogger<EventStoreQueryClient>.Instance);
+        using ActivityCapture capture = ActivityCapture.Start();
+
+        QueryRequest request = new(
+            ProjectionType: "orders",
+            TenantId: "tenant-secret",
+            Domain: "orders",
+            AggregateId: "order-1",
+            QueryType: "GetOrders",
+            CacheDiscriminator: "discriminator-1",
+            CachePayloadVersion: 1);
+
+        // The first call sends If-None-Match with a non-null cache key but null entry
+        // → outer activity tags protocol_drift_retry, recurses; recursion observes 304
+        // again with allowProtocolDriftRetry=false and throws HttpRequestException.
+        _ = await Should.ThrowAsync<HttpRequestException>(() =>
+            sut.QueryAsync<OrderProjection>(request, TestContext.Current.CancellationToken));
+
+        requestCount.ShouldBe(2);
+        Activity outerActivity = capture.AllOf(FrontComposerTelemetry.QueryExecuteOperation)
+            .Single(a => string.Equals(
+                a.GetTagItem(FrontComposerTelemetry.OutcomeTag) as string,
+                "protocol_drift_retry",
+                StringComparison.Ordinal));
+        outerActivity.GetTagItem(FrontComposerTelemetry.OutcomeTag).ShouldBe("protocol_drift_retry");
+    }
+
+    /// <summary>
+    /// Cache fixture that returns true for TryBuildKey (so the QueryClient enters the
+    /// cache-integration code path) but null for TryGetAsync (so the protocol-drift retry
+    /// branch is reachable).
+    /// </summary>
+    private sealed class EmptyKeyedCache : Hexalith.FrontComposer.Shell.State.ETagCache.IETagCache {
+        public bool TryBuildKey(string? tenantId, string? userId, string? discriminator, out string key) {
+            key = $"k|{tenantId}|{userId}|{discriminator}";
+            return true;
+        }
+
+        public Task<Hexalith.FrontComposer.Shell.State.ETagCache.ETagCacheEntry?> TryGetAsync(string key, int expectedPayloadVersion, CancellationToken cancellationToken = default)
+            => Task.FromResult<Hexalith.FrontComposer.Shell.State.ETagCache.ETagCacheEntry?>(null);
+
+        public Task SetAsync(string key, Hexalith.FrontComposer.Shell.State.ETagCache.ETagCacheEntry entry, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+
+        public Task RemoveByProjectionTypeAsync(string projectionType, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
     }
 
     [Fact]
@@ -107,7 +183,7 @@ public sealed class EventStoreTelemetryTests {
     private sealed record OrderProjection(string Id);
 
     private sealed class FixedUlidFactory : IUlidFactory {
-        public string NewUlid() => "01HVTESTULID";
+        public string NewUlid() => "01HVTELEMETRY01";
     }
 
     private sealed class TestUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {
@@ -121,27 +197,51 @@ public sealed class EventStoreTelemetryTests {
     }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler {
-        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-            => Task.FromResult(responseFactory(request));
+        public HttpRequestMessage? LastRequest { get; private set; }
+
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) {
+            LastRequest = request;
+            return Task.FromResult(responseFactory(request));
+        }
     }
 
     private sealed class ActivityCapture : IDisposable {
         private readonly ActivityListener _listener;
         private readonly List<Activity> _activities = [];
+        private readonly object _sync = new();
 
         private ActivityCapture() {
             _listener = new ActivityListener {
                 ShouldListenTo = source => source.Name == Hexalith.FrontComposer.Contracts.Telemetry.FrontComposerActivitySource.Name,
                 Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-                ActivityStopped = activity => _activities.Add(activity),
+                ActivityStopped = activity => {
+                    lock (_sync) {
+                        _activities.Add(activity);
+                    }
+                },
             };
             ActivitySource.AddActivityListener(_listener);
         }
 
         public static ActivityCapture Start() => new();
 
-        public Activity Single(string operationName, Func<Activity, bool> predicate)
-            => _activities.Single(activity => activity.OperationName == operationName && predicate(activity));
+        public Activity Single(string operationName, Func<Activity, bool> predicate) {
+            Activity[] snapshot;
+            lock (_sync) {
+                snapshot = [.. _activities];
+            }
+
+            return snapshot.Single(activity => activity.OperationName == operationName && predicate(activity));
+        }
+
+        public IEnumerable<Activity> AllOf(string operationName) {
+            Activity[] snapshot;
+            lock (_sync) {
+                snapshot = [.. _activities];
+            }
+
+            return snapshot.Where(activity => activity.OperationName == operationName);
+        }
 
         public void Dispose() => _listener.Dispose();
     }

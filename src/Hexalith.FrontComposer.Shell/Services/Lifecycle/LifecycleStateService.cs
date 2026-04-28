@@ -126,7 +126,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 _logger.LogError(
                     "Lifecycle subscribe replay callback faulted. CorrelationId={CorrelationId} FailureCategory={FailureCategory}",
-                    correlationId,
+                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
                     ex.GetType().Name);
             }
         }
@@ -195,8 +195,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             _logger.LogWarning(
                 "HFC2005: duplicate MessageId detected across CorrelationIds (treated as fresh submission). " +
                 "CorrelationId={CorrelationId} MessageId={MessageId}",
-                correlationId,
-                messageId);
+                FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
+                FrontComposerTelemetry.SafeIdentifier(messageId));
         }
 
         LifecycleEntry entry = _entries.GetOrAdd(
@@ -222,10 +222,10 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                 _logger.LogError(
                     "HFC2004: invalid lifecycle transition dropped. " +
                     "CorrelationId={CorrelationId} From={From} To={To} MessageId={MessageId}",
-                    correlationId,
+                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
                     previous,
                     newState,
-                    messageId);
+                    FrontComposerTelemetry.SafeIdentifier(messageId));
                 return;
             }
 
@@ -235,7 +235,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
                 _logger.LogWarning(
                     "HFC2007: transition arrived for a CorrelationId without a prior Submitted observation. " +
                     "CorrelationId={CorrelationId} State={State}",
-                    correlationId,
+                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
                     newState);
             }
 
@@ -291,6 +291,12 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             TimestampUtc: now,
             LastTransitionAt: originalAt,
             IdempotencyResolved: effectiveIdempotencyResolved);
+        // F33 — InvokeSubscribers must run INSIDE the lifecycle activity scope so any
+        // subscriber-initiated work (DOM dispatch, follow-on queries, etc.) nests correctly
+        // under Activity.Current. The previous layout disposed the activity at method exit
+        // but logically delimited the span around just the in-process transition.
+        // F09 — sanitize correlationId / messageId at the log boundary so trace tags and
+        // structured log fields share the same bounded format.
         using Activity? activity = FrontComposerTelemetry.StartLifecycleTransition(
             applied.ToString(),
             correlationId,
@@ -298,8 +304,8 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             effectiveIdempotencyResolved);
         FrontComposerLog.LifecycleTransitionObserved(
             _logger,
-            correlationId,
-            transition.MessageId,
+            FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
+            FrontComposerTelemetry.SafeIdentifier(transition.MessageId),
             applied.ToString(),
             effectiveIdempotencyResolved);
 
@@ -323,7 +329,7 @@ public sealed class LifecycleStateService : ILifecycleStateService, IAsyncDispos
             catch (Exception ex) when (ex is not OperationCanceledException) {
                 _logger.LogError(
                     "Lifecycle subscriber callback faulted. CorrelationId={CorrelationId} NewState={NewState} FailureCategory={FailureCategory}",
-                    correlationId,
+                    FrontComposerTelemetry.SafeIdentifierOrAbsent(correlationId),
                     transition.NewState,
                     ex.GetType().Name);
             }

@@ -6,14 +6,14 @@ internal static partial class FrontComposerLog {
     [LoggerMessage(
         EventId = 5601,
         Level = LogLevel.Warning,
-        Message = "EventStore command dispatch returned unexpected HTTP status {StatusCode}. LocationPath={LocationPath} CommandType={CommandType} MessageId={MessageId} FailureCategory={FailureCategory} ElapsedMs={ElapsedMs}")]
+        Message = "EventStore command dispatch returned unexpected HTTP status {StatusCode}. CommandType={CommandType} MessageId={MessageId} FailureCategory={FailureCategory} LocationPresent={LocationPresent} ElapsedMs={ElapsedMs}")]
     public static partial void CommandUnexpectedStatus(
         ILogger logger,
         int statusCode,
-        string? locationPath,
         string commandType,
         string messageId,
         string failureCategory,
+        bool locationPresent,
         double elapsedMs);
 
     [LoggerMessage(

@@ -13,6 +13,11 @@ internal static class FrontComposerTelemetry {
     public const string CommandDispatchOperation = "frontcomposer.command.dispatch";
     public const string QueryExecuteOperation = "frontcomposer.query.execute";
     public const string ProjectionNudgeOperation = "frontcomposer.projection.nudge";
+    // F03 — distinguish the SignalR-callback receive seam from the lane refresh seam to avoid
+    // double-counting under `frontcomposer.projection.nudge` when both fire for the same logical
+    // event. The receive span wraps subscriber dispatch + downstream scheduler call; the nudge
+    // span owns the actual lane refresh work.
+    public const string ProjectionNudgeReceivedOperation = "frontcomposer.projection.nudge_received";
     public const string ProjectionFallbackPollOperation = "frontcomposer.projection.fallback_poll";
     public const string ProjectionConnectionTransitionOperation = "frontcomposer.projection.connection_transition";
     public const string ProjectionRejoinOperation = "frontcomposer.projection.rejoin";
@@ -57,6 +62,14 @@ internal static class FrontComposerTelemetry {
     public static Activity? StartProjectionNudge(string projectionType, string tenantMarker)
         => Start(
             ProjectionNudgeOperation,
+            ActivityKind.Internal,
+            (ProjectionTypeTag, SafeTypeName(projectionType)),
+            (TenantMarkerTag, tenantMarker),
+            (TransportTag, "signalr"));
+
+    public static Activity? StartProjectionNudgeReceived(string projectionType, string tenantMarker)
+        => Start(
+            ProjectionNudgeReceivedOperation,
             ActivityKind.Internal,
             (ProjectionTypeTag, SafeTypeName(projectionType)),
             (TenantMarkerTag, tenantMarker),
@@ -178,7 +191,20 @@ internal static class FrontComposerTelemetry {
         activity.SetTag(key, value);
     }
 
-    private static string? SafeIdentifier(string? value)
+    /// <summary>
+    /// F09 — public sanitization helper for log call sites so trace tags and structured log
+    /// fields share the same bounded format. Returns the sanitized value, or "absent" when
+    /// the input is null or whitespace, or "malformed" when sanitization produced no chars.
+    /// </summary>
+    public static string SafeIdentifierOrAbsent(string? value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return "absent";
+        }
+
+        return BoundCategory(value) ?? "malformed";
+    }
+
+    public static string? SafeIdentifier(string? value)
         => string.IsNullOrWhiteSpace(value) ? null : BoundCategory(value);
 
     private static string? SafeTypeName(string? value)

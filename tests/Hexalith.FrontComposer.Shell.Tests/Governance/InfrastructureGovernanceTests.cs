@@ -45,10 +45,19 @@ public sealed class InfrastructureGovernanceTests {
     public void RestoredAssets_DoNotContainForbiddenTransitiveProviderPackages() {
         string root = RepositoryRoot();
         List<GovernanceViolation> violations = [];
+        int scanned = 0;
         foreach (string project in FrameworkProjectRelativePaths) {
-            violations.AddRange(InfrastructureGovernance.ScanRestoredAssets(Path.Combine(root, project), root));
+            (int scannedDelta, List<GovernanceViolation> projectViolations) = InfrastructureGovernance.ScanRestoredAssetsTracked(Path.Combine(root, project), root);
+            scanned += scannedDelta;
+            violations.AddRange(projectViolations);
         }
 
+        // F10 — fail-fast when no project.assets.json could be located. CI restores before
+        // governance runs; locally `dotnet test` without `dotnet restore` would otherwise
+        // produce a silent false-green for the transitive deny-list. Surface the gap loudly.
+        scanned.ShouldBeGreaterThan(
+            0,
+            "no project.assets.json files were located under any framework project; run `dotnet restore` before executing the governance lane locally");
         violations.ShouldBeEmpty(FormatViolations(violations));
     }
 
@@ -90,9 +99,16 @@ public sealed class InfrastructureGovernanceTests {
             "src/Hexalith.FrontComposer.Shell/State/PendingCommands",
         ];
 
+        // F21 — cover BeginScope, string-concat templates, LoggerExtensions static-call form,
+        // and the existing interpolated/raw-ex/ex.Message patterns. Reading a file once and
+        // running multiple regex passes keeps the scanner deterministic and easy to extend.
         List<string> violations = [];
         foreach (string path in paths) {
-            foreach (string file in Directory.EnumerateFiles(Path.Combine(root, path), "*.cs", SearchOption.AllDirectories)) {
+            EnumerationOptions options = new() {
+                RecurseSubdirectories = true,
+                AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            };
+            foreach (string file in Directory.EnumerateFiles(Path.Combine(root, path), "*.cs", options)) {
                 string text = File.ReadAllText(file);
                 string relative = Path.GetRelativePath(root, file).Replace('\\', '/');
                 if (Regex.IsMatch(text, @"\.Log(?:Trace|Debug|Information|Warning|Error|Critical)\s*\(\s*\$""", RegexOptions.Multiline)) {
@@ -101,6 +117,22 @@ public sealed class InfrastructureGovernanceTests {
 
                 if (Regex.IsMatch(text, @"\.Log(?:Trace|Debug|Information|Warning|Error|Critical)\s*\(\s*ex\s*,", RegexOptions.Multiline)) {
                     violations.Add(relative + ": raw exception object passed to ILogger in sensitive path");
+                }
+
+                if (Regex.IsMatch(text, @"LoggerExtensions\.Log\w*\s*\(\s*[A-Za-z_][A-Za-z0-9_]*\s*,\s*\$""", RegexOptions.Multiline)) {
+                    violations.Add(relative + ": interpolated template passed via LoggerExtensions static call");
+                }
+
+                // Detect string concat with a non-literal: `"foo" + variable`. Compiler-folded
+                // line-continuation concats `"foo" + "bar"` are functionally equivalent to a
+                // single literal at runtime and are allowed (the right-hand side starts with a
+                // quote, so the negated character class excludes them).
+                if (Regex.IsMatch(text, @"\.Log(?:Trace|Debug|Information|Warning|Error|Critical)\s*\([^)]*""[^""]*""\s*\+\s*[^\s""]", RegexOptions.Singleline)) {
+                    violations.Add(relative + ": string-concatenated message template with non-literal (use templated parameters)");
+                }
+
+                if (Regex.IsMatch(text, @"\.BeginScope\s*\(\s*\$""", RegexOptions.Multiline)) {
+                    violations.Add(relative + ": interpolated string passed to BeginScope (raw payload risk)");
                 }
 
                 if (text.Contains("ex.Message", StringComparison.Ordinal)) {
@@ -168,7 +200,7 @@ public sealed class InfrastructureGovernanceTests {
     public void ShellSignalRClient_IsExactAllowlistOnly() {
         using TempRepo temp = TempRepo.Create();
         string project = temp.Write(
-            "src/Hexalith.FrontComposer.Shell/Shell.csproj",
+            "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
             """
             <Project Sdk="Microsoft.NET.Sdk">
               <ItemGroup>
@@ -181,6 +213,108 @@ public sealed class InfrastructureGovernanceTests {
         List<GovernanceViolation> violations = InfrastructureGovernance.ScanProjectReferences(project, temp.Root);
 
         violations.Single().ProviderFamily.ShouldBe("Redis");
+    }
+
+    [Fact]
+    public void NonShellProject_RejectsSignalRClient() {
+        // F01 — Microsoft.AspNetCore.SignalR.Client is allowed only in Shell.
+        // Contracts/SourceTools must fail governance if they reference it.
+        using TempRepo temp = TempRepo.Create();
+        string project = temp.Write(
+            "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        List<GovernanceViolation> violations = InfrastructureGovernance.ScanProjectReferences(project, temp.Root);
+
+        violations.Single().Reference.ShouldBe("Microsoft.AspNetCore.SignalR.Client");
+        violations.Single().ProviderFamily.ShouldBe("SignalR Client (Shell-only)");
+    }
+
+    [Fact]
+    public void ProjectReferences_AreNotScannedAgainstPackageDenyList() {
+        // F22 — ProjectReference Include is a relative path to a peer .csproj. The package
+        // deny-list must apply only to NuGet PackageReference elements; otherwise a benign
+        // peer project named with a forbidden prefix (e.g. ..\Dapr.Foo\Dapr.Foo.csproj) would
+        // false-fail governance.
+        using TempRepo temp = TempRepo.Create();
+        string project = temp.Write(
+            "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <ProjectReference Include="..\..\..\NeighbouringRepo\Dapr.Foo\Dapr.Foo.csproj" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        List<GovernanceViolation> violations = InfrastructureGovernance.ScanProjectReferences(project, temp.Root);
+
+        violations.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void SyntheticTransitivePackage_FailsViaProjectAssetsJson() {
+        // F35 — transitive provider packages surfaced only in `project.assets.json` must be
+        // caught even when the .csproj does not declare them directly (e.g., PrivateAssets=all
+        // on a wrapping framework or central package management transitive flow).
+        using TempRepo temp = TempRepo.Create();
+        string project = temp.Write(
+            "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <PackageReference Include="Hexalith.Some.Internal.Package" Version="1.0.0" />
+              </ItemGroup>
+            </Project>
+            """);
+        _ = temp.Write(
+            "src/Hexalith.FrontComposer.Shell/obj/project.assets.json",
+            """
+            {
+              "version": 3,
+              "libraries": {
+                "Hexalith.Some.Internal.Package/1.0.0": { "type": "package" },
+                "Confluent.Kafka/2.5.0": { "type": "package" }
+              }
+            }
+            """);
+
+        (_, List<GovernanceViolation> violations) = InfrastructureGovernance.ScanRestoredAssetsTracked(project, temp.Root);
+
+        violations.Single().Reference.ShouldBe("Confluent.Kafka");
+        violations.Single().ProviderFamily.ShouldBe("Kafka");
+    }
+
+    [Theory]
+    [InlineData("Confluent.Kafka", "Kafka")]
+    [InlineData("Microsoft.Azure.Cosmos", "Cosmos DB")]
+    [InlineData("Azure.Storage.Blobs", "Azure Storage")]
+    [InlineData("Azure.Messaging.ServiceBus", "Azure Service Bus")]
+    [InlineData("Amazon.S3", "AWS provider SDK")]
+    [InlineData("Google.Cloud.Storage.V1", "GCP provider SDK")]
+    public void DenyList_CoversFullProviderFamilyPanel(string packageId, string expectedFamily) {
+        // F41 — exhaust the deny-list panel beyond Dapr/Redis to prove every story-named
+        // provider family fails governance via a synthetic project reference.
+        using TempRepo temp = TempRepo.Create();
+        string project = temp.Write(
+            "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
+            $"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <ItemGroup>
+                <PackageReference Include="{packageId}" Version="1.0.0" />
+              </ItemGroup>
+            </Project>
+            """);
+
+        List<GovernanceViolation> violations = InfrastructureGovernance.ScanProjectReferences(project, temp.Root);
+
+        violations.Single().ProviderFamily.ShouldBe(expectedFamily);
     }
 
     private static string RepositoryRoot() {
@@ -213,6 +347,10 @@ internal static class InfrastructureGovernance {
         new("Dapr", "Dapr SDK", "Dapr."),
         new("StackExchange.Redis", "Redis", "StackExchange.Redis"),
         new("Microsoft.AspNetCore.SignalR.StackExchangeRedis", "Redis", "Microsoft.AspNetCore.SignalR.StackExchangeRedis"),
+        // F01 — SignalR Client is only allowed in Hexalith.FrontComposer.Shell as the EventStore
+        // projection nudge transport (Stories 5-1/5-3). The allowlist gate in ScanReferences
+        // must skip this rule for Shell-marked scans; non-Shell projects fail governance.
+        new("Microsoft.AspNetCore.SignalR.Client", "SignalR Client (Shell-only)", "Microsoft.AspNetCore.SignalR.Client"),
         new("Confluent.Kafka", "Kafka", "Confluent.Kafka"),
         new("Npgsql", "PostgreSQL", "Npgsql"),
         new("Microsoft.Azure.Cosmos", "Cosmos DB", "Microsoft.Azure.Cosmos"),
@@ -226,6 +364,7 @@ internal static class InfrastructureGovernance {
         new("Dapr", "Dapr SDK", "Dapr"),
         new("StackExchange.Redis", "Redis", "StackExchange.Redis"),
         new("Microsoft.AspNetCore.SignalR.StackExchangeRedis", "Redis", "Microsoft.AspNetCore.SignalR.StackExchangeRedis"),
+        new("Microsoft.AspNetCore.SignalR.Client", "SignalR Client (Shell-only)", "Microsoft.AspNetCore.SignalR.Client"),
         new("Confluent.Kafka", "Kafka", "Confluent.Kafka"),
         new("Npgsql", "PostgreSQL", "Npgsql"),
         new("Microsoft.Azure.Cosmos", "Cosmos DB", "Microsoft.Azure.Cosmos"),
@@ -238,9 +377,13 @@ internal static class InfrastructureGovernance {
     public static List<GovernanceViolation> ScanProjectReferences(string projectPath, string root) {
         XDocument document = XDocument.Load(projectPath);
         bool allowSignalRClient = IsShellProject(projectPath);
+        // F22 — package deny-list applies to PackageReference only. ProjectReference Include is
+        // a relative path to a peer project; conflating the two could false-fail governance for
+        // benign sibling project names. Peer projects are themselves subject to assembly-reference
+        // governance via ScanAssemblyReferences.
         IEnumerable<string> references = document
             .Descendants()
-            .Where(static e => e.Name.LocalName is "PackageReference" or "ProjectReference")
+            .Where(static e => e.Name.LocalName == "PackageReference")
             .Select(static e => (string?)e.Attribute("Include") ?? (string?)e.Attribute("Update") ?? string.Empty)
             .Where(static value => value.Length > 0);
 
@@ -255,13 +398,20 @@ internal static class InfrastructureGovernance {
             .Select(static e => (string?)e.Attribute("Include") ?? string.Empty)
             .Where(static value => value.Length > 0);
 
-        return ScanReferences(propsPath, references, root, allowSignalRClient: false);
+        // Central package versions don't dictate which projects USE the package; per-project
+        // ScanProjectReferences enforces Shell-only consumption. SignalR.Client (and its
+        // siblings shipped via the Client meta-package) may legitimately appear here so that
+        // Shell.csproj can reference it.
+        return ScanReferences(propsPath, references, root, allowSignalRClient: true);
     }
 
-    public static List<GovernanceViolation> ScanRestoredAssets(string projectPath, string root) {
+    public static (int Scanned, List<GovernanceViolation> Violations) ScanRestoredAssetsTracked(string projectPath, string root) {
+        // F10 — return scan-count alongside violations so callers can detect silent skips when
+        // `project.assets.json` is missing (no `dotnet restore` ran). Empty scan count is a
+        // governance hole, not a clean run.
         string assetsPath = Path.Combine(Path.GetDirectoryName(projectPath)!, "obj", "project.assets.json");
         if (!File.Exists(assetsPath)) {
-            return [];
+            return (0, []);
         }
 
         bool allowSignalRClient = IsShellProject(projectPath);
@@ -275,8 +425,11 @@ internal static class InfrastructureGovernance {
             }
         }
 
-        return ScanReferences(assetsPath, references, root, allowSignalRClient);
+        return (1, ScanReferences(assetsPath, references, root, allowSignalRClient));
     }
+
+    public static List<GovernanceViolation> ScanRestoredAssets(string projectPath, string root)
+        => ScanRestoredAssetsTracked(projectPath, root).Violations;
 
     public static List<GovernanceViolation> ScanAssemblyReferences(
         Assembly assembly,
@@ -291,8 +444,16 @@ internal static class InfrastructureGovernance {
 
     public static List<GovernanceViolation> ScanSourceTree(string rootPath, string repositoryRoot, bool allowSignalRClient) {
         string normalizedRoot = NormalizeInsideRoot(rootPath, repositoryRoot);
+        // F05 — refuse to follow symlinks/junctions/reparse points during enumeration. The
+        // per-file ReparsePoint check earlier only stopped scanning the link itself, not the
+        // contents reached through it. EnumerationOptions blocks the descent altogether.
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
         List<GovernanceViolation> violations = [];
-        foreach (string file in Directory.EnumerateFiles(normalizedRoot, "*", SearchOption.AllDirectories)) {
+        foreach (string file in Directory.EnumerateFiles(normalizedRoot, "*", options)) {
             if (!ShouldScanSourceFile(file, repositoryRoot)) {
                 continue;
             }
@@ -308,8 +469,13 @@ internal static class InfrastructureGovernance {
             return [];
         }
 
+        EnumerationOptions options = new() {
+            RecurseSubdirectories = true,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
+            IgnoreInaccessible = true,
+        };
         List<GovernanceViolation> violations = [];
-        foreach (string file in Directory.EnumerateFiles(rootPath, "*.verified.txt", SearchOption.AllDirectories)) {
+        foreach (string file in Directory.EnumerateFiles(rootPath, "*.verified.txt", options)) {
             violations.AddRange(ScanSourceFile(file, repositoryRoot, allowSignalRClient: false));
         }
 
@@ -341,7 +507,13 @@ internal static class InfrastructureGovernance {
         string relative = Path.IsPathRooted(path) ? RelativePath(path, root) : path;
         List<GovernanceViolation> violations = [];
         foreach (string reference in references) {
-            if (allowSignalRClient && string.Equals(reference, "Microsoft.AspNetCore.SignalR.Client", StringComparison.OrdinalIgnoreCase)) {
+            // Allow Microsoft.AspNetCore.SignalR.Client AND its sibling assemblies/packages
+            // (`.Core`, `.Common`, etc.) which are transitive dependencies of the Client
+            // meta-package. The Shell project legitimately consumes the family; the deny-list
+            // rule still fires for non-Shell projects and for SignalR.StackExchangeRedis.
+            if (allowSignalRClient
+                && (string.Equals(reference, "Microsoft.AspNetCore.SignalR.Client", StringComparison.OrdinalIgnoreCase)
+                    || reference.StartsWith("Microsoft.AspNetCore.SignalR.Client.", StringComparison.OrdinalIgnoreCase))) {
                 continue;
             }
 
@@ -359,10 +531,37 @@ internal static class InfrastructureGovernance {
         => string.Equals(reference, rule.Reference, StringComparison.OrdinalIgnoreCase)
             || reference.StartsWith(rule.Reference + ".", StringComparison.OrdinalIgnoreCase);
 
-    private static bool ContainsNamespaceUse(string text, string namespaceRoot)
-        => text.Contains("using " + namespaceRoot, StringComparison.Ordinal)
-            || text.Contains("global using " + namespaceRoot, StringComparison.Ordinal)
-            || text.Contains(namespaceRoot + ".", StringComparison.Ordinal);
+    private static bool ContainsNamespaceUse(string text, string namespaceRoot) {
+        // F04 — restrict to authoritative namespace import lines. The previous substring scan
+        // (text.Contains(namespaceRoot + ".")) would false-positive on any comment, XML doc, or
+        // string literal that mentioned a forbidden provider. Adopters routinely reference
+        // forbidden providers in human-readable commentary (e.g. ADRs, deprecation notes).
+        // Scanning only `using` / `global using` lines keeps the deny-list authoritative for
+        // actual symbol usage while letting docs/comments mention any namespace freely.
+        string usingPrefix = "using " + namespaceRoot;
+        string globalUsingPrefix = "global using " + namespaceRoot;
+        foreach (string line in text.Split('\n')) {
+            string trimmed = line.TrimStart();
+            if (StartsWithBoundary(trimmed, usingPrefix) || StartsWithBoundary(trimmed, globalUsingPrefix)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool StartsWithBoundary(string trimmed, string prefix) {
+        if (!trimmed.StartsWith(prefix, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        if (trimmed.Length == prefix.Length) {
+            return true;
+        }
+
+        char next = trimmed[prefix.Length];
+        return next is '.' or ';' or ' ' or '\t' or '\r';
+    }
 
     private static bool ShouldScanSourceFile(string file, string repositoryRoot) {
         FileInfo info = new(file);
@@ -380,7 +579,7 @@ internal static class InfrastructureGovernance {
         }
 
         string extension = Path.GetExtension(file);
-        return extension is ".cs" or ".razor" or ".cshtml";
+        return extension is ".cs" or ".razor" or ".cshtml" or ".verified.txt";
     }
 
     private static bool IsShellProject(string projectPath)

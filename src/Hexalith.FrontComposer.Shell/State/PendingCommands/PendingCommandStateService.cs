@@ -175,11 +175,15 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         }
 
         if (duplicate) {
+            // F27 — explicitly tag the duplicate path's activity with `outcome=duplicate_ignored`
+            // so dashboards see a paired (operation, outcome) on every emitted span. Without
+            // this, the activity carried only the constructor tags and looked unfinished.
             using Activity? duplicateActivity = FrontComposerTelemetry.StartPendingCommandOutcome(
                 "duplicate_ignored",
                 terminal.CommandTypeName,
                 terminal.MessageId,
                 terminal.CorrelationId);
+            FrontComposerTelemetry.SetOutcome(duplicateActivity, "duplicate_ignored");
             return PendingCommandResolutionResult.DuplicateIgnored(terminal);
         }
 

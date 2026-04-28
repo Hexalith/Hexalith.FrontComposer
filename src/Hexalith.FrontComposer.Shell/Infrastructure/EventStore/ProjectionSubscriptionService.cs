@@ -163,7 +163,10 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         // DN2 — only Active groups receive nudge refresh. Degraded groups (failed rejoin)
         // wait for the next reconnect cycle to attempt recovery.
         if (_activeGroups.TryGetValue(key, out GroupHealth health) && health == GroupHealth.Active) {
-            using Activity? activity = FrontComposerTelemetry.StartProjectionNudge(
+            // F03 — use the receive-seam span name so it does not double-count under the
+            // `frontcomposer.projection.nudge` operation alongside the scheduler's per-refresh
+            // span. Operators see "received" and "refreshed" as distinct measurements.
+            using Activity? activity = FrontComposerTelemetry.StartProjectionNudgeReceived(
                 key.ProjectionType,
                 FrontComposerTelemetry.TenantMarker(key.TenantId));
             try {

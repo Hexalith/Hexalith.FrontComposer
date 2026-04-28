@@ -131,6 +131,10 @@ public sealed class ProjectionFallbackRefreshScheduler(
 
         int refreshed = 0;
         int budget = Math.Max(0, current.MaxProjectionFallbackPollingLanes);
+        // F12 — track whether the hub reconnected mid-loop so the outer span can be tagged
+        // `outcome=stale_after_reconnect` when an in-progress sweep stopped due to
+        // reconnection rather than hitting the budget cap.
+        bool reconnectedDuringLoop = false;
         foreach (LaneEntry entry in _lanes.Values.OrderBy(static x => x.Lane.ViewKey, StringComparer.Ordinal)) {
             if (refreshed >= budget) {
                 break;
@@ -139,6 +143,7 @@ public sealed class ProjectionFallbackRefreshScheduler(
             // P20 — re-check disconnected per-lane so an in-progress sweep stops promptly when
             // the hub reconnects mid-loop. AC7 explicitly requires "stops when the hub reconnects".
             if (!connectionState.Current.IsDisconnected) {
+                reconnectedDuringLoop = true;
                 break;
             }
 
@@ -147,7 +152,10 @@ public sealed class ProjectionFallbackRefreshScheduler(
             }
         }
 
-        FrontComposerTelemetry.SetOutcome(activity, refreshed > 0 ? "refreshed" : "empty");
+        string finalOutcome = reconnectedDuringLoop
+            ? "stale_after_reconnect"
+            : refreshed > 0 ? "refreshed" : "empty";
+        FrontComposerTelemetry.SetOutcome(activity, finalOutcome);
         return refreshed;
     }
 

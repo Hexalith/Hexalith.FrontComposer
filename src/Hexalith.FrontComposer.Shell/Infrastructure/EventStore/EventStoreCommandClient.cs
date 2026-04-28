@@ -80,13 +80,19 @@ public sealed class EventStoreCommandClient(
                 string failureCategory = classification.Failure?.GetType().Name ?? "UnexpectedStatus";
                 FrontComposerTelemetry.SetOutcome(activity, "rejected");
                 FrontComposerTelemetry.SetFailure(activity, failureCategory);
+                // F13 — emit only LocationPresent boolean; the Location header path can carry
+                // raw aggregate IDs / route values derived from tenant/user input which AC5
+                // forbids. Operators have CommandType + MessageId + FailureCategory to find
+                // the command end-to-end.
+                // F09 — sanitize messageId at the log boundary so trace tags and log fields
+                // share the same bounded format.
                 FrontComposerLog.CommandUnexpectedStatus(
                     logger,
                     (int)response.StatusCode,
-                    response.Headers.Location?.GetLeftPart(UriPartial.Path),
                     commandTypeName,
-                    messageId,
+                    FrontComposerTelemetry.SafeIdentifierOrAbsent(messageId),
                     failureCategory,
+                    response.Headers.Location is not null,
                     Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
                 throw classification.Failure!;
             }
@@ -106,12 +112,29 @@ public sealed class EventStoreCommandClient(
             FrontComposerTelemetry.SetOutcome(activity, "accepted");
             return result;
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+        catch (OperationCanceledException oce) when (cancellationToken.IsCancellationRequested
+            || oce.CancellationToken.IsCancellationRequested) {
+            // F18 — broaden the canceled filter so a linked-CTS leaf cancellation (e.g., the
+            // request linked-token from an internal HttpClient timeout-as-cancellation) classifies
+            // as canceled rather than failure. Caller tokens still take precedence; if the leaf
+            // token is anonymous, we fall back to the original behavior via the second clause.
             FrontComposerTelemetry.SetOutcome(activity, "canceled");
             throw;
         }
         catch (Exception ex) {
-            FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            // F29 — explicitly tag outcome=failed in the catch-all so dashboards see a paired
+            // (outcome, failure_category) on every error path, matching the explicit branches.
+            // F23 — only set failure category if it is not already set (preserves the explicit
+            // `rejected` branch's failureCategory which mirrors classification.Failure but might
+            // not match the wrapping/inner exception type bubbled here).
+            if (activity?.GetTagItem(FrontComposerTelemetry.OutcomeTag) is null) {
+                FrontComposerTelemetry.SetOutcome(activity, "failed");
+            }
+
+            if (activity?.GetTagItem(FrontComposerTelemetry.FailureCategoryTag) is null) {
+                FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
+            }
+
             throw;
         }
         finally {
@@ -182,11 +205,13 @@ public sealed class EventStoreCommandClient(
         }
         catch (JsonException) {
             // Reason intentionally omitted — JsonException.Message can echo response body fragments.
+            // F09 — sanitize messageId at the log boundary so trace tags and log fields share
+            // the same bounded format.
             FrontComposerLog.CommandCorrelationBodyParseFailed(
                 logger,
                 response.Content.Headers.ContentType?.MediaType,
                 commandType,
-                messageId);
+                FrontComposerTelemetry.SafeIdentifierOrAbsent(messageId));
             return null;
         }
     }

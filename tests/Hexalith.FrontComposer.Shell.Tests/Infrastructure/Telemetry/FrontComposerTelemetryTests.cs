@@ -19,11 +19,45 @@ public sealed class FrontComposerTelemetryTests {
 
     [Fact]
     public void StartActivity_NoListenerPath_DoesNotThrow() {
-        using Activity? activity = FrontComposerTelemetry.StartProjectionFallbackPoll();
+        // F37 — exercise the no-listener path with a deterministic ActivitySource that has no
+        // listener attached. We instrument a short-lived helper source whose StartActivity will
+        // return null, and assert downstream tag setters tolerate the null without throwing.
+        using ActivitySource isolatedSource = new("Hexalith.FrontComposer.Tests.NoListener");
+        Activity? noListener = isolatedSource.StartActivity("noop");
+        noListener.ShouldBeNull();
 
-        // The xUnit assembly runs tests in parallel, so another test may have an ActivityListener
-        // active. This assertion is intentionally only the fail-open contract: no listener is
-        // required by the helper and no exception is thrown.
+        // All public helpers must accept a null activity without throwing.
+        Should.NotThrow(() => FrontComposerTelemetry.SetOutcome(noListener, "ok"));
+        Should.NotThrow(() => FrontComposerTelemetry.SetFailure(noListener, "category"));
+        Should.NotThrow(() => FrontComposerTelemetry.SetCorrelation(noListener, "corr-1"));
+        Should.NotThrow(() => FrontComposerTelemetry.SetHttpStatus(noListener, 200));
+        Should.NotThrow(() => FrontComposerTelemetry.SetElapsed(noListener, TimeSpan.FromMilliseconds(5)));
+    }
+
+    [Fact]
+    public void TagDerivation_FailureModes_AreFailOpenAndSideEffectFree() {
+        // F36 / D14 — Telemetry helpers must not throw when inputs are degenerate. Derivation
+        // failures (null, whitespace, unrepresentable) must produce a no-op or bounded marker
+        // without affecting caller behaviour.
+        using ActivityCapture capture = ActivityCapture.Start();
+
+        using (Activity? activity = FrontComposerTelemetry.StartCommandDispatch(
+            string.Empty,
+            string.Empty,
+            FrontComposerTelemetry.TenantMarker(null))) {
+            FrontComposerTelemetry.SetCorrelation(activity, null);
+            FrontComposerTelemetry.SetCorrelation(activity, "   ");
+            FrontComposerTelemetry.SetFailure(activity, null);
+            FrontComposerTelemetry.SetOutcome(activity, null);
+        }
+
+        // The activity exists (listener attached) but tag setters with degenerate inputs must
+        // not crash. We can't assert tag absence reliably (other tests may set them) but the
+        // absence of an exception is the contract.
+        FrontComposerTelemetry.SafeIdentifierOrAbsent(null).ShouldBe("absent");
+        FrontComposerTelemetry.SafeIdentifierOrAbsent(string.Empty).ShouldBe("absent");
+        FrontComposerTelemetry.SafeIdentifierOrAbsent("   ").ShouldBe("absent");
+        FrontComposerTelemetry.SafeIdentifierOrAbsent("01HXAB-CORR_1.").ShouldBe("01HXAB-CORR_1.");
     }
 
     [Fact]
@@ -79,12 +113,17 @@ public sealed class FrontComposerTelemetryTests {
     private sealed class ActivityCapture : IDisposable {
         private readonly ActivityListener _listener;
         private readonly List<Activity> _activities = [];
+        private readonly object _sync = new();
 
         private ActivityCapture() {
             _listener = new ActivityListener {
                 ShouldListenTo = static _ => true,
                 Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-                ActivityStopped = activity => _activities.Add(activity),
+                ActivityStopped = activity => {
+                    lock (_sync) {
+                        _activities.Add(activity);
+                    }
+                },
             };
             ActivitySource.AddActivityListener(_listener);
         }
@@ -94,8 +133,14 @@ public sealed class FrontComposerTelemetryTests {
         public Activity Single(string operationName)
             => Single(operationName, static _ => true);
 
-        public Activity Single(string operationName, Func<Activity, bool> predicate)
-            => _activities.Single(activity => activity.OperationName == operationName && predicate(activity));
+        public Activity Single(string operationName, Func<Activity, bool> predicate) {
+            Activity[] snapshot;
+            lock (_sync) {
+                snapshot = [.. _activities];
+            }
+
+            return snapshot.Single(activity => activity.OperationName == operationName && predicate(activity));
+        }
 
         public void Dispose() => _listener.Dispose();
     }

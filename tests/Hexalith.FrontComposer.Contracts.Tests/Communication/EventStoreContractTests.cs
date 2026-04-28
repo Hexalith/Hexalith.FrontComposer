@@ -48,17 +48,37 @@ public sealed class EventStoreContractTests {
 
     [Fact]
     public void ContractsAssembly_DoesNotReferenceInfrastructurePackages() {
+        // F02 — replace the brittle substring deny-list (Contains("Hosting") / Contains("EventStore"))
+        // with exact-match family rules. Story 5-6 D2 explicitly forbids substring matches like
+        // "Hosting" or "EventStore" because they false-positive on benign assembly names. The
+        // authoritative governance suite lives in Hexalith.FrontComposer.Shell.Tests/Governance
+        // (InfrastructureGovernanceTests.FrameworkAssemblies_DoNotReferenceProviderAssemblies).
+        // This Contracts-side test stays as a fast-feedback safety net using the same exact-rule
+        // discipline.
         string[] names = typeof(ICommandService).Assembly
             .GetReferencedAssemblies()
             .Select(a => a.Name ?? string.Empty)
             .ToArray();
 
-        names.ShouldNotContain(n => n.Contains("Dapr", StringComparison.OrdinalIgnoreCase));
-        names.ShouldNotContain(n => n.Contains("SignalR", StringComparison.OrdinalIgnoreCase));
-        // The net10 Contracts target already references Fluent UI/AspNetCore component types for
-        // rendering constants outside this communication seam. Story 5-1 must not add transport
-        // infrastructure references to Contracts.
-        names.ShouldNotContain(n => n.Contains("Hosting", StringComparison.OrdinalIgnoreCase));
-        names.ShouldNotContain(n => n.Contains("EventStore", StringComparison.OrdinalIgnoreCase));
+        (string Reference, string Family)[] forbiddenExact = [
+            ("Dapr", "Dapr SDK"),
+            ("StackExchange.Redis", "Redis"),
+            ("Microsoft.AspNetCore.SignalR.Client", "SignalR Client (Shell-only)"),
+            ("Microsoft.AspNetCore.SignalR.StackExchangeRedis", "Redis"),
+            ("Confluent.Kafka", "Kafka"),
+            ("Npgsql", "PostgreSQL"),
+            ("Microsoft.Azure.Cosmos", "Cosmos DB"),
+            ("Azure.Storage", "Azure Storage"),
+            ("Azure.Messaging.ServiceBus", "Azure Service Bus"),
+            ("Amazon.S3", "AWS provider SDK"),
+            ("Google.Cloud", "GCP provider SDK"),
+        ];
+
+        foreach ((string forbidden, string family) in forbiddenExact) {
+            names.ShouldNotContain(
+                n => string.Equals(n, forbidden, StringComparison.OrdinalIgnoreCase)
+                    || n.StartsWith(forbidden + ".", StringComparison.OrdinalIgnoreCase),
+                $"Contracts must not reference provider family '{family}' (matched on '{forbidden}'). Route through EventStore contract/client or deployment/AppHost component configuration.");
+        }
     }
 }
