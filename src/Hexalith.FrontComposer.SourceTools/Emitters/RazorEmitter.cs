@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Text;
 
+using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 namespace Hexalith.FrontComposer.SourceTools.Emitters;
@@ -33,7 +34,7 @@ public static class RazorEmitter {
         EmitInjections(sb, model);
         EmitStrategyMembers(sb, model);
         EmitLifecycleHooks(sb, model);
-        EmitFormatters(sb);
+        EmitFormatters(sb, model);
         EmitBuildRenderTree(sb, model);
         EmitClassFooter(sb);
 
@@ -145,6 +146,11 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }");
             _ = sb.AppendLine();
         }
+        else if (HasRelativeTimeColumns(model)) {
+            _ = sb.AppendLine("    [Inject]");
+            _ = sb.AppendLine("    private TimeProvider TimeProvider { get; set; } = default!;");
+            _ = sb.AppendLine();
+        }
 
         // Story 4-5 T2.5 / D2 / D7 — expand-in-row hosts read ExpandedRowState every render and
         // call IExpandInRowJSModule.InitializeAsync via the FcExpandInRowDetail child component.
@@ -207,6 +213,16 @@ public static class RazorEmitter {
     private static bool HasColumnDescriptions(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
             if (!string.IsNullOrWhiteSpace(col.Description)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool HasRelativeTimeColumns(RazorModel model) {
+        foreach (ColumnModel col in model.Columns) {
+            if (col.DisplayFormat == FieldDisplayFormat.RelativeTime) {
                 return true;
             }
         }
@@ -655,10 +671,54 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
     }
 
-    private static void EmitFormatters(StringBuilder sb) {
+    private static void EmitFormatters(StringBuilder sb, RazorModel model) {
         _ = sb.AppendLine("    private static string Truncate(string value, int maxLength)");
         _ = sb.AppendLine("        => value.Length <= maxLength ? value : value.Substring(0, maxLength - 1) + \"\\u2026\";");
         _ = sb.AppendLine();
+        if (HasRelativeTimeColumns(model)) {
+            _ = sb.AppendLine("    private static string FormatRelativeTime(DateTime value, DateTimeOffset now, int relativeWindowDays)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        DateTimeOffset timestamp = value.Kind switch");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            DateTimeKind.Utc => new DateTimeOffset(value, TimeSpan.Zero),");
+            _ = sb.AppendLine("            DateTimeKind.Local => new DateTimeOffset(value).ToUniversalTime(),");
+            _ = sb.AppendLine("            _ => new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc), TimeSpan.Zero),");
+            _ = sb.AppendLine("        };");
+            _ = sb.AppendLine("        return FormatRelativeTime(timestamp, now, relativeWindowDays);");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private static string FormatRelativeTime(DateTimeOffset value, DateTimeOffset now, int relativeWindowDays)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        DateTimeOffset timestamp = value.ToUniversalTime();");
+            _ = sb.AppendLine("        DateTimeOffset utcNow = now.ToUniversalTime();");
+            _ = sb.AppendLine("        TimeSpan delta = utcNow - timestamp;");
+            _ = sb.AppendLine("        bool future = delta.Ticks < 0;");
+            _ = sb.AppendLine("        TimeSpan distance = delta.Duration();");
+            _ = sb.AppendLine("        if (distance > TimeSpan.FromDays(relativeWindowDays))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return value.ToString(\"d\", CultureInfo.CurrentCulture);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        string suffix = future ? \" from now\" : \" ago\";");
+            _ = sb.AppendLine("        if (distance < TimeSpan.FromMinutes(1))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return future ? \"in <1m\" : \"<1m ago\";");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        if (distance < TimeSpan.FromHours(1))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return ((int)Math.Floor(distance.TotalMinutes)).ToString(CultureInfo.InvariantCulture) + \"m\" + suffix;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        if (distance < TimeSpan.FromDays(1))");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return ((int)Math.Floor(distance.TotalHours)).ToString(CultureInfo.InvariantCulture) + \"h\" + suffix;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("        return ((int)Math.Floor(distance.TotalDays)).ToString(CultureInfo.InvariantCulture) + \"d\" + suffix;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+        }
         _ = sb.AppendLine("    private static string HumanizeEnumLabel(string value)");
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        if (string.IsNullOrEmpty(value))");
@@ -750,6 +810,9 @@ public static class RazorEmitter {
             _ = sb.AppendLine("        var hiddenColumns = ResolveHiddenColumns(gridSnapshot);");
             _ = sb.AppendLine("        var hiddenColumnSet = new System.Collections.Generic.HashSet<string>(hiddenColumns, StringComparer.Ordinal);");
             _ = sb.AppendLine("        var anyRealFilterActive = AnyRealFilterActive(gridSnapshot);");
+        }
+        if (HasRelativeTimeColumns(model)) {
+            _ = sb.AppendLine("        var relativeNow = TimeProvider.GetUtcNow();");
         }
 
         _ = sb.AppendLine();

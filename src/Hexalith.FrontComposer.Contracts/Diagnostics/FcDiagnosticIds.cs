@@ -106,6 +106,14 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1031_FieldGroupIgnoredForNonDetailRole = "HFC1031";
 
+    /// <summary>
+    /// Build-time Warning: a Level 1 field-format annotation is incompatible with the
+    /// property type or conflicts with another mutually-exclusive format annotation
+    /// (Story 6-1). The generator keeps the column emitted and falls back to the existing
+    /// default formatter.
+    /// </summary>
+    public const string HFC1032_Level1FormatAnnotationInvalid = "HFC1032";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

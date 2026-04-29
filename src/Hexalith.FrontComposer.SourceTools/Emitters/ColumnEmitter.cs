@@ -127,6 +127,20 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
         EmitHeaderDescription(sb, col);
 
+        if (col.DisplayFormat == FieldDisplayFormat.RelativeTime) {
+            int windowDays = col.RelativeTimeWindowDays ?? 7;
+            if (col.IsNullable) {
+                _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? FormatRelativeTime(x." + col.PropertyName + ".Value, relativeNow, " + windowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ") : \"\\u2014\"));");
+            }
+            else {
+                _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => FormatRelativeTime(x." + col.PropertyName + ", relativeNow, " + windowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")));");
+            }
+
+            EmitSortAttributes(sb, col, typeName, isDefaultSortColumn);
+            _ = sb.AppendLine("            b.CloseComponent();");
+            return;
+        }
+
         if (col.IsNullable) {
             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? x." + col.PropertyName + ".Value.ToString(\"" + format + "\", CultureInfo.CurrentCulture) : \"\\u2014\"));");
         }

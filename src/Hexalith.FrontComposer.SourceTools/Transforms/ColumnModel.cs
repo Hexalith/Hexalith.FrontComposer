@@ -16,7 +16,9 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
         int? priority = null,
         string? fieldGroup = null,
         string? description = null,
-        string? unsupportedTypeFullyQualifiedName = null) {
+        string? unsupportedTypeFullyQualifiedName = null,
+        FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
+        int? relativeTimeWindowDays = null) {
         PropertyName = propertyName;
         Header = header;
         TypeCategory = typeCategory;
@@ -28,6 +30,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
         FieldGroup = fieldGroup;
         Description = description;
         UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
+        DisplayFormat = displayFormat;
+        RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
     }
 
     public string PropertyName { get; }
@@ -72,6 +76,16 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
     public string? UnsupportedTypeFullyQualifiedName { get; }
 
     /// <summary>
+    /// Gets the Level 1 display format selected during Parse/Transform.
+    /// </summary>
+    public FieldDisplayFormat DisplayFormat { get; }
+
+    /// <summary>
+    /// Gets the relative-time window in days for relative-time columns.
+    /// </summary>
+    public int? RelativeTimeWindowDays { get; }
+
+    /// <summary>
     /// Story 4-3 D14 — derived gate for column-header filter affordance. True for
     /// Text / Numeric / Enum / DateTime; false for Boolean / Collection / Unsupported.
     /// Derived from <see cref="TypeCategory"/> so IR byte-stability is preserved
@@ -104,7 +118,9 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             && Priority == other.Priority
             && FieldGroup == other.FieldGroup
             && Description == other.Description
-            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName;
+            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName
+            && DisplayFormat == other.DisplayFormat
+            && RelativeTimeWindowDays == other.RelativeTimeWindowDays;
     }
 
     public override bool Equals(object? obj) => Equals(obj as ColumnModel);
@@ -123,6 +139,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
             hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
+            hash = (hash * 31) + DisplayFormat.GetHashCode();
+            hash = (hash * 31) + (RelativeTimeWindowDays?.GetHashCode() ?? 0);
             return hash;
         }
     }

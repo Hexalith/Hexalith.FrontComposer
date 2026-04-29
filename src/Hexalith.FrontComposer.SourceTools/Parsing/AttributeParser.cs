@@ -18,6 +18,8 @@ public static class AttributeParser {
     private const string ColumnPriorityAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ColumnPriorityAttribute";
     private const string ProjectionFieldGroupAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionFieldGroupAttribute";
     private const string ProjectionEmptyStateCtaAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionEmptyStateCtaAttribute";
+    private const string RelativeTimeAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.RelativeTimeAttribute";
+    private const string CurrencyAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.CurrencyAttribute";
     private const string DescriptionAttributeName = "System.ComponentModel.DescriptionAttribute";
     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
 
@@ -524,6 +526,15 @@ public static class AttributeParser {
         // Story 4-5 T6.4 / D9 — [ProjectionFieldGroup("Name")] annotation; null when absent.
         string? fieldGroup = ParseProjectionFieldGroup(propertySymbol);
 
+        FieldDisplayFormat displayFormat = ParseDisplayFormat(
+            propertySymbol,
+            containingTypeName,
+            resolvedTypeName,
+            propertyType,
+            diagnostics,
+            filePath,
+            out int? relativeTimeWindowDays);
+
         return new PropertyModel(
             propertySymbol.Name,
             resolvedTypeName,
@@ -536,7 +547,124 @@ public static class AttributeParser {
             enumMemberNames,
             columnPriority,
             fieldGroup,
-            description);
+            description,
+            displayFormat,
+            relativeTimeWindowDays);
+    }
+
+    private static FieldDisplayFormat ParseDisplayFormat(
+        IPropertySymbol propertySymbol,
+        string containingTypeName,
+        string resolvedTypeName,
+        ITypeSymbol propertyType,
+        List<DiagnosticInfo> diagnostics,
+        string filePath,
+        out int? relativeTimeWindowDays) {
+        relativeTimeWindowDays = null;
+        int parsedRelativeTimeWindowDays = 7;
+        AttributeData? relativeTime = null;
+        AttributeData? currency = null;
+
+        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
+            string? attributeName = attr.AttributeClass?.ToDisplayString();
+            if (attributeName == RelativeTimeAttributeName) {
+                relativeTime = attr;
+                if (attr.ConstructorArguments.Length > 0
+                    && attr.ConstructorArguments[0].Value is int days) {
+                    parsedRelativeTimeWindowDays = days;
+                }
+            }
+            else if (attributeName == CurrencyAttributeName) {
+                currency = attr;
+            }
+        }
+
+        if (relativeTime is null && currency is null) {
+            return FieldDisplayFormat.Default;
+        }
+
+        if (relativeTime is not null && currency is not null) {
+            EmitLevel1FormatDiagnostic(
+                propertySymbol,
+                containingTypeName,
+                "[RelativeTime] + [Currency]",
+                "at most one Level 1 format annotation",
+                resolvedTypeName,
+                "Remove one annotation so the field has a single format hint.",
+                diagnostics,
+                filePath);
+            return FieldDisplayFormat.Default;
+        }
+
+        if (relativeTime is not null) {
+            if (IsRelativeTimeCompatible(resolvedTypeName)) {
+                relativeTimeWindowDays = parsedRelativeTimeWindowDays;
+                return FieldDisplayFormat.RelativeTime;
+            }
+
+            EmitLevel1FormatDiagnostic(
+                propertySymbol,
+                containingTypeName,
+                "[RelativeTime]",
+                "DateTime or DateTimeOffset",
+                DescribeUnsupportedType(propertyType, propertyType.TypeKind == TypeKind.Enum),
+                "Apply [RelativeTime] only to DateTime/DateTimeOffset fields or remove the annotation.",
+                diagnostics,
+                filePath);
+            return FieldDisplayFormat.Default;
+        }
+
+        if (IsCurrencyCompatible(resolvedTypeName)) {
+            return FieldDisplayFormat.Currency;
+        }
+
+        EmitLevel1FormatDiagnostic(
+            propertySymbol,
+            containingTypeName,
+            "[Currency]",
+            "decimal, double, or float",
+            DescribeUnsupportedType(propertyType, propertyType.TypeKind == TypeKind.Enum),
+            "Apply [Currency] only to decimal/double/float fields or remove the annotation.",
+            diagnostics,
+            filePath);
+        return FieldDisplayFormat.Default;
+    }
+
+    private static bool IsRelativeTimeCompatible(string resolvedTypeName)
+        => resolvedTypeName == "DateTime" || resolvedTypeName == "DateTimeOffset";
+
+    private static bool IsCurrencyCompatible(string resolvedTypeName)
+        => resolvedTypeName == "Decimal" || resolvedTypeName == "Double" || resolvedTypeName == "Single";
+
+    private static void EmitLevel1FormatDiagnostic(
+        IPropertySymbol propertySymbol,
+        string containingTypeName,
+        string attribute,
+        string expected,
+        string got,
+        string fix,
+        List<DiagnosticInfo> diagnostics,
+        string fallbackFilePath) {
+        Location location = propertySymbol.Locations.FirstOrDefault() ?? Location.None;
+        Microsoft.CodeAnalysis.Text.LinePosition linePos = location.GetLineSpan().StartLinePosition;
+        string propFilePath = location.SourceTree?.FilePath ?? fallbackFilePath;
+        string newline = "\n";
+
+        diagnostics.Add(new DiagnosticInfo(
+            "HFC1032",
+            string.Format(
+                "What: Property '{0}' on type '{1}' uses invalid Level 1 format annotation metadata ({2}).{6}Expected: {3}.{6}Got: {4}.{6}Fix: {5}{6}Fallback: Generated code keeps the column emitted and uses the existing default formatter.{6}DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1032",
+                propertySymbol.Name,
+                containingTypeName,
+                attribute,
+                expected,
+                got,
+                fix,
+                newline),
+            "Warning",
+            propFilePath,
+            linePos.Line,
+            linePos.Character));
     }
 
     /// <summary>

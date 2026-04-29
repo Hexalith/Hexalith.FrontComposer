@@ -115,7 +115,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
             // to the FluentDataGrid col-title-text marker so we keep the original ordering invariant.
             int idHeader = markup.IndexOf(">Id<", StringComparison.Ordinal);
             int countHeader = markup.IndexOf(">Count<", StringComparison.Ordinal);
-            int lastUpdatedHeader = markup.IndexOf(">Last Updated<", StringComparison.Ordinal);
+            int lastUpdatedHeader = markup.IndexOf(">Last changed<", StringComparison.Ordinal);
             idHeader.ShouldBeGreaterThanOrEqualTo(0);
             countHeader.ShouldBeGreaterThanOrEqualTo(0);
             lastUpdatedHeader.ShouldBeGreaterThanOrEqualTo(0);

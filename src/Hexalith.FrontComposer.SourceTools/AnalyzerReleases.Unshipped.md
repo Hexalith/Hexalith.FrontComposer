@@ -30,3 +30,4 @@ HFC1028 | HexalithFrontComposer | Info | [ColumnPriority] collision on projectio
 HFC1029 | HexalithFrontComposer | Info | Projection exceeds 15 columns — FcColumnPrioritizer activates (Story 4-4)
 HFC1030 | HexalithFrontComposer | Info | [ProjectionFieldGroup] name collides with reserved catch-all label "Additional details" (Story 4-5)
 HFC1031 | HexalithFrontComposer | Info | [ProjectionFieldGroup] is ignored for non-detail role (Timeline) (Story 4-5)
+HFC1032 | HexalithFrontComposer | Warning | Invalid Level 1 format annotation (Story 6-1 — incompatible type or mutually exclusive format annotations; generated column falls back)

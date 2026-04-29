@@ -839,6 +839,7 @@ public static class ProjectionRoleBodyEmitter {
         string formatHint = col.FormatHint ?? string.Empty;
         bool isGuid = formatHint.StartsWith("Truncate:", StringComparison.Ordinal);
         string propertyAccess = instanceName + "." + col.PropertyName;
+        int relativeTimeWindowDays = col.RelativeTimeWindowDays ?? 7;
         return col.TypeCategory switch {
             TypeCategory.Text when isGuid =>
                 col.IsNullable
@@ -857,7 +858,11 @@ public static class ProjectionRoleBodyEmitter {
                     ? propertyAccess + ".HasValue ? (" + propertyAccess + ".Value ? \"Yes\" : \"No\") : \"\\u2014\""
                     : "(" + propertyAccess + " ? \"Yes\" : \"No\")",
             TypeCategory.DateTime =>
-                col.IsNullable
+                col.DisplayFormat == FieldDisplayFormat.RelativeTime && col.IsNullable
+                    ? propertyAccess + ".HasValue ? FormatRelativeTime(" + propertyAccess + ".Value, relativeNow, " + relativeTimeWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ") : \"\\u2014\""
+                    : col.DisplayFormat == FieldDisplayFormat.RelativeTime
+                        ? "FormatRelativeTime(" + propertyAccess + ", relativeNow, " + relativeTimeWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")"
+                        : col.IsNullable
                     ? propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
                     : propertyAccess + ".ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture)",
             TypeCategory.Enum =>

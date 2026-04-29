@@ -1,6 +1,6 @@
 # Story 6.1: Level 1 Annotation Overrides
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 6** - Developer Customization Gradient. **FR39 / FR44 / NFR84 / UX-DR54** annotation-level customization for generated projection fields. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, **L11**, and **L15**.
 
@@ -52,85 +52,85 @@ Generated projection fields should carry common display intent from the domain m
 
 ## Tasks / Subtasks
 
-- [ ] T1. Lock current Level 1 metadata behavior as explicit story-owned coverage (AC1, AC2, AC3)
-  - [ ] Keep `System.ComponentModel.DataAnnotations.DisplayAttribute` as the standard label attribute. Do not add a FrontComposer-specific display-name attribute.
-  - [ ] Keep `System.ComponentModel.DescriptionAttribute` and `DisplayAttribute.Description` feeding `PropertyModel.Description`.
-  - [ ] Preserve current precedence: `[Description]` beats `Display.Description`; `Display.Name` beats `CamelCaseHumanizer`; raw property name is the final fallback.
-  - [ ] Preserve existing accessible description propagation through `HeaderTooltip` / generated description metadata; do not create tooltip-only behavior that bypasses the current accessibility path.
-  - [ ] Preserve `ColumnPriorityAttribute` semantics: any signed int is accepted, lower is earlier, null materializes as `int.MaxValue`, collisions emit HFC1028 Information and fall back to declaration order.
-  - [ ] Document that Story 6-1 preserves existing `DisplayAttribute` localization behavior but does not add a new field-display resource system.
-  - [ ] Add or tighten tests around parse, transform, and emit so these behaviors are visibly owned by Story 6-1.
+- [x] T1. Lock current Level 1 metadata behavior as explicit story-owned coverage (AC1, AC2, AC3)
+  - [x] Keep `System.ComponentModel.DataAnnotations.DisplayAttribute` as the standard label attribute. Do not add a FrontComposer-specific display-name attribute.
+  - [x] Keep `System.ComponentModel.DescriptionAttribute` and `DisplayAttribute.Description` feeding `PropertyModel.Description`.
+  - [x] Preserve current precedence: `[Description]` beats `Display.Description`; `Display.Name` beats `CamelCaseHumanizer`; raw property name is the final fallback.
+  - [x] Preserve existing accessible description propagation through `HeaderTooltip` / generated description metadata; do not create tooltip-only behavior that bypasses the current accessibility path.
+  - [x] Preserve `ColumnPriorityAttribute` semantics: any signed int is accepted, lower is earlier, null materializes as `int.MaxValue`, collisions emit HFC1028 Information and fall back to declaration order.
+  - [x] Document that Story 6-1 preserves existing `DisplayAttribute` localization behavior but does not add a new field-display resource system.
+  - [x] Add or tighten tests around parse, transform, and emit so these behaviors are visibly owned by Story 6-1.
 
-- [ ] T2. Add Contracts attributes for new format hints (AC4, AC6, AC7, AC10)
-  - [ ] Add `RelativeTimeAttribute` under `src/Hexalith.FrontComposer.Contracts/Attributes/`.
-  - [ ] Add `CurrencyAttribute` under the same namespace.
-  - [ ] Use `[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]` for both.
-  - [ ] Keep attributes dependency-free and trim-friendly. Constructors should only capture primitive/string values.
-  - [ ] For `[RelativeTime]`, default the relative window to 7 days; allow a bounded integer override only if it stays simple and testable.
-  - [ ] For `[Currency]`, default to the current culture standard currency format. Defer ISO currency-code conversion, custom currency providers, and arbitrary format strings unless already supported by existing code without new runtime services.
+- [x] T2. Add Contracts attributes for new format hints (AC4, AC6, AC7, AC10)
+  - [x] Add `RelativeTimeAttribute` under `src/Hexalith.FrontComposer.Contracts/Attributes/`.
+  - [x] Add `CurrencyAttribute` under the same namespace.
+  - [x] Use `[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]` for both.
+  - [x] Keep attributes dependency-free and trim-friendly. Constructors should only capture primitive/string values.
+  - [x] For `[RelativeTime]`, default the relative window to 7 days; allow a bounded integer override only if it stays simple and testable.
+  - [x] For `[Currency]`, default to the current culture standard currency format. Defer ISO currency-code conversion, custom currency providers, and arbitrary format strings unless already supported by existing code without new runtime services.
 
-- [ ] T3. Extend Parse-stage IR without breaking existing equality/caching contracts (AC4, AC6, AC7)
-  - [ ] Extend `PropertyModel` with a small format-hint value, enum, or record that can represent default, relative-time, and currency.
-  - [ ] Parse `[RelativeTime]` and `[Currency]` in `AttributeParser.ParseProperty`.
-  - [ ] Detect mutually exclusive Level 1 format annotations on the same property; emit one deterministic warning and fall back to the existing default formatter rather than letting declaration order choose a winner.
-  - [ ] Include the new field in `PropertyModel.Equals` and `GetHashCode`; update `DomainModelCacheEqualityTests` if needed.
-  - [ ] Emit warning diagnostics for incompatible type usage. Reserve stable SourceTools IDs in the HFC10xx range, documenting them in `DiagnosticDescriptors`, `FcDiagnosticIds` if needed, and analyzer release notes.
-  - [ ] Diagnostics must include field, attribute, expected type family, actual type, fix guidance, docs link, and fallback behavior.
-  - [ ] Warnings must be fail-soft: keep generated code compiling, keep the column emitted, and use the prior default format rather than dropping the field.
+- [x] T3. Extend Parse-stage IR without breaking existing equality/caching contracts (AC4, AC6, AC7)
+  - [x] Extend `PropertyModel` with a small format-hint value, enum, or record that can represent default, relative-time, and currency.
+  - [x] Parse `[RelativeTime]` and `[Currency]` in `AttributeParser.ParseProperty`.
+  - [x] Detect mutually exclusive Level 1 format annotations on the same property; emit one deterministic warning and fall back to the existing default formatter rather than letting declaration order choose a winner.
+  - [x] Include the new field in `PropertyModel.Equals` and `GetHashCode`; update `DomainModelCacheEqualityTests` if needed.
+  - [x] Emit warning diagnostics for incompatible type usage. Reserve stable SourceTools IDs in the HFC10xx range, documenting them in `DiagnosticDescriptors`, `FcDiagnosticIds` if needed, and analyzer release notes.
+  - [x] Diagnostics must include field, attribute, expected type family, actual type, fix guidance, docs link, and fallback behavior.
+  - [x] Warnings must be fail-soft: keep generated code compiling, keep the column emitted, and use the prior default format rather than dropping the field.
 
-- [ ] T4. Extend Transform-stage column metadata (AC4, AC6, AC7)
-  - [ ] Extend `ColumnModel` to carry the Level 1 format override.
-  - [ ] Make `RazorModelTransform.GetFormatHint` choose:
+- [x] T4. Extend Transform-stage column metadata (AC4, AC6, AC7)
+  - [x] Extend `ColumnModel` to carry the Level 1 format override.
+  - [x] Make `RazorModelTransform.GetFormatHint` choose:
     - `[Currency]` -> currency format for numeric categories only.
     - `[RelativeTime]` -> relative-time render mode for DateTime-like categories only.
     - No annotation -> existing defaults (`N0`, `N2`, `d`, `t`, `Humanize:30`, etc.).
     - Conflicting annotations -> existing default after the parse warning; do not encode conflict-resolution policy in emitters.
-  - [ ] Preserve stable column sorting by priority and declaration order. Format overrides must not affect column ordering.
-  - [ ] Add tests proving explicit `Display.Name` still controls headers when a format annotation is also present.
-  - [ ] Keep IR names UI-agnostic (`DisplayFormat`, `Header`, `Description`, `Priority` style). Do not introduce `Component`, `Renderer`, or runtime override terminology into the Level 1 metadata contract.
+  - [x] Preserve stable column sorting by priority and declaration order. Format overrides must not affect column ordering.
+  - [x] Add tests proving explicit `Display.Name` still controls headers when a format annotation is also present.
+  - [x] Keep IR names UI-agnostic (`DisplayFormat`, `Header`, `Description`, `Priority` style). Do not introduce `Component`, `Renderer`, or runtime override terminology into the Level 1 metadata contract.
 
-- [ ] T5. Emit currency formatting through the existing numeric column path (AC6)
-  - [ ] Reuse `ColumnEmitter.EmitNumericColumn` rather than creating a second numeric component.
-  - [ ] Format non-null values with the .NET currency standard format string and `CultureInfo.CurrentCulture`.
-  - [ ] Keep `Class = "fc-col-numeric"` so existing right-alignment and DataGrid styling apply.
-  - [ ] Preserve sort behavior over the underlying numeric property, not the formatted string.
-  - [ ] Add EN/FR culture tests where the existing test harness can switch `CurrentCulture` safely and restore it in `finally` or an equivalent fixture; include negative values, zero, nullable values, and supported floating-point/numeric variants.
+- [x] T5. Emit currency formatting through the existing numeric column path (AC6)
+  - [x] Reuse `ColumnEmitter.EmitNumericColumn` rather than creating a second numeric component.
+  - [x] Format non-null values with the .NET currency standard format string and `CultureInfo.CurrentCulture`.
+  - [x] Keep `Class = "fc-col-numeric"` so existing right-alignment and DataGrid styling apply.
+  - [x] Preserve sort behavior over the underlying numeric property, not the formatted string.
+  - [x] Add EN/FR culture tests where the existing test harness can switch `CurrentCulture` safely and restore it in `finally` or an equivalent fixture; include negative values, zero, nullable values, and supported floating-point/numeric variants.
 
-- [ ] T6. Emit relative-time formatting deterministically (AC4, AC5)
-  - [ ] Prefer a small generated helper method or Shell helper that accepts the value and a `DateTimeOffset now` from an injected `TimeProvider`.
-  - [ ] Register or reuse `TimeProvider.System` in Shell service setup when missing; tests should inject a fake provider rather than relying on wall-clock time.
-  - [ ] Capture `now` once per generated render path before formatting rows so large virtualized grids do not show per-cell clock skew.
-  - [ ] Use fixed-width abbreviated labels for the relative window: examples such as `5m ago`, `3h ago`, `2d ago`. Keep copy concise and stable for DataGrid scanning.
-  - [ ] After 7 days, fall back to the same absolute date format used by unannotated DateTime columns.
-  - [ ] Respect nullable fallback with the existing dash representation.
-  - [ ] Cover `DateTimeOffset`, `DateTime`, nullable variants, UTC, Local, Unspecified, future timestamps, and boundary values with deterministic tests.
-  - [ ] Avoid per-cell timers in v1. Values may update on render/query refresh; continuous live ticking is out of scope.
+- [x] T6. Emit relative-time formatting deterministically (AC4, AC5)
+  - [x] Prefer a small generated helper method or Shell helper that accepts the value and a `DateTimeOffset now` from an injected `TimeProvider`.
+  - [x] Register or reuse `TimeProvider.System` in Shell service setup when missing; tests should inject a fake provider rather than relying on wall-clock time.
+  - [x] Capture `now` once per generated render path before formatting rows so large virtualized grids do not show per-cell clock skew.
+  - [x] Use fixed-width abbreviated labels for the relative window: examples such as `5m ago`, `3h ago`, `2d ago`. Keep copy concise and stable for DataGrid scanning.
+  - [x] After 7 days, fall back to the same absolute date format used by unannotated DateTime columns.
+  - [x] Respect nullable fallback with the existing dash representation.
+  - [x] Cover `DateTimeOffset`, `DateTime`, nullable variants, UTC, Local, Unspecified, future timestamps, and boundary values with deterministic tests.
+  - [x] Avoid per-cell timers in v1. Values may update on render/query refresh; continuous live ticking is out of scope.
 
-- [ ] T7. Preserve generated DataGrid and role-specific surfaces (AC1-AC7)
-  - [ ] Standard DataGrid, ActionQueue, StatusOverview, DetailRecord, and Timeline emit paths must agree on the same formatter when they render the annotated field.
-  - [ ] If a role-specific path cannot yet use the new formatter safely, document and test the intentional fallback rather than silently diverging.
-  - [ ] Do not alter badge mapping, unsupported placeholder emission, empty-state CTA behavior, or grouping semantics.
+- [x] T7. Preserve generated DataGrid and role-specific surfaces (AC1-AC7)
+  - [x] Standard DataGrid, ActionQueue, StatusOverview, DetailRecord, and Timeline emit paths must agree on the same formatter when they render the annotated field.
+  - [x] If a role-specific path cannot yet use the new formatter safely, document and test the intentional fallback rather than silently diverging.
+  - [x] Do not alter badge mapping, unsupported placeholder emission, empty-state CTA behavior, or grouping semantics.
 
-- [ ] T8. Add Counter sample reference override (AC11)
-  - [ ] Add minimal Level 1 annotations to `samples/Counter/Counter.Domain/CounterProjection.cs`; recommended: `[Display(Name = "Last changed")]` plus `[RelativeTime]` on `LastUpdated`.
-  - [ ] Keep the sample small. Do not introduce Orders/TaskTracker solely for this story.
-  - [ ] Update snapshot or generated-output tests that assert Counter projection headers/formatting.
-  - [ ] Add a short comment only if needed to explain why the sample uses the annotation.
+- [x] T8. Add Counter sample reference override (AC11)
+  - [x] Add minimal Level 1 annotations to `samples/Counter/Counter.Domain/CounterProjection.cs`; recommended: `[Display(Name = "Last changed")]` plus `[RelativeTime]` on `LastUpdated`.
+  - [x] Keep the sample small. Do not introduce Orders/TaskTracker solely for this story.
+  - [x] Update snapshot or generated-output tests that assert Counter projection headers/formatting.
+  - [x] Add a short comment only if needed to explain why the sample uses the annotation.
 
-- [ ] T9. Dev-loop and hot-reload evidence (AC9)
-  - [ ] Add focused tests proving generator output changes when an annotation is added, removed, or has a constructor argument changed between two compilations.
-  - [ ] If practical, add an integration note or test fixture documenting `dotnet watch` incremental rebuild behavior for attribute changes and the expected affected generated output count.
-  - [ ] Do not promise pure CLR/Razor hot reload for source-generator input changes. If a scenario needs restart/rebuild messaging, add it to Known Gaps with Story 6-6 ownership.
+- [x] T9. Dev-loop and hot-reload evidence (AC9)
+  - [x] Add focused tests proving generator output changes when an annotation is added, removed, or has a constructor argument changed between two compilations.
+  - [x] If practical, add an integration note or test fixture documenting `dotnet watch` incremental rebuild behavior for attribute changes and the expected affected generated output count.
+  - [x] Do not promise pure CLR/Razor hot reload for source-generator input changes. If a scenario needs restart/rebuild messaging, add it to Known Gaps with Story 6-6 ownership.
 
-- [ ] T10. Tests and verification (AC1-AC12)
-  - [ ] Contracts tests for `RelativeTimeAttribute`, `CurrencyAttribute`, and existing `ColumnPriorityAttribute` behavior.
-  - [ ] Parse tests for valid attributes, invalid-type warnings, diagnostic IDs/source spans, and precedence with `Display`/`Description`.
-  - [ ] Transform tests for `ColumnModel` metadata, display-name precedence, priority sorting, UI-agnostic IR naming, and fallback formatting.
-  - [ ] Emitter approval tests for currency and relative-time columns, including nullable cases.
-  - [ ] Shell/component tests for relative-time helper output and culture-sensitive currency formatting.
-  - [ ] Negative tests proving no runtime registry, template registration, DI-per-domain renderer, or custom component hook is introduced by Story 6-1.
-  - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
-  - [ ] Targeted tests: Contracts attribute tests, SourceTools parse/transform/emit tests, and Shell formatting tests. Run full solution tests if the working tree is otherwise clean.
+- [x] T10. Tests and verification (AC1-AC12)
+  - [x] Contracts tests for `RelativeTimeAttribute`, `CurrencyAttribute`, and existing `ColumnPriorityAttribute` behavior.
+  - [x] Parse tests for valid attributes, invalid-type warnings, diagnostic IDs/source spans, and precedence with `Display`/`Description`.
+  - [x] Transform tests for `ColumnModel` metadata, display-name precedence, priority sorting, UI-agnostic IR naming, and fallback formatting.
+  - [x] Emitter approval tests for currency and relative-time columns, including nullable cases.
+  - [x] Shell/component tests for relative-time helper output and culture-sensitive currency formatting.
+  - [x] Negative tests proving no runtime registry, template registration, DI-per-domain renderer, or custom component hook is introduced by Story 6-1.
+  - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+  - [x] Targeted tests: Contracts attribute tests, SourceTools parse/transform/emit tests, and Shell formatting tests. Run full solution tests if the working tree is otherwise clean.
 
 ---
 
@@ -313,15 +313,26 @@ Do not implement these in Story 6-1:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- `dotnet test tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj --filter FullyQualifiedName~Level1FormatAttributeTests --no-restore /p:UseSharedCompilation=false`
+- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --filter "FullyQualifiedName~Level1Format" --no-restore /p:UseSharedCompilation=false`
+- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --filter "FullyQualifiedName~CounterDomainIntegrationTests|FullyQualifiedName~CounterProjectionApprovalTests" --no-restore /p:UseSharedCompilation=false`
+- `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --filter FullyQualifiedName~CounterProjectionView_LoadedState_RendersColumnsAndFormatting --no-restore /p:UseSharedCompilation=false`
+- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --filter FullyQualifiedName~AttributeParserTests --no-restore /p:UseSharedCompilation=false`
+- `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`
+- `dotnet test Hexalith.FrontComposer.sln --no-build /p:UseSharedCompilation=false`
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- Added dependency-free `[RelativeTime]` and `[Currency]` Contracts attributes with constructor and usage tests.
+- Extended SourceTools parse, transform, diagnostics, and emitted Razor metadata for Level 1 format hints while preserving existing display, description, priority, sort, filter, and fail-soft fallback behavior.
+- Added HFC1032 for invalid or conflicting Level 1 format annotations with teachable warning messages and generated-code fallback.
+- Emitted currency through the existing numeric column path with `CultureInfo.CurrentCulture` and relative time through deterministic generated helpers that capture `TimeProvider.GetUtcNow()` once per render path.
+- Updated the Counter sample and generated-output tests to demonstrate `[Display(Name = "Last changed")]` plus `[RelativeTime]`.
+- Full solution validation passed: Contracts 99/0/0, SourceTools 505/0/0, Shell 1258/0/3, Bench 2/0/0.
 
 ### Party-Mode Review
 
@@ -372,4 +383,31 @@ Do not implement these in Story 6-1:
 
 ### File List
 
-(to be filled in by dev agent)
+- `_bmad-output/implementation-artifacts/6-1-level-1-annotation-overrides.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `samples/Counter/Counter.Domain/CounterProjection.cs`
+- `src/Hexalith.FrontComposer.Contracts/Attributes/CurrencyAttribute.cs`
+- `src/Hexalith.FrontComposer.Contracts/Attributes/RelativeTimeAttribute.cs`
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
+- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/Level1FormatAttributeTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/Level1FormatEmitterTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/Level1FormatAnnotationParserTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/TestSources.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/Level1FormatTransformTests.cs`
+
+### Change Log
+
+- 2026-04-29: Implemented Story 6-1 Level 1 annotation overrides and moved story to review after full solution validation.

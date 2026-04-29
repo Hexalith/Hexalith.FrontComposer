@@ -27,7 +27,7 @@ public static class RazorModelTransform {
 
         foreach (PropertyModel property in model.Properties) {
             TypeCategory category = MapTypeCategory(property.TypeName);
-            string? formatHint = GetFormatHint(property.TypeName, category);
+            string? formatHint = GetFormatHint(property);
             string header = ResolveHeader(property);
 
             columnsBuilder.Add(new ColumnModel(
@@ -41,7 +41,9 @@ public static class RazorModelTransform {
                 property.ColumnPriority,
                 property.FieldGroup,
                 property.Description,
-                property.UnsupportedTypeFullyQualifiedName));
+                property.UnsupportedTypeFullyQualifiedName,
+                property.DisplayFormat,
+                property.RelativeTimeWindowDays));
         }
 
         // Story 4-4 T6.4 / D17 — stable sort by (Priority ?? int.MaxValue, DeclarationOrder)
@@ -316,17 +318,27 @@ public static class RazorModelTransform {
         _ => TypeCategory.Unsupported,
     };
 
-    private static string? GetFormatHint(string typeName, TypeCategory category) => typeName switch {
-        "Int32" or "Int64" => "N0",
-        "Decimal" or "Double" or "Single" => "N2",
-        "Boolean" => "Yes/No",
-        "DateTime" or "DateTimeOffset" or "DateOnly" => "d",
-        "TimeOnly" => "t",
-        "Enum" => "Humanize:30",
-        "Guid" => "Truncate:8",
-        "Collection" => "Count",
-        _ => null,
-    };
+    private static string? GetFormatHint(PropertyModel property) {
+        if (property.DisplayFormat == FieldDisplayFormat.Currency) {
+            return "C";
+        }
+
+        if (property.DisplayFormat == FieldDisplayFormat.RelativeTime) {
+            return "RelativeTime";
+        }
+
+        return property.TypeName switch {
+            "Int32" or "Int64" => "N0",
+            "Decimal" or "Double" or "Single" => "N2",
+            "Boolean" => "Yes/No",
+            "DateTime" or "DateTimeOffset" or "DateOnly" => "d",
+            "TimeOnly" => "t",
+            "Enum" => "Humanize:30",
+            "Guid" => "Truncate:8",
+            "Collection" => "Count",
+            _ => null,
+        };
+    }
 
     private static string ResolveHeader(PropertyModel property) {
         // Priority 1: [Display(Name)] attribute value

@@ -69,9 +69,11 @@ public class CounterDomainIntegrationTests {
             .Single(t => System.IO.Path.GetFileName(t.FilePath).EndsWith(".g.razor.cs"));
         string razorSource = razorTree.GetText(ct).ToString();
 
-        // Verify 3 columns: Id (text), Count (numeric N0), LastUpdated (datetime "d")
+        // Verify 3 columns: Id (text), Count (numeric N0), LastUpdated (relative-time DateTime)
         razorSource.ShouldContain("Text column: Id");
         razorSource.ShouldContain("Numeric column: Count");
         razorSource.ShouldContain("DateTime column: LastUpdated");
+        razorSource.ShouldContain("\"Last changed\"");
+        razorSource.ShouldContain("FormatRelativeTime(x.LastUpdated, relativeNow, 7)");
     }
 }

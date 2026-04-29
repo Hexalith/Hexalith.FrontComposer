@@ -374,4 +374,17 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1032: A Level 1 format annotation is incompatible with the field type or
+    /// conflicts with another mutually-exclusive format annotation. Warning severity —
+    /// generated code remains fail-soft and falls back to the existing default formatter.
+    /// </summary>
+    public static readonly DiagnosticDescriptor Level1FormatAnnotationInvalid = new(
+        id: "HFC1032",
+        title: "Invalid Level 1 format annotation",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

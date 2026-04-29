@@ -315,6 +315,20 @@ public sealed class CommandParseResult : IEquatable<CommandParseResult> {
 }
 
 /// <summary>
+/// Compile-time display format selected from Level 1 projection annotations.
+/// </summary>
+public enum FieldDisplayFormat {
+    /// <summary>Use the existing type-derived formatter.</summary>
+    Default,
+
+    /// <summary>Render DateTime-like values as compact relative time within the configured window.</summary>
+    RelativeTime,
+
+    /// <summary>Render numeric values using the current culture currency format.</summary>
+    Currency,
+}
+
+/// <summary>
 /// IR representation of a single property on a [Projection]-annotated type.
 /// </summary>
 public sealed class PropertyModel : IEquatable<PropertyModel> {
@@ -330,7 +344,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         EquatableArray<string> enumMemberNames = default,
         int? columnPriority = null,
         string? fieldGroup = null,
-        string? description = null) {
+        string? description = null,
+        FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
+        int? relativeTimeWindowDays = null) {
         Name = name;
         TypeName = typeName;
         IsNullable = isNullable;
@@ -343,6 +359,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
         ColumnPriority = columnPriority;
         FieldGroup = fieldGroup;
         Description = description;
+        DisplayFormat = displayFormat;
+        RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
     }
 
     public string Name { get; }
@@ -399,6 +417,18 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
     /// </summary>
     public string? FieldGroup { get; }
 
+    /// <summary>
+    /// Gets the Level 1 display format selected by <c>[RelativeTime]</c> or <c>[Currency]</c>.
+    /// The value is UI-agnostic metadata; emitters choose the concrete rendering path.
+    /// </summary>
+    public FieldDisplayFormat DisplayFormat { get; }
+
+    /// <summary>
+    /// Gets the relative-time window in days when <see cref="DisplayFormat"/> is
+    /// <see cref="FieldDisplayFormat.RelativeTime"/>.
+    /// </summary>
+    public int? RelativeTimeWindowDays { get; }
+
     public bool Equals(PropertyModel? other) {
         if (other is null) {
             return false;
@@ -419,7 +449,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             && EnumMemberNames == other.EnumMemberNames
             && ColumnPriority == other.ColumnPriority
             && FieldGroup == other.FieldGroup
-            && Description == other.Description;
+            && Description == other.Description
+            && DisplayFormat == other.DisplayFormat
+            && RelativeTimeWindowDays == other.RelativeTimeWindowDays;
     }
 
     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
@@ -439,6 +471,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
             hash = (hash * 31) + (ColumnPriority?.GetHashCode() ?? 0);
             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
             hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
+            hash = (hash * 31) + DisplayFormat.GetHashCode();
+            hash = (hash * 31) + (RelativeTimeWindowDays?.GetHashCode() ?? 0);
             return hash;
         }
     }
