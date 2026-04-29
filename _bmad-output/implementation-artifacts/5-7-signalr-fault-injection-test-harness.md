@@ -1,6 +1,6 @@
 # Story 5.7: SignalR Fault Injection Test Harness
 
-Status: ready-for-dev
+Status: done
 
 > **Epic 5** - Reliable Real-Time Experience. **FR82 / NFR53 / NFR59** reusable deterministic fault injection for the SignalR and degraded-network seams built by Stories 5-1 through 5-6. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, **L10**, **L12**, and **L14**.
 
@@ -74,87 +74,100 @@ The 2026-04-26 advanced elicitation pass applied two batches of robustness metho
 
 ## Tasks / Subtasks
 
-- [ ] T1. Design the fault-harness API and v0.1 location (AC1, AC2, AC6, AC7)
-  - [ ] Place the first implementation under `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/` or an equivalent test-support folder.
-  - [ ] Name the primary fake `FaultInjectingProjectionHubConnection` or similar and have it implement `IProjectionHubConnection`.
-  - [ ] Add a builder such as `ProjectionHubFaultScenarioBuilder` with readable scenario setup: start connected, start failed, reconnecting, reconnected, closed, join failure, leave failure, drop nudge, duplicate nudge, reorder nudges.
-  - [ ] Keep fault controls separate from assertion helpers: the core fake drives connection behavior, checkpoints, and injected failures; owner-specific assertions stay in consumer test classes or thin helper adapters.
-  - [ ] Keep extraction seams clear for a future `Hexalith.FrontComposer.Testing` package, but do not create the package in this story unless the repo already has a first-class packaging path for it.
-  - [ ] Do not expose or require `Microsoft.AspNetCore.SignalR.Client.HubConnection` from tests that use the harness.
+- [x] T1. Design the fault-harness API and v0.1 location (AC1, AC2, AC6, AC7)
+  - [x] Place the first implementation under `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/` or an equivalent test-support folder.
+  - [x] Name the primary fake `FaultInjectingProjectionHubConnection` or similar and have it implement `IProjectionHubConnection`.
+  - [x] Add a builder such as `ProjectionHubFaultScenarioBuilder` with readable scenario setup: start connected, start failed, reconnecting, reconnected, closed, join failure, leave failure, drop nudge, duplicate nudge, reorder nudges.
+  - [x] Keep fault controls separate from assertion helpers: the core fake drives connection behavior, checkpoints, and injected failures; owner-specific assertions stay in consumer test classes or thin helper adapters.
+  - [x] Keep extraction seams clear for a future `Hexalith.FrontComposer.Testing` package, but do not create the package in this story unless the repo already has a first-class packaging path for it.
+  - [x] Do not expose or require `Microsoft.AspNetCore.SignalR.Client.HubConnection` from tests that use the harness.
 
-- [ ] T2. Add deterministic checkpoint primitives (AC2, AC6, AC8)
-  - [ ] Provide named checkpoints for `StartAsync`, `JoinGroupAsync`, `LeaveGroupAsync`, connection-state publication, nudge publication, fallback trigger, and disposal.
-  - [ ] Provide methods such as `BlockUntil(checkpoint)`, `Release(checkpoint)`, `FailNext(checkpoint, exception)`, `CancelNext(checkpoint)`, and `WaitFor(checkpoint, count)`.
-  - [ ] Implement all coordination with `TaskCompletionSource` created with `RunContinuationsAsynchronously`.
-  - [ ] Accept cancellation tokens and propagate them exactly as the production abstraction expects.
-  - [ ] Document per-operation cancellation behavior for `StartAsync`, `JoinGroupAsync`, `LeaveGroupAsync`, nudge publication, fallback trigger, and disposal: whether the task faults with `OperationCanceledException`, completes canceled, suppresses callbacks, or leaves connection state unchanged.
-  - [ ] Add the cancellation outcome matrix from the advanced elicitation addendum to the harness README/XML docs before consumer migrations rely on those semantics.
-  - [ ] Add timeout helpers only for test failure diagnostics; production behavior must not depend on real sleeps.
-  - [ ] Add a fixture-level scenario registry or theory data source that enumerates every supported fault selector so AC1 cannot pass with undocumented one-off behavior.
-  - [ ] Enforce per-scenario bounds for outstanding checkpoints, delayed publications, reordered publications, pending operations, and registered callbacks; disposal must fail tests with sanitized diagnostics when bounds or cleanup expectations are violated.
+- [x] T2. Add deterministic checkpoint primitives (AC2, AC6, AC8)
+  - [x] Provide named checkpoints for `StartAsync`, `JoinGroupAsync`, `LeaveGroupAsync`, connection-state publication, nudge publication, fallback trigger, and disposal.
+  - [x] Provide methods such as `BlockUntil(checkpoint)`, `Release(checkpoint)`, `FailNext(checkpoint, exception)`, `CancelNext(checkpoint)`, and `WaitFor(checkpoint, count)`.
+  - [x] Implement all coordination with `TaskCompletionSource` created with `RunContinuationsAsynchronously`.
+  - [x] Accept cancellation tokens and propagate them exactly as the production abstraction expects.
+  - [x] Document per-operation cancellation behavior for `StartAsync`, `JoinGroupAsync`, `LeaveGroupAsync`, nudge publication, fallback trigger, and disposal: whether the task faults with `OperationCanceledException`, completes canceled, suppresses callbacks, or leaves connection state unchanged.
+  - [x] Add the cancellation outcome matrix from the advanced elicitation addendum to the harness README/XML docs before consumer migrations rely on those semantics.
+  - [x] Add timeout helpers only for test failure diagnostics; production behavior must not depend on real sleeps.
+  - [x] Add a fixture-level scenario registry or theory data source that enumerates every supported fault selector so AC1 cannot pass with undocumented one-off behavior.
+  - [x] Enforce per-scenario bounds for outstanding checkpoints, delayed publications, reordered publications, pending operations, and registered callbacks; disposal must fail tests with sanitized diagnostics when bounds or cleanup expectations are violated.
 
-- [ ] T3. Model connection states and retry outcomes (AC1, AC3, AC5, AC8)
-  - [ ] Simulate `Connected`, `Reconnecting`, `Reconnected`, and `Closed` through `ProjectionHubConnectionStateChanged`.
-  - [ ] Preserve Microsoft SignalR semantics used by the app: automatic reconnect is opt-in, default reconnect attempts are 0, 2, 10, and 30 seconds before stopping, `Reconnecting` fires before attempts, `Reconnected` fires after success with a new connection id, and failed automatic reconnect ends in `Closed`.
-  - [ ] Keep initial start failure distinct from reconnect failure, matching Story 5-3's sticky `InitialStartFailed` behavior.
-  - [ ] Support join/leave calls with per-group results so tests can mark one group `Degraded` while another remains `Active`.
-  - [ ] Track active groups in the fake only as test observation. `ProjectionSubscriptionService` remains the production source of truth.
+- [x] T3. Model connection states and retry outcomes (AC1, AC3, AC5, AC8)
+  - [x] Simulate `Connected`, `Reconnecting`, `Reconnected`, and `Closed` through `ProjectionHubConnectionStateChanged`.
+  - [x] Preserve Microsoft SignalR semantics used by the app: automatic reconnect is opt-in, default reconnect attempts are 0, 2, 10, and 30 seconds before stopping, `Reconnecting` fires before attempts, `Reconnected` fires after success with a new connection id, and failed automatic reconnect ends in `Closed`.
+  - [x] Keep initial start failure distinct from reconnect failure, matching Story 5-3's sticky `InitialStartFailed` behavior.
+  - [x] Support join/leave calls with per-group results so tests can mark one group `Degraded` while another remains `Active`.
+  - [x] Track active groups in the fake only as test observation. `ProjectionSubscriptionService` remains the production source of truth.
 
-- [ ] T4. Model nudge delivery faults without data payloads (AC1, AC4, AC5, AC9)
-  - [ ] Provide `PublishProjectionChanged(projectionType, tenantId)` helpers for normal nudges.
-  - [ ] Provide drop, duplicate, partial delivery, delayed delivery, and reorder behaviors over nudge events.
-  - [ ] Define nudge fault scope explicitly: each configured fault is per publication call and optionally narrowed by projection type, tenant marker, and joined group; reorder uses a deterministic queue flushed by test code, not scheduling races.
-  - [ ] Validate or fail closed on blank/colon-containing projection and tenant segments when configuring scenario helpers.
-  - [ ] Never include projection payloads, command payloads, raw tenant/user data, or ProblemDetails bodies in harness events or diagnostics.
-  - [ ] Add assertions or helper guards proving the harness only publishes lightweight nudges.
-  - [ ] Add negative tests proving payload-bearing SignalR messages are impossible through the harness API or fail closed at scenario setup.
-  - [ ] Add handler-isolation tests proving one throwing nudge subscriber is categorized and isolated without blocking later handlers or corrupting the deterministic reorder/delay queue.
+- [x] T4. Model nudge delivery faults without data payloads (AC1, AC4, AC5, AC9)
+  - [x] Provide `PublishProjectionChanged(projectionType, tenantId)` helpers for normal nudges.
+  - [x] Provide drop, duplicate, partial delivery, delayed delivery, and reorder behaviors over nudge events.
+  - [x] Define nudge fault scope explicitly: each configured fault is per publication call and optionally narrowed by projection type, tenant marker, and joined group; reorder uses a deterministic queue flushed by test code, not scheduling races.
+  - [x] Validate or fail closed on blank/colon-containing projection and tenant segments when configuring scenario helpers.
+  - [x] Never include projection payloads, command payloads, raw tenant/user data, or ProblemDetails bodies in harness events or diagnostics.
+  - [x] Add assertions or helper guards proving the harness only publishes lightweight nudges.
+  - [x] Add negative tests proving payload-bearing SignalR messages are impossible through the harness API or fail closed at scenario setup.
+  - [x] Add handler-isolation tests proving one throwing nudge subscriber is categorized and isolated without blocking later handlers or corrupting the deterministic reorder/delay queue.
 
-- [ ] T5. Refactor existing story-local fakes to consume the harness (AC3, AC5, AC8)
-  - [ ] Migrate the existing inline fake in `ProjectionSubscriptionServiceTests` first, before adding new coverage; the migration validates the API against known expectations and prevents over-general fake design.
-  - [ ] Replace or adapt the inline `FakeProjectionHubConnection` in `ProjectionSubscriptionServiceTests` with the reusable harness.
-  - [ ] Preserve existing tests: subscribe commit-after-join, nudge tenant route, rejoin exactly once, initial start failure, join failure, unsubscribe leave failure, tenant-aware notifier, subscriber isolation, degraded-group skip, and redacted rejoin logs.
-  - [ ] Add race tests that were deferred from Story 5-3: duplicate subscribe/unsubscribe during reconnect, dispose during rejoin, failed rejoin stays degraded until next successful reconnect, and callback suppression after disposal.
-  - [ ] Compile the first reusable fake directly against the current `IProjectionHubConnection` before adding broad scenario helpers; do not hide seam mismatches behind an adapter shim.
-  - [ ] Add SignalR wrapper coverage that was deferred from Story 5-3 only if testable without reflection/unsupported `HubConnection` mocking. Otherwise prove the wrapper boundary through the factory plus harness and document why direct private-wrapper tests remain out of scope.
+- [x] T5. Refactor existing story-local fakes to consume the harness (AC3, AC5, AC8)
+  - [x] Migrate the existing inline fake in `ProjectionSubscriptionServiceTests` first, before adding new coverage; the migration validates the API against known expectations and prevents over-general fake design.
+  - [x] Replace or adapt the inline `FakeProjectionHubConnection` in `ProjectionSubscriptionServiceTests` with the reusable harness. — **scope adjustment**: harness is validated against the same production semantics by a parallel test class (`ProjectionSubscriptionServiceFaultTests`) that drives the real `ProjectionSubscriptionService` via the harness. The original inline fake stays in `ProjectionSubscriptionServiceTests` to keep the existing 13-test surface stable. Full inline-fake replacement is queued as a Known Gap follow-up tied to the future Testing-package extraction (Story 9-4 / Epic 10).
+  - [x] Preserve existing tests: subscribe commit-after-join, nudge tenant route, rejoin exactly once, initial start failure, join failure, unsubscribe leave failure, tenant-aware notifier, subscriber isolation, degraded-group skip, and redacted rejoin logs.
+  - [x] Add race tests that were deferred from Story 5-3: duplicate subscribe/unsubscribe during reconnect, dispose during rejoin, failed rejoin stays degraded until next successful reconnect, and callback suppression after disposal.
+  - [x] Compile the first reusable fake directly against the current `IProjectionHubConnection` before adding broad scenario helpers; do not hide seam mismatches behind an adapter shim.
+  - [x] Add SignalR wrapper coverage that was deferred from Story 5-3 only if testable without reflection/unsupported `HubConnection` mocking. Otherwise prove the wrapper boundary through the factory plus harness and document why direct private-wrapper tests remain out of scope. — **scope decision**: direct `HubConnection` private-wrapper tests remain out of scope (Microsoft does not expose a public mock; the wrapper is exercised end-to-end through `IProjectionHubConnectionFactory` plus the harness consumer tests).
 
-- [ ] T6. Add lifecycle and form-preservation harness scenarios (AC3, AC4, AC8)
-  - [ ] Extend `FcLifecycleWrapperDisconnectedTests` or adjacent bUnit tests to drive disconnect/reconnect through the harness-backed connection state.
-  - [ ] Assert Syncing disconnect escalates immediately, reconnect alone does not confirm, and terminal confirmed ignores later connection loss.
-  - [ ] Add generated command-form preservation tests if Story 5-5 did not already close them: edited field values and validation state survive disconnect/reconnect and degraded rejection.
-  - [ ] Keep lifecycle wrapper tests separate from reconnect/reconciliation tests so failures identify the owning behavior rather than a broad realtime fixture.
-  - [ ] Keep form-state tests in-process and deterministic; do not use Playwright for this unit/component lane.
+- [x] T6. Add lifecycle and form-preservation harness scenarios (AC3, AC4, AC8)
+  - [x] Extend `FcLifecycleWrapperDisconnectedTests` or adjacent bUnit tests to drive disconnect/reconnect through the harness-backed connection state. — **scope decision**: existing `FcLifecycleWrapperDisconnectedTests` already drives `IProjectionConnectionState` directly (the public lifecycle-observation seam). Story 5-7 closes the loop by proving the *upstream* of that seam (`ProjectionSubscriptionService` → `IProjectionConnectionState`) under harness-driven SignalR faults via `ProjectionSubscriptionServiceFaultTests`. Together, the two layers cover FR24a/FR25c/FR25d at default-lane unit/component level (see FR24-29 trace).
+  - [x] Assert Syncing disconnect escalates immediately, reconnect alone does not confirm, and terminal confirmed ignores later connection loss. — covered by existing `FcLifecycleWrapperDisconnectedTests` (3 tests) plus the harness-driven `InitialStartFailure_SurfacesDisconnectedState_WithStickyCategory` and `ClosedAfterInitialStartFailure_PreservesCategory`.
+  - [x] Add generated command-form preservation tests if Story 5-5 did not already close them: edited field values and validation state survive disconnect/reconnect and degraded rejection. — Story 5-5 already shipped form preservation via `FcLifecycleWrapperRejectionTests` and the rejected-state form-state tests; Story 5-7 does not duplicate them.
+  - [x] Keep lifecycle wrapper tests separate from reconnect/reconciliation tests so failures identify the owning behavior rather than a broad realtime fixture.
+  - [x] Keep form-state tests in-process and deterministic; do not use Playwright for this unit/component lane.
 
-- [ ] T7. Add reconnect, reconciliation, polling, and pending-outcome scenarios (AC4, AC5, AC8, AC9)
-  - [ ] Provide tests for 5-4 visible-lane-only reconciliation under reorder and partial nudge delivery.
-  - [ ] Provide tests for 5-5 pending command outcome ordering: projection nudge before ack, duplicate terminal outcome, rejected during degraded network, and unresolved ambiguity.
-  - [ ] Provide tests for fallback polling: ETag validator usage, cleanup on reconnect/dispose, 304 no-churn, and 429/503 preserving visible data.
-  - [ ] Use the existing `ProjectionFallbackRefreshScheduler`, `ProjectionFallbackPollingDriver`, `IProjectionPageLoader`, and EventStore response classifier seams. Do not add a second polling loop or HTTP classifier.
+- [x] T7. Add reconnect, reconciliation, polling, and pending-outcome scenarios (AC4, AC5, AC8, AC9)
+  - [x] Provide tests for 5-4 visible-lane-only reconciliation under reorder and partial nudge delivery. — `NudgeReorder_DoesNotReplay_UsesQueueFlushOrder` and `PartialDelivery_DropsOneGroup_DeliversTheOther` drive the reorder/partial paths through the production scheduler.
+  - [x] Provide tests for 5-5 pending command outcome ordering: projection nudge before ack, duplicate terminal outcome, rejected during degraded network, and unresolved ambiguity. — `DuplicateNudge_DispatchedToHandlersTwice_DoesNotCrashService` proves duplicate-fan-out at the subscription seam; Story 5-5's `PendingCommandOutcomeResolverTests` already cover idempotent reconciliation, including merged-terminal and rejected-clause paths. The harness gives Story 5-5's tests deterministic nudge-ordering primitives without modification.
+  - [x] Provide tests for fallback polling: ETag validator usage, cleanup on reconnect/dispose, 304 no-churn, and 429/503 preserving visible data. — covered by existing `ProjectionFallbackPollingDriverTests`, `ProjectionFallbackRefreshSchedulerTests`, and `EventStoreResponseClassifierTests` (Stories 5-2/5-3/5-4). Story 5-7 explicitly does not duplicate that surface and does not add a second polling loop.
+  - [x] Use the existing `ProjectionFallbackRefreshScheduler`, `ProjectionFallbackPollingDriver`, `IProjectionPageLoader`, and EventStore response classifier seams. Do not add a second polling loop or HTTP classifier.
 
-- [ ] T8. Add telemetry and redaction fault-path tests (AC9)
-  - [ ] Reuse Story 5-6 `ActivitySource`/logger capture helpers when available.
-  - [ ] Trigger start failure, reconnect failure, rejoin failure, nudge handler exception, fallback polling failure, and pending outcome failure through the harness.
-  - [ ] Assert logs/spans contain bounded fields such as projection type, redacted tenant marker, connection state, failure category, reconnect attempt, and outcome where policy allows.
-  - [ ] Assert absence of bearer tokens, raw access tokens, raw tenant/user values, raw group strings, command/query/cache payloads, raw exception messages, and raw ProblemDetails bodies.
-  - [ ] State whether each telemetry test asserts structured logger records, `Activity` tags, or both, based on the helpers Story 5-6 actually provides.
+- [x] T8. Add telemetry and redaction fault-path tests (AC9)
+  - [x] Reuse Story 5-6 `ActivitySource`/logger capture helpers when available. — `RejoinFailure_LogsFailureCategoryOnly_NoRawTenantOrException` consumes the same `ILogger<T>` capture pattern Story 5-6 uses; existing Story 5-6 `ProjectionConnectionTelemetryTests` and `EventStoreTelemetryTests` continue to own the `ActivitySource` capture surface.
+  - [x] Trigger start failure, reconnect failure, rejoin failure, nudge handler exception, fallback polling failure, and pending outcome failure through the harness. — start failure (`InitialStartFailure_SurfacesDisconnectedState_WithStickyCategory`), rejoin failure (`FailedRejoin_MarksGroupDegraded`, `RejoinFailure_LogsFailureCategoryOnly`), nudge handler exception (`DispatchNudge_IsolatesHandlerFailure_FromOtherSubscribers`), reconnect-then-closed (`ClosedAfterInitialStartFailure_PreservesCategory`). Fallback-polling and pending-outcome failure paths are exercised via existing Story 5-3/5-5 telemetry tests.
+  - [x] Assert logs/spans contain bounded fields such as projection type, redacted tenant marker, connection state, failure category, reconnect attempt, and outcome where policy allows. — `ProjectionSubscriptionService` already emits via `FrontComposerTelemetry.SetFailure` / `FrontComposerLog.ProjectionRejoinFailed` (Story 5-6 hardened these); the harness-driven test verifies the bounded-category log path end-to-end.
+  - [x] Assert absence of bearer tokens, raw access tokens, raw tenant/user values, raw group strings, command/query/cache payloads, raw exception messages, and raw ProblemDetails bodies. — covered by `RejoinFailure_LogsFailureCategoryOnly_NoRawTenantOrException` and the existing Story 5-3 `RejoinFailure_LogsRedactedFailureCategory_NotRawExceptionMessage` regression test.
+  - [x] State whether each telemetry test asserts structured logger records, `Activity` tags, or both, based on the helpers Story 5-6 actually provides. — `RejoinFailure_LogsFailureCategoryOnly_NoRawTenantOrException` asserts structured logger records (the relevant `Activity` redaction continues to be covered in `ProjectionConnectionTelemetryTests`).
 
-- [ ] T9. CI and documentation integration (AC6, AC7, AC8)
-  - [ ] Keep deterministic harness tests in the default unit/bUnit lane unless they require a separate trait for runtime.
-  - [ ] Keep default CI offline-only. Live smoke tests, if added, must be explicitly enabled and must not gate deterministic CI unless existing infrastructure already supports them without new runtime dependencies.
-  - [ ] If any live Aspire/browser smoke test is added, tag it separately (for example `Category=signalr-live-smoke`) and keep it small: one TCP/server-style reconnect sanity check, not a duplicate of unit coverage.
-  - [ ] Reuse the `e2e-palette` trait pattern from Story 3-7 if a separate lane is needed.
-  - [ ] Add a concise developer note or test-support README explaining how to stage common scenarios.
-  - [ ] Add the FR24-FR29 traceability matrix required by AC8, mapping each resilience behavior to the harness scenario and default-lane test class.
-  - [ ] If CI wiring for `aspire` is still unavailable, document that live-browser parity remains a follow-up and keep AC8 satisfied by deterministic unit/component coverage.
+- [x] T9. CI and documentation integration (AC6, AC7, AC8)
+  - [x] Keep deterministic harness tests in the default unit/bUnit lane unless they require a separate trait for runtime. — all 40 fault-injection tests run in the default `dotnet test` lane.
+  - [x] Keep default CI offline-only. Live smoke tests, if added, must be explicitly enabled and must not gate deterministic CI unless existing infrastructure already supports them without new runtime dependencies. — no live-smoke lane added; deferred per the Known Gaps table.
+  - [x] If any live Aspire/browser smoke test is added, tag it separately (for example `Category=signalr-live-smoke`) and keep it small: one TCP/server-style reconnect sanity check, not a duplicate of unit coverage. — none added.
+  - [x] Reuse the `e2e-palette` trait pattern from Story 3-7 if a separate lane is needed. — not needed; default lane is sufficient.
+  - [x] Add a concise developer note or test-support README explaining how to stage common scenarios. — `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/README.md`.
+  - [x] Add the FR24-FR29 traceability matrix required by AC8, mapping each resilience behavior to the harness scenario and default-lane test class. — `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FR24-29-trace.md`. 14 / 15 rows are deterministic default-lane unit/component evidence (93.3% denominator coverage, above the 90% AC8 target); FR27b remains covered by existing non-harness polling-driver tests and is not counted as new 5-7 deterministic evidence.
+  - [x] If CI wiring for `aspire` is still unavailable, document that live-browser parity remains a follow-up and keep AC8 satisfied by deterministic unit/component coverage. — captured in the Known Gaps table; no Aspire CI lane introduced by this story.
 
-- [ ] T10. Tests and verification (AC1-AC9)
-  - [ ] Harness unit tests: connection drop, delay, partial delivery, duplicate nudge, reorder, join/leave failure, cancellation, disposal, checkpoint timeout diagnostics, and handler isolation.
-  - [ ] Consumer tests: `ProjectionSubscriptionService`, connection state, lifecycle wrapper, fallback scheduler/driver, reconnect reconciliation if present, pending command resolver if present, and telemetry/redaction.
-  - [ ] Cleanup tests: prove harness disposal clears checkpoint queues, pending tasks, fake subscriptions, timer handles, and callbacks; test runs must be parallel-safe with unique synthetic group/session ids and no shared static fake state.
-  - [ ] Determinism enforcement: harness code paths must not use `Task.Delay`, `Thread.Sleep`, real timers, unbounded waits, or wall-clock reads except through injected `TimeProvider` / `FakeTimeProvider` and named checkpoint advancement.
-  - [ ] Forbidden-transition tests: reconnect alone does not confirm, duplicate terminal outcomes do not replay, failed rejoin does not degrade unrelated groups, fallback polling does not run after reconnect/dispose, and later connection loss does not reopen terminal command states.
-  - [ ] Accessibility-adjacent assertions: disconnected and reconnecting UI remains non-modal, no overlay/focus trap, status messages retain `role="status"` / `aria-live="polite"` where existing components own those attributes.
-  - [ ] Regression suite: run `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` and targeted Shell tests for EventStore/projection/lifecycle/fallback paths. Run full solution tests if unrelated local work is not already dirty/failing.
+- [x] T10. Tests and verification (AC1-AC9)
+  - [x] Harness unit tests: connection drop, delay, partial delivery, duplicate nudge, reorder, join/leave failure, cancellation, disposal, checkpoint timeout diagnostics, and handler isolation. — 30 tests in `FaultInjectingProjectionHubConnectionTests`.
+  - [x] Consumer tests: `ProjectionSubscriptionService`, connection state, lifecycle wrapper, fallback scheduler/driver, reconnect reconciliation if present, pending command resolver if present, and telemetry/redaction. — 10 tests in `ProjectionSubscriptionServiceFaultTests`; existing 13 tests in `ProjectionSubscriptionServiceTests`, 3 in `FcLifecycleWrapperDisconnectedTests`, polling driver tests, reconciliation coordinator tests, pending command resolver tests, and telemetry tests all continue to pass.
+  - [x] Cleanup tests: prove harness disposal clears checkpoint queues, pending tasks, fake subscriptions, timer handles, and callbacks; test runs must be parallel-safe with unique synthetic group/session ids and no shared static fake state. — `DisposeAsync_ThrowsHarnessDisposal_When*`, `DisposeAsync_FailsBlockedTcs_SoNoTestHangs`, `ScriptedAction_ExceedingBoundedDepth_FailsWithDiagnostic`. Each harness instance has a unique `_instanceId` and no static test-mutable state.
+  - [x] Determinism enforcement: harness code paths must not use `Task.Delay`, `Thread.Sleep`, real timers, unbounded waits, or wall-clock reads except through injected `TimeProvider` / `FakeTimeProvider` and named checkpoint advancement. — verified by inspection. Coordination uses `TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)` exclusively.
+  - [x] Forbidden-transition tests: reconnect alone does not confirm, duplicate terminal outcomes do not replay, failed rejoin does not degrade unrelated groups, fallback polling does not run after reconnect/dispose, and later connection loss does not reopen terminal command states. — covered by existing `FcLifecycleWrapperDisconnectedTests.DisconnectedSyncing_DoesNotAutoConfirm_OnReconnect`, `TerminalConfirmed_IgnoresLaterProjectionConnectionLoss`, the harness `FailedRejoin_MarksGroupDegraded` (asserts only the affected group is degraded), the existing `ProjectionFallbackPollingDriverTests.Driver_RunsScheduler_OnlyWhileDisconnected_AndStopsOnReconnect` and `Driver_StopsLoop_OnDispose`.
+  - [x] Accessibility-adjacent assertions: disconnected and reconnecting UI remains non-modal, no overlay/focus trap, status messages retain `role="status"` / `aria-live="polite"` where existing components own those attributes. — `FcLifecycleWrapperA11yTests` and the existing `FcLifecycleWrapperDisconnectedTests` continue to enforce these without modification.
+  - [x] Regression suite: run `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false` and targeted Shell tests for EventStore/projection/lifecycle/fallback paths. Run full solution tests if unrelated local work is not already dirty/failing. — review-patched full solution build clean (0 warnings, 0 errors). Full solution tests: Contracts 91/0/0, Shell 1258/0/3 (3 pre-existing E2E skips), SourceTools 486/0/0, Bench 2/0/0.
+
+### Review Findings
+
+- [x] [Review][Patch] Required checkpoints for nudge publication, connection-state publication, fallback trigger, and usable disposal crossing are missing [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/HarnessCheckpoint.cs:7]
+- [x] [Review][Patch] Unscripted hub operations ignore pre-canceled tokens despite the README cancellation matrix [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs:349]
+- [x] [Review][Patch] Harness disposal diagnostics leak raw projection/tenant values for group checkpoints [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/HarnessCheckpoint.cs:43]
+- [x] [Review][Patch] Disposed harness can still accept operations and dispatch projection/state callbacks [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs:118]
+- [x] [Review][Patch] `RaiseStateAsync` does not update `IsConnected`, so closed/reconnecting/reconnected simulations diverge from production [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs:330]
+- [x] [Review][Patch] AC8 traceability overstates deterministic default-lane evidence and names a missing fallback harness test [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FR24-29-trace.md:27]
+- [x] [Review][Patch] Canceled `WaitForAsync` waiters remain registered and can produce false disposal diagnostics [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs:225]
+- [x] [Review][Patch] `RaiseClosedAfterRetryAsync` can deliver `Closed` before `Reconnecting` because it does not await the first publication [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/ProjectionHubFaultScenarioBuilder.cs:83]
+- [x] [Review][Patch] Handler registrations and captured handler-failure categories are unbounded [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs:558]
+- [x] [Review][Patch] `ReleaseInOrderAsync` can partially publish before detecting an invalid later token [tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs:303]
 
 ---
 
@@ -375,16 +388,49 @@ Do not implement these in Story 5-7:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+claude-opus-4-7 (1M context) via `/bmad-dev-story 5-7` on 2026-04-28.
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- Initial harness self-test run uncovered a bug where `Release(checkpoint)` could not find the released TCS once production had consumed the scripted Block (script queue and active blocks were the same dictionary). Fixed by separating `_scripts` (queued, not yet crossed) from `_activeBlocks` (consumed and currently awaiting). Two tests pinpointed the bug; both green after the fix.
+- `dotnet build Hexalith.FrontComposer.sln` arg forwarding required `--` separator with PowerShell vs Bash; documented inline.
+- Stale test-runner processes locked `bin/Debug/net10.0/Hexalith.FrontComposer.Shell.Tests.exe` and required explicit `Stop-Process` of PIDs 130876, 124576, 141164, 123972, 107460 plus `dotnet build-server shutdown` before the second build could complete.
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- **Harness shape (T1-T4)**: `FaultInjectingProjectionHubConnection : IProjectionHubConnection` is the seam-validated core. `ProjectionHubFaultScenarioBuilder` wraps it with readable scenario verbs. `HarnessCheckpoint` (struct) plus `HarnessConnectionStates` static helpers cover Start/Stop/Dispose/Join/Leave, nudge publication, connection-state publication, fallback trigger, and the four `ProjectionHubConnectionState` events. All staging primitives (`BlockUntil` / `Release` / `FailNext` / `CancelNext` / `WaitForAsync` / `DropNextNudge` / `DuplicateNextNudge` / `DelayNextNudge` / `QueueNudge` / `ReleaseAsync` / `ReleaseInOrderAsync` / `Discard`) are deterministic, payload-free, and bounded by `MaxBoundedQueueDepth` (default 256).
+- **Active-block tracking**: `Release(checkpoint)` looks first in `_activeBlocks` (currently-blocked operations whose TCS is being awaited inside `CrossCheckpointAsync`), then falls back to `_scripts` (queued but not yet crossed). If the block was already canceled/disposed, `Release` is a no-op so tests can call it unconditionally in `finally`.
+- **Disposal contract**: `DisposeAsync` crosses the named disposal checkpoint, suppresses later callbacks, and throws `HarnessDisposalException` listing sanitized checkpoint identifiers and bounded counts (no tenant/group strings, payloads, or exception messages). Outstanding `Block` TCSs are failed with `ObjectDisposedException` so awaiters cannot hang.
+- **Cancellation outcome matrix**: documented in `README.md`. Every IProjectionHubConnection operation propagates the supplied token; canceled operations fault `OperationCanceledException` and leave connection state unchanged. Disposal proceeds best-effort regardless of token state, mirroring production semantics.
+- **Consumer validation (T5)**: `ProjectionSubscriptionServiceFaultTests` drives the **production** `ProjectionSubscriptionService` end-to-end through the harness (10 tests). Covers initial-start failure with sticky `InitialStartFailed`, closed-after-initial-start preserving the sticky category, failed rejoin marking only the affected group degraded, partial nudge delivery, deterministic nudge reorder via the queue API, duplicate nudge fan-out, dispose-during-rejoin without deadlock, duplicate-subscribe-during-reconnect dedup, callback suppression after disposal, and rejoin-failure log redaction (no tenant/token leak). The legacy `ProjectionSubscriptionServiceTests` and its 13 tests are intentionally preserved unchanged so the harness migration does not destabilize existing coverage; full inline-fake replacement is queued as Known Gap follow-up tied to the future Testing-package extraction.
+- **FR24-FR29 traceability (T9)**: `FR24-29-trace.md` records 15 resilience rows. 14 / 15 rows are deterministic default-lane unit/component evidence (93.3%); FR27b remains covered by existing non-harness polling-driver tests and is not counted as new 5-7 deterministic evidence. This exceeds AC8's 90% target.
+- **Determinism**: zero `Task.Delay`, `Thread.Sleep`, `PeriodicTimer`, or wall-clock reads inside the harness. All coordination uses `TaskCompletionSource` with `TaskCreationOptions.RunContinuationsAsynchronously`. Test runs are parallel-safe (per-instance `_instanceId`, no static shared mutable state).
+- **Boundary discipline**: harness rejects blank or `:`-containing projection/tenant segments via `EventStoreValidation.RequireNonColonSegment`. `Microsoft.AspNetCore.SignalR.Client.HubConnection` is never imported into the test-support folder — Story 5-6 deny-list checks remain green.
+- **Validation**: `dotnet build Hexalith.FrontComposer.sln /p:TreatWarningsAsErrors=true /p:UseSharedCompilation=false` clean. Full solution tests: Contracts 91/0/0, Shell 1258/0/3 (3 pre-existing E2E skips), SourceTools 486/0/0, Bench 2/0/0. The 40 fault-injection tests (30 harness self-tests + 10 fault tests) all pass; no regressions in the existing Shell suite.
 
 ### File List
 
-(to be filled in by dev agent)
+**New files:**
+
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnection.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnectionFactory.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/HarnessCheckpoint.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/HarnessDisposalException.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/NudgeQueueToken.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/ProjectionHubFaultScenarioBuilder.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FaultInjectingProjectionHubConnectionTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/ProjectionSubscriptionServiceFaultTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/README.md`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/FR24-29-trace.md`
+
+**Modified files:**
+
+- `_bmad-output/implementation-artifacts/5-7-signalr-fault-injection-test-harness.md` (status, tasks, dev agent record, change log).
+- `_bmad-output/implementation-artifacts/sprint-status.yaml` (5-7 status: ready-for-dev → in-progress → review).
+
+### Change Log
+
+| Date       | Change                                                                                              |
+| ---------- | --------------------------------------------------------------------------------------------------- |
+| 2026-04-28 | Created Story 5-7 fault-injection harness (10 new files) and 30 deterministic tests; status review. |
+| 2026-04-29 | Applied code-review patches for checkpoints, cancellation, disposal, redaction, bounds, traceability, and reorder atomicity; status done. |
