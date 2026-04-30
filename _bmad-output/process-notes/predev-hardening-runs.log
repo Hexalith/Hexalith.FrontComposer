@@ -52,3 +52,4 @@
 2026-04-30T14:02:43.5175163+02:00	advanced-elicitation	7-1-oidc-saml-authentication-integration	ok	advanced elicitation trace recorded and story hardened for claim precedence, redirect safety, token lifecycle, redaction, and package boundaries
 2026-04-30T15:04:21+02:00	advanced-elicitation	7-2-tenant-context-propagation-and-isolation	ok	advanced elicitation trace recorded and story hardened for context snapshots, cache isolation, side-effect counters, and SignalR tenant-switch concurrency
 2026-04-30T16:03:12.8009103+02:00	none	-	none	all ready-for-dev stories already have party-mode and advanced elicitation traces
+2026-04-30T17:03:01.9871880+02:00	none	-	none	all ready-for-dev stories already have party-mode and advanced elicitation traces
