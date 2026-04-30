@@ -158,6 +158,26 @@ A developer should be able to customize generated UI at Levels 1-4 and still tru
 | Story 9-5 docs site | 6-6 docs links | 6-6 uses stable docs-link placeholders; 9-5 turns them into full Diataxis pages. |
 | Story 10-2 visual/accessibility gates | 6-6 analyzers | Static analyzers cover provable cases; visual/specimen CI owns dynamic color, forced-colors, and full browser behavior. |
 
+### Party-Mode Hardening Addendum
+
+Story 6-6 validates and reports customization contract problems using a shared metadata-only diagnostic model. It does not own customization contracts, introduce new runtime extension points, or expand Story 6-5 overlay UX.
+
+Apply these clarifications during `bmad-dev-story`:
+
+- Contract ownership stays with the producing story. Story 6-2 owns Level 2 template version constants and HFC1033-HFC1037, Story 6-3 owns Level 3 slot contracts, Story 6-4 owns Level 4 replacement contracts, and Story 6-5 owns overlay/starter flows. Story 6-6 centralizes validation behavior, message shape, catalog discipline, and runtime containment only.
+- The shared diagnostic contract is metadata-only. It may carry HFC code, severity, phase/source, override level, target identifier, localization key, teaching-message sections, docs link, and sanitized context. It must not carry delegates, component instances/types for activation, render fragments, service instances, arbitrary component parameters, item payloads, raw exception text, tenant/user IDs, access tokens, URLs with query strings, or rendered markup.
+- Fail-closed selection must be level-specific and testable: Level 1 invalid metadata/theme falls back to default metadata/theme; Level 2 major mismatch rejects the template and uses the base generated template; Level 3 slot mismatch does not activate the slot override; Level 4 mismatch does not activate the replacement view. Tests must assert selected artifact, rejected artifact, diagnostic code/severity, expected/actual version, and fallback decision. No partially compatible mixed override state may be composed.
+- Static accessibility analyzers stay intentionally shallow. They flag only provable static facts such as missing accessible names, invalid ARIA references, duplicate static IDs in owned markup, statically detectable keyboard/focus traps, missing reduced-motion or forced-colors CSS for owned literal effects, and literal color pairs where both colors are known. Dynamic theme values, runtime DOM crawling, browser visual audits, and speculative scoring remain Story 10-2 scope.
+- Analyzer false-positive control is release-blocking. Each analyzer rule needs one positive fixture, one nearby valid negative fixture, one unknown/dynamic fixture that does not hard-fail unless provably unsafe, and stable diagnostic code/span/severity assertions.
+- Runtime boundaries are allowed only at external/customization invocation seams: Level 2 template host, Level 3 slot host, Level 4 view replacement host, and starter-template diagnostic evidence surfaces when rendering adopter code. They must not wrap the whole shell, routing, entire pages, or normal first-party generated components.
+- Runtime diagnostic panels must define priority and state. Blocking runtime/build failure is primary, then accessibility, then version/contract drift, then telemetry-only context. Panel states are failed, retrying, recovered, and retry failed. Focus moves to the localized diagnostic heading on failure, retry/recover controls are keyboard reachable, and focus returns to the invoking region after successful recovery when possible.
+- User-facing diagnostics use short structured teaching text: what failed, affected customization level/seam, why it was blocked or degraded, how to fix it, whether rebuild/restart is required, and where to look. The formatter may also expose Expected/Got/Fallback fields for catalog and test assertions, but panel copy should keep one dominant fix path.
+- Localization covers titles, message sections, severity labels, analyzer names, button labels, fallback/rebuild text, empty/recovered states, and retry-failed text. Missing localized keys fail catalog tests; runtime display falls back to invariant English plus the HFC code instead of failing the panel.
+- Logging and telemetry use an allowlist plus denylist. Allow diagnostic ID, severity, override level, sanitized type names, role/field identifiers, phase, and exception category. Deny user content, rendered markup, arbitrary component parameters, stack locals, raw URLs/query strings, bearer-like tokens, connection strings, email addresses, item payloads, field values, raw tenant/user IDs, and localized user strings.
+- The diagnostic catalog source of truth remains `FcDiagnosticIds` plus SourceTools descriptors and release notes for analyzer-owned IDs. Catalog tests must assert ID uniqueness, severity validity, docs-link shape, localized title/message key presence, no accidental localized-key reuse, and no emitted diagnostic without catalog registration.
+- Counter sample evidence is a narrow proof, not a matrix: one valid shared-pipeline customization, one version mismatch/drift fixture, one static accessibility warning fixture, and one runtime-fault fixture proving local fallback plus shell/sibling survival.
+- Deferred from this story: production diagnostic overlay, rich overlay drill-down/filtering/pinning, dynamic accessibility engine, full visual specimen CI, analyzer performance characterization beyond a smoke guard, randomized hot-reload chaos testing, command-form customization validation, and MCP/agent-facing diagnostic surfaces.
+
 ### Diagnostic Reservation Plan
 
 Use the next free contiguous IDs at implementation time. Do not assume this table is exhaustive if later stories have already allocated IDs before 6-6 starts.
@@ -245,6 +265,9 @@ Expected new or changed files:
 - Release-blocking P0 coverage: version mismatch/drift, stale restart diagnostic, runtime boundary isolation, panel accessibility, log redaction, diagnostic catalog uniqueness, and teaching-message completeness.
 - Analyzer tests must include both positive and negative cases. A noisy false-positive analyzer is a product bug.
 - Runtime boundary tests must prove sibling generated content and shell navigation remain usable after a failing override renders.
+- Redaction tests must include adversarial connection strings, bearer-like tokens, email addresses, route/query values, exception messages containing user data, and nested metadata values; forbidden substrings must be absent while stable HFC IDs remain present.
+- Fixture families must stay isolated by level or behavior rather than using one giant broken customization fixture. Prefer focused cases such as `Level1_MetadataMismatch`, `Level2_AccessibilityStaticViolation`, `Level3_RuntimeBoundaryThrow`, and `Level4_RebuildRequiredStaleArtifact`.
+- Boundary isolation tests must assert the panel appears only at the failed seam, sibling seams remain rendered/interactive, one diagnostic is published for one fault, and rerender does not duplicate the diagnostic.
 - Use bUnit for panel and boundary behavior; use SourceTools `CSharpGeneratorDriver`/analyzer test harnesses for build-time diagnostics.
 - Do not require Playwright or full visual specimen coverage in this story. Story 10-2 owns browser matrix and screenshot baselines.
 - Run targeted Contracts, SourceTools, Shell, and Counter tests before closure; run full solution build with warnings as errors.
@@ -333,3 +356,16 @@ Do not implement these in Story 6-6:
 ### File List
 
 (to be filled in by dev agent)
+
+---
+
+## Party-Mode Review
+
+- Date/time: 2026-04-30T08:02:13.4644753+02:00
+- Selected story key: `6-6-build-time-validation-error-boundaries-and-diagnostics`
+- Command/skill invocation used: `/bmad-party-mode 6-6-build-time-validation-error-boundaries-and-diagnostics; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Sally (UX Designer)
+- Findings summary: The review found the story direction architecturally sound, but identified pre-dev ambiguity around contract ownership, metadata-only diagnostic boundaries, level-specific fail-closed selection, static analyzer false-positive control, runtime boundary placement, panel focus/recovery behavior, diagnostic catalog source of truth, localization coverage, telemetry redaction, and focused fixture design.
+- Changes applied: Added a Party-Mode Hardening Addendum that fixes the contract-boundary sentence, clarifies ownership by producing story, defines metadata-only diagnostic constraints, specifies level-specific selection/fallback oracles, narrows static analyzer scope, adds analyzer false-positive gates, constrains runtime boundaries to override seams, defines panel priority/focus/retry states, expands localization and redaction requirements, strengthens catalog discipline, and narrows Counter evidence. Testing Standards now require adversarial redaction inputs, isolated fixture families, and boundary sibling-survival/no-duplicate-diagnostic assertions.
+- Findings deferred: Production diagnostic overlay, rich overlay drill-down/filtering/pinning, dynamic accessibility engine, full visual specimen CI, analyzer performance characterization beyond a smoke guard, randomized hot-reload chaos testing, command-form customization validation, and MCP/agent-facing diagnostic surfaces remain deferred to their existing owning stories or future quality work.
+- Final recommendation: ready-for-dev
