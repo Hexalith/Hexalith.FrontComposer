@@ -41,3 +41,4 @@
 2026-04-30T04:53:10.2759443+02:00	create-story	6-5-fcdevmodeoverlay-and-starter-template-generator	ok	created story artifact and marked ready-for-dev
 2026-04-30T07:26:13.0493145+02:00	create-story	6-6-build-time-validation-error-boundaries-and-diagnostics	ok	created story artifact and marked ready-for-dev
 2026-04-30T07:40:56+02:00	create-story	7-1-oidc-saml-authentication-integration	ok	created auth integration story and marked ready-for-dev
+2026-04-30T07:56:51.3296637+02:00	party-mode-review	6-5-fcdevmodeoverlay-and-starter-template-generator	ok	party-mode trace recorded and story hardened for dev-mode gates snapshots UX states and test coverage
