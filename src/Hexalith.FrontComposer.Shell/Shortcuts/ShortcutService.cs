@@ -55,16 +55,21 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         string binding,
         string descriptionKey,
         Func<Task> handler,
+        string? routeUrl = null,
         [CallerFilePath] string callSiteFile = "",
         [CallerLineNumber] int callSiteLine = 0)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(binding);
         ArgumentException.ThrowIfNullOrWhiteSpace(descriptionKey);
         ArgumentNullException.ThrowIfNull(handler);
+        if (routeUrl is not null && string.IsNullOrWhiteSpace(routeUrl))
+        {
+            throw new ArgumentException("Route URL must be null or non-empty.", nameof(routeUrl));
+        }
 
         string normalised = ShortcutBinding.Normalize(binding);
         string label = ShortcutBinding.FormatLabel(normalised);
-        ShortcutEntry entry = new(normalised, descriptionKey, label, handler, callSiteFile, callSiteLine);
+        ShortcutEntry entry = new(normalised, descriptionKey, label, routeUrl, handler, callSiteFile, callSiteLine);
 
         // P4 (2026-04-21 pass-3): atomic add-or-replace. The prior TryGetValue → indexer-assign
         // sequence was not atomic — two concurrent Register calls on the same binding could both
@@ -103,7 +108,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
     public IReadOnlyList<ShortcutRegistration> GetRegistrations()
         => [.. _entries.Values
             .OrderBy(static e => e.Binding, StringComparer.Ordinal)
-            .Select(static e => new ShortcutRegistration(e.Binding, e.DescriptionKey, e.NormalisedLabel))];
+            .Select(static e => new ShortcutRegistration(e.Binding, e.DescriptionKey, e.NormalisedLabel, e.RouteUrl))];
 
     /// <inheritdoc />
     public async Task<bool> TryInvokeAsync(KeyboardEventArgs e)
@@ -315,6 +320,7 @@ public sealed class ShortcutService : IShortcutService, IDisposable
         string Binding,
         string DescriptionKey,
         string NormalisedLabel,
+        string? RouteUrl,
         Func<Task> Handler,
         string CallSiteFile,
         int CallSiteLine);

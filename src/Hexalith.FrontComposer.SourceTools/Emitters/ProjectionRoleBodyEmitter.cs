@@ -857,14 +857,7 @@ public static class ProjectionRoleBodyEmitter {
                 col.IsNullable
                     ? propertyAccess + ".HasValue ? (" + propertyAccess + ".Value ? \"Yes\" : \"No\") : \"\\u2014\""
                     : "(" + propertyAccess + " ? \"Yes\" : \"No\")",
-            TypeCategory.DateTime =>
-                col.DisplayFormat == FieldDisplayFormat.RelativeTime && col.IsNullable
-                    ? propertyAccess + ".HasValue ? FormatRelativeTime(" + propertyAccess + ".Value, relativeNow, " + relativeTimeWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ") : \"\\u2014\""
-                    : col.DisplayFormat == FieldDisplayFormat.RelativeTime
-                        ? "FormatRelativeTime(" + propertyAccess + ", relativeNow, " + relativeTimeWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")"
-                        : col.IsNullable
-                    ? propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
-                    : propertyAccess + ".ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture)",
+            TypeCategory.DateTime => BuildDateTimeExpression(col, propertyAccess, relativeTimeWindowDays),
             TypeCategory.Enum =>
                 col.IsNullable
                     ? propertyAccess + ".HasValue ? HumanizeEnumLabel(" + propertyAccess + ".Value.ToString()) : \"\\u2014\""
@@ -873,5 +866,30 @@ public static class ProjectionRoleBodyEmitter {
                 propertyAccess + " == null ? \"\\u2014\" : (System.Linq.Enumerable.Count(" + propertyAccess + ").ToString() + \" items\")",
             _ => "\"\\u2014\"",
         };
+    }
+
+    /// <summary>
+    /// Story 6-1 review F6 — extracted from <see cref="FormatValueExpression"/> so the
+    /// RelativeTime / FormatHint / nullable matrix is readable. Branches:
+    /// <list type="bullet">
+    /// <item>RelativeTime + nullable → guarded helper call with dash fallback.</item>
+    /// <item>RelativeTime + non-nullable → direct helper call.</item>
+    /// <item>Default DateTime + nullable → guarded ToString with dash fallback.</item>
+    /// <item>Default DateTime + non-nullable → direct ToString.</item>
+    /// </list>
+    /// </summary>
+    private static string BuildDateTimeExpression(ColumnModel col, string propertyAccess, int relativeTimeWindowDays) {
+        string windowLiteral = relativeTimeWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        string format = col.FormatHint ?? "d";
+
+        if (col.DisplayFormat == FieldDisplayFormat.RelativeTime) {
+            return col.IsNullable
+                ? propertyAccess + ".HasValue ? FormatRelativeTime(" + propertyAccess + ".Value, relativeNow, " + windowLiteral + ") : \"\\u2014\""
+                : "FormatRelativeTime(" + propertyAccess + ", relativeNow, " + windowLiteral + ")";
+        }
+
+        return col.IsNullable
+            ? propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + format + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
+            : propertyAccess + ".ToString(\"" + format + "\", CultureInfo.CurrentCulture)";
     }
 }

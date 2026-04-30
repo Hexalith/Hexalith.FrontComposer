@@ -1,6 +1,6 @@
 # Story 6.1: Level 1 Annotation Overrides
 
-Status: review
+Status: done
 
 > **Epic 6** - Developer Customization Gradient. **FR39 / FR44 / NFR84 / UX-DR54** annotation-level customization for generated projection fields. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, **L11**, and **L15**.
 
@@ -131,6 +131,46 @@ Generated projection fields should carry common display intent from the domain m
   - [x] Negative tests proving no runtime registry, template registration, DI-per-domain renderer, or custom component hook is introduced by Story 6-1.
   - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
   - [x] Targeted tests: Contracts attribute tests, SourceTools parse/transform/emit tests, and Shell formatting tests. Run full solution tests if the working tree is otherwise clean.
+
+### Review Findings
+
+_Code review run on 2026-04-29 over commit `248343a` (Blind Hunter + Edge Case Hunter + Acceptance Auditor). Triage: 1 decision-needed, 11 patches, 5 deferred, 7 dismissed._
+
+- [x] [Review][Decision] F8 — `DateTimeKind.Unspecified` is silently treated as UTC in generated `FormatRelativeTime` — `RazorEmitter.cs:685` discard pattern coerces Unspecified to UTC. **Resolved → Option (a):** keep current "treat Unspecified as UTC" behavior. Rationale: the generated comparison frame is already UTC-canonical (`utcNow = now.ToUniversalTime()`); .NET server-side persistence (EF Core, `System.Text.Json` without `Z`) typically stores UTC instants with Kind=Unspecified; option (b) would silently flip behavior for adopters whose data is already UTC-normalized; option (c) imposes per-cell branching on the hot render path that contradicts AC4's expectation that all three Kinds render successfully. Doc note added inline above the helper in `RazorEmitter.EmitFormatters`; `Level1FormatRuntimeTests.RelativeTime_DateTimeUnspecifiedKind_TreatedAsUtc` pins the contract.
+
+- [x] [Review][Patch] F1 — Generator silently accepts out-of-range `[RelativeTime(N)]` constructor argument [`src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:572-575`] — the runtime `RelativeTimeAttribute` ctor enforces `1..365`, but `ParseDisplayFormat` reads `attr.ConstructorArguments[0].Value is int days` with no bounds check; `RelativeTimeWindowDays = ... ?? 7` only guards null, so `0`/negative/`>365` flow into IR and the emitted literal. With `0` or negative the comparison `distance > TimeSpan.FromDays(N)` is degenerate. Fix: emit HFC1032 + fall back to default 7 (matches D5 fail-soft policy). Bundles E4 (non-int constructor argument) and A9 (parse-stage validation untested).
+
+- [x] [Review][Patch] F2 — Generated `FormatRelativeTime(DateTime, ...)` can throw `ArgumentOutOfRangeException`/`OverflowException` on `DateTime.MinValue` / `DateTime.MaxValue` and Local-kind extremes [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:683-695`] — `new DateTimeOffset(value)` for Local-kind extremes overflows the offset range, and `utcNow - timestamp` arithmetic on extremes throws. AC fail-soft contract requires column to keep rendering. Fix: wrap the conversion + subtraction in a guard (or pre-clamp) that falls back to absolute "d" format on overflow.
+
+- [x] [Review][Patch] F6 — Misleading nested-ternary indentation in `RoleDateTimeExpression` [`src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs:411-419`] — visual structure does not match logical right-associative parsing; future "format hint" additions will be inserted at the wrong nesting level. Fix: extract to a `private static string BuildDateTimeExpression(...)` helper or use explicit parentheses.
+
+- [x] [Review][Patch] F12 — `TestSources.cs` lost the leading 4-space class-member indent for `CounterProjectionSource` [`tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/TestSources.cs:333`] — only this constant lacks the 4-space indent that every other `internal const string` in the file uses. Cosmetic but breaks the file's consistent style.
+
+- [x] [Review][Patch] F17 — Currency runtime culture-restoration tests are missing (T5 / Hardening Addendum bullet 3) [`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/Level1FormatEmitterTests.cs`] — added tests only `ShouldContain("...ToString(\"C\", CultureInfo.CurrentCulture)")`. T5 mandates "EN/FR culture tests where the existing test harness can switch `CurrentCulture` safely and restore it in `finally` … include negative values, zero, nullable values, and supported floating-point/numeric variants." Add Shell or Contracts-level tests that actually run the emitted format string against `en-US` and `fr-FR` cultures with `try/finally` restoration.
+
+- [x] [Review][Patch] F18 — Relative-time deterministic clock tests are missing for UTC / Local / Unspecified / future / boundary values (T6) — diff has zero tests that instantiate a fake `TimeProvider` and assert "5m ago" / "3h ago" / "2d ago" / future / 7-day-boundary outputs. Add a test class that hosts `FormatRelativeTime` (or its source-equivalent) and asserts each AC4/AC5 case deterministically. Coordinates with F8 decision (Unspecified semantics).
+
+- [x] [Review][Patch] F19 — `ColumnPriority` regression coverage promised by T1/T10 is absent [`tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/Level1FormatAttributeTests.cs`] — story-owned coverage for `ColumnPriorityAttribute` constructor semantics, lower-first ordering, null materializing as `int.MaxValue`, and HFC1028 collision handling was promised but not added. Add the regression tests in the new `Level1FormatAttributeTests` (or a sibling file) so T1's "lock current Level 1 metadata behavior" pledge is enforceable.
+
+- [x] [Review][Patch] F20 — `DomainModelCacheEqualityTests` not updated for `DisplayFormat` / `RelativeTimeWindowDays` (T3) [`tests/Hexalith.FrontComposer.SourceTools.Tests/Incremental/DomainModelCacheEqualityTests.cs`] — the new IR fields are in `PropertyModel.Equals`/`GetHashCode` but no cache-invalidation test guards them. Add cache-equality cases that assert two `PropertyModel` instances differing only in `DisplayFormat` or `RelativeTimeWindowDays` are NOT equal and have differing hashes.
+
+- [x] [Review][Patch] F21 — Two-compilation dev-loop tests for annotation add/remove/constructor-argument-change (T9 / AC9) — story marks T9 `[x]` but no test runs the generator twice to assert generated output changes. Add an incremental-rebuild test that compiles a projection without `[RelativeTime]`, captures emitted source, recompiles with `[RelativeTime(14)]`, and asserts the literal window changed. Repeat for add/remove.
+
+- [x] [Review][Patch] F23 — Cross-role formatter agreement asserted but not tested (T7) — `Level1FormatEmitterTests` only covers the standard DataGrid path. T7 requires "Standard DataGrid, ActionQueue, StatusOverview, DetailRecord, and Timeline emit paths must agree on the same formatter when they render the annotated field." Add at least one `[Currency]` and one `[RelativeTime]` test per role to assert the formatter expression appears in each rendered body, or document the intentional fallback if a role cannot consume it.
+
+- [x] [Review][Patch] F24 — `[Description]` precedence over `Display.Description`, and `Display.Name` over `CamelCaseHumanizer`, are not story-owned (T1 / T10) [`tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/Level1FormatAnnotationParserTests.cs`] — T1 explicitly re-classifies these as Story-6-1-owned coverage. Add the precedence assertions in Story 6-1's parser test file.
+
+- [x] [Review][Defer] F7 — `Location.None` fallback emits HFC1032 with line/column 0 [`src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:648`] — pre-existing pattern across multiple parser methods; not introduced by this story.
+
+- [x] [Review][Defer] F13 — Mutually-exclusive conflict diagnostic short-circuits per-attribute type-incompat diagnostics [`src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs:586-597`] — two-pass authoring loop is acceptable and the deterministic conflict warning is the higher-value signal.
+
+- [x] [Review][Defer] F16 — `(int)Math.Floor` boundary at exact `1d`/`1h` could flicker on floating-point edge [`src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:713`] — theoretical; address with integer-Ticks comparison only if a real flicker is reported.
+
+- [x] [Review][Defer] F22 — "No runtime registry, template registration, DI-per-domain renderer, custom component hook" negative tests not added (T10) — low ROI; the absence is verifiable via static code review and bounded by Level 2-4 stories that would have to add such surfaces.
+
+- [x] [Review][Defer] F26 — Counter sample integration test only string-greps for `FormatRelativeTime` and the verified.txt snapshot still shows absolute date (AC11 / T8) — adding a render-time assertion requires injecting a near-now `TimeProvider` into the bUnit context and updating verified.txt; defer in favor of source-level coverage.
+
+_Dismissed (7) — recorded for traceability:_ F3 (sort uses raw `BuildSortExpression`, not Property), F4 (relative-time emits the same attribute set as default DateTime path), F5 (`DateOnly` exclusion is intentional per Type Compatibility Matrix), F9 (suffix allocation cosmetic), F10 (Party-Mode Review section IS populated), F11 (`CurrencyAttribute` empty marker is intentional per scope guardrails), F15 (Invariant digits inside the relative window are intentional fixed-width labels per Hardening Addendum).
 
 ---
 
@@ -411,3 +451,4 @@ GPT-5 Codex
 ### Change Log
 
 - 2026-04-29: Implemented Story 6-1 Level 1 annotation overrides and moved story to review after full solution validation.
+- 2026-04-30: Code review (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on commit `248343a`. Triage: 1 decision-needed, 11 patches, 5 deferred, 7 dismissed. F8 resolved to keep Unspecified-as-UTC with documentation + deterministic tests. All 11 patches applied: F1 (HFC1032 for out-of-range / non-int `[RelativeTime(N)]` window with default fallback), F2 (try/catch around `FormatRelativeTime` Local-kind extreme conversion + delta arithmetic — fail-soft to absolute "d"), F6 (extracted nested DateTime ternary into `BuildDateTimeExpression` helper), F12 (TestSources class-member indent), F17 (Currency culture-restoration tests EN/FR with try/finally), F18 (relative-time deterministic tests for UTC/Local/Unspecified/future/boundary via Level1FormatRuntimeTests), F19 (story-owned ColumnPriority regression in Contracts + transform tests), F20 (DomainModelCacheEqualityTests for DisplayFormat + RelativeTimeWindowDays), F21 (two-compilation dev-loop tests proving annotation add/remove/argument-change invalidates PropertyModel), F23 (cross-role formatter agreement tests + documented Timeline-omits-Currency intentional fallback), F24 (Display.Name-over-humanizer + Description precedence tests). Validation: `dotnet build` clean (0 warnings); `dotnet test Hexalith.FrontComposer.sln` => Contracts 105/0/0, SourceTools 538/0/0, Shell 1289/0/0, Bench 2/0/0. Story status review → done.

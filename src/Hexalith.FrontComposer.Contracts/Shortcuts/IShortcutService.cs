@@ -33,6 +33,7 @@ public interface IShortcutService {
     /// <param name="binding">The keyboard binding string (will be normalised via <see cref="ShortcutBinding.Normalize(string)"/>).</param>
     /// <param name="descriptionKey">The resource key resolved by <see cref="Microsoft.Extensions.Localization.IStringLocalizer{T}"/> when the palette renders the "shortcuts" reference view.</param>
     /// <param name="handler">The async callback invoked when the binding fires.</param>
+    /// <param name="routeUrl">Optional internal route exposed by the palette shortcut reference row.</param>
     /// <param name="callSiteFile">Compiler-injected caller source file (do NOT pass explicitly).</param>
     /// <param name="callSiteLine">Compiler-injected caller line number (do NOT pass explicitly).</param>
     /// <returns>An <see cref="IDisposable"/> that removes the registration on disposal.</returns>
@@ -40,6 +41,7 @@ public interface IShortcutService {
         string binding,
         string descriptionKey,
         Func<Task> handler,
+        string? routeUrl = null,
         [CallerFilePath] string callSiteFile = "",
         [CallerLineNumber] int callSiteLine = 0);
 

@@ -107,7 +107,7 @@ public sealed class CommandPaletteE2ETests {
         harness.State.LoadState.ShouldBe(PaletteLoadState.Ready);
     }
 
-    [Fact(Skip = "G37-5: production HandlePaletteQueryChanged shortcut-alias branch hard-codes RouteUrl=null for every ShortcutRegistration; awaiting Story 3-4 amendment that plumbs route data through ShortcutRegistration. Test asserts the spec-correct shape so unskip + Story 3-4 fix land in lockstep.")]
+    [Fact]
     public async Task AC3_ShortcutsQuery_SurfacesFiveShellBindings_WithMacParity() {
         await using PaletteFlowHarness harness = PaletteFlowHarness.Build(manifests: []);
         harness.RegisterShellShortcuts();
@@ -300,7 +300,7 @@ public sealed class CommandPaletteE2ETests {
             _ = Shortcuts.Register("meta+k", "PaletteShortcutDescription", () => Task.CompletedTask);
             _ = Shortcuts.Register("ctrl+,", "SettingsShortcutDescription", () => Task.CompletedTask);
             _ = Shortcuts.Register("meta+,", "SettingsShortcutDescription", () => Task.CompletedTask);
-            _ = Shortcuts.Register("g h", "HomeShortcutDescription", NavigateHomeAsync);
+            _ = Shortcuts.Register("g h", "HomeShortcutDescription", NavigateHomeAsync, routeUrl: "/");
         }
 
         private Task NavigateHomeAsync() {

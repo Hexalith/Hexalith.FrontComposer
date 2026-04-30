@@ -63,16 +63,22 @@ public sealed class FrontComposerTelemetryTests {
     [Fact]
     public void CommandDispatchActivity_UsesApprovedNameAndSanitizedTags() {
         using ActivityCapture capture = ActivityCapture.Start();
+        const string messageId = "01HX-CORR_123-telemetry-test";
 
         using (Activity? activity = FrontComposerTelemetry.StartCommandDispatch(
             "Orders.ShipOrderCommand",
-            "01HX-CORR_123",
+            messageId,
             FrontComposerTelemetry.TenantMarker("tenant-secret"))) {
             FrontComposerTelemetry.SetCorrelation(activity, "corr-1");
             FrontComposerTelemetry.SetOutcome(activity, "accepted");
         }
 
-        Activity recorded = capture.Single(FrontComposerTelemetry.CommandDispatchOperation);
+        Activity recorded = capture.Single(
+            FrontComposerTelemetry.CommandDispatchOperation,
+            activity => string.Equals(
+                activity.GetTagItem(FrontComposerTelemetry.MessageIdTag) as string,
+                messageId,
+                StringComparison.Ordinal));
         recorded.Source.Name.ShouldBe(FrontComposerActivitySource.Name);
         recorded.GetTagItem(FrontComposerTelemetry.CommandTypeTag).ShouldBe("Orders.ShipOrderCommand");
         recorded.GetTagItem(FrontComposerTelemetry.TenantMarkerTag).ShouldBe("present");

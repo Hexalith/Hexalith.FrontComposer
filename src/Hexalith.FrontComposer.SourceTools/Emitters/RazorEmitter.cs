@@ -676,14 +676,32 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        => value.Length <= maxLength ? value : value.Substring(0, maxLength - 1) + \"\\u2026\";");
         _ = sb.AppendLine();
         if (HasRelativeTimeColumns(model)) {
+            // Story 6-1 review F8 — Unspecified DateTime values are interpreted as UTC. The
+            // generated comparison frame is already UTC-normalized (`utcNow = now.ToUniversalTime()`),
+            // and .NET server-side persistence (EF Core, System.Text.Json without 'Z') typically
+            // stores UTC instants with Kind=Unspecified. Adopters whose persistence layer stores
+            // local instants without normalization should normalize at the boundary or use
+            // DateTimeOffset, which carries an explicit offset.
             _ = sb.AppendLine("    private static string FormatRelativeTime(DateTime value, DateTimeOffset now, int relativeWindowDays)");
             _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        DateTimeOffset timestamp = value.Kind switch");
+            // Story 6-1 review F2 — Local-kind DateTime extremes (DateTime.MinValue in positive-
+            // offset locales, MaxValue in negative-offset locales) overflow the DateTimeOffset
+            // range; guard with try/catch and fall back to absolute "d" format so the column
+            // keeps rendering (D5 fail-soft).
+            _ = sb.AppendLine("        DateTimeOffset timestamp;");
+            _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            DateTimeKind.Utc => new DateTimeOffset(value, TimeSpan.Zero),");
-            _ = sb.AppendLine("            DateTimeKind.Local => new DateTimeOffset(value).ToUniversalTime(),");
-            _ = sb.AppendLine("            _ => new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc), TimeSpan.Zero),");
-            _ = sb.AppendLine("        };");
+            _ = sb.AppendLine("            timestamp = value.Kind switch");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                DateTimeKind.Utc => new DateTimeOffset(value, TimeSpan.Zero),");
+            _ = sb.AppendLine("                DateTimeKind.Local => new DateTimeOffset(value).ToUniversalTime(),");
+            _ = sb.AppendLine("                _ => new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc), TimeSpan.Zero),");
+            _ = sb.AppendLine("            };");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (ArgumentOutOfRangeException)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return value.ToString(\"d\", CultureInfo.CurrentCulture);");
+            _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        return FormatRelativeTime(timestamp, now, relativeWindowDays);");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
@@ -691,7 +709,18 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        DateTimeOffset timestamp = value.ToUniversalTime();");
             _ = sb.AppendLine("        DateTimeOffset utcNow = now.ToUniversalTime();");
-            _ = sb.AppendLine("        TimeSpan delta = utcNow - timestamp;");
+            // Story 6-1 review F2 — `utcNow - timestamp` overflows TimeSpan when the operands
+            // are at opposite extremes (DateTimeOffset.MinValue vs MaxValue spans ~700K days,
+            // TimeSpan caps at ~10675 days). Fall back to absolute date when arithmetic overflows.
+            _ = sb.AppendLine("        TimeSpan delta;");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            delta = utcNow - timestamp;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (OverflowException)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return value.ToString(\"d\", CultureInfo.CurrentCulture);");
+            _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        bool future = delta.Ticks < 0;");
             _ = sb.AppendLine("        TimeSpan distance = delta.Duration();");
             _ = sb.AppendLine("        if (distance > TimeSpan.FromDays(relativeWindowDays))");

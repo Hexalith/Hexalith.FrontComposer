@@ -62,6 +62,50 @@ public class DomainModelCacheEqualityTests {
         a.Equals(b).ShouldBeFalse();
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    //   Story 6-1 review F20 / T3 — DisplayFormat and RelativeTimeWindowDays are
+    //   new PropertyModel IR fields. Both must participate in PropertyModel
+    //   equality + hash so an annotation add/remove or window-argument change
+    //   invalidates the incremental-generator cache and re-runs Transform/Emit.
+    // ──────────────────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void PropertyModel_DisplayFormatChange_InvalidatesEquality() {
+        PropertyModel a = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.Default);
+        PropertyModel b = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime);
+
+        a.Equals(b).ShouldBeFalse();
+        a.GetHashCode().ShouldNotBe(b.GetHashCode());
+    }
+
+    [Fact]
+    public void PropertyModel_RelativeTimeWindowChange_InvalidatesEquality() {
+        PropertyModel a = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 7);
+        PropertyModel b = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 30);
+
+        a.Equals(b).ShouldBeFalse();
+        a.GetHashCode().ShouldNotBe(b.GetHashCode());
+    }
+
+    [Fact]
+    public void PropertyModel_DisplayFormatCurrencyVsDefault_InvalidatesEquality() {
+        PropertyModel a = BuildProperty("Amount", "Decimal", displayFormat: FieldDisplayFormat.Default);
+        PropertyModel b = BuildProperty("Amount", "Decimal", displayFormat: FieldDisplayFormat.Currency);
+
+        a.Equals(b).ShouldBeFalse();
+        a.GetHashCode().ShouldNotBe(b.GetHashCode());
+    }
+
+    [Fact]
+    public void PropertyModel_IdenticalLevel1Format_CompareEqual() {
+        // Cache hit — re-parsing the same source must yield equal PropertyModels.
+        PropertyModel a = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 14);
+        PropertyModel b = BuildProperty("LastUpdated", "DateTime", displayFormat: FieldDisplayFormat.RelativeTime, relativeTimeWindowDays: 14);
+
+        a.Equals(b).ShouldBeTrue();
+        a.GetHashCode().ShouldBe(b.GetHashCode());
+    }
+
     private static DomainModel BuildModel(
         string typeName = "Test",
         string? role = "ActionQueue",
@@ -73,4 +117,18 @@ public class DomainModelCacheEqualityTests {
             projectionRole: role,
             properties: new EquatableArray<PropertyModel>(ImmutableArray<PropertyModel>.Empty),
             projectionRoleWhenState: whenState);
+
+    private static PropertyModel BuildProperty(
+        string name,
+        string typeName,
+        FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
+        int? relativeTimeWindowDays = null) => new(
+            name,
+            typeName,
+            isNullable: false,
+            isUnsupported: false,
+            displayName: null,
+            badgeMappings: new EquatableArray<BadgeMappingEntry>(ImmutableArray<BadgeMappingEntry>.Empty),
+            displayFormat: displayFormat,
+            relativeTimeWindowDays: relativeTimeWindowDays);
 }

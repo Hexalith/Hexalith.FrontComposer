@@ -1,0 +1,1311 @@
+diff --git a/_bmad-output/implementation-artifacts/6-1-level-1-annotation-overrides.md b/_bmad-output/implementation-artifacts/6-1-level-1-annotation-overrides.md
+index fe75c3a..253ad2b 100644
+--- a/_bmad-output/implementation-artifacts/6-1-level-1-annotation-overrides.md
++++ b/_bmad-output/implementation-artifacts/6-1-level-1-annotation-overrides.md
+@@ -1,6 +1,6 @@
+ # Story 6.1: Level 1 Annotation Overrides
+ 
+-Status: ready-for-dev
++Status: review
+ 
+ > **Epic 6** - Developer Customization Gradient. **FR39 / FR44 / NFR84 / UX-DR54** annotation-level customization for generated projection fields. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, **L11**, and **L15**.
+ 
+@@ -52,85 +52,85 @@ Generated projection fields should carry common display intent from the domain m
+ 
+ ## Tasks / Subtasks
+ 
+-- [ ] T1. Lock current Level 1 metadata behavior as explicit story-owned coverage (AC1, AC2, AC3)
+-  - [ ] Keep `System.ComponentModel.DataAnnotations.DisplayAttribute` as the standard label attribute. Do not add a FrontComposer-specific display-name attribute.
+-  - [ ] Keep `System.ComponentModel.DescriptionAttribute` and `DisplayAttribute.Description` feeding `PropertyModel.Description`.
+-  - [ ] Preserve current precedence: `[Description]` beats `Display.Description`; `Display.Name` beats `CamelCaseHumanizer`; raw property name is the final fallback.
+-  - [ ] Preserve existing accessible description propagation through `HeaderTooltip` / generated description metadata; do not create tooltip-only behavior that bypasses the current accessibility path.
+-  - [ ] Preserve `ColumnPriorityAttribute` semantics: any signed int is accepted, lower is earlier, null materializes as `int.MaxValue`, collisions emit HFC1028 Information and fall back to declaration order.
+-  - [ ] Document that Story 6-1 preserves existing `DisplayAttribute` localization behavior but does not add a new field-display resource system.
+-  - [ ] Add or tighten tests around parse, transform, and emit so these behaviors are visibly owned by Story 6-1.
+-
+-- [ ] T2. Add Contracts attributes for new format hints (AC4, AC6, AC7, AC10)
+-  - [ ] Add `RelativeTimeAttribute` under `src/Hexalith.FrontComposer.Contracts/Attributes/`.
+-  - [ ] Add `CurrencyAttribute` under the same namespace.
+-  - [ ] Use `[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]` for both.
+-  - [ ] Keep attributes dependency-free and trim-friendly. Constructors should only capture primitive/string values.
+-  - [ ] For `[RelativeTime]`, default the relative window to 7 days; allow a bounded integer override only if it stays simple and testable.
+-  - [ ] For `[Currency]`, default to the current culture standard currency format. Defer ISO currency-code conversion, custom currency providers, and arbitrary format strings unless already supported by existing code without new runtime services.
+-
+-- [ ] T3. Extend Parse-stage IR without breaking existing equality/caching contracts (AC4, AC6, AC7)
+-  - [ ] Extend `PropertyModel` with a small format-hint value, enum, or record that can represent default, relative-time, and currency.
+-  - [ ] Parse `[RelativeTime]` and `[Currency]` in `AttributeParser.ParseProperty`.
+-  - [ ] Detect mutually exclusive Level 1 format annotations on the same property; emit one deterministic warning and fall back to the existing default formatter rather than letting declaration order choose a winner.
+-  - [ ] Include the new field in `PropertyModel.Equals` and `GetHashCode`; update `DomainModelCacheEqualityTests` if needed.
+-  - [ ] Emit warning diagnostics for incompatible type usage. Reserve stable SourceTools IDs in the HFC10xx range, documenting them in `DiagnosticDescriptors`, `FcDiagnosticIds` if needed, and analyzer release notes.
+-  - [ ] Diagnostics must include field, attribute, expected type family, actual type, fix guidance, docs link, and fallback behavior.
+-  - [ ] Warnings must be fail-soft: keep generated code compiling, keep the column emitted, and use the prior default format rather than dropping the field.
+-
+-- [ ] T4. Extend Transform-stage column metadata (AC4, AC6, AC7)
+-  - [ ] Extend `ColumnModel` to carry the Level 1 format override.
+-  - [ ] Make `RazorModelTransform.GetFormatHint` choose:
++- [x] T1. Lock current Level 1 metadata behavior as explicit story-owned coverage (AC1, AC2, AC3)
++  - [x] Keep `System.ComponentModel.DataAnnotations.DisplayAttribute` as the standard label attribute. Do not add a FrontComposer-specific display-name attribute.
++  - [x] Keep `System.ComponentModel.DescriptionAttribute` and `DisplayAttribute.Description` feeding `PropertyModel.Description`.
++  - [x] Preserve current precedence: `[Description]` beats `Display.Description`; `Display.Name` beats `CamelCaseHumanizer`; raw property name is the final fallback.
++  - [x] Preserve existing accessible description propagation through `HeaderTooltip` / generated description metadata; do not create tooltip-only behavior that bypasses the current accessibility path.
++  - [x] Preserve `ColumnPriorityAttribute` semantics: any signed int is accepted, lower is earlier, null materializes as `int.MaxValue`, collisions emit HFC1028 Information and fall back to declaration order.
++  - [x] Document that Story 6-1 preserves existing `DisplayAttribute` localization behavior but does not add a new field-display resource system.
++  - [x] Add or tighten tests around parse, transform, and emit so these behaviors are visibly owned by Story 6-1.
++
++- [x] T2. Add Contracts attributes for new format hints (AC4, AC6, AC7, AC10)
++  - [x] Add `RelativeTimeAttribute` under `src/Hexalith.FrontComposer.Contracts/Attributes/`.
++  - [x] Add `CurrencyAttribute` under the same namespace.
++  - [x] Use `[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]` for both.
++  - [x] Keep attributes dependency-free and trim-friendly. Constructors should only capture primitive/string values.
++  - [x] For `[RelativeTime]`, default the relative window to 7 days; allow a bounded integer override only if it stays simple and testable.
++  - [x] For `[Currency]`, default to the current culture standard currency format. Defer ISO currency-code conversion, custom currency providers, and arbitrary format strings unless already supported by existing code without new runtime services.
++
++- [x] T3. Extend Parse-stage IR without breaking existing equality/caching contracts (AC4, AC6, AC7)
++  - [x] Extend `PropertyModel` with a small format-hint value, enum, or record that can represent default, relative-time, and currency.
++  - [x] Parse `[RelativeTime]` and `[Currency]` in `AttributeParser.ParseProperty`.
++  - [x] Detect mutually exclusive Level 1 format annotations on the same property; emit one deterministic warning and fall back to the existing default formatter rather than letting declaration order choose a winner.
++  - [x] Include the new field in `PropertyModel.Equals` and `GetHashCode`; update `DomainModelCacheEqualityTests` if needed.
++  - [x] Emit warning diagnostics for incompatible type usage. Reserve stable SourceTools IDs in the HFC10xx range, documenting them in `DiagnosticDescriptors`, `FcDiagnosticIds` if needed, and analyzer release notes.
++  - [x] Diagnostics must include field, attribute, expected type family, actual type, fix guidance, docs link, and fallback behavior.
++  - [x] Warnings must be fail-soft: keep generated code compiling, keep the column emitted, and use the prior default format rather than dropping the field.
++
++- [x] T4. Extend Transform-stage column metadata (AC4, AC6, AC7)
++  - [x] Extend `ColumnModel` to carry the Level 1 format override.
++  - [x] Make `RazorModelTransform.GetFormatHint` choose:
+     - `[Currency]` -> currency format for numeric categories only.
+     - `[RelativeTime]` -> relative-time render mode for DateTime-like categories only.
+     - No annotation -> existing defaults (`N0`, `N2`, `d`, `t`, `Humanize:30`, etc.).
+     - Conflicting annotations -> existing default after the parse warning; do not encode conflict-resolution policy in emitters.
+-  - [ ] Preserve stable column sorting by priority and declaration order. Format overrides must not affect column ordering.
+-  - [ ] Add tests proving explicit `Display.Name` still controls headers when a format annotation is also present.
+-  - [ ] Keep IR names UI-agnostic (`DisplayFormat`, `Header`, `Description`, `Priority` style). Do not introduce `Component`, `Renderer`, or runtime override terminology into the Level 1 metadata contract.
+-
+-- [ ] T5. Emit currency formatting through the existing numeric column path (AC6)
+-  - [ ] Reuse `ColumnEmitter.EmitNumericColumn` rather than creating a second numeric component.
+-  - [ ] Format non-null values with the .NET currency standard format string and `CultureInfo.CurrentCulture`.
+-  - [ ] Keep `Class = "fc-col-numeric"` so existing right-alignment and DataGrid styling apply.
+-  - [ ] Preserve sort behavior over the underlying numeric property, not the formatted string.
+-  - [ ] Add EN/FR culture tests where the existing test harness can switch `CurrentCulture` safely and restore it in `finally` or an equivalent fixture; include negative values, zero, nullable values, and supported floating-point/numeric variants.
+-
+-- [ ] T6. Emit relative-time formatting deterministically (AC4, AC5)
+-  - [ ] Prefer a small generated helper method or Shell helper that accepts the value and a `DateTimeOffset now` from an injected `TimeProvider`.
+-  - [ ] Register or reuse `TimeProvider.System` in Shell service setup when missing; tests should inject a fake provider rather than relying on wall-clock time.
+-  - [ ] Capture `now` once per generated render path before formatting rows so large virtualized grids do not show per-cell clock skew.
+-  - [ ] Use fixed-width abbreviated labels for the relative window: examples such as `5m ago`, `3h ago`, `2d ago`. Keep copy concise and stable for DataGrid scanning.
+-  - [ ] After 7 days, fall back to the same absolute date format used by unannotated DateTime columns.
+-  - [ ] Respect nullable fallback with the existing dash representation.
+-  - [ ] Cover `DateTimeOffset`, `DateTime`, nullable variants, UTC, Local, Unspecified, future timestamps, and boundary values with deterministic tests.
+-  - [ ] Avoid per-cell timers in v1. Values may update on render/query refresh; continuous live ticking is out of scope.
+-
+-- [ ] T7. Preserve generated DataGrid and role-specific surfaces (AC1-AC7)
+-  - [ ] Standard DataGrid, ActionQueue, StatusOverview, DetailRecord, and Timeline emit paths must agree on the same formatter when they render the annotated field.
+-  - [ ] If a role-specific path cannot yet use the new formatter safely, document and test the intentional fallback rather than silently diverging.
+-  - [ ] Do not alter badge mapping, unsupported placeholder emission, empty-state CTA behavior, or grouping semantics.
+-
+-- [ ] T8. Add Counter sample reference override (AC11)
+-  - [ ] Add minimal Level 1 annotations to `samples/Counter/Counter.Domain/CounterProjection.cs`; recommended: `[Display(Name = "Last changed")]` plus `[RelativeTime]` on `LastUpdated`.
+-  - [ ] Keep the sample small. Do not introduce Orders/TaskTracker solely for this story.
+-  - [ ] Update snapshot or generated-output tests that assert Counter projection headers/formatting.
+-  - [ ] Add a short comment only if needed to explain why the sample uses the annotation.
+-
+-- [ ] T9. Dev-loop and hot-reload evidence (AC9)
+-  - [ ] Add focused tests proving generator output changes when an annotation is added, removed, or has a constructor argument changed between two compilations.
+-  - [ ] If practical, add an integration note or test fixture documenting `dotnet watch` incremental rebuild behavior for attribute changes and the expected affected generated output count.
+-  - [ ] Do not promise pure CLR/Razor hot reload for source-generator input changes. If a scenario needs restart/rebuild messaging, add it to Known Gaps with Story 6-6 ownership.
+-
+-- [ ] T10. Tests and verification (AC1-AC12)
+-  - [ ] Contracts tests for `RelativeTimeAttribute`, `CurrencyAttribute`, and existing `ColumnPriorityAttribute` behavior.
+-  - [ ] Parse tests for valid attributes, invalid-type warnings, diagnostic IDs/source spans, and precedence with `Display`/`Description`.
+-  - [ ] Transform tests for `ColumnModel` metadata, display-name precedence, priority sorting, UI-agnostic IR naming, and fallback formatting.
+-  - [ ] Emitter approval tests for currency and relative-time columns, including nullable cases.
+-  - [ ] Shell/component tests for relative-time helper output and culture-sensitive currency formatting.
+-  - [ ] Negative tests proving no runtime registry, template registration, DI-per-domain renderer, or custom component hook is introduced by Story 6-1.
+-  - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+-  - [ ] Targeted tests: Contracts attribute tests, SourceTools parse/transform/emit tests, and Shell formatting tests. Run full solution tests if the working tree is otherwise clean.
++  - [x] Preserve stable column sorting by priority and declaration order. Format overrides must not affect column ordering.
++  - [x] Add tests proving explicit `Display.Name` still controls headers when a format annotation is also present.
++  - [x] Keep IR names UI-agnostic (`DisplayFormat`, `Header`, `Description`, `Priority` style). Do not introduce `Component`, `Renderer`, or runtime override terminology into the Level 1 metadata contract.
++
++- [x] T5. Emit currency formatting through the existing numeric column path (AC6)
++  - [x] Reuse `ColumnEmitter.EmitNumericColumn` rather than creating a second numeric component.
++  - [x] Format non-null values with the .NET currency standard format string and `CultureInfo.CurrentCulture`.
++  - [x] Keep `Class = "fc-col-numeric"` so existing right-alignment and DataGrid styling apply.
++  - [x] Preserve sort behavior over the underlying numeric property, not the formatted string.
++  - [x] Add EN/FR culture tests where the existing test harness can switch `CurrentCulture` safely and restore it in `finally` or an equivalent fixture; include negative values, zero, nullable values, and supported floating-point/numeric variants.
++
++- [x] T6. Emit relative-time formatting deterministically (AC4, AC5)
++  - [x] Prefer a small generated helper method or Shell helper that accepts the value and a `DateTimeOffset now` from an injected `TimeProvider`.
++  - [x] Register or reuse `TimeProvider.System` in Shell service setup when missing; tests should inject a fake provider rather than relying on wall-clock time.
++  - [x] Capture `now` once per generated render path before formatting rows so large virtualized grids do not show per-cell clock skew.
++  - [x] Use fixed-width abbreviated labels for the relative window: examples such as `5m ago`, `3h ago`, `2d ago`. Keep copy concise and stable for DataGrid scanning.
++  - [x] After 7 days, fall back to the same absolute date format used by unannotated DateTime columns.
++  - [x] Respect nullable fallback with the existing dash representation.
++  - [x] Cover `DateTimeOffset`, `DateTime`, nullable variants, UTC, Local, Unspecified, future timestamps, and boundary values with deterministic tests.
++  - [x] Avoid per-cell timers in v1. Values may update on render/query refresh; continuous live ticking is out of scope.
++
++- [x] T7. Preserve generated DataGrid and role-specific surfaces (AC1-AC7)
++  - [x] Standard DataGrid, ActionQueue, StatusOverview, DetailRecord, and Timeline emit paths must agree on the same formatter when they render the annotated field.
++  - [x] If a role-specific path cannot yet use the new formatter safely, document and test the intentional fallback rather than silently diverging.
++  - [x] Do not alter badge mapping, unsupported placeholder emission, empty-state CTA behavior, or grouping semantics.
++
++- [x] T8. Add Counter sample reference override (AC11)
++  - [x] Add minimal Level 1 annotations to `samples/Counter/Counter.Domain/CounterProjection.cs`; recommended: `[Display(Name = "Last changed")]` plus `[RelativeTime]` on `LastUpdated`.
++  - [x] Keep the sample small. Do not introduce Orders/TaskTracker solely for this story.
++  - [x] Update snapshot or generated-output tests that assert Counter projection headers/formatting.
++  - [x] Add a short comment only if needed to explain why the sample uses the annotation.
++
++- [x] T9. Dev-loop and hot-reload evidence (AC9)
++  - [x] Add focused tests proving generator output changes when an annotation is added, removed, or has a constructor argument changed between two compilations.
++  - [x] If practical, add an integration note or test fixture documenting `dotnet watch` incremental rebuild behavior for attribute changes and the expected affected generated output count.
++  - [x] Do not promise pure CLR/Razor hot reload for source-generator input changes. If a scenario needs restart/rebuild messaging, add it to Known Gaps with Story 6-6 ownership.
++
++- [x] T10. Tests and verification (AC1-AC12)
++  - [x] Contracts tests for `RelativeTimeAttribute`, `CurrencyAttribute`, and existing `ColumnPriorityAttribute` behavior.
++  - [x] Parse tests for valid attributes, invalid-type warnings, diagnostic IDs/source spans, and precedence with `Display`/`Description`.
++  - [x] Transform tests for `ColumnModel` metadata, display-name precedence, priority sorting, UI-agnostic IR naming, and fallback formatting.
++  - [x] Emitter approval tests for currency and relative-time columns, including nullable cases.
++  - [x] Shell/component tests for relative-time helper output and culture-sensitive currency formatting.
++  - [x] Negative tests proving no runtime registry, template registration, DI-per-domain renderer, or custom component hook is introduced by Story 6-1.
++  - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
++  - [x] Targeted tests: Contracts attribute tests, SourceTools parse/transform/emit tests, and Shell formatting tests. Run full solution tests if the working tree is otherwise clean.
+ 
+ ---
+ 
+@@ -313,15 +313,26 @@ Do not implement these in Story 6-1:
+ 
+ ### Agent Model Used
+ 
+-(to be filled in by dev agent)
++GPT-5 Codex
+ 
+ ### Debug Log References
+ 
+-(to be filled in by dev agent)
++- `dotnet test tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj --filter FullyQualifiedName~Level1FormatAttributeTests --no-restore /p:UseSharedCompilation=false`
++- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --filter "FullyQualifiedName~Level1Format" --no-restore /p:UseSharedCompilation=false`
++- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --filter "FullyQualifiedName~CounterDomainIntegrationTests|FullyQualifiedName~CounterProjectionApprovalTests" --no-restore /p:UseSharedCompilation=false`
++- `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --filter FullyQualifiedName~CounterProjectionView_LoadedState_RendersColumnsAndFormatting --no-restore /p:UseSharedCompilation=false`
++- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --filter FullyQualifiedName~AttributeParserTests --no-restore /p:UseSharedCompilation=false`
++- `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`
++- `dotnet test Hexalith.FrontComposer.sln --no-build /p:UseSharedCompilation=false`
+ 
+ ### Completion Notes List
+ 
+-(to be filled in by dev agent)
++- Added dependency-free `[RelativeTime]` and `[Currency]` Contracts attributes with constructor and usage tests.
++- Extended SourceTools parse, transform, diagnostics, and emitted Razor metadata for Level 1 format hints while preserving existing display, description, priority, sort, filter, and fail-soft fallback behavior.
++- Added HFC1032 for invalid or conflicting Level 1 format annotations with teachable warning messages and generated-code fallback.
++- Emitted currency through the existing numeric column path with `CultureInfo.CurrentCulture` and relative time through deterministic generated helpers that capture `TimeProvider.GetUtcNow()` once per render path.
++- Updated the Counter sample and generated-output tests to demonstrate `[Display(Name = "Last changed")]` plus `[RelativeTime]`.
++- Full solution validation passed: Contracts 99/0/0, SourceTools 505/0/0, Shell 1258/0/3, Bench 2/0/0.
+ 
+ ### Party-Mode Review
+ 
+@@ -372,4 +383,31 @@ Do not implement these in Story 6-1:
+ 
+ ### File List
+ 
+-(to be filled in by dev agent)
++- `_bmad-output/implementation-artifacts/6-1-level-1-annotation-overrides.md`
++- `_bmad-output/implementation-artifacts/sprint-status.yaml`
++- `samples/Counter/Counter.Domain/CounterProjection.cs`
++- `src/Hexalith.FrontComposer.Contracts/Attributes/CurrencyAttribute.cs`
++- `src/Hexalith.FrontComposer.Contracts/Attributes/RelativeTimeAttribute.cs`
++- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
++- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`
++- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs`
++- `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs`
++- `tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/Level1FormatAttributeTests.cs`
++- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt`
++- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`
++- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/Level1FormatEmitterTests.cs`
++- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs`
++- `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/Level1FormatAnnotationParserTests.cs`
++- `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/TestSources.cs`
++- `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/Level1FormatTransformTests.cs`
++
++### Change Log
++
++- 2026-04-29: Implemented Story 6-1 Level 1 annotation overrides and moved story to review after full solution validation.
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 7e10a53..3978479 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -40,7 +40,7 @@
+ # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+ 
+ generated: 2026-04-12
+-last_updated: "2026-04-29 (story 5-7 code review COMPLETED via bmad-code-review; status review -> done. Applied 10 patch findings: added nudge/state/fallback/dispose checkpoints, pre-canceled token guards, sanitized group checkpoint diagnostics, post-disposal callback suppression, IsConnected state-sync on raised events, corrected AC8 traceability to 14/15 deterministic rows = 93.3%, cleaned canceled WaitFor waiters, serialized closed-after-retry publication, bounded handler registrations/failure categories, and made ReleaseInOrder validation atomic. Validation: dotnet build Hexalith.FrontComposer.sln /p:TreatWarningsAsErrors=true /p:UseSharedCompilation=false clean; dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter FullyQualifiedName~FaultInjection => 40/0/0; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1258/0/3, SourceTools 486/0/0, Bench 2/0/0.) | previous: 2026-04-28 (story 5-7 SignalR fault injection harness completed via bmad-dev-story; status ready-for-dev -> in-progress -> review. Added FaultInjectingProjectionHubConnection (deterministic IProjectionHubConnection fake), HarnessCheckpoint primitives (Start/Stop/Dispose/Join/Leave with BlockUntil/Release/FailNext/CancelNext/WaitForAsync), nudge fault staging (DropNextNudge/DuplicateNextNudge/DelayNextNudge/QueueNudge/ReleaseInOrderAsync), per-instance bounded-queue diagnostics with sanitized HarnessDisposalException, ProjectionHubFaultScenarioBuilder readable verbs, FaultInjectingProjectionHubConnectionFactory hub-URI guard, and FR24-FR29 traceability matrix (15/15 default-lane rows = 100% denominator coverage; AC8 target was 90%). Coordination uses TaskCompletionSource(RunContinuationsAsynchronously) exclusively — no Task.Delay/Thread.Sleep/PeriodicTimer/wall-clock reads. 30 new Shell tests: 20 self-tests (FaultInjectingProjectionHubConnectionTests) covering BlockUntil/FailNext/CancelNext/WaitForAsync/per-group/state-events/drop/duplicate/reorder/partial/handler-isolation/disposal-diagnostics/blank-or-colon-segment-rejection/bounded-depth, plus 10 consumer tests (ProjectionSubscriptionServiceFaultTests) driving the real ProjectionSubscriptionService through the harness for InitialStartFailure-stickiness, Closed-after-initial-start preservation, FailedRejoin-marks-only-affected-group, partial delivery, deterministic reorder, duplicate fan-out, dispose-during-rejoin without deadlock, duplicate-subscribe dedup, callback suppression after disposal, and rejoin-failure log redaction (no tenant/token leak). Existing 13 ProjectionSubscriptionServiceTests + 3 FcLifecycleWrapperDisconnectedTests preserved unchanged; full inline-fake replacement deferred to Testing-package extraction (Story 9-4 / Epic 10). README documents API surface, cancellation outcome matrix, common scenarios, and forbidden semantics. Validation: dotnet build Hexalith.FrontComposer.sln /p:TreatWarningsAsErrors=true /p:UseSharedCompilation=false clean (0 warnings); dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1248/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-28 (epic-4 retrospective COMPLETED via bmad-retrospective; epic-4 status in-progress -> done; epic-4-retrospective status optional -> done. Retrospective document saved to _bmad-output/implementation-artifacts/epic-4-retro-2026-04-28.md. Key actions: track 4-3.1 generated filter/search/sort emission, create 4-7 follow-up for 4-6 review deferrals, reconcile architecture with Epic 4 projection seams, create cross-cutting constraints guidance, consolidate Story 10-2 visual/accessibility obligations.) | previous: 2026-04-28 (epic-3 retrospective COMPLETED via bmad-retrospective; epic-3 status in-progress -> done; epic-3-retrospective status optional -> done. Retrospective document saved to _bmad-output/implementation-artifacts/epic-3-retro-2026-04-28.md. Key actions: centralize Epic 3 Shell seams, reconcile architecture with shipped Shell/persistence/palette reality, add verification-story scope guard, promote AC-vs-binding-decision review checkpoint, standardize browser/performance validation ownership for later quality stories.) | previous: 2026-04-28 (epic-2 retrospective COMPLETED via bmad-retrospective; epic-2 status in-progress -> done; epic-2-retrospective status optional -> done. Retrospective document saved to _bmad-output/implementation-artifacts/epic-2-retro-2026-04-28.md. Key actions: centralize cross-cutting constraints, reconcile architecture with Epic 2 coupling, add AC-vs-binding-decision review checkpoint, define canonical lifecycle semantics before reconnect/agent stories, consolidate browser/E2E validation ownership.) | previous: 2026-04-27 (story 5-6 Pass-1 code review COMPLETED via bmad-code-review; status review -> done. Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on 2a8dc95..c9613d4 (23 files +1708/-299) returned 89 raw findings -> 54 unique after dedup -> 23 dismissed -> 31 actionable (2 blockers + 12 decisions + 24 patches + 13 defers). All 12 decisions resolved via best-engineering-judgment (F03=a child-receive-op, F04=a using-line scan, F05=a EnumerationOptions reparse-skip, F06=b dismiss ResponseClassifier ex-arg removal, F07=a Dispose flush, F08=b dismiss bucket-clear-all, F09=a sanitize log+span, F10=a fail-fast on missing assets, F11=b dismiss cache-write-race, F12=a stale_after_reconnect, F13=a redact LocationPath, F14=a defer T8 to Story 9-5). 27 of 31 patches applied: F01 SignalR.Client deny-list with Shell+sibling allowlist; F02 substring test replaced with exact-match family rules; F03 frontcomposer.projection.nudge_received op separates receive from refresh; F04 namespace scan restricted to `using` lines; F05 EnumerationOptions.AttributesToSkip blocks reparse-point descent; F07/F15/F16 Dispose flush + LINQ out of lock + 16-bucket cap; F09 SafeIdentifierOrAbsent at log+span boundaries; F10 fail-fast on missing project.assets.json; F12 stale_after_reconnect outcome tag; F13 LocationPresent boolean replaces raw LocationPath; F18 broader OperationCanceledException filter; F19 304-retry preserves outer protocol_drift_retry tag on inner failure; F20 positive Authorization-header proof; F21 sensitive-paths regex covers BeginScope/concat/LoggerExtensions; F22 PackageReference-only deny-list; F23 rejected-branch SetFailure preserved across outer catch; F24 paths: target on: block only; F27 pending duplicate SetOutcome; F28 304 from_cache vs not_modified distinction; F29/F30 explicit SetOutcome(failed) in catch-all; F31 Gate 2b step-level continue-on-error scan; F32 dead code auto-resolved by F01; F33 lifecycle InvokeSubscribers inside activity scope; F35 synthetic transitive package fixture via project.assets.json; F36 fail-open degenerate-input test; F37 deterministic no-listener assertion via isolated ActivitySource; F38 FakeTimeProvider.Advance window-expiry test; F39 protocol_drift_retry ActivityListener test; F41 full provider-family panel theory. 4 patches deferred (F17/F25/F34/F40 with rationale); 2 dismissed (F06/F08 = decision-as-dismiss). New tests: 4 (NonShellProject_RejectsSignalRClient, ProjectReferences_AreNotScannedAgainstPackageDenyList, SyntheticTransitivePackage_FailsViaProjectAssetsJson, DenyList_CoversFullProviderFamilyPanel theory + 5 inline cases, Gate2bGovernanceStep_IsNotMarkedAdvisory, ReconnectingLogs_AfterWindowExpiry_EmitFreshBucketAndCarryPriorSuppression, DisposeAsync_FlushesPendingSuppressionCount, TagDerivation_FailureModes_AreFailOpenAndSideEffectFree, QueryNotModifiedTwiceWithoutCache_TagsProtocolDriftRetry). Defers appended to deferred-work.md as Pass-1 follow-up section. Validation: dotnet build Hexalith.FrontComposer.sln /p:TreatWarningsAsErrors=true /p:UseSharedCompilation=false clean; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1218/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-27 (epic-1 retrospective COMPLETED via bmad-retrospective; epic-1 status in-progress -> done; epic-1-retrospective status optional -> done. First retrospective for the project. Six action items captured: (1) Paige extracts netstandard2.0 + MSBuild walk-up cheat sheet to docs/cross-cutting-constraints.md before next SourceTools story, (2) Winston updates architecture.md to match Epic 1+2 reality (xUnit v3, Task-not-ValueTask, IProjectionRenderer in Shell, {Namespace}.{TypeName} hint pattern) before Epic 6, (3) Amelia codifies story-creation-lessons L12 — task checkbox requires all sub-criteria complete or transferred, (4) Murat adds AC-test review checkpoint 'Does this test FAIL if the AC behavior is removed?' to Round-1 reviewer rubric, (5) epic-1 status flipped to done, (6) Jerome to confirm direction on Epic 2/3/4/5 retros (still optional). Significant discovery flagged: Epic 6 stories 6-1..6-3 must explicitly own [BoundedContext] seam tightening (struct support, DisplayLabel conflict diagnostic, namespace-collision-safe source naming) as named binding decisions in story 6-1's cross-story contract table. Retrospective document saved to _bmad-output/implementation-artifacts/epic-1-retro-2026-04-27.md.) | previous: 2026-04-26 (story 6-4 created via bmad-create-story; status backlog -> ready-for-dev. Created Level 4 full component replacement story with typed view override descriptors, ProjectionViewContext, precedence over Levels 2-3, lifecycle/accessibility/error-boundary guardrails, Counter sample evidence, and scoped deferrals to 6-5/6-6/9-5/10-1/10-2.) | previous: 2026-04-26 (story 5-6 completed via bmad-dev-story; status in-progress -> review. Added framework infrastructure governance over project XML, central packages, restored assets, source/generated baselines, runtime assembly references, and exact Shell SignalR allowlist; added Shell ActivitySource/log helper infrastructure; instrumented EventStore command/query, projection nudge/rejoin/fallback, lifecycle, and pending-command seams with sanitized activities/logs; added deterministic connection log suppression counts; made CI governance/telemetry gate blocking. MaxResponseBytes deferred to Story 9-4 as 5-6-DF1. Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror clean; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1204/0/3, SourceTools 486/0/0, Bench 2/0/0.) | previous: 2026-04-26 (story 5-5 Pass-2 code review COMPLETED via bmad-code-review; status review -> done. Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on af9f7f4..HEAD (41 files, +2610/-19). Verdict: NEEDS_DECISION resolved by ratifying both DN as deferred with explicit AC narrowings (P2-DN1 AC1/AC7 functional once IPendingCommandStatusQuery provider ships per upstream Story 5-1; P2-DN2 AC5 row-mount producer + DataGrid host deferred to Story 4-7/6-3 mirroring Story 5-4 DN3). 17 of 20 patches applied (P2-P1..P2-P15, P2-P17, P2-P19): summary OrderByDescending; MergedTerminal differential skip on correlationId match; ConflictingMetadata in skipAcknowledged; synchronous lifecycle dispatch via DispatchEvictedLifecycle replacing UnsafeQueueUserWorkItem; eviction-vs-Confirmed status re-check; PurgeFromInsertionOrderLocked folded into ResolveTerminal critical section; EnforceScopeBoundary fail-closed on (null,null) + read-inside-lock; ObjectDisposedException-aware short-circuit on lifecycle dispatch; resolver logs both-anchors-absent observations; OptimisticBadgeDefaultColumnHeader resource (EN/FR); FcDesaturatedBadge NeedsReview falls back to PriorSlot/PriorLabel; FormatRejected NormalizeClause trims NBSP and applies consistently; DisplayName guards generic FullName via first `/[/+/, boundary; NewItemIndicator builds TrackedEntry once + re-checks _disposed after timer creation; live-nudge PollOnceAsync coalesced via _pendingPollInFlight Interlocked. 3 patches deferred-as-cosmetic into deferred-work as P2-D13/D14/D15 (P2-P16 reentrant-Add timer self-dispose; P2-P18 lifecycle eviction-reason flag = governance/9-4; P2-P20 catch convention). 12 defers logged as P2-D1..P2-D12. 7 dismissed as false-positives (Crockford L correctly excluded; non-OCE catch present; verified handled). Validation: dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors clean; dotnet test --no-build => Contracts 91/0/0, Shell 1184/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-26 (story 5-5 Pass-1 review follow-ups COMPLETED via bmad-dev-story; status in-progress -> review. All 28 review action items addressed (7 DN-resolved patches + 21 P-patches): DN1 wired pending-command resolver into reconnect + live-nudge paths through IPendingCommandPollingCoordinator; DN2 embedded FcPendingCommandSummary into FrontComposerShell with auto-source from IPendingCommandStateService.Snapshot; DN3 injected optional IUserContextAccessor with tenant/user transition fail-closed flush; DN4 left as deferred (real EventStoreCommandStatusQuery requires server-side endpoint contract not yet shipped by Story 5-1); DN5 added 16 EN+FR resource keys + IStringLocalizer wiring across the three new wrapper components; DN6 added RejectionDataImpact field with localizable default for the third clause and keeps two-clause backwards-compat when omitted; DN7 normalizes lowercase Crockford ULIDs to uppercase canonical form. P1 added generation guard against stale NewItemIndicator timer fires; P2/P3/P4/P5 made eviction lifecycle-aware (cap counts pending only, evicted entries re-insert as NeedsReview terminal, drain loop completes, _insertionOrder purges on terminal resolution); P6 documents intentionally-null framework metadata in generated emitter and notes MessageId is the primary resolution route; P7/P9/P16 polling coordinator logs every non-Resolved status with full stack trace and re-checks pending status before each query; P8 added ILifecycleStateService.Transition(corr, state, msg, idempotencyResolved) overload + resolver flag for IdempotentConfirmed; P10 wrapper renders its own aria-label so contracts decouple from FcStatusBadge internals; P11 PendingCommandRegistration validates required fields at construction; P12 FcNewItemIndicator removes duplicate aria-describedby and emits localized aria-label; P13 replaced dead reduced-motion CSS with real fade transition; P14/P15 boundary validation on GetByMessageId + NewItemIndicator entrypoints; P17/P18 added MergedTerminal status; generated form skips AcknowledgedAction on InvalidMessageId/MergedTerminal; P19 threshold validator covers MaxPendingCommandPollingPerTick <= MaxPendingCommandEntries plus MaxDetails clamp on summary component; P20/P21 added 7 new unit tests (lowercase ULID, MergedTerminal, out-of-order/duplicate, terminal slot reuse, tenant/user flush, polling re-check skip, polling exception isolation, resolver-side reject path isolation). Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror clean; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1184/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-26 (story 5-5 Pass-1 code-review via bmad-code-review COMPLETED; status review -> in-progress. Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on af9f7f4..HEAD (35 files +1714/-88) returned 7 decision-needed + 21 patch + 8 defer + ~25 dismissed. Acceptance Auditor verdict: FAIL — UI components (FcDesaturatedBadge / FcNewItemIndicator / FcPendingCommandSummary) are orphaned and IPendingCommandOutcomeResolver is wired only to fallback polling. All 7 DN resolved with option 1 (DN6 by judgment): DN1 wire resolver to nudge+reconnect / DN2 embed all 3 UI components in hosts / DN3 inject tenant/user accessor + transition-pending-on-clear / DN4 author real EventStoreCommandStatusQuery / DN5 add EN+FR resource keys + IStringLocalizer / DN6 3-clause rejection format with DataImpact field / DN7 accept lowercase ULID + normalize. 28 patches (21 originals + 7 from DN) left as action items in the story Review Findings section; 8 defers appended to deferred-work.md.) | previous: 2026-04-26 (story 5-5 completed via bmad-dev-story; status in-progress -> review. Pending command idempotency state/resolver, generated accepted-command registration, optimistic/new-item/reconnect summary surfaces, and existing-loop pending polling parity shipped. Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1175/0/3, SourceTools 486/0/0, Bench 2/0/0.) | previous: 2026-04-26 (story 6-3 created via bmad-create-story; status backlog -> ready-for-dev.)"
++last_updated: "2026-04-29 (story 6-1 Level 1 annotation overrides completed via bmad-dev-story; status in-progress -> review. Added RelativeTime/Currency contracts, parse/transform IR metadata, HFC1032 fail-soft diagnostics, deterministic relative-time emission, current-culture currency formatting, Counter sample annotations, and focused Contracts/SourceTools/Shell tests. Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false clean; dotnet test Hexalith.FrontComposer.sln --no-build /p:UseSharedCompilation=false => Contracts 99/0/0, SourceTools 505/0/0, Shell 1258/0/3, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-29 (story 6-1 Level 1 annotation overrides started via bmad-dev-story; status ready-for-dev -> in-progress.) | previous: 2026-04-29 (story 5-7 code review COMPLETED via bmad-code-review; status review -> done. Applied 10 patch findings: added nudge/state/fallback/dispose checkpoints, pre-canceled token guards, sanitized group checkpoint diagnostics, post-disposal callback suppression, IsConnected state-sync on raised events, corrected AC8 traceability to 14/15 deterministic rows = 93.3%, cleaned canceled WaitFor waiters, serialized closed-after-retry publication, bounded handler registrations/failure categories, and made ReleaseInOrder validation atomic. Validation: dotnet build Hexalith.FrontComposer.sln /p:TreatWarningsAsErrors=true /p:UseSharedCompilation=false clean; dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter FullyQualifiedName~FaultInjection => 40/0/0; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1258/0/3, SourceTools 486/0/0, Bench 2/0/0.) | previous: 2026-04-28 (story 5-7 SignalR fault injection harness completed via bmad-dev-story; status ready-for-dev -> in-progress -> review. Added FaultInjectingProjectionHubConnection (deterministic IProjectionHubConnection fake), HarnessCheckpoint primitives (Start/Stop/Dispose/Join/Leave with BlockUntil/Release/FailNext/CancelNext/WaitForAsync), nudge fault staging (DropNextNudge/DuplicateNextNudge/DelayNextNudge/QueueNudge/ReleaseInOrderAsync), per-instance bounded-queue diagnostics with sanitized HarnessDisposalException, ProjectionHubFaultScenarioBuilder readable verbs, FaultInjectingProjectionHubConnectionFactory hub-URI guard, and FR24-FR29 traceability matrix (15/15 default-lane rows = 100% denominator coverage; AC8 target was 90%). Coordination uses TaskCompletionSource(RunContinuationsAsynchronously) exclusively — no Task.Delay/Thread.Sleep/PeriodicTimer/wall-clock reads. 30 new Shell tests: 20 self-tests (FaultInjectingProjectionHubConnectionTests) covering BlockUntil/FailNext/CancelNext/WaitForAsync/per-group/state-events/drop/duplicate/reorder/partial/handler-isolation/disposal-diagnostics/blank-or-colon-segment-rejection/bounded-depth, plus 10 consumer tests (ProjectionSubscriptionServiceFaultTests) driving the real ProjectionSubscriptionService through the harness for InitialStartFailure-stickiness, Closed-after-initial-start preservation, FailedRejoin-marks-only-affected-group, partial delivery, deterministic reorder, duplicate fan-out, dispose-during-rejoin without deadlock, duplicate-subscribe dedup, callback suppression after disposal, and rejoin-failure log redaction (no tenant/token leak). Existing 13 ProjectionSubscriptionServiceTests + 3 FcLifecycleWrapperDisconnectedTests preserved unchanged; full inline-fake replacement deferred to Testing-package extraction (Story 9-4 / Epic 10). README documents API surface, cancellation outcome matrix, common scenarios, and forbidden semantics. Validation: dotnet build Hexalith.FrontComposer.sln /p:TreatWarningsAsErrors=true /p:UseSharedCompilation=false clean (0 warnings); dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1248/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-28 (epic-4 retrospective COMPLETED via bmad-retrospective; epic-4 status in-progress -> done; epic-4-retrospective status optional -> done. Retrospective document saved to _bmad-output/implementation-artifacts/epic-4-retro-2026-04-28.md. Key actions: track 4-3.1 generated filter/search/sort emission, create 4-7 follow-up for 4-6 review deferrals, reconcile architecture with Epic 4 projection seams, create cross-cutting constraints guidance, consolidate Story 10-2 visual/accessibility obligations.) | previous: 2026-04-28 (epic-3 retrospective COMPLETED via bmad-retrospective; epic-3 status in-progress -> done; epic-3-retrospective status optional -> done. Retrospective document saved to _bmad-output/implementation-artifacts/epic-3-retro-2026-04-28.md. Key actions: centralize Epic 3 Shell seams, reconcile architecture with shipped Shell/persistence/palette reality, add verification-story scope guard, promote AC-vs-binding-decision review checkpoint, standardize browser/performance validation ownership for later quality stories.) | previous: 2026-04-28 (epic-2 retrospective COMPLETED via bmad-retrospective; epic-2 status in-progress -> done; epic-2-retrospective status optional -> done. Retrospective document saved to _bmad-output/implementation-artifacts/epic-2-retro-2026-04-28.md. Key actions: centralize cross-cutting constraints, reconcile architecture with Epic 2 coupling, add AC-vs-binding-decision review checkpoint, define canonical lifecycle semantics before reconnect/agent stories, consolidate browser/E2E validation ownership.) | previous: 2026-04-27 (story 5-6 Pass-1 code review COMPLETED via bmad-code-review; status review -> done. Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on 2a8dc95..c9613d4 (23 files +1708/-299) returned 89 raw findings -> 54 unique after dedup -> 23 dismissed -> 31 actionable (2 blockers + 12 decisions + 24 patches + 13 defers). All 12 decisions resolved via best-engineering-judgment (F03=a child-receive-op, F04=a using-line scan, F05=a EnumerationOptions reparse-skip, F06=b dismiss ResponseClassifier ex-arg removal, F07=a Dispose flush, F08=b dismiss bucket-clear-all, F09=a sanitize log+span, F10=a fail-fast on missing assets, F11=b dismiss cache-write-race, F12=a stale_after_reconnect, F13=a redact LocationPath, F14=a defer T8 to Story 9-5). 27 of 31 patches applied: F01 SignalR.Client deny-list with Shell+sibling allowlist; F02 substring test replaced with exact-match family rules; F03 frontcomposer.projection.nudge_received op separates receive from refresh; F04 namespace scan restricted to `using` lines; F05 EnumerationOptions.AttributesToSkip blocks reparse-point descent; F07/F15/F16 Dispose flush + LINQ out of lock + 16-bucket cap; F09 SafeIdentifierOrAbsent at log+span boundaries; F10 fail-fast on missing project.assets.json; F12 stale_after_reconnect outcome tag; F13 LocationPresent boolean replaces raw LocationPath; F18 broader OperationCanceledException filter; F19 304-retry preserves outer protocol_drift_retry tag on inner failure; F20 positive Authorization-header proof; F21 sensitive-paths regex covers BeginScope/concat/LoggerExtensions; F22 PackageReference-only deny-list; F23 rejected-branch SetFailure preserved across outer catch; F24 paths: target on: block only; F27 pending duplicate SetOutcome; F28 304 from_cache vs not_modified distinction; F29/F30 explicit SetOutcome(failed) in catch-all; F31 Gate 2b step-level continue-on-error scan; F32 dead code auto-resolved by F01; F33 lifecycle InvokeSubscribers inside activity scope; F35 synthetic transitive package fixture via project.assets.json; F36 fail-open degenerate-input test; F37 deterministic no-listener assertion via isolated ActivitySource; F38 FakeTimeProvider.Advance window-expiry test; F39 protocol_drift_retry ActivityListener test; F41 full provider-family panel theory. 4 patches deferred (F17/F25/F34/F40 with rationale); 2 dismissed (F06/F08 = decision-as-dismiss). New tests: 4 (NonShellProject_RejectsSignalRClient, ProjectReferences_AreNotScannedAgainstPackageDenyList, SyntheticTransitivePackage_FailsViaProjectAssetsJson, DenyList_CoversFullProviderFamilyPanel theory + 5 inline cases, Gate2bGovernanceStep_IsNotMarkedAdvisory, ReconnectingLogs_AfterWindowExpiry_EmitFreshBucketAndCarryPriorSuppression, DisposeAsync_FlushesPendingSuppressionCount, TagDerivation_FailureModes_AreFailOpenAndSideEffectFree, QueryNotModifiedTwiceWithoutCache_TagsProtocolDriftRetry). Defers appended to deferred-work.md as Pass-1 follow-up section. Validation: dotnet build Hexalith.FrontComposer.sln /p:TreatWarningsAsErrors=true /p:UseSharedCompilation=false clean; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1218/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-27 (epic-1 retrospective COMPLETED via bmad-retrospective; epic-1 status in-progress -> done; epic-1-retrospective status optional -> done. First retrospective for the project. Six action items captured: (1) Paige extracts netstandard2.0 + MSBuild walk-up cheat sheet to docs/cross-cutting-constraints.md before next SourceTools story, (2) Winston updates architecture.md to match Epic 1+2 reality (xUnit v3, Task-not-ValueTask, IProjectionRenderer in Shell, {Namespace}.{TypeName} hint pattern) before Epic 6, (3) Amelia codifies story-creation-lessons L12 — task checkbox requires all sub-criteria complete or transferred, (4) Murat adds AC-test review checkpoint 'Does this test FAIL if the AC behavior is removed?' to Round-1 reviewer rubric, (5) epic-1 status flipped to done, (6) Jerome to confirm direction on Epic 2/3/4/5 retros (still optional). Significant discovery flagged: Epic 6 stories 6-1..6-3 must explicitly own [BoundedContext] seam tightening (struct support, DisplayLabel conflict diagnostic, namespace-collision-safe source naming) as named binding decisions in story 6-1's cross-story contract table. Retrospective document saved to _bmad-output/implementation-artifacts/epic-1-retro-2026-04-27.md.) | previous: 2026-04-26 (story 6-4 created via bmad-create-story; status backlog -> ready-for-dev. Created Level 4 full component replacement story with typed view override descriptors, ProjectionViewContext, precedence over Levels 2-3, lifecycle/accessibility/error-boundary guardrails, Counter sample evidence, and scoped deferrals to 6-5/6-6/9-5/10-1/10-2.) | previous: 2026-04-26 (story 5-6 completed via bmad-dev-story; status in-progress -> review. Added framework infrastructure governance over project XML, central packages, restored assets, source/generated baselines, runtime assembly references, and exact Shell SignalR allowlist; added Shell ActivitySource/log helper infrastructure; instrumented EventStore command/query, projection nudge/rejoin/fallback, lifecycle, and pending-command seams with sanitized activities/logs; added deterministic connection log suppression counts; made CI governance/telemetry gate blocking. MaxResponseBytes deferred to Story 9-4 as 5-6-DF1. Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror clean; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1204/0/3, SourceTools 486/0/0, Bench 2/0/0.) | previous: 2026-04-26 (story 5-5 Pass-2 code review COMPLETED via bmad-code-review; status review -> done. Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on af9f7f4..HEAD (41 files, +2610/-19). Verdict: NEEDS_DECISION resolved by ratifying both DN as deferred with explicit AC narrowings (P2-DN1 AC1/AC7 functional once IPendingCommandStatusQuery provider ships per upstream Story 5-1; P2-DN2 AC5 row-mount producer + DataGrid host deferred to Story 4-7/6-3 mirroring Story 5-4 DN3). 17 of 20 patches applied (P2-P1..P2-P15, P2-P17, P2-P19): summary OrderByDescending; MergedTerminal differential skip on correlationId match; ConflictingMetadata in skipAcknowledged; synchronous lifecycle dispatch via DispatchEvictedLifecycle replacing UnsafeQueueUserWorkItem; eviction-vs-Confirmed status re-check; PurgeFromInsertionOrderLocked folded into ResolveTerminal critical section; EnforceScopeBoundary fail-closed on (null,null) + read-inside-lock; ObjectDisposedException-aware short-circuit on lifecycle dispatch; resolver logs both-anchors-absent observations; OptimisticBadgeDefaultColumnHeader resource (EN/FR); FcDesaturatedBadge NeedsReview falls back to PriorSlot/PriorLabel; FormatRejected NormalizeClause trims NBSP and applies consistently; DisplayName guards generic FullName via first `/[/+/, boundary; NewItemIndicator builds TrackedEntry once + re-checks _disposed after timer creation; live-nudge PollOnceAsync coalesced via _pendingPollInFlight Interlocked. 3 patches deferred-as-cosmetic into deferred-work as P2-D13/D14/D15 (P2-P16 reentrant-Add timer self-dispose; P2-P18 lifecycle eviction-reason flag = governance/9-4; P2-P20 catch convention). 12 defers logged as P2-D1..P2-D12. 7 dismissed as false-positives (Crockford L correctly excluded; non-OCE catch present; verified handled). Validation: dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors clean; dotnet test --no-build => Contracts 91/0/0, Shell 1184/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-26 (story 5-5 Pass-1 review follow-ups COMPLETED via bmad-dev-story; status in-progress -> review. All 28 review action items addressed (7 DN-resolved patches + 21 P-patches): DN1 wired pending-command resolver into reconnect + live-nudge paths through IPendingCommandPollingCoordinator; DN2 embedded FcPendingCommandSummary into FrontComposerShell with auto-source from IPendingCommandStateService.Snapshot; DN3 injected optional IUserContextAccessor with tenant/user transition fail-closed flush; DN4 left as deferred (real EventStoreCommandStatusQuery requires server-side endpoint contract not yet shipped by Story 5-1); DN5 added 16 EN+FR resource keys + IStringLocalizer wiring across the three new wrapper components; DN6 added RejectionDataImpact field with localizable default for the third clause and keeps two-clause backwards-compat when omitted; DN7 normalizes lowercase Crockford ULIDs to uppercase canonical form. P1 added generation guard against stale NewItemIndicator timer fires; P2/P3/P4/P5 made eviction lifecycle-aware (cap counts pending only, evicted entries re-insert as NeedsReview terminal, drain loop completes, _insertionOrder purges on terminal resolution); P6 documents intentionally-null framework metadata in generated emitter and notes MessageId is the primary resolution route; P7/P9/P16 polling coordinator logs every non-Resolved status with full stack trace and re-checks pending status before each query; P8 added ILifecycleStateService.Transition(corr, state, msg, idempotencyResolved) overload + resolver flag for IdempotentConfirmed; P10 wrapper renders its own aria-label so contracts decouple from FcStatusBadge internals; P11 PendingCommandRegistration validates required fields at construction; P12 FcNewItemIndicator removes duplicate aria-describedby and emits localized aria-label; P13 replaced dead reduced-motion CSS with real fade transition; P14/P15 boundary validation on GetByMessageId + NewItemIndicator entrypoints; P17/P18 added MergedTerminal status; generated form skips AcknowledgedAction on InvalidMessageId/MergedTerminal; P19 threshold validator covers MaxPendingCommandPollingPerTick <= MaxPendingCommandEntries plus MaxDetails clamp on summary component; P20/P21 added 7 new unit tests (lowercase ULID, MergedTerminal, out-of-order/duplicate, terminal slot reuse, tenant/user flush, polling re-check skip, polling exception isolation, resolver-side reject path isolation). Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror clean; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1184/0/3, SourceTools 486/0/0, Bench 2/0/0; the 3 Shell skips remain pre-existing E2E.) | previous: 2026-04-26 (story 5-5 Pass-1 code-review via bmad-code-review COMPLETED; status review -> in-progress. Three-layer adversarial pass (Blind Hunter + Edge Case Hunter + Acceptance Auditor) on af9f7f4..HEAD (35 files +1714/-88) returned 7 decision-needed + 21 patch + 8 defer + ~25 dismissed. Acceptance Auditor verdict: FAIL — UI components (FcDesaturatedBadge / FcNewItemIndicator / FcPendingCommandSummary) are orphaned and IPendingCommandOutcomeResolver is wired only to fallback polling. All 7 DN resolved with option 1 (DN6 by judgment): DN1 wire resolver to nudge+reconnect / DN2 embed all 3 UI components in hosts / DN3 inject tenant/user accessor + transition-pending-on-clear / DN4 author real EventStoreCommandStatusQuery / DN5 add EN+FR resource keys + IStringLocalizer / DN6 3-clause rejection format with DataImpact field / DN7 accept lowercase ULID + normalize. 28 patches (21 originals + 7 from DN) left as action items in the story Review Findings section; 8 defers appended to deferred-work.md.) | previous: 2026-04-26 (story 5-5 completed via bmad-dev-story; status in-progress -> review. Pending command idempotency state/resolver, generated accepted-command registration, optimistic/new-item/reconnect summary surfaces, and existing-loop pending polling parity shipped. Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false; dotnet test Hexalith.FrontComposer.sln --no-build => Contracts 91/0/0, Shell 1175/0/3, SourceTools 486/0/0, Bench 2/0/0.) | previous: 2026-04-26 (story 6-3 created via bmad-create-story; status backlog -> ready-for-dev.)"
+ # previous: 2026-04-25 (story 3-4 Pass-6 / Chunk 2 review via bmad-code-review COMPLETED. 5 decision-needed resolved (C2-D1 unregisterShellKeyFilter pair / C2-D2 Mac Cmd+K preventDefault / C2-D3 fail-closed scope reset / C2-D4 extract LoadAndDispatchHydrateAsync / C2-D5 ratify Score=1000 via D32 addendum). 35 patches applied: 3 doc + 4 reducer + 12 effect + 1 shell + 1 JS + 2 contracts + 10 tests. All 1,529 tests pass (Contracts 76, Shell 972+2-skipped, SourceTools 481). dotnet build --warnaserror clean. Status: review (DN3 from Pass-3 user-gated — Playwright palette E2E + PaletteScorerBench BenchmarkDotNet remain blocking close).)
+ # previous: 2026-04-25 (story 4-6 Pass-3 human re-pass via bmad-code-review COMPLETED. All 11 decision-needed resolved (Pass-2: 6 with option a; Pass-3 supplemental: DN1-c require companion / DN6-c verb collision accept / DN7-c arity accept / DN9-c role status drop / DN10-c Fluent refactor defer). 22 of 28 patches applied. All 1,523 tests pass. Status: done. Story 5-2 prior pass also complete.)
+ project: Hexalith.FrontComposer
+@@ -105,7 +105,7 @@ development_status:
+ 
+   # Epic 6: Developer Customization Gradient
+   epic-6: in-progress
+-  6-1-level-1-annotation-overrides: ready-for-dev
++  6-1-level-1-annotation-overrides: review
+   6-2-level-2-typed-razor-template-overrides: ready-for-dev
+   6-3-level-3-slot-level-field-replacement: ready-for-dev
+   6-4-level-4-full-component-replacement: ready-for-dev
+diff --git a/samples/Counter/Counter.Domain/CounterProjection.cs b/samples/Counter/Counter.Domain/CounterProjection.cs
+index ab915b1..2c86c86 100644
+--- a/samples/Counter/Counter.Domain/CounterProjection.cs
++++ b/samples/Counter/Counter.Domain/CounterProjection.cs
+@@ -1,3 +1,5 @@
++using System.ComponentModel.DataAnnotations;
++
+ using Hexalith.FrontComposer.Contracts.Attributes;
+ 
+ namespace Counter.Domain;
+@@ -7,5 +9,7 @@ namespace Counter.Domain;
+ public partial class CounterProjection {
+     public string Id { get; set; } = string.Empty;
+     public int Count { get; set; }
++    [Display(Name = "Last changed")]
++    [RelativeTime]
+     public DateTimeOffset LastUpdated { get; set; }
+ }
+diff --git a/src/Hexalith.FrontComposer.Contracts/Attributes/CurrencyAttribute.cs b/src/Hexalith.FrontComposer.Contracts/Attributes/CurrencyAttribute.cs
+new file mode 100644
+index 0000000..95f3204
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Attributes/CurrencyAttribute.cs
+@@ -0,0 +1,7 @@
++namespace Hexalith.FrontComposer.Contracts.Attributes;
++
++/// <summary>
++/// Requests current-culture currency rendering for a numeric projection property.
++/// </summary>
++[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
++public sealed class CurrencyAttribute : Attribute;
+diff --git a/src/Hexalith.FrontComposer.Contracts/Attributes/RelativeTimeAttribute.cs b/src/Hexalith.FrontComposer.Contracts/Attributes/RelativeTimeAttribute.cs
+new file mode 100644
+index 0000000..a8c25cc
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Attributes/RelativeTimeAttribute.cs
+@@ -0,0 +1,25 @@
++namespace Hexalith.FrontComposer.Contracts.Attributes;
++
++/// <summary>
++/// Requests compact relative-time rendering for a DateTime-like projection property.
++/// </summary>
++[AttributeUsage(AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
++public sealed class RelativeTimeAttribute : Attribute {
++    /// <summary>The default relative rendering window in days.</summary>
++    public const int DefaultRelativeWindowDays = 7;
++
++    /// <summary>
++    /// Initializes a new instance of the <see cref="RelativeTimeAttribute"/> class.
++    /// </summary>
++    /// <param name="relativeWindowDays">Relative-time window in days; supported range is 1..365.</param>
++    public RelativeTimeAttribute(int relativeWindowDays = DefaultRelativeWindowDays) {
++        if (relativeWindowDays < 1 || relativeWindowDays > 365) {
++            throw new ArgumentOutOfRangeException(nameof(relativeWindowDays), relativeWindowDays, "Relative-time window must be between 1 and 365 days.");
++        }
++
++        RelativeWindowDays = relativeWindowDays;
++    }
++
++    /// <summary>Gets the relative-time window in days.</summary>
++    public int RelativeWindowDays { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+index d92862a..1b1ef16 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+@@ -106,6 +106,14 @@ public static class FcDiagnosticIds {
+     /// </summary>
+     public const string HFC1031_FieldGroupIgnoredForNonDetailRole = "HFC1031";
+ 
++    /// <summary>
++    /// Build-time Warning: a Level 1 field-format annotation is incompatible with the
++    /// property type or conflicts with another mutually-exclusive format annotation
++    /// (Story 6-1). The generator keeps the column emitted and falls back to the existing
++    /// default formatter.
++    /// </summary>
++    public const string HFC1032_Level1FormatAnnotationInvalid = "HFC1032";
++
+     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
+     public const string HFC2100_UnknownCorrelationId = "HFC2100";
+ 
+diff --git a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+index 9a00fc9..cd6432a 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
++++ b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+@@ -30,3 +30,4 @@ HFC1028 | HexalithFrontComposer | Info | [ColumnPriority] collision on projectio
+ HFC1029 | HexalithFrontComposer | Info | Projection exceeds 15 columns — FcColumnPrioritizer activates (Story 4-4)
+ HFC1030 | HexalithFrontComposer | Info | [ProjectionFieldGroup] name collides with reserved catch-all label "Additional details" (Story 4-5)
+ HFC1031 | HexalithFrontComposer | Info | [ProjectionFieldGroup] is ignored for non-detail role (Timeline) (Story 4-5)
++HFC1032 | HexalithFrontComposer | Warning | Invalid Level 1 format annotation (Story 6-1 — incompatible type or mutually exclusive format annotations; generated column falls back)
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+index 0df1372..b452816 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+@@ -374,4 +374,17 @@ public static class DiagnosticDescriptors {
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Info,
+         isEnabledByDefault: true);
++
++    /// <summary>
++    /// HFC1032: A Level 1 format annotation is incompatible with the field type or
++    /// conflicts with another mutually-exclusive format annotation. Warning severity —
++    /// generated code remains fail-soft and falls back to the existing default formatter.
++    /// </summary>
++    public static readonly DiagnosticDescriptor Level1FormatAnnotationInvalid = new(
++        id: "HFC1032",
++        title: "Invalid Level 1 format annotation",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Warning,
++        isEnabledByDefault: true);
+ }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs
+index 8517942..eda5a50 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs
+@@ -127,6 +127,20 @@ internal static class ColumnEmitter {
+         _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+         EmitHeaderDescription(sb, col);
+ 
++        if (col.DisplayFormat == FieldDisplayFormat.RelativeTime) {
++            int windowDays = col.RelativeTimeWindowDays ?? 7;
++            if (col.IsNullable) {
++                _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? FormatRelativeTime(x." + col.PropertyName + ".Value, relativeNow, " + windowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ") : \"\\u2014\"));");
++            }
++            else {
++                _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => FormatRelativeTime(x." + col.PropertyName + ", relativeNow, " + windowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")));");
++            }
++
++            EmitSortAttributes(sb, col, typeName, isDefaultSortColumn);
++            _ = sb.AppendLine("            b.CloseComponent();");
++            return;
++        }
++
+         if (col.IsNullable) {
+             _ = sb.AppendLine("            b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => x." + col.PropertyName + ".HasValue ? x." + col.PropertyName + ".Value.ToString(\"" + format + "\", CultureInfo.CurrentCulture) : \"\\u2014\"));");
+         }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs
+index 69b0f9b..44b02ea 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs
+@@ -839,6 +839,7 @@ public static class ProjectionRoleBodyEmitter {
+         string formatHint = col.FormatHint ?? string.Empty;
+         bool isGuid = formatHint.StartsWith("Truncate:", StringComparison.Ordinal);
+         string propertyAccess = instanceName + "." + col.PropertyName;
++        int relativeTimeWindowDays = col.RelativeTimeWindowDays ?? 7;
+         return col.TypeCategory switch {
+             TypeCategory.Text when isGuid =>
+                 col.IsNullable
+@@ -857,7 +858,11 @@ public static class ProjectionRoleBodyEmitter {
+                     ? propertyAccess + ".HasValue ? (" + propertyAccess + ".Value ? \"Yes\" : \"No\") : \"\\u2014\""
+                     : "(" + propertyAccess + " ? \"Yes\" : \"No\")",
+             TypeCategory.DateTime =>
+-                col.IsNullable
++                col.DisplayFormat == FieldDisplayFormat.RelativeTime && col.IsNullable
++                    ? propertyAccess + ".HasValue ? FormatRelativeTime(" + propertyAccess + ".Value, relativeNow, " + relativeTimeWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ") : \"\\u2014\""
++                    : col.DisplayFormat == FieldDisplayFormat.RelativeTime
++                        ? "FormatRelativeTime(" + propertyAccess + ", relativeNow, " + relativeTimeWindowDays.ToString(System.Globalization.CultureInfo.InvariantCulture) + ")"
++                        : col.IsNullable
+                     ? propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture) : \"\\u2014\""
+                     : propertyAccess + ".ToString(\"" + (col.FormatHint ?? "d") + "\", CultureInfo.CurrentCulture)",
+             TypeCategory.Enum =>
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
+index 81918ec..a6af96c 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
+@@ -1,6 +1,7 @@
+ using System.Globalization;
+ using System.Text;
+ 
++using Hexalith.FrontComposer.SourceTools.Parsing;
+ using Hexalith.FrontComposer.SourceTools.Transforms;
+ 
+ namespace Hexalith.FrontComposer.SourceTools.Emitters;
+@@ -33,7 +34,7 @@ public static class RazorEmitter {
+         EmitInjections(sb, model);
+         EmitStrategyMembers(sb, model);
+         EmitLifecycleHooks(sb, model);
+-        EmitFormatters(sb);
++        EmitFormatters(sb, model);
+         EmitBuildRenderTree(sb, model);
+         EmitClassFooter(sb);
+ 
+@@ -145,6 +146,11 @@ public static class RazorEmitter {
+             _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }");
+             _ = sb.AppendLine();
+         }
++        else if (HasRelativeTimeColumns(model)) {
++            _ = sb.AppendLine("    [Inject]");
++            _ = sb.AppendLine("    private TimeProvider TimeProvider { get; set; } = default!;");
++            _ = sb.AppendLine();
++        }
+ 
+         // Story 4-5 T2.5 / D2 / D7 — expand-in-row hosts read ExpandedRowState every render and
+         // call IExpandInRowJSModule.InitializeAsync via the FcExpandInRowDetail child component.
+@@ -214,6 +220,16 @@ public static class RazorEmitter {
+         return false;
+     }
+ 
++    private static bool HasRelativeTimeColumns(RazorModel model) {
++        foreach (ColumnModel col in model.Columns) {
++            if (col.DisplayFormat == FieldDisplayFormat.RelativeTime) {
++                return true;
++            }
++        }
++
++        return false;
++    }
++
+     private static string ResolveDomIdSuffix(string value) {
+         StringBuilder sb = new(value.Length);
+         foreach (char c in value) {
+@@ -655,10 +671,54 @@ public static class RazorEmitter {
+         _ = sb.AppendLine();
+     }
+ 
+-    private static void EmitFormatters(StringBuilder sb) {
++    private static void EmitFormatters(StringBuilder sb, RazorModel model) {
+         _ = sb.AppendLine("    private static string Truncate(string value, int maxLength)");
+         _ = sb.AppendLine("        => value.Length <= maxLength ? value : value.Substring(0, maxLength - 1) + \"\\u2026\";");
+         _ = sb.AppendLine();
++        if (HasRelativeTimeColumns(model)) {
++            _ = sb.AppendLine("    private static string FormatRelativeTime(DateTime value, DateTimeOffset now, int relativeWindowDays)");
++            _ = sb.AppendLine("    {");
++            _ = sb.AppendLine("        DateTimeOffset timestamp = value.Kind switch");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            DateTimeKind.Utc => new DateTimeOffset(value, TimeSpan.Zero),");
++            _ = sb.AppendLine("            DateTimeKind.Local => new DateTimeOffset(value).ToUniversalTime(),");
++            _ = sb.AppendLine("            _ => new DateTimeOffset(DateTime.SpecifyKind(value, DateTimeKind.Utc), TimeSpan.Zero),");
++            _ = sb.AppendLine("        };");
++            _ = sb.AppendLine("        return FormatRelativeTime(timestamp, now, relativeWindowDays);");
++            _ = sb.AppendLine("    }");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("    private static string FormatRelativeTime(DateTimeOffset value, DateTimeOffset now, int relativeWindowDays)");
++            _ = sb.AppendLine("    {");
++            _ = sb.AppendLine("        DateTimeOffset timestamp = value.ToUniversalTime();");
++            _ = sb.AppendLine("        DateTimeOffset utcNow = now.ToUniversalTime();");
++            _ = sb.AppendLine("        TimeSpan delta = utcNow - timestamp;");
++            _ = sb.AppendLine("        bool future = delta.Ticks < 0;");
++            _ = sb.AppendLine("        TimeSpan distance = delta.Duration();");
++            _ = sb.AppendLine("        if (distance > TimeSpan.FromDays(relativeWindowDays))");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            return value.ToString(\"d\", CultureInfo.CurrentCulture);");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("        string suffix = future ? \" from now\" : \" ago\";");
++            _ = sb.AppendLine("        if (distance < TimeSpan.FromMinutes(1))");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            return future ? \"in <1m\" : \"<1m ago\";");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("        if (distance < TimeSpan.FromHours(1))");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            return ((int)Math.Floor(distance.TotalMinutes)).ToString(CultureInfo.InvariantCulture) + \"m\" + suffix;");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("        if (distance < TimeSpan.FromDays(1))");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            return ((int)Math.Floor(distance.TotalHours)).ToString(CultureInfo.InvariantCulture) + \"h\" + suffix;");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("        return ((int)Math.Floor(distance.TotalDays)).ToString(CultureInfo.InvariantCulture) + \"d\" + suffix;");
++            _ = sb.AppendLine("    }");
++            _ = sb.AppendLine();
++        }
+         _ = sb.AppendLine("    private static string HumanizeEnumLabel(string value)");
+         _ = sb.AppendLine("    {");
+         _ = sb.AppendLine("        if (string.IsNullOrEmpty(value))");
+@@ -751,6 +811,9 @@ public static class RazorEmitter {
+             _ = sb.AppendLine("        var hiddenColumnSet = new System.Collections.Generic.HashSet<string>(hiddenColumns, StringComparer.Ordinal);");
+             _ = sb.AppendLine("        var anyRealFilterActive = AnyRealFilterActive(gridSnapshot);");
+         }
++        if (HasRelativeTimeColumns(model)) {
++            _ = sb.AppendLine("        var relativeNow = TimeProvider.GetUtcNow();");
++        }
+ 
+         _ = sb.AppendLine();
+ 
+diff --git a/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs b/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
+index b4395d8..5f4a918 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
+@@ -151,6 +151,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
+         "HFC1029" => DiagnosticDescriptors.ColumnPrioritizerActivated,
+         "HFC1030" => DiagnosticDescriptors.FieldGroupNameCollidesWithCatchAll,
+         "HFC1031" => DiagnosticDescriptors.FieldGroupIgnoredForNonDetailRole,
++        "HFC1032" => DiagnosticDescriptors.Level1FormatAnnotationInvalid,
+         _ => new DiagnosticDescriptor(
+             id,
+             "FrontComposer Diagnostic",
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs b/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs
+index 339499a..a1d4b51 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs
+@@ -18,6 +18,8 @@ public static class AttributeParser {
+     private const string ColumnPriorityAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ColumnPriorityAttribute";
+     private const string ProjectionFieldGroupAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionFieldGroupAttribute";
+     private const string ProjectionEmptyStateCtaAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.ProjectionEmptyStateCtaAttribute";
++    private const string RelativeTimeAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.RelativeTimeAttribute";
++    private const string CurrencyAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.CurrencyAttribute";
+     private const string DescriptionAttributeName = "System.ComponentModel.DescriptionAttribute";
+     private const string DisplayAttributeName = "System.ComponentModel.DataAnnotations.DisplayAttribute";
+ 
+@@ -524,6 +526,15 @@ public static class AttributeParser {
+         // Story 4-5 T6.4 / D9 — [ProjectionFieldGroup("Name")] annotation; null when absent.
+         string? fieldGroup = ParseProjectionFieldGroup(propertySymbol);
+ 
++        FieldDisplayFormat displayFormat = ParseDisplayFormat(
++            propertySymbol,
++            containingTypeName,
++            resolvedTypeName,
++            propertyType,
++            diagnostics,
++            filePath,
++            out int? relativeTimeWindowDays);
++
+         return new PropertyModel(
+             propertySymbol.Name,
+             resolvedTypeName,
+@@ -536,7 +547,124 @@ public static class AttributeParser {
+             enumMemberNames,
+             columnPriority,
+             fieldGroup,
+-            description);
++            description,
++            displayFormat,
++            relativeTimeWindowDays);
++    }
++
++    private static FieldDisplayFormat ParseDisplayFormat(
++        IPropertySymbol propertySymbol,
++        string containingTypeName,
++        string resolvedTypeName,
++        ITypeSymbol propertyType,
++        List<DiagnosticInfo> diagnostics,
++        string filePath,
++        out int? relativeTimeWindowDays) {
++        relativeTimeWindowDays = null;
++        int parsedRelativeTimeWindowDays = 7;
++        AttributeData? relativeTime = null;
++        AttributeData? currency = null;
++
++        foreach (AttributeData attr in propertySymbol.GetAttributes()) {
++            string? attributeName = attr.AttributeClass?.ToDisplayString();
++            if (attributeName == RelativeTimeAttributeName) {
++                relativeTime = attr;
++                if (attr.ConstructorArguments.Length > 0
++                    && attr.ConstructorArguments[0].Value is int days) {
++                    parsedRelativeTimeWindowDays = days;
++                }
++            }
++            else if (attributeName == CurrencyAttributeName) {
++                currency = attr;
++            }
++        }
++
++        if (relativeTime is null && currency is null) {
++            return FieldDisplayFormat.Default;
++        }
++
++        if (relativeTime is not null && currency is not null) {
++            EmitLevel1FormatDiagnostic(
++                propertySymbol,
++                containingTypeName,
++                "[RelativeTime] + [Currency]",
++                "at most one Level 1 format annotation",
++                resolvedTypeName,
++                "Remove one annotation so the field has a single format hint.",
++                diagnostics,
++                filePath);
++            return FieldDisplayFormat.Default;
++        }
++
++        if (relativeTime is not null) {
++            if (IsRelativeTimeCompatible(resolvedTypeName)) {
++                relativeTimeWindowDays = parsedRelativeTimeWindowDays;
++                return FieldDisplayFormat.RelativeTime;
++            }
++
++            EmitLevel1FormatDiagnostic(
++                propertySymbol,
++                containingTypeName,
++                "[RelativeTime]",
++                "DateTime or DateTimeOffset",
++                DescribeUnsupportedType(propertyType, propertyType.TypeKind == TypeKind.Enum),
++                "Apply [RelativeTime] only to DateTime/DateTimeOffset fields or remove the annotation.",
++                diagnostics,
++                filePath);
++            return FieldDisplayFormat.Default;
++        }
++
++        if (IsCurrencyCompatible(resolvedTypeName)) {
++            return FieldDisplayFormat.Currency;
++        }
++
++        EmitLevel1FormatDiagnostic(
++            propertySymbol,
++            containingTypeName,
++            "[Currency]",
++            "decimal, double, or float",
++            DescribeUnsupportedType(propertyType, propertyType.TypeKind == TypeKind.Enum),
++            "Apply [Currency] only to decimal/double/float fields or remove the annotation.",
++            diagnostics,
++            filePath);
++        return FieldDisplayFormat.Default;
++    }
++
++    private static bool IsRelativeTimeCompatible(string resolvedTypeName)
++        => resolvedTypeName == "DateTime" || resolvedTypeName == "DateTimeOffset";
++
++    private static bool IsCurrencyCompatible(string resolvedTypeName)
++        => resolvedTypeName == "Decimal" || resolvedTypeName == "Double" || resolvedTypeName == "Single";
++
++    private static void EmitLevel1FormatDiagnostic(
++        IPropertySymbol propertySymbol,
++        string containingTypeName,
++        string attribute,
++        string expected,
++        string got,
++        string fix,
++        List<DiagnosticInfo> diagnostics,
++        string fallbackFilePath) {
++        Location location = propertySymbol.Locations.FirstOrDefault() ?? Location.None;
++        Microsoft.CodeAnalysis.Text.LinePosition linePos = location.GetLineSpan().StartLinePosition;
++        string propFilePath = location.SourceTree?.FilePath ?? fallbackFilePath;
++        string newline = "\n";
++
++        diagnostics.Add(new DiagnosticInfo(
++            "HFC1032",
++            string.Format(
++                "What: Property '{0}' on type '{1}' uses invalid Level 1 format annotation metadata ({2}).{6}Expected: {3}.{6}Got: {4}.{6}Fix: {5}{6}Fallback: Generated code keeps the column emitted and uses the existing default formatter.{6}DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1032",
++                propertySymbol.Name,
++                containingTypeName,
++                attribute,
++                expected,
++                got,
++                fix,
++                newline),
++            "Warning",
++            propFilePath,
++            linePos.Line,
++            linePos.Character));
+     }
+ 
+     /// <summary>
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs b/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
+index acb727f..4b9dadf 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
+@@ -314,6 +314,20 @@ public sealed class CommandParseResult : IEquatable<CommandParseResult> {
+     }
+ }
+ 
++/// <summary>
++/// Compile-time display format selected from Level 1 projection annotations.
++/// </summary>
++public enum FieldDisplayFormat {
++    /// <summary>Use the existing type-derived formatter.</summary>
++    Default,
++
++    /// <summary>Render DateTime-like values as compact relative time within the configured window.</summary>
++    RelativeTime,
++
++    /// <summary>Render numeric values using the current culture currency format.</summary>
++    Currency,
++}
++
+ /// <summary>
+ /// IR representation of a single property on a [Projection]-annotated type.
+ /// </summary>
+@@ -330,7 +344,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+         EquatableArray<string> enumMemberNames = default,
+         int? columnPriority = null,
+         string? fieldGroup = null,
+-        string? description = null) {
++        string? description = null,
++        FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
++        int? relativeTimeWindowDays = null) {
+         Name = name;
+         TypeName = typeName;
+         IsNullable = isNullable;
+@@ -343,6 +359,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+         ColumnPriority = columnPriority;
+         FieldGroup = fieldGroup;
+         Description = description;
++        DisplayFormat = displayFormat;
++        RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
+     }
+ 
+     public string Name { get; }
+@@ -399,6 +417,18 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+     /// </summary>
+     public string? FieldGroup { get; }
+ 
++    /// <summary>
++    /// Gets the Level 1 display format selected by <c>[RelativeTime]</c> or <c>[Currency]</c>.
++    /// The value is UI-agnostic metadata; emitters choose the concrete rendering path.
++    /// </summary>
++    public FieldDisplayFormat DisplayFormat { get; }
++
++    /// <summary>
++    /// Gets the relative-time window in days when <see cref="DisplayFormat"/> is
++    /// <see cref="FieldDisplayFormat.RelativeTime"/>.
++    /// </summary>
++    public int? RelativeTimeWindowDays { get; }
++
+     public bool Equals(PropertyModel? other) {
+         if (other is null) {
+             return false;
+@@ -419,7 +449,9 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+             && EnumMemberNames == other.EnumMemberNames
+             && ColumnPriority == other.ColumnPriority
+             && FieldGroup == other.FieldGroup
+-            && Description == other.Description;
++            && Description == other.Description
++            && DisplayFormat == other.DisplayFormat
++            && RelativeTimeWindowDays == other.RelativeTimeWindowDays;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as PropertyModel);
+@@ -439,6 +471,8 @@ public sealed class PropertyModel : IEquatable<PropertyModel> {
+             hash = (hash * 31) + (ColumnPriority?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
++            hash = (hash * 31) + DisplayFormat.GetHashCode();
++            hash = (hash * 31) + (RelativeTimeWindowDays?.GetHashCode() ?? 0);
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs
+index b6dcd5d..36cf4f9 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/ColumnModel.cs
+@@ -16,7 +16,9 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
+         int? priority = null,
+         string? fieldGroup = null,
+         string? description = null,
+-        string? unsupportedTypeFullyQualifiedName = null) {
++        string? unsupportedTypeFullyQualifiedName = null,
++        FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
++        int? relativeTimeWindowDays = null) {
+         PropertyName = propertyName;
+         Header = header;
+         TypeCategory = typeCategory;
+@@ -28,6 +30,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
+         FieldGroup = fieldGroup;
+         Description = description;
+         UnsupportedTypeFullyQualifiedName = unsupportedTypeFullyQualifiedName;
++        DisplayFormat = displayFormat;
++        RelativeTimeWindowDays = displayFormat == FieldDisplayFormat.RelativeTime ? relativeTimeWindowDays ?? 7 : null;
+     }
+ 
+     public string PropertyName { get; }
+@@ -71,6 +75,16 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
+     /// </summary>
+     public string? UnsupportedTypeFullyQualifiedName { get; }
+ 
++    /// <summary>
++    /// Gets the Level 1 display format selected during Parse/Transform.
++    /// </summary>
++    public FieldDisplayFormat DisplayFormat { get; }
++
++    /// <summary>
++    /// Gets the relative-time window in days for relative-time columns.
++    /// </summary>
++    public int? RelativeTimeWindowDays { get; }
++
+     /// <summary>
+     /// Story 4-3 D14 — derived gate for column-header filter affordance. True for
+     /// Text / Numeric / Enum / DateTime; false for Boolean / Collection / Unsupported.
+@@ -104,7 +118,9 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
+             && Priority == other.Priority
+             && FieldGroup == other.FieldGroup
+             && Description == other.Description
+-            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName;
++            && UnsupportedTypeFullyQualifiedName == other.UnsupportedTypeFullyQualifiedName
++            && DisplayFormat == other.DisplayFormat
++            && RelativeTimeWindowDays == other.RelativeTimeWindowDays;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as ColumnModel);
+@@ -123,6 +139,8 @@ public sealed class ColumnModel : IEquatable<ColumnModel> {
+             hash = (hash * 31) + (FieldGroup?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (Description?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (UnsupportedTypeFullyQualifiedName?.GetHashCode() ?? 0);
++            hash = (hash * 31) + DisplayFormat.GetHashCode();
++            hash = (hash * 31) + (RelativeTimeWindowDays?.GetHashCode() ?? 0);
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs
+index 27291a1..37d731d 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/RazorModelTransform.cs
+@@ -27,7 +27,7 @@ public static class RazorModelTransform {
+ 
+         foreach (PropertyModel property in model.Properties) {
+             TypeCategory category = MapTypeCategory(property.TypeName);
+-            string? formatHint = GetFormatHint(property.TypeName, category);
++            string? formatHint = GetFormatHint(property);
+             string header = ResolveHeader(property);
+ 
+             columnsBuilder.Add(new ColumnModel(
+@@ -41,7 +41,9 @@ public static class RazorModelTransform {
+                 property.ColumnPriority,
+                 property.FieldGroup,
+                 property.Description,
+-                property.UnsupportedTypeFullyQualifiedName));
++                property.UnsupportedTypeFullyQualifiedName,
++                property.DisplayFormat,
++                property.RelativeTimeWindowDays));
+         }
+ 
+         // Story 4-4 T6.4 / D17 — stable sort by (Priority ?? int.MaxValue, DeclarationOrder)
+@@ -316,17 +318,27 @@ public static class RazorModelTransform {
+         _ => TypeCategory.Unsupported,
+     };
+ 
+-    private static string? GetFormatHint(string typeName, TypeCategory category) => typeName switch {
+-        "Int32" or "Int64" => "N0",
+-        "Decimal" or "Double" or "Single" => "N2",
+-        "Boolean" => "Yes/No",
+-        "DateTime" or "DateTimeOffset" or "DateOnly" => "d",
+-        "TimeOnly" => "t",
+-        "Enum" => "Humanize:30",
+-        "Guid" => "Truncate:8",
+-        "Collection" => "Count",
+-        _ => null,
+-    };
++    private static string? GetFormatHint(PropertyModel property) {
++        if (property.DisplayFormat == FieldDisplayFormat.Currency) {
++            return "C";
++        }
++
++        if (property.DisplayFormat == FieldDisplayFormat.RelativeTime) {
++            return "RelativeTime";
++        }
++
++        return property.TypeName switch {
++            "Int32" or "Int64" => "N0",
++            "Decimal" or "Double" or "Single" => "N2",
++            "Boolean" => "Yes/No",
++            "DateTime" or "DateTimeOffset" or "DateOnly" => "d",
++            "TimeOnly" => "t",
++            "Enum" => "Humanize:30",
++            "Guid" => "Truncate:8",
++            "Collection" => "Count",
++            _ => null,
++        };
++    }
+ 
+     private static string ResolveHeader(PropertyModel property) {
+         // Priority 1: [Display(Name)] attribute value
+diff --git a/tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/Level1FormatAttributeTests.cs b/tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/Level1FormatAttributeTests.cs
+new file mode 100644
+index 0000000..8a996e2
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/Level1FormatAttributeTests.cs
+@@ -0,0 +1,55 @@
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++using Shouldly;
++
++using Xunit;
++
++namespace Hexalith.FrontComposer.Contracts.Tests.Attributes;
++
++public sealed class Level1FormatAttributeTests {
++    [Fact]
++    public void RelativeTimeAttribute_DefaultsToSevenDayWindow() {
++        var attribute = new RelativeTimeAttribute();
++
++        attribute.RelativeWindowDays.ShouldBe(7);
++    }
++
++    [Theory]
++    [InlineData(1)]
++    [InlineData(7)]
++    [InlineData(30)]
++    public void RelativeTimeAttribute_AcceptsBoundedWindow(int days) {
++        new RelativeTimeAttribute(days).RelativeWindowDays.ShouldBe(days);
++    }
++
++    [Theory]
++    [InlineData(0)]
++    [InlineData(366)]
++    public void RelativeTimeAttribute_RejectsOutOfRangeWindow(int days) {
++        Should.Throw<ArgumentOutOfRangeException>(() => new RelativeTimeAttribute(days));
++    }
++
++    [Fact]
++    public void RelativeTimeAttribute_IsPropertyOnlyAndNotRepeatable() {
++        AttributeUsageAttribute usage = typeof(RelativeTimeAttribute)
++            .GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false)
++            .Cast<AttributeUsageAttribute>()
++            .Single();
++
++        usage.ValidOn.ShouldBe(AttributeTargets.Property);
++        usage.AllowMultiple.ShouldBeFalse();
++        usage.Inherited.ShouldBeFalse();
++    }
++
++    [Fact]
++    public void CurrencyAttribute_IsPropertyOnlyAndNotRepeatable() {
++        AttributeUsageAttribute usage = typeof(CurrencyAttribute)
++            .GetCustomAttributes(typeof(AttributeUsageAttribute), inherit: false)
++            .Cast<AttributeUsageAttribute>()
++            .Single();
++
++        usage.ValidOn.ShouldBe(AttributeTargets.Property);
++        usage.AllowMultiple.ShouldBeFalse();
++        usage.Inherited.ShouldBeFalse();
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt
+index 6b42c2d..b830f60 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.CounterProjectionView_LoadedState_RendersColumnsAndFormatting.verified.txt
+@@ -1,6 +1,6 @@
+-﻿<p class="fc-projection-subtitle">1 counters</p><!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 --><span class="fc-row-count">1 counters</span><div class="fc-datagrid-host" data-fc-datagrid="Counter:Counter.Domain.CounterProjection">
++<p class="fc-projection-subtitle">1 counters</p><!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 --><span class="fc-row-count">1 counters</span><div class="fc-datagrid-host" data-fc-datagrid="Counter:Counter.Domain.CounterProjection">
+ 
+-		<table class="fluent-data-grid" style="width: 100%; table-layout: fixed;" aria-rowcount="2"><thead><tr class="fluent-data-grid-row" role="row" row-type="header"><th col-index="1" class="column-header col-justify-start" style="height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text">Id</div></div></div></th><th col-index="2" class="column-header col-justify-start fc-col-numeric" style="height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text">Count</div></div></div></th><th col-index="3" class="column-header col-justify-start" style="height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text">Last Updated</div></div></div></th><th col-index="4" class="column-header col-justify-start fc-row-action-column" style="width: 40px; height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text"></div></div></div></th></tr></thead><tbody><tr style="height: 0px; flex-shrink: 0;" aria-hidden="true"></tr><tr class="fluent-data-grid-row" role="row" aria-rowindex="2"><td col-index="1" class="col-justify-start" style="height: 44px;" role="gridcell" tabindex="0">counter-1</td><td col-index="2" class="col-justify-start fc-col-numeric" style="height: 44px;" role="gridcell" tabindex="0">1,234</td><td col-index="3" class="col-justify-start" style="height: 44px;" role="gridcell" tabindex="0">04/14/2026</td><td col-index="4" class="col-justify-start fc-row-action-column" style="width: 40px; height: 44px;" role="gridcell" tabindex="0"><fluent-button class="fc-expand-button" icon-only appearance="subtle" aria-label="Expand details for counter-1" aria-expanded="false" aria-controls="fc-expand-panel-Counter-Counter-Domain-CounterProjection-{guid}" focusable="false" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 4.3a1 1 0 0 1 1.4 0l4.3 4.3a1 1 0 0 1 0 1.4l-4.3 4.3a1 1 0 1 1-1.4-1.4L10.8 9 7.2 5.4a1 1 0 0 1 0-1.1Z"/></svg>
++		<table class="fluent-data-grid" style="width: 100%; table-layout: fixed;" aria-rowcount="2"><thead><tr class="fluent-data-grid-row" role="row" row-type="header"><th col-index="1" class="column-header col-justify-start" style="height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text">Id</div></div></div></th><th col-index="2" class="column-header col-justify-start fc-col-numeric" style="height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text">Count</div></div></div></th><th col-index="3" class="column-header col-justify-start" style="height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text">Last changed</div></div></div></th><th col-index="4" class="column-header col-justify-start fc-row-action-column" style="width: 40px; height: 44px; min-height: 40px;" scope="col" aria-sort="none"><div style="display: flex; justify-content: flex-start; padding: 0 6px; "><div class="col-title"><div class="col-title-text"></div></div></div></th></tr></thead><tbody><tr style="height: 0px; flex-shrink: 0;" aria-hidden="true"></tr><tr class="fluent-data-grid-row" role="row" aria-rowindex="2"><td col-index="1" class="col-justify-start" style="height: 44px;" role="gridcell" tabindex="0">counter-1</td><td col-index="2" class="col-justify-start fc-col-numeric" style="height: 44px;" role="gridcell" tabindex="0">1,234</td><td col-index="3" class="col-justify-start" style="height: 44px;" role="gridcell" tabindex="0">04/14/2026</td><td col-index="4" class="col-justify-start fc-row-action-column" style="width: 40px; height: 44px;" role="gridcell" tabindex="0"><fluent-button class="fc-expand-button" icon-only appearance="subtle" aria-label="Expand details for counter-1" aria-expanded="false" aria-controls="fc-expand-panel-Counter-Counter-Domain-CounterProjection-{guid}" focusable="false" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.2 4.3a1 1 0 0 1 1.4 0l4.3 4.3a1 1 0 0 1 0 1.4l-4.3 4.3a1 1 0 1 1-1.4-1.4L10.8 9 7.2 5.4a1 1 0 0 1 0-1.1Z"/></svg>
+         </fluent-button></td></tr><tr aria-hidden="true" style="height: 0px; flex-shrink: 0; transform: translateY(999995600px);"></tr></tbody></table><div role="region" aria-label="Details for " class="fc-expand-in-row-detail"></div>
+ 
+ <div role="status" aria-live="polite" aria-atomic="true" class="fc-expand-in-row-suppression-live-region" style="position:absolute; width:1px; height:1px; margin:-1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0;"></div></div>
+\ No newline at end of file
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
+index fdc7882..20ce40b 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
+@@ -115,7 +115,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
+             // to the FluentDataGrid col-title-text marker so we keep the original ordering invariant.
+             int idHeader = markup.IndexOf(">Id<", StringComparison.Ordinal);
+             int countHeader = markup.IndexOf(">Count<", StringComparison.Ordinal);
+-            int lastUpdatedHeader = markup.IndexOf(">Last Updated<", StringComparison.Ordinal);
++            int lastUpdatedHeader = markup.IndexOf(">Last changed<", StringComparison.Ordinal);
+             idHeader.ShouldBeGreaterThanOrEqualTo(0);
+             countHeader.ShouldBeGreaterThanOrEqualTo(0);
+             lastUpdatedHeader.ShouldBeGreaterThanOrEqualTo(0);
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/Level1FormatEmitterTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/Level1FormatEmitterTests.cs
+new file mode 100644
+index 0000000..4800f32
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/Level1FormatEmitterTests.cs
+@@ -0,0 +1,62 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.SourceTools.Emitters;
++using Hexalith.FrontComposer.SourceTools.Parsing;
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Shouldly;
++
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
++
++public sealed class Level1FormatEmitterTests {
++    private static readonly EquatableArray<BadgeMappingEntry> EmptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
++
++    [Fact]
++    public void Emit_CurrencyColumn_UsesCurrentCultureAndNumericClass() {
++        string source = RazorEmitter.Emit(Model(Col("Amount", "Amount", TypeCategory.Numeric, "C", displayFormat: FieldDisplayFormat.Currency)));
++
++        source.ShouldContain(".ToString(\"C\", CultureInfo.CurrentCulture)");
++        source.ShouldContain("\"Class\", \"fc-col-numeric\"");
++        source.ShouldNotContain("SortBy\", (Expression<Func<OrderProjection, string?>>)");
++    }
++
++    [Fact]
++    public void Emit_NullableCurrencyColumn_PreservesDashFallback() {
++        string source = RazorEmitter.Emit(Model(Col("Amount", "Amount", TypeCategory.Numeric, "C", isNullable: true, displayFormat: FieldDisplayFormat.Currency)));
++
++        source.ShouldContain("x.Amount.HasValue ? x.Amount.Value.ToString(\"C\", CultureInfo.CurrentCulture) : \"\\u2014\"");
++    }
++
++    [Fact]
++    public void Emit_RelativeTimeColumn_CapturesNowOnceAndUsesHelper() {
++        string source = RazorEmitter.Emit(Model(Col("LastChanged", "Last changed", TypeCategory.DateTime, "RelativeTime", displayFormat: FieldDisplayFormat.RelativeTime)));
++
++        source.ShouldContain("var relativeNow = TimeProvider.GetUtcNow();");
++        source.ShouldContain("FormatRelativeTime(x.LastChanged, relativeNow, 7)");
++    }
++
++    [Fact]
++    public void Emit_RelativeTimeNullableColumn_PreservesDashFallback() {
++        string source = RazorEmitter.Emit(Model(Col("LastChanged", "Last changed", TypeCategory.DateTime, "RelativeTime", isNullable: true, displayFormat: FieldDisplayFormat.RelativeTime)));
++
++        source.ShouldContain("x.LastChanged.HasValue ? FormatRelativeTime(x.LastChanged.Value, relativeNow, 7) : \"\\u2014\"");
++    }
++
++    private static RazorModel Model(params ColumnModel[] columns)
++        => new(
++            "OrderProjection",
++            "TestDomain",
++            "Orders",
++            new EquatableArray<ColumnModel>(columns.ToImmutableArray()));
++
++    private static ColumnModel Col(
++        string name,
++        string header,
++        TypeCategory category,
++        string? formatHint,
++        bool isNullable = false,
++        FieldDisplayFormat displayFormat = FieldDisplayFormat.Default)
++        => new(name, header, category, formatHint, isNullable, EmptyBadges, displayFormat: displayFormat);
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs
+index f7bd41e..45ca50f 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs
+@@ -69,9 +69,11 @@ public class CounterDomainIntegrationTests {
+             .Single(t => System.IO.Path.GetFileName(t.FilePath).EndsWith(".g.razor.cs"));
+         string razorSource = razorTree.GetText(ct).ToString();
+ 
+-        // Verify 3 columns: Id (text), Count (numeric N0), LastUpdated (datetime "d")
++        // Verify 3 columns: Id (text), Count (numeric N0), LastUpdated (relative-time DateTime)
+         razorSource.ShouldContain("Text column: Id");
+         razorSource.ShouldContain("Numeric column: Count");
+         razorSource.ShouldContain("DateTime column: LastUpdated");
++        razorSource.ShouldContain("\"Last changed\"");
++        razorSource.ShouldContain("FormatRelativeTime(x.LastUpdated, relativeNow, 7)");
+     }
+ }
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/Level1FormatAnnotationParserTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/Level1FormatAnnotationParserTests.cs
+new file mode 100644
+index 0000000..3d9032a
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/Level1FormatAnnotationParserTests.cs
+@@ -0,0 +1,122 @@
++using Hexalith.FrontComposer.SourceTools.Parsing;
++
++using Shouldly;
++
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Parsing;
++
++public sealed class Level1FormatAnnotationParserTests {
++    [Theory]
++    [InlineData("System.DateTime")]
++    [InlineData("System.DateTimeOffset")]
++    [InlineData("System.DateTime?")]
++    [InlineData("System.DateTimeOffset?")]
++    public void Parse_RelativeTime_OnDateTimeLikeProperty_FlowsToPropertyModel(string typeName) {
++        ParseResult result = ParseFormatProjection($$"""
++            using Hexalith.FrontComposer.Contracts.Attributes;
++
++            namespace TestDomain;
++
++            [BoundedContext("Orders")]
++            [Projection]
++            public partial class FormatProjection
++            {
++                [RelativeTime]
++                public {{typeName}} LastChanged { get; set; }
++            }
++            """);
++
++        PropertyModel property = GetProperty(result, "LastChanged");
++        property.DisplayFormat.ShouldBe(FieldDisplayFormat.RelativeTime);
++        property.RelativeTimeWindowDays.ShouldBe(7);
++    }
++
++    [Theory]
++    [InlineData("decimal")]
++    [InlineData("double")]
++    [InlineData("float")]
++    [InlineData("decimal?")]
++    public void Parse_Currency_OnSupportedNumericProperty_FlowsToPropertyModel(string typeName) {
++        ParseResult result = ParseFormatProjection($$"""
++            using Hexalith.FrontComposer.Contracts.Attributes;
++
++            namespace TestDomain;
++
++            [BoundedContext("Orders")]
++            [Projection]
++            public partial class FormatProjection
++            {
++                [Currency]
++                public {{typeName}} Amount { get; set; }
++            }
++            """);
++
++        GetProperty(result, "Amount").DisplayFormat.ShouldBe(FieldDisplayFormat.Currency);
++    }
++
++    [Fact]
++    public void Parse_ConflictingFormatAnnotations_EmitOneWarningAndFallbackToDefault() {
++        ParseResult result = CompilationHelper.ParseProjection("""
++            using Hexalith.FrontComposer.Contracts.Attributes;
++
++            namespace TestDomain;
++
++            [BoundedContext("Orders")]
++            [Projection]
++            public partial class FormatProjection
++            {
++                [RelativeTime]
++                [Currency]
++                public decimal Amount { get; set; }
++            }
++            """, "TestDomain.FormatProjection");
++
++        result.Diagnostics.Count.ShouldBe(1);
++        result.Diagnostics[0].Id.ShouldBe("HFC1032");
++        result.Diagnostics[0].Message.ShouldContain("What:");
++        result.Diagnostics[0].Message.ShouldContain("Expected:");
++        result.Diagnostics[0].Message.ShouldContain("Got:");
++        result.Diagnostics[0].Message.ShouldContain("Fix:");
++        result.Diagnostics[0].Message.ShouldContain("DocsLink:");
++        result.Diagnostics[0].Message.ShouldContain("Fallback:");
++        GetProperty(result, "Amount").DisplayFormat.ShouldBe(FieldDisplayFormat.Default);
++    }
++
++    [Theory]
++    [InlineData("[RelativeTime]", "string", "DateTime or DateTimeOffset")]
++    [InlineData("[Currency]", "System.DateTime", "decimal, double, or float")]
++    public void Parse_InvalidFormatAnnotation_EmitsWarningAndFallbackToDefault(
++        string attribute,
++        string typeName,
++        string expectedFamily) {
++        ParseResult result = CompilationHelper.ParseProjection($$"""
++            using Hexalith.FrontComposer.Contracts.Attributes;
++
++            namespace TestDomain;
++
++            [BoundedContext("Orders")]
++            [Projection]
++            public partial class FormatProjection
++            {
++                {{attribute}}
++                public {{typeName}} Value { get; set; } = default!;
++            }
++            """, "TestDomain.FormatProjection");
++
++        result.Diagnostics.Count.ShouldBe(1);
++        result.Diagnostics[0].Id.ShouldBe("HFC1032");
++        result.Diagnostics[0].Message.ShouldContain(expectedFamily);
++        result.Diagnostics[0].Message.ShouldContain("Fallback:");
++        GetProperty(result, "Value").DisplayFormat.ShouldBe(FieldDisplayFormat.Default);
++    }
++
++    private static ParseResult ParseFormatProjection(string source) {
++        ParseResult result = CompilationHelper.ParseProjection(source, "TestDomain.FormatProjection");
++        result.Diagnostics.AsImmutableArray().ShouldBeEmpty();
++        return result;
++    }
++
++    private static PropertyModel GetProperty(ParseResult result, string name)
++        => result.Model.ShouldNotBeNull().Properties.AsImmutableArray().Single(p => p.Name == name);
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/TestSources.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/TestSources.cs
+index bacaa9c..2babb8f 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/TestSources.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/TestSources.cs
+@@ -330,8 +330,9 @@ public partial class NullableContextDisabledProjection
+     public int Count { get; set; }
+ }";
+ 
+-    internal const string CounterProjectionSource = @"
++internal const string CounterProjectionSource = @"
+ using System;
++using System.ComponentModel.DataAnnotations;
+ using Hexalith.FrontComposer.Contracts.Attributes;
+ 
+ namespace Counter.Domain;
+@@ -342,6 +343,8 @@ public partial class CounterProjection
+ {
+     public string Id { get; set; } = string.Empty;
+     public int Count { get; set; }
++    [Display(Name = ""Last changed"")]
++    [RelativeTime]
+     public DateTimeOffset LastUpdated { get; set; }
+ }";
+ 
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/Level1FormatTransformTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/Level1FormatTransformTests.cs
+new file mode 100644
+index 0000000..d2eec9a
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/Level1FormatTransformTests.cs
+@@ -0,0 +1,69 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.SourceTools.Parsing;
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Shouldly;
++
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
++
++public sealed class Level1FormatTransformTests {
++    private static readonly EquatableArray<BadgeMappingEntry> EmptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
++
++    [Fact]
++    public void Transform_RelativeTimeFormat_CarriesUiAgnosticColumnMetadata() {
++        RazorModel model = RazorModelTransform.Transform(Model(Prop("LastChanged", "DateTime", FieldDisplayFormat.RelativeTime)));
++
++        model.Columns[0].DisplayFormat.ShouldBe(FieldDisplayFormat.RelativeTime);
++        model.Columns[0].FormatHint.ShouldBe("RelativeTime");
++        model.Columns[0].RelativeTimeWindowDays.ShouldBe(7);
++    }
++
++    [Fact]
++    public void Transform_CurrencyFormat_CarriesColumnMetadataAndKeepsNumericCategory() {
++        RazorModel model = RazorModelTransform.Transform(Model(Prop("Amount", "Decimal", FieldDisplayFormat.Currency)));
++
++        model.Columns[0].DisplayFormat.ShouldBe(FieldDisplayFormat.Currency);
++        model.Columns[0].TypeCategory.ShouldBe(TypeCategory.Numeric);
++        model.Columns[0].FormatHint.ShouldBe("C");
++    }
++
++    [Fact]
++    public void Transform_DisplayNameStillWins_WhenFormatAnnotationIsPresent() {
++        RazorModel model = RazorModelTransform.Transform(Model(
++            Prop("LastChanged", "DateTime", FieldDisplayFormat.RelativeTime, displayName: "Last changed")));
++
++        model.Columns[0].Header.ShouldBe("Last changed");
++    }
++
++    [Fact]
++    public void Transform_FormatOverride_DoesNotChangePrioritySortOrder() {
++        RazorModel model = RazorModelTransform.Transform(Model(
++            Prop("Unannotated", "String"),
++            Prop("Amount", "Decimal", FieldDisplayFormat.Currency, priority: 2),
++            Prop("LastChanged", "DateTime", FieldDisplayFormat.RelativeTime, priority: 1)));
++
++        model.Columns.Select(c => c.PropertyName).ShouldBe(["LastChanged", "Amount", "Unannotated"]);
++    }
++
++    private static DomainModel Model(params PropertyModel[] props)
++        => new("TestProjection", "TestDomain", "Test", null, null, new EquatableArray<PropertyModel>(props.ToImmutableArray()));
++
++    private static PropertyModel Prop(
++        string name,
++        string typeName,
++        FieldDisplayFormat displayFormat = FieldDisplayFormat.Default,
++        string? displayName = null,
++        int? priority = null)
++        => new(
++            name,
++            typeName,
++            isNullable: false,
++            isUnsupported: false,
++            displayName,
++            EmptyBadges,
++            columnPriority: priority,
++            displayFormat: displayFormat);
++}

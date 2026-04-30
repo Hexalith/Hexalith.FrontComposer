@@ -17,4 +17,5 @@ namespace Hexalith.FrontComposer.Contracts.Shortcuts;
 /// <param name="Binding">The normalised binding string (e.g., <c>"ctrl+k"</c>).</param>
 /// <param name="DescriptionKey">The localisation resource key for the description column.</param>
 /// <param name="NormalisedLabel">The human-readable rendering of the binding (e.g., <c>"Ctrl+K"</c>).</param>
-public sealed record ShortcutRegistration(string Binding, string DescriptionKey, string NormalisedLabel);
+/// <param name="RouteUrl">Optional shell route activated by the shortcut reference row.</param>
+public sealed record ShortcutRegistration(string Binding, string DescriptionKey, string NormalisedLabel, string? RouteUrl = null);

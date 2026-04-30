@@ -552,6 +552,14 @@ public static class AttributeParser {
             relativeTimeWindowDays);
     }
 
+    /// <summary>
+     /// Story 6-1 D5/T2 — supported `[RelativeTime]` window range. Compile-time mirror of the
+     /// runtime constructor guard on <see cref="Hexalith.FrontComposer.Contracts.Attributes.RelativeTimeAttribute"/>.
+     /// </summary>
+    private const int RelativeTimeWindowMinDays = 1;
+    private const int RelativeTimeWindowMaxDays = 365;
+    private const int RelativeTimeWindowDefaultDays = 7;
+
     private static FieldDisplayFormat ParseDisplayFormat(
         IPropertySymbol propertySymbol,
         string containingTypeName,
@@ -561,7 +569,9 @@ public static class AttributeParser {
         string filePath,
         out int? relativeTimeWindowDays) {
         relativeTimeWindowDays = null;
-        int parsedRelativeTimeWindowDays = 7;
+        int parsedRelativeTimeWindowDays = RelativeTimeWindowDefaultDays;
+        bool relativeTimeWindowInvalid = false;
+        string? invalidWindowDisplay = null;
         AttributeData? relativeTime = null;
         AttributeData? currency = null;
 
@@ -569,9 +579,23 @@ public static class AttributeParser {
             string? attributeName = attr.AttributeClass?.ToDisplayString();
             if (attributeName == RelativeTimeAttributeName) {
                 relativeTime = attr;
-                if (attr.ConstructorArguments.Length > 0
-                    && attr.ConstructorArguments[0].Value is int days) {
-                    parsedRelativeTimeWindowDays = days;
+                // Story 6-1 review F1 — source generators read AttributeData, not the runtime
+                // constructor, so the runtime 1..365 guard never fires at compile time. Mirror
+                // the bound here and treat any non-int / out-of-range argument as invalid
+                // metadata (HFC1032), then fall back to the default 7-day window per D5.
+                if (attr.ConstructorArguments.Length > 0) {
+                    TypedConstant ctorArg = attr.ConstructorArguments[0];
+                    if (ctorArg.Value is int days
+                        && days >= RelativeTimeWindowMinDays
+                        && days <= RelativeTimeWindowMaxDays) {
+                        parsedRelativeTimeWindowDays = days;
+                    }
+                    else {
+                        relativeTimeWindowInvalid = true;
+                        invalidWindowDisplay = ctorArg.Value is null
+                            ? "null"
+                            : ctorArg.Value.ToString() ?? ctorArg.Value.GetType().Name;
+                    }
                 }
             }
             else if (attributeName == CurrencyAttributeName) {
@@ -597,21 +621,34 @@ public static class AttributeParser {
         }
 
         if (relativeTime is not null) {
-            if (IsRelativeTimeCompatible(resolvedTypeName)) {
-                relativeTimeWindowDays = parsedRelativeTimeWindowDays;
-                return FieldDisplayFormat.RelativeTime;
+            if (!IsRelativeTimeCompatible(resolvedTypeName)) {
+                EmitLevel1FormatDiagnostic(
+                    propertySymbol,
+                    containingTypeName,
+                    "[RelativeTime]",
+                    "DateTime or DateTimeOffset",
+                    DescribeUnsupportedType(propertyType, propertyType.TypeKind == TypeKind.Enum),
+                    "Apply [RelativeTime] only to DateTime/DateTimeOffset fields or remove the annotation.",
+                    diagnostics,
+                    filePath);
+                return FieldDisplayFormat.Default;
             }
 
-            EmitLevel1FormatDiagnostic(
-                propertySymbol,
-                containingTypeName,
-                "[RelativeTime]",
-                "DateTime or DateTimeOffset",
-                DescribeUnsupportedType(propertyType, propertyType.TypeKind == TypeKind.Enum),
-                "Apply [RelativeTime] only to DateTime/DateTimeOffset fields or remove the annotation.",
-                diagnostics,
-                filePath);
-            return FieldDisplayFormat.Default;
+            if (relativeTimeWindowInvalid) {
+                EmitLevel1FormatDiagnostic(
+                    propertySymbol,
+                    containingTypeName,
+                    "[RelativeTime(N)]",
+                    "an int between " + RelativeTimeWindowMinDays + " and " + RelativeTimeWindowMaxDays,
+                    invalidWindowDisplay ?? "non-int",
+                    "Use [RelativeTime] (default 7) or pass an int between 1 and 365.",
+                    diagnostics,
+                    filePath);
+                return FieldDisplayFormat.Default;
+            }
+
+            relativeTimeWindowDays = parsedRelativeTimeWindowDays;
+            return FieldDisplayFormat.RelativeTime;
         }
 
         if (IsCurrencyCompatible(resolvedTypeName)) {

@@ -95,7 +95,8 @@ public sealed class FrontComposerShortcutRegistrar(
             _ = shortcuts.Register(
                 "g h",
                 "HomeShortcutDescription",
-                NavigateHomeAsync);
+                NavigateHomeAsync,
+                routeUrl: "/");
 
             // Story 4-3 D10 / AC1 — `/` focuses the first column filter inside the active DataGrid.
             // Scope-gated via DataGridFocusScope — outside the grid the handler is a no-op (returns

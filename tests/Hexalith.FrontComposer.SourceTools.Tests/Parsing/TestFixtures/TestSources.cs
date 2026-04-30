@@ -330,7 +330,7 @@ public partial class NullableContextDisabledProjection
     public int Count { get; set; }
 }";
 
-internal const string CounterProjectionSource = @"
+    internal const string CounterProjectionSource = @"
 using System;
 using System.ComponentModel.DataAnnotations;
 using Hexalith.FrontComposer.Contracts.Attributes;

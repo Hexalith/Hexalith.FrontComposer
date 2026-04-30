@@ -320,7 +320,7 @@ public sealed class CommandPaletteEffects : IDisposable {
                     Category: PaletteResultCategory.Shortcut,
                     DisplayLabel: r.NormalisedLabel,
                     BoundedContext: string.Empty,
-                    RouteUrl: null,
+                    RouteUrl: r.RouteUrl,
                     CommandTypeName: null,
                     Score: 0,
                     IsInCurrentContext: false,
