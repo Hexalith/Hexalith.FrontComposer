@@ -245,6 +245,23 @@ Expected new or changed files:
 - Existing EventStore auth tests must continue to pass with `RequireAccessToken=false` lanes used for non-auth tests.
 - The Counter demo must still start without external credentials.
 
+### Advanced Elicitation Hardening Addendum
+
+The advanced elicitation pass keeps the story ready-for-dev, but tightens security and determinism around the auth bridge so implementation does not silently become an identity platform.
+
+Apply these refinements during `bmad-dev-story`:
+
+- Treat claim extraction as an executable provider matrix, not prose. For each fake OIDC, fake SAML, fake GitHub OAuth, and custom/brokered fixture, record inbound claim type, configured alias, precedence result, normalization result, invalid-value result, diagnostic ID, and whether command/query/SignalR/cache work is allowed. Include duplicate alias, multi-valued claim, whitespace, colon, missing tenant, missing user, unauthenticated principal, case-sensitive tenant, and unknown extra claim rows.
+- Claim precedence must be deterministic and conflict-aware. If two configured aliases both produce non-empty values for the same framework identifier and the values differ after trimming, fail closed with a sanitized configuration/claim diagnostic instead of choosing one by enumeration order. Tests must prove raw values are not logged while still naming the conflicting claim aliases.
+- Redirect safety needs a table-driven oracle. Cover local absolute paths, app-relative paths, path-base prefixed paths, query-only return paths if supported, absolute URLs, scheme-relative URLs, encoded backslashes, encoded CR/LF, double-encoded external URLs, fragments, empty return paths, and malformed URI input. Rejected cases challenge to the configured provider without preserving the unsafe return value.
+- Token relay is a per-operation lifecycle contract. A token acquisition attempt starts only when a command, query, or SignalR connection attempt needs it; cancellation, session expiry, empty token, thrown provider exception, or sign-out during acquisition must end in a single explicit auth failure path with no header set, no cache mutation, no retry with a previously observed token, and no background refresh owned by FrontComposer.
+- Avoid long-lived token capture. `AccessTokenProvider` delegates and SignalR callbacks may close over host-auth services or accessors, but must not close over token strings, claims payloads, `ClaimsPrincipal` snapshots, authorization-code values, SAML assertions, or mutable request-scoped objects that can outlive the request/circuit.
+- SAML and GitHub recipes require protocol honesty tests. SAML fixtures prove FrontComposer consumes only handler-produced claims and never parses assertions. GitHub fixtures prove OAuth sign-in can authenticate the user context but cannot satisfy EventStore bearer-token relay unless a broker/custom access-token provider is explicitly configured.
+- Logout and auth-state change behavior must fail closed. After sign-out, expired session detection, or host-auth state change to unauthenticated, new command/query/SignalR attempts must not reuse old tenant/user/token data, and cache writes must remain disabled until a fresh valid principal and token are available.
+- Redaction coverage must include high-temptation debug data: `Authorization` headers, ID/access/refresh token names, JWT-like strings, authorization codes, SAML XML fragments, `NameID`, `sub`, email/display names, tenant/user IDs, raw claim JSON, exception messages containing claim values, callback URLs with query strings, and provider metadata payloads. Allowed telemetry remains provider kind, scheme name, diagnostic ID, phase, and claim-presence booleans.
+- Provider-specific package boundaries are release-blocking. Add a source/dependency guard that allows OIDC/SAML/GitHub implementation references only in Shell auth registration/options/recipe/test fixture namespaces. Contracts, SourceTools, generated UI, EventStore clients, and business-facing components must depend only on ASP.NET Core primitives and FrontComposer bridge interfaces.
+- Keep the implementation budget stable. If coding uncovers requirements for multi-IdP routing, tenant membership validation, account provisioning, role mapping, token exchange service design, provider certification, or custom renewal UX, record a deferred decision with an owning story instead of expanding 7-1.
+
 ### Scope Guardrails
 
 Do not implement these in Story 7-1:
@@ -323,6 +340,18 @@ Do not implement these in Story 7-1:
 - Findings summary: The review found the story directionally sound but too broad and under-specified for a security-sensitive auth bridge. The main risks were provider-specific coupling leaking outside Shell, unclear token relay ownership, ambiguous claims failure behavior, non-deterministic token/redaction/fake-provider test oracles, and scope bleed into Story 7-2 tenant propagation, Story 7-3 authorization, production IdP certification, or account-management UX.
 - Changes applied: Hardened AC2-AC16 around handler-only SAML, fake/local provider fixtures, safe challenge return paths, documented claim precedence, multi-valued claim rejection, no fallback/demo identities, command/query/SignalR token relay, stale/null token failure behavior, expanded redaction prohibitions, sample-only fake auth, Story 7-2/7-3 boundaries, and provider-specific dependency containment. Added Shell/EventStore/Contracts architecture contracts, an auth flow sequence, binding decisions for provider dependency containment and host-owned token storage/renewal, deterministic fake fixture requirements, fail-closed tests, SignalR token-failure tests, and stricter scope guardrails.
 - Findings deferred: Multi-provider selection, account linking, provider discovery, user provisioning, tenant membership validation, role mapping, authorization policies, access-control UI, full tenant propagation, custom token renewal UI/policy, GitHub-to-EventStore token strategy beyond broker guidance, live IdP certification, full Diataxis provider cookbook, browser matrix/E2E login flow coverage, MCP tenant-scoped tooling, and production IdP onboarding templates remain with their owning future stories or manual integration lanes.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-04-30T14:02:43.5175163+02:00
+- Selected story key: `7-1-oidc-saml-authentication-integration`
+- Command/skill invocation used: `/bmad-advanced-elicitation 7-1-oidc-saml-authentication-integration`
+- Batch 1 method names: Security Audit Personas; Red Team vs Blue Team; Failure Mode Analysis; Pre-mortem Analysis; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Graph of Thoughts; Comparative Analysis Matrix; Occam's Razor Application; Challenge from Critical Perspective.
+- Findings summary: The elicitation found that party-mode review had already fixed the main scope boundaries, but implementation still needed sharper executable oracles for claim precedence conflicts, redirect normalization, per-operation token lifecycle, long-lived token capture, protocol-honest SAML/GitHub recipes, logout/auth-state invalidation, redaction stress cases, and provider package boundaries.
+- Changes applied: Added an Advanced Elicitation Hardening Addendum requiring provider claim matrices, deterministic conflict handling, table-driven redirect safety tests, fail-closed token relay lifecycle rules, no token/principal/assertion capture in long-lived delegates, SAML/GitHub protocol honesty tests, sign-out/session-expiry fail-closed checks, expanded redaction vectors, package-boundary guards, and explicit deferral of new product or architecture decisions.
+- Findings deferred: Multi-IdP routing, tenant membership validation, account provisioning, role mapping, token exchange service design, provider certification, custom token renewal UX, and any new auth architecture policy remain deferred to owning future stories or product/architecture review.
 - Final recommendation: ready-for-dev
 
 ---
