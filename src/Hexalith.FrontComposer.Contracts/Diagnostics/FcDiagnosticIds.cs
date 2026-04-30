@@ -162,9 +162,11 @@ public static class FcDiagnosticIds {
     public const string HFC1038_ProjectionSlotSelectorInvalid = "HFC1038";
 
     /// <summary>
-    /// Runtime Warning: a Level 3 slot component is not a compatible Blazor component or does
-    /// not expose a public <c>[Parameter]</c> <c>Context</c> property of the expected
-    /// <c>FieldSlotContext&lt;TProjection,TField&gt;</c> type. The descriptor is ignored.
+    /// Runtime Warning: a Level 3 slot component is not a Blazor component
+    /// (<c>IComponent</c> / <c>ComponentBase</c>) or does not expose a public
+    /// <c>[Parameter]</c> <c>Context</c> property compatible with
+    /// <c>FieldSlotContext&lt;TProjection,TField&gt;</c>. The descriptor is ignored and the
+    /// generated default renderer runs instead.
     /// </summary>
     public const string HFC1039_ProjectionSlotComponentInvalid = "HFC1039";
 
@@ -300,4 +302,12 @@ public static class FcDiagnosticIds {
     /// payload carries <c>{ViewKey}</c> when applicable. Runtime-only (no analyzer emission).
     /// </summary>
     public const string HFC2114_DataGridHydrationEmpty = "HFC2114";
+
+    /// <summary>
+    /// Runtime Warning: <c>FcFieldSlotHost</c> received a render call with one or more required
+    /// parameters left null (Story 6-3 GB-P1). Indicates a defect in the calling generated emitter
+    /// or adopter component — the host returns without rendering. The structured payload identifies
+    /// which parameter(s) were null so the wiring bug can be located. Runtime-only.
+    /// </summary>
+    public const string HFC2120_ProjectionSlotHostMissingParameter = "HFC2120";
 }

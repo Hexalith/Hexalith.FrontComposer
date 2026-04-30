@@ -72,6 +72,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Id,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
             case "Actor":
@@ -81,6 +82,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Actor,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Actor"));
             case "Description":
@@ -90,6 +92,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Description,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"));
             case "OccurredAt":
@@ -99,6 +102,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: "d",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.OccurredAt,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"));
             case "Severity":
@@ -108,6 +112,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: "Humanize:30",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Severity,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"));
             default:
@@ -253,6 +258,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
         string? format,
         int? order,
         bool isFieldReadOnly,
+        string? description,
         TField? value,
         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<TimelineProjection, TField>> renderDefault)
     {
@@ -272,7 +278,8 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                 Format: format,
                 Order: order,
                 IsReadOnly: isFieldReadOnly,
-                Hints: null);
+                Hints: null,
+                Description: description);
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<TimelineProjection, TField>>(0);
             builder.AddAttribute(1, "Parent", row);
             builder.AddAttribute(2, "Value", value);
@@ -435,6 +442,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: "d",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.OccurredAt,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"))(b);
                 b.AddMarkupContent(rowSeq++, " ");
@@ -444,6 +452,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Description,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"))(b);
                 b.AddMarkupContent(rowSeq++, " ");
@@ -453,6 +462,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
                     format: "Humanize:30",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Severity,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"))(b);
                 b.CloseElement();

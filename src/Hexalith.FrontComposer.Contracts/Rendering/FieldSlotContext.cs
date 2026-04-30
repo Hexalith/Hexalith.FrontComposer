@@ -1,4 +1,6 @@
 #if NET10_0_OR_GREATER
+using Hexalith.FrontComposer.Contracts.Attributes;
+
 using Microsoft.AspNetCore.Components;
 
 namespace Hexalith.FrontComposer.Contracts.Rendering;
@@ -22,7 +24,7 @@ public sealed class FieldSlotContext<TProjection, TField> {
         TProjection parent,
         FieldDescriptor field,
         RenderContext renderContext,
-        Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole? projectionRole,
+        ProjectionRole? projectionRole,
         DensityLevel densityLevel,
         bool isReadOnly,
         bool isDevMode,
@@ -48,14 +50,14 @@ public sealed class FieldSlotContext<TProjection, TField> {
     /// <summary>Gets the parent projection item for this render.</summary>
     public TProjection Parent { get; }
 
-    /// <summary>Gets generated field metadata, including label, format, order, and hints.</summary>
+    /// <summary>Gets generated field metadata, including label, description, format, order, and hints.</summary>
     public FieldDescriptor Field { get; }
 
     /// <summary>Gets the current tenant/user/render-mode context.</summary>
     public RenderContext RenderContext { get; }
 
     /// <summary>Gets the projection role, or <see langword="null"/> for the default role.</summary>
-    public Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole? ProjectionRole { get; }
+    public ProjectionRole? ProjectionRole { get; }
 
     /// <summary>Gets the active shell density.</summary>
     public DensityLevel DensityLevel { get; }

@@ -731,6 +731,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
         _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
         _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
+        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
         _ = sb.AppendLine(indent + "    value: " + instanceName + "." + col.PropertyName + ",");
         _ = sb.AppendLine(indent + "    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))(" + builderName + ");");
     }
@@ -767,6 +768,7 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
         _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
         _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
+        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
         _ = sb.AppendLine(indent + "    value: entity." + col.PropertyName + ",");
         _ = sb.AppendLine(indent + "    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>");
         _ = sb.AppendLine(indent + "{");

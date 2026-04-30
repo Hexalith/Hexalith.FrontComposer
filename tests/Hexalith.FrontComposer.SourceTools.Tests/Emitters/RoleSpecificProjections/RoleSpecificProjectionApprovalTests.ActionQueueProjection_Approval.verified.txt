@@ -117,6 +117,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Id,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
             case "CustomerName":
@@ -126,6 +127,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.CustomerName,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CustomerName"));
             case "Status":
@@ -135,6 +137,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: "Humanize:30",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Status,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
             case "Priority":
@@ -144,6 +147,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: "N0",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Priority,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"));
             default:
@@ -282,6 +286,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
         string? format,
         int? order,
         bool isFieldReadOnly,
+        string? description,
         TField? value,
         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<ActionQueueProjection, TField>> renderDefault)
     {
@@ -301,7 +306,8 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 Format: format,
                 Order: order,
                 IsReadOnly: isFieldReadOnly,
-                Hints: null);
+                Hints: null,
+                Description: description);
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<ActionQueueProjection, TField>>(0);
             builder.AddAttribute(1, "Parent", row);
             builder.AddAttribute(2, "Value", value);
@@ -719,6 +725,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Id,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
                 b.CloseComponent();
@@ -742,6 +749,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.CustomerName,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CustomerName"))));
                 b.CloseComponent();
@@ -765,6 +773,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: "Humanize:30",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Status,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))));
                 b.AddAttribute(colSeq++, "Sortable", true);
@@ -836,6 +845,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                     format: "N0",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Priority,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"))));
                 b.CloseComponent();
@@ -938,6 +948,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 format: (string?)null,
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Id,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
@@ -964,6 +975,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 format: (string?)null,
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.CustomerName,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
@@ -990,6 +1002,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 format: "Humanize:30",
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Status,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
@@ -1046,6 +1059,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 format: "N0",
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Priority,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {

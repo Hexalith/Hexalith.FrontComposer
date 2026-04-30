@@ -12,6 +12,8 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// <param name="Order">The display order index.</param>
 /// <param name="IsReadOnly">Whether the field is read-only in edit forms.</param>
 /// <param name="Hints">Additional rendering hints for badges, currency, sorting, etc.</param>
+/// <param name="Description">Localization-aware description / help text from <c>[Description]</c>
+/// or <c>[Display(Description=)]</c>; null when no description annotation is present.</param>
 public record FieldDescriptor(
     string Name,
     string TypeName,
@@ -20,4 +22,5 @@ public record FieldDescriptor(
     string? Format = null,
     int? Order = null,
     bool IsReadOnly = false,
-    RenderHints? Hints = null);
+    RenderHints? Hints = null,
+    string? Description = null);

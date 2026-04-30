@@ -112,6 +112,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Name,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"));
             case "Count":
@@ -121,6 +122,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: "N0",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Count,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"));
             case "IsActive":
@@ -130,6 +132,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: "Yes/No",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.IsActive,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"));
             default:
@@ -219,6 +222,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         string? format,
         int? order,
         bool isFieldReadOnly,
+        string? description,
         TField? value,
         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
     {
@@ -238,7 +242,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 Format: format,
                 Order: order,
                 IsReadOnly: isFieldReadOnly,
-                Hints: null);
+                Hints: null,
+                Description: description);
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
             builder.AddAttribute(1, "Parent", row);
             builder.AddAttribute(2, "Value", value);
@@ -648,6 +653,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Name,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"))));
                 b.CloseComponent();
@@ -672,6 +678,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: "N0",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Count,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"))));
                 b.CloseComponent();
@@ -696,6 +703,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: "Yes/No",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.IsActive,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"))));
                 b.CloseComponent();
@@ -767,6 +775,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 format: (string?)null,
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Name,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
@@ -793,6 +802,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 format: "N0",
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Count,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
@@ -819,6 +829,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 format: "Yes/No",
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.IsActive,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {

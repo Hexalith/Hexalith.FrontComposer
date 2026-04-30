@@ -1,0 +1,530 @@
+diff --git a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+index 1b1ef16..9f4fc27 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+@@ -114,6 +114,72 @@ public static class FcDiagnosticIds {
+     /// </summary>
+     public const string HFC1032_Level1FormatAnnotationInvalid = "HFC1032";
+ 
++    /// <summary>
++    /// Build-time Error: a <c>[ProjectionTemplate]</c> marker is missing a usable projection
++    /// type or its <c>ProjectionType</c> argument refers to a type that is not annotated with
++    /// <c>[Projection]</c>, is generic, abstract, or a struct (Story 6-2 T3 / AC6).
++    /// </summary>
++    public const string HFC1033_ProjectionTemplateInvalidProjectionType = "HFC1033";
++
++    /// <summary>
++    /// Build-time Warning: a <c>[ProjectionTemplate]</c>-marked class does not declare a
++    /// public instance property named <c>Context</c> of type
++    /// <c>ProjectionTemplateContext&lt;TProjection&gt;</c> matching the marker's projection
++    /// argument (Story 6-2 T3 / AC1 / AC6). Generated registration is still emitted; the
++    /// runtime renderer will surface a clearer error when the component is instantiated.
++    /// </summary>
++    public const string HFC1034_ProjectionTemplateContextParameterMissing = "HFC1034";
++
++    /// <summary>
++    /// Build-time Warning: a <c>[ProjectionTemplate]</c> marker declares an
++    /// <c>ExpectedContractVersion</c> whose major version differs from the installed
++    /// FrontComposer Level 2 contract (Story 6-2 T7 / AC5). Selection is suppressed in this
++    /// case so the template never silently runs against an incompatible context shape.
++    /// </summary>
++    public const string HFC1035_ProjectionTemplateContractVersionMismatch = "HFC1035";
++
++    /// <summary>
++    /// Build-time Warning: a <c>[ProjectionTemplate]</c> marker declares an
++    /// <c>ExpectedContractVersion</c> whose minor or build version differs from the
++    /// installed FrontComposer Level 2 contract. Selection still proceeds (Story 6-2
++    /// T7 / D6 / AC5).
++    /// </summary>
++    public const string HFC1036_ProjectionTemplateContractVersionDrift = "HFC1036";
++
++    /// <summary>
++    /// Build-time Error: two or more <c>[ProjectionTemplate]</c> markers in the same
++    /// compilation target the same projection-and-role tuple (Story 6-2 T3 / D10 / AC11 /
++    /// AC12). The generated manifest excludes the duplicates so runtime selection cannot
++    /// pick a non-deterministic winner.
++    /// </summary>
++    public const string HFC1037_ProjectionTemplateDuplicate = "HFC1037";
++
++    /// <summary>
++    /// Build/runtime Error: a Level 3 slot selector is not a direct projection property access.
++    /// Startup helpers reject computed, nested, captured, or method-call expressions so the slot
++    /// registry can key overrides by stable generated field names.
++    /// </summary>
++    public const string HFC1038_ProjectionSlotSelectorInvalid = "HFC1038";
++
++    /// <summary>
++    /// Runtime Warning: a Level 3 slot component is not a compatible Blazor component or does
++    /// not expose a public <c>[Parameter]</c> <c>Context</c> property of the expected
++    /// <c>FieldSlotContext&lt;TProjection,TField&gt;</c> type. The descriptor is ignored.
++    /// </summary>
++    public const string HFC1039_ProjectionSlotComponentInvalid = "HFC1039";
++
++    /// <summary>
++    /// Runtime Warning: two or more Level 3 slot descriptors target the same projection, role,
++    /// and field tuple. Resolution becomes ambiguous and falls back to generated field rendering.
++    /// </summary>
++    public const string HFC1040_ProjectionSlotDuplicate = "HFC1040";
++
++    /// <summary>
++    /// Runtime Warning: a Level 3 slot descriptor declares a contract version whose major version
++    /// differs from the installed FrontComposer Level 3 contract. The descriptor is ignored.
++    /// </summary>
++    public const string HFC1041_ProjectionSlotContractVersionMismatch = "HFC1041";
++
+     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
+     public const string HFC2100_UnknownCorrelationId = "HFC2100";
+ 
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/FieldSlotContext.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/FieldSlotContext.cs
+new file mode 100644
+index 0000000..d8cc3a5
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/FieldSlotContext.cs
+@@ -0,0 +1,75 @@
++#if NET10_0_OR_GREATER
++using Microsoft.AspNetCore.Components;
++
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Typed context passed to a Level 3 custom field-slot component.
++/// </summary>
++/// <remarks>
++/// Slot components should treat <see cref="Parent"/> and <see cref="RenderContext"/> as
++/// read-only render inputs. Do not mutate projection objects or cache this context,
++/// tenant/user values, localized text, or rendered fallback output across renders.
++/// </remarks>
++/// <typeparam name="TProjection">Projection type owning the field.</typeparam>
++/// <typeparam name="TField">Selected field type.</typeparam>
++public sealed class FieldSlotContext<TProjection, TField> {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="FieldSlotContext{TProjection,TField}"/> class.
++    /// </summary>
++    public FieldSlotContext(
++        TField? value,
++        TProjection parent,
++        FieldDescriptor field,
++        RenderContext renderContext,
++        Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole? projectionRole,
++        DensityLevel densityLevel,
++        bool isReadOnly,
++        bool isDevMode,
++        RenderFragment<FieldSlotContext<TProjection, TField>>? renderDefault) {
++        ArgumentNullException.ThrowIfNull(parent);
++        ArgumentNullException.ThrowIfNull(field);
++        ArgumentNullException.ThrowIfNull(renderContext);
++
++        Value = value;
++        Parent = parent;
++        Field = field;
++        RenderContext = renderContext;
++        ProjectionRole = projectionRole;
++        DensityLevel = densityLevel;
++        IsReadOnly = isReadOnly;
++        IsDevMode = isDevMode;
++        RenderDefault = renderDefault;
++    }
++
++    /// <summary>Gets the selected field value for this render.</summary>
++    public TField? Value { get; }
++
++    /// <summary>Gets the parent projection item for this render.</summary>
++    public TProjection Parent { get; }
++
++    /// <summary>Gets generated field metadata, including label, format, order, and hints.</summary>
++    public FieldDescriptor Field { get; }
++
++    /// <summary>Gets the current tenant/user/render-mode context.</summary>
++    public RenderContext RenderContext { get; }
++
++    /// <summary>Gets the projection role, or <see langword="null"/> for the default role.</summary>
++    public Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole? ProjectionRole { get; }
++
++    /// <summary>Gets the active shell density.</summary>
++    public DensityLevel DensityLevel { get; }
++
++    /// <summary>Gets a value indicating whether the field should render read-only.</summary>
++    public bool IsReadOnly { get; }
++
++    /// <summary>Gets a value indicating whether developer diagnostics are active.</summary>
++    public bool IsDevMode { get; }
++
++    /// <summary>
++    /// Gets a generated-default renderer that bypasses the active Level 3 slot for this same
++    /// projection/role/field, preventing recursive slot resolution.
++    /// </summary>
++    public RenderFragment<FieldSlotContext<TProjection, TField>>? RenderDefault { get; }
++}
++#endif
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/IProjectionSlotRegistry.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/IProjectionSlotRegistry.cs
+new file mode 100644
+index 0000000..6c7816a
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/IProjectionSlotRegistry.cs
+@@ -0,0 +1,21 @@
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Resolves Level 3 field-slot override descriptors at render time.
++/// </summary>
++public interface IProjectionSlotRegistry {
++    /// <summary>
++    /// Resolves a slot descriptor for a projection role and field. Exact role matches win,
++    /// then role-agnostic descriptors, then default generated rendering.
++    /// </summary>
++    /// <param name="projectionType">Projection CLR type.</param>
++    /// <param name="role">Optional projection role.</param>
++    /// <param name="fieldName">Canonical projection property name.</param>
++    /// <returns>The selected descriptor, or <see langword="null"/> when no valid slot exists.</returns>
++    ProjectionSlotDescriptor? Resolve(Type projectionType, ProjectionRole? role, string fieldName);
++
++    /// <summary>Gets valid, non-ambiguous descriptors for diagnostics and dev tooling.</summary>
++    IReadOnlyCollection<ProjectionSlotDescriptor> Descriptors { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotContractVersion.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotContractVersion.cs
+new file mode 100644
+index 0000000..8a9f38c
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotContractVersion.cs
+@@ -0,0 +1,18 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Contract version for Level 3 field-slot overrides.
++/// </summary>
++public static class ProjectionSlotContractVersion {
++    /// <summary>Current packed version: major * 1,000,000 + minor * 1,000 + build.</summary>
++    public const int Current = 1_000_000;
++
++    /// <summary>Current major version.</summary>
++    public const int Major = 1;
++
++    /// <summary>Current minor version.</summary>
++    public const int Minor = 0;
++
++    /// <summary>Current build version.</summary>
++    public const int Build = 0;
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotDescriptor.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotDescriptor.cs
+new file mode 100644
+index 0000000..362cd37
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotDescriptor.cs
+@@ -0,0 +1,23 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Immutable descriptor for one Level 3 field-slot override registration.
++/// </summary>
++/// <remarks>
++/// Descriptors carry type and field metadata only. They must not capture parent projection
++/// instances, <see cref="RenderContext"/> values, rendered fragments, tenant/user data,
++/// culture-specific strings, or scoped services.
++/// </remarks>
++/// <param name="ProjectionType">Projection CLR type that owns the field.</param>
++/// <param name="FieldName">Canonical property name selected by the typed expression.</param>
++/// <param name="FieldType">Selected field CLR type.</param>
++/// <param name="Role">Optional role-specific match; <see langword="null"/> is role-agnostic.</param>
++/// <param name="ComponentType">Razor component type used to render the slot.</param>
++/// <param name="ContractVersion">Field-slot contract version expected by the descriptor.</param>
++public sealed record ProjectionSlotDescriptor(
++    Type ProjectionType,
++    string FieldName,
++    Type FieldType,
++    Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole? Role,
++    Type ComponentType,
++    int ContractVersion);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotFieldIdentity.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotFieldIdentity.cs
+new file mode 100644
+index 0000000..dee80ce
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotFieldIdentity.cs
+@@ -0,0 +1,8 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Canonical field identity parsed from a refactor-safe slot selector expression.
++/// </summary>
++/// <param name="Name">The selected direct projection property name.</param>
++/// <param name="FieldType">The selected property CLR type.</param>
++public sealed record ProjectionSlotFieldIdentity(string Name, Type FieldType);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelector.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelector.cs
+new file mode 100644
+index 0000000..5b0c2b5
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelector.cs
+@@ -0,0 +1,70 @@
++using System.Linq.Expressions;
++using System.Reflection;
++
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Parses refactor-safe Level 3 slot selector expressions.
++/// </summary>
++public static class ProjectionSlotSelector {
++    private const string DiagnosticId = "HFC1038";
++    private const string DocsLink = "https://hexalith.dev/frontcomposer/diagnostics/HFC1038";
++
++    /// <summary>
++    /// Parses a direct property selector.
++    /// </summary>
++    /// <typeparam name="TProjection">Projection type owning the selected field.</typeparam>
++    /// <typeparam name="TField">Selected field type.</typeparam>
++    /// <param name="field">Direct property selector such as <c>x =&gt; x.Priority</c>.</param>
++    /// <returns>The canonical selected field identity.</returns>
++    /// <exception cref="ProjectionSlotSelectorException">Thrown for nested, computed, captured,
++    /// indexer, method-call, or otherwise non-direct selectors.</exception>
++    public static ProjectionSlotFieldIdentity Parse<TProjection, TField>(
++        Expression<Func<TProjection, TField>> field)
++        => ParseCore(field);
++
++    /// <summary>
++    /// Parses a direct property selector whose return type is object.
++    /// </summary>
++    /// <typeparam name="TProjection">Projection type owning the selected field.</typeparam>
++    /// <param name="field">Direct property selector such as <c>x =&gt; x.Priority</c>.</param>
++    /// <returns>The canonical selected field identity.</returns>
++    public static ProjectionSlotFieldIdentity Parse<TProjection>(
++        Expression<Func<TProjection, object?>> field)
++        => ParseCore(field);
++
++    private static ProjectionSlotFieldIdentity ParseCore(LambdaExpression lambda) {
++        if (lambda is null) {
++            throw new ArgumentNullException(nameof(lambda));
++        }
++
++        Expression body = StripBoxingConversion(lambda.Body);
++        if (body is not MemberExpression memberExpression
++            || memberExpression.Member is not PropertyInfo property
++            || memberExpression.Expression is not ParameterExpression parameter
++            || parameter != lambda.Parameters[0]
++            || property.GetIndexParameters().Length != 0) {
++            throw Invalid(lambda);
++        }
++
++        return new ProjectionSlotFieldIdentity(property.Name, property.PropertyType);
++    }
++
++    private static Expression StripBoxingConversion(Expression expression) {
++        if (expression is UnaryExpression unary
++            && (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.ConvertChecked)
++            && unary.Type == typeof(object)) {
++            return unary.Operand;
++        }
++
++        return expression;
++    }
++
++    private static ProjectionSlotSelectorException Invalid(LambdaExpression lambda)
++        => new(
++            $"{DiagnosticId}: Invalid Level 3 slot selector '{lambda}'. "
++            + "Expected: direct projection property expression like x => x.Priority. "
++            + "Got: nested member, method call, captured value, indexer, computed expression, or unsupported conversion. "
++            + "Fix: select one public projection property directly and register a separate slot for each field. "
++            + "Docs: " + DocsLink + ".");
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelectorException.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelectorException.cs
+new file mode 100644
+index 0000000..cd352eb
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelectorException.cs
+@@ -0,0 +1,15 @@
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++/// <summary>
++/// Thrown when a Level 3 slot selector is not a direct projection property access.
++/// </summary>
++public sealed class ProjectionSlotSelectorException : ArgumentException {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="ProjectionSlotSelectorException"/> class.
++    /// </summary>
++    /// <param name="message">Deterministic teaching diagnostic message.</param>
++    /// <param name="paramName">The invalid parameter name.</param>
++    public ProjectionSlotSelectorException(string message, string? paramName = "field")
++        : base(message, paramName) {
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Contracts.Tests/Rendering/ProjectionSlotContractsTests.cs b/tests/Hexalith.FrontComposer.Contracts.Tests/Rendering/ProjectionSlotContractsTests.cs
+new file mode 100644
+index 0000000..1c63eda
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Contracts.Tests/Rendering/ProjectionSlotContractsTests.cs
+@@ -0,0 +1,175 @@
++using System.Linq.Expressions;
++
++using Hexalith.FrontComposer.Contracts.Attributes;
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++using Microsoft.AspNetCore.Components;
++
++using Shouldly;
++
++using Xunit;
++
++namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
++
++/// <summary>
++/// Story 6-3 T1/T2/T11 — Level 3 field-slot contract invariants.
++/// </summary>
++public sealed class ProjectionSlotContractsTests {
++    [Fact]
++    public void ContractVersion_Current_PacksMajorMinorBuild() {
++        ProjectionSlotContractVersion.Current.ShouldBe(1_000_000);
++        ProjectionSlotContractVersion.Major.ShouldBe(1);
++        ProjectionSlotContractVersion.Minor.ShouldBe(0);
++        ProjectionSlotContractVersion.Build.ShouldBe(0);
++    }
++
++    [Fact]
++    public void FieldSlotContext_ExposesSuppliedInputs() {
++        FieldDescriptor field = new(
++            Name: "Priority",
++            TypeName: typeof(int).FullName!,
++            IsNullable: false,
++            DisplayName: "Priority",
++            Format: "N0",
++            Order: 1,
++            IsReadOnly: true,
++            Hints: null);
++        RenderContext renderContext = new("tenant-a", "user-b", FcRenderMode.Server, DensityLevel.Compact, IsReadOnly: true) {
++            IsDevMode = true,
++        };
++        ProjectionSlotProjection parent = new(42, "Alpha");
++        RenderFragment<FieldSlotContext<ProjectionSlotProjection, int>> fallback = static _ => static _ => { };
++
++        FieldSlotContext<ProjectionSlotProjection, int> context = new(
++            value: 42,
++            parent: parent,
++            field: field,
++            renderContext: renderContext,
++            projectionRole: ProjectionRole.ActionQueue,
++            densityLevel: DensityLevel.Compact,
++            isReadOnly: true,
++            isDevMode: true,
++            renderDefault: fallback);
++
++        context.Value.ShouldBe(42);
++        context.Parent.ShouldBe(parent);
++        context.Field.ShouldBeSameAs(field);
++        context.RenderContext.ShouldBeSameAs(renderContext);
++        context.ProjectionRole.ShouldBe(ProjectionRole.ActionQueue);
++        context.DensityLevel.ShouldBe(DensityLevel.Compact);
++        context.IsReadOnly.ShouldBeTrue();
++        context.IsDevMode.ShouldBeTrue();
++        context.RenderDefault.ShouldBeSameAs(fallback);
++    }
++
++    [Fact]
++    public void FieldSlotContext_NullRequiredArguments_Throw() {
++        FieldDescriptor field = new("Priority", typeof(int).FullName!, IsNullable: false);
++        RenderContext renderContext = new("tenant-a", "user-b", FcRenderMode.Server, DensityLevel.Comfortable, IsReadOnly: false);
++        ProjectionSlotProjection parent = new(42, "Alpha");
++
++        Should.Throw<ArgumentNullException>(() =>
++            new FieldSlotContext<ProjectionSlotProjection, int>(
++                value: 42,
++                parent: null!,
++                field: field,
++                renderContext: renderContext,
++                projectionRole: null,
++                densityLevel: DensityLevel.Comfortable,
++                isReadOnly: false,
++                isDevMode: false,
++                renderDefault: null));
++
++        Should.Throw<ArgumentNullException>(() =>
++            new FieldSlotContext<ProjectionSlotProjection, int>(
++                value: 42,
++                parent: parent,
++                field: null!,
++                renderContext: renderContext,
++                projectionRole: null,
++                densityLevel: DensityLevel.Comfortable,
++                isReadOnly: false,
++                isDevMode: false,
++                renderDefault: null));
++
++        Should.Throw<ArgumentNullException>(() =>
++            new FieldSlotContext<ProjectionSlotProjection, int>(
++                value: 42,
++                parent: parent,
++                field: field,
++                renderContext: null!,
++                projectionRole: null,
++                densityLevel: DensityLevel.Comfortable,
++                isReadOnly: false,
++                isDevMode: false,
++                renderDefault: null));
++    }
++
++    [Fact]
++    public void ProjectionSlotDescriptor_StructuralEquality() {
++        ProjectionSlotDescriptor a = new(
++            ProjectionType: typeof(ProjectionSlotProjection),
++            FieldName: "Priority",
++            FieldType: typeof(int),
++            Role: null,
++            ComponentType: typeof(ValidPrioritySlot),
++            ContractVersion: ProjectionSlotContractVersion.Current);
++        ProjectionSlotDescriptor b = new(
++            ProjectionType: typeof(ProjectionSlotProjection),
++            FieldName: "Priority",
++            FieldType: typeof(int),
++            Role: null,
++            ComponentType: typeof(ValidPrioritySlot),
++            ContractVersion: ProjectionSlotContractVersion.Current);
++
++        a.ShouldBe(b);
++        (a == b).ShouldBeTrue();
++    }
++
++    [Fact]
++    public void SlotSelector_AcceptsDirectPropertyAccess() {
++        ProjectionSlotSelector.Parse<ProjectionSlotProjection, int>(x => x.Priority)
++            .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
++    }
++
++    [Fact]
++    public void SlotSelector_AcceptsNullableDirectPropertyAccess() {
++        ProjectionSlotSelector.Parse<ProjectionSlotWithNullable, int?>(x => x.Priority)
++            .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int?)));
++    }
++
++    [Theory]
++    [MemberData(nameof(InvalidSelectors))]
++    public void SlotSelector_RejectsNonDirectPropertyExpressions(
++        Expression<Func<ProjectionSlotProjection, object?>> selector) {
++        ProjectionSlotSelectorException ex = Should.Throw<ProjectionSlotSelectorException>(() =>
++            ProjectionSlotSelector.Parse(selector));
++
++        ex.Message.ShouldContain("HFC1038");
++        ex.Message.ShouldContain("Expected");
++        ex.Message.ShouldContain("Fix");
++        ex.Message.ShouldContain("Docs");
++    }
++
++    public static TheoryData<Expression<Func<ProjectionSlotProjection, object?>>> InvalidSelectors()
++        => new() {
++            x => x.Name.Length,
++            x => x.Name.ToString(),
++            x => x.Priority + 1,
++            x => CapturedField,
++            x => x.Tags[0],
++        };
++
++    private static readonly int CapturedField = 7;
++
++    public sealed record ProjectionSlotProjection(int Priority, string Name) {
++        public string[] Tags { get; init; } = [];
++    }
++
++    public sealed record ProjectionSlotWithNullable(int? Priority);
++
++    public sealed class ValidPrioritySlot : ComponentBase {
++        [Parameter]
++        public FieldSlotContext<ProjectionSlotProjection, int> Context { get; set; } = default!;
++    }
++}

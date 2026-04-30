@@ -389,6 +389,7 @@ internal static class ColumnEmitter {
         _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(slotFormatOverride ?? col.FormatHint) + ",");
         _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
         _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
+        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
         _ = sb.AppendLine(indent + "    value: item." + col.PropertyName + ",");
         _ = sb.AppendLine(indent + "    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))));");
     }

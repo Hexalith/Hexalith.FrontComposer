@@ -110,6 +110,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: "d",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.OrderDate,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OrderDate"));
             default:
@@ -171,6 +172,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         string? format,
         int? order,
         bool isFieldReadOnly,
+        string? description,
         TField? value,
         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
     {
@@ -190,7 +192,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 Format: format,
                 Order: order,
                 IsReadOnly: isFieldReadOnly,
-                Hints: null);
+                Hints: null,
+                Description: description);
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
             builder.AddAttribute(1, "Parent", row);
             builder.AddAttribute(2, "Value", value);
@@ -600,6 +603,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                     format: "d",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.OrderDate,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OrderDate"))));
                 b.CloseComponent();
@@ -671,6 +675,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 format: "d",
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.OrderDate,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {

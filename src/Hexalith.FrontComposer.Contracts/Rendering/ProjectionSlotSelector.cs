@@ -1,13 +1,14 @@
 using System.Linq.Expressions;
 using System.Reflection;
 
+using Hexalith.FrontComposer.Contracts.Diagnostics;
+
 namespace Hexalith.FrontComposer.Contracts.Rendering;
 
 /// <summary>
 /// Parses refactor-safe Level 3 slot selector expressions.
 /// </summary>
 public static class ProjectionSlotSelector {
-    private const string DiagnosticId = "HFC1038";
     private const string DocsLink = "https://hexalith.dev/frontcomposer/diagnostics/HFC1038";
 
     /// <summary>
@@ -38,7 +39,7 @@ public static class ProjectionSlotSelector {
             throw new ArgumentNullException(nameof(lambda));
         }
 
-        Expression body = StripBoxingConversion(lambda.Body);
+        Expression body = StripConversions(lambda.Body);
         if (body is not MemberExpression memberExpression
             || memberExpression.Member is not PropertyInfo property
             || memberExpression.Expression is not ParameterExpression parameter
@@ -50,19 +51,38 @@ public static class ProjectionSlotSelector {
         return new ProjectionSlotFieldIdentity(property.Name, property.PropertyType);
     }
 
-    private static Expression StripBoxingConversion(Expression expression) {
-        if (expression is UnaryExpression unary
+    private static Expression StripConversions(Expression expression) {
+        // Repeatedly unwrap compiler-emitted Convert/ConvertChecked nodes that wrap a
+        // direct property selector. Two cases must be tolerated:
+        //   - boxing conversions to System.Object (Expression&lt;Func&lt;T, object?&gt;&gt; selectors);
+        //   - lifted nullable conversions (Convert(member, typeof(T?)) when the property is T,
+        //     or Convert(Convert(member, typeof(T?)), typeof(object))).
+        // Anything else (user method-call, Convert to an unrelated type, etc.) is left
+        // for ParseCore to reject.
+        while (expression is UnaryExpression unary
             && (unary.NodeType == ExpressionType.Convert || unary.NodeType == ExpressionType.ConvertChecked)
-            && unary.Type == typeof(object)) {
-            return unary.Operand;
+            && IsPassThroughConversion(unary)) {
+            expression = unary.Operand;
         }
 
         return expression;
     }
 
+    private static bool IsPassThroughConversion(UnaryExpression unary) {
+        if (unary.Type == typeof(object)) {
+            return true;
+        }
+
+        Type? operandUnderlying = Nullable.GetUnderlyingType(unary.Operand.Type);
+        Type? targetUnderlying = Nullable.GetUnderlyingType(unary.Type);
+        Type operandRoot = operandUnderlying ?? unary.Operand.Type;
+        Type targetRoot = targetUnderlying ?? unary.Type;
+        return operandRoot == targetRoot;
+    }
+
     private static ProjectionSlotSelectorException Invalid(LambdaExpression lambda)
         => new(
-            $"{DiagnosticId}: Invalid Level 3 slot selector '{lambda}'. "
+            $"{FcDiagnosticIds.HFC1038_ProjectionSlotSelectorInvalid}: Invalid Level 3 slot selector '{lambda}'. "
             + "Expected: direct projection property expression like x => x.Priority. "
             + "Got: nested member, method call, captured value, indexer, computed expression, or unsupported conversion. "
             + "Fix: select one public projection property directly and register a separate slot for each field. "

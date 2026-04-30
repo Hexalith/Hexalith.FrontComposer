@@ -116,6 +116,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Id,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
             case "Summary":
@@ -125,6 +126,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Summary,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Summary"));
             case "Priority":
@@ -134,6 +136,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                     format: "N0",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: row.Priority,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"));
             default:
@@ -223,6 +226,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         string? format,
         int? order,
         bool isFieldReadOnly,
+        string? description,
         TField? value,
         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<ActionQueueNoEnumProjection, TField>> renderDefault)
     {
@@ -242,7 +246,8 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                 Format: format,
                 Order: order,
                 IsReadOnly: isFieldReadOnly,
-                Hints: null);
+                Hints: null,
+                Description: description);
             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<ActionQueueNoEnumProjection, TField>>(0);
             builder.AddAttribute(1, "Parent", row);
             builder.AddAttribute(2, "Value", value);
@@ -660,6 +665,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Id,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
                 b.AddAttribute(colSeq++, "Sortable", true);
@@ -691,6 +697,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                     format: (string?)null,
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Summary,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Summary"))));
                 b.CloseComponent();
@@ -715,6 +722,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                     format: "N0",
                     order: (int?)null,
                     isFieldReadOnly: false,
+                    description: (string?)null,
                     value: item.Priority,
                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"))));
                 b.CloseComponent();
@@ -816,6 +824,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                 format: (string?)null,
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Id,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
@@ -842,6 +851,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                 format: (string?)null,
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Summary,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
@@ -868,6 +878,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                 format: "N0",
                 order: (int?)null,
                 isFieldReadOnly: false,
+                description: (string?)null,
                 value: entity.Priority,
                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {

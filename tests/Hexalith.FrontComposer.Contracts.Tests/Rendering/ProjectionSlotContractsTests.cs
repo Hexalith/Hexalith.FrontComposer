@@ -15,16 +15,23 @@ namespace Hexalith.FrontComposer.Contracts.Tests.Rendering;
 /// Story 6-3 T1/T2/T11 — Level 3 field-slot contract invariants.
 /// </summary>
 public sealed class ProjectionSlotContractsTests {
+    private const int CapturedField = 7;
+
     [Fact]
     public void ContractVersion_Current_PacksMajorMinorBuild() {
         ProjectionSlotContractVersion.Current.ShouldBe(1_000_000);
         ProjectionSlotContractVersion.Major.ShouldBe(1);
         ProjectionSlotContractVersion.Minor.ShouldBe(0);
         ProjectionSlotContractVersion.Build.ShouldBe(0);
+        ProjectionSlotContractVersion.Current
+            .ShouldBe((ProjectionSlotContractVersion.Major * 1_000_000)
+                + (ProjectionSlotContractVersion.Minor * 1_000)
+                + ProjectionSlotContractVersion.Build);
     }
 
     [Fact]
     public void FieldSlotContext_ExposesSuppliedInputs() {
+        RenderHints hints = new(BadgeSlot: BadgeSlot.Accent, IsSortable: false);
         FieldDescriptor field = new(
             Name: "Priority",
             TypeName: typeof(int).FullName!,
@@ -33,7 +40,8 @@ public sealed class ProjectionSlotContractsTests {
             Format: "N0",
             Order: 1,
             IsReadOnly: true,
-            Hints: null);
+            Hints: hints,
+            Description: "Order priority in the queue.");
         RenderContext renderContext = new("tenant-a", "user-b", FcRenderMode.Server, DensityLevel.Compact, IsReadOnly: true) {
             IsDevMode = true,
         };
@@ -54,6 +62,8 @@ public sealed class ProjectionSlotContractsTests {
         context.Value.ShouldBe(42);
         context.Parent.ShouldBe(parent);
         context.Field.ShouldBeSameAs(field);
+        context.Field.Hints.ShouldBeSameAs(hints);
+        context.Field.Description.ShouldBe("Order priority in the queue.");
         context.RenderContext.ShouldBeSameAs(renderContext);
         context.ProjectionRole.ShouldBe(ProjectionRole.ActionQueue);
         context.DensityLevel.ShouldBe(DensityLevel.Compact);
@@ -127,6 +137,18 @@ public sealed class ProjectionSlotContractsTests {
     }
 
     [Fact]
+    public void ProjectionSlotDescriptor_NullReferenceArguments_Throw() {
+        Should.Throw<ArgumentNullException>(() =>
+            new ProjectionSlotDescriptor(null!, "Priority", typeof(int), null, typeof(ValidPrioritySlot), 1));
+        Should.Throw<ArgumentException>(() =>
+            new ProjectionSlotDescriptor(typeof(ProjectionSlotProjection), "  ", typeof(int), null, typeof(ValidPrioritySlot), 1));
+        Should.Throw<ArgumentNullException>(() =>
+            new ProjectionSlotDescriptor(typeof(ProjectionSlotProjection), "Priority", null!, null, typeof(ValidPrioritySlot), 1));
+        Should.Throw<ArgumentNullException>(() =>
+            new ProjectionSlotDescriptor(typeof(ProjectionSlotProjection), "Priority", typeof(int), null, null!, 1));
+    }
+
+    [Fact]
     public void SlotSelector_AcceptsDirectPropertyAccess() {
         ProjectionSlotSelector.Parse<ProjectionSlotProjection, int>(x => x.Priority)
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
@@ -138,35 +160,96 @@ public sealed class ProjectionSlotContractsTests {
             .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int?)));
     }
 
+    [Fact]
+    public void SlotSelector_AcceptsObjectBoxingOfValueProperty() {
+        ProjectionSlotSelector.Parse<ProjectionSlotProjection>(x => x.Priority)
+            .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
+    }
+
+    [Fact]
+    public void SlotSelector_AcceptsObjectBoxingOfNullableProperty() {
+        ProjectionSlotSelector.Parse<ProjectionSlotWithNullable>(x => x.Priority)
+            .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int?)));
+    }
+
+    [Fact]
+    public void SlotSelector_AcceptsLiftedNullableConversion() {
+        ProjectionSlotSelector.Parse<ProjectionSlotProjection, int?>(x => x.Priority)
+            .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
+    }
+
+    [Fact]
+    public void SlotSelector_AcceptsInheritedProperty() {
+        ProjectionSlotSelector.Parse<DerivedProjection, int>(x => x.Priority)
+            .ShouldBe(new ProjectionSlotFieldIdentity("Priority", typeof(int)));
+    }
+
+    [Fact]
+    public void SlotSelector_AcceptsExplicitInterfaceProperty() {
+        ProjectionSlotSelector.Parse<ProjectionWithInterface, string>(x => x.Code)
+            .ShouldBe(new ProjectionSlotFieldIdentity("Code", typeof(string)));
+    }
+
+    [Fact]
+    public void SlotSelector_AcceptsShadowedPropertyAtMostDerived() {
+        ProjectionSlotSelector.Parse<ShadowingProjection, string>(x => x.Code)
+            .ShouldBe(new ProjectionSlotFieldIdentity("Code", typeof(string)));
+    }
+
     [Theory]
-    [MemberData(nameof(InvalidSelectors))]
+    [MemberData(nameof(InvalidSelectorCases))]
     public void SlotSelector_RejectsNonDirectPropertyExpressions(
+        string caseName,
         Expression<Func<ProjectionSlotProjection, object?>> selector) {
         ProjectionSlotSelectorException ex = Should.Throw<ProjectionSlotSelectorException>(() =>
             ProjectionSlotSelector.Parse(selector));
 
-        ex.Message.ShouldContain("HFC1038");
-        ex.Message.ShouldContain("Expected");
-        ex.Message.ShouldContain("Fix");
-        ex.Message.ShouldContain("Docs");
+        ex.Message.ShouldContain("HFC1038", customMessage: $"case '{caseName}' must surface HFC1038");
+        ex.Message.ShouldContain("Expected", customMessage: $"case '{caseName}' must teach the expected shape");
+        ex.Message.ShouldContain("Fix", customMessage: $"case '{caseName}' must include a fix line");
+        ex.Message.ShouldContain("Docs", customMessage: $"case '{caseName}' must include a docs link");
+        ex.ParamName.ShouldBe("field", customMessage: $"case '{caseName}' must surface the canonical paramName");
     }
 
-    public static TheoryData<Expression<Func<ProjectionSlotProjection, object?>>> InvalidSelectors()
-        => new() {
-            x => x.Name.Length,
-            x => x.Name.ToString(),
-            x => x.Priority + 1,
-            x => CapturedField,
-            x => x.Tags[0],
-        };
-
-    private static readonly int CapturedField = 7;
+    public static TheoryData<string, Expression<Func<ProjectionSlotProjection, object?>>> InvalidSelectorCases() {
+        TheoryData<string, Expression<Func<ProjectionSlotProjection, object?>>> data = new();
+        data.Add("nested-member-access", x => x.Name.Length);
+        data.Add("method-call-on-field", x => x.Name.ToString());
+        data.Add("computed-expression", x => x.Priority + 1);
+        data.Add("captured-static-field", _ => CapturedField);
+        data.Add("indexer-on-collection", x => x.Tags[0]);
+        return data;
+    }
 
     public sealed record ProjectionSlotProjection(int Priority, string Name) {
         public string[] Tags { get; init; } = [];
     }
 
     public sealed record ProjectionSlotWithNullable(int? Priority);
+
+    public abstract class BaseProjection {
+        public int Priority { get; init; }
+    }
+
+    public sealed class DerivedProjection : BaseProjection {
+        public string Name { get; init; } = string.Empty;
+    }
+
+    public interface IHasCode {
+        string Code { get; }
+    }
+
+    public sealed class ProjectionWithInterface : IHasCode {
+        public string Code { get; init; } = string.Empty;
+    }
+
+    public class ShadowingBaseProjection {
+        public string Code { get; init; } = "base";
+    }
+
+    public sealed class ShadowingProjection : ShadowingBaseProjection {
+        public new string Code { get; init; } = "derived";
+    }
 
     public sealed class ValidPrioritySlot : ComponentBase {
         [Parameter]

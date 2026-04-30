@@ -418,6 +418,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("                    format: " + SlotStringLiteral(col.FormatHint) + ",");
             _ = sb.AppendLine("                    order: " + SlotNullableIntLiteral(col.Priority) + ",");
             _ = sb.AppendLine("                    isFieldReadOnly: false,");
+            _ = sb.AppendLine("                    description: " + SlotStringLiteral(col.Description) + ",");
             _ = sb.AppendLine("                    value: row." + col.PropertyName + ",");
             _ = sb.AppendLine("                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"));");
         }
@@ -500,6 +501,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        string? format,");
         _ = sb.AppendLine("        int? order,");
         _ = sb.AppendLine("        bool isFieldReadOnly,");
+        _ = sb.AppendLine("        string? description,");
         _ = sb.AppendLine("        TField? value,");
         _ = sb.AppendLine("        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<" + model.TypeName + ", TField>> renderDefault)");
         _ = sb.AppendLine("    {");
@@ -519,7 +521,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                Format: format,");
         _ = sb.AppendLine("                Order: order,");
         _ = sb.AppendLine("                IsReadOnly: isFieldReadOnly,");
-        _ = sb.AppendLine("                Hints: null);");
+        _ = sb.AppendLine("                Hints: null,");
+        _ = sb.AppendLine("                Description: description);");
         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
         _ = sb.AppendLine("            builder.AddAttribute(1, \"Parent\", row);");
         _ = sb.AppendLine("            builder.AddAttribute(2, \"Value\", value);");
