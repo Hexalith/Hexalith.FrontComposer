@@ -92,7 +92,7 @@ public sealed class Level1FormatEmitterTests {
     }
 
     [Fact]
-    public void TimelineRole_OmitsCurrencyColumn_AndDoesNotEmitFormatString() {
+    public void TimelineRole_OmitsCurrencyColumn_FromDefaultBody_ButTemplateRendererKeepsFrameworkFormat() {
         // Story 6-1 review F23 / T7 — documented intentional fallback. Timeline renders a
         // chronological order column + label + status enum; pure numeric fields (including
         // [Currency]) are not part of the Timeline row vocabulary. The column is dropped at
@@ -105,7 +105,9 @@ public sealed class Level1FormatEmitterTests {
             Col("Status", "Status", TypeCategory.Enum, null),
             Col("Amount", "Amount", TypeCategory.Numeric, "C", displayFormat: FieldDisplayFormat.Currency)));
 
-        source.ShouldNotContain(".ToString(\"C\", CultureInfo.CurrentCulture)");
+        string defaultBodySource = source[source.IndexOf("global::Microsoft.AspNetCore.Components.RenderFragment defaultBody", StringComparison.Ordinal)..];
+        defaultBodySource.ShouldNotContain(".ToString(\"C\", CultureInfo.CurrentCulture)");
+        source.ShouldContain(".ToString(\"C\", CultureInfo.CurrentCulture)");
     }
 
     private static RazorModel Model(params ColumnModel[] columns)

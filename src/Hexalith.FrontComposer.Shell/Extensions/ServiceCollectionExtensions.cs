@@ -20,9 +20,11 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
+using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.Services.Validation;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
@@ -325,6 +327,16 @@ public static class ServiceCollectionExtensions
         // exposed as a stateless static helper (no DI registration needed).
         services.TryAddScoped<ICommandFeedbackPublisher, CommandFeedbackPublisher>();
 
+        // Story 6-2 T4 — Level 2 projection-template registry. Singleton because descriptors
+        // carry only type metadata (no per-tenant / per-user / per-render state — see D15 /
+        // AC15). Adopters add per-assembly descriptor sources via AddHexalithProjectionTemplates.
+        services.TryAddSingleton<IProjectionTemplateRegistry, ProjectionTemplateRegistry>();
+
+        // Story 6-3 T3 — Level 3 field-slot registry. Singleton because it stores immutable
+        // descriptor metadata only. Per-render FieldSlotContext values are constructed by the
+        // generated field boundary and never cached here.
+        services.TryAddSingleton<IProjectionSlotRegistry, ProjectionSlotRegistry>();
+
         // Story 4-5 D2 / T3.3 — ExpandedRowFeature is auto-discovered by the AddFluxor
         // ScanAssemblies(typeof(FrontComposerThemeState).Assembly) call above (line 158).
         // The static ExpandedRowReducers class is also picked up by the Fluxor reducer
@@ -429,6 +441,67 @@ public static class ServiceCollectionExtensions
         _ = services.AddAuthorizationCore();
         _ = AddHexalithShellLocalization(services, configureLocalization);
         _ = AddHexalithFrontComposer(services, configureFluxor);
+        return services;
+    }
+
+    /// <summary>
+    /// Story 6-2 T4 — registers the SourceTools-emitted Level 2 projection-template manifest
+    /// from the assembly containing <typeparamref name="TMarker"/> (Story 6-2 AC3).
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// The lookup is a single fixed-name <see cref="Type.GetType(string)"/> call against the
+    /// generated <c>__FrontComposerProjectionTemplatesRegistration</c> type — no broad
+    /// reflection scan. When the assembly contains no Level 2 templates the call is a no-op,
+    /// so it is safe to call unconditionally for every consuming Razor/Web project.
+    /// </para>
+    /// <para>
+    /// Multiple invocations with different marker types compose: the registry merges all
+    /// resolved descriptors and surfaces duplicate (projection, role) tuples through the same
+    /// build-time HFC1037 / runtime ambiguous-slot fail-closed path.
+    /// </para>
+    /// </remarks>
+    /// <typeparam name="TMarker">A type from the consuming Razor/Web assembly whose generated
+    /// manifest should be loaded (typically the App component or Program type).</typeparam>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The service collection for chaining.</returns>
+    [RequiresUnreferencedCode("Reads the generated __FrontComposerProjectionTemplatesRegistration type via reflection.")]
+    public static IServiceCollection AddHexalithProjectionTemplates<TMarker>(this IServiceCollection services)
+        where TMarker : class
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        IReadOnlyList<ProjectionTemplateDescriptor> descriptors =
+            ProjectionTemplateAssemblySource.ResolveDescriptors(typeof(TMarker).Assembly);
+        if (descriptors.Count == 0)
+        {
+            return services;
+        }
+
+        _ = services.AddSingleton(new ProjectionTemplateAssemblySource(descriptors));
+        return services;
+    }
+
+    /// <summary>
+    /// Registers SourceTools-emitted Level 2 projection-template descriptors through a strongly
+    /// referenced generated manifest, avoiding runtime lookup of the generated manifest type.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="descriptors">The generated <c>__FrontComposerProjectionTemplatesRegistration.Descriptors</c> list.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddHexalithProjectionTemplates(
+        this IServiceCollection services,
+        IReadOnlyList<ProjectionTemplateDescriptor> descriptors)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(descriptors);
+
+        if (descriptors.Count == 0)
+        {
+            return services;
+        }
+
+        _ = services.AddSingleton(new ProjectionTemplateAssemblySource(descriptors));
         return services;
     }
 

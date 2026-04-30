@@ -19,6 +19,10 @@ public class DiagnosticDescriptorTests {
     [InlineData("HFC1024", DiagnosticSeverity.Warning)]
     [InlineData("HFC1030", DiagnosticSeverity.Info)]
     [InlineData("HFC1031", DiagnosticSeverity.Info)]
+    [InlineData("HFC1038", DiagnosticSeverity.Error)]
+    [InlineData("HFC1039", DiagnosticSeverity.Warning)]
+    [InlineData("HFC1040", DiagnosticSeverity.Warning)]
+    [InlineData("HFC1041", DiagnosticSeverity.Warning)]
     public void AllHFC1xxxIdsHaveAnalyzerReleaseEntries(string id, DiagnosticSeverity expectedSeverity) {
         DiagnosticDescriptor descriptor = GetDescriptor(id);
 
@@ -98,6 +102,10 @@ public class DiagnosticDescriptorTests {
         contents.ShouldContain("HFC1024");
         contents.ShouldContain("HFC1030");
         contents.ShouldContain("HFC1031");
+        contents.ShouldContain("HFC1038");
+        contents.ShouldContain("HFC1039");
+        contents.ShouldContain("HFC1040");
+        contents.ShouldContain("HFC1041");
     }
 
     private static DiagnosticDescriptor GetDescriptor(string id) => id switch {
@@ -106,6 +114,10 @@ public class DiagnosticDescriptorTests {
         "HFC1024" => DiagnosticDescriptors.UnknownProjectionRoleValue,
         "HFC1030" => DiagnosticDescriptors.FieldGroupNameCollidesWithCatchAll,
         "HFC1031" => DiagnosticDescriptors.FieldGroupIgnoredForNonDetailRole,
+        "HFC1038" => DiagnosticDescriptors.ProjectionSlotSelectorInvalid,
+        "HFC1039" => DiagnosticDescriptors.ProjectionSlotComponentInvalid,
+        "HFC1040" => DiagnosticDescriptors.ProjectionSlotDuplicate,
+        "HFC1041" => DiagnosticDescriptors.ProjectionSlotContractVersionMismatch,
         _ => throw new ArgumentException("Unhandled descriptor id: " + id, nameof(id)),
     };
 }

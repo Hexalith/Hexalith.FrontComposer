@@ -32,6 +32,258 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
     [Inject]
     private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> FcShellLocalizer { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry ProjectionTemplateRegistry { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
+
+    [CascadingParameter]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor> _templateColumnsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Id", "Id", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Actor", "Actor", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Description", "Description", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("OccurredAt", "Occurred At", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Severity", "Severity", (int?)null, (string?)null)
+    };
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Body", "Body", "Body"),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Row", "Row", "Row")
+    };
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(TimelineProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Id":
+                return RenderSlotField(row,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Id,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+            case "Actor":
+                return RenderSlotField(row,
+                    fieldName: "Actor",
+                    displayName: "Actor",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Actor,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Actor"));
+            case "Description":
+                return RenderSlotField(row,
+                    fieldName: "Description",
+                    displayName: "Description",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Description,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"));
+            case "OccurredAt":
+                return RenderSlotField(row,
+                    fieldName: "OccurredAt",
+                    displayName: "Occurred At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.OccurredAt,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"));
+            case "Severity":
+                return RenderSlotField(row,
+                    fieldName: "Severity",
+                    displayName: "Severity",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Severity,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"));
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(TimelineProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Id":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Id.ToString());
+                };
+            case "Actor":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Actor.ToString());
+                };
+            case "Description":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Description.ToString());
+                };
+            case "OccurredAt":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.OccurredAt.ToString("d", CultureInfo.CurrentCulture));
+                };
+            case "Severity":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    var _memberName = row.Severity.ToString();
+                    var _label = HumanizeEnumLabel(_memberName);
+                    switch (_memberName)
+                    {
+                        case "Info":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
+                            builder.CloseComponent();
+                            break;
+                        case "Warning":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
+                            builder.CloseComponent();
+                            break;
+                        case "Critical":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Severity");
+                            builder.CloseComponent();
+                            break;
+                        default:
+                            builder.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            break;
+                    }
+                };
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(TimelineProjection row)
+    {
+        if (row is null)
+        {
+            return static _ => { };
+        }
+
+        return builder =>
+        {
+            int rowSeq = 0;
+            builder.OpenElement(rowSeq++, "div");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-row");
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Id");
+            RenderTemplateField(row, "Id")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Actor");
+            RenderTemplateField(row, "Actor")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Description");
+            RenderTemplateField(row, "Description")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "OccurredAt");
+            RenderTemplateField(row, "OccurredAt")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Severity");
+            RenderTemplateField(row, "Severity")(builder);
+            builder.CloseElement();
+            }
+            builder.CloseElement();
+        };
+    }
+
+    private bool HasProjectionSlot(string fieldName)
+        => ProjectionSlotRegistry.Resolve(typeof(TimelineProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline, fieldName) is not null;
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderSlotField<TField>(
+        TimelineProjection row,
+        string fieldName,
+        string displayName,
+        string? format,
+        int? order,
+        bool isFieldReadOnly,
+        TField? value,
+        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<TimelineProjection, TField>> renderDefault)
+    {
+        return builder =>
+        {
+            var __renderContext = RenderContext ?? new global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext(
+                TenantId: string.Empty,
+                UserId: string.Empty,
+                Mode: global::Hexalith.FrontComposer.Contracts.Rendering.FcRenderMode.Server,
+                DensityLevel: global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable,
+                IsReadOnly: false);
+            var __field = new global::Hexalith.FrontComposer.Contracts.Rendering.FieldDescriptor(
+                Name: fieldName,
+                TypeName: typeof(TField).FullName ?? typeof(TField).Name,
+                IsNullable: System.Nullable.GetUnderlyingType(typeof(TField)) is not null || !typeof(TField).IsValueType,
+                DisplayName: displayName,
+                Format: format,
+                Order: order,
+                IsReadOnly: isFieldReadOnly,
+                Hints: null);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<TimelineProjection, TField>>(0);
+            builder.AddAttribute(1, "Parent", row);
+            builder.AddAttribute(2, "Value", value);
+            builder.AddAttribute(3, "Field", __field);
+            builder.AddAttribute(4, "RenderContext", __renderContext);
+            builder.AddAttribute(5, "ProjectionRole", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
+            builder.AddAttribute(6, "RenderDefault", renderDefault);
+            builder.CloseComponent();
+        };
+    }
+
     /// <inheritdoc />
     protected override void OnInitialized()
     {
@@ -162,6 +414,10 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
         }
 
         seq = 100;
+        global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>
+        {
+            var builder = __bb;
+            int seq = 100;
         var orderedItems = state.Items.OrderByDescending(x => x.OccurredAt).ToList();
 
         builder.OpenComponent<FluentStack>(seq++);
@@ -173,43 +429,62 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
             {
                 b.OpenElement(rowSeq++, "div");
                 b.AddAttribute(rowSeq++, "class", "fc-timeline-row");
-                b.AddContent(rowSeq++, item.OccurredAt.ToString("d", CultureInfo.CurrentCulture));
+                RenderSlotField(item,
+                    fieldName: "OccurredAt",
+                    displayName: "Occurred At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.OccurredAt,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"))(b);
                 b.AddMarkupContent(rowSeq++, " ");
-                b.AddContent(rowSeq++, item.Description);
+                RenderSlotField(item,
+                    fieldName: "Description",
+                    displayName: "Description",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Description,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"))(b);
                 b.AddMarkupContent(rowSeq++, " ");
-                var _memberName = item.Severity.ToString();
-                var _label = HumanizeEnumLabel(_memberName);
-                switch (_memberName)
-                {
-                    case "Info":
-                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(rowSeq++);
-                        b.AddAttribute(rowSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                        b.AddAttribute(rowSeq++, "Label", _label);
-                        b.AddAttribute(rowSeq++, "ColumnHeader", "Severity");
-                        b.CloseComponent();
-                        break;
-                    case "Warning":
-                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(rowSeq++);
-                        b.AddAttribute(rowSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
-                        b.AddAttribute(rowSeq++, "Label", _label);
-                        b.AddAttribute(rowSeq++, "ColumnHeader", "Severity");
-                        b.CloseComponent();
-                        break;
-                    case "Critical":
-                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(rowSeq++);
-                        b.AddAttribute(rowSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
-                        b.AddAttribute(rowSeq++, "Label", _label);
-                        b.AddAttribute(rowSeq++, "ColumnHeader", "Severity");
-                        b.CloseComponent();
-                        break;
-                    default:
-                        b.AddContent(rowSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
-                        break;
-                }
+                RenderSlotField(item,
+                    fieldName: "Severity",
+                    displayName: "Severity",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Severity,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"))(b);
                 b.CloseElement();
             }
         }));
         builder.CloseComponent();
+        };
+
+        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(TimelineProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
+        if (__templateDescriptor is not null)
+        {
+            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<TimelineProjection>(
+                projectionType: typeof(TimelineProjection),
+                boundedContext: "Audit",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline,
+                renderContext: RenderContext,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<TimelineProjection>)System.Array.Empty<TimelineProjection>(),
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);
+            builder.AddAttribute(seq++, "Context", __templateContext);
+            builder.CloseComponent();
+        }
+        else
+        {
+            defaultBody(builder);
+        }
     }
 }
 

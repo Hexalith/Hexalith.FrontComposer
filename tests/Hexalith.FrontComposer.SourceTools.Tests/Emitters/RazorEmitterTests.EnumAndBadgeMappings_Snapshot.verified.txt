@@ -61,6 +61,12 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     [Inject]
     private IState<global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState> ExpandedRowState { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry ProjectionTemplateRegistry { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
+
     private const string _viewKey = "Orders:TestDomain.OrderProjection";
 
     private static readonly System.Func<OrderProjection, object> _itemKeyAccessor = static x => (object)x;
@@ -76,6 +82,146 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     private readonly string _ephemeralViewKey = "Orders:TestDomain.OrderProjection:" + System.Guid.NewGuid().ToString("N");
 
     private readonly string _expandPanelId = "fc-expand-panel-Orders-TestDomain-OrderProjection-" + System.Guid.NewGuid().ToString("N");
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor> _templateColumnsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Status", "Status", (int?)null, (string?)null)
+    };
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Body", "Body", "Body"),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Row", "Row", "Row")
+    };
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(OrderProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Status":
+                return RenderSlotField(row,
+                    fieldName: "Status",
+                    displayName: "Status",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Status,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(OrderProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Status":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    var _memberName = row.Status.ToString();
+                    var _label = HumanizeEnumLabel(_memberName);
+                    switch (_memberName)
+                    {
+                        case "Active":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                            builder.CloseComponent();
+                            break;
+                        case "Inactive":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                            builder.CloseComponent();
+                            break;
+                        default:
+                            builder.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            break;
+                    }
+                };
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(OrderProjection row)
+    {
+        if (row is null)
+        {
+            return static _ => { };
+        }
+
+        return builder =>
+        {
+            int rowSeq = 0;
+            builder.OpenElement(rowSeq++, "div");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-row");
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Status");
+            RenderTemplateField(row, "Status")(builder);
+            builder.CloseElement();
+            }
+            builder.CloseElement();
+        };
+    }
+
+    private bool HasProjectionSlot(string fieldName)
+        => ProjectionSlotRegistry.Resolve(typeof(OrderProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null, fieldName) is not null;
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderSlotField<TField>(
+        OrderProjection row,
+        string fieldName,
+        string displayName,
+        string? format,
+        int? order,
+        bool isFieldReadOnly,
+        TField? value,
+        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
+    {
+        return builder =>
+        {
+            var __renderContext = RenderContext ?? new global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext(
+                TenantId: string.Empty,
+                UserId: string.Empty,
+                Mode: global::Hexalith.FrontComposer.Contracts.Rendering.FcRenderMode.Server,
+                DensityLevel: global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable,
+                IsReadOnly: false);
+            var __field = new global::Hexalith.FrontComposer.Contracts.Rendering.FieldDescriptor(
+                Name: fieldName,
+                TypeName: typeof(TField).FullName ?? typeof(TField).Name,
+                IsNullable: System.Nullable.GetUnderlyingType(typeof(TField)) is not null || !typeof(TField).IsValueType,
+                DisplayName: displayName,
+                Format: format,
+                Order: order,
+                IsReadOnly: isFieldReadOnly,
+                Hints: null);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
+            builder.AddAttribute(1, "Parent", row);
+            builder.AddAttribute(2, "Value", value);
+            builder.AddAttribute(3, "Field", __field);
+            builder.AddAttribute(4, "RenderContext", __renderContext);
+            builder.AddAttribute(5, "ProjectionRole", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+            builder.AddAttribute(6, "RenderDefault", renderDefault);
+            builder.CloseComponent();
+        };
+    }
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -416,28 +562,10 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         }
 
         seq = 100;
-        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
-
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.CloseComponent();
-
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
-        builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
-        builder.CloseComponent();
-
-        builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "fc-row-count");
-        builder.AddContent(seq++, $"{state.Items.Count} " + "orders");
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", GridHostClass());
-        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
-        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
-
+        global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>
+        {
+            var builder = __bb;
+            int seq = 100;
         // Story 4-5 — resolve expanded-row state for this render pass.
         global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         object? _expandedItemKey = _expandedEntry?.ItemKey;
@@ -483,35 +611,52 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             int colSeq = 200;
 
             // Enum column: Status
-            b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Status");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
-            b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => (RenderTreeBuilder rb) =>
+            if (HasProjectionSlot("Status"))
             {
-                var _memberName = item.Status.ToString();
-                var _label = HumanizeEnumLabel(_memberName);
-                switch (_memberName)
+                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Status");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                    fieldName: "Status",
+                    displayName: "Status",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Status,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Status");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => (RenderTreeBuilder rb) =>
                 {
-                    case "Active":
-                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
-                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
-                        rb.AddAttribute(2, "Label", _label);
-                        rb.AddAttribute(3, "ColumnHeader", "Status");
-                        rb.CloseComponent();
-                        break;
-                    case "Inactive":
-                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
-                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                        rb.AddAttribute(2, "Label", _label);
-                        rb.AddAttribute(3, "ColumnHeader", "Status");
-                        rb.CloseComponent();
-                        break;
-                    default:
-                        rb.AddContent(11, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
-                        break;
-                }
-            }));
-            b.CloseComponent();
+                    var _memberName = item.Status.ToString();
+                    var _label = HumanizeEnumLabel(_memberName);
+                    switch (_memberName)
+                    {
+                        case "Active":
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                            rb.AddAttribute(2, "Label", _label);
+                            rb.AddAttribute(3, "ColumnHeader", "Status");
+                            rb.CloseComponent();
+                            break;
+                        case "Inactive":
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            rb.AddAttribute(2, "Label", _label);
+                            rb.AddAttribute(3, "ColumnHeader", "Status");
+                            rb.CloseComponent();
+                            break;
+                        default:
+                            rb.AddContent(11, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            break;
+                    }
+                }));
+                b.CloseComponent();
+            }
 
             // Story 4-5 — trailing row-action column hosting the expand chevron.
             b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
@@ -566,33 +711,92 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Status");
             }));
             b.CloseComponent();
-            var _memberName = entity.Status.ToString();
-            var _label = HumanizeEnumLabel(_memberName);
-            switch (_memberName)
+            RenderSlotField(entity,
+                fieldName: "Status",
+                displayName: "Status",
+                format: "Humanize:30",
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.Status,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                case "Active":
-                    b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
-                    b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
-                    b.AddAttribute(fieldSeq++, "Label", _label);
-                    b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
-                    b.CloseComponent();
-                    break;
-                case "Inactive":
-                    b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
-                    b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                    b.AddAttribute(fieldSeq++, "Label", _label);
-                    b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
-                    b.CloseComponent();
-                    break;
-                default:
-                    b.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
-                    break;
-            }
+                int slotSeq = 0;
+                var _memberName = entity.Status.ToString();
+                var _label = HumanizeEnumLabel(_memberName);
+                switch (_memberName)
+                {
+                    case "Active":
+                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                        slotBuilder.CloseComponent();
+                        break;
+                    case "Inactive":
+                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                        slotBuilder.CloseComponent();
+                        break;
+                    default:
+                        slotBuilder.AddContent(slotSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                        break;
+                }
+            })(b);
             b.CloseElement();
         }));
         builder.CloseComponent();
         }));
         builder.CloseComponent();
+        };
+
+        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.CloseComponent();
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
+        builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
+        builder.CloseComponent();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "fc-row-count");
+        builder.AddContent(seq++, $"{state.Items.Count} " + "orders");
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", GridHostClass());
+        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
+        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
+
+        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(OrderProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+        if (__templateDescriptor is not null)
+        {
+            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<OrderProjection>(
+                projectionType: typeof(OrderProjection),
+                boundedContext: "Orders",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null,
+                renderContext: RenderContext,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<OrderProjection>)System.Array.Empty<OrderProjection>(),
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);
+            builder.AddAttribute(seq++, "Context", __templateContext);
+            builder.CloseComponent();
+        }
+        else
+        {
+            defaultBody(builder);
+        }
         builder.CloseElement();
     }
 }

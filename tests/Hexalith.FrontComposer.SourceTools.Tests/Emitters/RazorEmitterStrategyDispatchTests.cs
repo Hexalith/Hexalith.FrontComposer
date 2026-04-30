@@ -194,8 +194,9 @@ public class RazorEmitterStrategyDispatchTests {
 
         string output = RazorEmitter.Emit(model);
 
-        output.ShouldContain("item.OccurredAt.ToString(\"t\", CultureInfo.CurrentCulture)");
-        output.ShouldContain("item.Id.ToString(\"N\")");
+        output.ShouldContain("value: item.OccurredAt,");
+        output.ShouldContain("row.OccurredAt.ToString(\"t\", CultureInfo.CurrentCulture)");
+        output.ShouldContain("row.Id.ToString(\"N\")");
         output.ShouldNotContain("ToString(\"g\", CultureInfo.CurrentCulture)");
     }
 
@@ -222,8 +223,8 @@ public class RazorEmitterStrategyDispatchTests {
 
         string output = RazorEmitter.Emit(model);
 
-        output.ShouldContain("b.AddContent(rowSeq++, item.Description);");
-        output.ShouldNotContain("b.AddContent(rowSeq++, item.Id);");
+        output.ShouldContain("value: item.Description,");
+        output.ShouldNotContain("value: item.Id,");
     }
 
     [Fact]

@@ -32,4 +32,12 @@ public class Hfc1026ReservationTests {
     public void FcDiagnosticIdsPublishesHFC1025Constant() {
         FcDiagnosticIds.HFC1025_BadgeSlotFallbackApplied.ShouldBe("HFC1025");
     }
+
+    [Fact]
+    public void FcDiagnosticIdsPublishesLevel3SlotConstants() {
+        FcDiagnosticIds.HFC1038_ProjectionSlotSelectorInvalid.ShouldBe("HFC1038");
+        FcDiagnosticIds.HFC1039_ProjectionSlotComponentInvalid.ShouldBe("HFC1039");
+        FcDiagnosticIds.HFC1040_ProjectionSlotDuplicate.ShouldBe("HFC1040");
+        FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch.ShouldBe("HFC1041");
+    }
 }

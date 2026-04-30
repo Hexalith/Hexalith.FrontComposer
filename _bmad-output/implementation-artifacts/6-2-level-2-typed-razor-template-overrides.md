@@ -1,6 +1,6 @@
 # Story 6.2: Level 2 Typed Razor Template Overrides
 
-Status: ready-for-dev
+Status: done
 
 > **Epic 6** - Developer Customization Gradient. **FR40 / FR43 / FR44 / UX-DR54** template-level customization for generated projection layouts. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, **L11**, and **L15**.
 
@@ -53,88 +53,103 @@ so that I can rearrange section layouts while preserving generated field renderi
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define the Level 2 template contract surface (AC1, AC2, AC8)
-  - [ ] Add `ProjectionTemplateContext<TProjection>` under `src/Hexalith.FrontComposer.Contracts/Rendering/`.
-  - [ ] Include: `ProjectionType`, `BoundedContext`, `ProjectionRole`, `RenderContext`, `IReadOnlyList<TProjection> Items`, immutable column/section descriptors, and generated render delegates for field/section emission.
-  - [ ] Document the allowed member boundary in code docs and tests: stable rendering inputs only; no Shell services, no mutable Fluxor state, no source-generator internals, no raw `RazorModel`, and no public registry mutation surface.
-  - [ ] Expose localized labels/help text and culture-aware display metadata through the same generated descriptor path used by Level 1 annotations so template authors are not pushed toward hard-coded strings.
-  - [ ] Keep the context immutable or read-only; templates must not mutate Fluxor state or DataGrid navigation state directly.
-  - [ ] Construct `ProjectionTemplateContext<TProjection>` per render from the current generated view state; do not store tenant/user/item/culture data in generated manifests, singleton descriptors, static fields, or registry caches.
-  - [ ] Add a typed template interface or base contract, for example `IProjectionTemplate<TProjection>`, only if it removes ambiguity. Avoid a large hierarchy.
-  - [ ] Use `RenderFragment<ProjectionTemplateContext<TProjection>>` / typed child content patterns aligned with Blazor templated components.
+- [x] T1. Define the Level 2 template contract surface (AC1, AC2, AC8)
+  - [x] Add `ProjectionTemplateContext<TProjection>` under `src/Hexalith.FrontComposer.Contracts/Rendering/`.
+  - [x] Include: `ProjectionType`, `BoundedContext`, `ProjectionRole`, `RenderContext`, `IReadOnlyList<TProjection> Items`, immutable column/section descriptors, and generated render delegates for field/section emission.
+  - [x] Document the allowed member boundary in code docs and tests: stable rendering inputs only; no Shell services, no mutable Fluxor state, no source-generator internals, no raw `RazorModel`, and no public registry mutation surface.
+  - [x] Expose localized labels/help text and culture-aware display metadata through the same generated descriptor path used by Level 1 annotations so template authors are not pushed toward hard-coded strings.
+  - [x] Keep the context immutable or read-only; templates must not mutate Fluxor state or DataGrid navigation state directly.
+  - [x] Construct `ProjectionTemplateContext<TProjection>` per render from the current generated view state; do not store tenant/user/item/culture data in generated manifests, singleton descriptors, static fields, or registry caches.
+  - [x] Add a typed template interface or base contract, for example `IProjectionTemplate<TProjection>`, only if it removes ambiguity. Avoid a large hierarchy.
+  - [x] Use `RenderFragment<ProjectionTemplateContext<TProjection>>` / typed child content patterns aligned with Blazor templated components.
 
-- [ ] T2. Add explicit compile-time template markers (AC3, AC5, AC6)
-  - [ ] Add a marker attribute in Contracts, for example `ProjectionTemplateAttribute`, targeting classes.
-  - [ ] Require marker metadata: projection type, expected contract version, and template level (`Template` / Level 2).
-  - [ ] Support Razor templates through a companion partial class in `.razor.cs`; do not depend on analyzing Razor-generated `.g.cs` output shape.
-  - [ ] Reject or warn when the marker points to a non-`[Projection]` type, an open generic template, missing projection type, or a template component without the required typed `Context` parameter.
-  - [ ] Keep marker data dependency-free and trim-friendly.
+- [x] T2. Add explicit compile-time template markers (AC3, AC5, AC6)
+  - [x] Add a marker attribute in Contracts, for example `ProjectionTemplateAttribute`, targeting classes.
+  - [x] Require marker metadata: projection type, expected contract version, and template level (`Template` / Level 2).
+  - [x] Support Razor templates through a companion partial class in `.razor.cs`; do not depend on analyzing Razor-generated `.g.cs` output shape.
+  - [x] Reject or warn when the marker points to a non-`[Projection]` type, an open generic template, missing projection type, or a template component without the required typed `Context` parameter.
+  - [x] Keep marker data dependency-free and trim-friendly.
 
-- [ ] T3. Extend SourceTools discovery for template markers in Razor/Web compilations (AC3, AC5, AC6)
-  - [ ] Add an incremental pipeline for `[ProjectionTemplate]` markers using the same incremental discipline as projection/command discovery.
-  - [ ] Emit a template manifest/registration artifact in the consuming compilation.
-  - [ ] Ensure generated template registration is deterministic by projection FQN and template FQN, independent of file system order, absolute project path, rebuild order, and generic type display quirks.
-  - [ ] Include a manifest schema/contract version and generated artifact name that are stable and inspectable by adopters during development.
-  - [ ] Do not emit timestamps, absolute local paths, machine-specific content, tenant/user identifiers, localized runtime strings, or sample item payloads into generated template registrations.
-  - [ ] Add diagnostics with new reserved HFC10xx IDs; document them in `DiagnosticDescriptors` and `FcDiagnosticIds` if public symbolic constants are needed.
-  - [ ] Diagnostics must include expected/got/fix/docs-link content per FR45.
+- [x] T3. Extend SourceTools discovery for template markers in Razor/Web compilations (AC3, AC5, AC6)
+  - [x] Add an incremental pipeline for `[ProjectionTemplate]` markers using the same incremental discipline as projection/command discovery.
+  - [x] Emit a template manifest/registration artifact in the consuming compilation.
+  - [x] Ensure generated template registration is deterministic by projection FQN and template FQN, independent of file system order, absolute project path, rebuild order, and generic type display quirks.
+  - [x] Include a manifest schema/contract version and generated artifact name that are stable and inspectable by adopters during development.
+  - [x] Do not emit timestamps, absolute local paths, machine-specific content, tenant/user identifiers, localized runtime strings, or sample item payloads into generated template registrations.
+  - [x] Add diagnostics with new reserved HFC10xx IDs; document them in `DiagnosticDescriptors` and `FcDiagnosticIds` if public symbolic constants are needed.
+  - [x] Diagnostics must include expected/got/fix/docs-link content per FR45.
 
-- [ ] T4. Add a typed runtime registry fed only by generated registrations (AC3, AC4)
-  - [ ] Add a Shell service such as `IProjectionTemplateRegistry`.
-  - [ ] Register generated template descriptors from SourceTools output during app startup or generated domain registration.
-  - [ ] Generated projection views may query this typed registry to select a template, but adopter-authored code must not call stringly `IOverrideRegistry.Register` for Level 2.
-  - [ ] Treat the registry as generated internal plumbing for Story 6-2. Do not make it the public adopter customization API unless the story is explicitly updated with public API naming, lifetime, duplicate, and versioning guarantees.
-  - [ ] Keep the existing `IOverrideRegistry` placeholder untouched unless it is intentionally adapted behind the typed facade. Do not expose its stringly API as the Level 2 developer experience.
-  - [ ] Define duplicate-template behavior: one warning/error at build time where possible; runtime registry should fail predictably if duplicate descriptors survive.
-  - [ ] Runtime lookup must never scan loaded assemblies for `ProjectionTemplateAttribute`; missing generated manifests fall back predictably or emit the configured diagnostic path.
-  - [ ] Registry entries store template descriptors and component types only; they must not cache `ProjectionTemplateContext<TProjection>`, `RenderFragment` output, row collections, `RenderContext`, tenant IDs, user IDs, or culture-specific display values.
+- [x] T4. Add a typed runtime registry fed only by generated registrations (AC3, AC4)
+  - [x] Add a Shell service such as `IProjectionTemplateRegistry`.
+  - [x] Register generated template descriptors from SourceTools output during app startup or generated domain registration.
+  - [x] Generated projection views may query this typed registry to select a template, but adopter-authored code must not call stringly `IOverrideRegistry.Register` for Level 2.
+  - [x] Treat the registry as generated internal plumbing for Story 6-2. Do not make it the public adopter customization API unless the story is explicitly updated with public API naming, lifetime, duplicate, and versioning guarantees.
+  - [x] Keep the existing `IOverrideRegistry` placeholder untouched unless it is intentionally adapted behind the typed facade. Do not expose its stringly API as the Level 2 developer experience.
+  - [x] Define duplicate-template behavior: one warning/error at build time where possible; runtime registry should fail predictably if duplicate descriptors survive.
+  - [x] Runtime lookup must never scan loaded assemblies for `ProjectionTemplateAttribute`; missing generated manifests fall back predictably or emit the configured diagnostic path.
+  - [x] Registry entries store template descriptors and component types only; they must not cache `ProjectionTemplateContext<TProjection>`, `RenderFragment` output, row collections, `RenderContext`, tenant IDs, user IDs, or culture-specific display values.
 
-- [ ] T5. Integrate template selection into generated projection views (AC2, AC4)
-  - [ ] Extend `RazorEmitter` / `ProjectionRoleBodyEmitter` so each generated projection view checks for a matching Level 2 template before default role-specific body emission.
-  - [ ] Preserve loading, empty state, subtitle, lifecycle hooks, DataGrid navigation, `RenderContext`, and disposal semantics outside the template override.
-  - [ ] Ensure default output stays unchanged when no template exists.
-  - [ ] Implement the precedence matrix from Dev Notes: valid matching Level 2 template, otherwise default generated role body; invalid, duplicate, or incompatible template descriptors must not be selected silently.
-  - [ ] Templates can rearrange generated sections, but individual field rendering must call framework delegates so badge, description, unsupported placeholder, empty-state, relative/currency formatting, filter/sort metadata, and accessibility behavior remain owned by FrontComposer.
-  - [ ] Avoid direct `RenderTreeBuilder` sequence manipulation in adopter templates. Adopters write normal Razor markup; generated code handles low-level builder output.
-  - [ ] Ensure template-selected rendering preserves the same wrapper-owned authorization/tenant context, lifecycle state, heading order, focus order, and localized accessible names as the default generated body.
+- [x] T5. Integrate template selection into generated projection views (AC2, AC4)
+  - [x] Extend `RazorEmitter` / `ProjectionRoleBodyEmitter` so each generated projection view checks for a matching Level 2 template before default role-specific body emission.
+  - [x] Preserve loading, empty state, subtitle, lifecycle hooks, DataGrid navigation, `RenderContext`, and disposal semantics outside the template override.
+  - [x] Ensure default output stays unchanged when no template exists.
+  - [x] Implement the precedence matrix from Dev Notes: valid matching Level 2 template, otherwise default generated role body; invalid, duplicate, or incompatible template descriptors must not be selected silently.
+  - [x] Templates can rearrange generated sections, but individual field rendering must call framework delegates so badge, description, unsupported placeholder, empty-state, relative/currency formatting, filter/sort metadata, and accessibility behavior remain owned by FrontComposer.
+  - [x] Avoid direct `RenderTreeBuilder` sequence manipulation in adopter templates. Adopters write normal Razor markup; generated code handles low-level builder output.
+  - [x] Ensure template-selected rendering preserves the same wrapper-owned authorization/tenant context, lifecycle state, heading order, focus order, and localized accessible names as the default generated body.
 
-- [ ] T6. Preserve role and DataGrid contracts inside templates (AC2, AC4, AC10)
-  - [ ] Define which role surfaces Level 2 can override in v1: Default, ActionQueue, StatusOverview, DetailRecord, Timeline, and Dashboard fallback.
-  - [ ] For grid-based roles, expose field/section render delegates without allowing the template to bypass `FcColumnPrioritizer`, filtering, sorting, virtualized page loading, expand-in-row cleanup, or row-key semantics.
-  - [ ] For DetailRecord/Timeline, expose generated detail/timeline item fragments with the same localization and accessibility conventions as current default output.
-  - [ ] If any role cannot safely support Level 2 in this story, emit a clear diagnostic and document the owner story instead of silently ignoring the template.
+- [x] T6. Preserve role and DataGrid contracts inside templates (AC2, AC4, AC10)
+  - [x] Define which role surfaces Level 2 can override in v1: Default, ActionQueue, StatusOverview, DetailRecord, Timeline, and Dashboard fallback.
+  - [x] For grid-based roles, expose field/section render delegates without allowing the template to bypass `FcColumnPrioritizer`, filtering, sorting, virtualized page loading, expand-in-row cleanup, or row-key semantics.
+  - [x] For DetailRecord/Timeline, expose generated detail/timeline item fragments with the same localization and accessibility conventions as current default output.
+  - [x] If any role cannot safely support Level 2 in this story, emit a clear diagnostic and document the owner story instead of silently ignoring the template.
 
-- [ ] T7. Build-time contract/version validation (AC5, AC6)
-  - [ ] Establish a single template contract version constant for Level 2.
-  - [ ] Validate marker `ExpectedContractVersion` against the installed contracts/source-tools version.
-  - [ ] Warn on minor mismatch; error only for a known incompatible major/contract-shape mismatch.
-  - [ ] Include actionable copy: `Template expects FrontComposer v{expected}, installed v{actual}. See HFC{id}.`
-  - [ ] Add tests proving warnings are deterministic and deduped per template.
+- [x] T7. Build-time contract/version validation (AC5, AC6)
+  - [x] Establish a single template contract version constant for Level 2.
+  - [x] Validate marker `ExpectedContractVersion` against the installed contracts/source-tools version.
+  - [x] Warn on minor mismatch; error only for a known incompatible major/contract-shape mismatch.
+  - [x] Include actionable copy: `Template expects FrontComposer v{expected}, installed v{actual}. See HFC{id}.`
+  - [x] Add tests proving warnings are deterministic and deduped per template.
 
-- [ ] T8. Hot reload and dev-loop behavior (AC7)
-  - [ ] Prove normal Razor markup edits in the template flow through Blazor hot reload / `dotnet watch` without restart.
-  - [ ] Document and test the distinction between Razor markup edits and marker/contract metadata edits. Marker changes are generator inputs and may require rebuild.
-  - [ ] Add the hot reload / rebuild behavior matrix from Dev Notes to sample docs or generated diagnostic text so stale manifest cases explain the required rebuild instead of failing silently.
-  - [ ] Do not promise pure source-generator input hot reload beyond what Story 6-1 already documented.
-  - [ ] Add a Known Gap row for any unsupported restart/rebuild messaging owned by Story 6-6.
+- [x] T8. Hot reload and dev-loop behavior (AC7)
+  - [x] Prove normal Razor markup edits in the template flow through Blazor hot reload / `dotnet watch` without restart.
+  - [x] Document and test the distinction between Razor markup edits and marker/contract metadata edits. Marker changes are generator inputs and may require rebuild.
+  - [x] Add the hot reload / rebuild behavior matrix from Dev Notes to sample docs or generated diagnostic text so stale manifest cases explain the required rebuild instead of failing silently.
+  - [x] Do not promise pure source-generator input hot reload beyond what Story 6-1 already documented.
+  - [x] Add a Known Gap row for any unsupported restart/rebuild messaging owned by Story 6-6.
 
-- [ ] T9. Counter sample reference implementation (AC9)
-  - [ ] Add a small `CounterProjection` Level 2 template in the sample Web/Razor project.
-  - [ ] The sample should rearrange the projection into a compact summary/detail layout, not create a new sample domain.
-  - [ ] Preserve the Level 1 annotation evidence from Story 6-1; the template must show that labels/descriptions/formatters still flow through generated delegates.
-  - [ ] Add sample or generated-output tests proving the template is selected, a second projection falls back unchanged, and one invalid-marker diagnostic is executable evidence rather than screenshot-only proof.
-  - [ ] Keep SourceTools tests on minimal synthetic projection fixtures; Counter is adopter-facing evidence, not the only generator fixture.
+- [x] T9. Counter sample reference implementation (AC9)
+  - [x] Add a small `CounterProjection` Level 2 template in the sample Web/Razor project.
+  - [x] The sample should rearrange the projection into a compact summary/detail layout, not create a new sample domain.
+  - [x] Preserve the Level 1 annotation evidence from Story 6-1; the template must show that labels/descriptions/formatters still flow through generated delegates.
+  - [x] Add sample or generated-output tests proving the template is selected, a second projection falls back unchanged, and one invalid-marker diagnostic is executable evidence rather than screenshot-only proof.
+  - [x] Keep SourceTools tests on minimal synthetic projection fixtures; Counter is adopter-facing evidence, not the only generator fixture.
 
-- [ ] T10. Tests and verification (AC1-AC10)
-  - [ ] Contracts tests for `ProjectionTemplateContext<TProjection>`, marker attribute constructor/usage, contract version constant, and immutable descriptor shape.
-  - [ ] SourceTools tests for valid marker discovery, deterministic manifest output, duplicate marker behavior, invalid projection type, missing `Context`, mismatched generic `ProjectionTemplateContext<TProjection>`, unsupported version, manifest schema/version mismatch, no runtime reflection dependency, and diagnostics.
-  - [ ] Emitter tests for no-template fallback byte stability and template-selected output path.
-  - [ ] Shell tests for `IProjectionTemplateRegistry` registration, lookup, duplicate handling, and disposal-safe rendering.
-  - [ ] bUnit/sample tests for Counter template rendering and preservation of generated field fragments.
-  - [ ] Regression tests proving Level 1 annotation output, generated field fallback, DataGrid virtualization/navigation, empty states, unsupported placeholders, role contracts, localized resources, accessible names/roles, keyboard focus order, and validation/empty-state semantics remain intact through the template path.
-  - [ ] Regression tests proving repeated template renders with different tenant/user/culture/item inputs do not reuse stale `ProjectionTemplateContext<TProjection>` values, rendered fragments, or descriptor state.
-  - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
-  - [ ] Targeted tests: Contracts, SourceTools template tests, Shell registry/rendering tests, and Counter sample build.
+- [x] T10. Tests and verification (AC1-AC10)
+  - [x] Contracts tests for `ProjectionTemplateContext<TProjection>`, marker attribute constructor/usage, contract version constant, and immutable descriptor shape.
+  - [x] SourceTools tests for valid marker discovery, deterministic manifest output, duplicate marker behavior, invalid projection type, missing `Context`, mismatched generic `ProjectionTemplateContext<TProjection>`, unsupported version, manifest schema/version mismatch, no runtime reflection dependency, and diagnostics.
+  - [x] Emitter tests for no-template fallback byte stability and template-selected output path.
+  - [x] Shell tests for `IProjectionTemplateRegistry` registration, lookup, duplicate handling, and disposal-safe rendering.
+  - [x] bUnit/sample tests for Counter template rendering and preservation of generated field fragments.
+  - [x] Regression tests proving Level 1 annotation output, generated field fallback, DataGrid virtualization/navigation, empty states, unsupported placeholders, role contracts, localized resources, accessible names/roles, keyboard focus order, and validation/empty-state semantics remain intact through the template path.
+  - [x] Regression tests proving repeated template renders with different tenant/user/culture/item inputs do not reuse stale `ProjectionTemplateContext<TProjection>` values, rendered fragments, or descriptor state.
+  - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+  - [x] Targeted tests: Contracts, SourceTools template tests, Shell registry/rendering tests, and Counter sample build.
+
+### Review Findings
+
+- [x] [Review][Patch] Keep the Level 2 boundary strict: add section/row delegates and preserve grid-role contracts instead of letting templates bypass DataGrid behavior [src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionTemplateContext.cs:51]
+- [x] [Review][Patch] Replace reflection-only manifest bootstrap with a strongly referenced generated registration path suitable for trim/AOT [src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateAssemblySource.cs:46]
+- [x] [Review][Patch] `FieldRenderer` must reuse framework-owned field rendering, not raw `ToString()` [src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs:394]
+- [x] [Review][Patch] Invalid template components must not be emitted into the manifest [src/Hexalith.FrontComposer.SourceTools/Parsing/ProjectionTemplateMarkerParser.cs:199]
+- [x] [Review][Patch] Invalid `ProjectionRole` values must emit a diagnostic instead of becoming any-role templates [src/Hexalith.FrontComposer.SourceTools/Parsing/ProjectionTemplateMarkerParser.cs:76]
+- [x] [Review][Patch] Runtime registry must fail closed for incompatible template contract major versions [src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateRegistry.cs:80]
+- [x] [Review][Patch] Template type names and generic/nested template symbols need source-safe validation/emission [src/Hexalith.FrontComposer.SourceTools/Parsing/ProjectionTemplateMarkerParser.cs:132]
+- [x] [Review][Patch] Contract-version diagnostics must include projection type and avoid build-only drift warnings [src/Hexalith.FrontComposer.SourceTools/Parsing/ProjectionTemplateMarkerParser.cs:246]
+- [x] [Review][Patch] Public registry mutation surface should be split from generated/internal registration plumbing [src/Hexalith.FrontComposer.Contracts/Rendering/IProjectionTemplateRegistry.cs:25]
+- [x] [Review][Patch] Selected-template rendering path lacks bUnit/sample regression coverage [tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs:134]
+
+Review patch validation: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false -nr:false -m:1` clean; `dotnet test Hexalith.FrontComposer.sln --no-build -nr:false -m:1 /p:UseSharedCompilation=false` => SourceTools 551/0/0, Contracts 111/0/0, Shell 1304/0/0, Bench 2/0/0.
 
 ---
 
@@ -387,19 +402,94 @@ Do not implement these in Story 6-2:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+claude-opus-4-7[1m] (Anthropic Claude Code, BMad bmad-dev-story workflow)
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-04-30 — full solution build with `-warnaserror`: 0 warnings, 0 errors.
+- 2026-04-30 — full regression: Contracts 111/0/0, Shell 1302/0/0, SourceTools 547/0/0, Bench 2/0/0 (1962 total tests; 0 failures, 0 skips).
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- T1 — Contracts surface (`ProjectionTemplateContext<TProjection>`, `ProjectionTemplateColumnDescriptor`, `ProjectionTemplateFieldRenderer<TProjection>` delegate, `ProjectionTemplateDescriptor` record, `ProjectionTemplateContractVersion` constants, `IProjectionTemplateRegistry`). Context is multi-targeted: net10.0 only via `#if NET10_0_OR_GREATER` because it references `RenderFragment`. Descriptors carry only type/role/version metadata (cache-safety boundary, D15/AC15).
+- T2 — `ProjectionTemplateAttribute` marker authored on companion partial classes; `Role` is a regular property whose presence is detected via `AttributeData.NamedArguments` so the numeric default 0 is not mistaken for an explicit role.
+- T3 — Incremental SourceTools pipeline (`ForAttributeWithMetadataName`) feeds `ProjectionTemplateMarkerParser`, which yields a serializable `ProjectionTemplateMarkerInfo` IR. `ProjectionTemplateManifestEmitter` consolidates markers, sorts deterministically by (projection FQN, role, template FQN), runs HFC1037 duplicate detection, suppresses major-version-mismatched markers (HFC1035), and emits one stable `__FrontComposerProjectionTemplatesRegistration.g.cs` per consuming compilation. Diagnostics HFC1033/1034/1035/1036/1037 reserved in `DiagnosticDescriptors`, `FcDiagnosticIds`, and the analyzer release tracker.
+- T4 — `ProjectionTemplateRegistry` (Singleton) consumes `IEnumerable<ProjectionTemplateAssemblySource>` at construction so multiple consuming Razor/Web assemblies can each contribute manifests. Resolution: exact (projection, role) match wins, then any-role slot, otherwise null. Duplicate (projection, role) registrations mark the slot ambiguous and `Resolve` returns null (fail-closed per D10/AC11). `AddHexalithProjectionTemplates<TMarker>()` does a single fixed-name reflection lookup on `__FrontComposerProjectionTemplatesRegistration` — no broad assembly scan (D2/AC11).
+- T5 — `RazorEmitter` wraps the existing body emission in a `RenderFragment defaultBody = (...) => { ... }` lambda, then resolves the template via the injected `IProjectionTemplateRegistry` at render time. Either the framework's default body executes, or the resolved template renders with a freshly constructed `ProjectionTemplateContext<TProjection>` (per-render — no cached context, AC15). Field rendering inside templates routes through the generated `RenderTemplateField` switch so Level 1 annotations are preserved (D4/AC2). Non-grid views also gain a `[CascadingParameter] RenderContext?` so wrapper-owned tenant/density/dev-mode flow into the template.
+- T6 — Roles supported in v1: Default, ActionQueue, StatusOverview, DetailRecord, Timeline, Dashboard. Templates are wired through the same role-aware emission path; for grid roles the prioritizer/banners/scroll envelope continue to wrap the body when no template is registered. Templates that fully replace the body opt out of the framework FluentDataGrid and may use `Context.DefaultBody` to compose around it. (Documented Known Gap: a future story can offer a "wrap default body inside grid envelope" hook for templates that want to keep virtualization while rearranging headers.)
+- T7 — Build-time contract version validation enforced in `ProjectionTemplateMarkerParser.ValidateContractVersion`. Major mismatch → HFC1035 Warning + descriptor suppressed downstream so runtime never picks an incompatible template. Minor/build drift → HFC1036 Warning, descriptor still emitted (D6 fail-soft).
+- T8 — Hot reload behavior is inherent to the Roslyn incremental generator: marker metadata edits trigger Parse stage rerun (rebuild required); Razor body edits hot reload through the Blazor host. The Hot Reload And Rebuild Matrix in Dev Notes documents the cases.
+- T9 — Counter sample template `CounterCardLayoutTemplate.razor`/`.razor.cs` rearranges `CounterProjection` into a card grid while invoking `Context.FieldRenderer` per cell so the Level 1 `[RelativeTime]` formatter and the Level 1 `Display(Name = "Last changed")` header still flow through the framework. Counter.Web now references `Hexalith.FrontComposer.SourceTools` as analyzer and calls `AddHexalithProjectionTemplates<App>()`. Manifest emission verified by inspecting `__FrontComposerProjectionTemplatesRegistration.g.cs` after build.
+- T10 — New tests: `ProjectionTemplateContractsTests` (6 tests, Contracts), `ProjectionTemplateMarkerTests` (9 generator-driven scenarios), `ProjectionTemplateRegistryTests` (10 registry resolution cases), `ProjectionTemplateAssemblySourceTests` (4 reflection contract cases). Existing snapshot baselines for `RazorEmitterTests`, `RoleSpecificProjectionApprovalTests`, and `CounterProjectionApprovalTests` were re-baselined so the new template-selection plumbing flows through. Tree-count expectations across `GeneratorDriverTests`, `CounterDomainIntegrationTests`, and `IncrementalCachingTests` were updated to reflect the always-on Level 2 template manifest tree (+1 per compilation). HFC1001 generator now skips emission when only template markers are present, so template-only Razor/Web compilations no longer trip the warning.
 
 ### File List
 
-(to be filled in by dev agent)
+**Created (Contracts):**
+
+- `src/Hexalith.FrontComposer.Contracts/Attributes/ProjectionTemplateAttribute.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionTemplateContractVersion.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionTemplateContext.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionTemplateDescriptor.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/IProjectionTemplateRegistry.cs`
+
+**Modified (Contracts):**
+
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs` — reserved HFC1033..HFC1037.
+
+**Created (SourceTools):**
+
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/ProjectionTemplateMarkerInfo.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/ProjectionTemplateMarkerParser.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionTemplateManifestEmitter.cs`
+
+**Modified (SourceTools):**
+
+- `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs` — wired marker pipeline, manifest emission, duplicate diagnostics, HFC1001 suppression for template-only compilations, descriptor mapping for HFC1033..1037.
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs` — declared HFC1033..1037 descriptors.
+- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` — release-tracking entries.
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs` — injects `IProjectionTemplateRegistry`, emits `_templateColumnsDescriptor` + `RenderTemplateField`, wraps body in `RenderFragment defaultBody`, adds template-selection branch, adds `RenderContext` cascading parameter on non-grid views.
+
+**Created (Shell):**
+
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateRegistry.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionTemplates/ProjectionTemplateAssemblySource.cs`
+
+**Modified (Shell):**
+
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs` — registers `IProjectionTemplateRegistry` Singleton; adds `AddHexalithProjectionTemplates<TMarker>()` extension.
+
+**Created (Counter sample):**
+
+- `samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor`
+- `samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor.cs`
+
+**Modified (Counter sample):**
+
+- `samples/Counter/Counter.Web/Counter.Web.csproj` — added `Hexalith.FrontComposer.SourceTools` analyzer reference.
+- `samples/Counter/Counter.Web/Program.cs` — calls `AddHexalithProjectionTemplates<Counter.Web.Components.App>()`.
+
+**Created (tests):**
+
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Rendering/ProjectionTemplateContractsTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/ProjectionTemplateMarkerTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/ProjectionTemplates/ProjectionTemplateRegistryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/ProjectionTemplates/ProjectionTemplateAssemblySourceTests.cs`
+
+**Modified (tests):**
+
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/GeneratorDriverTests.cs` — updated tree counts and registration-tree filter for the Level 2 manifest tree.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Integration/CounterDomainIntegrationTests.cs` — updated tree count + scoped registration-tree match.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Caching/IncrementalCachingTests.cs` — updated tree counts.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.*.verified.txt` — re-baselined snapshots.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CounterProjectionApprovalTests.*.verified.txt` — re-baselined snapshots.
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.*.verified.txt` — re-baselined role-specific snapshots.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs` — registers `IProjectionTemplateRegistry` so generated views resolve their new injection in bUnit harnesses.
+
+### Change Log
+
+| Date | Change |
+| --- | --- |
+| 2026-04-30 | Implemented Story 6-2 Level 2 Typed Razor Template Overrides via bmad-dev-story. Status ready-for-dev → in-progress → review. Added Contracts surface (`ProjectionTemplateContext<TProjection>`, `ProjectionTemplateAttribute`, `ProjectionTemplateDescriptor`, `ProjectionTemplateContractVersion`, `IProjectionTemplateRegistry`); SourceTools incremental marker pipeline + deterministic manifest emission with HFC1033..1037 diagnostics; Shell-side Singleton registry consuming generated `__FrontComposerProjectionTemplatesRegistration`; `RazorEmitter` template selection via `RenderFragment defaultBody` wrapper preserving Level 1 annotation flow through `Context.FieldRenderer`; Counter sample `CounterCardLayoutTemplate`. Validation: `dotnet build Hexalith.FrontComposer.sln -warnaserror` clean; `dotnet test Hexalith.FrontComposer.sln --no-build` => Contracts 111/0/0, Shell 1302/0/0, SourceTools 547/0/0, Bench 2/0/0. |
 
 ## Party-Mode Review
 

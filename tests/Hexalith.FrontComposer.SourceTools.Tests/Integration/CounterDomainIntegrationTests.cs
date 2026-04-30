@@ -19,7 +19,7 @@ public class CounterDomainIntegrationTests {
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(5, "Counter projection should produce 5 generated files");
+        result.GeneratedTrees.Length.ShouldBe(6, "Counter projection should produce 5 generated files plus the shared Level 2 template manifest");
 
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
         fileNames.ShouldContain("Counter.Domain.CounterProjection.g.razor.cs");
@@ -27,6 +27,7 @@ public class CounterDomainIntegrationTests {
         fileNames.ShouldContain("Counter.Domain.CounterProjectionActions.g.cs");
         fileNames.ShouldContain("Counter.Domain.CounterProjectionReducers.g.cs");
         fileNames.ShouldContain("Counter.Domain.CounterProjectionRegistration.g.cs");
+        fileNames.ShouldContain("__FrontComposerProjectionTemplatesRegistration.g.cs");
 
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
             result.GeneratedTrees.ToArray());
@@ -46,7 +47,7 @@ public class CounterDomainIntegrationTests {
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         SyntaxTree registrationTree = result.GeneratedTrees
-            .Single(t => System.IO.Path.GetFileName(t.FilePath).Contains("Registration"));
+            .Single(t => System.IO.Path.GetFileName(t.FilePath).Contains("CounterProjectionRegistration", StringComparison.Ordinal));
         string registrationSource = registrationTree.GetText(ct).ToString();
 
         registrationSource.ShouldContain("DomainManifest Manifest");

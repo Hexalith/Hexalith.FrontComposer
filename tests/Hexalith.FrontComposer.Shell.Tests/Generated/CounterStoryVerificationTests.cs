@@ -4,14 +4,19 @@ using System.Text.RegularExpressions;
 using Bunit;
 
 using Counter.Domain;
+using Counter.Web.Components.Slots;
 using Counter.Web.Components.Pages;
 
 using Fluxor;
 
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.FluentUI.AspNetCore.Components;
@@ -130,6 +135,84 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
+    public async Task CounterProjectionView_SelectedTemplate_RendersInsideGridEnvelopeAndUsesFieldRenderer()
+    {
+        Services.AddSingleton(new ProjectionTemplateAssemblySource(
+        [
+            new ProjectionTemplateDescriptor(
+                ProjectionType: typeof(CounterProjection),
+                Role: null,
+                TemplateType: typeof(SelectedCounterTemplate),
+                ContractVersion: ProjectionTemplateContractVersion.Current),
+        ]));
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            string markup = cut.Markup;
+            markup.ShouldContain("data-fc-datagrid");
+            markup.ShouldContain("fc-selected-template");
+            markup.ShouldContain("sections:2");
+            markup.ShouldContain("1,234");
+            markup.ShouldNotContain("fluent-data-grid");
+        });
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_Level3Slot_ReplacesOneFieldAndLeavesAdjacentFieldsGenerated()
+    {
+        Services.AddSlotOverride<CounterProjection, int>(
+            field: x => x.Count,
+            componentType: typeof(CounterCountSlot));
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            string markup = cut.Markup;
+            markup.ShouldContain("counter-count-slot");
+            markup.ShouldContain("aria-label=\"Count: 1,234\"");
+            markup.ShouldContain("counter-1");
+            markup.ShouldContain("04/14/2026");
+            markup.ShouldContain(">Id<");
+            markup.ShouldContain(">Last changed<");
+        });
+    }
+
+    [Fact]
     public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot()
     {
         await InitializeStoreAsync();
@@ -185,6 +268,22 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         {
             CultureInfo.CurrentCulture = _originalCulture;
             CultureInfo.CurrentUICulture = _originalUICulture;
+        }
+    }
+
+    private sealed class SelectedCounterTemplate : ComponentBase
+    {
+        [Parameter]
+        public ProjectionTemplateContext<CounterProjection> Context { get; set; } = default!;
+
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            CounterProjection row = Context.Items[0];
+            builder.OpenElement(0, "div");
+            builder.AddAttribute(1, "class", "fc-selected-template");
+            builder.AddContent(2, "sections:" + Context.Sections.Count.ToString(CultureInfo.InvariantCulture));
+            builder.AddContent(3, Context.FieldRenderer(row, nameof(CounterProjection.Count)));
+            builder.CloseElement();
         }
     }
 }

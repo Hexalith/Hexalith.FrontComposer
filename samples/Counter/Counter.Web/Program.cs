@@ -1,5 +1,6 @@
 using Counter.Domain;
 using Counter.Web;
+using Counter.Web.Components.Slots;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -27,6 +28,16 @@ builder.Services.AddFluentUIComponents();
 builder.Services.AddHexalithFrontComposerQuickstart(
     o => o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly));
 builder.Services.AddHexalithDomain<CounterDomain>();
+
+// Story 6-2 T4 / T9 / AC3 — register the SourceTools-emitted Level 2 projection-template
+// manifest through a direct generated descriptor reference so startup stays trim/AOT friendly.
+builder.Services.AddHexalithProjectionTemplates(__FrontComposerProjectionTemplatesRegistration.Descriptors);
+
+// Story 6-3 T9 / AC15 — reference Level 3 slot override. Only Count is custom-rendered;
+// Id and Last changed continue through generated FrontComposer field rendering.
+builder.Services.AddSlotOverride<CounterProjection, int>(
+    field: x => x.Count,
+    componentType: typeof(CounterCountSlot));
 
 // Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune
 // lifecycle thresholds AND (Story 3-1) the new AccentColor / LocalStorageMaxEntries / DefaultCulture

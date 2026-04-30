@@ -34,13 +34,31 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             .Where(static result => result.Model is not null || result.Diagnostics.Count > 0)
             .WithTrackingName("ParseCommand");
 
+        // Story 6-2 T3 — incremental discovery of [ProjectionTemplate] markers.
+        IncrementalValuesProvider<ProjectionTemplateMarkerResult> templateResults = context.SyntaxProvider
+            .ForAttributeWithMetadataName(
+                ProjectionTemplateMarkerParser.ProjectionTemplateAttributeName,
+                predicate: static (node, _) => node is ClassDeclarationSyntax,
+                transform: static (ctx, ct) => ProjectionTemplateMarkerParser.Parse(ctx, ct))
+            .Where(static result => result.Marker is not null || result.Diagnostics.Count > 0)
+            .WithTrackingName("ParseProjectionTemplate");
+
+        IncrementalValueProvider<ImmutableArray<ProjectionTemplateMarkerResult>> collectedTemplates = templateResults.Collect();
+
         IncrementalValueProvider<ImmutableArray<ParseResult>> collectedProjections = projectionResults.Collect();
         IncrementalValueProvider<ImmutableArray<CommandParseResult>> collectedCommands = commandResults.Collect();
 
         context.RegisterSourceOutput(
-            collectedProjections.Combine(collectedCommands),
+            collectedProjections.Combine(collectedCommands).Combine(collectedTemplates),
             static (spc, source) => {
-                if (source.Left.Length == 0 && source.Right.Length == 0) {
+                ImmutableArray<ParseResult> projections = source.Left.Left;
+                ImmutableArray<CommandParseResult> commands = source.Left.Right;
+                ImmutableArray<ProjectionTemplateMarkerResult> templates = source.Right;
+                // Story 6-2 — Razor/Web compilations may carry only [ProjectionTemplate] markers
+                // (templates) and reference projections from a separate domain assembly. Suppress
+                // HFC1001 when at least one marker was discovered so adopters do not see a
+                // misleading "no types found" warning on template-only projects.
+                if (projections.Length == 0 && commands.Length == 0 && templates.Length == 0) {
                     spc.ReportDiagnostic(Diagnostic.Create(
                         DiagnosticDescriptors.NoAnnotatedTypesFound,
                         Location.None,
@@ -78,6 +96,51 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 spc.AddSource(hintPrefix + "Reducers.g.cs", FluxorActionsEmitter.EmitReducers(fluxorModel));
                 spc.AddSource(hintPrefix + "Registration.g.cs", RegistrationEmitter.Emit(registrationModel));
             }
+        });
+
+        // Story 6-2 T3 — per-marker diagnostics (parser-level: HFC1033/HFC1034/HFC1035/HFC1036).
+        context.RegisterSourceOutput(templateResults, static (spc, result) => {
+            foreach (DiagnosticInfo diagInfo in result.Diagnostics) {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    GetDescriptor(diagInfo.Id, diagInfo.Severity),
+                    diagInfo.ToLocation(),
+                    diagInfo.Message));
+            }
+        });
+
+        // Story 6-2 T3 — emit the consolidated template manifest plus duplicate diagnostics
+        // (HFC1037). Driven from collectedTemplates so the manifest source is regenerated
+        // only when a marker actually changes.
+        context.RegisterSourceOutput(collectedTemplates, static (spc, results) => {
+            ImmutableArray<ProjectionTemplateMarkerInfo>.Builder builder = ImmutableArray.CreateBuilder<ProjectionTemplateMarkerInfo>();
+            foreach (ProjectionTemplateMarkerResult result in results) {
+                // Story 6-2 T7 — exclude markers whose major contract version is incompatible.
+                // The marker still keeps its HFC1035 warning (already emitted in the per-marker
+                // pass above); but the descriptor is suppressed so runtime selection cannot
+                // run a template against a mismatched context shape.
+                if (result.Marker is null) {
+                    continue;
+                }
+
+                int markerMajor = result.Marker.ExpectedContractVersion / 1_000_000;
+                if (markerMajor != ProjectionTemplateMarkerParser.CurrentContractMajor) {
+                    continue;
+                }
+
+                builder.Add(result.Marker);
+            }
+
+            ProjectionTemplateManifestEmitter.ManifestEmissionResult emission =
+                ProjectionTemplateManifestEmitter.Emit(builder.ToImmutable());
+
+            foreach (DiagnosticInfo diagInfo in emission.DuplicateDiagnostics) {
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    GetDescriptor(diagInfo.Id, diagInfo.Severity),
+                    diagInfo.ToLocation(),
+                    diagInfo.Message));
+            }
+
+            spc.AddSource(ProjectionTemplateManifestEmitter.GeneratedHintName, emission.Source);
         });
 
         context.RegisterSourceOutput(commandResults, static (spc, result) => {
@@ -152,6 +215,15 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1030" => DiagnosticDescriptors.FieldGroupNameCollidesWithCatchAll,
         "HFC1031" => DiagnosticDescriptors.FieldGroupIgnoredForNonDetailRole,
         "HFC1032" => DiagnosticDescriptors.Level1FormatAnnotationInvalid,
+        "HFC1033" => DiagnosticDescriptors.ProjectionTemplateInvalidProjectionType,
+        "HFC1034" => DiagnosticDescriptors.ProjectionTemplateContextParameterMissing,
+        "HFC1035" => DiagnosticDescriptors.ProjectionTemplateContractVersionMismatch,
+        "HFC1036" => DiagnosticDescriptors.ProjectionTemplateContractVersionDrift,
+        "HFC1037" => DiagnosticDescriptors.ProjectionTemplateDuplicate,
+        "HFC1038" => DiagnosticDescriptors.ProjectionSlotSelectorInvalid,
+        "HFC1039" => DiagnosticDescriptors.ProjectionSlotComponentInvalid,
+        "HFC1040" => DiagnosticDescriptors.ProjectionSlotDuplicate,
+        "HFC1041" => DiagnosticDescriptors.ProjectionSlotContractVersionMismatch,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

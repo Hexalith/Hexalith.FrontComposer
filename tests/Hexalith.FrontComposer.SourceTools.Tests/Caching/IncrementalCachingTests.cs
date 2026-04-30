@@ -129,7 +129,7 @@ public partial class NewProjection
 
         // Verify initial run produces 5 generated files
         GeneratorDriverRunResult result1 = driver1.GetRunResult();
-        result1.GeneratedTrees.Length.ShouldBe(5, "Initial run should produce 5 files for one projection");
+        result1.GeneratedTrees.Length.ShouldBe(6, "Initial run should produce 5 files for one projection plus the shared Level 2 template manifest");
 
         // Add new projection class
         CSharpCompilation compilation2 = compilation1.AddSyntaxTrees(
@@ -139,7 +139,7 @@ public partial class NewProjection
         GeneratorRunResult result2 = driver2.GetRunResult().Results[0];
 
         // Should now produce 10 total files
-        driver2.GetRunResult().GeneratedTrees.Length.ShouldBe(10, "Two projections should produce 10 files");
+        driver2.GetRunResult().GeneratedTrees.Length.ShouldBe(11, "Two projections should produce 10 files plus the shared Level 2 template manifest");
 
         result2.TrackedSteps.ContainsKey("Parse").ShouldBeTrue("The parse stage should be tracked explicitly.");
 

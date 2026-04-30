@@ -61,6 +61,12 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     [Inject]
     private IState<global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState> ExpandedRowState { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry ProjectionTemplateRegistry { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
+
     private const string _viewKey = "Orders:TestDomain.OrderProjection";
 
     private static readonly System.Func<OrderProjection, object> _itemKeyAccessor = static x => (object)x;
@@ -76,6 +82,197 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     private readonly string _ephemeralViewKey = "Orders:TestDomain.OrderProjection:" + System.Guid.NewGuid().ToString("N");
 
     private readonly string _expandPanelId = "fc-expand-panel-Orders-TestDomain-OrderProjection-" + System.Guid.NewGuid().ToString("N");
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor> _templateColumnsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Name", "Name", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Count", "Count", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("IsActive", "Is Active", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("CreatedAt", "Created At", (int?)null, (string?)null)
+    };
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Body", "Body", "Body"),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Row", "Row", "Row")
+    };
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(OrderProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Name":
+                return RenderSlotField(row,
+                    fieldName: "Name",
+                    displayName: "Name",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Name,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"));
+            case "Count":
+                return RenderSlotField(row,
+                    fieldName: "Count",
+                    displayName: "Count",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Count,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"));
+            case "IsActive":
+                return RenderSlotField(row,
+                    fieldName: "IsActive",
+                    displayName: "Is Active",
+                    format: "Yes/No",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.IsActive,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"));
+            case "CreatedAt":
+                return RenderSlotField(row,
+                    fieldName: "CreatedAt",
+                    displayName: "Created At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.CreatedAt,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CreatedAt"));
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(OrderProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Name":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Name.ToString());
+                };
+            case "Count":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Count.ToString("N0", CultureInfo.CurrentCulture));
+                };
+            case "IsActive":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.IsActive ? "Yes" : "No");
+                };
+            case "CreatedAt":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
+                };
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(OrderProjection row)
+    {
+        if (row is null)
+        {
+            return static _ => { };
+        }
+
+        return builder =>
+        {
+            int rowSeq = 0;
+            builder.OpenElement(rowSeq++, "div");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-row");
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Name");
+            RenderTemplateField(row, "Name")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Count");
+            RenderTemplateField(row, "Count")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "IsActive");
+            RenderTemplateField(row, "IsActive")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "CreatedAt");
+            RenderTemplateField(row, "CreatedAt")(builder);
+            builder.CloseElement();
+            }
+            builder.CloseElement();
+        };
+    }
+
+    private bool HasProjectionSlot(string fieldName)
+        => ProjectionSlotRegistry.Resolve(typeof(OrderProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null, fieldName) is not null;
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderSlotField<TField>(
+        OrderProjection row,
+        string fieldName,
+        string displayName,
+        string? format,
+        int? order,
+        bool isFieldReadOnly,
+        TField? value,
+        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
+    {
+        return builder =>
+        {
+            var __renderContext = RenderContext ?? new global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext(
+                TenantId: string.Empty,
+                UserId: string.Empty,
+                Mode: global::Hexalith.FrontComposer.Contracts.Rendering.FcRenderMode.Server,
+                DensityLevel: global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable,
+                IsReadOnly: false);
+            var __field = new global::Hexalith.FrontComposer.Contracts.Rendering.FieldDescriptor(
+                Name: fieldName,
+                TypeName: typeof(TField).FullName ?? typeof(TField).Name,
+                IsNullable: System.Nullable.GetUnderlyingType(typeof(TField)) is not null || !typeof(TField).IsValueType,
+                DisplayName: displayName,
+                Format: format,
+                Order: order,
+                IsReadOnly: isFieldReadOnly,
+                Hints: null);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
+            builder.AddAttribute(1, "Parent", row);
+            builder.AddAttribute(2, "Value", value);
+            builder.AddAttribute(3, "Field", __field);
+            builder.AddAttribute(4, "RenderContext", __renderContext);
+            builder.AddAttribute(5, "ProjectionRole", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+            builder.AddAttribute(6, "RenderDefault", renderDefault);
+            builder.CloseComponent();
+        };
+    }
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -416,28 +613,10 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         }
 
         seq = 100;
-        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
-
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.CloseComponent();
-
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
-        builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
-        builder.CloseComponent();
-
-        builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "fc-row-count");
-        builder.AddContent(seq++, $"{state.Items.Count} " + "orders");
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", GridHostClass());
-        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
-        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
-
+        global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>
+        {
+            var builder = __bb;
+            int seq = 100;
         // Story 4-5 — resolve expanded-row state for this render pass.
         global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowEntry? _expandedEntry = ExpandedRowState.Value.GetEntry(_ephemeralViewKey);
         object? _expandedItemKey = _expandedEntry?.ItemKey;
@@ -483,29 +662,98 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             int colSeq = 200;
 
             // Text column: Name
-            b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Name");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Name ?? "\u2014"));
-            b.CloseComponent();
+            if (HasProjectionSlot("Name"))
+            {
+                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Name");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                    fieldName: "Name",
+                    displayName: "Name",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Name,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Name");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Name ?? "\u2014"));
+                b.CloseComponent();
+            }
 
             // Numeric column: Count
-            b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Count");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Count.ToString("N0", CultureInfo.CurrentCulture)));
-            b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
-            b.CloseComponent();
+            if (HasProjectionSlot("Count"))
+            {
+                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Count");
+                b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                    fieldName: "Count",
+                    displayName: "Count",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Count,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Count");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.Count.ToString("N0", CultureInfo.CurrentCulture)));
+                b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
+                b.CloseComponent();
+            }
 
             // Boolean column: IsActive
-            b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Is Active");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.IsActive ? "Yes" : "No"));
-            b.CloseComponent();
+            if (HasProjectionSlot("IsActive"))
+            {
+                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Is Active");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                    fieldName: "IsActive",
+                    displayName: "Is Active",
+                    format: "Yes/No",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.IsActive,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Is Active");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.IsActive ? "Yes" : "No"));
+                b.CloseComponent();
+            }
 
             // DateTime column: CreatedAt
-            b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Created At");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.CreatedAt.ToString("d", CultureInfo.CurrentCulture)));
-            b.CloseComponent();
+            if (HasProjectionSlot("CreatedAt"))
+            {
+                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Created At");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => RenderSlotField(item,
+                    fieldName: "CreatedAt",
+                    displayName: "Created At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.CreatedAt,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CreatedAt"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Created At");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => x.CreatedAt.ToString("d", CultureInfo.CurrentCulture)));
+                b.CloseComponent();
+            }
 
             // Story 4-5 — trailing row-action column hosting the expand chevron.
             b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
@@ -560,12 +808,23 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Name");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "Name",
+                displayName: "Name",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.Name,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.Name);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.Name);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -575,12 +834,23 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Count");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "Count",
+                displayName: "Count",
+                format: "N0",
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.Count,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.Count.ToString("N0", CultureInfo.CurrentCulture));
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.Count.ToString("N0", CultureInfo.CurrentCulture));
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -590,12 +860,23 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Is Active");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "IsActive",
+                displayName: "Is Active",
+                format: "Yes/No",
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.IsActive,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, (entity.IsActive ? "Yes" : "No"));
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, (entity.IsActive ? "Yes" : "No"));
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -605,17 +886,76 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Created At");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "CreatedAt",
+                displayName: "Created At",
+                format: "d",
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.CreatedAt,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.CreatedAt.ToString("d", CultureInfo.CurrentCulture));
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
         }));
         builder.CloseComponent();
         }));
         builder.CloseComponent();
+        };
+
+        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.CloseComponent();
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
+        builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
+        builder.CloseComponent();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "fc-row-count");
+        builder.AddContent(seq++, $"{state.Items.Count} " + "orders");
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", GridHostClass());
+        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
+        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
+
+        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(OrderProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null);
+        if (__templateDescriptor is not null)
+        {
+            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<OrderProjection>(
+                projectionType: typeof(OrderProjection),
+                boundedContext: "Orders",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null,
+                renderContext: RenderContext,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<OrderProjection>)System.Array.Empty<OrderProjection>(),
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);
+            builder.AddAttribute(seq++, "Context", __templateContext);
+            builder.CloseComponent();
+        }
+        else
+        {
+            defaultBody(builder);
+        }
         builder.CloseElement();
     }
 }

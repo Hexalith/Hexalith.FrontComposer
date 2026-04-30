@@ -1,0 +1,36 @@
+@using Counter.Domain
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Microsoft.FluentUI.AspNetCore.Components
+
+@if (Context is not null && Context.Items.Count > 0)
+{
+    <FluentStack Orientation="Orientation.Vertical" Style="gap: 12px;">
+        <FluentText Size="TextSize.Size300" Weight="TextWeight.Semibold">
+            Counter cards (Level 2 template)
+        </FluentText>
+        <div class="counter-cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
+            @foreach (var counter in Context.Items)
+            {
+                <FluentCard role="article" Style="padding: 16px;">
+                    <FluentStack Orientation="Orientation.Vertical" Style="gap: 6px;">
+                        <FluentText Size="TextSize.Size200" Weight="TextWeight.Semibold">
+                            @Context.FieldRenderer(counter, nameof(CounterProjection.Id))
+                        </FluentText>
+                        <FluentText Size="TextSize.Size500" Weight="TextWeight.Bold">
+                            @Context.FieldRenderer(counter, nameof(CounterProjection.Count))
+                        </FluentText>
+                        <FluentText Size="TextSize.Size100" Weight="TextWeight.Regular">
+                            <span aria-label="Last changed">
+                                @Context.FieldRenderer(counter, nameof(CounterProjection.LastUpdated))
+                            </span>
+                        </FluentText>
+                    </FluentStack>
+                </FluentCard>
+            }
+        </div>
+    </FluentStack>
+}
+else
+{
+    @Context?.DefaultBody
+}

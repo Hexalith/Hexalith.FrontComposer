@@ -28,6 +28,326 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
     [Inject]
     private NavigationManager Navigation { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry ProjectionTemplateRegistry { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
+
+    [CascadingParameter]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor> _templateColumnsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Id", "Id", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("LegalName", "Legal Name", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("TaxId", "Tax Id", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("ContactEmail", "Contact Email", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("BillingAddress", "Billing Address", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("OnboardedAt", "Onboarded At", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("AccountManager", "Account Manager", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("LoyaltyTier", "Loyalty Tier", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Seats", "Seats", (int?)null, (string?)null)
+    };
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Body", "Body", "Body"),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Row", "Row", "Row")
+    };
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(DetailRecordProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Id":
+                return RenderSlotField(row,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Id,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+            case "LegalName":
+                return RenderSlotField(row,
+                    fieldName: "LegalName",
+                    displayName: "Legal Name",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.LegalName,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LegalName"));
+            case "TaxId":
+                return RenderSlotField(row,
+                    fieldName: "TaxId",
+                    displayName: "Tax Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.TaxId,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "TaxId"));
+            case "ContactEmail":
+                return RenderSlotField(row,
+                    fieldName: "ContactEmail",
+                    displayName: "Contact Email",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.ContactEmail,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "ContactEmail"));
+            case "BillingAddress":
+                return RenderSlotField(row,
+                    fieldName: "BillingAddress",
+                    displayName: "Billing Address",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.BillingAddress,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "BillingAddress"));
+            case "OnboardedAt":
+                return RenderSlotField(row,
+                    fieldName: "OnboardedAt",
+                    displayName: "Onboarded At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.OnboardedAt,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OnboardedAt"));
+            case "AccountManager":
+                return RenderSlotField(row,
+                    fieldName: "AccountManager",
+                    displayName: "Account Manager",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.AccountManager,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "AccountManager"));
+            case "LoyaltyTier":
+                return RenderSlotField(row,
+                    fieldName: "LoyaltyTier",
+                    displayName: "Loyalty Tier",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.LoyaltyTier,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LoyaltyTier"));
+            case "Seats":
+                return RenderSlotField(row,
+                    fieldName: "Seats",
+                    displayName: "Seats",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Seats,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Seats"));
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(DetailRecordProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Id":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Id.ToString());
+                };
+            case "LegalName":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.LegalName.ToString());
+                };
+            case "TaxId":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.TaxId.ToString());
+                };
+            case "ContactEmail":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.ContactEmail.ToString());
+                };
+            case "BillingAddress":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.BillingAddress.ToString());
+                };
+            case "OnboardedAt":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.OnboardedAt.ToString("d", CultureInfo.CurrentCulture));
+                };
+            case "AccountManager":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.AccountManager.ToString());
+                };
+            case "LoyaltyTier":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.LoyaltyTier.ToString());
+                };
+            case "Seats":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Seats.ToString("N0", CultureInfo.CurrentCulture));
+                };
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(DetailRecordProjection row)
+    {
+        if (row is null)
+        {
+            return static _ => { };
+        }
+
+        return builder =>
+        {
+            int rowSeq = 0;
+            builder.OpenElement(rowSeq++, "div");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-row");
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Id");
+            RenderTemplateField(row, "Id")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "LegalName");
+            RenderTemplateField(row, "LegalName")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "TaxId");
+            RenderTemplateField(row, "TaxId")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "ContactEmail");
+            RenderTemplateField(row, "ContactEmail")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "BillingAddress");
+            RenderTemplateField(row, "BillingAddress")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "OnboardedAt");
+            RenderTemplateField(row, "OnboardedAt")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "AccountManager");
+            RenderTemplateField(row, "AccountManager")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "LoyaltyTier");
+            RenderTemplateField(row, "LoyaltyTier")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Seats");
+            RenderTemplateField(row, "Seats")(builder);
+            builder.CloseElement();
+            }
+            builder.CloseElement();
+        };
+    }
+
+    private bool HasProjectionSlot(string fieldName)
+        => ProjectionSlotRegistry.Resolve(typeof(DetailRecordProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord, fieldName) is not null;
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderSlotField<TField>(
+        DetailRecordProjection row,
+        string fieldName,
+        string displayName,
+        string? format,
+        int? order,
+        bool isFieldReadOnly,
+        TField? value,
+        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<DetailRecordProjection, TField>> renderDefault)
+    {
+        return builder =>
+        {
+            var __renderContext = RenderContext ?? new global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext(
+                TenantId: string.Empty,
+                UserId: string.Empty,
+                Mode: global::Hexalith.FrontComposer.Contracts.Rendering.FcRenderMode.Server,
+                DensityLevel: global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable,
+                IsReadOnly: false);
+            var __field = new global::Hexalith.FrontComposer.Contracts.Rendering.FieldDescriptor(
+                Name: fieldName,
+                TypeName: typeof(TField).FullName ?? typeof(TField).Name,
+                IsNullable: System.Nullable.GetUnderlyingType(typeof(TField)) is not null || !typeof(TField).IsValueType,
+                DisplayName: displayName,
+                Format: format,
+                Order: order,
+                IsReadOnly: isFieldReadOnly,
+                Hints: null);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<DetailRecordProjection, TField>>(0);
+            builder.AddAttribute(1, "Parent", row);
+            builder.AddAttribute(2, "Value", value);
+            builder.AddAttribute(3, "Field", __field);
+            builder.AddAttribute(4, "RenderContext", __renderContext);
+            builder.AddAttribute(5, "ProjectionRole", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
+            builder.AddAttribute(6, "RenderDefault", renderDefault);
+            builder.CloseComponent();
+        };
+    }
+
     /// <inheritdoc />
     protected override void OnInitialized()
     {
@@ -158,6 +478,10 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
         }
 
         seq = 100;
+        global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>
+        {
+            var builder = __bb;
+            int seq = 100;
         var entity = state.Items[0];
 
         builder.OpenComponent<FluentCard>(seq++);
@@ -173,12 +497,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "Id",
+                displayName: "Id",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.Id,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.Id);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.Id);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -188,12 +523,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Legal Name");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "LegalName",
+                displayName: "Legal Name",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.LegalName,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.LegalName);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.LegalName);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -203,12 +549,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Tax Id");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "TaxId",
+                displayName: "Tax Id",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.TaxId,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.TaxId);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.TaxId);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -218,12 +575,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Contact Email");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "ContactEmail",
+                displayName: "Contact Email",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.ContactEmail,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.ContactEmail);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.ContactEmail);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -233,12 +601,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Billing Address");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "BillingAddress",
+                displayName: "Billing Address",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.BillingAddress,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.BillingAddress);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.BillingAddress);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -248,12 +627,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Onboarded At");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "OnboardedAt",
+                displayName: "Onboarded At",
+                format: "d",
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.OnboardedAt,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.OnboardedAt.ToString("d", CultureInfo.CurrentCulture));
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.OnboardedAt.ToString("d", CultureInfo.CurrentCulture));
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
         }));
         builder.CloseComponent();
@@ -275,12 +665,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                     labelBuilder.AddContent(0, "Account Manager");
                 }));
                 ib.CloseComponent();
-                ib.OpenComponent<FluentText>(secFieldSeq++);
-                ib.AddAttribute(secFieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "AccountManager",
+                    displayName: "Account Manager",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: entity.AccountManager,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    textBuilder.AddContent(0, entity.AccountManager);
-                }));
-                ib.CloseComponent();
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.AccountManager);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(ib);
                 ib.CloseElement();
                 ib.OpenElement(secFieldSeq++, "div");
                 ib.AddAttribute(secFieldSeq++, "class", "fc-detail-field");
@@ -290,12 +691,23 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                     labelBuilder.AddContent(0, "Loyalty Tier");
                 }));
                 ib.CloseComponent();
-                ib.OpenComponent<FluentText>(secFieldSeq++);
-                ib.AddAttribute(secFieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "LoyaltyTier",
+                    displayName: "Loyalty Tier",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: entity.LoyaltyTier,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    textBuilder.AddContent(0, entity.LoyaltyTier);
-                }));
-                ib.CloseComponent();
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.LoyaltyTier);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(ib);
                 ib.CloseElement();
                 ib.OpenElement(secFieldSeq++, "div");
                 ib.AddAttribute(secFieldSeq++, "class", "fc-detail-field");
@@ -305,17 +717,54 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                     labelBuilder.AddContent(0, "Seats");
                 }));
                 ib.CloseComponent();
-                ib.OpenComponent<FluentText>(secFieldSeq++);
-                ib.AddAttribute(secFieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Seats",
+                    displayName: "Seats",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: entity.Seats,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
                 {
-                    textBuilder.AddContent(0, entity.Seats.ToString("N0", CultureInfo.CurrentCulture));
-                }));
-                ib.CloseComponent();
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Seats.ToString("N0", CultureInfo.CurrentCulture));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(ib);
                 ib.CloseElement();
             }));
             b.CloseComponent();
         }));
         builder.CloseComponent();
+        };
+
+        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(DetailRecordProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
+        if (__templateDescriptor is not null)
+        {
+            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<DetailRecordProjection>(
+                projectionType: typeof(DetailRecordProjection),
+                boundedContext: "Customers",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord,
+                renderContext: RenderContext,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<DetailRecordProjection>)System.Array.Empty<DetailRecordProjection>(),
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);
+            builder.AddAttribute(seq++, "Context", __templateContext);
+            builder.CloseComponent();
+        }
+        else
+        {
+            defaultBody(builder);
+        }
     }
 }
 

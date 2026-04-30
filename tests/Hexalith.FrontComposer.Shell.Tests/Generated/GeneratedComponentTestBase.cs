@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
+using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -130,6 +131,16 @@ public abstract class GeneratedComponentTestBase : BunitContext
             Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector,
             Hexalith.FrontComposer.Shell.Services.Auth.NoOpAuthRedirector>();
         _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
+
+        // Story 6-2 T4 — generated views inject IProjectionTemplateRegistry; bUnit tests use the
+        // empty registry by default so DefaultBody is always selected.
+        _ = Services.AddSingleton<
+            Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry,
+            Hexalith.FrontComposer.Shell.Services.ProjectionTemplates.ProjectionTemplateRegistry>();
+
+        // Story 6-3 T5 — generated field boundaries inject IProjectionSlotRegistry through
+        // FcFieldSlotHost. Tests register descriptor sources only when they need an override.
+        _ = Services.AddSingleton<IProjectionSlotRegistry, ProjectionSlotRegistry>();
     }
 
     protected async Task InitializeStoreAsync()

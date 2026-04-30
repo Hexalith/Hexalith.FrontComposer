@@ -46,9 +46,8 @@ public sealed class FcFieldPlaceholderColumnEmissionTests {
             Unsupported("Metadata", "System.Collections.Generic.Dictionary<string, string>"),
             Unsupported("Tags", "System.ReadOnlyMemory<byte>")));
 
-        // P-1 Pass-3: Unsupported columns now emit FcFieldPlaceholder in BOTH the grid TemplateColumn
-        // cell AND the expand-in-row detail panel (via EmitDetailRecordBody → EmitDetailField). With
-        // 2 unsupported columns × 2 surfaces (grid cell + detail) = 4 placeholders in the emitted source.
+        // Story 6-3: unsupported grid cells now enter the Level 3 slot host and share the
+        // template default renderer, so placeholder source appears once per default renderer path.
         CountOccurrences(output, "FcFieldPlaceholder").ShouldBe(4);
         output.ShouldContain("FluentDataGrid<OrderProjection>");
     }

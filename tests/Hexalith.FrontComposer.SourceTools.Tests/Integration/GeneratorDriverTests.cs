@@ -19,7 +19,9 @@ public class GeneratorDriverTests {
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(5, "Generator should produce 5 files per projection");
+        // Story 6-2 T3 — every compilation also emits one Level 2 template manifest (empty when
+        // no [ProjectionTemplate] markers are present), so projection-only suites now ship 6 trees.
+        result.GeneratedTrees.Length.ShouldBe(6, "Generator should produce 5 files per projection plus the Level 2 template manifest");
 
         // Verify file names (namespace-qualified hint names for collision safety)
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
@@ -28,6 +30,7 @@ public class GeneratorDriverTests {
         fileNames.ShouldContain("TestDomain.CounterProjectionActions.g.cs");
         fileNames.ShouldContain("TestDomain.CounterProjectionReducers.g.cs");
         fileNames.ShouldContain("TestDomain.CounterProjectionRegistration.g.cs");
+        fileNames.ShouldContain("__FrontComposerProjectionTemplatesRegistration.g.cs");
 
         // Verify generated code compiles
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
@@ -48,7 +51,7 @@ public class GeneratorDriverTests {
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(5);
+        result.GeneratedTrees.Length.ShouldBe(6);
 
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
             result.GeneratedTrees.ToArray());
@@ -92,7 +95,7 @@ public class GeneratorDriverTests {
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(10, "Two projections should produce 10 files total");
+        result.GeneratedTrees.Length.ShouldBe(11, "Two projections should produce 10 files plus the shared Level 2 template manifest");
     }
 
     [Fact]
@@ -112,7 +115,10 @@ public class NotAProjection
         driver = driver.RunGenerators(compilation, ct);
         GeneratorDriverRunResult result = driver.GetRunResult();
 
-        result.GeneratedTrees.ShouldBeEmpty();
+        // Story 6-2 T3 — even when no projections/commands exist, the empty Level 2 manifest is
+        // still emitted so registry registration code remains stable for adopter assemblies.
+        result.GeneratedTrees.Length.ShouldBe(1);
+        result.GeneratedTrees[0].FilePath.ShouldEndWith("__FrontComposerProjectionTemplatesRegistration.g.cs");
         result.Diagnostics.Count(d => d.Id == "HFC1001").ShouldBe(1);
     }
 
@@ -139,8 +145,8 @@ public partial class SubmitOrderCommand
         result.Diagnostics.Where(d => d.Id == "HFC1001").ShouldBeEmpty();
         // Story 2-3 expanded command-pipeline emission: form, actions, lifecycle feature, registration,
         // density-driven renderer, LastUsed subscriber, and per-command lifecycle bridge — 7 trees for
-        // non-FullPage densities.
-        result.GeneratedTrees.Length.ShouldBe(7, "Command-only compilations should emit form, actions, lifecycle feature, registration, renderer, LastUsed subscriber, and lifecycle bridge sources");
+        // non-FullPage densities. Story 6-2 adds the Level 2 template manifest (empty here).
+        result.GeneratedTrees.Length.ShouldBe(8, "Command-only compilations should emit form, actions, lifecycle feature, registration, renderer, LastUsed subscriber, lifecycle bridge sources, plus the shared Level 2 template manifest");
 
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
             result.GeneratedTrees.ToArray());
@@ -205,7 +211,7 @@ public partial class OrderItemProjection
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(10, "Two projections should produce 10 files");
+        result.GeneratedTrees.Length.ShouldBe(11, "Two projections should produce 10 files plus the shared Level 2 template manifest");
 
         // Verify both registration files contribute to same partial class (namespace-qualified hint names)
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
@@ -232,9 +238,10 @@ public partial class OrderItemProjection
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
 
-        // Find the registration file and verify it contains the display label
+        // Find the projection-registration file (excluding the Story 6-2 Level 2 template manifest)
+        // and verify it contains the display label.
         SyntaxTree registrationTree = result.GeneratedTrees
-            .Single(t => System.IO.Path.GetFileName(t.FilePath).Contains("Registration"));
+            .Single(t => System.IO.Path.GetFileName(t.FilePath).EndsWith("ProjectionRegistration.g.cs", StringComparison.Ordinal));
         string registrationSource = registrationTree.GetText(ct).ToString();
         registrationSource.ShouldContain("Commandes");
 
@@ -282,7 +289,7 @@ public partial class SharedProjection
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(10, "Two same-named projections in different namespaces should produce 10 files");
+        result.GeneratedTrees.Length.ShouldBe(11, "Two same-named projections in different namespaces should produce 10 files plus the shared Level 2 template manifest");
 
         // Verify namespace-qualified hint names prevent collision
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
@@ -308,7 +315,7 @@ public partial class SharedProjection
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(5, "Global namespace projection should produce 5 files");
+        result.GeneratedTrees.Length.ShouldBe(6, "Global namespace projection should produce 5 files plus the shared Level 2 template manifest");
 
         // Verify hint names have no namespace prefix (just TypeName)
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
@@ -351,7 +358,8 @@ public partial class AllUnsupportedProjection
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         // Should still produce 5 files (component with zero columns, feature, actions, reducers, registration)
-        result.GeneratedTrees.Length.ShouldBe(5, "Even with all unsupported fields, should generate 5 files");
+        // plus the Level 2 template manifest tree (Story 6-2).
+        result.GeneratedTrees.Length.ShouldBe(6, "Even with all unsupported fields, should generate 5 files plus the shared Level 2 template manifest");
 
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
             result.GeneratedTrees.ToArray());
@@ -365,7 +373,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             CommandTestSources.EmptyCommand,
             "TestDomain.EmptyCommand",
-            expectedTreeCount: 7,
+            expectedTreeCount: 8,
             shouldEmitPage: false);
     }
 
@@ -374,7 +382,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             CommandTestSources.SingleStringFieldCommand,
             "TestDomain.SetNameCommand",
-            expectedTreeCount: 7,
+            expectedTreeCount: 8,
             shouldEmitPage: false);
     }
 
@@ -383,7 +391,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             TwoFieldCommandSource,
             "TestDomain.TwoFieldCommand",
-            expectedTreeCount: 7,
+            expectedTreeCount: 8,
             shouldEmitPage: false);
     }
 
@@ -392,7 +400,7 @@ public partial class AllUnsupportedProjection
         VerifyCommandArtifacts(
             CommandTestSources.MultiFieldCommand,
             "TestDomain.PlaceOrderCommand",
-            expectedTreeCount: 8,
+            expectedTreeCount: 9,
             shouldEmitPage: true);
     }
 

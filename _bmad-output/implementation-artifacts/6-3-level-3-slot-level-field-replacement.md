@@ -1,6 +1,6 @@
 # Story 6.3: Level 3 Slot-Level Field Replacement
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 6** - Developer Customization Gradient. **FR41 / FR43 / FR44 / FR45 / UX-DR54** slot-level customization for one projection field while the rest of the generated view remains framework-owned. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, **L11**, and **L15**.
 
@@ -60,17 +60,17 @@ The feature promise is deliberately narrow: replace a single generated field ren
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define the public Level 3 registration API (AC1, AC2, AC6, AC13)
-  - [ ] Add typed extension methods over the existing registry surface, for example `AddSlotOverride<TProjection,TField>(Expression<Func<TProjection,TField>> field, Type componentType, ProjectionRole? role = null)`.
-  - [ ] Accept only direct member access on the projection parameter, including nullable value fields. Reject nested members, method calls, conversions that hide invalid expressions, captured variables, indexers, and computed expressions.
-  - [ ] Normalize the field identity from Roslyn/generated metadata and expression-tree member info, not adopter strings.
-  - [ ] Define duplicate behavior as reject-with-diagnostic. Do not allow silent last-writer-wins.
-  - [ ] Keep the public API discoverable from IntelliSense and dependency-light for adopters.
-  - [ ] Avoid adding DI registrations per projection/field/component combination.
+- [x] T1. Define the public Level 3 registration API (AC1, AC2, AC6, AC13)
+  - [x] Add typed extension methods over the existing registry surface, for example `AddSlotOverride<TProjection,TField>(Expression<Func<TProjection,TField>> field, Type componentType, ProjectionRole? role = null)`.
+  - [x] Accept only direct member access on the projection parameter, including nullable value fields. Reject nested members, method calls, conversions that hide invalid expressions, captured variables, indexers, and computed expressions.
+  - [x] Normalize the field identity from Roslyn/generated metadata and expression-tree member info, not adopter strings.
+  - [x] Define duplicate behavior as reject-with-diagnostic. Do not allow silent last-writer-wins.
+  - [x] Keep the public API discoverable from IntelliSense and dependency-light for adopters.
+  - [x] Avoid adding DI registrations per projection/field/component combination.
 
-- [ ] T2. Introduce typed slot contracts (AC4, AC5, AC9, AC14)
-  - [ ] Add `FieldSlotContext<TProjection,TField>` under `src/Hexalith.FrontComposer.Contracts/Rendering/`.
-  - [ ] Include:
+- [x] T2. Introduce typed slot contracts (AC4, AC5, AC9, AC14)
+  - [x] Add `FieldSlotContext<TProjection,TField>` under `src/Hexalith.FrontComposer.Contracts/Rendering/`.
+  - [x] Include:
     - `TField? Value`
     - `TProjection Parent`
     - `FieldDescriptor Field`
@@ -80,87 +80,87 @@ The feature promise is deliberately narrow: replace a single generated field ren
     - `bool IsReadOnly`
     - `bool IsDevMode`
     - `RenderFragment<FieldSlotContext<TProjection,TField>>? RenderDefault` or an equivalent default-render delegate.
-  - [ ] Keep the context immutable/read-only after construction.
-  - [ ] Define `RenderDefault` as a generated-default delegate that bypasses Level 3 lookup for the same `(projection, role, field)` so a slot cannot recursively render itself.
-  - [ ] Add a minimal component contract if needed, for example an interface or marker that requires a `Context` parameter. Do not create a broad renderer hierarchy.
-  - [ ] Ensure context values are constructed per render and are never stored in the registry.
-  - [ ] Provide XML docs warning slot authors not to mutate parent projection objects or cache render context across tenants/users.
+  - [x] Keep the context immutable/read-only after construction.
+  - [x] Define `RenderDefault` as a generated-default delegate that bypasses Level 3 lookup for the same `(projection, role, field)` so a slot cannot recursively render itself.
+  - [x] Add a minimal component contract if needed, for example an interface or marker that requires a `Context` parameter. Do not create a broad renderer hierarchy.
+  - [x] Ensure context values are constructed per render and are never stored in the registry.
+  - [x] Provide XML docs warning slot authors not to mutate parent projection objects or cache render context across tenants/users.
 
-- [ ] T3. Add slot descriptor and registry implementation (AC3, AC5, AC6, AC13, AC14)
-  - [ ] Add immutable slot descriptors storing projection type, field name, field CLR type, optional role, component type, expected contract version, and diagnostic state.
-  - [ ] Add a typed registry facade, for example `IProjectionSlotRegistry`, backed by generated/runtime registration descriptors.
-  - [ ] If the existing `IOverrideRegistry` is reused internally, hide string keys behind typed extension methods and typed descriptor validation.
-  - [ ] Runtime lookup should be O(1) or bounded dictionary lookup by `(projectionType, role, fieldName)` with fallback to role-agnostic registration.
-  - [ ] Registry entries must be descriptor-only. Do not cache parent item, context, service provider scoped values, or rendered markup.
-  - [ ] Freeze descriptor collections before render-time use; concurrent renders must observe immutable snapshots and must not mutate registry dictionaries.
-  - [ ] Validate duplicate descriptors deterministically and name both registrations/components in diagnostics where possible.
-  - [ ] Do not scan loaded assemblies for slot components at render time.
+- [x] T3. Add slot descriptor and registry implementation (AC3, AC5, AC6, AC13, AC14)
+  - [x] Add immutable slot descriptors storing projection type, field name, field CLR type, optional role, component type, expected contract version, and diagnostic state.
+  - [x] Add a typed registry facade, for example `IProjectionSlotRegistry`, backed by generated/runtime registration descriptors.
+  - [x] If the existing `IOverrideRegistry` is reused internally, hide string keys behind typed extension methods and typed descriptor validation.
+  - [x] Runtime lookup should be O(1) or bounded dictionary lookup by `(projectionType, role, fieldName)` with fallback to role-agnostic registration.
+  - [x] Registry entries must be descriptor-only. Do not cache parent item, context, service provider scoped values, or rendered markup.
+  - [x] Freeze descriptor collections before render-time use; concurrent renders must observe immutable snapshots and must not mutate registry dictionaries.
+  - [x] Validate duplicate descriptors deterministically and name both registrations/components in diagnostics where possible.
+  - [x] Do not scan loaded assemblies for slot components at render time.
 
-- [ ] T4. Validate component compatibility (AC5, AC11)
-  - [ ] Validate that the component type is a Blazor component with a required `Context` parameter compatible with `FieldSlotContext<TProjection,TField>`.
-  - [ ] Reject open generics unless the registry can close them deterministically from `TProjection` and `TField`.
-  - [ ] Reject mismatched `TField` types, including nullable/non-nullable mismatches that would produce invalid casts.
-  - [ ] Use deterministic HFC diagnostics with the standard message shape: What, Expected, Got, Fix, DocsLink.
-  - [ ] Define fallback behavior for invalid components: no slot selected, default generated field rendering used.
-  - [ ] Keep render exception isolation minimal and explicit in Story 6-3; defer rich diagnostic panels and cross-level error boundaries to Story 6-6.
+- [x] T4. Validate component compatibility (AC5, AC11)
+  - [x] Validate that the component type is a Blazor component with a required `Context` parameter compatible with `FieldSlotContext<TProjection,TField>`.
+  - [x] Reject open generics unless the registry can close them deterministically from `TProjection` and `TField`.
+  - [x] Reject mismatched `TField` types, including nullable/non-nullable mismatches that would produce invalid casts.
+  - [x] Use deterministic HFC diagnostics with the standard message shape: What, Expected, Got, Fix, DocsLink.
+  - [x] Define fallback behavior for invalid components: no slot selected, default generated field rendering used.
+  - [x] Keep render exception isolation minimal and explicit in Story 6-3; defer rich diagnostic panels and cross-level error boundaries to Story 6-6.
 
-- [ ] T5. Integrate slot lookup into generated field emission (AC3, AC7, AC8, AC9)
-  - [ ] Add a slot-resolution helper emitted by `RazorEmitter` or shared Shell code that receives the parent item, field metadata, current render context, role, and default-render fragment.
-  - [ ] Integrate at the field boundary in `ColumnEmitter`, `ProjectionRoleBodyEmitter`, and any shared field/section delegates used by Level 2 templates.
-  - [ ] Preserve existing `PropertyColumn` sort/filter expressions or generated metadata so a custom cell renderer does not change DataGrid behavior.
-  - [ ] For DataGrid cells, render the slot through a `TemplateColumn` or equivalent only when a slot is actually present; no-slot output should remain as close to existing output as possible.
-  - [ ] Preserve deterministic slot host keys for virtualized rows, using generated row identity plus field identity where the host needs `@key`; never key by localized label text or rendered value.
-  - [ ] For non-grid roles, wrap exactly the generated field content, not the entire card/row/timeline item.
-  - [ ] Preserve unsupported placeholder behavior: a slot can replace the field renderer, but invalid/missing slot must still show `FcFieldPlaceholder` for unsupported types.
-  - [ ] Preserve badge, relative-time, currency, label, description, priority, grouping, empty-state, and accessibility metadata in default rendering and context.
+- [x] T5. Integrate slot lookup into generated field emission (AC3, AC7, AC8, AC9)
+  - [x] Add a slot-resolution helper emitted by `RazorEmitter` or shared Shell code that receives the parent item, field metadata, current render context, role, and default-render fragment.
+  - [x] Integrate at the field boundary in `ColumnEmitter`, `ProjectionRoleBodyEmitter`, and any shared field/section delegates used by Level 2 templates.
+  - [x] Preserve existing `PropertyColumn` sort/filter expressions or generated metadata so a custom cell renderer does not change DataGrid behavior.
+  - [x] For DataGrid cells, render the slot through a `TemplateColumn` or equivalent only when a slot is actually present; no-slot output should remain as close to existing output as possible.
+  - [x] Preserve deterministic slot host keys for virtualized rows, using generated row identity plus field identity where the host needs `@key`; never key by localized label text or rendered value.
+  - [x] For non-grid roles, wrap exactly the generated field content, not the entire card/row/timeline item.
+  - [x] Preserve unsupported placeholder behavior: a slot can replace the field renderer, but invalid/missing slot must still show `FcFieldPlaceholder` for unsupported types.
+  - [x] Preserve badge, relative-time, currency, label, description, priority, grouping, empty-state, and accessibility metadata in default rendering and context.
 
-- [ ] T6. Preserve Level 2 template composition (AC10)
-  - [ ] Ensure Level 2 field delegates call the same field-render helper used by default generated layouts.
-  - [ ] A template author should not need separate slot lookup code.
-  - [ ] Template field delegates should pass the same `FieldSlotContext` metadata that default views pass.
-  - [ ] Template default delegates used by `RenderDefault` must bypass the active slot descriptor for the same field to prevent Level 2 + Level 3 recursion.
-  - [ ] Add tests proving a Level 2 template still renders a Level 3 slot for one field and default generated delegates for adjacent fields.
+- [x] T6. Preserve Level 2 template composition (AC10)
+  - [x] Ensure Level 2 field delegates call the same field-render helper used by default generated layouts.
+  - [x] A template author should not need separate slot lookup code.
+  - [x] Template field delegates should pass the same `FieldSlotContext` metadata that default views pass.
+  - [x] Template default delegates used by `RenderDefault` must bypass the active slot descriptor for the same field to prevent Level 2 + Level 3 recursion.
+  - [x] Add tests proving a Level 2 template still renders a Level 3 slot for one field and default generated delegates for adjacent fields.
 
-- [ ] T7. Role and precedence matrix (AC7, AC13, AC16)
-  - [ ] Define slot matching precedence:
+- [x] T7. Role and precedence matrix (AC7, AC13, AC16)
+  - [x] Define slot matching precedence:
     1. Valid role-specific slot for `(projection, role, field)`.
     2. Valid role-agnostic slot for `(projection, field)`.
     3. Generated default field renderer.
-  - [ ] Duplicate exact matches are diagnostics/errors, not precedence.
-  - [ ] Invalid component descriptors are ignored after diagnostics and do not block fallback.
-  - [ ] Role-specific unsupported behavior must be explicit. If Timeline or Dashboard cannot safely host a slot in this story, record the limitation with a named owner instead of silently ignoring the slot.
-  - [ ] Keep Level 4 full replacement out of precedence. Level 4 will wrap or bypass field-level logic in Story 6-4.
+  - [x] Duplicate exact matches are diagnostics/errors, not precedence.
+  - [x] Invalid component descriptors are ignored after diagnostics and do not block fallback.
+  - [x] Role-specific unsupported behavior must be explicit. If Timeline or Dashboard cannot safely host a slot in this story, record the limitation with a named owner instead of silently ignoring the slot.
+  - [x] Keep Level 4 full replacement out of precedence. Level 4 will wrap or bypass field-level logic in Story 6-4.
 
-- [ ] T8. Hot reload and dev-loop evidence (AC12, AC15)
-  - [ ] Prove Razor markup edits in the custom slot component refresh under `dotnet watch` where Blazor hot reload supports the edit.
-  - [ ] Document that registration expression changes, component type changes, generic context changes, and contract version changes are rebuild-triggering metadata changes.
-  - [ ] Add a small generated or sample note that points unsupported hot-reload cases to Story 6-6 rebuild/restart diagnostics.
-  - [ ] Do not promise source-generator input hot reload beyond the repo's architecture constraint.
+- [x] T8. Hot reload and dev-loop evidence (AC12, AC15)
+  - [x] Prove Razor markup edits in the custom slot component refresh under `dotnet watch` where Blazor hot reload supports the edit.
+  - [x] Document that registration expression changes, component type changes, generic context changes, and contract version changes are rebuild-triggering metadata changes.
+  - [x] Add a small generated or sample note that points unsupported hot-reload cases to Story 6-6 rebuild/restart diagnostics.
+  - [x] Do not promise source-generator input hot reload beyond the repo's architecture constraint.
 
-- [ ] T9. Counter sample reference implementation (AC15)
-  - [ ] Add one custom slot component in the Counter sample, recommended for a single display field that benefits from a richer visual treatment.
-  - [ ] Register the slot through the typed lambda API.
-  - [ ] Keep the sample small: one slot override, one default adjacent field, and one invalid-registration test fixture.
-  - [ ] Preserve Level 1 annotation evidence from Story 6-1 and Level 2 template compatibility from Story 6-2 where available.
-  - [ ] Do not add a new Orders sample solely for this story.
+- [x] T9. Counter sample reference implementation (AC15)
+  - [x] Add one custom slot component in the Counter sample, recommended for a single display field that benefits from a richer visual treatment.
+  - [x] Register the slot through the typed lambda API.
+  - [x] Keep the sample small: one slot override, one default adjacent field, and one invalid-registration test fixture.
+  - [x] Preserve Level 1 annotation evidence from Story 6-1 and Level 2 template compatibility from Story 6-2 where available.
+  - [x] Do not add a new Orders sample solely for this story.
 
-- [ ] T10. Diagnostics, docs links, and contract versioning (AC2, AC5, AC13)
-  - [ ] Reserve stable HFC10xx SourceTools/build-time diagnostics for invalid selectors, incompatible component context, duplicate slots, and version drift.
-  - [ ] Reserve Shell HFC20xx runtime diagnostics only if startup/runtime descriptor validation owns an error.
-  - [ ] Include contract version metadata so Story 6-6 can enforce override compatibility consistently across Levels 2-4.
-  - [ ] Diagnostics must include enough context for self-service: projection type, field name when resolvable, component type, expected context, actual context, fix, and docs link.
+- [x] T10. Diagnostics, docs links, and contract versioning (AC2, AC5, AC13)
+  - [x] Reserve stable HFC10xx SourceTools/build-time diagnostics for invalid selectors, incompatible component context, duplicate slots, and version drift.
+  - [x] Reserve Shell HFC20xx runtime diagnostics only if startup/runtime descriptor validation owns an error.
+  - [x] Include contract version metadata so Story 6-6 can enforce override compatibility consistently across Levels 2-4.
+  - [x] Diagnostics must include enough context for self-service: projection type, field name when resolvable, component type, expected context, actual context, fix, and docs link.
 
-- [ ] T11. Tests and verification (AC1-AC16)
-  - [ ] Contracts tests for `FieldSlotContext<TProjection,TField>`, descriptor immutability, and registration extension shape.
-  - [ ] Expression validation tests for direct property, inherited property, interface-implemented property, shadowed-property disambiguation, nullable property, nested member rejection, method-call rejection, captured-variable rejection, indexer rejection, and conversion handling.
-  - [ ] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, descriptor-only caching, immutable snapshot reads under concurrent render, and no render-context cache bleed.
-  - [ ] SourceTools/emitter tests proving default output remains unchanged when no slots exist and slot output is used only for the overridden field.
-  - [ ] DataGrid tests proving sort/filter/virtualization/row key/priority metadata remain generated when a slot renders cell content.
-  - [ ] Level 2 integration tests proving template field delegates honor Level 3 slots.
-  - [ ] bUnit tests for custom slot component context values, default fallback delegate without slot recursion, deterministic slot host keys under row reuse, accessibility label preservation, and render exception isolation.
-  - [ ] Counter sample build/render tests for one valid slot and one invalid-registration diagnostic.
-  - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
-  - [ ] Targeted tests: Contracts, SourceTools slot parser/emitter tests, Shell registry/rendering tests, and Counter sample tests.
+- [x] T11. Tests and verification (AC1-AC16)
+  - [x] Contracts tests for `FieldSlotContext<TProjection,TField>`, descriptor immutability, and registration extension shape.
+  - [x] Expression validation tests for direct property, inherited property, interface-implemented property, shadowed-property disambiguation, nullable property, nested member rejection, method-call rejection, captured-variable rejection, indexer rejection, and conversion handling.
+  - [x] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, descriptor-only caching, immutable snapshot reads under concurrent render, and no render-context cache bleed.
+  - [x] SourceTools/emitter tests proving default output remains unchanged when no slots exist and slot output is used only for the overridden field.
+  - [x] DataGrid tests proving sort/filter/virtualization/row key/priority metadata remain generated when a slot renders cell content.
+  - [x] Level 2 integration tests proving template field delegates honor Level 3 slots.
+  - [x] bUnit tests for custom slot component context values, default fallback delegate without slot recursion, deterministic slot host keys under row reuse, accessibility label preservation, and render exception isolation.
+  - [x] Counter sample build/render tests for one valid slot and one invalid-registration diagnostic.
+  - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+  - [x] Targeted tests: Contracts, SourceTools slot parser/emitter tests, Shell registry/rendering tests, and Counter sample tests.
 
 ---
 
@@ -526,16 +526,67 @@ Do not implement these in Story 6-3:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- Started story 6-3 via `bmad-dev-story`; updated sprint status from `ready-for-dev` to `in-progress`.
+- Added RED tests for slot contracts and Shell registry before implementation; confirmed missing contract/registry surface failed initially.
+- Validation:
+  - `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false -nr:false -m:1` - passed, 0 warnings.
+  - `dotnet test tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj --filter FullyQualifiedName~ProjectionSlotContractsTests --no-build` - passed, 11 tests.
+  - `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --filter "FullyQualifiedName~ProjectionSlotRegistryTests|FullyQualifiedName~CounterProjectionView_Level3Slot" --no-build` - passed, 8 tests.
+  - `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj` - passed, 556 tests.
+  - `dotnet test Hexalith.FrontComposer.sln --no-build -nr:false -m:1 /p:UseSharedCompilation=false` - passed: SourceTools 556, Contracts 122, Shell 1312, Bench 2.
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- Added public typed Level 3 slot contracts: selector parsing, descriptor identity, contract version, immutable `FieldSlotContext<TProjection,TField>`, and `IProjectionSlotRegistry`.
+- Added Shell slot registration and descriptor-only registry with role-specific precedence, role-agnostic fallback, invalid component/version fallback, and deterministic duplicate ambiguity.
+- Added shared `FcFieldSlotHost<TProjection,TField>` using fresh per-render context and generated default fallback to avoid same-field recursion.
+- Integrated slot lookup into generated DataGrid, DetailRecord, Timeline, and Level 2 field delegates. DataGrid keeps `PropertyColumn` default output when no slot is registered and switches to `TemplateColumn` only for registered slot fields.
+- Reserved HFC1038-HFC1041 descriptors/constants and release-table rows for invalid selectors, invalid slot components, duplicate slots, and incompatible slot contract versions.
+- Added Counter sample `CounterCountSlot` and typed registration; bUnit verifies one field is replaced while adjacent fields remain generated.
+- Rebaselined SourceTools snapshots for the intentional Level 2/Level 3 generated plumbing and updated strategy assertions for slot-routed Timeline fields.
+- Hot reload metadata changes remain rebuild/startup validated by build/test gates; rich dev-loop overlay/rebuild diagnostics remain deferred to Story 6-5/6-6 as scoped by the story.
 
 ### File List
 
-(to be filled in by dev agent)
+- `_bmad-output/implementation-artifacts/6-3-level-3-slot-level-field-replacement.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor`
+- `samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor.css`
+- `samples/Counter/Counter.Web/Program.cs`
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/FieldSlotContext.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/IProjectionSlotRegistry.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotContractVersion.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotDescriptor.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotFieldIdentity.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelector.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionSlotSelectorException.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcFieldSlotHost.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/ProjectionSlotServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotDescriptorSource.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionSlots/ProjectionSlotRegistry.cs`
+- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs`
+- `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Rendering/ProjectionSlotContractsTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/ProjectionSlots/ProjectionSlotRegistryTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticDescriptorTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1026ReservationTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/FcFieldPlaceholderColumnEmissionTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterStrategyDispatchTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.*.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/*.verified.txt`
+
+### Change Log
+
+- 2026-04-30: Implemented Level 3 slot contracts, Shell registry/host, generated field-boundary integration, Counter sample slot, diagnostics reservations, and regression coverage.

@@ -114,6 +114,72 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1032_Level1FormatAnnotationInvalid = "HFC1032";
 
+    /// <summary>
+    /// Build-time Error: a <c>[ProjectionTemplate]</c> marker is missing a usable projection
+    /// type or its <c>ProjectionType</c> argument refers to a type that is not annotated with
+    /// <c>[Projection]</c>, is generic, abstract, or a struct (Story 6-2 T3 / AC6).
+    /// </summary>
+    public const string HFC1033_ProjectionTemplateInvalidProjectionType = "HFC1033";
+
+    /// <summary>
+    /// Build-time Warning: a <c>[ProjectionTemplate]</c>-marked class does not declare a
+    /// public instance property named <c>Context</c> of type
+    /// <c>ProjectionTemplateContext&lt;TProjection&gt;</c> matching the marker's projection
+    /// argument (Story 6-2 T3 / AC1 / AC6). Generated registration is still emitted; the
+    /// runtime renderer will surface a clearer error when the component is instantiated.
+    /// </summary>
+    public const string HFC1034_ProjectionTemplateContextParameterMissing = "HFC1034";
+
+    /// <summary>
+    /// Build-time Warning: a <c>[ProjectionTemplate]</c> marker declares an
+    /// <c>ExpectedContractVersion</c> whose major version differs from the installed
+    /// FrontComposer Level 2 contract (Story 6-2 T7 / AC5). Selection is suppressed in this
+    /// case so the template never silently runs against an incompatible context shape.
+    /// </summary>
+    public const string HFC1035_ProjectionTemplateContractVersionMismatch = "HFC1035";
+
+    /// <summary>
+    /// Build-time Warning: a <c>[ProjectionTemplate]</c> marker declares an
+    /// <c>ExpectedContractVersion</c> whose minor or build version differs from the
+    /// installed FrontComposer Level 2 contract. Selection still proceeds (Story 6-2
+    /// T7 / D6 / AC5).
+    /// </summary>
+    public const string HFC1036_ProjectionTemplateContractVersionDrift = "HFC1036";
+
+    /// <summary>
+    /// Build-time Error: two or more <c>[ProjectionTemplate]</c> markers in the same
+    /// compilation target the same projection-and-role tuple (Story 6-2 T3 / D10 / AC11 /
+    /// AC12). The generated manifest excludes the duplicates so runtime selection cannot
+    /// pick a non-deterministic winner.
+    /// </summary>
+    public const string HFC1037_ProjectionTemplateDuplicate = "HFC1037";
+
+    /// <summary>
+    /// Build/runtime Error: a Level 3 slot selector is not a direct projection property access.
+    /// Startup helpers reject computed, nested, captured, or method-call expressions so the slot
+    /// registry can key overrides by stable generated field names.
+    /// </summary>
+    public const string HFC1038_ProjectionSlotSelectorInvalid = "HFC1038";
+
+    /// <summary>
+    /// Runtime Warning: a Level 3 slot component is not a compatible Blazor component or does
+    /// not expose a public <c>[Parameter]</c> <c>Context</c> property of the expected
+    /// <c>FieldSlotContext&lt;TProjection,TField&gt;</c> type. The descriptor is ignored.
+    /// </summary>
+    public const string HFC1039_ProjectionSlotComponentInvalid = "HFC1039";
+
+    /// <summary>
+    /// Runtime Warning: two or more Level 3 slot descriptors target the same projection, role,
+    /// and field tuple. Resolution becomes ambiguous and falls back to generated field rendering.
+    /// </summary>
+    public const string HFC1040_ProjectionSlotDuplicate = "HFC1040";
+
+    /// <summary>
+    /// Runtime Warning: a Level 3 slot descriptor declares a contract version whose major version
+    /// differs from the installed FrontComposer Level 3 contract. The descriptor is ignored.
+    /// </summary>
+    public const string HFC1041_ProjectionSlotContractVersionMismatch = "HFC1041";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

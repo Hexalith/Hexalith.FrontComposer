@@ -387,4 +387,119 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1033: <c>[ProjectionTemplate]</c> marker references a projection type that is
+    /// missing, unresolvable, generic, abstract, a struct, or is not annotated with
+    /// <c>[Projection]</c> (Story 6-2 T3 / AC6). Error severity — the marker is excluded
+    /// from the generated manifest so runtime selection cannot pick it.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionTemplateInvalidProjectionType = new(
+        id: "HFC1033",
+        title: "[ProjectionTemplate] references an invalid projection type",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1034: <c>[ProjectionTemplate]</c>-marked class is not a valid Blazor component or
+    /// does not declare a public <c>[Parameter]</c> <c>Context</c> property of type
+    /// <c>ProjectionTemplateContext&lt;TProjection&gt;</c> matching the marker's projection type
+    /// (Story 6-2 T3 / AC1 / AC6). Warning severity — the invalid component is excluded from
+    /// the generated manifest.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionTemplateContextParameterMissing = new(
+        id: "HFC1034",
+        title: "[ProjectionTemplate] component is not a valid typed template component",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1035: <c>[ProjectionTemplate]</c> marker's <c>ExpectedContractVersion</c> declares
+    /// a major version different from the installed Level 2 contract (Story 6-2 T7 / AC5).
+    /// Warning severity — selection is suppressed so the template never runs against an
+    /// incompatible context shape.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionTemplateContractVersionMismatch = new(
+        id: "HFC1035",
+        title: "[ProjectionTemplate] contract version is incompatible",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1036: <c>[ProjectionTemplate]</c> marker's <c>ExpectedContractVersion</c> drifts
+    /// in the minor digit from the installed Level 2 contract (Story 6-2 T7 / D6 / AC5).
+    /// Warning severity — selection proceeds; build-only drift does not warn.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionTemplateContractVersionDrift = new(
+        id: "HFC1036",
+        title: "[ProjectionTemplate] contract version is out of date",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1037: Two or more <c>[ProjectionTemplate]</c> markers in the same compilation
+    /// target the same projection-and-role tuple (Story 6-2 T3 / D10 / AC11 / AC12).
+    /// Error severity — duplicates are excluded from the generated manifest so runtime
+    /// selection cannot pick a non-deterministic winner. Fix: keep one template, or
+    /// disambiguate via the <c>Role</c> named argument.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionTemplateDuplicate = new(
+        id: "HFC1037",
+        title: "Duplicate [ProjectionTemplate] for the same projection and role",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1038: A Level 3 slot selector is not a direct projection property access.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionSlotSelectorInvalid = new(
+        id: "HFC1038",
+        title: "Invalid Level 3 slot selector",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1039: A Level 3 slot component does not expose the required typed Context parameter.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionSlotComponentInvalid = new(
+        id: "HFC1039",
+        title: "Invalid Level 3 slot component",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1040: Two or more Level 3 slot descriptors target the same projection, role, and field.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionSlotDuplicate = new(
+        id: "HFC1040",
+        title: "Duplicate Level 3 slot override",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1041: A Level 3 slot descriptor declares an incompatible contract version.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionSlotContractVersionMismatch = new(
+        id: "HFC1041",
+        title: "Level 3 slot contract version is incompatible",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 
@@ -375,28 +376,15 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("                b.OpenElement(rowSeq++, \"div\");");
         _ = sb.AppendLine("                b.AddAttribute(rowSeq++, \"class\", \"fc-timeline-row\");");
         if (orderProp is not null) {
-            _ = sb.AppendLine("                b.AddContent(rowSeq++, " + FormatValueExpression(orderColumn!, "item") + ");");
+            EmitInlineSlotField(sb, orderColumn!, instanceName: "item", builderName: "b", indent: "                ");
             _ = sb.AppendLine("                b.AddMarkupContent(rowSeq++, \" \");");
         }
         if (labelColumn is not null) {
-            _ = sb.AppendLine("                b.AddContent(rowSeq++, " + FormatValueExpression(labelColumn!, "item") + ");");
+            EmitInlineSlotField(sb, labelColumn, instanceName: "item", builderName: "b", indent: "                ");
             _ = sb.AppendLine("                b.AddMarkupContent(rowSeq++, \" \");");
         }
         if (statusColumn is not null) {
-            // Story 4-2 RF1 — badge-annotated enum rows dispatch through FcStatusBadge; otherwise
-            // preserve the Story 4-1 humanized text behaviour.
-            if (statusColumn.BadgeMappings.Count > 0) {
-                ColumnEmitter.EmitInlineEnumRenderFragment(
-                    sb,
-                    statusColumn,
-                    instanceName: "item",
-                    builderName: "b",
-                    seqVariable: "rowSeq",
-                    indent: "                ");
-            }
-            else {
-                _ = sb.AppendLine("                b.AddContent(rowSeq++, HumanizeEnumLabel(item." + statusColumn.PropertyName + ".ToString()));");
-            }
+            EmitInlineSlotField(sb, statusColumn, instanceName: "item", builderName: "b", indent: "                ");
         }
         _ = sb.AppendLine("                b.CloseElement();");
         _ = sb.AppendLine("            }");
@@ -731,6 +719,32 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine("            }));");
     }
 
+    private static void EmitInlineSlotField(
+        StringBuilder sb,
+        ColumnModel col,
+        string instanceName,
+        string builderName,
+        string indent) {
+        _ = sb.AppendLine(indent + "RenderSlotField(" + instanceName + ",");
+        _ = sb.AppendLine(indent + "    fieldName: \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\",");
+        _ = sb.AppendLine(indent + "    displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
+        _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
+        _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
+        _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
+        _ = sb.AppendLine(indent + "    value: " + instanceName + "." + col.PropertyName + ",");
+        _ = sb.AppendLine(indent + "    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))(" + builderName + ");");
+    }
+
+    private static string SlotStringLiteral(string? value)
+        => string.IsNullOrEmpty(value)
+            ? "(string?)null"
+            : "\"" + RoleBodyHelpers.EscapeString(value!) + "\"";
+
+    private static string SlotNullableIntLiteral(int? value)
+        => value.HasValue
+            ? value.Value.ToString(CultureInfo.InvariantCulture)
+            : "(int?)null";
+
     private static void EmitDetailField(
         StringBuilder sb,
         ColumnModel col,
@@ -747,6 +761,29 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "}));");
         _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
 
+        _ = sb.AppendLine(indent + "RenderSlotField(entity,");
+        _ = sb.AppendLine(indent + "    fieldName: \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\",");
+        _ = sb.AppendLine(indent + "    displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
+        _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
+        _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
+        _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
+        _ = sb.AppendLine(indent + "    value: entity." + col.PropertyName + ",");
+        _ = sb.AppendLine(indent + "    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>");
+        _ = sb.AppendLine(indent + "{");
+        _ = sb.AppendLine(indent + "    int slotSeq = 0;");
+        EmitDetailFieldValue(sb, col, indent + "    ", builderName: "slotBuilder", seqName: "slotSeq");
+        _ = sb.AppendLine(indent + "})(" + builderName + ");");
+        EmitDetailDescription(sb, col, indent, builderName, seqName);
+        _ = sb.AppendLine(indent + builderName + ".CloseElement();");
+    }
+
+    private static void EmitDetailFieldValue(
+        StringBuilder sb,
+        ColumnModel col,
+        string indent,
+        string builderName,
+        string seqName) {
+
         // P-1 (Pass-3 review fix): Unsupported columns flowing into DetailRecord / Timeline /
         // StatusOverview detail surfaces must render FcFieldPlaceholder, NOT a bare em-dash.
         // Story 4-6 reversed the silent-drop in RazorModelTransform but the AC6/FR9 contract
@@ -761,8 +798,6 @@ public static class ProjectionRoleBodyEmitter {
             _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"TypeName\", " + typeNameLiteral + ");");
             _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqName + "++, \"IsDevMode\", RenderContext?.IsDevMode == true);");
             _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
-            EmitDetailDescription(sb, col, indent, builderName, seqName);
-            _ = sb.AppendLine(indent + builderName + ".CloseElement();");
             return;
         }
 
@@ -776,8 +811,6 @@ public static class ProjectionRoleBodyEmitter {
                 builderName: builderName,
                 seqVariable: seqName,
                 indent: indent);
-            EmitDetailDescription(sb, col, indent, builderName, seqName);
-            _ = sb.AppendLine(indent + builderName + ".CloseElement();");
             return;
         }
 
@@ -787,8 +820,6 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "    textBuilder.AddContent(0, " + FormatValueExpression(col, "entity") + ");");
         _ = sb.AppendLine(indent + "}));");
         _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
-        EmitDetailDescription(sb, col, indent, builderName, seqName);
-        _ = sb.AppendLine(indent + builderName + ".CloseElement();");
     }
 
     private static void EmitDetailDescription(

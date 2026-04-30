@@ -62,6 +62,12 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
     [Inject]
     private IState<global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState> ExpandedRowState { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry ProjectionTemplateRegistry { get; set; } = default!;
+
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
+
     private const string _viewKey = "Orders:RoleSpecific.Orders.ActionQueueProjection";
 
     private static readonly System.Func<ActionQueueProjection, object> _itemKeyAccessor = static x => (object)x.Id!;
@@ -80,6 +86,232 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
 
     private object? _cachedActionQueueSource;
     private List<ActionQueueProjection>? _cachedActionQueueItems;
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor> _templateColumnsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Id", "Id", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("CustomerName", "Customer Name", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Status", "Status", (int?)null, (string?)null),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("Priority", "Priority", (int?)null, (string?)null)
+    };
+
+    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]
+    {
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Body", "Body", "Body"),
+        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor("Row", "Row", "Row")
+    };
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(ActionQueueProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Id":
+                return RenderSlotField(row,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Id,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+            case "CustomerName":
+                return RenderSlotField(row,
+                    fieldName: "CustomerName",
+                    displayName: "Customer Name",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.CustomerName,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CustomerName"));
+            case "Status":
+                return RenderSlotField(row,
+                    fieldName: "Status",
+                    displayName: "Status",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Status,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+            case "Priority":
+                return RenderSlotField(row,
+                    fieldName: "Priority",
+                    displayName: "Priority",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: row.Priority,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"));
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(ActionQueueProjection row, string columnPropertyName)
+    {
+        if (row is null || string.IsNullOrEmpty(columnPropertyName))
+        {
+            return static _ => { };
+        }
+
+        switch (columnPropertyName)
+        {
+            case "Id":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Id.ToString());
+                };
+            case "CustomerName":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.CustomerName.ToString());
+                };
+            case "Status":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    var _memberName = row.Status.ToString();
+                    var _label = HumanizeEnumLabel(_memberName);
+                    switch (_memberName)
+                    {
+                        case "Pending":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                            builder.CloseComponent();
+                            break;
+                        case "Submitted":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                            builder.CloseComponent();
+                            break;
+                        case "Approved":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                            builder.CloseComponent();
+                            break;
+                        case "Rejected":
+                            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                            builder.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
+                            builder.AddAttribute(fieldSeq++, "Label", _label);
+                            builder.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                            builder.CloseComponent();
+                            break;
+                        default:
+                            builder.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            break;
+                    }
+                };
+            case "Priority":
+                return builder =>
+                {
+                    if (row is null) { return; }
+                    int fieldSeq = 0;
+                    builder.AddContent(fieldSeq++, row.Priority.ToString("N0", CultureInfo.CurrentCulture));
+                };
+            default:
+                return static _ => { };
+        }
+    }
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(ActionQueueProjection row)
+    {
+        if (row is null)
+        {
+            return static _ => { };
+        }
+
+        return builder =>
+        {
+            int rowSeq = 0;
+            builder.OpenElement(rowSeq++, "div");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-row");
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Id");
+            RenderTemplateField(row, "Id")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "CustomerName");
+            RenderTemplateField(row, "CustomerName")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Status");
+            RenderTemplateField(row, "Status")(builder);
+            builder.CloseElement();
+            }
+            {
+            builder.OpenElement(rowSeq++, "span");
+            builder.AddAttribute(rowSeq++, "class", "fc-template-field");
+            builder.AddAttribute(rowSeq++, "data-fc-field", "Priority");
+            RenderTemplateField(row, "Priority")(builder);
+            builder.CloseElement();
+            }
+            builder.CloseElement();
+        };
+    }
+
+    private bool HasProjectionSlot(string fieldName)
+        => ProjectionSlotRegistry.Resolve(typeof(ActionQueueProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue, fieldName) is not null;
+
+    private global::Microsoft.AspNetCore.Components.RenderFragment RenderSlotField<TField>(
+        ActionQueueProjection row,
+        string fieldName,
+        string displayName,
+        string? format,
+        int? order,
+        bool isFieldReadOnly,
+        TField? value,
+        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<ActionQueueProjection, TField>> renderDefault)
+    {
+        return builder =>
+        {
+            var __renderContext = RenderContext ?? new global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext(
+                TenantId: string.Empty,
+                UserId: string.Empty,
+                Mode: global::Hexalith.FrontComposer.Contracts.Rendering.FcRenderMode.Server,
+                DensityLevel: global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable,
+                IsReadOnly: false);
+            var __field = new global::Hexalith.FrontComposer.Contracts.Rendering.FieldDescriptor(
+                Name: fieldName,
+                TypeName: typeof(TField).FullName ?? typeof(TField).Name,
+                IsNullable: System.Nullable.GetUnderlyingType(typeof(TField)) is not null || !typeof(TField).IsValueType,
+                DisplayName: displayName,
+                Format: format,
+                Order: order,
+                IsReadOnly: isFieldReadOnly,
+                Hints: null);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<ActionQueueProjection, TField>>(0);
+            builder.AddAttribute(1, "Parent", row);
+            builder.AddAttribute(2, "Value", value);
+            builder.AddAttribute(3, "Field", __field);
+            builder.AddAttribute(4, "RenderContext", __renderContext);
+            builder.AddAttribute(5, "ProjectionRole", (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue);
+            builder.AddAttribute(6, "RenderDefault", renderDefault);
+            builder.CloseComponent();
+        };
+    }
 
     /// <inheritdoc />
     protected override void OnInitialized()
@@ -420,28 +652,10 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
         }
 
         seq = 100;
-        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
-
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.CloseComponent();
-
-        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
-        builder.AddAttribute(seq++, "ViewKey", _viewKey);
-        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
-        builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
-        builder.CloseComponent();
-
-        builder.OpenElement(seq++, "span");
-        builder.AddAttribute(seq++, "class", "fc-row-count");
-        builder.AddContent(seq++, $"{state.Items.Count} " + "action queues");
-        builder.CloseElement();
-
-        builder.OpenElement(seq++, "div");
-        builder.AddAttribute(seq++, "class", GridHostClass());
-        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
-        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
-
+        global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>
+        {
+            var builder = __bb;
+            int seq = 100;
         if (!ReferenceEquals(_cachedActionQueueSource, state.Items))
         {
             _cachedActionQueueSource = state.Items;
@@ -495,72 +709,145 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
             int colSeq = 200;
 
             // Text column: Id
-            b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Id");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => x.Id ?? "\u2014"));
-            b.CloseComponent();
+            if (HasProjectionSlot("Id"))
+            {
+                b.OpenComponent<TemplateColumn<ActionQueueProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Id");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<ActionQueueProjection>)(item => RenderSlotField(item,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Id,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Id");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => x.Id ?? "\u2014"));
+                b.CloseComponent();
+            }
 
             // Text column: CustomerName
-            b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Customer Name");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => x.CustomerName ?? "\u2014"));
-            b.CloseComponent();
+            if (HasProjectionSlot("CustomerName"))
+            {
+                b.OpenComponent<TemplateColumn<ActionQueueProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Customer Name");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<ActionQueueProjection>)(item => RenderSlotField(item,
+                    fieldName: "CustomerName",
+                    displayName: "Customer Name",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.CustomerName,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CustomerName"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Customer Name");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => x.CustomerName ?? "\u2014"));
+                b.CloseComponent();
+            }
 
             // Enum column: Status
-            b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Status");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
-            b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<ActionQueueProjection>)(item => (RenderTreeBuilder rb) =>
+            if (HasProjectionSlot("Status"))
             {
-                var _memberName = item.Status.ToString();
-                var _label = HumanizeEnumLabel(_memberName);
-                switch (_memberName)
+                b.OpenComponent<TemplateColumn<ActionQueueProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Status");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<ActionQueueProjection>)(item => RenderSlotField(item,
+                    fieldName: "Status",
+                    displayName: "Status",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Status,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))));
+                b.AddAttribute(colSeq++, "Sortable", true);
+                b.AddAttribute(colSeq++, "IsDefaultSortColumn", true);
+                b.AddAttribute(colSeq++, "InitialSortDirection", DataGridSortDirection.Descending);
+                b.AddAttribute(colSeq++, "SortBy", GridSort<ActionQueueProjection>.ByDescending(x => x.Status));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Status");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<ActionQueueProjection>)(item => (RenderTreeBuilder rb) =>
                 {
-                    case "Pending":
-                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
-                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                        rb.AddAttribute(2, "Label", _label);
-                        rb.AddAttribute(3, "ColumnHeader", "Status");
-                        rb.CloseComponent();
-                        break;
-                    case "Submitted":
-                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
-                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
-                        rb.AddAttribute(2, "Label", _label);
-                        rb.AddAttribute(3, "ColumnHeader", "Status");
-                        rb.CloseComponent();
-                        break;
-                    case "Approved":
-                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
-                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
-                        rb.AddAttribute(2, "Label", _label);
-                        rb.AddAttribute(3, "ColumnHeader", "Status");
-                        rb.CloseComponent();
-                        break;
-                    case "Rejected":
-                        rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
-                        rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
-                        rb.AddAttribute(2, "Label", _label);
-                        rb.AddAttribute(3, "ColumnHeader", "Status");
-                        rb.CloseComponent();
-                        break;
-                    default:
-                        rb.AddContent(11, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
-                        break;
-                }
-            }));
-            b.AddAttribute(colSeq++, "Sortable", true);
-            b.AddAttribute(colSeq++, "IsDefaultSortColumn", true);
-            b.AddAttribute(colSeq++, "InitialSortDirection", DataGridSortDirection.Descending);
-            b.AddAttribute(colSeq++, "SortBy", GridSort<ActionQueueProjection>.ByDescending(x => x.Status));
-            b.CloseComponent();
+                    var _memberName = item.Status.ToString();
+                    var _label = HumanizeEnumLabel(_memberName);
+                    switch (_memberName)
+                    {
+                        case "Pending":
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            rb.AddAttribute(2, "Label", _label);
+                            rb.AddAttribute(3, "ColumnHeader", "Status");
+                            rb.CloseComponent();
+                            break;
+                        case "Submitted":
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
+                            rb.AddAttribute(2, "Label", _label);
+                            rb.AddAttribute(3, "ColumnHeader", "Status");
+                            rb.CloseComponent();
+                            break;
+                        case "Approved":
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                            rb.AddAttribute(2, "Label", _label);
+                            rb.AddAttribute(3, "ColumnHeader", "Status");
+                            rb.CloseComponent();
+                            break;
+                        case "Rejected":
+                            rb.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(0);
+                            rb.AddAttribute(1, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
+                            rb.AddAttribute(2, "Label", _label);
+                            rb.AddAttribute(3, "ColumnHeader", "Status");
+                            rb.CloseComponent();
+                            break;
+                        default:
+                            rb.AddContent(11, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            break;
+                    }
+                }));
+                b.AddAttribute(colSeq++, "Sortable", true);
+                b.AddAttribute(colSeq++, "IsDefaultSortColumn", true);
+                b.AddAttribute(colSeq++, "InitialSortDirection", DataGridSortDirection.Descending);
+                b.AddAttribute(colSeq++, "SortBy", GridSort<ActionQueueProjection>.ByDescending(x => x.Status));
+                b.CloseComponent();
+            }
 
             // Numeric column: Priority
-            b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
-            b.AddAttribute(colSeq++, "Title", "Priority");
-            b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => x.Priority.ToString("N0", CultureInfo.CurrentCulture)));
-            b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
-            b.CloseComponent();
+            if (HasProjectionSlot("Priority"))
+            {
+                b.OpenComponent<TemplateColumn<ActionQueueProjection>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Priority");
+                b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
+                b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<ActionQueueProjection>)(item => RenderSlotField(item,
+                    fieldName: "Priority",
+                    displayName: "Priority",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    value: item.Priority,
+                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"))));
+                b.CloseComponent();
+            }
+            else
+            {
+                b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
+                b.AddAttribute(colSeq++, "Title", "Priority");
+                b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => x.Priority.ToString("N0", CultureInfo.CurrentCulture)));
+                b.AddAttribute(colSeq++, "Class", "fc-col-numeric");
+                b.CloseComponent();
+            }
 
             // Story 4-1 D14 / G12 — per-row ProjectionContext cascade for Story 2-2 inline-command renderers
             b.OpenComponent<TemplateColumn<ActionQueueProjection>>(colSeq++);
@@ -645,12 +932,23 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "Id",
+                displayName: "Id",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.Id,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.Id);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.Id);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -660,12 +958,23 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Customer Name");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "CustomerName",
+                displayName: "Customer Name",
+                format: (string?)null,
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.CustomerName,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.CustomerName);
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.CustomerName);
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -675,42 +984,53 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Status");
             }));
             b.CloseComponent();
-            var _memberName = entity.Status.ToString();
-            var _label = HumanizeEnumLabel(_memberName);
-            switch (_memberName)
+            RenderSlotField(entity,
+                fieldName: "Status",
+                displayName: "Status",
+                format: "Humanize:30",
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.Status,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                case "Pending":
-                    b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
-                    b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                    b.AddAttribute(fieldSeq++, "Label", _label);
-                    b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
-                    b.CloseComponent();
-                    break;
-                case "Submitted":
-                    b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
-                    b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
-                    b.AddAttribute(fieldSeq++, "Label", _label);
-                    b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
-                    b.CloseComponent();
-                    break;
-                case "Approved":
-                    b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
-                    b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
-                    b.AddAttribute(fieldSeq++, "Label", _label);
-                    b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
-                    b.CloseComponent();
-                    break;
-                case "Rejected":
-                    b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
-                    b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
-                    b.AddAttribute(fieldSeq++, "Label", _label);
-                    b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
-                    b.CloseComponent();
-                    break;
-                default:
-                    b.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
-                    break;
-            }
+                int slotSeq = 0;
+                var _memberName = entity.Status.ToString();
+                var _label = HumanizeEnumLabel(_memberName);
+                switch (_memberName)
+                {
+                    case "Pending":
+                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                        slotBuilder.CloseComponent();
+                        break;
+                    case "Submitted":
+                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
+                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                        slotBuilder.CloseComponent();
+                        break;
+                    case "Approved":
+                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                        slotBuilder.CloseComponent();
+                        break;
+                    case "Rejected":
+                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Danger);
+                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                        slotBuilder.CloseComponent();
+                        break;
+                    default:
+                        slotBuilder.AddContent(slotSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                        break;
+                }
+            })(b);
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -720,17 +1040,76 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Priority");
             }));
             b.CloseComponent();
-            b.OpenComponent<FluentText>(fieldSeq++);
-            b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+            RenderSlotField(entity,
+                fieldName: "Priority",
+                displayName: "Priority",
+                format: "N0",
+                order: (int?)null,
+                isFieldReadOnly: false,
+                value: entity.Priority,
+                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
             {
-                textBuilder.AddContent(0, entity.Priority.ToString("N0", CultureInfo.CurrentCulture));
-            }));
-            b.CloseComponent();
+                int slotSeq = 0;
+                slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                {
+                    textBuilder.AddContent(0, entity.Priority.ToString("N0", CultureInfo.CurrentCulture));
+                }));
+                slotBuilder.CloseComponent();
+            })(b);
             b.CloseElement();
         }));
         builder.CloseComponent();
         }));
         builder.CloseComponent();
+        };
+
+        builder.AddMarkupContent(seq++, "<!-- Phone-viewport layout (UX-DR7 phone variant) deferred to Story 10-2 -->");
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcSlowQueryNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.CloseComponent();
+
+        builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DataGrid.FcMaxItemsCapNotice>(seq++);
+        builder.AddAttribute(seq++, "ViewKey", _viewKey);
+        builder.AddAttribute(seq++, "ItemsCount", state.Items.Count);
+        builder.AddAttribute(seq++, "AnyRealFilterActive", anyRealFilterActive);
+        builder.CloseComponent();
+
+        builder.OpenElement(seq++, "span");
+        builder.AddAttribute(seq++, "class", "fc-row-count");
+        builder.AddContent(seq++, $"{state.Items.Count} " + "action queues");
+        builder.CloseElement();
+
+        builder.OpenElement(seq++, "div");
+        builder.AddAttribute(seq++, "class", GridHostClass());
+        builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
+        builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
+
+        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(ActionQueueProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue);
+        if (__templateDescriptor is not null)
+        {
+            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<ActionQueueProjection>(
+                projectionType: typeof(ActionQueueProjection),
+                boundedContext: "Orders",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue,
+                renderContext: RenderContext,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<ActionQueueProjection>)System.Array.Empty<ActionQueueProjection>(),
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);
+            builder.AddAttribute(seq++, "Context", __templateContext);
+            builder.CloseComponent();
+        }
+        else
+        {
+            defaultBody(builder);
+        }
         builder.CloseElement();
     }
 }

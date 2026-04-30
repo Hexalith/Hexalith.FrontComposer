@@ -161,6 +161,23 @@ public static class RazorEmitter {
             _ = sb.AppendLine("    private IState<global::Hexalith.FrontComposer.Shell.State.ExpandedRow.ExpandedRowState> ExpandedRowState { get; set; } = default!;");
             _ = sb.AppendLine();
         }
+
+        // Story 6-2 T5 — typed template registry is resolved per render so adopters can
+        // register Level 2 overrides without re-emitting the generated view.
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry ProjectionTemplateRegistry { get; set; } = default!;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;");
+        _ = sb.AppendLine();
+
+        // Story 6-2 T5 — non-grid views also need RenderContext to flow through the template
+        // context so wrapper-owned tenant/density/dev-mode behavior is preserved.
+        if (!RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
+            _ = sb.AppendLine("    [CascadingParameter]");
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }");
+            _ = sb.AppendLine();
+        }
     }
 
     /// <summary>
@@ -193,12 +210,23 @@ public static class RazorEmitter {
     private static bool NeedsShellLocalizer(RazorModel model)
         // Story 4-6 review fix (D3): revert to conditional emission so non-using views do not
         // ship a superfluous DI injection. Empty-state secondary text now resolves inside
-        // FcProjectionEmptyPlaceholder itself (D17 follow-up), so views without badges,
+        // FcProjectionEmptyPlaceholder itself (D17 follow-up), so views without enum fallback,
         // descriptions, or unsupported columns no longer pull in IStringLocalizer.
         => HasBadgeMappings(model)
+            || HasEnumColumns(model)
             || EmitsExpandInRowMachinery(model.Strategy)
             || HasUnsupportedColumns(model)
             || HasColumnDescriptions(model);
+
+    private static bool HasEnumColumns(RazorModel model) {
+        foreach (ColumnModel col in model.Columns) {
+            if (col.TypeCategory == TypeCategory.Enum) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static bool HasUnsupportedColumns(RazorModel model) {
         foreach (ColumnModel col in model.Columns) {
@@ -325,6 +353,285 @@ public static class RazorEmitter {
         // Story 4-6 review fix (D17): the secondary-text resolver previously emitted here
         // moved into FcProjectionEmptyPlaceholder.ResolveSecondaryText() so adopters can override
         // per-projection without re-emitting the view.
+
+        // Story 6-2 T5 — Level 2 template plumbing: per-view static descriptor list passed
+        // through the typed template Context so adopters can rearrange section layout while
+        // letting the framework render individual fields via the FieldRenderer delegate.
+        EmitTemplateColumnDescriptors(sb, model);
+        EmitTemplateSectionDescriptors(sb);
+        EmitTemplateFieldRenderer(sb, model);
+        EmitTemplateRowRenderer(sb, model);
+        EmitSlotFieldRenderer(sb, model);
+    }
+
+    private static void EmitTemplateColumnDescriptors(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor> _templateColumnsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor[]");
+        _ = sb.AppendLine("    {");
+        for (int i = 0; i < model.Columns.Count; i++) {
+            ColumnModel col = model.Columns[i];
+            string keyLit = "\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"";
+            string headerLit = "\"" + RoleBodyHelpers.EscapeString(col.Header) + "\"";
+            string priorityLit = col.Priority.HasValue
+                ? col.Priority.Value.ToString(CultureInfo.InvariantCulture)
+                : "(int?)null";
+            string descriptionLit = string.IsNullOrEmpty(col.Description)
+                ? "(string?)null"
+                : "\"" + RoleBodyHelpers.EscapeString(col.Description!) + "\"";
+            string trailingComma = i == model.Columns.Count - 1 ? string.Empty : ",";
+            _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateColumnDescriptor("
+                + keyLit + ", " + headerLit + ", " + priorityLit + ", " + descriptionLit + ")" + trailingComma);
+        }
+
+        _ = sb.AppendLine("    };");
+        _ = sb.AppendLine();
+    }
+
+    private static void EmitTemplateSectionDescriptors(StringBuilder sb) {
+        _ = sb.AppendLine("    private static readonly System.Collections.Generic.IReadOnlyList<global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor> _templateSectionsDescriptor = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor[]");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor(\"Body\", \"Body\", \"Body\"),");
+        _ = sb.AppendLine("        new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateSectionDescriptor(\"Row\", \"Row\", \"Row\")");
+        _ = sb.AppendLine("    };");
+        _ = sb.AppendLine();
+    }
+
+    private static void EmitTemplateFieldRenderer(StringBuilder sb, RazorModel model) {
+        // Story 6-2 T5 / D4 — FieldRenderer emits the same framework-owned field semantics
+        // used by generated role bodies: Level 1 formatting, enum badges, unsupported-field
+        // placeholders, null glyphs, and culture-aware formatting. Templates rearrange layout
+        // by invoking this delegate instead of materializing raw values themselves.
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateField(" + model.TypeName + " row, string columnPropertyName)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (row is null || string.IsNullOrEmpty(columnPropertyName))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return static _ => { };");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        switch (columnPropertyName)");
+        _ = sb.AppendLine("        {");
+        for (int i = 0; i < model.Columns.Count; i++) {
+            ColumnModel col = model.Columns[i];
+            _ = sb.AppendLine("            case \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\":");
+            _ = sb.AppendLine("                return RenderSlotField(row,");
+            _ = sb.AppendLine("                    fieldName: \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\",");
+            _ = sb.AppendLine("                    displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
+            _ = sb.AppendLine("                    format: " + SlotStringLiteral(col.FormatHint) + ",");
+            _ = sb.AppendLine("                    order: " + SlotNullableIntLiteral(col.Priority) + ",");
+            _ = sb.AppendLine("                    isFieldReadOnly: false,");
+            _ = sb.AppendLine("                    value: row." + col.PropertyName + ",");
+            _ = sb.AppendLine("                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"));");
+        }
+
+        _ = sb.AppendLine("            default:");
+        _ = sb.AppendLine("                return static _ => { };");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateDefaultField(" + model.TypeName + " row, string columnPropertyName)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (row is null || string.IsNullOrEmpty(columnPropertyName))");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return static _ => { };");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        switch (columnPropertyName)");
+        _ = sb.AppendLine("        {");
+        for (int i = 0; i < model.Columns.Count; i++) {
+            ColumnModel col = model.Columns[i];
+            _ = sb.AppendLine("            case \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\":");
+            _ = sb.AppendLine("                return builder =>");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    if (row is null) { return; }");
+            _ = sb.AppendLine("                    int fieldSeq = 0;");
+            EmitTemplateFieldContent(sb, col, "row", "builder", "fieldSeq", "                    ");
+            _ = sb.AppendLine("                };");
+        }
+
+        _ = sb.AppendLine("            default:");
+        _ = sb.AppendLine("                return static _ => { };");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+    }
+
+    private static void EmitTemplateRowRenderer(StringBuilder sb, RazorModel model) {
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderTemplateRow(" + model.TypeName + " row)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (row is null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            return static _ => { };");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("        return builder =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            int rowSeq = 0;");
+        _ = sb.AppendLine("            builder.OpenElement(rowSeq++, \"div\");");
+        _ = sb.AppendLine("            builder.AddAttribute(rowSeq++, \"class\", \"fc-template-row\");");
+        foreach (ColumnModel col in model.Columns) {
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("            builder.OpenElement(rowSeq++, \"span\");");
+            _ = sb.AppendLine("            builder.AddAttribute(rowSeq++, \"class\", \"fc-template-field\");");
+            _ = sb.AppendLine("            builder.AddAttribute(rowSeq++, \"data-fc-field\", \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\");");
+            _ = sb.AppendLine("            RenderTemplateField(row, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\")(builder);");
+            _ = sb.AppendLine("            builder.CloseElement();");
+            _ = sb.AppendLine("            }");
+        }
+
+        _ = sb.AppendLine("            builder.CloseElement();");
+        _ = sb.AppendLine("        };");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+    }
+
+    private static void EmitSlotFieldRenderer(StringBuilder sb, RazorModel model) {
+        string roleExpr = model.Strategy == ProjectionRenderStrategy.Default
+            ? "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)null"
+            : "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)"
+                + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole." + model.Strategy.ToString();
+
+        _ = sb.AppendLine("    private bool HasProjectionSlot(string fieldName)");
+        _ = sb.AppendLine("        => ProjectionSlotRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ", fieldName) is not null;");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("    private global::Microsoft.AspNetCore.Components.RenderFragment RenderSlotField<TField>(");
+        _ = sb.AppendLine("        " + model.TypeName + " row,");
+        _ = sb.AppendLine("        string fieldName,");
+        _ = sb.AppendLine("        string displayName,");
+        _ = sb.AppendLine("        string? format,");
+        _ = sb.AppendLine("        int? order,");
+        _ = sb.AppendLine("        bool isFieldReadOnly,");
+        _ = sb.AppendLine("        TField? value,");
+        _ = sb.AppendLine("        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<" + model.TypeName + ", TField>> renderDefault)");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        return builder =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            var __renderContext = RenderContext ?? new global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext(");
+        _ = sb.AppendLine("                TenantId: string.Empty,");
+        _ = sb.AppendLine("                UserId: string.Empty,");
+        _ = sb.AppendLine("                Mode: global::Hexalith.FrontComposer.Contracts.Rendering.FcRenderMode.Server,");
+        _ = sb.AppendLine("                DensityLevel: global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable,");
+        _ = sb.AppendLine("                IsReadOnly: false);");
+        _ = sb.AppendLine("            var __field = new global::Hexalith.FrontComposer.Contracts.Rendering.FieldDescriptor(");
+        _ = sb.AppendLine("                Name: fieldName,");
+        _ = sb.AppendLine("                TypeName: typeof(TField).FullName ?? typeof(TField).Name,");
+        _ = sb.AppendLine("                IsNullable: System.Nullable.GetUnderlyingType(typeof(TField)) is not null || !typeof(TField).IsValueType,");
+        _ = sb.AppendLine("                DisplayName: displayName,");
+        _ = sb.AppendLine("                Format: format,");
+        _ = sb.AppendLine("                Order: order,");
+        _ = sb.AppendLine("                IsReadOnly: isFieldReadOnly,");
+        _ = sb.AppendLine("                Hints: null);");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
+        _ = sb.AppendLine("            builder.AddAttribute(1, \"Parent\", row);");
+        _ = sb.AppendLine("            builder.AddAttribute(2, \"Value\", value);");
+        _ = sb.AppendLine("            builder.AddAttribute(3, \"Field\", __field);");
+        _ = sb.AppendLine("            builder.AddAttribute(4, \"RenderContext\", __renderContext);");
+        _ = sb.AppendLine("            builder.AddAttribute(5, \"ProjectionRole\", " + roleExpr + ");");
+        _ = sb.AppendLine("            builder.AddAttribute(6, \"RenderDefault\", renderDefault);");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("        };");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
+    }
+
+    private static string SlotStringLiteral(string? value)
+        => string.IsNullOrEmpty(value)
+            ? "(string?)null"
+            : "\"" + RoleBodyHelpers.EscapeString(value!) + "\"";
+
+    private static string SlotNullableIntLiteral(int? value)
+        => value.HasValue
+            ? value.Value.ToString(CultureInfo.InvariantCulture)
+            : "(int?)null";
+
+    private static void EmitTemplateFieldContent(
+        StringBuilder sb,
+        ColumnModel col,
+        string instanceName,
+        string builderName,
+        string seqVariable,
+        string indent) {
+        string propertyAccess = instanceName + "." + col.PropertyName;
+
+        if (col.TypeCategory == TypeCategory.Unsupported) {
+            string unsupportedTypeName = col.UnsupportedTypeFullyQualifiedName ?? col.PropertyName;
+            _ = sb.AppendLine(indent + builderName + ".OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldPlaceholder>(" + seqVariable + "++);");
+            _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqVariable + "++, \"FieldName\", \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\");");
+            _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqVariable + "++, \"TypeName\", \"" + RoleBodyHelpers.EscapeString(unsupportedTypeName) + "\");");
+            _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqVariable + "++, \"IsDevMode\", RenderContext?.IsDevMode == true);");
+            _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
+            return;
+        }
+
+        if ((col.FormatHint ?? string.Empty).StartsWith("Truncate:", StringComparison.Ordinal)) {
+            string length = (col.FormatHint ?? string.Empty).Substring("Truncate:".Length);
+            if (col.IsNullable) {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + " == null ? \"\\u2014\" : " + propertyAccess + ".Value.ToString(\"N\").Substring(0, " + length + "));");
+            }
+            else {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + ".ToString(\"N\").Substring(0, " + length + "));");
+            }
+
+            return;
+        }
+
+        if (col.TypeCategory == TypeCategory.Enum) {
+            ColumnEmitter.EmitInlineEnumRenderFragment(sb, col, instanceName, builderName, seqVariable, indent);
+            return;
+        }
+
+        if (col.TypeCategory == TypeCategory.Boolean) {
+            if (col.IsNullable) {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + ".HasValue ? (" + propertyAccess + ".Value ? \"Yes\" : \"No\") : \"\\u2014\");");
+            }
+            else {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + " ? \"Yes\" : \"No\");");
+            }
+
+            return;
+        }
+
+        if (col.TypeCategory == TypeCategory.Numeric) {
+            string format = col.FormatHint ?? "N0";
+            if (col.IsNullable) {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + RoleBodyHelpers.EscapeString(format) + "\", CultureInfo.CurrentCulture) : \"\\u2014\");");
+            }
+            else {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + ".ToString(\"" + RoleBodyHelpers.EscapeString(format) + "\", CultureInfo.CurrentCulture));");
+            }
+
+            return;
+        }
+
+        if (col.TypeCategory == TypeCategory.DateTime) {
+            if (col.DisplayFormat == FieldDisplayFormat.RelativeTime) {
+                int windowDays = col.RelativeTimeWindowDays ?? 7;
+                if (col.IsNullable) {
+                    _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + ".HasValue ? FormatRelativeTime(" + propertyAccess + ".Value, TimeProvider.GetUtcNow(), " + windowDays.ToString(CultureInfo.InvariantCulture) + ") : \"\\u2014\");");
+                }
+                else {
+                    _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, FormatRelativeTime(" + propertyAccess + ", TimeProvider.GetUtcNow(), " + windowDays.ToString(CultureInfo.InvariantCulture) + "));");
+                }
+
+                return;
+            }
+
+            string format = col.FormatHint ?? "d";
+            if (col.IsNullable) {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + ".HasValue ? " + propertyAccess + ".Value.ToString(\"" + RoleBodyHelpers.EscapeString(format) + "\", CultureInfo.CurrentCulture) : \"\\u2014\");");
+            }
+            else {
+                _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + ".ToString(\"" + RoleBodyHelpers.EscapeString(format) + "\", CultureInfo.CurrentCulture));");
+            }
+
+            return;
+        }
+
+        if (col.TypeCategory == TypeCategory.Collection) {
+            _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + propertyAccess + " == null ? \"\\u2014\" : System.Linq.Enumerable.Count(" + propertyAccess + ").ToString(CultureInfo.InvariantCulture) + \" items\");");
+            return;
+        }
+
+        _ = sb.AppendLine(indent + builderName + ".AddContent(" + seqVariable + "++, " + (col.IsNullable ? propertyAccess + " ?? \"\\u2014\"" : propertyAccess + ".ToString()") + ");");
     }
 
     private static void EmitStatusOverviewSortHelper(StringBuilder sb, RazorModel model) {
@@ -852,13 +1159,65 @@ public static class RazorEmitter {
 
         _ = sb.AppendLine("        seq = 100;");
 
+        // Story 6-2 T5 — wrap the body dispatch in a RenderFragment so a Level 2 template
+        // can either replace the body wholesale or compose around it via Context.DefaultBody.
+        // The fragment captures the BuildRenderTree locals (state, gridSnapshot, ...) by
+        // closure. The lambda parameter is named "__bb" to avoid collision with the existing
+        // `builder` identifier the body emitters use.
+        _ = sb.AppendLine("        global::Microsoft.AspNetCore.Components.RenderFragment defaultBody = (global::Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder __bb) =>");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            var builder = __bb;");
+        _ = sb.AppendLine("            int seq = 100;");
+
+        DispatchBody(sb, model);
+
+        _ = sb.AppendLine("        };");
+        _ = sb.AppendLine();
+
         if (isGrid) {
             EmitGridEnvelopeOpen(sb, model);
-            DispatchBody(sb, model);
-            EmitGridEnvelopeClose(sb, model);
         }
-        else {
-            DispatchBody(sb, model);
+
+        // Story 6-2 T5 / AC4 — registry lookup. Resolve(...) returns null when no descriptor
+        // matches, when the descriptor is contract-incompatible, or when the (projection, role)
+        // tuple has duplicate registrations (D10) — in all three cases the default body is used.
+        string roleExpr = model.Strategy == ProjectionRenderStrategy.Default
+            ? "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)null"
+            : "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)"
+                + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole." + model.Strategy.ToString();
+        string boundedContextLiteral = string.IsNullOrEmpty(model.BoundedContext)
+            ? "(string?)null"
+            : "\"" + RoleBodyHelpers.EscapeString(model.BoundedContext!) + "\"";
+
+        _ = sb.AppendLine("        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ");");
+        _ = sb.AppendLine("        if (__templateDescriptor is not null)");
+        _ = sb.AppendLine("        {");
+        // Story 6-2 D15 / AC15 — context constructed per render so tenant/user/culture/item
+        // changes flow through fresh; never reuse a cached context across renders.
+        _ = sb.AppendLine("            var __templateContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionTemplateContext<" + model.TypeName + ">(");
+        _ = sb.AppendLine("                projectionType: typeof(" + model.TypeName + "),");
+        _ = sb.AppendLine("                boundedContext: " + boundedContextLiteral + ",");
+        _ = sb.AppendLine("                role: " + roleExpr + ",");
+        _ = sb.AppendLine("                renderContext: RenderContext,");
+        _ = sb.AppendLine("                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">)System.Array.Empty<" + model.TypeName + ">(),");
+        _ = sb.AppendLine("                columns: _templateColumnsDescriptor,");
+        _ = sb.AppendLine("                sections: _templateSectionsDescriptor,");
+        _ = sb.AppendLine("                defaultBody: defaultBody,");
+        _ = sb.AppendLine("                sectionRenderer: sectionName => string.Equals(sectionName, \"Body\", System.StringComparison.Ordinal) ? defaultBody : static _ => { },");
+        _ = sb.AppendLine("                rowRenderer: RenderTemplateRow,");
+        _ = sb.AppendLine("                fieldRenderer: RenderTemplateField);");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Context\", __templateContext);");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        else");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            defaultBody(builder);");
+        _ = sb.AppendLine("        }");
+
+        if (isGrid) {
+            EmitGridEnvelopeClose(sb, model);
         }
 
         _ = sb.AppendLine("    }");
