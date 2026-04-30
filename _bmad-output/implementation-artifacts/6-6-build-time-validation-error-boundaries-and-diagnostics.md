@@ -178,6 +178,22 @@ Apply these clarifications during `bmad-dev-story`:
 - Counter sample evidence is a narrow proof, not a matrix: one valid shared-pipeline customization, one version mismatch/drift fixture, one static accessibility warning fixture, and one runtime-fault fixture proving local fallback plus shell/sibling survival.
 - Deferred from this story: production diagnostic overlay, rich overlay drill-down/filtering/pinning, dynamic accessibility engine, full visual specimen CI, analyzer performance characterization beyond a smoke guard, randomized hot-reload chaos testing, command-form customization validation, and MCP/agent-facing diagnostic surfaces.
 
+### Advanced Elicitation Hardening Addendum
+
+The advanced elicitation pass keeps the story ready-for-dev, but tightens the implementation oracles that prevent this diagnostic story from becoming a broad catch-all.
+
+Apply these refinements during `bmad-dev-story`:
+
+- Treat the diagnostic catalog as an executable matrix, not a prose appendix. For every story-owned HFC ID, add one row or fixture that names owner, phase, severity, docs link, expected/got/fix/fallback fields, selector effect, runtime fallback behavior, localization key, and source file that is allowed to emit it.
+- Version validation must be side-effect free. Comparing expected and actual contracts may report diagnostics and suppress selection, but it must not mutate registries, rewrite descriptors, generate new artifacts, or cache a fallback decision that outlives the current generated manifest snapshot.
+- Runtime boundary recovery must be bounded per failed seam. A repeated fault at the same override level/projection/field/render epoch publishes at most one active diagnostic until recovery, dispose, or manifest refresh; retry loops must not flood the sink, logs, telemetry, or overlay state.
+- Analyzer implementation starts with syntax/semantic facts already connected to customization metadata. It must not scan the full app, inspect generated output as adopter-authored code, or infer failures from unknown dynamic values. Add a smoke test that a non-custom Razor component with the same markup pattern is ignored.
+- Redaction tests must include exception messages and component parameter names that look useful but are unsafe. Runtime diagnostics may retain exception type/category and sanitized framework-owned type names; raw exception messages require allowlist proof before display or logging.
+- Hot-reload/rebuild diagnostics require one shared classifier table used by SourceTools tests and Shell stale-manifest tests. The table must include marker metadata, expected-version constants, generic context shape, descriptor schema, registration adds/removes, duplicate registration, Razor body edit, CSS-only edit, and framework package upgrade.
+- Diagnostic panel recovery is a user interaction contract. Tests must assert initial focus, retry button availability, retry-failed state, successful recovery focus return when possible, and no hidden live-region duplication when the panel rerenders.
+- Counter fixtures should be independently minimal. Do not combine stale contract, accessibility violation, and runtime throw into one fixture, because a single failure would mask which AC regressed.
+- Keep the binding-decision count stable. If implementation discovers a new policy decision rather than a test oracle, record it as a deferred decision for product/architecture review instead of expanding this story in place.
+
 ### Diagnostic Reservation Plan
 
 Use the next free contiguous IDs at implementation time. Do not assume this table is exhaustive if later stories have already allocated IDs before 6-6 starts.
@@ -368,4 +384,16 @@ Do not implement these in Story 6-6:
 - Findings summary: The review found the story direction architecturally sound, but identified pre-dev ambiguity around contract ownership, metadata-only diagnostic boundaries, level-specific fail-closed selection, static analyzer false-positive control, runtime boundary placement, panel focus/recovery behavior, diagnostic catalog source of truth, localization coverage, telemetry redaction, and focused fixture design.
 - Changes applied: Added a Party-Mode Hardening Addendum that fixes the contract-boundary sentence, clarifies ownership by producing story, defines metadata-only diagnostic constraints, specifies level-specific selection/fallback oracles, narrows static analyzer scope, adds analyzer false-positive gates, constrains runtime boundaries to override seams, defines panel priority/focus/retry states, expands localization and redaction requirements, strengthens catalog discipline, and narrows Counter evidence. Testing Standards now require adversarial redaction inputs, isolated fixture families, and boundary sibling-survival/no-duplicate-diagnostic assertions.
 - Findings deferred: Production diagnostic overlay, rich overlay drill-down/filtering/pinning, dynamic accessibility engine, full visual specimen CI, analyzer performance characterization beyond a smoke guard, randomized hot-reload chaos testing, command-form customization validation, and MCP/agent-facing diagnostic surfaces remain deferred to their existing owning stories or future quality work.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-04-30T13:39:43.4010712+02:00
+- Selected story key: `6-6-build-time-validation-error-boundaries-and-diagnostics`
+- Command/skill invocation used: `/bmad-advanced-elicitation 6-6-build-time-validation-error-boundaries-and-diagnostics`
+- Batch 1 method names: Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Self-Consistency Validation; Occam's Razor Application.
+- Reshuffled Batch 2 method names: Pre-mortem Analysis; Chaos Monkey Scenarios; Graph of Thoughts; Comparative Analysis Matrix; Hindsight Reflection.
+- Findings summary: The elicitation found that the story already had sound boundaries after party-mode review, but still needed sharper executable oracles around HFC catalog ownership, side-effect-free version checks, bounded runtime recovery, analyzer scope limits, redaction of exception text and parameters, shared hot-reload classifiers, diagnostic panel recovery states, and fixture isolation.
+- Changes applied: Added an Advanced Elicitation Hardening Addendum requiring an executable diagnostic catalog matrix, side-effect-free version validation, per-seam diagnostic dedupe, customization-metadata-scoped analyzers, stricter redaction tests, a shared hot-reload/rebuild classifier table, focus/retry/recovery panel assertions, isolated Counter fixtures, and a guard against adding new binding decisions during implementation.
+- Findings deferred: New product or architecture policy decisions discovered during implementation must be recorded for product/architecture review instead of expanding this story; dynamic accessibility/browser-computed checks, full visual specimen CI, code fixes, rich diagnostics documentation, and MCP-readable diagnostics remain with their existing owning stories.
 - Final recommendation: ready-for-dev
