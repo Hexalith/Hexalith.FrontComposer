@@ -43,3 +43,4 @@
 2026-04-30T07:40:56+02:00	create-story	7-1-oidc-saml-authentication-integration	ok	created auth integration story and marked ready-for-dev
 2026-04-30T07:56:51.3296637+02:00	party-mode-review	6-5-fcdevmodeoverlay-and-starter-template-generator	ok	party-mode trace recorded and story hardened for dev-mode gates snapshots UX states and test coverage
 2026-04-30T08:02:13.4644753+02:00	party-mode-review	6-6-build-time-validation-error-boundaries-and-diagnostics	ok	party-mode trace recorded and story hardened for contract boundaries diagnostics oracles and runtime isolation
+2026-04-30T08:10:59.3981177+02:00	party-mode-review	7-1-oidc-saml-authentication-integration	ok	party-mode trace recorded and story hardened for auth bridge boundaries token relay redaction and fake fixtures

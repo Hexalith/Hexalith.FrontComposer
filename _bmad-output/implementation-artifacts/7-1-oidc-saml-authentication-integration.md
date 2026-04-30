@@ -13,10 +13,11 @@ Story 7-1 gives FrontComposer a standard authentication bridge without creating 
 - Add a FrontComposer authentication registration layer that wires ASP.NET Core authentication state into existing framework seams: `IUserContextAccessor`, `IAuthRedirector`, and `EventStoreOptions.AccessTokenProvider`.
 - Support one configured identity provider per deployment for v1, with explicit provider recipes for Keycloak, Microsoft Entra ID, Google, and GitHub.
 - Treat OIDC as the primary path for Keycloak, Entra, and Google. GitHub sign-in uses GitHub's OAuth web application flow unless the adopter fronts GitHub through an OIDC broker such as Keycloak or Entra External ID. Do not pretend GitHub OAuth tokens are JWT bearer tokens for EventStore.
-- Support SAML through ASP.NET Core authentication handler integration, with Sustainsys.Saml2 as the default documented OSS handler unless implementation research selects a better maintained package before coding starts.
+- Support SAML through ASP.NET Core authentication handler integration, with Sustainsys.Saml2 as the default documented OSS handler unless implementation research selects a better maintained package before coding starts. Do not implement custom SAML protocol parsing in FrontComposer.
 - Extract only framework-required identifiers: `TenantId` and `UserId`. No profile PII, email display names, token bodies, or provider claims are stored, logged, cached, or sent to diagnostics.
 - Preserve the existing fail-closed user/tenant contract: unauthenticated or claim-missing contexts produce null/empty `IUserContextAccessor` values and the EventStore clients refuse to send commands/queries.
 - Prefer server/BFF cookie-backed token storage for Blazor Auto and Blazor Server. Standalone WASM remains supported through the standard `IAccessTokenProvider`-style adapter but the framework must not write raw JWTs to `localStorage`.
+- Keep token storage and renewal host-auth owned. FrontComposer requests a per-operation token through `EventStoreOptions.AccessTokenProvider`; it does not cache, refresh, or serialize bearer tokens.
 - Keep Story 7-2 as the owner for full tenant propagation and isolation enforcement across every operation. Story 7-1 owns auth bootstrap, token validation, claim extraction, redirect, and bearer-token relay only.
 
 ---
@@ -38,47 +39,49 @@ An adopter should be able to point FrontComposer at a standard enterprise or soc
 | AC | Given | When | Then |
 | --- | --- | --- | --- |
 | AC1 | FrontComposer authentication is configured for OIDC | The host starts | The framework registers an ASP.NET Core OpenID Connect challenge path, a cookie-backed sign-in/session scheme for server-side hosts, and the existing FrontComposer seams needed by Shell/EventStore. |
-| AC2 | FrontComposer authentication is configured for SAML | The host starts | The framework accepts a SAML authentication handler configuration and bridges its resulting `ClaimsPrincipal` through the same FrontComposer user-context and redirect seams as OIDC. |
-| AC3 | Keycloak, Microsoft Entra ID, Google, or GitHub is selected | The provider recipe is configured | Keycloak, Entra, and Google use OIDC discovery/authorization-code flow; GitHub uses OAuth web flow or an adopter-supplied OIDC broker. The story documents this protocol distinction and tests the selected recipe behavior. |
+| AC2 | FrontComposer authentication is configured for SAML | The host starts | The framework accepts a maintained SAML2 authentication handler configuration and bridges its resulting `ClaimsPrincipal` through the same FrontComposer user-context and redirect seams as OIDC, without custom SAML assertion parsing in FrontComposer. |
+| AC3 | Keycloak, Microsoft Entra ID, Google, or GitHub is selected | The provider recipe is configured | Keycloak, Entra, and Google use OIDC discovery/authorization-code flow; GitHub uses OAuth web flow or an adopter-supplied OIDC broker. The story documents this protocol distinction, required claim mapping keys, scheme/callback/logout settings, and tests the selected recipe behavior using fake/local handlers only. |
 | AC4 | No provider is selected or more than one provider is selected | Options validation runs | Startup fails with a teaching diagnostic naming the expected single-provider v1 constraint and the fix. |
-| AC5 | An unauthenticated user navigates to an authenticated FrontComposer route or a 401 response reaches `IAuthRedirector` | The auth flow triggers | The user is redirected/challenged through the configured provider, not through a framework-owned login UI. |
+| AC5 | An unauthenticated user navigates to an authenticated FrontComposer route or a 401 response reaches `IAuthRedirector` | The auth flow triggers | The user is redirected/challenged through the configured provider scheme, not through a framework-owned login UI, and only local return paths are preserved through ASP.NET Core-safe redirect/challenge mechanisms. |
 | AC6 | Authentication succeeds | The provider returns to the application callback | ASP.NET Core validates issuer/signature/expiry/audience through the configured handler and exposes an authenticated `ClaimsPrincipal` to FrontComposer. |
-| AC7 | A validated principal contains configured tenant and user claims | FrontComposer reads authentication state | `IUserContextAccessor.TenantId` and `UserId` return normalized non-empty identifiers for framework operations. |
-| AC8 | Tenant or user claim is missing, empty, whitespace, or contains `:` | FrontComposer reads authentication state | The accessor fails closed by returning unauthenticated/null-equivalent values or by surfacing a clear configuration diagnostic; commands, queries, subscriptions, and cache writes do not proceed with synthetic defaults. |
-| AC9 | EventStore-backed command, query, or SignalR subscription code needs an access token | The operation sends outbound traffic | `EventStoreOptions.AccessTokenProvider` supplies a fresh bearer token through the configured token relay path, and the clients set `Authorization: Bearer <token>` without logging the token. |
-| AC10 | Token acquisition fails, returns empty, or the session expired | A command/query/subscription tries to send | The framework surfaces re-authentication through `IAuthRedirector` or an explicit fail-fast auth exception. It does not retry with an old token or send anonymous requests when `RequireAccessToken` is true. |
+| AC7 | A validated principal contains configured tenant and user claims | FrontComposer reads authentication state | `IUserContextAccessor.TenantId` and `UserId` return normalized non-empty identifiers for framework operations using documented claim precedence. |
+| AC8 | Tenant or user claim is missing, empty, whitespace, multi-valued, or contains `:` | FrontComposer reads authentication state | The accessor fails closed by returning unauthenticated/null-equivalent values or by surfacing a clear sanitized configuration diagnostic; commands, queries, subscriptions, and cache writes do not proceed with synthetic defaults, demo identities, or fallback tenants. |
+| AC9 | EventStore-backed command, query, or SignalR subscription code needs an access token | The operation sends outbound traffic | `EventStoreOptions.AccessTokenProvider` supplies the current bearer token through the configured token relay path; command/query clients set `Authorization: Bearer <token>`, SignalR uses its access token callback, and none of those paths log or persist the token. |
+| AC10 | Token acquisition fails, returns empty, or the session expired | A command/query/subscription tries to send | The framework surfaces re-authentication through `IAuthRedirector` or an explicit fail-fast auth exception. It does not retry with an old token, connect SignalR with a null token, or send anonymous requests when `RequireAccessToken` is true. |
 | AC11 | Blazor Server or Blazor Auto is used | Authentication state is stored | Tokens are kept in server-side authentication/session mechanisms or BFF/cookie-backed flow. Raw JWTs are never written to browser `localStorage` by FrontComposer. |
 | AC12 | Standalone Blazor WebAssembly is used | Authentication state is managed | FrontComposer consumes the platform auth/token abstraction supplied by the host and still avoids direct raw-token `localStorage` writes in framework code. |
-| AC13 | Framework diagnostics, logs, or telemetry observe auth events | The app authenticates, redirects, or fails validation | Logs include provider kind, diagnostic ID, claim presence booleans, and sanitized categories only. They exclude tokens, email, display name, raw claim values, tenant/user IDs, and provider payloads. |
-| AC14 | Counter sample runs without real auth | The developer starts the sample | The sample keeps its existing demo `IUserContextAccessor` path, but adds an opt-in fake OIDC/test-auth fixture or documented configuration proving the real authentication bridge without requiring external IdP credentials. |
-| AC15 | Story 7-1 completes | A developer prepares Story 7-2 | The resulting seams make tenant propagation implementable without changing provider login code: `TenantId`, `UserId`, token relay, redirect, and fail-closed behavior are all covered by tests. |
+| AC13 | Framework diagnostics, logs, or telemetry observe auth events | The app authenticates, redirects, or fails validation | Logs include provider kind, diagnostic ID, claim presence booleans, and sanitized categories only. They exclude access tokens, ID tokens, refresh tokens, authorization codes, SAML assertions, `Authorization` header values, `NameID`, subject identifiers, email, display name, raw claim values, tenant/user IDs, provider payloads, and raw claims JSON. |
+| AC14 | Counter sample runs without real auth | The developer starts the sample | The sample keeps its existing demo `IUserContextAccessor` path by default, and any fake OIDC/test-auth fixture is opt-in, visibly named test/sample-only, excluded from production defaults, and covered by deterministic authenticated/unauthenticated smoke tests without external IdP credentials. |
+| AC15 | Story 7-1 completes | A developer prepares Story 7-2 | The resulting seams make tenant propagation implementable without changing provider login code: `TenantId`, `UserId`, token relay, redirect, and fail-closed behavior are all covered by tests. Story 7-1 does not add tenant propagation, role mapping, authorization policies, or access-control UI. |
+| AC16 | Generated UI, business code, EventStore clients, and Contracts consume authentication state | The auth bridge is configured | They depend only on ASP.NET Core authentication primitives and FrontComposer bridge interfaces; provider-specific OIDC/SAML/GitHub types remain contained in Shell registration/options/recipe code. |
 
 ---
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define FrontComposer authentication options and validation (AC1-AC4, AC13)
+- [ ] T1. Define FrontComposer authentication options and validation (AC1-AC4, AC13, AC16)
   - [ ] Add `FrontComposerAuthenticationOptions` under `src/Hexalith.FrontComposer.Shell/Options/` or `Services/Auth/` with provider kind, scheme names, tenant/user claim names, allowed issuer/audience settings, return URL behavior, and token relay settings.
   - [ ] Enforce exactly one provider per deployment for v1: OIDC, SAML, GitHub OAuth, or custom/brokered provider. More than one configured provider is a startup error.
   - [ ] Add options validation that fails on missing provider, missing tenant/user claim names, missing authority/metadata address, insecure HTTP authority outside development, and unsupported provider/protocol combinations.
   - [ ] Add HFC20xx Shell diagnostics for invalid auth configuration, claim extraction failure, token relay failure, and GitHub token-exchange requirement. Use existing `FcDiagnosticIds` patterns and do not reuse IDs.
   - [ ] Add tests for every validation branch, including provider-specific fix text and docs-link shape.
 
-- [ ] T2. Add authentication registration extensions (AC1-AC5, AC11-AC12)
+- [ ] T2. Add authentication registration extensions (AC1-AC5, AC11-AC12, AC16)
   - [ ] Add `AddHexalithFrontComposerAuthentication(...)` in `src/Hexalith.FrontComposer.Shell/Extensions/` that composes with `AddHexalithFrontComposer()` and `AddHexalithEventStore()`.
   - [ ] Register `IHttpContextAccessor` only where needed for server-side claim/token access; do not add HTTP pipeline dependencies to Contracts.
   - [ ] For OIDC, integrate with ASP.NET Core `AddAuthentication().AddCookie().AddOpenIdConnect(...)` or an equivalent authenticated BFF/cookie pattern. Keep provider UI external.
   - [ ] For SAML, expose a handler-configuration hook instead of hard-coding every SAML option in FrontComposer. If Sustainsys.Saml2 remains the selected package, add it as an optional documented package and pin it centrally when implementation starts.
   - [ ] For GitHub, support OAuth sign-in as an identity provider recipe but require an adopter token-exchange/broker path before treating any token as EventStore bearer JWT.
   - [ ] Add DI tests proving the extension replaces the default `NullUserContextAccessor` and `NoOpAuthRedirector` only when auth is configured.
+  - [ ] Add dependency-boundary tests or source checks proving generated UI, EventStore clients, and Contracts do not reference provider-specific OIDC/SAML/GitHub implementation types.
 
 - [ ] T3. Implement claims-based `IUserContextAccessor` adapters (AC6-AC8, AC13, AC15)
   - [ ] Add a server-side `ClaimsPrincipalUserContextAccessor` that reads the authenticated principal from `IHttpContextAccessor` or `AuthenticationStateProvider` according to host mode.
   - [ ] Add a WASM-friendly adapter seam that can read claims from the host authentication state without FrontComposer owning token storage.
-  - [ ] Normalize tenant/user claim values by trimming and rejecting null, empty, whitespace, and colon-containing values.
+  - [ ] Normalize tenant/user claim values by trimming and rejecting null, empty, whitespace, multi-valued, and colon-containing values.
   - [ ] Do not lowercase tenant IDs. Preserve existing storage-key precedent: tenants may be case-sensitive; user ID canonicalization beyond trimming is an explicit policy decision and must be documented if added.
   - [ ] Return unauthenticated/null-equivalent values on missing context so existing fail-closed consumers continue to short-circuit.
-  - [ ] Add tests for claim aliases, missing claims, whitespace, colon rejection, unauthenticated principal, and no leakage of raw claim values in logs/diagnostics.
+  - [ ] Add table-driven fake-principal tests for OIDC, SAML, and GitHub OAuth claim shapes, including `sub`, `nameidentifier`, `NameID`, `email`, configured tenant/user claim aliases, missing claims, multi-valued claims, whitespace, colon rejection, unauthenticated principal, and no leakage of raw claim values in logs/diagnostics.
 
 - [ ] T4. Bridge redirect and token relay seams (AC5, AC9-AC12)
   - [ ] Implement an `IAuthRedirector` that triggers the configured challenge/sign-in route and preserves a sanitized return URL.
@@ -86,11 +89,13 @@ An adopter should be able to point FrontComposer at a standard enterprise or soc
   - [ ] Implement a token provider bridge for `EventStoreOptions.AccessTokenProvider` that can retrieve current access tokens from the configured ASP.NET Core authentication session or host-supplied token accessor.
   - [ ] Ensure command/query clients keep their existing `RequireAccessToken` fail-fast behavior when token acquisition fails.
   - [ ] Add tests proving tokens are applied to command/query HTTP requests and SignalR access-token callback paths without logging token values.
+  - [ ] Add deterministic SignalR token-failure tests: null, empty, or thrown token acquisition prevents connection or produces the explicit authenticated failure path; no stale token reuse is allowed.
   - [ ] Cover cancellation: if token acquisition observes cancellation, no redirect, cache mutation, or partial send occurs.
 
 - [ ] T5. Provider recipes and fixtures (AC3, AC6, AC9, AC14)
   - [ ] Add provider recipe tests/fixtures for Keycloak OIDC discovery, Entra issuer/audience validation, Google OIDC standard claims, GitHub OAuth challenge/token-exchange requirement, and SAML handler bridging.
   - [ ] Use fake handlers or local test doubles. Do not require live Keycloak, Entra, GitHub, Google, or SAML IdP credentials in CI.
+  - [ ] Name fake fixtures explicitly (`FakeOidc`, `FakeSaml`, `FakeGitHubOAuth`) and include expected positive/negative claim sets so CI cannot drift toward live-provider assumptions.
   - [ ] Document required provider metadata: authority/metadata address, client ID, client secret storage expectations, redirect callback path, sign-out callback path, scopes, tenant claim, user claim, audience, and issuer.
   - [ ] Ensure provider recipes include both development and production notes. Development may use user secrets or fake handlers; production must use secure secret storage owned by the host.
   - [ ] Add sample `appsettings` snippets with placeholder values only. Never commit real secrets or tenant-specific examples.
@@ -107,13 +112,15 @@ An adopter should be able to point FrontComposer at a standard enterprise or soc
   - [ ] Add a short README section showing where adopters replace the demo stub with the auth bridge.
   - [ ] Show the exact registration order with `AddHexalithFrontComposerQuickstart`, `AddHexalithFrontComposerAuthentication`, `AddHexalithEventStore`, and `services.Replace` patterns where needed.
 
-- [ ] T8. Tests and verification (AC1-AC15)
+- [ ] T8. Tests and verification (AC1-AC16)
   - [ ] Shell options validation tests for every invalid provider setup.
+  - [ ] Configuration/build-time tests proving zero providers and multiple providers fail before runtime traffic is accepted.
   - [ ] DI registration tests proving default null/no-op seams are replaced only when configured.
   - [ ] Claims adapter tests for OIDC, SAML, GitHub OAuth, unauthenticated, missing claim, colon claim, whitespace claim, and claim-alias behavior.
   - [ ] Redirector tests for challenge route, local return URL, absolute URL rejection, and cancellation.
   - [ ] Token relay tests for command, query, and SignalR subscription clients.
-  - [ ] Redaction tests proving no token/profile/claim payload leakage to logs, diagnostics, telemetry, cache, or `IStorageService`.
+  - [ ] Fail-closed tests proving unauthenticated or invalid-claim contexts do not dispatch command/query work, do not start SignalR with a null token, and do not write cache entries.
+  - [ ] Redaction tests proving no token/profile/claim payload leakage to logs, diagnostics, telemetry, cache, serialized client-visible state, or `IStorageService`.
   - [ ] Counter/sample tests for demo mode preserved and fake-auth mode working.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
   - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Shell.Tests` auth, EventStore, and sample-host lanes.
@@ -134,6 +141,23 @@ An adopter should be able to point FrontComposer at a standard enterprise or soc
 | `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs` | Requires user context, uses tenant/user for ETag cache keys, invokes `IAuthRedirector` on 401. | Keep cache correctness from server reconciliation; do not serve cross-tenant cache entries. |
 | `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/SignalRProjectionHubConnectionFactory.cs` | SignalR access token callback has no cancellation token, a known framework limitation. | Do not block reconnect loops on long token refresh without tests and documented timeout behavior. |
 | `samples/Counter/Counter.Web/Program.cs` | Replaces `IUserContextAccessor` with `DemoUserContextAccessor` for local demo behavior. | Preserve no-credential demo path. Real auth is opt-in. |
+
+### Architecture Contracts
+
+- Shell owns provider registration, challenge/redirect wiring, claims-backed user context adapters, token-provider bridge registration, sanitized diagnostics, and sample/test fake-auth wiring.
+- EventStore clients consume only `EventStoreOptions.AccessTokenProvider`, `IUserContextAccessor`, and `IAuthRedirector`; they do not own token storage, refresh, provider SDKs, or authentication session state.
+- Contracts remains free of ASP.NET Core, OAuth/OIDC, SAML, GitHub, and provider-specific package references unless a future story deliberately changes the public abstraction boundary.
+- Generated UI and business-facing components consume authenticated state only through FrontComposer bridge abstractions; provider-specific types stay inside Shell registration/options/recipe code.
+- Fail-closed means unauthenticated, missing-claim, malformed-claim, multi-valued-claim, or token-unavailable cases do not dispatch backend command/query work, do not start SignalR with a null/stale token, do not write cache entries, and never synthesize `"default"`, `"anonymous"`, demo, or fallback identities.
+
+### Auth Flow Sequence
+
+1. An unauthenticated request reaches an authenticated FrontComposer route or a 401 reaches `IAuthRedirector`.
+2. `IAuthRedirector` issues a challenge against the configured ASP.NET Core authentication scheme and preserves only a local return path.
+3. The external provider handles login and returns through the configured callback.
+4. ASP.NET Core authentication middleware validates the protocol payload and exposes an authenticated `ClaimsPrincipal`.
+5. FrontComposer extracts normalized `TenantId` and `UserId` through the configured claim map and returns null-equivalent values on invalid input.
+6. EventStore command/query/SignalR paths request a per-operation token through `EventStoreOptions.AccessTokenProvider`; host-auth code owns storage and renewal.
 
 ### Cross-Story Contract Table
 
@@ -171,6 +195,8 @@ An adopter should be able to point FrontComposer at a standard enterprise or soc
 | D8 | Provider recipe tests use fake/local handlers, not live IdP CI. | Live IdP credentials make CI brittle and leak-prone. | Require Keycloak/Entra/GitHub/Google test tenants for every PR. |
 | D9 | Auth diagnostics log categories and presence booleans only. | Auth failures are adjacent to tokens and PII. Logs must not create a new leak surface. | Log full claim sets or exception messages for debugging convenience. |
 | D10 | Story 7-1 does not implement authorization policies. | `[RequiresPolicy]` is Story 7-3; auth state is the prerequisite. | Add policy evaluation and button hiding in this story. |
+| D11 | Provider-specific dependencies remain contained in Shell registration/options/recipe code. | Keeps Contracts, generated UI, and EventStore clients stable and testable across OIDC, SAML, GitHub OAuth, and brokered providers. | Let generated UI or EventStore reference provider-specific SDK types directly. |
+| D12 | Token relay is opt-in per configured downstream client and host-auth owns token storage/renewal. | Prevents FrontComposer from becoming an identity platform or stale-token cache while still supporting EventStore bearer authentication. | Cache tokens in framework services or globally forward any available provider token. |
 
 ### Library / Framework Requirements
 
@@ -229,6 +255,8 @@ Do not implement these in Story 7-1:
 - Full tenant propagation to command envelopes, query parameters, SignalR groups, ETag keys, and MCP enumeration. Story 7-2 owns this.
 - MCP tenant-scoped tools. Epic 8 owns this.
 - Per-tenant IdP routing or dynamic tenant resolution at challenge time.
+- Account linking, user provisioning, tenant membership validation, role mapping, profile normalization, or provider discovery.
+- Token refresh UI, custom token renewal policy, or client-side token persistence strategy beyond consuming host/platform auth abstractions.
 - Vertical-specific auth policies, audit logging, consent, or regulated-data classification.
 - Storing raw access tokens, refresh tokens, ID tokens, or SAML assertions in `IStorageService`, localStorage wrappers, diagnostics, or logs.
 - Live provider containers/services in default CI.
@@ -283,6 +311,19 @@ Do not implement these in Story 7-1:
 - [Source: GitHub OAuth app docs](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps) - GitHub web application OAuth flow.
 - [Source: Google OpenID Connect docs](https://developers.google.com/identity/openid-connect/openid-connect) - Google OIDC claims and discovery behavior.
 - [Source: Sustainsys.Saml2 ASP.NET Core handler docs](https://saml2.sustainsys.com/en/v2/asp.net-core.html) - SAML handler integration pattern.
+
+---
+
+## Party-Mode Review
+
+- Date/time: 2026-04-30T08:10:59.3981177+02:00
+- Selected story key: `7-1-oidc-saml-authentication-integration`
+- Command/skill invocation used: `/bmad-party-mode 7-1-oidc-saml-authentication-integration; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Test Architect), John (Product Manager)
+- Findings summary: The review found the story directionally sound but too broad and under-specified for a security-sensitive auth bridge. The main risks were provider-specific coupling leaking outside Shell, unclear token relay ownership, ambiguous claims failure behavior, non-deterministic token/redaction/fake-provider test oracles, and scope bleed into Story 7-2 tenant propagation, Story 7-3 authorization, production IdP certification, or account-management UX.
+- Changes applied: Hardened AC2-AC16 around handler-only SAML, fake/local provider fixtures, safe challenge return paths, documented claim precedence, multi-valued claim rejection, no fallback/demo identities, command/query/SignalR token relay, stale/null token failure behavior, expanded redaction prohibitions, sample-only fake auth, Story 7-2/7-3 boundaries, and provider-specific dependency containment. Added Shell/EventStore/Contracts architecture contracts, an auth flow sequence, binding decisions for provider dependency containment and host-owned token storage/renewal, deterministic fake fixture requirements, fail-closed tests, SignalR token-failure tests, and stricter scope guardrails.
+- Findings deferred: Multi-provider selection, account linking, provider discovery, user provisioning, tenant membership validation, role mapping, authorization policies, access-control UI, full tenant propagation, custom token renewal UI/policy, GitHub-to-EventStore token strategy beyond broker guidance, live IdP certification, full Diataxis provider cookbook, browser matrix/E2E login flow coverage, MCP tenant-scoped tooling, and production IdP onboarding templates remain with their owning future stories or manual integration lanes.
+- Final recommendation: ready-for-dev
 
 ---
 
