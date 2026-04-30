@@ -315,6 +315,45 @@ This story remains `ready-for-dev`, but implementation must treat the following 
 | Whether future MCP acceptance in 7-2 is limited to a shared contract/interface test or should wire an early enumeration adapter. | Architecture with Epic 8 owner |
 | Exact user-facing copy and placement for tenant/session validation failures. | Product/UX; implementation must still provide localizable, accessible fallback behavior |
 
+### Advanced Elicitation Hardening Addendum (2026-04-30)
+
+This elicitation pass keeps the story `ready-for-dev`, but tightens the executable isolation model so implementation cannot satisfy the ACs with shallow string checks.
+
+#### Context Snapshot And Revalidation
+
+- Every tenant-scoped operation must create one immutable validated context snapshot before any side effect. The snapshot must include tenant, user, failure category, and a non-PII correlation handle; downstream code receives the snapshot or a blocked result, not repeated raw reads from `IUserContextAccessor`.
+- Command, query, cache, subscription, nudge, reconnect, and future MCP seams must not re-read raw tenant/user values after accepting a snapshot except when explicitly revalidating that the authenticated context has not changed.
+- Long-running or delayed work must revalidate before applying effects: cache writes after HTTP 200, 304-from-cache responses, SignalR rejoin, fallback refresh, pending-command polling, reconciliation, and listener notification must abort if the current context no longer matches the snapshot.
+- Revalidation failures must be treated as tenant isolation failures, not transient transport failures; they should mark the affected surface blocked/degraded and skip further downstream effects.
+
+#### Cache And Storage Isolation Oracles
+
+- `RemoveByProjectionTypeAsync` and any future family invalidation must stay tenant/user scoped. A schema mismatch in Tenant A must not remove, read, or enumerate effective entries for Tenant B even when projection type and discriminator match.
+- Cache-key tests must include same projection, same user, same discriminator, different tenant; same projection, same tenant, different user; and mixed-case tenant variants that differ only by case. Each case must assert no read, write, invalidation, or LRU bookkeeping crosses the validated context.
+- Cache logging may use only already-approved opaque cache-key sanitizers. If a sanitizer hashes storage keys, tests must prove raw tenant, user, discriminator, ETag, and query data are absent; approval to hash tenant/user identity directly remains deferred.
+- 304 protocol-drift retry must preserve the original validated context snapshot. The retry must not rebuild a new tenant from a changed accessor and then write or serve cache under a different identity.
+
+#### Side-Effect Budget Discipline
+
+- Negative tests must use explicit side-effect counters for serializer, token provider, HTTP client, cache read/write/remove, hub start, group join/leave, active-group mutation, fallback scheduler, pending polling, reconciliation, notifier, and future enumeration hooks.
+- Any failure category classified as tenant missing, malformed segment, synthetic production tenant, tenant mismatch, stale context, or redaction failure must have a zero-side-effect assertion matched to the earliest blocked boundary.
+- Avoid broad Cartesian matrices. Use one canonical validation matrix for raw tenant/user values, then pairwise integration tests that prove each major seam consumes the same snapshot and blocks at its own first side-effect boundary.
+
+#### SignalR Tenant Switch And Concurrency
+
+- Active group state must distinguish "never joined", "active", "degraded", and "blocked due to stale tenant context" so reconnect and nudge paths cannot accidentally treat stale groups as healthy after a tenant/user switch.
+- Tenant-switch tests must drive subscribe, reconnect, nudge, unsubscribe, and disposal concurrently through the fault-injection harness. The required oracle is positive delivery to the current tenant and non-delivery plus no polling/reconciliation for old or mismatched tenants.
+- Leave-group behavior after a context switch must not require joining or reconstructing the stale group from raw user input. Cleanup should operate on previously validated group snapshots and still redact logs.
+
+#### Deferred Decisions From Elicitation
+
+| Decision | Deferred owner |
+| --- | --- |
+| Whether the immutable context snapshot becomes a new public Contracts type or remains Shell-internal for v1. | Architecture during Story 7-2 implementation |
+| Whether cache-key hash logging remains acceptable as the only approved stable hash form after security review. | Architecture/security |
+| Whether `RemoveByProjectionTypeAsync` should gain tenant/user parameters or be replaced by a context-bound cache invalidation service. | Architecture with Story 5-2 cache owner |
+| Exact blocked/degraded UI copy for stale tenant context during reconnect or live updates. | Product/UX |
+
 ---
 
 ## References
@@ -366,6 +405,18 @@ This story remains `ready-for-dev`, but implementation must treat the following 
 - Findings summary: Review identified tenant casing architecture drift, underspecified canonical validation boundaries, ambiguous side-effect ordering, weak negative test oracles, underspecified demo/synthetic tenant authority, missing user-safe failure affordances, and MCP scope-creep risk.
 - Changes applied: Added Party-Mode Hardening Addendum covering architecture drift resolution, canonical context source precedence, per-surface pre-side-effect validation order, reusable segment validation, demo/synthetic production denial, localized accessible failure behavior, correlation-ID diagnostics, stricter redaction and SignalR/cache/generated-caller test oracles, bounded fixture families, and explicit backend/MCP scope limits.
 - Findings deferred: Non-ASCII tenant identifier policy; approved hashing versus omission for sanitized diagnostics; whether 7-2 adds only MCP contract tests or an early adapter seam; exact user-facing tenant/session failure copy and placement.
+- Final recommendation: ready-for-dev
+
+### Advanced Elicitation
+
+- ISO date and time: 2026-04-30T15:04:21+02:00
+- Selected story key: `7-2-tenant-context-propagation-and-isolation`
+- Command/skill invocation used: `/bmad-advanced-elicitation 7-2-tenant-context-propagation-and-isolation`
+- Batch 1 method names: Security Audit Personas; Pre-mortem Analysis; Failure Mode Analysis; Self-Consistency Validation; Critique and Refine
+- Reshuffled Batch 2 method names: Red Team vs Blue Team; Chaos Monkey Scenarios; Architecture Decision Records; Comparative Analysis Matrix; Occam's Razor Application
+- Findings summary: The elicitation found that party-mode review had set the correct security boundaries, but implementation still needed sharper oracles for immutable tenant-context snapshots, delayed side-effect revalidation, tenant-scoped cache invalidation, protocol-drift retry context preservation, and SignalR tenant-switch concurrency.
+- Changes applied: Added an Advanced Elicitation Hardening Addendum requiring a validated context snapshot per operation, revalidation before delayed cache/reconnect/nudge effects, tenant/user-scoped cache family invalidation, same-user/different-tenant and case-sensitive cache tests, zero-side-effect counters for each failure class, bounded validation matrices, blocked stale-group semantics, and fault-injection tests for concurrent tenant switch/reconnect/nudge/disposal.
+- Findings deferred: Public versus Shell-internal context snapshot type; approval status for cache-key hash logging; cache invalidation API shape; exact blocked/degraded UI copy for stale tenant context.
 - Final recommendation: ready-for-dev
 
 ### File List
