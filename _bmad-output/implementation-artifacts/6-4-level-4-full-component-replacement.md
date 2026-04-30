@@ -44,7 +44,7 @@ A developer should be able to take full control over one projection's rendered b
 | AC5 | A replacement is registered for one role only | The same projection renders in another role | Role-specific precedence applies: valid role-specific replacement wins for that role; otherwise a valid role-agnostic replacement wins; otherwise the existing generated path runs. |
 | AC6 | A Level 4 replacement and Level 2/Level 3 overrides all exist for the same projection/role | The projection renders | Level 4 wins by default. Lower-level overrides are skipped unless invoked through named safe context/default delegates that bypass the active Level 4 descriptor, preserve Level 2/3 recursion guards, and do not bypass authorization or privileged framework actions. |
 | AC7 | The replacement component is incompatible, open generic without deterministic closure, missing required context, not a Razor component, duplicated for the same projection/role, or version-incompatible | Validation runs | A deterministic HFC diagnostic names ID, severity, validation phase, target component/projection, expected/got/fix/docs link, and the invalid replacement is not silently selected. Ambiguous duplicate exact replacements are deterministic hard diagnostics/startup failures and neither candidate is selected. |
-| AC8 | A valid replacement throws during render | The view renders | The fault is isolated to the affected replacement boundary; the shell, navigation, and sibling/next projection surfaces remain usable, the fallback UI includes a diagnostic ID, and sanitized logs include component type, projection type, role, and exception category without item payloads or generated field values. Rich recovery polish remains Story 6-6 ownership. |
+| AC8 | A valid replacement throws during render or disposal | The view renders or the component is torn down | The fault is isolated to the affected replacement boundary; the shell, navigation, and sibling/next projection surfaces remain usable, the fallback UI includes a diagnostic ID, disposal faults are logged without blocking shell cleanup, and sanitized logs include component type, projection type, role, and exception category without item payloads, generated field values, localized text, or raw exception messages. The boundary can recover when the selected descriptor or framework-owned context key changes; rich recovery polish remains Story 6-6 ownership. |
 | AC9 | A replacement component is evaluated against the custom-component accessibility contract | Build/startup validation and tests run | The six requirements are enforced, warned, or tested with explicit oracles: accessible name source, keyboard path into/out of the replacement, visible focus, aria-live category parity for lifecycle/loading/empty states, reduced-motion behavior, and forced-colors support. |
 | AC10 | The developer edits replacement Razor markup during development | `dotnet watch` / hot reload is active | Razor body edits refresh where Blazor supports hot reload. Registration metadata, contract version, generic context, and component type changes are rebuild-triggering and must not be described as pure hot reload. |
 | AC11 | The same projection renders under different tenants, users, cultures, densities, themes, read-only states, and item sets | The registry and replacement host execute repeatedly | Descriptor caching is allowed only for immutable registration metadata. `ProjectionViewContext<TProjection>`, item collections, `RenderContext`, localized strings, rendered fragments, scoped services, delegates, and per-render diagnostics are never cached across renders or users. |
@@ -86,6 +86,7 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] Keep `FcProjectionSubtitle`, loading skeletons, empty placeholders, grid envelope ownership, navigation, density resolution, and lifecycle/disposal hooks framework-owned unless a specific owner is documented.
   - [ ] When no replacement exists, preserve generated output behavior and snapshots where possible.
   - [ ] If a replacement exists for a grid role, keep outer framework-owned containers that are required for scroll capture, reconciliation lanes, row-count banners, and density behavior. The replacement owns the body content, not the shell's state plumbing.
+  - [ ] Treat `ProjectionViewContext<TProjection>.Items` as the current framework-provided render/query window, not an implicit permission to fetch every projection row or bypass paging, virtualization, tenant, or authorization boundaries.
   - [ ] Ensure Level 2 and Level 3 resolution do not also run accidentally under Level 4. They are available only through explicit context/default delegates.
   - [ ] Assert that active Level 4 output contains no generated fields, sections, commands, or fallback body markup except through explicit default-render delegates.
   - [ ] Add recursion guards for replacement components that ask for default rendering.
@@ -95,7 +96,9 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] Preserve navigation routes, breadcrumbs, render context, density/theme cascades, and generated disposal cleanup.
   - [ ] Preserve authorization boundaries already provided by the shell. Do not invent Epic 7 policy behavior in this story.
   - [ ] Wrap replacement render faults in a narrow error boundary that renders a diagnostic fallback with HFC ID and keeps the rest of the shell usable.
-  - [ ] Log failures with component type, projection type, role, tenant/user redacted or hashed per existing telemetry policy, and exception category. Do not log item payloads, generated field values, localized user text, or replacement render fragments.
+  - [ ] Key error-boundary recovery on the selected descriptor plus a framework-owned context generation value so a corrected replacement or changed context can recover without requiring a full shell reload.
+  - [ ] Contain replacement `IDisposable` / `IAsyncDisposable` faults during teardown; shell disposal, lifecycle cleanup, and sibling surfaces must continue.
+  - [ ] Log failures with component type, projection type, role, tenant/user redacted or hashed per existing telemetry policy, and exception category. Do not log item payloads, generated field values, localized user text, raw exception messages, or replacement render fragments.
 
 - [ ] T6. Enforce the custom-component accessibility contract (AC9)
   - [ ] Validate or warn for missing accessible name via visible text or `aria-label` where static analysis can see it.
@@ -133,7 +136,9 @@ A developer should be able to take full control over one projection's rendered b
   - [ ] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, immutable snapshot lookup, and no context/cache bleed.
   - [ ] SourceTools/emitter tests proving no-replacement fallback remains unchanged and replacement selection happens before Level 2/3 paths.
   - [ ] Shell/bUnit tests proving context values, lifecycle wrapper preservation, error boundary isolation, default-render recursion guard, and density/theme/render-context propagation.
-  - [ ] Shell/bUnit tests proving authorization boundary preservation, breadcrumbs/navigation shell preservation, loading/empty shell preservation, disposal cleanup, telemetry context propagation, and that render exceptions leave sibling/next projection surfaces usable.
+  - [ ] Shell/bUnit tests proving authorization boundary preservation, breadcrumbs/navigation shell preservation, loading/empty shell preservation, disposal cleanup, telemetry context propagation, and that render/disposal exceptions leave sibling/next projection surfaces usable.
+  - [ ] Shell/bUnit tests proving error-boundary recovery when descriptor/context generation changes and proving repeated failures do not log item payloads, localized text, raw exception messages, or render fragments.
+  - [ ] Shell/SourceTools tests proving Level 4 receives only the framework-owned current render/query window and does not introduce an all-data fetch path that bypasses paging, virtualization, tenant, or authorization boundaries.
   - [ ] Accessibility tests for accessible names, keyboard reachability, focus visibility, reduced motion, forced-colors CSS, and live-region category preservation in the sample replacement.
   - [ ] Targeted repeated-render tests changing two tenants, two users, two cultures, one theme/density variation, read-only state, item list, and scoped-service instances to prove no stale context/render output/delegate/service is reused without full cross-product expansion.
   - [ ] Counter sample tests for valid typed replacement, generated fallback role, safe default-delegate fallback, invalid-registration diagnostic, lifecycle/accessibility preservation, localization-safe labels, and context isolation.
@@ -222,6 +227,8 @@ A developer should be able to take full control over one projection's rendered b
 | D10 | Full replacement is projection-view body replacement only. | Command forms, shell replacement, and theming would expand the story beyond Epic 6.4. | Add command-form replacement and runtime shell override APIs here. |
 | D11 | Framework-owned grid envelopes stay outside replacement when needed for state/reconciliation. | Prevents full replacements from accidentally breaking virtualization, scroll capture, and reconnect behavior. | Let replacement own all DataGrid infrastructure. |
 | D12 | Hot reload promise is honest: Razor body edits may hot reload; descriptor metadata changes rebuild. | Matches Blazor/source-generator boundaries and avoids false dev-loop expectations. | Promise no-rebuild behavior for registration/generic changes. |
+| D13 | Error-boundary recovery and replacement disposal faults are part of the Level 4 v1 contract. | A full replacement can fail after initial render; the shell must remain usable and recover when framework-owned selection/context changes. | Leave recovery/disposal behavior entirely to Story 6-6; require a full page reload after any replacement fault. |
+| D14 | Level 4 context passes the current framework-owned render/query window, not an unbounded data access grant. | Preserves paging, virtualization, tenant, authorization, and performance contracts from earlier stories. | Pass all projection rows to replacement components; let replacements query backing stores directly from the view body. |
 
 ### Library / Framework Requirements
 
@@ -312,6 +319,20 @@ Do not implement these in Story 6-4:
 | Cookbook examples comparing annotation, template, slot, and full replacement. | Story 9-5 |
 | Adopter test host utilities for replacement component authors. | Story 10-1 |
 | Visual/accessibility specimen coverage for full replacements. | Story 10-2 |
+
+---
+
+## Advanced Elicitation
+
+- Date/time: 2026-04-30T08:25:22.7061492+02:00
+- Selected story key: `6-4-level-4-full-component-replacement`
+- Command/skill invocation used: `/bmad-advanced-elicitation 6-4-level-4-full-component-replacement`
+- Batch 1 method names: Pre-mortem Analysis; Red Team vs Blue Team; Failure Mode Analysis; Security Audit Personas; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: First Principles Analysis; Comparative Analysis Matrix; Occam's Razor Application; Hindsight Reflection; User Persona Focus Group.
+- Findings summary: The elicitation found the story ready, with remaining implementation traps around render-fault recovery, disposal-time failures, over-broad item access, and leak-prone diagnostics. The core design still holds: Level 4 replaces the projection body while FrontComposer owns shell, lifecycle, authorization, telemetry, loading/empty policy, and diagnostics.
+- Changes applied: Hardened AC8 for disposal faults, sanitized logging, and recovery after selected descriptor/context changes; clarified T4 that `ProjectionViewContext<TProjection>.Items` is the current framework-owned render/query window, not an all-data fetch permission; expanded T5 with error-boundary recovery keys and disposal-fault containment; expanded T10 with recovery, redaction, disposal, and bounded-data-access tests; added binding decisions D13 and D14.
+- Findings deferred: Rich diagnostic panel UX, retry/recover controls, broad accessibility analyzer coverage, and visual specimen matrix remain with Stories 6-6 and 10-2. No new product or architecture decisions were deferred.
+- Final recommendation: ready-for-dev
 
 ---
 
