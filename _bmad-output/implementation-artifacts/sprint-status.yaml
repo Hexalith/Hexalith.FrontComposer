@@ -114,8 +114,8 @@ development_status:
   epic-6-retrospective: optional
 
   # Epic 7: Authentication, Authorization & Multi-Tenancy
-  epic-7: backlog
-  7-1-oidc-saml-authentication-integration: backlog
+  epic-7: in-progress
+  7-1-oidc-saml-authentication-integration: ready-for-dev
   7-2-tenant-context-propagation-and-isolation: backlog
   7-3-command-authorization-policies: backlog
   epic-7-retrospective: optional
