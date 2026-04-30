@@ -47,3 +47,4 @@
 2026-04-30T08:25:22.7061492+02:00	advanced-elicitation	6-4-level-4-full-component-replacement	ok	advanced elicitation trace recorded and story hardened for recovery disposal redaction and bounded data access
 2026-04-30T08:36:23.2351248+02:00	create-story	7-2-tenant-context-propagation-and-isolation	ok	created tenant context propagation story and marked ready-for-dev
 2026-04-30T09:08:53.5528483+02:00	advanced-elicitation	6-5-fcdevmodeoverlay-and-starter-template-generator	ok	advanced elicitation applied: command-form scope, manual-copy fallback, descriptor escaping, render-epoch stale-event guard
+2026-04-30T09:45:00+02:00	party-mode-review	7-2-tenant-context-propagation-and-isolation	ok	party-mode trace recorded and story hardened for casing drift validation boundaries UX failure states and test oracles

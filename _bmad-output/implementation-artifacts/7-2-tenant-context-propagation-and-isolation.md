@@ -262,6 +262,59 @@ Do not implement these in Story 7-2:
 | Per-tenant identity-provider routing or tenant discovery before challenge. | v1.x auth follow-up |
 | Cross-browser login + tenant-switch E2E matrix. | Story 10-2 / dedicated E2E story |
 
+### Party-Mode Hardening Addendum (2026-04-30)
+
+This story remains `ready-for-dev`, but implementation must treat the following review findings as binding pre-dev guardrails.
+
+#### Architecture Drift Resolution
+
+- Story 7-2 supersedes the older architecture storage-key note that lowercases tenant/user identifiers for tenant identity and tenant-derived isolation keys. Tenant and user identifiers must be preserved exactly, compared with ordinal semantics, and never normalized for equality, cache-key, SignalR-group, DAPR-segment, or future MCP-enumeration decisions.
+- If existing persisted localStorage/cache keys are already lowercased, implementation must either prove there is no persisted compatibility surface for 7-2 or record a deferred compatibility migration. Do not silently migrate or normalize in this story.
+- Backend-side EventStore tenant enforcement remains deferred; 7-2 proves Shell/client boundary isolation and does not claim end-to-end storage enforcement.
+
+#### Canonical Context Boundary Contract
+
+- The Shell canonical tenant-context service is the only source of validated tenant/user context for FrontComposer framework boundaries. Downstream command/query/subscription/cache/generated-caller/MCP seams receive a validated immutable context result, or no operation occurs.
+- `IUserContextAccessor` remains the sole upstream identity source. Tenant-bearing request payloads, route values, generated caller arguments, subscription metadata, cached discriminators, or future tool arguments must either match the validated context exactly or be rejected before side effects.
+- Validation must occur before these side effects:
+  - Commands: before payload serialization, authorization/token acquisition, and HTTP send.
+  - Queries: before cache-key resolution, cache read/write, authorization/token acquisition, and HTTP send.
+  - SignalR subscriptions: before hub start, group-name construction, group join, and active-group registration.
+  - Reconnect/nudges: before rejoin, fallback scheduler work, pending-command polling, reconciliation, or listener notification.
+  - SourceTools/MCP seams: before emitted call construction or future tenant-scoped enumeration.
+- Segment validation must be one reusable Shell primitive for cache keys, SignalR groups, DAPR actor IDs, and future MCP enumeration. It must reject empty, whitespace-only, colon-containing, and ASCII-control-containing segments while preserving mixed-case valid identifiers.
+
+#### Demo And Synthetic Tenant Contract
+
+- Demo/test tenant behavior is allowed only when an explicit FrontComposer option is enabled and the host environment is Development/Test. Production must reject demo/synthetic tenants regardless of the option value.
+- Reserved synthetic examples to deny in production include `default`, `anonymous`, `demo`, `test`, `counter`, `counter-demo`, and `synthetic`, compared ordinal-ignore-case only for the reserved-name check. This reserved-name check does not change tenant identity comparison semantics.
+- Diagnostics for demo/synthetic rejection must report reason codes only and must not include raw tenant/user values.
+
+#### User And Adopter Failure Experience
+
+- Tenant/session validation failures must not leave generated UI in an endless loading state, show stale data as current, or surface raw exceptions. User-visible failure affordances must use localizable resources, avoid color-only cues, and announce async failures through the existing accessible status/error pattern where practical.
+- Failure states should expose a non-PII correlation ID that operators can match to sanitized logs. Exact recovery copy and placement remain product decisions; implementation may use the existing app-shell error/status affordance rather than introducing a new notification framework.
+- Reconnect or nudge validation failure must stop applying live updates for that context, mark the affected surface degraded or blocked, and avoid implying that live data remains current.
+- Counter sample documentation must clearly separate demo/test-only tenant mode from production configuration and explain where Story 7-1 authentication supplies real tenant/user values.
+
+#### Test Oracle Tightening
+
+- Rejection tests must assert zero downstream effects, not just an error result: no serializer call, token/auth call, HTTP send, cache key/read/write, hub start, group join, active-group registration, nudge polling, reconciliation, future MCP enumeration, or raw tenant/user telemetry.
+- Redaction tests must use sentinel tenant/user/token/payload/filter/cache-key values and assert those exact raw values are absent from logs, exception messages, telemetry tags, diagnostics, serialized state, and observable SignalR/cache diagnostics. Stable hashes are forbidden unless an approved sanitizer already exists; otherwise omit identifiers and use correlation IDs.
+- SignalR tests must include at least two tenant contexts in one fixture and prove positive delivery to the right group plus non-delivery to wrong or stale groups after tenant/user switch.
+- Cache tests must prove tenant and user are distinct ordinal key components, not merely that returned ETags differ.
+- SourceTools snapshots must be paired with at least one compile/runtime proof that generated callers obtain the canonical context and reject conflicting explicit tenant input before payload serialization or subscription work.
+- Keep test scope bounded into these fixture families: `TenantContextValidationMatrixTests`, `CommandTenantIsolationTests`, `QueryAndCacheTenantIsolationTests`, `SignalRTenantIsolationTests`, `GeneratedCallerTenantPropagationTests`, and `TenantDiagnosticsRedactionTests`.
+
+#### Deferred Decisions From Review
+
+| Decision | Deferred owner |
+| --- | --- |
+| Whether non-ASCII tenant/user identifiers are allowed or v1 should restrict tenant segments to ASCII-safe values. | Product/architecture before or during Story 7-2 implementation |
+| Whether sanitized diagnostics may include approved stable hashes of tenant/user identifiers. | Architecture/security; default is omission plus correlation ID |
+| Whether future MCP acceptance in 7-2 is limited to a shared contract/interface test or should wire an early enumeration adapter. | Architecture with Epic 8 owner |
+| Exact user-facing copy and placement for tenant/session validation failures. | Product/UX; implementation must still provide localizable, accessible fallback behavior |
+
 ---
 
 ## References
@@ -302,6 +355,18 @@ Do not implement these in Story 7-2:
 ### Completion Notes List
 
 - 2026-04-30: Story created via `/bmad-create-story 7-2-tenant-context-propagation-and-isolation` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-04-30: Party-mode review applied via `/bmad-party-mode 7-2-tenant-context-propagation-and-isolation; review;`. Added hardening addendum for casing drift, canonical validation boundaries, demo guardrails, UX failure affordances, test oracles, and deferred architecture/product decisions.
+
+### Party-Mode Review
+
+- ISO date and time: 2026-04-30T09:45:00+02:00
+- Selected story key: `7-2-tenant-context-propagation-and-isolation`
+- Command/skill invocation used: `/bmad-party-mode 7-2-tenant-context-propagation-and-isolation; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Sally (UX Designer)
+- Findings summary: Review identified tenant casing architecture drift, underspecified canonical validation boundaries, ambiguous side-effect ordering, weak negative test oracles, underspecified demo/synthetic tenant authority, missing user-safe failure affordances, and MCP scope-creep risk.
+- Changes applied: Added Party-Mode Hardening Addendum covering architecture drift resolution, canonical context source precedence, per-surface pre-side-effect validation order, reusable segment validation, demo/synthetic production denial, localized accessible failure behavior, correlation-ID diagnostics, stricter redaction and SignalR/cache/generated-caller test oracles, bounded fixture families, and explicit backend/MCP scope limits.
+- Findings deferred: Non-ASCII tenant identifier policy; approved hashing versus omission for sanitized diagnostics; whether 7-2 adds only MCP contract tests or an early adapter seam; exact user-facing tenant/session failure copy and placement.
+- Final recommendation: ready-for-dev
 
 ### File List
 
