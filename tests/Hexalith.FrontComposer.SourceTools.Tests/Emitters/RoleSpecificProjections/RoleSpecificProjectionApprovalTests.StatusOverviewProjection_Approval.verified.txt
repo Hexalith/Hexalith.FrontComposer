@@ -68,6 +68,9 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
     [Inject]
     private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;
+
     private const string _viewKey = "Tickets:RoleSpecific.Tickets.StatusOverviewProjection";
 
     private static readonly System.Func<StatusOverviewProjection, object> _itemKeyAccessor = static x => (object)x.Id!;
@@ -1025,6 +1028,32 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
         builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
 
+        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(StatusOverviewProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.StatusOverview);
+        if (__viewOverrideDescriptor is not null)
+        {
+            var __viewOverrideContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext<StatusOverviewProjection>(
+                projectionType: typeof(StatusOverviewProjection),
+                boundedContext: "Tickets",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.StatusOverview,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<StatusOverviewProjection>)System.Array.Empty<StatusOverviewProjection>(),
+                renderContext: RenderContext,
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                lifecycleState: "Loaded",
+                entityLabel: "Status Overview",
+                entityPluralLabel: "status overviews",
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<StatusOverviewProjection>>(seq++);
+            builder.AddAttribute(seq++, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(seq++, "Context", __viewOverrideContext);
+            builder.CloseComponent();
+        }
+        else
+        {
         var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(StatusOverviewProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.StatusOverview);
         if (__templateDescriptor is not null)
         {
@@ -1048,6 +1077,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         else
         {
             defaultBody(builder);
+        }
         }
         builder.CloseElement();
     }

@@ -34,6 +34,9 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
     [Inject]
     private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;
+
     [CascadingParameter]
     private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }
 
@@ -887,6 +890,32 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
         builder.CloseComponent();
         };
 
+        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(DetailRecordProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
+        if (__viewOverrideDescriptor is not null)
+        {
+            var __viewOverrideContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext<DetailRecordProjection>(
+                projectionType: typeof(DetailRecordProjection),
+                boundedContext: "Customers",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<DetailRecordProjection>)System.Array.Empty<DetailRecordProjection>(),
+                renderContext: RenderContext,
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                lifecycleState: "Loaded",
+                entityLabel: "Detail Record",
+                entityPluralLabel: "detail records",
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<DetailRecordProjection>>(seq++);
+            builder.AddAttribute(seq++, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(seq++, "Context", __viewOverrideContext);
+            builder.CloseComponent();
+        }
+        else
+        {
         var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(DetailRecordProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.DetailRecord);
         if (__templateDescriptor is not null)
         {
@@ -910,6 +939,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
         else
         {
             defaultBody(builder);
+        }
         }
     }
 }

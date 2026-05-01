@@ -502,4 +502,59 @@ public static class DiagnosticDescriptors {
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1042: Reserved for Level 4 view override invalid projection type diagnostics.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionViewOverrideInvalidProjectionType = new(
+        id: "HFC1042",
+        title: "Invalid Level 4 view override projection type",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1043: A Level 4 view replacement component does not expose the required typed Context parameter.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionViewOverrideComponentInvalid = new(
+        id: "HFC1043",
+        title: "Invalid Level 4 view override component",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1044: Two or more Level 4 view replacements target the same projection and role.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionViewOverrideDuplicate = new(
+        id: "HFC1044",
+        title: "Duplicate Level 4 view override",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1045: A Level 4 view replacement descriptor declares an incompatible contract version.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionViewOverrideContractVersionMismatch = new(
+        id: "HFC1045",
+        title: "Level 4 view override contract version is incompatible",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1046: Reserved for Level 4 custom-component accessibility warnings.
+    /// </summary>
+    public static readonly DiagnosticDescriptor ProjectionViewOverrideAccessibilityWarning = new(
+        id: "HFC1046",
+        title: "Level 4 view override accessibility contract warning",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

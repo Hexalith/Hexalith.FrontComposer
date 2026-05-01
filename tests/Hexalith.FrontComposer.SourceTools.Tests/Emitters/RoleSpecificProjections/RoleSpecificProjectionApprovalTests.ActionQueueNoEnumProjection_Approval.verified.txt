@@ -68,6 +68,9 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
     [Inject]
     private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;
+
     private const string _viewKey = "Support:RoleSpecific.Negative.ActionQueueNoEnumProjection";
 
     private static readonly System.Func<ActionQueueNoEnumProjection, object> _itemKeyAccessor = static x => (object)x.Id!;
@@ -961,6 +964,32 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         builder.AddAttribute(seq++, "data-fc-datagrid", _viewKey);
         builder.AddAttribute(seq++, "onscroll", global::Microsoft.AspNetCore.Components.EventCallback.Factory.Create(this, OnScrollAsync));
 
+        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(ActionQueueNoEnumProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue);
+        if (__viewOverrideDescriptor is not null)
+        {
+            var __viewOverrideContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext<ActionQueueNoEnumProjection>(
+                projectionType: typeof(ActionQueueNoEnumProjection),
+                boundedContext: "Support",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<ActionQueueNoEnumProjection>)System.Array.Empty<ActionQueueNoEnumProjection>(),
+                renderContext: RenderContext,
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                lifecycleState: "Loaded",
+                entityLabel: "Action Queue No Enum",
+                entityPluralLabel: "action queue no enums",
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<ActionQueueNoEnumProjection>>(seq++);
+            builder.AddAttribute(seq++, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(seq++, "Context", __viewOverrideContext);
+            builder.CloseComponent();
+        }
+        else
+        {
         var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(ActionQueueNoEnumProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue);
         if (__templateDescriptor is not null)
         {
@@ -984,6 +1013,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         else
         {
             defaultBody(builder);
+        }
         }
         builder.CloseElement();
     }

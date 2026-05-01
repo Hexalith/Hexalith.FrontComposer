@@ -38,6 +38,9 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
     [Inject]
     private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;
 
+    [Inject]
+    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;
+
     [CascadingParameter]
     private global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext? RenderContext { get; set; }
 
@@ -502,6 +505,32 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
         builder.CloseComponent();
         };
 
+        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(TimelineProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
+        if (__viewOverrideDescriptor is not null)
+        {
+            var __viewOverrideContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext<TimelineProjection>(
+                projectionType: typeof(TimelineProjection),
+                boundedContext: "Audit",
+                role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline,
+                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<TimelineProjection>)System.Array.Empty<TimelineProjection>(),
+                renderContext: RenderContext,
+                columns: _templateColumnsDescriptor,
+                sections: _templateSectionsDescriptor,
+                lifecycleState: "Loaded",
+                entityLabel: "Timeline",
+                entityPluralLabel: "timelines",
+                defaultBody: defaultBody,
+                sectionRenderer: sectionName => string.Equals(sectionName, "Body", System.StringComparison.Ordinal) ? defaultBody : static _ => { },
+                rowRenderer: RenderTemplateRow,
+                fieldRenderer: RenderTemplateField);
+
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<TimelineProjection>>(seq++);
+            builder.AddAttribute(seq++, "Descriptor", __viewOverrideDescriptor);
+            builder.AddAttribute(seq++, "Context", __viewOverrideContext);
+            builder.CloseComponent();
+        }
+        else
+        {
         var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(TimelineProjection), (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.Timeline);
         if (__templateDescriptor is not null)
         {
@@ -525,6 +554,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
         else
         {
             defaultBody(builder);
+        }
         }
     }
 }

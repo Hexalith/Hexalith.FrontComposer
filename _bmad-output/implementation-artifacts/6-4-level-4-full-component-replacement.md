@@ -1,6 +1,6 @@
 # Story 6.4: Level 4 Full Component Replacement
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 6** - Developer Customization Gradient. **FR42 / FR43 / FR44 / FR45 / FR47 / UX-DR31 / UX-DR54** full-view replacement for generated projection components while preserving FrontComposer shell, lifecycle, accessibility, diagnostics, and gradient inheritance. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, **L11**, and **L15**.
 
@@ -56,94 +56,94 @@ A developer should be able to take full control over one projection's rendered b
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define the public Level 4 registration contract (AC1, AC5, AC7)
-  - [ ] Add a typed registration API such as `AddViewOverride<TProjection,TComponent>(ProjectionRole? role = null)` over a typed registry/facade.
-  - [ ] Keep the existing `IOverrideRegistry` string surface internal/provisional or test-only for Level 4; the only supported adopter registration path is typed/generic.
-  - [ ] Store projection type, optional role, component type, expected contract version, diagnostic state, and registration source in immutable descriptors.
-  - [ ] Reject duplicate exact `(projection, role)` replacements deterministically. Name both component types where possible.
-  - [ ] Define role-specific precedence: role-specific Level 4, role-agnostic Level 4, generated customization pipeline.
-  - [ ] Keep registry lookup bounded and descriptor-only. No runtime assembly scanning during render.
+- [x] T1. Define the public Level 4 registration contract (AC1, AC5, AC7)
+  - [x] Add a typed registration API such as `AddViewOverride<TProjection,TComponent>(ProjectionRole? role = null)` over a typed registry/facade.
+  - [x] Keep the existing `IOverrideRegistry` string surface internal/provisional or test-only for Level 4; the only supported adopter registration path is typed/generic.
+  - [x] Store projection type, optional role, component type, expected contract version, diagnostic state, and registration source in immutable descriptors.
+  - [x] Reject duplicate exact `(projection, role)` replacements deterministically. Name both component types where possible.
+  - [x] Define role-specific precedence: role-specific Level 4, role-agnostic Level 4, generated customization pipeline.
+  - [x] Keep registry lookup bounded and descriptor-only. No runtime assembly scanning during render.
 
-- [ ] T2. Introduce `ProjectionViewContext<TProjection>` (AC3, AC4, AC6, AC11, AC13)
-  - [ ] Add the context under `src/Hexalith.FrontComposer.Contracts/Rendering/`.
-  - [ ] Include `ProjectionType`, `BoundedContext`, `ProjectionRole`, `IReadOnlyList<TProjection> Items`, `RenderContext`, density/read-only/dev-mode accessors, generated field/section descriptors, lifecycle summary, and localization-safe labels/descriptions.
-  - [ ] Expose optional default-render delegates only where the framework can prevent recursion. A default delegate for the same projection/role must bypass the selected Level 4 replacement and preserve lower-level recursion guards.
-  - [ ] Define localized label/help-text fallback behavior. Sample replacements must consume context-provided strings and avoid hard-coded user-facing copy except test fixtures.
-  - [ ] Keep the context immutable/read-only after construction.
-  - [ ] Construct context per render from current state. Do not store tenant/user/item/culture payloads in registry descriptors or static fields.
-  - [ ] Document that custom components must not mutate projection records, dispatch Fluxor state directly, or cache `RenderContext` across users.
+- [x] T2. Introduce `ProjectionViewContext<TProjection>` (AC3, AC4, AC6, AC11, AC13)
+  - [x] Add the context under `src/Hexalith.FrontComposer.Contracts/Rendering/`.
+  - [x] Include `ProjectionType`, `BoundedContext`, `ProjectionRole`, `IReadOnlyList<TProjection> Items`, `RenderContext`, density/read-only/dev-mode accessors, generated field/section descriptors, lifecycle summary, and localization-safe labels/descriptions.
+  - [x] Expose optional default-render delegates only where the framework can prevent recursion. A default delegate for the same projection/role must bypass the selected Level 4 replacement and preserve lower-level recursion guards.
+  - [x] Define localized label/help-text fallback behavior. Sample replacements must consume context-provided strings and avoid hard-coded user-facing copy except test fixtures.
+  - [x] Keep the context immutable/read-only after construction.
+  - [x] Construct context per render from current state. Do not store tenant/user/item/culture payloads in registry descriptors or static fields.
+  - [x] Document that custom components must not mutate projection records, dispatch Fluxor state directly, or cache `RenderContext` across users.
 
-- [ ] T3. Implement Level 4 registry and validation (AC1, AC5, AC7, AC11)
-  - [ ] Add a Shell service such as `IProjectionViewOverrideRegistry`.
-  - [ ] Register generated/runtime descriptors during app startup through a typed intake API.
-  - [ ] Validate component type compatibility: Blazor component, required `Context` parameter, compatible `ProjectionViewContext<TProjection>`, deterministic generic closure, and expected contract version.
-  - [ ] Keep validation deterministic across filesystem order, DI registration order, and parallel test execution.
-  - [ ] Ignore invalid descriptors after diagnostics and fall back to generated rendering unless the failure is an ambiguous duplicate. Ambiguous duplicates fail hard and select neither candidate.
-  - [ ] Avoid reflection scans during each render. Reflection/metadata inspection, if needed, happens during descriptor validation and is cached as descriptor metadata only.
+- [x] T3. Implement Level 4 registry and validation (AC1, AC5, AC7, AC11)
+  - [x] Add a Shell service such as `IProjectionViewOverrideRegistry`.
+  - [x] Register generated/runtime descriptors during app startup through a typed intake API.
+  - [x] Validate component type compatibility: Blazor component, required `Context` parameter, compatible `ProjectionViewContext<TProjection>`, deterministic generic closure, and expected contract version.
+  - [x] Keep validation deterministic across filesystem order, DI registration order, and parallel test execution.
+  - [x] Ignore invalid descriptors after diagnostics and fall back to generated rendering unless the failure is an ambiguous duplicate. Ambiguous duplicates fail hard and select neither candidate.
+  - [x] Avoid reflection scans during each render. Reflection/metadata inspection, if needed, happens during descriptor validation and is cached as descriptor metadata only.
 
-- [ ] T4. Integrate replacement selection into generated projection views (AC2, AC3, AC5, AC6)
-  - [ ] Extend `RazorEmitter` so generated views check Level 4 replacement descriptors at the body boundary after loading/empty shells are resolved and before default role body dispatch.
-  - [ ] Keep `FcProjectionSubtitle`, loading skeletons, empty placeholders, grid envelope ownership, navigation, density resolution, and lifecycle/disposal hooks framework-owned unless a specific owner is documented.
-  - [ ] When no replacement exists, preserve generated output behavior and snapshots where possible.
-  - [ ] If a replacement exists for a grid role, keep outer framework-owned containers that are required for scroll capture, reconciliation lanes, row-count banners, and density behavior. The replacement owns the body content, not the shell's state plumbing.
-  - [ ] Treat `ProjectionViewContext<TProjection>.Items` as the current framework-provided render/query window, not an implicit permission to fetch every projection row or bypass paging, virtualization, tenant, or authorization boundaries.
-  - [ ] Ensure Level 2 and Level 3 resolution do not also run accidentally under Level 4. They are available only through explicit context/default delegates.
-  - [ ] Assert that active Level 4 output contains no generated fields, sections, commands, or fallback body markup except through explicit default-render delegates.
-  - [ ] Add recursion guards for replacement components that ask for default rendering.
+- [x] T4. Integrate replacement selection into generated projection views (AC2, AC3, AC5, AC6)
+  - [x] Extend `RazorEmitter` so generated views check Level 4 replacement descriptors at the body boundary after loading/empty shells are resolved and before default role body dispatch.
+  - [x] Keep `FcProjectionSubtitle`, loading skeletons, empty placeholders, grid envelope ownership, navigation, density resolution, and lifecycle/disposal hooks framework-owned unless a specific owner is documented.
+  - [x] When no replacement exists, preserve generated output behavior and snapshots where possible.
+  - [x] If a replacement exists for a grid role, keep outer framework-owned containers that are required for scroll capture, reconciliation lanes, row-count banners, and density behavior. The replacement owns the body content, not the shell's state plumbing.
+  - [x] Treat `ProjectionViewContext<TProjection>.Items` as the current framework-provided render/query window, not an implicit permission to fetch every projection row or bypass paging, virtualization, tenant, or authorization boundaries.
+  - [x] Ensure Level 2 and Level 3 resolution do not also run accidentally under Level 4. They are available only through explicit context/default delegates.
+  - [x] Assert that active Level 4 output contains no generated fields, sections, commands, or fallback body markup except through explicit default-render delegates.
+  - [x] Add recursion guards for replacement components that ask for default rendering.
 
-- [ ] T5. Preserve lifecycle, shell, authorization, and telemetry boundaries (AC3, AC8)
-  - [ ] Ensure `FcLifecycleWrapper` and `ILifecycleStateService` integration remains outside the replacement so command lifecycle semantics do not depend on adopter markup.
-  - [ ] Preserve navigation routes, breadcrumbs, render context, density/theme cascades, and generated disposal cleanup.
-  - [ ] Preserve authorization boundaries already provided by the shell. Do not invent Epic 7 policy behavior in this story.
-  - [ ] Wrap replacement render faults in a narrow error boundary that renders a diagnostic fallback with HFC ID and keeps the rest of the shell usable.
-  - [ ] Key error-boundary recovery on the selected descriptor plus a framework-owned context generation value so a corrected replacement or changed context can recover without requiring a full shell reload.
-  - [ ] Contain replacement `IDisposable` / `IAsyncDisposable` faults during teardown; shell disposal, lifecycle cleanup, and sibling surfaces must continue.
-  - [ ] Log failures with component type, projection type, role, tenant/user redacted or hashed per existing telemetry policy, and exception category. Do not log item payloads, generated field values, localized user text, raw exception messages, or replacement render fragments.
+- [x] T5. Preserve lifecycle, shell, authorization, and telemetry boundaries (AC3, AC8)
+  - [x] Ensure `FcLifecycleWrapper` and `ILifecycleStateService` integration remains outside the replacement so command lifecycle semantics do not depend on adopter markup.
+  - [x] Preserve navigation routes, breadcrumbs, render context, density/theme cascades, and generated disposal cleanup.
+  - [x] Preserve authorization boundaries already provided by the shell. Do not invent Epic 7 policy behavior in this story.
+  - [x] Wrap replacement render faults in a narrow error boundary that renders a diagnostic fallback with HFC ID and keeps the rest of the shell usable.
+  - [x] Key error-boundary recovery on the selected descriptor plus a framework-owned context generation value so a corrected replacement or changed context can recover without requiring a full shell reload.
+  - [x] Contain replacement `IDisposable` / `IAsyncDisposable` faults during teardown; shell disposal, lifecycle cleanup, and sibling surfaces must continue.
+  - [x] Log failures with component type, projection type, role, tenant/user redacted or hashed per existing telemetry policy, and exception category. Do not log item payloads, generated field values, localized user text, raw exception messages, or replacement render fragments.
 
-- [ ] T6. Enforce the custom-component accessibility contract (AC9)
-  - [ ] Validate or warn for missing accessible name via visible text or `aria-label` where static analysis can see it.
-  - [ ] Require keyboard reachability for interactive replacement surfaces; tests should assert focusable controls stay in DOM order and that focus can move into and out of the replacement.
-  - [ ] Forbid suppressing Fluent focus visibility in generated samples and component CSS; do not override `--colorStrokeFocus2`.
-  - [ ] Require lifecycle/loading/empty/status announcements to use the same polite/assertive categories as the framework.
-  - [ ] Require `prefers-reduced-motion` support for custom animations.
-  - [ ] Require forced-colors support through system color keywords where custom CSS is present.
-  - [ ] Defer broad Roslyn analyzer coverage and richer remediation UI to Story 6-6, but keep 6-4's sample/test path executable.
+- [x] T6. Enforce the custom-component accessibility contract (AC9)
+  - [x] Validate or warn for missing accessible name via visible text or `aria-label` where static analysis can see it.
+  - [x] Require keyboard reachability for interactive replacement surfaces; tests should assert focusable controls stay in DOM order and that focus can move into and out of the replacement.
+  - [x] Forbid suppressing Fluent focus visibility in generated samples and component CSS; do not override `--colorStrokeFocus2`.
+  - [x] Require lifecycle/loading/empty/status announcements to use the same polite/assertive categories as the framework.
+  - [x] Require `prefers-reduced-motion` support for custom animations.
+  - [x] Require forced-colors support through system color keywords where custom CSS is present.
+  - [x] Defer broad Roslyn analyzer coverage and richer remediation UI to Story 6-6, but keep 6-4's sample/test path executable.
 
-- [ ] T7. Define diagnostics and version contract metadata (AC7, AC8, AC9, AC10)
-  - [ ] Reserve stable HFC10xx SourceTools diagnostics for invalid registrations, incompatible context, version drift, and accessibility warnings when discovered at build time.
-  - [ ] Reserve HFC20xx Shell diagnostics for runtime/startup validation and replacement render failures.
-  - [ ] Follow the teaching shape: What happened, Expected, Got, Fix, DocsLink.
-  - [ ] Before implementation closes, record a diagnostic oracle table in this story or test fixtures covering ID, severity, validation phase, assertion point, target component/projection, and fallback behavior for invalid registration, incompatible context, duplicate descriptor, version drift, accessibility warning, and render failure.
-  - [ ] Include contract version metadata shared with Stories 6-2 and 6-3 where practical.
-  - [ ] Diagnostic assertions must verify ID, severity, target component/projection, deterministic ordering, and expected/got/fix/docs-link content.
+- [x] T7. Define diagnostics and version contract metadata (AC7, AC8, AC9, AC10)
+  - [x] Reserve stable HFC10xx SourceTools diagnostics for invalid registrations, incompatible context, version drift, and accessibility warnings when discovered at build time.
+  - [x] Reserve HFC20xx Shell diagnostics for runtime/startup validation and replacement render failures.
+  - [x] Follow the teaching shape: What happened, Expected, Got, Fix, DocsLink.
+  - [x] Before implementation closes, record a diagnostic oracle table in this story or test fixtures covering ID, severity, validation phase, assertion point, target component/projection, and fallback behavior for invalid registration, incompatible context, duplicate descriptor, version drift, accessibility warning, and render failure.
+  - [x] Include contract version metadata shared with Stories 6-2 and 6-3 where practical.
+  - [x] Diagnostic assertions must verify ID, severity, target component/projection, deterministic ordering, and expected/got/fix/docs-link content.
 
-- [ ] T8. Hot reload and rebuild matrix (AC10, AC13)
-  - [ ] Prove Razor markup edits in the replacement component can refresh under `dotnet watch` where Blazor supports the edit.
-  - [ ] Document rebuild-required changes: registration added/removed, projection type changed, component type changed, generic context changed, contract version changed, duplicate registration introduced, and metadata descriptor changed.
-  - [ ] Do not promise pure source-generator input hot reload beyond the architecture constraint.
-  - [ ] Leave user-facing rebuild/restart messaging polish to Story 6-6.
+- [x] T8. Hot reload and rebuild matrix (AC10, AC13)
+  - [x] Prove Razor markup edits in the replacement component can refresh under `dotnet watch` where Blazor supports the edit.
+  - [x] Document rebuild-required changes: registration added/removed, projection type changed, component type changed, generic context changed, contract version changed, duplicate registration introduced, and metadata descriptor changed.
+  - [x] Do not promise pure source-generator input hot reload beyond the architecture constraint.
+  - [x] Leave user-facing rebuild/restart messaging polish to Story 6-6.
 
-- [ ] T9. Counter sample reference implementation (AC12)
-  - [ ] Add one small full view replacement in the Counter sample.
-  - [ ] Use Fluent UI primitives and FrontComposer tokens; do not introduce custom design-system CSS.
-  - [ ] Preserve lifecycle wrapper semantics and accessible names in the replacement.
-  - [ ] Include a fallback/generated projection or role path in the same sample evidence.
-  - [ ] Add one invalid-registration fixture for deterministic diagnostics.
-  - [ ] Keep the sample focused. Do not add a new Orders sample solely for Level 4.
+- [x] T9. Counter sample reference implementation (AC12)
+  - [x] Add one small full view replacement in the Counter sample.
+  - [x] Use Fluent UI primitives and FrontComposer tokens; do not introduce custom design-system CSS.
+  - [x] Preserve lifecycle wrapper semantics and accessible names in the replacement.
+  - [x] Include a fallback/generated projection or role path in the same sample evidence.
+  - [x] Add one invalid-registration fixture for deterministic diagnostics.
+  - [x] Keep the sample focused. Do not add a new Orders sample solely for Level 4.
 
-- [ ] T10. Tests and verification (AC1-AC14)
-  - [ ] Contracts tests for `ProjectionViewContext<TProjection>`, descriptor immutability, version constants, and registration extension shape.
-  - [ ] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, immutable snapshot lookup, and no context/cache bleed.
-  - [ ] SourceTools/emitter tests proving no-replacement fallback remains unchanged and replacement selection happens before Level 2/3 paths.
-  - [ ] Shell/bUnit tests proving context values, lifecycle wrapper preservation, error boundary isolation, default-render recursion guard, and density/theme/render-context propagation.
-  - [ ] Shell/bUnit tests proving authorization boundary preservation, breadcrumbs/navigation shell preservation, loading/empty shell preservation, disposal cleanup, telemetry context propagation, and that render/disposal exceptions leave sibling/next projection surfaces usable.
-  - [ ] Shell/bUnit tests proving error-boundary recovery when descriptor/context generation changes and proving repeated failures do not log item payloads, localized text, raw exception messages, or render fragments.
-  - [ ] Shell/SourceTools tests proving Level 4 receives only the framework-owned current render/query window and does not introduce an all-data fetch path that bypasses paging, virtualization, tenant, or authorization boundaries.
-  - [ ] Accessibility tests for accessible names, keyboard reachability, focus visibility, reduced motion, forced-colors CSS, and live-region category preservation in the sample replacement.
-  - [ ] Targeted repeated-render tests changing two tenants, two users, two cultures, one theme/density variation, read-only state, item list, and scoped-service instances to prove no stale context/render output/delegate/service is reused without full cross-product expansion.
-  - [ ] Counter sample tests for valid typed replacement, generated fallback role, safe default-delegate fallback, invalid-registration diagnostic, lifecycle/accessibility preservation, localization-safe labels, and context isolation.
-  - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
-  - [ ] Targeted tests: Contracts, SourceTools replacement/diagnostic tests, Shell registry/rendering tests, and Counter sample build/render tests.
+- [x] T10. Tests and verification (AC1-AC14)
+  - [x] Contracts tests for `ProjectionViewContext<TProjection>`, descriptor immutability, version constants, and registration extension shape.
+  - [x] Registry tests for role-specific precedence, role-agnostic fallback, duplicate rejection, invalid descriptor fallback, immutable snapshot lookup, and no context/cache bleed.
+  - [x] SourceTools/emitter tests proving no-replacement fallback remains unchanged and replacement selection happens before Level 2/3 paths.
+  - [x] Shell/bUnit tests proving context values, lifecycle wrapper preservation, error boundary isolation, default-render recursion guard, and density/theme/render-context propagation.
+  - [x] Shell/bUnit tests proving authorization boundary preservation, breadcrumbs/navigation shell preservation, loading/empty shell preservation, disposal cleanup, telemetry context propagation, and that render/disposal exceptions leave sibling/next projection surfaces usable.
+  - [x] Shell/bUnit tests proving error-boundary recovery when descriptor/context generation changes and proving repeated failures do not log item payloads, localized text, raw exception messages, or render fragments.
+  - [x] Shell/SourceTools tests proving Level 4 receives only the framework-owned current render/query window and does not introduce an all-data fetch path that bypasses paging, virtualization, tenant, or authorization boundaries.
+  - [x] Accessibility tests for accessible names, keyboard reachability, focus visibility, reduced motion, forced-colors CSS, and live-region category preservation in the sample replacement.
+  - [x] Targeted repeated-render tests changing two tenants, two users, two cultures, one theme/density variation, read-only state, item list, and scoped-service instances to prove no stale context/render output/delegate/service is reused without full cross-product expansion.
+  - [x] Counter sample tests for valid typed replacement, generated fallback role, safe default-delegate fallback, invalid-registration diagnostic, lifecycle/accessibility preservation, localization-safe labels, and context isolation.
+  - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+  - [x] Targeted tests: Contracts, SourceTools replacement/diagnostic tests, Shell registry/rendering tests, and Counter sample build/render tests.
 
 ---
 
@@ -401,16 +401,67 @@ Final recommendation: `ready-for-dev`
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- `dotnet test tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj --no-restore -p:UseSharedCompilation=false`
+- `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --no-restore -p:UseSharedCompilation=false`
+- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --no-restore -p:UseSharedCompilation=false`
+- `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`
+- `dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false`
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- Added typed Level 4 view override contracts, descriptor/version metadata, and per-render `ProjectionViewContext<TProjection>` with safe default-render delegates.
+- Added Shell registration/registry validation, role-specific precedence, duplicate fail-closed behavior, and a narrow error-boundary host with sanitized HFC2121 fallback logging.
+- Integrated Level 4 selection into generated projection bodies ahead of Level 2 templates and Level 3 slots while preserving framework-owned loading/empty shells and grid envelopes.
+- Added Counter sample full-view replacement and bUnit evidence for valid replacement, invalid fallback diagnostics, and generated fallback behavior.
+- Reserved HFC1042-HFC1046 and HFC2121 diagnostics, updated SourceTools snapshots, and rebaselined generated approvals for the new Level 4 branch.
+- Verification passed: full solution build with warnings as errors and full solution tests.
 
 ### File List
 
-(to be filled in by dev agent)
+- `_bmad-output/implementation-artifacts/6-4-level-4-full-component-replacement.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `samples/Counter/Counter.Web/Components/Replacements/CounterFullViewReplacement.razor`
+- `samples/Counter/Counter.Web/Program.cs`
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/IProjectionViewOverrideRegistry.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionViewContext.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionViewOverrideContractVersion.cs`
+- `src/Hexalith.FrontComposer.Contracts/Rendering/ProjectionViewOverrideDescriptor.cs`
+- `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionViewOverrideHost.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/ProjectionViewOverrideServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideDescriptorSource.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/ProjectionViewOverrides/ProjectionViewOverrideRegistry.cs`
+- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs`
+- `tests/Hexalith.FrontComposer.Contracts.Tests/Rendering/ProjectionViewOverrideContractsTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcProjectionViewOverrideHostTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Extensions/ProjectionViewOverrideServiceCollectionExtensionsTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticDescriptorTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1026ReservationTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CounterProjectionApprovalTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.BasicProjection_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DescriptionWithEscapeEdgeCases_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DisplayNameOverrides_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.EnumAndBadgeMappings_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.GuidTruncation_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.NullableProperties_Snapshot.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueNoEnumProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardWrongShapeProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DetailRecordProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.TimelineProjection_Approval.verified.txt`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt`
+
+### Change Log
+
+- 2026-05-01: Implemented Story 6.4 Level 4 full component replacement and moved story to review after full build/test verification.

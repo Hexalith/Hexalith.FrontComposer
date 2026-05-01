@@ -1,5 +1,6 @@
 using Counter.Domain;
 using Counter.Web;
+using Counter.Web.Components.Replacements;
 using Counter.Web.Components.Slots;
 
 using Hexalith.FrontComposer.Contracts;
@@ -39,6 +40,11 @@ builder.Services.AddHexalithProjectionTemplates(__FrontComposerProjectionTemplat
 // what adopters should reach for; the Type-taking overload exists for codegen scenarios.
 builder.Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(
     field: x => x.Count);
+
+// Story 6-4 T9 / AC12 — Level 4 full view replacement reference. The replacement owns the
+// projection body only; generated shell, loading/empty state, lifecycle, grid envelope, and
+// render-context plumbing remain framework-owned around it.
+builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
 
 // Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune
 // lifecycle thresholds AND (Story 3-1) the new AccentColor / LocalStorageMaxEntries / DefaultCulture

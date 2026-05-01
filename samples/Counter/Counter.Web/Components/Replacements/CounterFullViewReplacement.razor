@@ -1,0 +1,32 @@
+@using System.Globalization
+@using Counter.Domain
+@using Hexalith.FrontComposer.Contracts.Rendering
+@using Microsoft.FluentUI.AspNetCore.Components
+
+<section aria-labelledby="counter-full-view-heading">
+    <FluentStack Orientation="Orientation.Vertical" Gap="12">
+        <h2 id="counter-full-view-heading">
+            @Context.EntityPluralLabel
+        </h2>
+        <div aria-live="polite">@Context.LifecycleState</div>
+        @foreach (CounterProjection row in Context.Items)
+        {
+            <FluentCard>
+                <FluentStack Orientation="Orientation.Vertical" Gap="8">
+                    <FluentLabel>@row.Id</FluentLabel>
+                    <div aria-label="@($"Count for {row.Id}")">
+                        @Context.FieldRenderer(row, nameof(CounterProjection.Count))
+                    </div>
+                    <div aria-label="@($"Last changed for {row.Id}")">
+                        @Context.FieldRenderer(row, nameof(CounterProjection.LastUpdated))
+                    </div>
+                </FluentStack>
+            </FluentCard>
+        }
+    </FluentStack>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public ProjectionViewContext<CounterProjection> Context { get; set; } = default!;
+}

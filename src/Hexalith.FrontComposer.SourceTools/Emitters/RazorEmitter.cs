@@ -170,6 +170,9 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    [Inject]");
         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionSlotRegistry ProjectionSlotRegistry { get; set; } = default!;");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;");
+        _ = sb.AppendLine();
 
         // Story 6-2 T5 — non-grid views also need RenderContext to flow through the template
         // context so wrapper-owned tenant/density/dev-mode behavior is preserved.
@@ -1209,6 +1212,32 @@ public static class RazorEmitter {
             ? "(string?)null"
             : "\"" + RoleBodyHelpers.EscapeString(model.BoundedContext!) + "\"";
 
+        _ = sb.AppendLine("        var __viewOverrideDescriptor = ProjectionViewOverrideRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ");");
+        _ = sb.AppendLine("        if (__viewOverrideDescriptor is not null)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            var __viewOverrideContext = new global::Hexalith.FrontComposer.Contracts.Rendering.ProjectionViewContext<" + model.TypeName + ">(");
+        _ = sb.AppendLine("                projectionType: typeof(" + model.TypeName + "),");
+        _ = sb.AppendLine("                boundedContext: " + boundedContextLiteral + ",");
+        _ = sb.AppendLine("                role: " + roleExpr + ",");
+        _ = sb.AppendLine("                items: state.Items ?? (System.Collections.Generic.IReadOnlyList<" + model.TypeName + ">)System.Array.Empty<" + model.TypeName + ">(),");
+        _ = sb.AppendLine("                renderContext: RenderContext,");
+        _ = sb.AppendLine("                columns: _templateColumnsDescriptor,");
+        _ = sb.AppendLine("                sections: _templateSectionsDescriptor,");
+        _ = sb.AppendLine("                lifecycleState: \"Loaded\",");
+        _ = sb.AppendLine("                entityLabel: \"" + RoleBodyHelpers.EscapeString(ResolveEntityLabel(model)) + "\",");
+        _ = sb.AppendLine("                entityPluralLabel: \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\",");
+        _ = sb.AppendLine("                defaultBody: defaultBody,");
+        _ = sb.AppendLine("                sectionRenderer: sectionName => string.Equals(sectionName, \"Body\", System.StringComparison.Ordinal) ? defaultBody : static _ => { },");
+        _ = sb.AppendLine("                rowRenderer: RenderTemplateRow,");
+        _ = sb.AppendLine("                fieldRenderer: RenderTemplateField);");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionViewOverrideHost<" + model.TypeName + ">>(seq++);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Descriptor\", __viewOverrideDescriptor);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Context\", __viewOverrideContext);");
+        _ = sb.AppendLine("            builder.CloseComponent();");
+        _ = sb.AppendLine("        }");
+        _ = sb.AppendLine("        else");
+        _ = sb.AppendLine("        {");
         _ = sb.AppendLine("        var __templateDescriptor = ProjectionTemplateRegistry.Resolve(typeof(" + model.TypeName + "), " + roleExpr + ");");
         _ = sb.AppendLine("        if (__templateDescriptor is not null)");
         _ = sb.AppendLine("        {");
@@ -1234,6 +1263,7 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        else");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            defaultBody(builder);");
+        _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        }");
 
         if (isGrid) {

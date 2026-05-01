@@ -40,4 +40,14 @@ public class Hfc1026ReservationTests {
         FcDiagnosticIds.HFC1040_ProjectionSlotDuplicate.ShouldBe("HFC1040");
         FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch.ShouldBe("HFC1041");
     }
+
+    [Fact]
+    public void FcDiagnosticIdsPublishesLevel4ViewOverrideConstants() {
+        FcDiagnosticIds.HFC1042_ProjectionViewOverrideInvalidProjectionType.ShouldBe("HFC1042");
+        FcDiagnosticIds.HFC1043_ProjectionViewOverrideComponentInvalid.ShouldBe("HFC1043");
+        FcDiagnosticIds.HFC1044_ProjectionViewOverrideDuplicate.ShouldBe("HFC1044");
+        FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch.ShouldBe("HFC1045");
+        FcDiagnosticIds.HFC1046_ProjectionViewOverrideAccessibilityWarning.ShouldBe("HFC1046");
+        FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault.ShouldBe("HFC2121");
+    }
 }

@@ -25,6 +25,7 @@ using Hexalith.FrontComposer.Shell.Services.DerivedValues;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
 using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
+using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 using Hexalith.FrontComposer.Shell.Services.Validation;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
@@ -336,6 +337,11 @@ public static class ServiceCollectionExtensions
         // descriptor metadata only. Per-render FieldSlotContext values are constructed by the
         // generated field boundary and never cached here.
         services.TryAddSingleton<IProjectionSlotRegistry, ProjectionSlotRegistry>();
+
+        // Story 6-4 T3 — Level 4 full projection-view replacement registry. Singleton because
+        // it stores immutable descriptor metadata only. Per-render ProjectionViewContext values
+        // are constructed by the generated body boundary and never cached here.
+        services.TryAddSingleton<IProjectionViewOverrideRegistry, ProjectionViewOverrideRegistry>();
 
         // Story 4-5 D2 / T3.3 — ExpandedRowFeature is auto-discovered by the AddFluxor
         // ScanAssemblies(typeof(FrontComposerThemeState).Assembly) call above (line 158).

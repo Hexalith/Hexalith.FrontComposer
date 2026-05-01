@@ -182,6 +182,38 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1041_ProjectionSlotContractVersionMismatch = "HFC1041";
 
+    /// <summary>
+    /// Build-time Error (reserved): a Level 4 view override targets an invalid projection type.
+    /// </summary>
+    public const string HFC1042_ProjectionViewOverrideInvalidProjectionType = "HFC1042";
+
+    /// <summary>
+    /// Runtime Warning: a Level 4 view replacement component is not a Blazor component or does
+    /// not expose a public <c>[Parameter]</c> <c>Context</c> property compatible with
+    /// <c>ProjectionViewContext&lt;TProjection&gt;</c>. The descriptor is ignored and generated
+    /// rendering runs instead.
+    /// </summary>
+    public const string HFC1043_ProjectionViewOverrideComponentInvalid = "HFC1043";
+
+    /// <summary>
+    /// Runtime Warning: two or more Level 4 view replacement descriptors target the same
+    /// projection and role tuple. Resolution becomes ambiguous and falls back to generated
+    /// rendering.
+    /// </summary>
+    public const string HFC1044_ProjectionViewOverrideDuplicate = "HFC1044";
+
+    /// <summary>
+    /// Runtime Warning: a Level 4 view replacement descriptor declares a contract version whose
+    /// major version differs from the installed Level 4 contract. The descriptor is ignored.
+    /// </summary>
+    public const string HFC1045_ProjectionViewOverrideContractVersionMismatch = "HFC1045";
+
+    /// <summary>
+    /// Build-time Warning (reserved): a Level 4 view replacement has an accessibility contract
+    /// issue that can be detected from static metadata or sample markup.
+    /// </summary>
+    public const string HFC1046_ProjectionViewOverrideAccessibilityWarning = "HFC1046";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 
@@ -310,4 +342,11 @@ public static class FcDiagnosticIds {
     /// which parameter(s) were null so the wiring bug can be located. Runtime-only.
     /// </summary>
     public const string HFC2120_ProjectionSlotHostMissingParameter = "HFC2120";
+
+    /// <summary>
+    /// Runtime Warning: a Level 4 full projection-view replacement threw during render. The
+    /// Shell host isolates the fault and renders a diagnostic fallback instead of taking down
+    /// navigation or sibling projection surfaces.
+    /// </summary>
+    public const string HFC2121_ProjectionViewOverrideRenderFault = "HFC2121";
 }

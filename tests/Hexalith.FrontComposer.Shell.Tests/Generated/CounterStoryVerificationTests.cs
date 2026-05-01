@@ -4,6 +4,7 @@ using System.Text.RegularExpressions;
 using Bunit;
 
 using Counter.Domain;
+using Counter.Web.Components.Replacements;
 using Counter.Web.Components.Slots;
 using Counter.Web.Components.Pages;
 
@@ -15,6 +16,7 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
+using Hexalith.FrontComposer.Shell.Services.ProjectionViewOverrides;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
@@ -354,6 +356,96 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     }
 
     [Fact]
+    public async Task CounterProjectionView_Level4Replacement_RendersInsideFrameworkEnvelope_AndUsesSafeFieldDelegates()
+    {
+        UseFakeTime(s_fixedNow);
+
+        Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
+        Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(field: x => x.Count);
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = s_lastUpdated,
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            string markup = cut.Markup;
+
+            // Framework-owned envelope remains outside the replacement.
+            markup.ShouldContain("data-fc-datagrid");
+            markup.ShouldContain("counter-full-view-heading");
+
+            // Level 4 wins over generated DataGrid body by default.
+            markup.ShouldNotContain("fluent-data-grid");
+
+            // Lower-level rendering appears only through explicit safe delegates used by the
+            // replacement. Count flows through the Level 3 slot; LastUpdated uses generated field rendering.
+            markup.ShouldContain("counter-count-slot");
+            markup.ShouldContain("aria-label=\"Count: 1,234\"");
+            markup.ShouldContain("04/14/2026");
+        });
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_Level4InvalidComponent_LogsHfc1043_AndRendersGeneratedDefault()
+    {
+        UseFakeTime(s_fixedNow);
+
+        ListLogger<ProjectionViewOverrideRegistry> capturedLogger = new();
+        Services.Replace(ServiceDescriptor.Singleton<ILogger<ProjectionViewOverrideRegistry>>(capturedLogger));
+        Services.AddViewOverride<CounterProjection, InvalidViewMissingContext>();
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = s_lastUpdated,
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            string markup = cut.Markup;
+            markup.ShouldContain("fluent-data-grid");
+            markup.ShouldContain("1,234");
+            markup.ShouldNotContain("INVALID-VIEW-RENDERED");
+        });
+
+        capturedLogger.Entries.ShouldContain(e =>
+            e.Level == LogLevel.Warning
+            && e.Message.Contains("HFC1043", StringComparison.Ordinal)
+            && e.Message.Contains("Expected:", StringComparison.Ordinal)
+            && e.Message.Contains("Got:", StringComparison.Ordinal)
+            && e.Message.Contains("Fix:", StringComparison.Ordinal)
+            && e.Message.Contains(typeof(CounterProjection).FullName!, StringComparison.Ordinal)
+            && e.Message.Contains(typeof(InvalidViewMissingContext).FullName!, StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot()
     {
         await InitializeStoreAsync();
@@ -443,6 +535,16 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
             builder.OpenElement(0, "span");
             builder.AddAttribute(1, "class", "invalid-slot-marker");
             builder.AddContent(2, "INVALID-SLOT-RENDERED");
+            builder.CloseElement();
+        }
+    }
+
+    private sealed class InvalidViewMissingContext : ComponentBase
+    {
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddContent(1, "INVALID-VIEW-RENDERED");
             builder.CloseElement();
         }
     }
