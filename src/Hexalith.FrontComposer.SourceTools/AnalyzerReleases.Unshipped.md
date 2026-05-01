@@ -42,6 +42,6 @@ HFC1040 | HexalithFrontComposer | Warning | Duplicate Level 3 slot override (Sto
 HFC1041 | HexalithFrontComposer | Warning | Level 3 slot contract version is incompatible (Story 6-3 — descriptor ignored)
 HFC1042 | HexalithFrontComposer | Error | Invalid Level 4 view override projection type (Story 6-4 — reserved for SourceTools validation)
 HFC1043 | HexalithFrontComposer | Warning | Invalid Level 4 view override component (Story 6-4 — component must expose typed ProjectionViewContext Context parameter)
-HFC1044 | HexalithFrontComposer | Warning | Duplicate Level 4 view override (Story 6-4 — duplicate descriptor ignored and generated renderer wins)
+HFC1044 | HexalithFrontComposer | Error | Duplicate Level 4 view override with different component types (Story 6-4 — registry construction fails hard; idempotent re-registration is allowed)
 HFC1045 | HexalithFrontComposer | Warning | Level 4 view override contract version is incompatible (Story 6-4 — descriptor ignored)
 HFC1046 | HexalithFrontComposer | Warning | Level 4 view override accessibility contract warning (Story 6-4 — partial static/sample enforcement)

@@ -1039,7 +1039,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 renderContext: RenderContext,
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
-                lifecycleState: "Loaded",
+                lifecycleState: state.IsLoading ? "Loading" : (state.Items?.Count ?? 0) == 0 ? "Empty" : "Loaded",
                 entityLabel: "Status Overview",
                 entityPluralLabel: "status overviews",
                 defaultBody: defaultBody,

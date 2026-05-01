@@ -1223,7 +1223,10 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                renderContext: RenderContext,");
         _ = sb.AppendLine("                columns: _templateColumnsDescriptor,");
         _ = sb.AppendLine("                sections: _templateSectionsDescriptor,");
-        _ = sb.AppendLine("                lifecycleState: \"Loaded\",");
+        // DN6 — lifecycle derived from current state. Loading wins over Empty wins over Loaded.
+        // Story 6-5/6-6 owns the broader lifecycle plumbing (custom states, localization);
+        // this fix gives replacement aria-live announcements an accurate value.
+        _ = sb.AppendLine("                lifecycleState: state.IsLoading ? \"Loading\" : (state.Items?.Count ?? 0) == 0 ? \"Empty\" : \"Loaded\",");
         _ = sb.AppendLine("                entityLabel: \"" + RoleBodyHelpers.EscapeString(ResolveEntityLabel(model)) + "\",");
         _ = sb.AppendLine("                entityPluralLabel: \"" + RoleBodyHelpers.EscapeString(ResolveEntityPluralLabel(model)) + "\",");
         _ = sb.AppendLine("                defaultBody: defaultBody,");

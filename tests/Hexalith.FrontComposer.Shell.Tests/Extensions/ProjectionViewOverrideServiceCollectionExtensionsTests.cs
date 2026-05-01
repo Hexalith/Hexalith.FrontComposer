@@ -56,17 +56,43 @@ public sealed class ProjectionViewOverrideServiceCollectionExtensionsTests {
     }
 
     [Fact]
-    public void Registry_DuplicateDifferentComponent_FailsClosedForExactTuple() {
+    public void Registry_DuplicateDifferentComponent_FailsHardOnConstruction() {
+        // DN1 / AC7 / D6 — duplicates are deterministic hard failures so adopters discover
+        // the misregistration at startup instead of silently falling through to generated.
         ServiceCollection services = NewServices();
         _ = services.AddViewOverride<ViewProjection, AnyRoleReplacement>();
         _ = services.AddViewOverride<ViewProjection, SecondAnyRoleReplacement>();
 
+        ServiceProvider provider = services.BuildServiceProvider();
+        InvalidOperationException ex = Should.Throw<InvalidOperationException>(
+            () => provider.GetRequiredService<IProjectionViewOverrideRegistry>());
+
+        ex.Message.ShouldContain("HFC1044");
+        ex.Message.ShouldContain(typeof(AnyRoleReplacement).FullName!);
+        ex.Message.ShouldContain(typeof(SecondAnyRoleReplacement).FullName!);
+    }
+
+    [Fact]
+    public void Registry_IdempotentReRegistration_KeepsSingleDescriptor() {
+        // P11 — same (projection, role, component, version) registered twice from different
+        // call sites is a no-op; only RegistrationSource differs and that field is excluded
+        // from the idempotent check.
+        ServiceCollection services = NewServices();
+        _ = AddFromHelperA(services);
+        _ = AddFromHelperB(services);
+
         IProjectionViewOverrideRegistry registry = services.BuildServiceProvider()
             .GetRequiredService<IProjectionViewOverrideRegistry>();
 
-        registry.Resolve(typeof(ViewProjection), null).ShouldBeNull();
-        registry.Descriptors.ShouldBeEmpty();
+        registry.Descriptors.ShouldHaveSingleItem().ComponentType.ShouldBe(typeof(ValidReplacement));
+        registry.Resolve(typeof(ViewProjection), null)!.ComponentType.ShouldBe(typeof(ValidReplacement));
     }
+
+    private static IServiceCollection AddFromHelperA(IServiceCollection services)
+        => services.AddViewOverride<ViewProjection, ValidReplacement>();
+
+    private static IServiceCollection AddFromHelperB(IServiceCollection services)
+        => services.AddViewOverride<ViewProjection, ValidReplacement>();
 
     [Fact]
     public void Registry_InvalidComponent_IsIgnored_AndGeneratedFallbackCanRun() {

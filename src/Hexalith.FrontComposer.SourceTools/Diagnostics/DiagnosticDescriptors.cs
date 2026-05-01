@@ -526,14 +526,18 @@ public static class DiagnosticDescriptors {
         isEnabledByDefault: true);
 
     /// <summary>
-    /// HFC1044: Two or more Level 4 view replacements target the same projection and role.
+    /// HFC1044: Two or more Level 4 view replacements target the same projection and role with
+    /// different component types (Story 6-4 D6 / AC7). Error severity — registry construction
+    /// fails hard at startup so duplicate registrations are surfaced immediately rather than
+    /// silently fading into generated rendering. Idempotent re-registration of the same
+    /// component type is treated as a no-op.
     /// </summary>
     public static readonly DiagnosticDescriptor ProjectionViewOverrideDuplicate = new(
         id: "HFC1044",
         title: "Duplicate Level 4 view override",
         messageFormat: "{0}",
         category: "HexalithFrontComposer",
-        defaultSeverity: DiagnosticSeverity.Warning,
+        defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
     /// <summary>

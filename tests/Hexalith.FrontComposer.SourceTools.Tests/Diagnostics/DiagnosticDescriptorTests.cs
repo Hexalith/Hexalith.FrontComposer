@@ -25,7 +25,7 @@ public class DiagnosticDescriptorTests {
     [InlineData("HFC1041", DiagnosticSeverity.Warning)]
     [InlineData("HFC1042", DiagnosticSeverity.Error)]
     [InlineData("HFC1043", DiagnosticSeverity.Warning)]
-    [InlineData("HFC1044", DiagnosticSeverity.Warning)]
+    [InlineData("HFC1044", DiagnosticSeverity.Error)]
     [InlineData("HFC1045", DiagnosticSeverity.Warning)]
     [InlineData("HFC1046", DiagnosticSeverity.Warning)]
     public void AllHFC1xxxIdsHaveAnalyzerReleaseEntries(string id, DiagnosticSeverity expectedSeverity) {

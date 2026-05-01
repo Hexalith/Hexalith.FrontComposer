@@ -901,7 +901,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 renderContext: RenderContext,
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
-                lifecycleState: "Loaded",
+                lifecycleState: state.IsLoading ? "Loading" : (state.Items?.Count ?? 0) == 0 ? "Empty" : "Loaded",
                 entityLabel: "Detail Record",
                 entityPluralLabel: "detail records",
                 defaultBody: defaultBody,

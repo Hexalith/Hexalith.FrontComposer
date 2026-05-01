@@ -925,7 +925,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
                 renderContext: RenderContext,
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
-                lifecycleState: "Loaded",
+                lifecycleState: state.IsLoading ? "Loading" : (state.Items?.Count ?? 0) == 0 ? "Empty" : "Loaded",
                 entityLabel: "Dashboard Wrong Shape",
                 entityPluralLabel: "dashboard wrong shapes",
                 defaultBody: defaultBody,

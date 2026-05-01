@@ -1,5 +1,6 @@
 using Bunit;
 
+using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
@@ -22,16 +23,39 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
         => Services.Replace(ServiceDescriptor.Singleton<ILogger<FcProjectionViewOverrideHost<ViewProjection>>>(_logger));
 
     [Fact]
-    public void Render_ValidReplacement_PassesFreshContext() {
-        ProjectionViewContext<ViewProjection> context = NewContext([new ViewProjection(7, "Alpha")]);
+    public void Render_ValidReplacement_PassesItemsThrough() {
+        ProjectionViewContext<ViewProjection> context = NewContext(
+            [new ViewProjection(7, "Alpha"), new ViewProjection(8, "Beta")]);
         ProjectionViewOverrideDescriptor descriptor = NewDescriptor(typeof(EchoReplacement));
 
         IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
             .Add(p => p.Descriptor, descriptor)
             .Add(p => p.Context, context));
 
-        cut.Markup.ShouldContain("override-count=\"1\"");
+        cut.Markup.ShouldContain("override-count=\"2\"");
         cut.Markup.ShouldContain("Alpha");
+        cut.Markup.ShouldContain("Beta");
+    }
+
+    [Fact]
+    public void Render_RepeatedRendersWithDifferentItems_PassFreshContext() {
+        // P2 — replaces the previously tautological count="1" assertion with a real
+        // freshness check rotating items, tenant, and user across two renders.
+        IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(EchoReplacement)))
+            .Add(p => p.Context, NewContext([new ViewProjection(1, "First")], tenant: "tenant-a", user: "user-a")));
+
+        cut.Markup.ShouldContain("override-count=\"1\"");
+        cut.Markup.ShouldContain("First");
+
+        cut.Render(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(EchoReplacement)))
+            .Add(p => p.Context, NewContext([new ViewProjection(2, "Second"), new ViewProjection(3, "Third")], tenant: "tenant-b", user: "user-b")));
+
+        cut.Markup.ShouldContain("override-count=\"2\"");
+        cut.Markup.ShouldContain("Second");
+        cut.Markup.ShouldContain("Third");
+        cut.Markup.ShouldNotContain("First");
     }
 
     [Fact]
@@ -45,10 +69,103 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
 
         cut.Markup.ShouldContain("role=\"alert\"");
         cut.Markup.ShouldContain(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
-        _logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Message.Contains(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault));
-        _logger.Entries.ShouldNotContain(e => e.Message.Contains("PayloadValueMustNotLog"));
-        _logger.Entries.ShouldNotContain(e => e.Message.Contains("raw replacement message"));
-        _logger.Entries.ShouldAllBe(e => e.Exception == null);
+
+        // P1 — replaced the always-true Exception==null assertion with positive checks: the
+        // log message MUST contain HFC2121, the projection field "PayloadValueMustNotLog"
+        // MUST NOT appear, the raw exception text MUST NOT appear, and tenant/user values
+        // MUST NOT appear (only their hashes).
+        (LogLevel Level, string Message, Exception? Exception) entry = _logger.Entries
+            .ShouldHaveSingleItem();
+        entry.Level.ShouldBe(LogLevel.Warning);
+        entry.Message.ShouldContain(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
+        entry.Message.ShouldNotContain("PayloadValueMustNotLog");
+        entry.Message.ShouldNotContain("raw replacement message");
+        entry.Message.ShouldContain("TenantHash:");
+        entry.Message.ShouldContain("UserHash:");
+    }
+
+    [Fact]
+    public void Render_DescriptorChange_RecoversBoundary() {
+        // P7 — error-boundary recovery on descriptor change. AC8 / T5 require the host to
+        // recover when the selected descriptor changes (e.g., adopter swaps a faulty
+        // replacement for a corrected one) without a full shell reload.
+        ProjectionViewContext<ViewProjection> context = NewContext([new ViewProjection(1, "Item")]);
+
+        IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(ThrowingReplacement)))
+            .Add(p => p.Context, context));
+
+        cut.Markup.ShouldContain(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
+
+        cut.Render(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(EchoReplacement)))
+            .Add(p => p.Context, context));
+
+        cut.Markup.ShouldContain("override-count=\"1\"");
+        cut.Markup.ShouldContain("Item");
+        cut.Markup.ShouldNotContain(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
+    }
+
+    [Fact]
+    public void Render_PersistentlyThrowingReplacement_DoesNotLogPerItemsTick() {
+        // DN2 — Items churn on every Fluxor tick must not flood HFC2121 logs. Recovery is
+        // keyed on Descriptor + RenderContext only; rotating Items between renders should
+        // NOT cause additional HFC2121 entries beyond the first failure.
+        ProjectionViewOverrideDescriptor descriptor = NewDescriptor(typeof(ThrowingReplacement));
+
+        IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
+            .Add(p => p.Descriptor, descriptor)
+            .Add(p => p.Context, NewContext([new ViewProjection(1, "v1")])));
+
+        int logsAfterFirstRender = _logger.Entries.Count;
+        logsAfterFirstRender.ShouldBe(1);
+
+        // 5 Items-only re-renders with same RenderContext. Each produces a NEW IReadOnlyList
+        // reference — under the pre-DN2 reference-equals comparison this would call
+        // _boundary.Recover() five times and emit five HFC2121 lines. Post-DN2 the boundary
+        // stays in error mode.
+        for (int i = 2; i <= 6; i++) {
+            int iteration = i;
+            cut.Render(parameters => parameters
+                .Add(p => p.Descriptor, descriptor)
+                .Add(p => p.Context, NewContext([new ViewProjection(iteration, $"v{iteration}")])));
+        }
+
+        // Items-only churn must not produce additional HFC2121 entries.
+        _logger.Entries.Count.ShouldBe(logsAfterFirstRender);
+    }
+
+    [Fact]
+    public void Render_NullContextOnRerender_DoesNotThrow() {
+        // P3 — OnParametersSet must not NRE when a regression nulls Context after an
+        // initial successful render.
+        IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(EchoReplacement)))
+            .Add(p => p.Context, NewContext([new ViewProjection(1, "Alpha")])));
+
+        Should.NotThrow(() => cut.Render(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(EchoReplacement)))
+            .Add(p => p.Context, null!)));
+    }
+
+    [Fact]
+    public void Render_AccessibilityContract_NoFluentFocusOverrideAndStateAnnouncementsAreAssertive() {
+        // P8 — accessibility oracles for the sample host. The host wrapper renders no custom
+        // CSS today (CSS isolation files do not exist for this component), so focus visibility
+        // and reduced-motion / forced-colors are vacuously satisfied. State announcements emit
+        // a `role="alert"` diagnostic fallback, which is the assertive category for critical
+        // failures (matches framework lifecycle policy in FcLifecycleWrapper).
+        ProjectionViewContext<ViewProjection> context = NewContext([new ViewProjection(1, "Alpha")]);
+
+        IRenderedComponent<FcProjectionViewOverrideHost<ViewProjection>> cut = Render<FcProjectionViewOverrideHost<ViewProjection>>(parameters => parameters
+            .Add(p => p.Descriptor, NewDescriptor(typeof(ThrowingReplacement)))
+            .Add(p => p.Context, context));
+
+        // Diagnostic fallback uses role="alert" (assertive) which matches framework critical
+        // state announcements. Replacement bodies own non-critical aria-live policy.
+        cut.Markup.ShouldContain("role=\"alert\"");
+        // Host emits no CSS; no --colorStrokeFocus2 override is possible at this layer.
+        cut.Markup.ShouldNotContain("--colorStrokeFocus2");
     }
 
     private static ProjectionViewOverrideDescriptor NewDescriptor(Type componentType)
@@ -59,13 +176,16 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
             ProjectionViewOverrideContractVersion.Current,
             "test");
 
-    private static ProjectionViewContext<ViewProjection> NewContext(IReadOnlyList<ViewProjection> items)
+    private static ProjectionViewContext<ViewProjection> NewContext(
+        IReadOnlyList<ViewProjection> items,
+        string tenant = "tenant",
+        string user = "user")
         => new(
             projectionType: typeof(ViewProjection),
             boundedContext: "Tests",
             role: null,
             items: items,
-            renderContext: new RenderContext("tenant", "user", FcRenderMode.Server, DensityLevel.Comfortable, IsReadOnly: false),
+            renderContext: new RenderContext(tenant, user, FcRenderMode.Server, DensityLevel.Comfortable, IsReadOnly: false),
             columns: [new ProjectionTemplateColumnDescriptor("Name", "Name", null, null)],
             sections: [new ProjectionTemplateSectionDescriptor("Body", "Body", "Body")],
             lifecycleState: "Loaded",
@@ -86,7 +206,12 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
             ArgumentNullException.ThrowIfNull(builder);
             builder.OpenElement(0, "section");
             builder.AddAttribute(1, "override-count", Context.Items.Count);
-            builder.AddContent(2, Context.Items[0].Name);
+            int seq = 2;
+            foreach (ViewProjection item in Context.Items) {
+                builder.AddContent(seq++, item.Name);
+                builder.AddMarkupContent(seq++, " ");
+            }
+
             builder.CloseElement();
         }
     }

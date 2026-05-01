@@ -927,7 +927,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
                 renderContext: RenderContext,
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
-                lifecycleState: "Loaded",
+                lifecycleState: state.IsLoading ? "Loading" : (state.Items?.Count ?? 0) == 0 ? "Empty" : "Loaded",
                 entityLabel: "Dashboard",
                 entityPluralLabel: "dashboards",
                 defaultBody: defaultBody,

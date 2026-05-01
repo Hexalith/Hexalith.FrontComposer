@@ -43,7 +43,11 @@ builder.Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(
 
 // Story 6-4 T9 / AC12 — Level 4 full view replacement reference. The replacement owns the
 // projection body only; generated shell, loading/empty state, lifecycle, grid envelope, and
-// render-context plumbing remain framework-owned around it.
+// render-context plumbing remain framework-owned around it. The registration is role-agnostic
+// because CounterProjection has only one role (Default ≡ no [ProjectionRole] attribute);
+// fallback-to-generated evidence lives in the SourceTools test fixtures and in the
+// `CounterProjectionView_LoadedState_RendersColumnsAndFormatting` Shell test which renders
+// the same view without `AddViewOverride`.
 builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
 
 // Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune

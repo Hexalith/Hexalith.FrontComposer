@@ -1200,7 +1200,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
                 renderContext: RenderContext,
                 columns: _templateColumnsDescriptor,
                 sections: _templateSectionsDescriptor,
-                lifecycleState: "Loaded",
+                lifecycleState: state.IsLoading ? "Loading" : (state.Items?.Count ?? 0) == 0 ? "Empty" : "Loaded",
                 entityLabel: "Action Queue",
                 entityPluralLabel: "action queues",
                 defaultBody: defaultBody,
