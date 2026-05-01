@@ -212,6 +212,13 @@ public sealed class FcShellOptions {
     public int MaxETagCacheEntries { get; set; } = 200;
 
     /// <summary>
+    /// Gets or sets whether development/test hosts may use visibly synthetic tenant/user
+    /// identifiers such as <c>counter-demo</c>. Production hosts must leave this disabled so
+    /// default/demo contexts fail closed at tenant-scoped framework boundaries.
+    /// </summary>
+    public bool AllowDemoTenantContext { get; set; }
+
+    /// <summary>
     /// Duration (ms) that the EventStore projection connection indicator keeps the non-blocking
     /// reconnected confirmation visible. Story 5-3 D10.
     /// </summary>

@@ -107,6 +107,20 @@ internal static partial class FrontComposerLog {
         string failureCategory);
 
     [LoggerMessage(
+        EventId = 5650,
+        Level = LogLevel.Warning,
+        Message = "{DiagnosticId}: Tenant-scoped operation blocked. OperationKind={OperationKind} FailureCategory={FailureCategory} RequestedTenantPresent={RequestedTenantPresent} AuthenticatedTenantPresent={AuthenticatedTenantPresent} UserPresent={UserPresent} CorrelationId={CorrelationId}")]
+    public static partial void TenantContextBlocked(
+        ILogger logger,
+        string diagnosticId,
+        string operationKind,
+        string failureCategory,
+        bool requestedTenantPresent,
+        bool authenticatedTenantPresent,
+        bool userPresent,
+        string correlationId);
+
+    [LoggerMessage(
         EventId = 5640,
         Level = LogLevel.Information,
         Message = "Lifecycle transition observed. CorrelationId={CorrelationId} MessageId={MessageId} State={State} IdempotencyResolved={IdempotencyResolved}")]

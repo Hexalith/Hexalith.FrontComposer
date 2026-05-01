@@ -56,6 +56,13 @@ builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>(
 // lifecycle thresholds AND (Story 3-1) the new AccentColor / LocalStorageMaxEntries / DefaultCulture
 // / SupportedCultures values from appsettings.
 builder.Services.Configure<FcShellOptions>(builder.Configuration.GetSection("Hexalith:Shell"));
+builder.Services.Configure<FcShellOptions>(o =>
+{
+    // Story 7-2 — the Counter sample's DemoUserContextAccessor is intentionally visible and
+    // local-only. Production hosts must supply Story 7-1 real auth claims instead.
+    o.AllowDemoTenantContext = builder.Environment.IsDevelopment()
+        || builder.Environment.IsEnvironment("Test");
+});
 
 // Story 2-2 Task 9.4 — demo user context so LastUsed pre-fill works end-to-end without real auth.
 // Story 7-1 keeps this default credential-free; fake auth is opt-in and visibly sample-only.

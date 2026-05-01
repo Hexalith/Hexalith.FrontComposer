@@ -16,6 +16,7 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Badges;
 using Hexalith.FrontComposer.Shell.Infrastructure.Storage;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
@@ -210,6 +211,10 @@ public static class ServiceCollectionExtensions
         // Story 2-2 Decision D31 — default fail-closed IUserContextAccessor; adopters replace
         // this with a real accessor (HTTP-claims / AuthenticationStateProvider / demo stub).
         services.TryAddScoped<IUserContextAccessor, NullUserContextAccessor>();
+        services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
+        services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
+        // Story 7-2 DN1 — production guardrail. See EventStoreServiceExtensions for context.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FcShellOptions>, FcShellTenantOptionsValidator>());
 
         // Story 2-2 Decision D35 — per-circuit subscriber registry (idempotent + lazy).
         services.TryAddScoped<LastUsedSubscriberRegistry>();

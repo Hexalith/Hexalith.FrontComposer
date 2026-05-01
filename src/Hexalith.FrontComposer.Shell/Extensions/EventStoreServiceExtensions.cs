@@ -1,5 +1,7 @@
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
@@ -35,6 +37,14 @@ public static class EventStoreServiceExtensions {
 
         // Story 5-2 T6 — singleton classifier (stateless apart from logger).
         services.TryAddSingleton<EventStoreResponseClassifier>();
+        services.TryAddScoped<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor, NullUserContextAccessor>();
+        services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
+        services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
+        // Story 7-2 DN1 — production guardrail. Refuses to start when AllowDemoTenantContext is
+        // enabled in IHostEnvironment.Production so synthetic tenant identifiers cannot reach
+        // command/query/subscription validation in production hosts. IHostEnvironment is
+        // optional (test hosts may not register it); the validator gracefully no-ops when absent.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FcShellOptions>, FcShellTenantOptionsValidator>());
 
         services.TryAddScoped<EventStoreCommandClient>();
         services.TryAddScoped<EventStoreQueryClient>();

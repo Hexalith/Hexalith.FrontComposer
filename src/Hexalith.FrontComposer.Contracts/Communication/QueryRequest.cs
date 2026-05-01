@@ -4,7 +4,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// Projection query parameters.
 /// </summary>
 /// <param name="ProjectionType">The projection type name to query.</param>
-/// <param name="TenantId">The tenant context for the query.</param>
+/// <param name="TenantId">Optional requested tenant context for the query. Blank/null values are filled from the authenticated tenant by Shell adapters.</param>
 /// <param name="Filter">Legacy filter expression. Kept for v0.x compatibility.</param>
 /// <param name="Skip">Number of items to skip for pagination.</param>
 /// <param name="Take">Number of items to take for pagination.</param>
@@ -24,7 +24,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 /// <param name="CachePayloadVersion">Story 5-2 — projection payload contract version used when reading / writing the cache. Cached entries with a lower version are treated as diagnostic misses (Story 5-2 D13). Defaults to <c>1</c>.</param>
 public record QueryRequest(
     string ProjectionType,
-    string TenantId,
+    string? TenantId,
     [property: System.Obsolete("Use ColumnFilters. Scheduled for removal in v1.0-rc2.", error: false)]
     string? Filter = null,
     int? Skip = null,

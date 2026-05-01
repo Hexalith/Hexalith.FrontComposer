@@ -1,5 +1,8 @@
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
@@ -23,7 +26,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly Func<CancellationToken, ValueTask<string?>>? _accessTokenProvider;
     private readonly bool _requireAccessToken;
     private readonly SemaphoreSlim _gate = new(1, 1);
-    private readonly ConcurrentDictionary<GroupKey, GroupHealth> _activeGroups = new();
+    private readonly ConcurrentDictionary<GroupKey, GroupState> _activeGroups = new();
     private readonly IDisposable _projectionChangedRegistration;
     private readonly IDisposable _connectionStateRegistration;
     private readonly CancellationTokenSource _disposalCts = new();
@@ -43,7 +46,9 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         ILogger<ProjectionSubscriptionService> logger,
         ProjectionFallbackPollingDriver? fallbackDriver = null,
         IReconnectionReconciliationCoordinator? reconciliationCoordinator = null,
-        IPendingCommandPollingCoordinator? pendingCommandPolling = null) {
+        IPendingCommandPollingCoordinator? pendingCommandPolling = null,
+        IUserContextAccessor? userContextAccessor = null,
+        IOptions<FcShellOptions>? shellOptions = null) {
         ArgumentNullException.ThrowIfNull(options);
         ArgumentNullException.ThrowIfNull(connectionFactory);
         ArgumentNullException.ThrowIfNull(connectionState);
@@ -57,6 +62,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _fallbackDriver = fallbackDriver;
         _reconciliationCoordinator = reconciliationCoordinator;
         _pendingCommandPolling = pendingCommandPolling;
+        _userContextAccessor = userContextAccessor;
+        _shellOptions = shellOptions;
         EventStoreOptions current = options.Value;
         _requireAccessToken = current.RequireAccessToken;
         _accessTokenProvider = current.AccessTokenProvider is null
@@ -75,8 +82,12 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _fallbackDriver?.Start();
     }
 
+    private readonly IUserContextAccessor? _userContextAccessor;
+    private readonly IOptions<FcShellOptions>? _shellOptions;
+
     public async Task SubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
-        GroupKey key = ValidateGroup(projectionType, tenantId);
+        TenantContextSnapshot? context = ResolveTenantContext(tenantId, "projection-subscribe");
+        GroupKey key = ValidateGroup(projectionType, context?.TenantId ?? tenantId);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
             ThrowIfDisposed();
@@ -98,7 +109,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             }
 
             await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
-            _ = _activeGroups.TryAdd(key, GroupHealth.Active);
+            _ = _activeGroups.TryAdd(key, new GroupState(GroupHealth.Active, context));
         }
         finally {
             _ = _gate.Release();
@@ -106,6 +117,11 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     }
 
     public async Task UnsubscribeAsync(string projectionType, string tenantId, CancellationToken cancellationToken = default) {
+        // P2 — unsubscribe must be non-throwing on missing/stale tenant context. Sign-out
+        // makes TenantId null on the accessor, and the previous code threw TenantContextException,
+        // leaving the group permanently in _activeGroups (no LeaveGroupAsync, no removal). A
+        // subsequent re-sign-in short-circuited at `_activeGroups.ContainsKey(key) → return`,
+        // silently keeping a stale subscription.
         GroupKey key = ValidateGroup(projectionType, tenantId);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try {
@@ -113,7 +129,18 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                 return;
             }
 
-            await _connection.LeaveGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
+            try {
+                await _connection.LeaveGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+                throw;
+            }
+            catch (Exception) {
+                // Best-effort transport leave; the test suite already exercises a
+                // throw-on-leave fixture. Re-throw to preserve existing semantics for callers
+                // that observe transport failure.
+                throw;
+            }
             _ = _activeGroups.TryRemove(key, out _);
         }
         finally {
@@ -172,7 +199,21 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
 
         // DN2 — only Active groups receive nudge refresh. Degraded groups (failed rejoin)
         // wait for the next reconnect cycle to attempt recovery.
-        if (_activeGroups.TryGetValue(key, out GroupHealth health) && health == GroupHealth.Active) {
+        // P3 — Blocked groups may recover on a subsequent nudge if the authenticated context
+        // now matches the captured snapshot (e.g., after a logout+relogin to the same identity
+        // without a connection drop). IsGroupContextCurrent transitions Blocked→Active when
+        // the validation succeeds.
+        if (_activeGroups.TryGetValue(key, out GroupState state)
+            && (state.Health == GroupHealth.Active || state.Health == GroupHealth.Blocked)) {
+            if (!IsGroupContextCurrent(key, state, "projection-nudge")) {
+                return;
+            }
+
+            // Re-read state in case IsGroupContextCurrent flipped Health back to Active.
+            if (!_activeGroups.TryGetValue(key, out state) || state.Health != GroupHealth.Active) {
+                return;
+            }
+
             // F03 — use the receive-seam span name so it does not double-count under the
             // `frontcomposer.projection.nudge` operation alongside the scheduler's per-refresh
             // span. Operators see "received" and "refreshed" as distinct measurements.
@@ -329,8 +370,25 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                     key.ProjectionType,
                     FrontComposerTelemetry.TenantMarker(key.TenantId));
                 try {
+                    if (!_activeGroups.TryGetValue(key, out GroupState state)) {
+                        // P4 — group was concurrently unsubscribed; skip without writing a
+                        // fabricated entry back. The previous code wrote `state with {...}`
+                        // using `default(GroupState)`, creating a Blocked entry with null
+                        // TenantContext for a key the caller already removed.
+                        continue;
+                    }
+
+                    if (!IsGroupContextCurrent(key, state, "projection-rejoin")) {
+                        // P3 — Blocked groups *can* recover. IsGroupContextCurrent already wrote
+                        // the Blocked state with a TryUpdate guard; we just skip the rejoin.
+                        // The Active vs Blocked transition here is owned by IsGroupContextCurrent.
+                        continue;
+                    }
+
                     await _connection.JoinGroupAsync(key.ProjectionType, key.TenantId, cancellationToken).ConfigureAwait(false);
-                    _activeGroups[key] = GroupHealth.Active;
+                    // P3/P4 — TryUpdate so a concurrent unsubscribe/reconnect does not
+                    // resurrect a removed key. If the entry is gone, the rejoin is moot.
+                    _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Active }, state);
                     FrontComposerTelemetry.SetOutcome(activity, "active");
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -338,7 +396,10 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException) {
                     // DN2 — mark degraded; nudges skip until the next successful rejoin.
-                    _activeGroups[key] = GroupHealth.Degraded;
+                    // P4 — TryUpdate so a concurrent unsubscribe doesn't resurrect a removed key.
+                    if (_activeGroups.TryGetValue(key, out GroupState current)) {
+                        _ = _activeGroups.TryUpdate(key, current with { Health = GroupHealth.Degraded }, current);
+                    }
                     // P5 — exception type only. Raw exception messages can carry group/tenant
                     // arguments embedded in stack frames or framework-formatted text.
                     FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
@@ -353,8 +414,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
 
     private IReadOnlyDictionary<ProjectionFallbackGroupKey, bool> SnapshotGroupHealth() {
         Dictionary<ProjectionFallbackGroupKey, bool> snapshot = new();
-        foreach (KeyValuePair<GroupKey, GroupHealth> group in _activeGroups) {
-            snapshot[new ProjectionFallbackGroupKey(group.Key.ProjectionType, group.Key.TenantId)] = group.Value == GroupHealth.Active;
+        foreach (KeyValuePair<GroupKey, GroupState> group in _activeGroups) {
+            snapshot[new ProjectionFallbackGroupKey(group.Key.ProjectionType, group.Key.TenantId)] = group.Value.Health == GroupHealth.Active;
         }
 
         return snapshot;
@@ -383,13 +444,68 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
             EventStoreValidation.RequireNonColonSegment(projectionType, nameof(projectionType)),
             EventStoreValidation.RequireNonColonSegment(tenantId, nameof(tenantId)));
 
+    private TenantContextSnapshot? ResolveTenantContext(string? requestedTenant, string operationKind) {
+        if (_userContextAccessor is null) {
+            return null;
+        }
+
+        return FrontComposerTenantContextAccessor
+            .Resolve(
+                _userContextAccessor,
+                _shellOptions?.Value ?? new FcShellOptions(),
+                _logger,
+                requestedTenant,
+                operationKind)
+            .EnsureSuccess();
+    }
+
+    private bool IsGroupContextCurrent(GroupKey key, GroupState state, string operationKind) {
+        if (_userContextAccessor is null || state.TenantContext is null) {
+            return true;
+        }
+
+        // P5 — explicitly compare BOTH tenant and user against the original snapshot, do NOT
+        // pass key.TenantId as requestedTenant (which would categorize a tenant change as
+        // TenantMismatch (HFC2017) instead of StaleTenantContext (HFC2019)).
+        TenantContextResult current = FrontComposerTenantContextAccessor.Resolve(
+            _userContextAccessor,
+            _shellOptions?.Value ?? new FcShellOptions(),
+            _logger,
+            requestedTenant: null,
+            operationKind);
+        if (!current.Succeeded || current.Context is null) {
+            // P4 — TryUpdate so we don't fabricate a default GroupState entry for a key
+            // that was concurrently unsubscribed.
+            _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
+            return false;
+        }
+
+        bool matches = string.Equals(current.Context.TenantId, state.TenantContext.TenantId, StringComparison.Ordinal)
+            && string.Equals(current.Context.UserId, state.TenantContext.UserId, StringComparison.Ordinal);
+        if (!matches) {
+            // P3/P4 — flip to Blocked atomically; recovery happens when the user re-authenticates
+            // with the matching context and a subsequent rejoin loop re-evaluates.
+            _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Blocked }, state);
+        }
+        else if (state.Health != GroupHealth.Active) {
+            // P3 — context still matches and the group is currently Blocked/Degraded; restore
+            // Active so live nudges resume after a transient validation failure.
+            _ = _activeGroups.TryUpdate(key, state with { Health = GroupHealth.Active }, state);
+        }
+
+        return matches;
+    }
+
     private static Uri BuildHubUri(Uri baseAddress, string path)
         => new(baseAddress, path);
 
     private readonly record struct GroupKey(string ProjectionType, string TenantId);
 
+    private readonly record struct GroupState(GroupHealth Health, TenantContextSnapshot? TenantContext);
+
     private enum GroupHealth : byte {
         Active,
         Degraded,
+        Blocked,
     }
 }

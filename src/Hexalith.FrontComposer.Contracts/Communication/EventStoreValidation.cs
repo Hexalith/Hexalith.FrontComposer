@@ -20,15 +20,18 @@ public static class EventStoreValidation {
     /// <param name="value">The value to inspect.</param>
     /// <param name="paramName">The parameter name used for exceptions.</param>
     /// <returns>The original value when valid.</returns>
-    /// <exception cref="ArgumentException">Thrown when the value is missing or contains a colon.</exception>
+    /// <exception cref="ArgumentException">Thrown when the value is missing or contains a colon/control character.</exception>
     public static string RequireNonColonSegment(string? value, string paramName) {
         if (string.IsNullOrWhiteSpace(value)) {
             throw new ArgumentException("EventStore routing values must not be empty.", paramName);
         }
 
         string result = value!;
-        if (result.Contains(":")) {
-            throw new ArgumentException("EventStore routing values must not contain ':'.", paramName);
+        for (int i = 0; i < result.Length; i++) {
+            char ch = result[i];
+            if (ch == ':' || char.IsControl(ch)) {
+                throw new ArgumentException("EventStore routing values must not contain ':' or control characters.", paramName);
+            }
         }
 
         return result;

@@ -3,10 +3,12 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,7 +28,8 @@ public sealed class EventStoreCommandClient(
     IUlidFactory ulidFactory,
     IUserContextAccessor userContextAccessor,
     EventStoreResponseClassifier classifier,
-    ILogger<EventStoreCommandClient> logger) : ICommandServiceWithLifecycle {
+    ILogger<EventStoreCommandClient> logger,
+    IOptions<FcShellOptions>? shellOptions = null) : ICommandServiceWithLifecycle {
     internal const string HttpClientName = "Hexalith.FrontComposer.EventStore.Commands";
 
     public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
@@ -42,9 +45,15 @@ public sealed class EventStoreCommandClient(
 
         EventStoreOptions current = options.Value;
         string messageId = ulidFactory.NewUlid();
-        (string tenant, _) = EventStoreIdentity.RequireUserContext(
-            userContextAccessor,
-            ReadStringProperty(command, "TenantId"));
+        TenantContextSnapshot tenantContext = FrontComposerTenantContextAccessor
+            .Resolve(
+                userContextAccessor,
+                shellOptions?.Value ?? new FcShellOptions(),
+                logger,
+                ReadStringProperty(command, "TenantId"),
+                "command-dispatch")
+            .EnsureSuccess();
+        (string tenant, _) = EventStoreIdentity.RequireUserContext(tenantContext);
         string domain = EventStoreIdentity.GetDomain(typeof(TCommand));
         string aggregateId = EventStoreIdentity.GetAggregateId(command);
         string commandTypeName = typeof(TCommand).FullName ?? typeof(TCommand).Name;

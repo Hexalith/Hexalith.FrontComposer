@@ -60,24 +60,35 @@ public interface IETagCache {
     Task RemoveAsync(string key, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Story 5-4 DN2 — best-effort projection-family invalidation. Removes every entry whose
-    /// stored discriminator (<see cref="ETagCacheEntry.Discriminator"/>) belongs to the supplied
-    /// projection type. Implementations must not throw on storage failure; failures degrade to
-    /// a diagnostic log so the user-visible operation never fails because of cache cleanup.
+    /// Story 5-4 DN2 / Story 7-2 — best-effort projection-family invalidation scoped to one
+    /// validated tenant/user context. Removes every entry whose stored discriminator
+    /// (<see cref="ETagCacheEntry.Discriminator"/>) belongs to the supplied projection type AND
+    /// whose canonical storage key starts with the <c>{tenantId}:{userId}:etag:</c> prefix.
+    /// Implementations must not remove entries outside the supplied tenant/user prefix.
+    /// Implementations must not throw on storage failure; failures degrade to a diagnostic log
+    /// so the user-visible operation never fails because of cache cleanup.
     /// </summary>
     /// <remarks>
     /// <para>
     /// AC7 requires "all ETag cache entries for the affected projection type/discriminator family"
-    /// to be invalidated after an incompatible cache entry or 200 OK payload. The default
-    /// implementation iterates the in-memory LRU map and matches stored discriminators against
-    /// the projection type for both lane shapes built by <see cref="ETagCacheDiscriminator"/>:
+    /// to be invalidated after an incompatible cache entry or 200 OK payload, with Story 7-2
+    /// AC10 adding the cross-tenant boundary: a schema mismatch in tenant A must not remove,
+    /// read, or enumerate entries in tenant B. The default implementation iterates the in-memory
+    /// LRU map and matches both the canonical key prefix and stored discriminator against the
+    /// projection type for both lane shapes built by <see cref="ETagCacheDiscriminator"/>:
     /// <c>projection-page:{TypeFqn}:s{Skip}-t{Take}</c> and <c>action-queue-count:{TypeFqn}</c>.
     /// </para>
     /// <para>
     /// A 304 Not Modified must never trigger this path (Story 5-4 D17).
     /// </para>
     /// </remarks>
-    /// <param name="projectionType">Fully-qualified projection type name; entries whose stored discriminator references this type are removed.</param>
+    /// <param name="tenantId">Validated tenant identifier.</param>
+    /// <param name="userId">Validated user identifier.</param>
+    /// <param name="projectionType">Fully-qualified projection type name.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    Task RemoveByProjectionTypeAsync(string projectionType, CancellationToken cancellationToken = default);
+    Task RemoveByProjectionTypeAsync(
+        string tenantId,
+        string userId,
+        string projectionType,
+        CancellationToken cancellationToken = default);
 }

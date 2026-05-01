@@ -3,9 +3,11 @@ using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.Telemetry;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.State.ETagCache;
 
 using Microsoft.Extensions.Logging;
@@ -33,14 +35,23 @@ public sealed class EventStoreQueryClient(
     EventStoreResponseClassifier classifier,
     IETagCache cache,
     IAuthRedirector authRedirector,
-    ILogger<EventStoreQueryClient> logger) : IQueryService {
+    ILogger<EventStoreQueryClient> logger,
+    IOptions<FcShellOptions>? shellOptions = null) : IQueryService {
     internal const string HttpClientName = "Hexalith.FrontComposer.EventStore.Queries";
 
     public async Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
         ArgumentNullException.ThrowIfNull(request);
 
         EventStoreOptions current = options.Value;
-        (string tenant, string userId) = EventStoreIdentity.RequireUserContext(userContextAccessor, request.TenantId);
+        TenantContextSnapshot tenantContext = FrontComposerTenantContextAccessor
+            .Resolve(
+                userContextAccessor,
+                shellOptions?.Value ?? new FcShellOptions(),
+                logger,
+                request.TenantId,
+                "query-execute")
+            .EnsureSuccess();
+        (string tenant, string userId) = EventStoreIdentity.RequireUserContext(tenantContext);
         string? cacheKey = ResolveCacheKey(request, tenant, userId);
         ETagCacheEntry? cachedEntry = cacheKey is null
             ? null
@@ -49,6 +60,7 @@ public sealed class EventStoreQueryClient(
         QueryResult<T> result = await ExecuteAsync<T>(
             request,
             current,
+            tenantContext,
             tenant,
             cacheKey,
             cachedEntry,
@@ -60,6 +72,7 @@ public sealed class EventStoreQueryClient(
     private async Task<QueryResult<T>> ExecuteAsync<T>(
         QueryRequest request,
         EventStoreOptions current,
+        TenantContextSnapshot tenantContext,
         string tenant,
         string? cacheKey,
         ETagCacheEntry? cachedEntry,
@@ -145,6 +158,7 @@ public sealed class EventStoreQueryClient(
                     if (cachedEntry is not null) {
                         FrontComposerTelemetry.SetOutcome(activity, "from_cache");
                         try {
+                            RevalidateSnapshot(tenantContext);
                             return DeserializeNotModifiedFromCache<T>(cachedEntry, request.ProjectionType);
                         }
                         catch (ProjectionSchemaMismatchException ex) {
@@ -182,6 +196,7 @@ public sealed class EventStoreQueryClient(
                     return await ExecuteAsync<T>(
                         request: request with { ETag = null, ETags = null },
                         current,
+                        tenantContext,
                         tenant,
                         cacheKey: cacheKey,
                         cachedEntry: null,
@@ -207,7 +222,11 @@ public sealed class EventStoreQueryClient(
                         // earlier but logging the literal "null" is still preferable to a NullReferenceException.
                         string diagnosticProjectionType = projectionType ?? string.Empty;
                         // DN2 — invalidate the projection family, not just this single cache key.
-                        await TryInvalidateSchemaMismatchAsync(cacheKey, diagnosticProjectionType, cancellationToken).ConfigureAwait(false);
+                        await TryInvalidateSchemaMismatchAsync(
+                            cacheKey,
+                            diagnosticProjectionType,
+                            tenantContext,
+                            cancellationToken).ConfigureAwait(false);
 
                         FrontComposerTelemetry.SetFailure(activity, ex.GetType().Name);
                         FrontComposerLog.QuerySchemaMismatch(
@@ -228,7 +247,7 @@ public sealed class EventStoreQueryClient(
                             FormatVersion: ETagCacheEntry.CurrentFormatVersion,
                             PayloadVersion: request.CachePayloadVersion,
                             Discriminator: request.CacheDiscriminator ?? string.Empty);
-                        _ = PersistCacheEntryAsync(cacheKey, entry);
+                        _ = PersistCacheEntryAsync(cacheKey, entry, tenantContext);
                     }
 
                     return new QueryResult<T>(items, totalCount, eTag);
@@ -289,7 +308,41 @@ public sealed class EventStoreQueryClient(
                 ? key
                 : null;
 
-    private async Task PersistCacheEntryAsync(string cacheKey, ETagCacheEntry entry) {
+    private void RevalidateSnapshot(TenantContextSnapshot snapshot) {
+        // P5 — explicitly compare BOTH tenant and user against the original snapshot.
+        // Passing snapshot.TenantId as requestedTenant to the validator would have categorized a
+        // tenant-id change as TenantMismatch instead of StaleTenantContext, hiding the
+        // delayed-effect race classification in HFC2017 instead of HFC2019.
+        TenantContextResult current = FrontComposerTenantContextAccessor.Resolve(
+            userContextAccessor,
+            shellOptions?.Value ?? new FcShellOptions(),
+            logger,
+            requestedTenant: null,
+            "query-delayed-effect");
+        if (!current.Succeeded || current.Context is null) {
+            throw new TenantContextException(current.FailureCategory, snapshot.CorrelationId);
+        }
+
+        if (!string.Equals(current.Context.TenantId, snapshot.TenantId, StringComparison.Ordinal)
+            || !string.Equals(current.Context.UserId, snapshot.UserId, StringComparison.Ordinal)) {
+            throw new TenantContextException(TenantContextFailureCategory.StaleTenantContext, snapshot.CorrelationId);
+        }
+    }
+
+    private async Task PersistCacheEntryAsync(string cacheKey, ETagCacheEntry entry, TenantContextSnapshot snapshot) {
+        // P6 — revalidate INSIDE the fire-and-forget body so a tenant/user switch between
+        // scheduling and the awaited SetAsync aborts the cache write. The previous design
+        // revalidated before scheduling and then awaited; SetAsync could persist under the
+        // original snapshot's key while a different identity is now authenticated.
+        try {
+            RevalidateSnapshot(snapshot);
+        }
+        catch (TenantContextException) {
+            // Stale context after the response landed; AC10 requires no cache write under a
+            // different identity. Sanitized log already emitted by Resolve.
+            return;
+        }
+
         try {
             await cache.SetAsync(cacheKey, entry, CancellationToken.None).ConfigureAwait(false);
         }
@@ -339,10 +392,19 @@ public sealed class EventStoreQueryClient(
     /// "all entries for the affected projection type/discriminator family". Wrapped in try/catch
     /// per P1 — a cache-removal failure must never replace the schema-mismatch we are surfacing.
     /// </summary>
-    private async Task TryInvalidateSchemaMismatchAsync(string? cacheKey, string projectionType, CancellationToken cancellationToken) {
+    private async Task TryInvalidateSchemaMismatchAsync(
+        string? cacheKey,
+        string projectionType,
+        TenantContextSnapshot tenantContext,
+        CancellationToken cancellationToken) {
         try {
             if (!string.IsNullOrEmpty(projectionType)) {
-                await cache.RemoveByProjectionTypeAsync(projectionType, cancellationToken).ConfigureAwait(false);
+                RevalidateSnapshot(tenantContext);
+                await cache.RemoveByProjectionTypeAsync(
+                    tenantContext.TenantId,
+                    tenantContext.UserId,
+                    projectionType,
+                    cancellationToken).ConfigureAwait(false);
             }
 
             if (!string.IsNullOrEmpty(cacheKey)) {

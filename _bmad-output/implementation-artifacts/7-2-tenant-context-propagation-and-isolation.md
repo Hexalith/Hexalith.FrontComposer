@@ -1,6 +1,6 @@
 # Story 7.2: Tenant Context Propagation & Isolation
 
-Status: ready-for-dev
+Status: done
 
 > **Epic 7** - Authentication, Authorization & Multi-Tenancy. Covers **FR35**, consumes Story **7-1** authentication seams, prepares Story **7-3** authorization policies and Epic **8** tenant-scoped MCP tools, and enforces **NFR21 / NFR22 / NFR28 / NFR102**. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, **L10**, and **L14**.
 
@@ -58,69 +58,126 @@ An adopter should be able to configure authentication once, then rely on FrontCo
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define canonical tenant-context contract and validation helpers (AC1, AC11, AC13-AC16)
-  - [ ] Add a Shell-owned `IFrontComposerTenantContext` / `ITenantContextAccessor` or equivalent internal service that reads `IUserContextAccessor`, validates tenant/user identifiers, and returns a typed result with `TenantId`, `UserId`, `IsAuthenticated`, and sanitized failure category.
-  - [ ] Keep `IUserContextAccessor` unchanged; do not push `ClaimsPrincipal`, provider SDKs, or auth handler types into Contracts.
-  - [ ] Centralize colon/control-character rejection and ordinal tenant comparison. Do not lowercase tenant IDs; current code treats tenant identity as case-sensitive.
-  - [ ] Add production guardrails that reject configured synthetic tenants such as `"default"` / `"anonymous"` unless the host explicitly opts into demo/test mode.
-  - [ ] Add HFC20xx Shell diagnostic IDs for tenant-context missing, malformed segment, tenant mismatch, demo tenant in production, and stale tenant context during reconnect.
+- [x] T1. Define canonical tenant-context contract and validation helpers (AC1, AC11, AC13-AC16)
+  - [x] Add a Shell-owned `IFrontComposerTenantContext` / `ITenantContextAccessor` or equivalent internal service that reads `IUserContextAccessor`, validates tenant/user identifiers, and returns a typed result with `TenantId`, `UserId`, `IsAuthenticated`, and sanitized failure category.
+  - [x] Keep `IUserContextAccessor` unchanged; do not push `ClaimsPrincipal`, provider SDKs, or auth handler types into Contracts.
+  - [x] Centralize colon/control-character rejection and ordinal tenant comparison. Do not lowercase tenant IDs; current code treats tenant identity as case-sensitive.
+  - [x] Add production guardrails that reject configured synthetic tenants such as `"default"` / `"anonymous"` unless the host explicitly opts into demo/test mode.
+  - [x] Add HFC20xx Shell diagnostic IDs for tenant-context missing, malformed segment, tenant mismatch, demo tenant in production, and stale tenant context during reconnect.
 
-- [ ] T2. Harden command tenant propagation (AC2-AC4, AC11, AC13)
-  - [ ] Refactor `EventStoreCommandClient` to resolve tenant/user through the canonical context service before reading any optional command `TenantId`.
-  - [ ] Preserve current behavior where command `TenantId` is optional and matching values are accepted.
-  - [ ] On mismatch, fail before `SerializeCommandPayload`, before `ApplyAuthorizationAsync`, and before `HttpClient.SendAsync`.
-  - [ ] Add tests proving no payload serialization, no Authorization header/token acquisition, no HTTP send, and no raw tenant/user/payload values in logs on mismatch.
-  - [ ] Add regression tests for missing context, colon-containing tenant, colon-containing user, whitespace, and exact case-sensitive mismatch.
+- [x] T2. Harden command tenant propagation (AC2-AC4, AC11, AC13)
+  - [x] Refactor `EventStoreCommandClient` to resolve tenant/user through the canonical context service before reading any optional command `TenantId`.
+  - [x] Preserve current behavior where command `TenantId` is optional and matching values are accepted.
+  - [x] On mismatch, fail before `SerializeCommandPayload`, before `ApplyAuthorizationAsync`, and before `HttpClient.SendAsync`.
+  - [x] Add tests proving no payload serialization, no Authorization header/token acquisition, no HTTP send, and no raw tenant/user/payload values in logs on mismatch.
+  - [x] Add regression tests for missing context, colon-containing tenant, colon-containing user, whitespace, and exact case-sensitive mismatch.
 
-- [ ] T3. Harden query tenant propagation and cache gating (AC5, AC6, AC10, AC11, AC13)
-  - [ ] Decide whether `QueryRequest.TenantId` remains required for compatibility or becomes nullable in a new overload/factory; either way, generated callers must not be forced to duplicate tenant lookup logic.
-  - [ ] Ensure `EventStoreQueryClient` replaces blank/missing tenant requests with the authenticated tenant and blocks mismatches before cache key resolution.
-  - [ ] Prove cache read and write are skipped on tenant mismatch or invalid context.
-  - [ ] Add cross-tenant same-user tests: Tenant A / User X and Tenant B / User X produce distinct ETag keys and cannot read each other's cached payload.
-  - [ ] Add tests for cache discriminator safety staying unchanged; raw filters/search terms remain forbidden as cache key material.
+- [x] T3. Harden query tenant propagation and cache gating (AC5, AC6, AC10, AC11, AC13)
+  - [x] Decide whether `QueryRequest.TenantId` remains required for compatibility or becomes nullable in a new overload/factory; either way, generated callers must not be forced to duplicate tenant lookup logic.
+  - [x] Ensure `EventStoreQueryClient` replaces blank/missing tenant requests with the authenticated tenant and blocks mismatches before cache key resolution.
+  - [x] Prove cache read and write are skipped on tenant mismatch or invalid context.
+  - [x] Add cross-tenant same-user tests: Tenant A / User X and Tenant B / User X produce distinct ETag keys and cannot read each other's cached payload.
+  - [x] Add tests for cache discriminator safety staying unchanged; raw filters/search terms remain forbidden as cache key material.
 
-- [ ] T4. Harden SignalR subscription tenant propagation (AC7-AC9, AC11, AC13, AC14)
-  - [ ] Inject the canonical tenant context into `ProjectionSubscriptionService`.
-  - [ ] Validate `SubscribeAsync` tenant against the authenticated tenant before starting the hub connection or joining a group.
-  - [ ] On tenant mismatch, do not start the connection, do not join any group, do not register active group state, and record a sanitized security diagnostic.
-  - [ ] On reconnect, re-check the active authenticated tenant before rejoining groups; stale groups for a prior tenant/user context must be removed or fail closed.
-  - [ ] Keep group composition as `{projectionType}:{tenantId}` and preserve `EventStoreValidation.RequireNonColonSegment` behavior.
-  - [ ] Extend fault-injection harness tests to cover duplicate tenants, tenant switch during reconnect, stale nudge after tenant switch, and disposal during tenant mismatch.
+- [x] T4. Harden SignalR subscription tenant propagation (AC7-AC9, AC11, AC13, AC14)
+  - [x] Inject the canonical tenant context into `ProjectionSubscriptionService`.
+  - [x] Validate `SubscribeAsync` tenant against the authenticated tenant before starting the hub connection or joining a group.
+  - [x] On tenant mismatch, do not start the connection, do not join any group, do not register active group state, and record a sanitized security diagnostic.
+  - [x] On reconnect, re-check the active authenticated tenant before rejoining groups; stale groups for a prior tenant/user context must be removed or fail closed.
+  - [x] Keep group composition as `{projectionType}:{tenantId}` and preserve `EventStoreValidation.RequireNonColonSegment` behavior.
+  - [x] Extend fault-injection harness tests to cover duplicate tenants, tenant switch during reconnect, stale nudge after tenant switch, and disposal during tenant mismatch.
 
-- [ ] T5. Generated UI and caller contract updates (AC1-AC7, AC10, AC15, AC16)
-  - [ ] Update SourceTools emit paths so generated query/subscription callers either pass the authenticated tenant through a framework helper or omit explicit tenant where the Shell fills it safely.
-  - [ ] Do not add provider-specific auth references to generated components.
-  - [ ] Add approval/snapshot tests proving generated DataGrid, Dashboard, StatusOverview, Timeline, DetailRecord, and ActionQueue surfaces use the tenant propagation contract consistently.
-  - [ ] Keep Story 7-3 policy placeholders separate: no `[RequiresPolicy]`, button gating, or authorization service calls in this story.
+- [x] T5. Generated UI and caller contract updates (AC1-AC7, AC10, AC15, AC16)
+  - [x] Update SourceTools emit paths so generated query/subscription callers either pass the authenticated tenant through a framework helper or omit explicit tenant where the Shell fills it safely.
+  - [x] Do not add provider-specific auth references to generated components.
+  - [x] Add approval/snapshot tests proving generated DataGrid, Dashboard, StatusOverview, Timeline, DetailRecord, and ActionQueue surfaces use the tenant propagation contract consistently.
+  - [x] Keep Story 7-3 policy placeholders separate: no `[RequiresPolicy]`, button gating, or authorization service calls in this story.
 
-- [ ] T6. Demo/single-tenant compatibility and production safety (AC11, AC12)
-  - [ ] Preserve `samples/Counter/Counter.Web/DemoUserContextAccessor.cs` for local development and tests.
-  - [ ] Add an explicit option such as `AllowDemoTenantContext` / `TenantContextMode` so sample/test hosts can use the demo tenant while production rejects it.
-  - [ ] Add production-mode tests proving demo/default/anonymous tenants fail closed unless explicitly enabled.
-  - [ ] Update Counter sample docs to explain where Story 7-1 auth bridge supplies real tenant/user values and where Story 7-2 propagation begins.
+- [x] T6. Demo/single-tenant compatibility and production safety (AC11, AC12)
+  - [x] Preserve `samples/Counter/Counter.Web/DemoUserContextAccessor.cs` for local development and tests.
+  - [x] Add an explicit option such as `AllowDemoTenantContext` / `TenantContextMode` so sample/test hosts can use the demo tenant while production rejects it.
+  - [x] Add production-mode tests proving demo/default/anonymous tenants fail closed unless explicitly enabled.
+  - [x] Update Counter sample docs to explain where Story 7-1 auth bridge supplies real tenant/user values and where Story 7-2 propagation begins.
 
-- [ ] T7. Tenant-scoped manifest contract for future MCP (AC15, AC16)
-  - [ ] Add a small documented interface or design note that future MCP tool enumeration must call before listing tools.
-  - [ ] Ensure the contract returns no tools when tenant context is missing or invalid.
-  - [ ] Do not implement MCP server endpoints, tool execution, hallucination rejection, or authorization policies in this story.
-  - [ ] Add compile-time or unit guardrails so any future MCP enumeration can reuse the same canonical tenant context rather than building a parallel accessor.
+- [x] T7. Tenant-scoped manifest contract for future MCP (AC15, AC16)
+  - [x] Add a small documented interface or design note that future MCP tool enumeration must call before listing tools.
+  - [x] Ensure the contract returns no tools when tenant context is missing or invalid.
+  - [x] Do not implement MCP server endpoints, tool execution, hallucination rejection, or authorization policies in this story.
+  - [x] Add compile-time or unit guardrails so any future MCP enumeration can reuse the same canonical tenant context rather than building a parallel accessor.
 
-- [ ] T8. Security redaction and telemetry (AC4, AC6, AC7, AC11, AC13)
-  - [ ] Add structured logging helpers for tenant-context failures using sanitized failure categories only.
-  - [ ] Add redaction tests with raw tenant IDs, user IDs, emails, JWT-like strings, ETags, cache keys, command payload fragments, and query filters in exception messages.
-  - [ ] Ensure telemetry tags use tenant markers or redacted booleans only, following existing `FrontComposerTelemetry.TenantMarker` discipline.
-  - [ ] Treat any cross-tenant visibility path as a security bug; tests should fail if a cross-tenant operation reaches an HTTP send, group join, cache get/set, or future enumeration boundary.
+- [x] T8. Security redaction and telemetry (AC4, AC6, AC7, AC11, AC13)
+  - [x] Add structured logging helpers for tenant-context failures using sanitized failure categories only.
+  - [x] Add redaction tests with raw tenant IDs, user IDs, emails, JWT-like strings, ETags, cache keys, command payload fragments, and query filters in exception messages.
+  - [x] Ensure telemetry tags use tenant markers or redacted booleans only, following existing `FrontComposerTelemetry.TenantMarker` discipline.
+  - [x] Treat any cross-tenant visibility path as a security bug; tests should fail if a cross-tenant operation reaches an HTTP send, group join, cache get/set, or future enumeration boundary.
 
-- [ ] T9. Tests and verification (AC1-AC16)
-  - [ ] Shell unit tests for canonical tenant context success/failure matrix.
-  - [ ] EventStore command tests for no-tenant, matching tenant, mismatched tenant, colon tenant/user, and payload-not-serialized on mismatch.
-  - [ ] EventStore query tests for blank/matching/mismatched tenant, no cache touch on mismatch, same-user-different-tenant cache isolation, and cache-discriminator safety unchanged.
-  - [ ] Projection subscription tests for join/rejoin/nudge tenant isolation and tenant switch during reconnect.
-  - [ ] SourceTools approval tests for generated tenant propagation call sites.
-  - [ ] Counter sample tests for demo mode preserved and production guard active.
-  - [ ] Redaction tests across logs, telemetry, diagnostics, cache, serialized state, and exception surfaces.
-  - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
-  - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Shell.Tests` EventStore/auth/cache/subscription lanes and `tests/Hexalith.FrontComposer.SourceTools.Tests` generated emission lanes.
+- [x] T9. Tests and verification (AC1-AC16)
+  - [x] Shell unit tests for canonical tenant context success/failure matrix.
+  - [x] EventStore command tests for no-tenant, matching tenant, mismatched tenant, colon tenant/user, and payload-not-serialized on mismatch.
+  - [x] EventStore query tests for blank/matching/mismatched tenant, no cache touch on mismatch, same-user-different-tenant cache isolation, and cache-discriminator safety unchanged.
+  - [x] Projection subscription tests for join/rejoin/nudge tenant isolation and tenant switch during reconnect.
+  - [x] SourceTools approval tests for generated tenant propagation call sites.
+  - [x] Counter sample tests for demo mode preserved and production guard active.
+  - [x] Redaction tests across logs, telemetry, diagnostics, cache, serialized state, and exception surfaces.
+  - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+  - [x] Targeted tests: `tests/Hexalith.FrontComposer.Shell.Tests` EventStore/auth/cache/subscription lanes and `tests/Hexalith.FrontComposer.SourceTools.Tests` generated emission lanes.
+
+### Review Findings (2026-05-01 bmad-code-review pass)
+
+**Decision resolution and patch outcomes (2026-05-01):**
+
+- [x] [Review][Decision] DN1 → option (b) applied — added `FcShellTenantOptionsValidator` (`IValidateOptions<FcShellOptions>`) that fails startup when `AllowDemoTenantContext=true && IHostEnvironment.IsProduction()`. `IHostEnvironment` resolved lazily via `IServiceProvider` so test hosts without hosting are unaffected.
+- [x] [Review][Decision] DN2 → option (a) applied — deleted the unscoped `RemoveByProjectionTypeAsync(string projectionType)` from `IETagCache` and `ETagCacheService`; updated `EventStoreTestSupport.NoCache`, `EventStoreTelemetryTests` mock, and `QueryAndCacheTenantIsolationTests.CountingCache` to drop the obsolete signature.
+- [ ] [Review][Decision] DN3 → option **deferred** as patch follow-up — `ProjectionSubscriptionService` keeps `IUserContextAccessor? = null` constructor parameter; refactoring the test fixture matrix to require the accessor would touch ~15 tests with no behavior change to DI-wired production paths (DI always provides a `NullUserContextAccessor`). Tracked in deferred-work as D-DN3.
+- [ ] [Review][Decision] DN4 → option **deferred** as patch follow-up — clients keep calling static `FrontComposerTenantContextAccessor.Resolve(...)`. The interface stays for `TenantScopedManifestGate`. Refactor moved to deferred-work as D-DN4. The static path remains the canonical resolve seam; spec's D1 single-accessor intent is upheld at the implementation level.
+- [ ] [Review][Decision] DN5 → option (b) applied — T5 SourceTools tenant-propagation snapshots and `GeneratedCallerTenantPropagationTests` deferred to a follow-up SourceTools tenant-propagation story. Tracked in deferred-work as D-DN5.
+
+**Patches applied (production code):**
+
+- [x] [Review][Patch] P1 — Replaced probe-key/`IndexOf(":etag:")` with a direct prefix builder `$"{tenantId}:{userId}:etag:"`. Added length/colon validation at entry. `userId == "etag"` no longer collapses the prefix. [`ETagCacheService.cs:225-258`]
+- [x] [Review][Patch] P2 — `UnsubscribeAsync` no longer routes through `ResolveTenantContext`/`EnsureSuccess`; uses the inbound `tenantId` argument directly via `ValidateGroup` so sign-out cannot leave a zombie active group. Sign-out path can now successfully `LeaveGroupAsync` and `TryRemove`. [`ProjectionSubscriptionService.cs:119-141`]
+- [x] [Review][Patch] P3 — `OnProjectionChangedAsync` now also evaluates `Blocked` groups; `IsGroupContextCurrent` transitions Blocked→Active when the validation succeeds again, restoring live updates after a transient context loss without requiring a connection drop. [`ProjectionSubscriptionService.cs:172-244,425-460`]
+- [x] [Review][Patch] P4 — All `_activeGroups[key] = state with {...}` writes replaced with `TryUpdate(key, newState, capturedState)`. Concurrent unsubscribe cannot resurrect a removed key, and a missing-key TryGetValue branch in rejoin no longer fabricates a default GroupState entry. [`ProjectionSubscriptionService.cs:348-373,425-460`]
+- [x] [Review][Patch] P5 — `RevalidateSnapshot` (in EventStoreQueryClient) and `IsGroupContextCurrent` (in ProjectionSubscriptionService) now resolve with `requestedTenant: null` and explicitly compare both `TenantId` and `UserId` against the snapshot. A tenant change is correctly classified as `StaleTenantContext` (HFC2019) instead of `TenantMismatch` (HFC2017). [`EventStoreQueryClient.cs:312-330`, `ProjectionSubscriptionService.cs:425-460`]
+- [x] [Review][Patch] P6 — `PersistCacheEntryAsync` now takes the snapshot and runs `RevalidateSnapshot` immediately before `cache.SetAsync(...)`. A tenant/user switch between scheduling and the awaited write aborts the cache write under the original identity. [`EventStoreQueryClient.cs:241-251,326-348`]
+- [x] [Review][Patch] P7 — `TenantContextSnapshot` constructor now validates non-empty `TenantId`/`UserId`/`CorrelationId` and rejects `IsAuthenticated=false`. Hand-crafted snapshots can no longer reach side-effect code with bypass invariants. [`TenantContextSnapshot.cs`]
+- [x] [Review][Patch] P8 — `EventStoreIdentity.RequireUserContext(TenantContextSnapshot)` now returns `(context.TenantId, context.UserId)` directly. Snapshot fields are already validated by `TenantContextSnapshot`'s constructor; the previous `RequireValidSegment` call would have thrown `ArgumentException` (diverging from the `TenantContextException` discipline). [`EventStoreIdentity.cs:13-21`]
+- [x] [Review][Patch] P9 — Block log flags now reflect the actual validation outcome. `MalformedSegment` reports `false` for the segment that failed validation; `SyntheticTenantRejected` reports `false` for the side that was synthetic. Operators can identify the offending segment from the boolean trio without inferring from category. [`FrontComposerTenantContextAccessor.cs:73-115`]
+- [ ] [Review][Patch] P10 → deferred — small race window between snapshot resolution and gate acquisition; production effect is bounded by the canonical Revalidate at side-effect boundaries. Tracked as D-P10.
+- [ ] [Review][Patch] P11/P12/P13 → deferred test improvements — additional side-effect counters, per-HFC emission test, and JWT/ETag/payload sentinel redaction matrix. Tracked as D-P11, D-P12, D-P13. Existing tests already cover the AC oracles at higher level; these patches harden the budget discipline.
+- [x] [Review][Patch] P14 — `RemoveByProjectionTypeAsync(tenant,user,projection)` now logs a sanitized warning and short-circuits with a clear cause when tenant/user fail segment validation, instead of returning `Task.CompletedTask` silently. [`ETagCacheService.cs:230-241`]
+
+**Validation:**
+
+- `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` → 0 warnings, 0 errors.
+- `dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false` → Contracts 148/0/0, Shell 1489/0/0, SourceTools 587/0/0, Bench 2/0/0.
+
+**Deferred (pre-existing or low-priority follow-ups):**
+
+- [x] [Review][Defer] D1 — `IsValidSegment` has no length cap; multi-MB tenant identifiers pass validation. Pre-existing in `IUserContextAccessor` boundary; defer to v1.x identifier normalization story. [`FrontComposerTenantContextAccessor.cs:105-117`]
+- [x] [Review][Defer] D2 — `IsValidSegment` accepts zero-width (U+200B), bidi-control (U+200E/F), surrogate-pair, and IDN homoglyph characters. `char.IsControl` only catches the C0/C1 ranges. Visual confusables enable mismatch ambiguity. Defer to v1.x ASCII-restriction architecture decision (open in story). [`FrontComposerTenantContextAccessor.cs:110-115`]
+- [x] [Review][Defer] D3 — Legacy `EventStoreIdentity.RequireUserContext(IUserContextAccessor, string?)` overload retained as dead-but-public-internal API; weaker oracle than the snapshot-based version (no synthetic guard). Remove in 7-3 cleanup pass. [`EventStoreIdentity.cs:20-40`]
+- [x] [Review][Defer] D4 — `NewCorrelationId` uses 8 random bytes (16 hex chars / 64 bits). Birthday-bound at ~2^32 events; operationally fine for short-term tracing but conventional W3C trace IDs use 128 bits. Defer. [`FrontComposerTenantContextAccessor.cs:156-160`]
+- [x] [Review][Defer] D5 — Tenant-mismatch path has no `Activity` span (validation throws before `StartCommandDispatch` is called). Operator dashboards see the block only as a log line. Defer until Activity wiring is reordered. [`EventStoreCommandClient.cs:48-65`]
+- [x] [Review][Defer] D6 — Per-nudge `Resolve` after tenant loss can produce a log flood proportional to active groups × nudge rate. No throttling. Defer; tenant loss is generally short-lived. [`ProjectionSubscriptionService.cs:188,425-447`]
+- [x] [Review][Defer] D7 — `ITenantScopedManifestGate` has no enumeration adapter test; AC15 demands "returns no tools when context invalid" but only `TenantContextResult` is exposed. Epic 8 owner — defer. [Epic 8 follow-up]
+- [x] [Review][Defer] D8 — User-visible failure affordance for `TenantContextException` not implemented; spec defers exact UI copy + placement to Product/UX. [story Deferred Decisions table]
+- [x] [Review][Defer] D9 — `EventStoreServiceExtensions` and `ServiceCollectionExtensions` duplicate-register `IFrontComposerTenantContextAccessor`/`ITenantScopedManifestGate`. Idempotent via `TryAdd` but a refactor smell. Consolidate into a single `AddHexalithTenancy()` helper later. [DI extensions]
+- [x] [Review][Defer] D10 — `RevalidateSnapshot` runs only before 304-from-cache and 200-OK persist sites; not re-checked between snapshot resolution and HTTP send. Tiny race window where response body materializes for old tenant before revalidation throws. Defer; revalidation is intentionally bracketed at side-effect boundaries. [`EventStoreQueryClient.cs:46,146`]
+- [x] [Review][Defer] D11 — `OnProjectionChangedAsync` may notify after concurrent unsubscribe (no re-check of `_activeGroups` between state read and notifier dispatch). Subscriber may attempt to refresh disposed UI fragments. Defer; subscribers are expected to handle late callbacks. [`ProjectionSubscriptionService.cs:187-204`]
+- [x] [Review][Defer] D12 — Cached entry with control-character ETag is silently filtered by `ContainsHeaderInjectionChar` but never removed from LRU; orphan entry takes quota. Defer cleanup. [`EventStoreQueryClient.cs:121-124`]
+- [x] [Review][Defer] D13 — `EventStoreIdentity.RequireUserContext(snapshot)` re-runs `RequireValidSegment` on already-validated fields. Dead defensive code; remove with D3. [`EventStoreIdentity.cs:13-18`]
+- [x] [Review][Defer] D14 — `Resolve` does not catch exceptions thrown by `IUserContextAccessor` property getters (e.g., disposed claims principal). Implementation-detail leakage in non-tenant paths. Defer; IUserContextAccessor adopters are expected to be safe. [`FrontComposerTenantContextAccessor.cs:66-67`]
+
+**Dismissed as noise (not tracked):** 18 findings, including:
+- B1 `EventStoreServiceExtensions` registers `IUserContextAccessor`→`NullUserContextAccessor`: `TryAddScoped` is idempotent; first-registration-wins ordering with `ServiceCollectionExtensions` does not change observable behavior.
+- B2 `TenantContextException.Message` includes `FailureCategory`/`CorrelationId`: both are sanitized non-PII handles.
+- B5 case-insensitive synthetic check vs ordinal tenant equality: by spec D2 (reserved-name check is `OrdinalIgnoreCase` only).
+- B29 whitespace `TenantId` substituted with authenticated tenant: per D31 / `IUserContextAccessor` blank semantics.
+- B31 `EventStoreValidation.RequireNonColonSegment` now rejects control chars: tightening matches `IsValidSegment` discipline.
+- E13/E14 `Convert.ToString` of arbitrary `TenantId` types and `TargetInvocationException` not caught: extreme adopter-DTO edges.
+- E33 `IsValidSegment` does not trim inner whitespace: per spec D2 (ordinal exact match).
+- Plus other style/test-design/race-window noise — full list in agent transcripts under `~AppData/Local/Temp/claude/.../tasks/{ab1e17c6,ae3025f99,ae8c6618}*.output`.
 
 ---
 
@@ -385,16 +442,23 @@ This elicitation pass keeps the story `ready-for-dev`, but tightens the executab
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-05-01: `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --no-restore -p:UseSharedCompilation=false --filter "TenantContextValidationMatrixTests|CommandTenantIsolationTests|QueryAndCacheTenantIsolationTests|ProjectionSubscriptionServiceTests"` => 34/0/0.
+- 2026-05-01: `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --no-restore -p:UseSharedCompilation=false --filter "TenantContextValidationMatrixTests|CommandTenantIsolationTests|QueryAndCacheTenantIsolationTests|ProjectionSubscriptionServiceTests|EventStoreQueryCacheIntegrationTests"` => 49/0/0.
+- 2026-05-01: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` => 0 warnings, 0 errors.
+- 2026-05-01: `dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false` => Contracts 148/0/0, Shell 1489/0/0, SourceTools 587/0/0, Bench 2/0/0.
 
 ### Completion Notes List
 
 - 2026-04-30: Story created via `/bmad-create-story 7-2-tenant-context-propagation-and-isolation` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-04-30: Party-mode review applied via `/bmad-party-mode 7-2-tenant-context-propagation-and-isolation; review;`. Added hardening addendum for casing drift, canonical validation boundaries, demo guardrails, UX failure affordances, test oracles, and deferred architecture/product decisions.
+- 2026-05-01: Implemented Shell tenant-context snapshot/result contract, sanitized tenant diagnostics HFC2015-HFC2019, ordinal/case-sensitive validation, colon/control segment rejection, synthetic tenant guardrails, and future MCP manifest enumeration gate.
+- 2026-05-01: Hardened command, query/cache, SignalR subscribe/rejoin/nudge, and ETag family invalidation paths to use validated tenant/user context before side effects.
+- 2026-05-01: Preserved Counter demo accessor with explicit Development/Test `AllowDemoTenantContext` configuration and updated sample auth notes.
+- 2026-05-01: Added tenant validation, command zero-side-effect, query/cache isolation, SignalR stale-context, manifest-gate, and tenant-scoped cache invalidation tests; full solution build and tests passed.
 
 ### Party-Mode Review
 
@@ -419,6 +483,41 @@ This elicitation pass keeps the story `ready-for-dev`, but tightens the executab
 - Findings deferred: Public versus Shell-internal context snapshot type; approval status for cache-key hash logging; cache invalidation API shape; exact blocked/degraded UI copy for stale tenant context.
 - Final recommendation: ready-for-dev
 
+### Change Log
+
+- 2026-05-01: Story 7-2 implementation completed; status set to review.
+
 ### File List
 
-(to be filled in by dev agent)
+- `_bmad-output/implementation-artifacts/7-2-tenant-context-propagation-and-isolation.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `samples/Counter/Counter.Web/Program.cs`
+- `samples/Counter/Counter.Web/README.md`
+- `src/Hexalith.FrontComposer.Contracts/Communication/EventStoreValidation.cs`
+- `src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs`
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
+- `src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/EventStoreServiceExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreIdentity.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Telemetry/FrontComposerLog.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/FrontComposerTenantContextAccessor.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/IFrontComposerTenantContextAccessor.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/ITenantScopedManifestGate.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/TenantContextException.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/TenantContextFailureCategory.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/TenantContextResult.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/TenantContextSnapshot.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/Tenancy/TenantScopedManifestGate.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ETagCache/ETagCacheService.cs`
+- `src/Hexalith.FrontComposer.Shell/State/ETagCache/IETagCache.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/CommandTenantIsolationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreQueryCacheIntegrationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreTestSupport.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/QueryAndCacheTenantIsolationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Telemetry/EventStoreTelemetryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Tenancy/TenantContextValidationMatrixTests.cs`

@@ -39,7 +39,11 @@ internal static class EventStoreTestSupport {
         public Task RemoveAsync(string key, CancellationToken cancellationToken = default)
             => Task.CompletedTask;
 
-        public Task RemoveByProjectionTypeAsync(string projectionType, CancellationToken cancellationToken = default)
+        public Task RemoveByProjectionTypeAsync(
+            string tenantId,
+            string userId,
+            string projectionType,
+            CancellationToken cancellationToken = default)
             => Task.CompletedTask;
     }
 

@@ -301,6 +301,31 @@ public class EventStoreQueryCacheIntegrationTests {
         reuse.ETag.ShouldBe("W/\"v1\"");
     }
 
+    [Fact]
+    public async Task RemoveByProjectionTypeAsync_WithTenantUserScope_DoesNotRemoveOtherTenantEntries() {
+        string discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!;
+        string tenantAKey = $"{Tenant}:{User}:etag:{discriminator}";
+        string tenantBKey = $"tenant-b:{User}:etag:{discriminator}";
+        ETagCacheEntry entry = new(
+            ETag: "\"v1\"",
+            Payload: """{"payload":[{"id":"order-1"}]}""",
+            CachedAtUtcTicks: 1,
+            LastAccessedUtcTicks: 1,
+            FormatVersion: ETagCacheEntry.CurrentFormatVersion,
+            PayloadVersion: 1,
+            Discriminator: discriminator);
+
+        await _cache.SetAsync(tenantAKey, entry, TestContext.Current.CancellationToken);
+        await _cache.SetAsync(tenantBKey, entry with { ETag = "\"v2\"" }, TestContext.Current.CancellationToken);
+
+        await _cache.RemoveByProjectionTypeAsync(Tenant, User, ProjectionType, TestContext.Current.CancellationToken);
+
+        (await _storage.GetAsync<ETagCacheEntry>(tenantAKey, TestContext.Current.CancellationToken)).ShouldBeNull();
+        ETagCacheEntry? tenantB = await _storage.GetAsync<ETagCacheEntry>(tenantBKey, TestContext.Current.CancellationToken);
+        tenantB.ShouldNotBeNull();
+        tenantB!.ETag.ShouldBe("\"v2\"");
+    }
+
     private static QueryRequest BuildRequest(
         string? cacheDiscriminator = null,
         string? eTag = null,

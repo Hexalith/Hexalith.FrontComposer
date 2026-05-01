@@ -1,5 +1,9 @@
+using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.State.PendingCommands;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
 
@@ -27,6 +31,67 @@ public sealed class ProjectionSubscriptionServiceTests {
         connection.StartCount.ShouldBe(1);
         connection.JoinedGroups.ShouldBe(["orders:acme"]);
         notifier.Changed.ShouldBe(["orders"]);
+    }
+
+    [Fact]
+    public async Task Subscribe_TenantMismatch_BlocksBeforeStartJoinAndActiveGroupRegistration() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        MutableUserContextAccessor userContext = new("tenant-a", "user-a");
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(),
+            new TestRefreshScheduler(),
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            userContextAccessor: userContext,
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(new FcShellOptions()));
+
+        TenantContextException ex = await Should.ThrowAsync<TenantContextException>(
+            async () => await sut.SubscribeAsync("orders", "tenant-b", TestContext.Current.CancellationToken).ConfigureAwait(true));
+
+        ex.FailureCategory.ShouldBe(TenantContextFailureCategory.TenantMismatch);
+        connection.StartCount.ShouldBe(0);
+        connection.JoinedGroups.ShouldBeEmpty();
+        await connection.RaiseAsync("orders", "tenant-b");
+        notifier.Changed.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task OnNudge_AfterTenantSwitch_SkipsNotifierRefreshAndPendingPolling() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        TestRefreshScheduler refresh = new();
+        TestPendingPolling pending = new();
+        MutableUserContextAccessor userContext = new("tenant-a", "user-a");
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = false,
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(),
+            refresh,
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance,
+            pendingCommandPolling: pending,
+            userContextAccessor: userContext,
+            shellOptions: global::Microsoft.Extensions.Options.Options.Create(new FcShellOptions()));
+
+        await sut.SubscribeAsync("orders", "tenant-a", TestContext.Current.CancellationToken);
+        userContext.TenantId = "tenant-b";
+
+        await connection.RaiseAsync("orders", "tenant-a");
+
+        notifier.Changed.ShouldBeEmpty();
+        refresh.NudgeRefreshes.ShouldBeEmpty();
+        pending.Calls.ShouldBe(0);
     }
 
     [Fact]
@@ -548,6 +613,20 @@ public sealed class ProjectionSubscriptionServiceTests {
             Calls++;
             return Task.FromResult(ProjectionReconciliationRefreshResult.Empty);
         }
+    }
+
+    private sealed class TestPendingPolling : IPendingCommandPollingCoordinator {
+        public int Calls { get; private set; }
+
+        public Task<int> PollOnceAsync(CancellationToken cancellationToken = default) {
+            Calls++;
+            return Task.FromResult(1);
+        }
+    }
+
+    private sealed class MutableUserContextAccessor(string? tenantId, string? userId) : IUserContextAccessor {
+        public string? TenantId { get; set; } = tenantId;
+        public string? UserId { get; set; } = userId;
     }
 
     private sealed class CapturingLogger<T> : ILogger<T> {

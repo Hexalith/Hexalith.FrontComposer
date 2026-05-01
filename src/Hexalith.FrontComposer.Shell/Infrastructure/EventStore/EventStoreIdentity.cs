@@ -5,10 +5,19 @@ using System.Text;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 
 namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 
 internal static class EventStoreIdentity {
+    public static (string Tenant, string UserId) RequireUserContext(TenantContextSnapshot context) {
+        ArgumentNullException.ThrowIfNull(context);
+        // P8 — snapshot fields were validated when the snapshot was constructed (TenantContextSnapshot
+        // ctor enforces non-empty + IsAuthenticated). Re-running RequireValidSegment here threw
+        // ArgumentException, diverging from the rest of the tenant pipeline (TenantContextException).
+        return (context.TenantId, context.UserId);
+    }
+
     public static (string Tenant, string UserId) RequireUserContext(
         IUserContextAccessor userContextAccessor,
         string? requestedTenant = null) {

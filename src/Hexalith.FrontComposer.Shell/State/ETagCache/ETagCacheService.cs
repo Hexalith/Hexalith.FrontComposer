@@ -214,9 +214,46 @@ public sealed class ETagCacheService : IETagCache {
     }
 
     /// <inheritdoc />
-    public async Task RemoveByProjectionTypeAsync(string projectionType, CancellationToken cancellationToken = default) {
+    public async Task RemoveByProjectionTypeAsync(
+        string tenantId,
+        string userId,
+        string projectionType,
+        CancellationToken cancellationToken = default) {
         ArgumentException.ThrowIfNullOrEmpty(projectionType);
 
+        // P1 — build the prefix directly from validated tenant/user. The previous
+        // probe-key-and-IndexOf-":etag:" trick collapsed when userId/tenantId itself contained
+        // the substring "etag" (e.g., userId == "etag" produced a tenant-only prefix and bled
+        // across users in the same tenant). The probe also no-op'd silently on TryBuildKey
+        // failure (cap=0, allowlist tightening, colon segments), losing the schema-mismatch
+        // invalidation entirely.
+        if (string.IsNullOrWhiteSpace(tenantId)
+            || string.IsNullOrWhiteSpace(userId)
+            || tenantId.Contains(':', StringComparison.Ordinal)
+            || userId.Contains(':', StringComparison.Ordinal)) {
+            // P14 — log a sanitized warning so a silent no-op cannot mask a stale-cache window.
+            // Raw identifiers are not logged; we only signal that invalidation was skipped.
+            _logger.LogWarning(
+                "ETagCacheService: tenant-scoped family invalidation skipped — tenant or user identifier failed segment validation.");
+            return;
+        }
+
+        if (_options.CurrentValue.MaxETagCacheEntries <= 0) {
+            // Cache disabled; nothing to invalidate.
+            return;
+        }
+
+        string tenantUserPrefix = $"{tenantId}:{userId}:etag:";
+        await RemoveByProjectionTypeCoreAsync(
+            tenantUserPrefix,
+            projectionType,
+            cancellationToken).ConfigureAwait(false);
+    }
+
+    private async Task RemoveByProjectionTypeCoreAsync(
+        string tenantUserPrefix,
+        string projectionType,
+        CancellationToken cancellationToken) {
         // DN2 — family invalidation. Read each tracked entry, match by stored discriminator,
         // and remove. We seed the LRU lazily so the first call after boot covers persisted
         // entries written by previous sessions.
@@ -230,6 +267,10 @@ public sealed class ETagCacheService : IETagCache {
         string[] keys = [.. _lru.Keys];
         foreach (string key in keys) {
             cancellationToken.ThrowIfCancellationRequested();
+            if (!key.StartsWith(tenantUserPrefix, StringComparison.Ordinal)) {
+                continue;
+            }
+
             ETagCacheEntry? entry;
             try {
                 entry = await _storage.GetAsync<ETagCacheEntry>(key, cancellationToken).ConfigureAwait(false);

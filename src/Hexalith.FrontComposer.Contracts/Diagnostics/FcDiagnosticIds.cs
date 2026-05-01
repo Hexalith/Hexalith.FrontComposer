@@ -453,4 +453,34 @@ public static class FcDiagnosticIds {
     /// Runtime Error: GitHub OAuth sign-in needs an adopter broker before EventStore bearer relay.
     /// </summary>
     public const string HFC2014_GitHubTokenExchangeRequired = "HFC2014";
+
+    /// <summary>
+    /// Runtime Warning: a tenant-scoped operation was blocked because authenticated tenant or user
+    /// context was missing.
+    /// </summary>
+    public const string HFC2015_TenantContextMissing = "HFC2015";
+
+    /// <summary>
+    /// Runtime Warning: a tenant-scoped operation was blocked because a tenant/user/group segment
+    /// was malformed.
+    /// </summary>
+    public const string HFC2016_TenantContextMalformedSegment = "HFC2016";
+
+    /// <summary>
+    /// Runtime Warning: a tenant-scoped operation requested a tenant different from the
+    /// authenticated tenant.
+    /// </summary>
+    public const string HFC2017_TenantContextMismatch = "HFC2017";
+
+    /// <summary>
+    /// Runtime Warning: a production tenant-scoped operation attempted to use a demo or synthetic
+    /// tenant/user identifier.
+    /// </summary>
+    public const string HFC2018_DemoTenantContextRejected = "HFC2018";
+
+    /// <summary>
+    /// Runtime Warning: delayed tenant-scoped work was blocked because the authenticated context
+    /// changed after the operation snapshot was accepted.
+    /// </summary>
+    public const string HFC2019_StaleTenantContext = "HFC2019";
 }
