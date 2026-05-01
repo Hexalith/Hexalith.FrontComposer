@@ -329,15 +329,12 @@ public static class ProjectionTemplateMarkerParser {
         List<DiagnosticInfo> diagnostics,
         string filePath,
         Microsoft.CodeAnalysis.Text.LinePosition linePos) {
-        if (expectedContractVersion == CurrentContractPacked) {
+        ContractVersionComparison comparison = CompareContractVersion(expectedContractVersion, CurrentContractPacked);
+        if (!comparison.ShouldReportDiagnostic) {
             return;
         }
 
-        int expectedMajor = expectedContractVersion / 1_000_000;
-        int expectedMinor = (expectedContractVersion / 1_000) % 1_000;
-        int expectedBuild = expectedContractVersion % 1_000;
-
-        if (expectedMajor != CurrentContractMajor) {
+        if (comparison.Decision == ContractVersionDecision.MajorMismatch) {
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1035",
                 string.Format(
@@ -348,16 +345,12 @@ public static class ProjectionTemplateMarkerParser {
                     CurrentContractMajor,
                     CurrentContractMinor,
                     CurrentContractBuild,
-                    expectedMajor,
+                    comparison.Expected.Major,
                     expectedContractVersion),
                 "Warning",
                 filePath,
                 linePos.Line,
                 linePos.Character));
-            return;
-        }
-
-        if (expectedMinor == CurrentContractMinor) {
             return;
         }
 
@@ -371,9 +364,9 @@ public static class ProjectionTemplateMarkerParser {
                 CurrentContractMajor,
                 CurrentContractMinor,
                 CurrentContractBuild,
-                expectedMajor,
-                expectedMinor,
-                expectedBuild,
+                comparison.Expected.Major,
+                comparison.Expected.Minor,
+                comparison.Expected.Build,
                 expectedContractVersion),
             "Warning",
             filePath,
@@ -393,6 +386,28 @@ public static class ProjectionTemplateMarkerParser {
 
     private static string ToSourceTypeName(INamedTypeSymbol symbol)
         => symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+    private static ContractVersionComparison CompareContractVersion(int expectedPacked, int actualPacked) {
+        ContractVersion expected = Unpack(expectedPacked);
+        ContractVersion actual = Unpack(actualPacked);
+
+        if (expected.Major != actual.Major) {
+            return new ContractVersionComparison(expected, ContractVersionDecision.MajorMismatch, true);
+        }
+
+        if (expected.Minor != actual.Minor) {
+            return new ContractVersionComparison(expected, ContractVersionDecision.MinorDrift, true);
+        }
+
+        if (expected.Build != actual.Build) {
+            return new ContractVersionComparison(expected, ContractVersionDecision.BuildDrift, false);
+        }
+
+        return new ContractVersionComparison(expected, ContractVersionDecision.Exact, false);
+    }
+
+    private static ContractVersion Unpack(int packed)
+        => new(packed / 1_000_000, (packed / 1_000) % 1_000, packed % 1_000);
 
     private static bool TryResolveEnumMemberName(
         IAssemblySymbol assembly,
@@ -414,5 +429,43 @@ public static class ProjectionTemplateMarkerParser {
 
         memberName = string.Empty;
         return false;
+    }
+
+    private readonly struct ContractVersion {
+        public ContractVersion(int major, int minor, int build) {
+            Major = major;
+            Minor = minor;
+            Build = build;
+        }
+
+        public int Major { get; }
+
+        public int Minor { get; }
+
+        public int Build { get; }
+    }
+
+    private readonly struct ContractVersionComparison {
+        public ContractVersionComparison(
+            ContractVersion expected,
+            ContractVersionDecision decision,
+            bool shouldReportDiagnostic) {
+            Expected = expected;
+            Decision = decision;
+            ShouldReportDiagnostic = shouldReportDiagnostic;
+        }
+
+        public ContractVersion Expected { get; }
+
+        public ContractVersionDecision Decision { get; }
+
+        public bool ShouldReportDiagnostic { get; }
+    }
+
+    private enum ContractVersionDecision {
+        Exact,
+        MajorMismatch,
+        MinorDrift,
+        BuildDrift,
     }
 }

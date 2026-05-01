@@ -1,12 +1,17 @@
 using System.Security.Cryptography;
 using System.Text;
 
+using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Components.Diagnostics;
+using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.Components.Rendering;
@@ -50,6 +55,10 @@ public sealed class FcProjectionViewOverrideHost<TProjection> : ComponentBase, I
     /// <summary>Gets or sets the logger.</summary>
     [Inject]
     public ILogger<FcProjectionViewOverrideHost<TProjection>> Logger { get; set; } = default!;
+
+    /// <summary>Gets or sets the diagnostic sink used by dev-mode overlays and panels.</summary>
+    [Inject]
+    public IServiceProvider Services { get; set; } = default!;
 
     /// <inheritdoc />
     protected override void OnParametersSet() {
@@ -120,6 +129,7 @@ public sealed class FcProjectionViewOverrideHost<TProjection> : ComponentBase, I
 
     private RenderFragment RenderFailure(Exception exception)
         => builder => {
+            CustomizationDiagnostic diagnostic = CreateDiagnostic(exception);
             // DN2 — log once per fault episode. Blazor invokes the ErrorContent fragment on
             // every parent re-render while the boundary is in error state. Without this guard
             // every Items-only state tick produces a fresh HFC2121 line. We reset
@@ -149,16 +159,44 @@ public sealed class FcProjectionViewOverrideHost<TProjection> : ComponentBase, I
                     _consecutiveFailures,
                     _circuitOpen);
 
+                CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
                 _loggedSinceLastRecover = true;
             }
 
-            builder.OpenElement(0, "div");
-            builder.AddAttribute(1, "class", "fc-view-override-fault");
-            builder.AddAttribute(2, "role", "alert");
-            builder.AddAttribute(3, "data-fc-diagnostic", FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
-            builder.AddContent(4, FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
-            builder.CloseElement();
+            builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
+            builder.AddAttribute(1, "Diagnostic", diagnostic);
+            builder.AddAttribute(2, "CanRetry", !_circuitOpen);
+            builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+            builder.CloseComponent();
         };
+
+    private void Recover() {
+        _consecutiveFailures = 0;
+        _circuitOpen = false;
+        _loggedSinceLastRecover = false;
+        _boundary?.Recover();
+    }
+
+    private CustomizationDiagnostic CreateDiagnostic(Exception exception)
+        => CustomizationDiagnostic.Create(
+            id: FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault,
+            severity: CustomizationDiagnosticSeverity.Warning,
+            phase: CustomizationDiagnosticPhase.Runtime,
+            level: CustomizationLevel.Level4,
+            projectionTypeName: typeof(TProjection).FullName,
+            componentTypeName: Descriptor.ComponentType.FullName,
+            role: Context?.Role?.ToString(),
+            fieldName: null,
+            what: "A Level 4 projection-view replacement threw while rendering.",
+            expected: "The replacement renders without taking down shell navigation or sibling projection surfaces.",
+            got: exception.GetType().Name,
+            fix: "Fix the replacement markup or companion code, then retry the affected view.",
+            fallback: "Generated projection rendering remains available through the lower-level path.",
+            docsLink: "https://hexalith.github.io/FrontComposer/diagnostics/HFC2121",
+            properties: new Dictionary<string, string> {
+                ["exceptionType"] = exception.GetType().Name,
+                ["category"] = "RenderFault",
+            });
 
     private static string? HashIdentifier(string? value) {
         if (string.IsNullOrWhiteSpace(value)) {

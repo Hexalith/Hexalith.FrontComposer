@@ -573,4 +573,56 @@
     <value>{0} additional resolved commands</value>
     <comment>Story 5-5 — overflow line when bounded MaxDetails truncates the visible list.</comment>
   </data>
+  <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
+    <value>Toggle developer overlay</value>
+    <comment>Story 6-5 — command palette description for the Ctrl+Shift+D dev-mode overlay shortcut.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelExpectedLabel" xml:space="preserve">
+    <value>Expected</value>
+    <comment>Story 6-6 P1 — diagnostic panel section label for the expected behavior.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelGotLabel" xml:space="preserve">
+    <value>Got</value>
+    <comment>Story 6-6 P1 — diagnostic panel section label for the observed behavior.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelFixLabel" xml:space="preserve">
+    <value>Fix</value>
+    <comment>Story 6-6 P1 — diagnostic panel section label for the actionable fix.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelFallbackLabel" xml:space="preserve">
+    <value>Fallback</value>
+    <comment>Story 6-6 P1 — diagnostic panel section label for the safe-degrade behavior.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelDocsLinkLabel" xml:space="preserve">
+    <value>Diagnostic docs</value>
+    <comment>Story 6-6 P1 — diagnostic panel link text for the documentation URL.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelRetryLabel" xml:space="preserve">
+    <value>Retry</value>
+    <comment>Story 6-6 P1 — diagnostic panel button text for retrying the affected element.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelProjectionLabel" xml:space="preserve">
+    <value>Projection</value>
+    <comment>Story 6-6 P4 — diagnostic panel metadata label for the projection type name.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelComponentLabel" xml:space="preserve">
+    <value>Component</value>
+    <comment>Story 6-6 P4 — diagnostic panel metadata label for the override component type name.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelRoleLabel" xml:space="preserve">
+    <value>Role</value>
+    <comment>Story 6-6 P4 — diagnostic panel metadata label for the projection role.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelFieldLabel" xml:space="preserve">
+    <value>Field</value>
+    <comment>Story 6-6 P4 — diagnostic panel metadata label for the affected field name.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelExceptionCategoryLabel" xml:space="preserve">
+    <value>Exception category</value>
+    <comment>Story 6-6 P4 — diagnostic panel metadata label for the sanitized exception category.</comment>
+  </data>
+  <data name="CustomizationDiagnosticPanelAriaLabelTemplate" xml:space="preserve">
+    <value>Customization diagnostic {0}</value>
+    <comment>Story 6-6 P3 — diagnostic panel root aria-label template; {0} is the HFC ID.</comment>
+  </data>
 </root>

@@ -71,6 +71,11 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
     [Inject]
     private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;
 
+#if DEBUG
+    [Inject]
+    private global::System.IServiceProvider DevModeServices { get; set; } = default!;
+#endif
+
     private const string _viewKey = "Orders:RoleSpecific.Negative.WhenStateTypoProjection";
 
     private static readonly System.Func<WhenStateTypoProjection, object> _itemKeyAccessor = static x => (object)x.Id!;
@@ -568,6 +573,29 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
     {
         var state = WhenStateTypoProjectionState.Value;
         int seq = 0;
+        #if DEBUG
+        if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)
+        {
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(seq++);
+            builder.AddAttribute(seq++, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
+                AnnotationKey: "WhenStateTypoProjection-view",
+                Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor("WhenStateTypoProjection generated projection view", "Generated projection view surface.", "Use a Level 2 template for body changes, Level 4 for full replacement.", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel.Default),
+                ContractTypeName: "WhenStateTypoProjection",
+                CurrentLevel: global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel.Default,
+                OriginatingProjectionTypeName: typeof(WhenStateTypoProjection).FullName ?? typeof(WhenStateTypoProjection).Name,
+                Role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole.ActionQueue,
+                FieldAccessor: (string?)null,
+                Children: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode>.Empty,
+                RenderEpoch: 0,
+                ComponentTreeContractVersion: global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeContractVersion.Current,
+                DescriptorHash: "WhenStateTypoProjection:WhenStateTypoProjection-view",
+                SourceComponentIdentity: "WhenStateTypoProjection.WhenStateTypoProjection-view",
+                StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,
+                IsUnsupported: false));
+            builder.AddAttribute(seq++, "CssClass", "fc-devmode-annotation");
+            builder.CloseComponent();
+        }
+        #endif
         _density = RenderContext?.DensityLevel ?? global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
         var gridSnapshot = CurrentGridSnapshot();
         var hiddenColumns = ResolveHiddenColumns(gridSnapshot);
@@ -1019,7 +1047,8 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<WhenStateTypoProjection>>(seq++);
+            builder.AddAttribute(seq++, "Descriptor", __templateDescriptor);
             builder.AddAttribute(seq++, "Context", __templateContext);
             builder.CloseComponent();
         }

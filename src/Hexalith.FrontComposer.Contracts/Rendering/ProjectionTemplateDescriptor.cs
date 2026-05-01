@@ -1,3 +1,7 @@
+#if NET10_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+#endif
+
 namespace Hexalith.FrontComposer.Contracts.Rendering;
 
 /// <summary>
@@ -28,5 +32,17 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 public sealed record ProjectionTemplateDescriptor(
     Type ProjectionType,
     Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole? Role,
+#if NET10_0_OR_GREATER
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+#endif
     Type TemplateType,
-    int ContractVersion);
+    int ContractVersion) {
+    /// <summary>Validates non-null projection CLR type.</summary>
+    public Type ProjectionType { get; } = ProjectionType ?? throw new ArgumentNullException(nameof(ProjectionType));
+
+    /// <summary>Validates non-null template component type. Trim/AOT metadata flows through this property on .NET 10+.</summary>
+#if NET10_0_OR_GREATER
+    [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)]
+#endif
+    public Type TemplateType { get; } = TemplateType ?? throw new ArgumentNullException(nameof(TemplateType));
+}

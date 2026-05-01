@@ -3,6 +3,7 @@
 @using Microsoft.FluentUI.AspNetCore.Components
 @using Hexalith.FrontComposer.Contracts.Registration
 @using Hexalith.FrontComposer.Contracts.Rendering
+@using Hexalith.FrontComposer.Shell.Components.DevMode
 @using Hexalith.FrontComposer.Shell.Components.EventStore
 @using Hexalith.FrontComposer.Shell.Resources
 @inherits Fluxor.Blazor.Web.Components.FluxorComponent
@@ -57,6 +58,10 @@
                     </FluentStack>
                     <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center">
                         <FcThemeToggle />
+                        @if (IsDevModeBuild)
+                        {
+                            <FcDevModeToggleButton />
+                        }
                         @if (HeaderEnd is not null)
                         {
                             @HeaderEnd
@@ -114,4 +119,8 @@
 
     <FluentProviders />
     <Fluxor.Blazor.Web.StoreInitializer />
+    @if (IsDevModeBuild)
+    {
+        <FcDevModeOverlay />
+    }
 </div>

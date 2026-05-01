@@ -3,7 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <!-- ASP0006: Generated RenderTreeBuilder code uses seq++ pattern; will be fixed in generator Story 1.8 -->
-    <NoWarn>$(NoWarn);ASP0006</NoWarn>
+    <NoWarn>$(NoWarn);ASP0006;HFC1002</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />

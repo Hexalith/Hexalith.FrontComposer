@@ -1,8 +1,10 @@
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
+using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 
 using Microsoft.AspNetCore.Components;
@@ -10,6 +12,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
 
@@ -27,6 +30,12 @@ public sealed class FcFieldSlotHostTests : BunitContext {
 
     public FcFieldSlotHostTests() {
         _ = Services.AddLogging();
+        // P1 / P2 — diagnostic panel injects IStringLocalizer<FcShellResources> and uses
+        // Fluent UI primitives. Register localization + Fluent UI services so the panel
+        // can render in the test bUnit context.
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddFluentUIComponents();
+        _ = Services.AddLocalization();
         Services.Replace(ServiceDescriptor.Singleton<ILogger<FcFieldSlotHost<SlotProjection, int>>>(_logger));
     }
 
@@ -139,6 +148,96 @@ public sealed class FcFieldSlotHostTests : BunitContext {
         _logger.Entries.ShouldContain(e => e.Level == LogLevel.Warning && e.Message.Contains("HFC1039"));
     }
 
+    [Fact]
+    public void Render_ThrowingSlot_IsolatesFault_DoesNotLeakItemPayloadOrException() {
+        // P7 — Level 3 redaction adversarial test (mirrors Level 4 pattern). The slot
+        // component throws with sensitive-looking text and the parent projection carries a
+        // value that must not appear in the diagnostic panel or log output.
+        ProjectionSlotRegistry registry = new(
+            NullLogger<ProjectionSlotRegistry>.Instance,
+            [new ProjectionSlotDescriptorSource([
+                new ProjectionSlotDescriptor(
+                    ProjectionType: typeof(SlotProjection),
+                    FieldName: "Priority",
+                    FieldType: typeof(int),
+                    Role: null,
+                    ComponentType: typeof(ThrowingPrioritySlot),
+                    ContractVersion: ProjectionSlotContractVersion.Current),
+            ])]);
+        Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(registry));
+        InMemoryDiagnosticSink sink = new(capacity: 4);
+        Services.AddSingleton<IDiagnosticSink>(sink);
+
+        IRenderedComponent<FcFieldSlotHost<SlotProjection, int>> cut = Render<FcFieldSlotHost<SlotProjection, int>>(parameters => parameters
+            .Add(p => p.Parent, new SlotProjection(42, "PayloadValueMustNotLog"))
+            .Add(p => p.Value, 42)
+            .Add(p => p.Field, NewField("Priority"))
+            .Add(p => p.RenderContext, NewRenderContext()));
+
+        // Diagnostic panel renders inside the bounded host.
+        cut.Markup.ShouldContain(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault);
+        cut.Markup.ShouldContain("role=\"alert\"");
+
+        // Log entry redaction.
+        (LogLevel Level, string Message) entry = _logger.Entries
+            .Where(e => e.Message.Contains(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault))
+            .ShouldHaveSingleItem();
+        entry.Message.ShouldContain("HFC2115");
+        entry.Message.ShouldNotContain("PayloadValueMustNotLog");
+        entry.Message.ShouldNotContain("raw slot exception");
+
+        // Sink event redaction.
+        DevDiagnosticEvent evt = sink.RecentEvents.ShouldHaveSingleItem();
+        evt.Code.ShouldBe(FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault);
+        evt.Message.ShouldContain("What:");
+        evt.Message.ShouldContain("Expected:");
+        evt.Message.ShouldContain("Got:");
+        evt.Message.ShouldContain("Fix:");
+        evt.Message.ShouldContain("DocsLink:");
+        evt.Message.ShouldNotContain("PayloadValueMustNotLog");
+        evt.Message.ShouldNotContain("raw slot exception");
+    }
+
+    [Fact]
+    public void Render_ThrowingSlot_PublishesDiagnosticOnce_OnRepeatedRenders() {
+        // P18 — publish-once / no-dup-on-rerender. Repeated parent re-renders within a
+        // single fault episode must not flood IDiagnosticSink with duplicate entries.
+        ProjectionSlotRegistry registry = new(
+            NullLogger<ProjectionSlotRegistry>.Instance,
+            [new ProjectionSlotDescriptorSource([
+                new ProjectionSlotDescriptor(
+                    ProjectionType: typeof(SlotProjection),
+                    FieldName: "Priority",
+                    FieldType: typeof(int),
+                    Role: null,
+                    ComponentType: typeof(ThrowingPrioritySlot),
+                    ContractVersion: ProjectionSlotContractVersion.Current),
+            ])]);
+        Services.Replace(ServiceDescriptor.Singleton<IProjectionSlotRegistry>(registry));
+        InMemoryDiagnosticSink sink = new(capacity: 8);
+        Services.AddSingleton<IDiagnosticSink>(sink);
+
+        IRenderedComponent<FcFieldSlotHost<SlotProjection, int>> cut = Render<FcFieldSlotHost<SlotProjection, int>>(parameters => parameters
+            .Add(p => p.Parent, new SlotProjection(1, "v1"))
+            .Add(p => p.Value, 1)
+            .Add(p => p.Field, NewField("Priority"))
+            .Add(p => p.RenderContext, NewRenderContext()));
+
+        sink.RecentEvents.Count.ShouldBe(1);
+
+        // Repeated re-renders with the same descriptor / context: no fresh diagnostics.
+        for (int i = 2; i <= 5; i++) {
+            int iteration = i;
+            cut.Render(parameters => parameters
+                .Add(p => p.Parent, new SlotProjection(iteration, $"v{iteration}"))
+                .Add(p => p.Value, iteration)
+                .Add(p => p.Field, NewField("Priority"))
+                .Add(p => p.RenderContext, NewRenderContext()));
+        }
+
+        sink.RecentEvents.Count.ShouldBe(1);
+    }
+
     private static FieldDescriptor NewField(string name)
         => new(Name: name, TypeName: "System.Int32", IsNullable: false, DisplayName: name, Order: 0);
 
@@ -166,6 +265,14 @@ public sealed class FcFieldSlotHostTests : BunitContext {
     public sealed class StringContextSlot : ComponentBase {
         [Parameter]
         public FieldSlotContext<SlotProjection, string> Context { get; set; } = default!;
+    }
+
+    public sealed class ThrowingPrioritySlot : ComponentBase {
+        [Parameter]
+        public FieldSlotContext<SlotProjection, int> Context { get; set; } = default!;
+
+        protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder)
+            => throw new InvalidOperationException("raw slot exception");
     }
 
     private sealed class ListLogger<T> : ILogger<T> {

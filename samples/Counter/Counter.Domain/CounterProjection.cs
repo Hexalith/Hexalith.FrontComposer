@@ -12,4 +12,7 @@ public partial class CounterProjection {
     [Display(Name = "Last changed")]
     [RelativeTime]
     public DateTimeOffset LastUpdated { get; set; }
+#pragma warning disable HFC1002 // Story 6-5 sample intentionally exposes one unsupported placeholder for dev-mode discovery.
+    public Dictionary<string, string> Metadata { get; set; } = [];
+#pragma warning restore HFC1002
 }

@@ -70,6 +70,11 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     [Inject]
     private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;
 
+#if DEBUG
+    [Inject]
+    private global::System.IServiceProvider DevModeServices { get; set; } = default!;
+#endif
+
     private const string _viewKey = "Orders:TestDomain.OrderProjection";
 
     private static readonly System.Func<OrderProjection, object> _itemKeyAccessor = static x => (object)x;
@@ -563,6 +568,29 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
     {
         var state = OrderProjectionState.Value;
         int seq = 0;
+        #if DEBUG
+        if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)
+        {
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(seq++);
+            builder.AddAttribute(seq++, "Node", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(
+                AnnotationKey: "OrderProjection-view",
+                Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor("OrderProjection generated projection view", "Generated projection view surface.", "Use a Level 2 template for body changes, Level 4 for full replacement.", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel.Default),
+                ContractTypeName: "OrderProjection",
+                CurrentLevel: global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel.Default,
+                OriginatingProjectionTypeName: typeof(OrderProjection).FullName ?? typeof(OrderProjection).Name,
+                Role: (Hexalith.FrontComposer.Contracts.Attributes.ProjectionRole?)null,
+                FieldAccessor: (string?)null,
+                Children: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode>.Empty,
+                RenderEpoch: 0,
+                ComponentTreeContractVersion: global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeContractVersion.Current,
+                DescriptorHash: "OrderProjection:OrderProjection-view",
+                SourceComponentIdentity: "OrderProjection.OrderProjection-view",
+                StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,
+                IsUnsupported: false));
+            builder.AddAttribute(seq++, "CssClass", "fc-devmode-annotation");
+            builder.CloseComponent();
+        }
+        #endif
         _density = RenderContext?.DensityLevel ?? global::Hexalith.FrontComposer.Contracts.Rendering.DensityLevel.Comfortable;
         var gridSnapshot = CurrentGridSnapshot();
         var hiddenColumns = ResolveHiddenColumns(gridSnapshot);
@@ -957,7 +985,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 rowRenderer: RenderTemplateRow,
                 fieldRenderer: RenderTemplateField);
 
-            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);
+            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<OrderProjection>>(seq++);
+            builder.AddAttribute(seq++, "Descriptor", __templateDescriptor);
             builder.AddAttribute(seq++, "Context", __templateContext);
             builder.CloseComponent();
         }

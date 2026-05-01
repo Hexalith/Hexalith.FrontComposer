@@ -116,7 +116,16 @@ public static class DiagnosticDescriptors {
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
-    // HFC1010 reserved — "Full restart required for this change type" (not yet implemented; requires analyzer, not generator — see docs/hot-reload-guide.md)
+    /// <summary>
+    /// HFC1010: A customization metadata or descriptor edit requires a full rebuild/restart.
+    /// </summary>
+    public static readonly DiagnosticDescriptor FullRebuildRequired = new(
+        id: "HFC1010",
+        title: "Full rebuild or restart required for customization metadata change",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
 
     /// <summary>
     /// HFC1011: [Command] type exceeds the hard 200-property limit (DoS mitigation for Story 2-2).
@@ -560,5 +569,104 @@ public static class DiagnosticDescriptors {
         messageFormat: "{0}",
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1050: A statically inspectable custom override contains an interactive root without an accessible name.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CustomizationAccessibleNameMissing = new(
+        id: "HFC1050",
+        title: "Custom override interactive element is missing an accessible name",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1051: A statically inspectable custom override has an obvious keyboard reachability issue.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CustomizationKeyboardReachabilityIssue = new(
+        id: "HFC1051",
+        title: "Custom override has a keyboard reachability issue",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1052: A statically inspectable custom override suppresses focus visibility.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CustomizationFocusVisibilitySuppressed = new(
+        id: "HFC1052",
+        title: "Custom override suppresses focus visibility",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1053: A lifecycle/status custom override omits aria-live parity.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CustomizationAriaLiveParityMissing = new(
+        id: "HFC1053",
+        title: "Custom override is missing aria-live parity",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1054: A custom override uses motion without a reduced-motion fallback.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CustomizationReducedMotionMissing = new(
+        id: "HFC1054",
+        title: "Custom override motion has no reduced-motion fallback",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1055: A custom override uses custom colors without forced-colors or static contrast evidence.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CustomizationForcedColorsMissing = new(
+        id: "HFC1055",
+        title: "Custom override color styling has no forced-colors fallback",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DevModeAnnotationSiteInvalid = new(
+        id: "HFC1047",
+        title: "Invalid dev-mode annotation site",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1048: Starter emission requested an unsupported customization level.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DevModeUnsupportedEmissionLevel = new(
+        id: "HFC1048",
+        title: "Unsupported dev-mode starter emission level",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1049: Dev-mode starter output detected stale contract metadata.
+    /// </summary>
+    public static readonly DiagnosticDescriptor DevModeContractVersionDrift = new(
+        id: "HFC1049",
+        title: "Dev-mode starter contract metadata is stale",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Info,
         isEnabledByDefault: true);
 }

@@ -5,9 +5,13 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Services;
+#if DEBUG
+using Hexalith.FrontComposer.Shell.Services.DevMode;
+#endif
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
@@ -47,7 +51,8 @@ public sealed class FrontComposerShortcutRegistrar(
     NavigationManager navigation,
     IStringLocalizer<FcShellResources> localizer,
     IUlidFactory ulidFactory,
-    DataGridFocusScope dataGridFocusScope)
+    DataGridFocusScope dataGridFocusScope,
+    IServiceProvider? services = null)
 {
     // Uses `int` + `Interlocked.Exchange` so two concurrent first-render paths (hot-reload
     // restart, bUnit teardown race) cannot both observe zero and double-register the defaults
@@ -105,6 +110,19 @@ public sealed class FrontComposerShortcutRegistrar(
                 "/",
                 "SlashFocusFilterShortcutDescription",
                 FocusFirstColumnFilterAsync);
+
+#if DEBUG
+            // Defense-in-depth (AC2): #if DEBUG compile-time gate AND IDevModeOverlayController
+            // runtime check. Release builds compile this branch out entirely so the dev-mode
+            // shortcut symbol is absent from production binaries.
+            if (services?.GetService<IDevModeOverlayController>() is not null)
+            {
+                _ = shortcuts.Register(
+                    "ctrl+shift+d",
+                    "DevModeOverlayShortcutDescription",
+                    ToggleDevModeOverlayAsync);
+            }
+#endif
         }
         catch
         {
@@ -227,4 +245,12 @@ public sealed class FrontComposerShortcutRegistrar(
 
         _ = await dataGridFocusScope.FocusFirstColumnFilterAsync(viewKey!).ConfigureAwait(false);
     }
+
+#if DEBUG
+    private Task ToggleDevModeOverlayAsync()
+    {
+        services?.GetService<IDevModeOverlayController>()?.Toggle();
+        return Task.CompletedTask;
+    }
+#endif
 }

@@ -1,8 +1,15 @@
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Components.Diagnostics;
+using Hexalith.FrontComposer.Shell.Services;
+using Hexalith.FrontComposer.Shell.Services.Diagnostics;
 
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
+using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace Hexalith.FrontComposer.Shell.Components.Rendering;
@@ -13,6 +20,9 @@ namespace Hexalith.FrontComposer.Shell.Components.Rendering;
 /// <typeparam name="TProjection">Projection type owning the field.</typeparam>
 /// <typeparam name="TField">Selected field type.</typeparam>
 public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
+    private ErrorBoundary? _boundary;
+    private bool _publishedFault;
+
     /// <summary>Gets or sets the registry used to resolve slot descriptors.</summary>
     [Inject]
     public IProjectionSlotRegistry SlotRegistry { get; set; } = default!;
@@ -20,6 +30,10 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
     /// <summary>Gets or sets the logger used for runtime diagnostics (HFC2120 / HFC1039).</summary>
     [Inject]
     public ILogger<FcFieldSlotHost<TProjection, TField>> Logger { get; set; } = default!;
+
+    /// <summary>Gets or sets the diagnostic sink used by dev-mode overlays and panels.</summary>
+    [Inject]
+    public IServiceProvider Services { get; set; } = default!;
 
     /// <summary>Gets or sets the parent projection row.</summary>
     [Parameter, EditorRequired]
@@ -53,7 +67,7 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
     public object? Key { get; set; }
 
     /// <inheritdoc />
-    protected override void BuildRenderTree(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder builder) {
+    protected override void BuildRenderTree(RenderTreeBuilder builder) {
         ArgumentNullException.ThrowIfNull(builder);
 
         // GB-P1 — surface generator/adopter wiring bugs that leave required parameters null instead
@@ -107,6 +121,17 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
             return;
         }
 
+        builder.OpenComponent<ErrorBoundary>(0);
+        builder.AddAttribute(1, "ChildContent", (RenderFragment)(slotBuilder => RenderSlot(slotBuilder, descriptor, context)));
+        builder.AddAttribute(2, "ErrorContent", (RenderFragment<Exception>)(exception => RenderFailure(exception, descriptor)));
+        builder.AddComponentReferenceCapture(3, component => _boundary = (ErrorBoundary)component);
+        builder.CloseComponent();
+    }
+
+    private void RenderSlot(
+        RenderTreeBuilder builder,
+        ProjectionSlotDescriptor descriptor,
+        FieldSlotContext<TProjection, TField> context) {
         builder.OpenComponent(0, descriptor.ComponentType);
         if (Key is not null) {
             builder.SetKey(Key);
@@ -115,4 +140,57 @@ public sealed class FcFieldSlotHost<TProjection, TField> : ComponentBase {
         builder.AddAttribute(1, "Context", context);
         builder.CloseComponent();
     }
+
+    private RenderFragment RenderFailure(
+        Exception exception,
+        ProjectionSlotDescriptor descriptor)
+        => builder => {
+            CustomizationDiagnostic diagnostic = CreateDiagnostic(exception, descriptor);
+            if (!_publishedFault) {
+                // P15 — defensive null-conditional: the RenderFailure lambda is captured by
+                // ErrorBoundary and may be invoked after parameter teardown clears Field.
+                Logger.LogWarning(
+                    "{DiagnosticId}: Level 3 slot render fault isolated. Projection: {Projection}; Component: {Component}; Role: {Role}; Field: {Field}; ExceptionCategory: {ExceptionCategory}. Item payloads, field values, localized strings, raw exception messages, and render fragments are intentionally omitted.",
+                    diagnostic.Id,
+                    typeof(TProjection).FullName,
+                    descriptor.ComponentType.FullName,
+                    ProjectionRole?.ToString() ?? "<default>",
+                    Field?.Name ?? "<unknown>",
+                    exception.GetType().Name);
+                CustomizationDiagnosticPublisher.Publish(Services?.GetService<IDiagnosticSink>(), diagnostic);
+                _publishedFault = true;
+            }
+
+            builder.OpenComponent<FcCustomizationDiagnosticPanel>(0);
+            builder.AddAttribute(1, "Diagnostic", diagnostic);
+            builder.AddAttribute(2, "CanRetry", true);
+            builder.AddAttribute(3, "OnRetry", EventCallback.Factory.Create(this, Recover));
+            builder.CloseComponent();
+        };
+
+    private void Recover() {
+        _publishedFault = false;
+        _boundary?.Recover();
+    }
+
+    private CustomizationDiagnostic CreateDiagnostic(Exception exception, ProjectionSlotDescriptor descriptor)
+        => CustomizationDiagnostic.Create(
+            id: FcDiagnosticIds.HFC2115_CustomizationOverrideRenderFault,
+            severity: CustomizationDiagnosticSeverity.Warning,
+            phase: CustomizationDiagnosticPhase.Runtime,
+            level: CustomizationLevel.Level3,
+            projectionTypeName: typeof(TProjection).FullName,
+            componentTypeName: descriptor.ComponentType.FullName,
+            role: ProjectionRole?.ToString(),
+            fieldName: Field?.Name,
+            what: "A Level 3 field-slot override threw while rendering.",
+            expected: "The slot renders without taking down the row, shell, or sibling fields.",
+            got: exception.GetType().Name,
+            fix: "Fix the slot component markup or companion code, then retry the affected field.",
+            fallback: "Generated field rendering remains available through the lower-level path.",
+            docsLink: "https://hexalith.github.io/FrontComposer/diagnostics/HFC2115",
+            properties: new Dictionary<string, string> {
+                ["exceptionType"] = exception.GetType().Name,
+                ["category"] = "RenderFault",
+            });
 }

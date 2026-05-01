@@ -1,0 +1,18 @@
+using Hexalith.FrontComposer.Contracts.Diagnostics;
+using Hexalith.FrontComposer.Shell.Services;
+
+namespace Hexalith.FrontComposer.Shell.Services.Diagnostics;
+
+internal static class CustomizationDiagnosticPublisher {
+    public static void Publish(IDiagnosticSink? sink, CustomizationDiagnostic diagnostic) {
+        if (sink is null) {
+            return;
+        }
+
+        sink.Publish(new DevDiagnosticEvent(
+            diagnostic.Id,
+            "Customization",
+            CustomizationDiagnosticFormatter.Format(diagnostic),
+            DateTimeOffset.UtcNow));
+    }
+}

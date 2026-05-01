@@ -5,8 +5,10 @@ using System.Reflection;
 using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Services.Customization;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -21,16 +23,19 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly IReadOnlyCollection<ProjectionViewOverrideDescriptor> _descriptorsSnapshot;
     private readonly ILogger<ProjectionViewOverrideRegistry> _logger;
+    private readonly ICustomizationContractRejectionLog? _rejectionLog;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProjectionViewOverrideRegistry"/> class.
     /// </summary>
     public ProjectionViewOverrideRegistry(
         ILogger<ProjectionViewOverrideRegistry> logger,
-        IEnumerable<ProjectionViewOverrideDescriptorSource> sources) {
+        IEnumerable<ProjectionViewOverrideDescriptorSource> sources,
+        ICustomizationContractRejectionLog? rejectionLog = null) {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(sources);
         _logger = logger;
+        _rejectionLog = rejectionLog;
 
         List<DuplicateReport> duplicates = [];
         int sourceIndex = -1;
@@ -120,24 +125,58 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
             return;
         }
 
-        if (!IsCompatibleContractVersion(descriptor.ContractVersion)) {
+        CustomizationContractVersionComparison comparison =
+            CustomizationContractVersion.Compare(descriptor.ContractVersion, ProjectionViewOverrideContractVersion.Current);
+        if (!comparison.CanSelect) {
+            // P13 — branch the message on Decision (currently MajorMismatch is the only
+            // !CanSelect outcome) so the log identifies the comparison outcome explicitly.
             _logger.LogWarning(
-                "{DiagnosticId}: Incompatible Level 4 view override contract version for projection {Projection} role {Role}. Expected: major {ExpectedMajor}. Got: {ContractVersion}. Source: {Source}. Fix: rebuild the replacement against the installed FrontComposer contracts. Docs: https://hexalith.dev/frontcomposer/diagnostics/HFC1045.",
+                "{DiagnosticId}: Incompatible Level 4 view override contract version for projection {Projection} role {Role}. Decision: {Decision}. Expected: {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild}. Got: {ActualMajor}.{ActualMinor}.{ActualBuild}. Source: {Source}. Fix: rebuild the replacement against the installed FrontComposer contracts. Docs: https://hexalith.dev/frontcomposer/diagnostics/HFC1045.",
                 FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
                 descriptor.ProjectionType.FullName,
                 descriptor.Role?.ToString() ?? "<any>",
-                ProjectionViewOverrideContractVersion.Major,
-                descriptor.ContractVersion,
+                comparison.Decision,
+                comparison.Expected.Major,
+                comparison.Expected.Minor,
+                comparison.Expected.Build,
+                comparison.Actual.Major,
+                comparison.Actual.Minor,
+                comparison.Actual.Build,
                 descriptor.RegistrationSource);
+            // P17 / AC2 — record the rejection so the strict-mode validation gate can fail
+            // closed at startup when the adopter opted into FailClosedOnMajorMismatch.
+            _rejectionLog?.Record(new CustomizationContractRejection(
+                Level: CustomizationLevel.Level4,
+                ProjectionTypeName: descriptor.ProjectionType.FullName ?? string.Empty,
+                ComponentTypeName: descriptor.ComponentType.FullName ?? string.Empty,
+                Role: descriptor.Role?.ToString() ?? "<any>",
+                FieldName: null,
+                Comparison: comparison,
+                DiagnosticId: FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch));
             return;
         }
 
-        // P12 — within an accepted Major, log Information-level when the descriptor's packed
-        // version differs from the currently installed build. Drift is non-blocking but
-        // observable, satisfying T7's "version drift remains diagnosable" requirement.
-        if (descriptor.ContractVersion != ProjectionViewOverrideContractVersion.Current) {
+        // P13 — surface MinorDrift with full teaching shape (expected/got/fix/docs link).
+        // BuildDrift remains informational without fix guidance because it is non-blocking
+        // and source-compatible; MinorDrift suggests the adopter rebuild.
+        if (comparison.ShouldReportDiagnostic
+            && comparison.Decision == CustomizationContractVersionDecision.MinorDrift) {
             _logger.LogInformation(
-                "{DiagnosticId}: Level 4 view override contract version drift for projection {Projection} role {Role}. Installed: {Current}. Got: {ContractVersion}. Source: {Source}. Selection proceeds.",
+                "{DiagnosticId}: Level 4 view override targets contract minor {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} but installed framework reports {ActualMajor}.{ActualMinor}.{ActualBuild}. Override accepted (source-compatible). Source: {Source}. Fix: rebuild the replacement to silence this message. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1045",
+                FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
+                comparison.Expected.Major,
+                comparison.Expected.Minor,
+                comparison.Expected.Build,
+                comparison.Actual.Major,
+                comparison.Actual.Minor,
+                comparison.Actual.Build,
+                descriptor.RegistrationSource);
+        }
+        else if (descriptor.ContractVersion != ProjectionViewOverrideContractVersion.Current) {
+            // BuildDrift — silent at Information level; preserves observability for operators
+            // running with verbose log filters.
+            _logger.LogInformation(
+                "{DiagnosticId}: Level 4 view override build drift for projection {Projection} role {Role}. Installed: {Current}. Got: {ContractVersion}. Source: {Source}. Selection proceeds.",
                 FcDiagnosticIds.HFC1045_ProjectionViewOverrideContractVersionMismatch,
                 descriptor.ProjectionType.FullName,
                 descriptor.Role?.ToString() ?? "<any>",
@@ -214,9 +253,6 @@ public sealed class ProjectionViewOverrideRegistry : IProjectionViewOverrideRegi
             && a.Role == b.Role
             && a.ComponentType == b.ComponentType
             && a.ContractVersion == b.ContractVersion;
-
-    private static bool IsCompatibleContractVersion(int contractVersion)
-        => contractVersion / 1_000_000 == ProjectionViewOverrideContractVersion.Major;
 
     [UnconditionalSuppressMessage(
         "Trimming",

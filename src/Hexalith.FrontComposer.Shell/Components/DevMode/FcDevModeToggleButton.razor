@@ -1,0 +1,32 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DevMode
+@using Hexalith.FrontComposer.Shell.Resources.DevMode
+@using Hexalith.FrontComposer.Shell.Services.DevMode
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@inject IServiceProvider Services
+@inject IStringLocalizer<DevModeStrings> Localizer
+
+@if (Controller is not null)
+{
+    <button type="button"
+            class="fc-devmode-toggle"
+            aria-label="@Text("ToggleAriaLabel", "Toggle developer overlay (Ctrl+Shift+D)")"
+            title="@Text("ToggleTooltip", "Toggle developer overlay (Ctrl+Shift+D)")"
+            @onclick="Toggle">
+        i
+    </button>
+}
+
+@code {
+    private IDevModeOverlayController? Controller => Services.GetService<IDevModeOverlayController>();
+
+    private void Toggle() => Controller?.Toggle();
+
+    private string Text(string key, string fallback)
+    {
+        string value = Localizer[key].Value;
+        return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal)
+            ? fallback
+            : value;
+    }
+}

@@ -475,4 +475,43 @@
   <data name="PendingCommandSummaryOverflowTemplate" xml:space="preserve">
     <value>{0} commande(s) résolue(s) supplémentaire(s)</value>
   </data>
+  <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
+    <value>Afficher ou masquer le calque développeur</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelExpectedLabel" xml:space="preserve">
+    <value>Attendu</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelGotLabel" xml:space="preserve">
+    <value>Observé</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelFixLabel" xml:space="preserve">
+    <value>Correction</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelFallbackLabel" xml:space="preserve">
+    <value>Repli</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelDocsLinkLabel" xml:space="preserve">
+    <value>Documentation du diagnostic</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelRetryLabel" xml:space="preserve">
+    <value>Réessayer</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelProjectionLabel" xml:space="preserve">
+    <value>Projection</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelComponentLabel" xml:space="preserve">
+    <value>Composant</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelRoleLabel" xml:space="preserve">
+    <value>Rôle</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelFieldLabel" xml:space="preserve">
+    <value>Champ</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelExceptionCategoryLabel" xml:space="preserve">
+    <value>Catégorie d'exception</value>
+  </data>
+  <data name="CustomizationDiagnosticPanelAriaLabelTemplate" xml:space="preserve">
+    <value>Diagnostic de personnalisation {0}</value>
+  </data>
 </root>

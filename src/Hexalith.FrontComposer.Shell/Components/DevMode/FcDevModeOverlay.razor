@@ -1,0 +1,164 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DevMode
+@using Hexalith.FrontComposer.Contracts.DevMode
+@using Hexalith.FrontComposer.Shell.Resources.DevMode
+@using Hexalith.FrontComposer.Shell.Services.DevMode
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@implements IDisposable
+@inject IServiceProvider Services
+@inject IStringLocalizer<DevModeStrings> Localizer
+
+@if (_controller?.IsActive == true)
+{
+    <div class="fc-devmode-overlay" aria-live="polite">
+        @if (_controller.SelectedNode is { } node)
+        {
+            <aside class="fc-devmode-drawer"
+                   role="complementary"
+                   aria-label="@Text("DrawerAriaLabel", "FrontComposer developer details")"
+                   tabindex="-1"
+                   @ref="_drawerRef"
+                   @onkeydown="HandleKeyDown">
+                <header class="fc-devmode-drawer__header">
+                    <h2>@node.Convention.Name</h2>
+                    <button type="button"
+                            class="fc-devmode-icon-button"
+                            aria-label="@Text("CloseButtonLabel", "Close")"
+                            @onclick="Close">@Text("CloseButtonLabel", "Close")</button>
+                </header>
+                <dl class="fc-devmode-details">
+                    <dt>@Text("ConventionLabel", "Convention")</dt>
+                    <dd>@node.Convention.Description</dd>
+                    <dt>@Text("ContractTypeLabel", "Contract type")</dt>
+                    <dd>@node.ContractTypeName</dd>
+                    <dt>@Text("CurrentLevelLabel", "Current level")</dt>
+                    <dd>@node.CurrentLevel</dd>
+                    <dt>@Text("RecommendedOverrideLabel", "Recommended override")</dt>
+                    <dd>@node.Convention.RecommendedOverride</dd>
+                    @if (node.IsUnsupported)
+                    {
+                        <dt>@Text("UnsupportedTypeLabel", "Unsupported type")</dt>
+                        <dd>@(node.FieldAccessor): @node.ContractTypeName</dd>
+                    }
+                    @if (node.HasActiveOverride)
+                    {
+                        <dt>@Text("BeforeAfterLabel", "Before/after")</dt>
+                        <dd><input type="checkbox" /> @Text("BeforeAfterToggleLabel", "Show generated default")</dd>
+                    }
+                </dl>
+                <button type="button"
+                        class="fc-devmode-copy-button"
+                        disabled="@(!CanCopy(node))"
+                        @onclick="() => CopyAsync(node)">
+                    @Text("CopyStarterTemplateLabel", "Copy starter template")
+                </button>
+                <p class="fc-devmode-status" role="status">@_statusText</p>
+                @if (!string.IsNullOrEmpty(_sourcePreview))
+                {
+                    <textarea class="fc-devmode-source" readonly>@_sourcePreview</textarea>
+                }
+            </aside>
+        }
+        else
+        {
+            <p class="fc-devmode-status" role="status">@Text("EmptyTreeMessage", "Select an annotated element.")</p>
+        }
+    </div>
+}
+
+@code {
+    private IDevModeOverlayController? _controller;
+    private IRazorEmitter? _emitter;
+    private IClipboardJSModule? _clipboard;
+    private string? _sourcePreview;
+    private string _statusText = string.Empty;
+    private ElementReference _drawerRef;
+    private string? _lastFocusedKey;
+
+    protected override void OnInitialized()
+    {
+        _controller = Services.GetService<IDevModeOverlayController>();
+        _emitter = Services.GetService<IRazorEmitter>();
+        _clipboard = Services.GetService<IClipboardJSModule>();
+        if (_controller is not null)
+        {
+            _controller.Changed += HandleChanged;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        // DN7 — bare minimum focus management: when the drawer opens (or selection changes
+        // to a new key), move focus into the drawer so Escape (HandleKeyDown) actually fires.
+        // Full focus-trap loop and originator-restore are deferred to Story 10-2 a11y.
+        string? currentKey = _controller?.SelectedAnnotationKey;
+        if (currentKey is not null && !string.Equals(currentKey, _lastFocusedKey, StringComparison.Ordinal))
+        {
+            try
+            {
+                await _drawerRef.FocusAsync().ConfigureAwait(true);
+                _lastFocusedKey = currentKey;
+            }
+            catch (Microsoft.JSInterop.JSDisconnectedException) { }
+            catch (InvalidOperationException) { }
+        }
+        else if (currentKey is null)
+        {
+            _lastFocusedKey = null;
+        }
+    }
+
+    private bool CanCopy(ComponentTreeNode node)
+        => node.CanEmitStarterTemplate && _emitter is not null;
+
+    private async Task CopyAsync(ComponentTreeNode node)
+    {
+        if (!CanCopy(node) || _emitter is null)
+        {
+            _statusText = Text("CopyUnavailable", "Copy unavailable");
+            return;
+        }
+
+        _statusText = string.Empty;
+        _sourcePreview = _emitter.EmitStarterTemplate(node, node.CurrentLevel);
+        ClipboardCopyResult result = _clipboard is null
+            ? ClipboardCopyResult.Unavailable
+            : await _clipboard.CopyToClipboardAsync(_sourcePreview).ConfigureAwait(true);
+        _statusText = result switch
+        {
+            ClipboardCopyResult.Success => Text("CopySucceeded", "Copied"),
+            ClipboardCopyResult.Unavailable => Text("CopyUnavailable", "Copy unavailable"),
+            _ => Text("CopyFailedManual", "Copy failed - select and copy manually"),
+        };
+    }
+
+    private void Close() => _controller?.Close();
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (string.Equals(args.Key, "Escape", StringComparison.Ordinal))
+        {
+            Close();
+        }
+    }
+
+    private void HandleChanged(object? sender, EventArgs args) => InvokeAsync(StateHasChanged);
+
+    private string Text(string key, string fallback)
+    {
+        string value = Localizer[key].Value;
+        return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal)
+            ? fallback
+            : value;
+    }
+
+    public void Dispose()
+    {
+        // P13 — use cached _controller so we never re-resolve from a torn-down scope.
+        if (_controller is not null)
+        {
+            _controller.Changed -= HandleChanged;
+        }
+    }
+}

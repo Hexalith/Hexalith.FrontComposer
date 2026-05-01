@@ -10,6 +10,11 @@ namespace Hexalith.FrontComposer.Contracts.Diagnostics;
 /// </remarks>
 public static class FcDiagnosticIds {
     /// <summary>
+    /// Build-time Information: a customization metadata or descriptor edit requires a full rebuild/restart.
+    /// </summary>
+    public const string HFC1010_FullRebuildRequired = "HFC1010";
+
+    /// <summary>
     /// Registry startup validation (<c>FrontComposerRegistry.ValidateManifests</c>) detected a
     /// command with no FullPage route (Story 3-4 D21). Thrown as an <see cref="InvalidOperationException"/>
     /// during service-collection build-up so the application never boots in a state where the palette
@@ -214,6 +219,54 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1046_ProjectionViewOverrideAccessibilityWarning = "HFC1046";
 
+    /// <summary>
+    /// Build-time Information: a dev-mode annotation site cannot be matched to stable descriptor
+    /// metadata, so the generated annotation is omitted or marked stale.
+    /// </summary>
+    public const string HFC1047_DevModeAnnotationSiteInvalid = "HFC1047";
+
+    /// <summary>
+    /// Runtime Information: a dev-mode starter template was requested for an unsupported
+    /// customization level or mismatched component-tree node.
+    /// </summary>
+    public const string HFC1048_DevModeUnsupportedEmissionLevel = "HFC1048";
+
+    /// <summary>
+    /// Runtime Information: a dev-mode component-tree node was stale relative to the running
+    /// contract version, descriptor hash, or source component identity.
+    /// </summary>
+    public const string HFC1049_DevModeContractVersionDrift = "HFC1049";
+
+    /// <summary>
+    /// Build-time Warning: a custom override interactive element is missing an accessible name.
+    /// </summary>
+    public const string HFC1050_CustomizationAccessibleNameMissing = "HFC1050";
+
+    /// <summary>
+    /// Build-time Warning: a custom override has an obvious keyboard reachability issue.
+    /// </summary>
+    public const string HFC1051_CustomizationKeyboardReachabilityIssue = "HFC1051";
+
+    /// <summary>
+    /// Build-time Warning: a custom override suppresses visible focus styling.
+    /// </summary>
+    public const string HFC1052_CustomizationFocusVisibilitySuppressed = "HFC1052";
+
+    /// <summary>
+    /// Build-time Warning: a custom lifecycle/status override omits aria-live parity.
+    /// </summary>
+    public const string HFC1053_CustomizationAriaLiveParityMissing = "HFC1053";
+
+    /// <summary>
+    /// Build-time Warning: a custom override uses motion without a reduced-motion fallback.
+    /// </summary>
+    public const string HFC1054_CustomizationReducedMotionMissing = "HFC1054";
+
+    /// <summary>
+    /// Build-time Warning: a custom override uses custom colors without forced-colors evidence.
+    /// </summary>
+    public const string HFC1055_CustomizationForcedColorsMissing = "HFC1055";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 
@@ -336,6 +389,31 @@ public static class FcDiagnosticIds {
     public const string HFC2114_DataGridHydrationEmpty = "HFC2114";
 
     /// <summary>
+    /// Runtime Warning: a Level 2/3 customization override threw during render and was isolated by a narrow boundary.
+    /// </summary>
+    public const string HFC2115_CustomizationOverrideRenderFault = "HFC2115";
+
+    /// <summary>
+    /// Runtime Warning: a customization descriptor manifest is stale relative to the loaded framework contract.
+    /// </summary>
+    public const string HFC2116_CustomizationStaleDescriptorManifest = "HFC2116";
+
+    /// <summary>
+    /// Runtime Warning: a customization diagnostic panel retry/recover action failed.
+    /// </summary>
+    public const string HFC2117_CustomizationPanelRecoveryFailure = "HFC2117";
+
+    /// <summary>
+    /// Runtime Information: runtime accessibility fallback was used where static proof was impossible.
+    /// </summary>
+    public const string HFC2118_CustomizationRuntimeAccessibilityFallback = "HFC2118";
+
+    /// <summary>
+    /// Runtime Information: customization diagnostic redaction removed unsafe context.
+    /// </summary>
+    public const string HFC2119_CustomizationRedactionFallback = "HFC2119";
+
+    /// <summary>
     /// Runtime Warning: <c>FcFieldSlotHost</c> received a render call with one or more required
     /// parameters left null (Story 6-3 GB-P1). Indicates a defect in the calling generated emitter
     /// or adopter component — the host returns without rendering. The structured payload identifies
@@ -349,4 +427,10 @@ public static class FcDiagnosticIds {
     /// navigation or sibling projection surfaces.
     /// </summary>
     public const string HFC2121_ProjectionViewOverrideRenderFault = "HFC2121";
+
+    /// <summary>
+    /// Runtime Information: defensive log for a dev-mode overlay activation attempt outside a
+    /// development environment. Normal gates should prevent this from firing.
+    /// </summary>
+    public const string HFC2010_DevModeActivationOutsideDevelopment = "HFC2010";
 }

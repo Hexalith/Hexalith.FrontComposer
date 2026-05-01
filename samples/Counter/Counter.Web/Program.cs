@@ -28,6 +28,7 @@ builder.Services.AddFluentUIComponents();
 // advanced adopters who want per-call control.
 builder.Services.AddHexalithFrontComposerQuickstart(
     o => o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly));
+builder.Services.AddFrontComposerDevMode(builder.Environment);
 builder.Services.AddHexalithDomain<CounterDomain>();
 
 // Story 6-2 T4 / T9 / AC3 — register the SourceTools-emitted Level 2 projection-template

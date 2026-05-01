@@ -4,7 +4,10 @@ using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.DevMode;
+using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Services.Customization;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
@@ -19,16 +22,19 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly ILogger<ProjectionSlotRegistry> _logger;
     private readonly IReadOnlyCollection<ProjectionSlotDescriptor> _descriptorsSnapshot;
+    private readonly ICustomizationContractRejectionLog? _rejectionLog;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="ProjectionSlotRegistry"/> class.
     /// </summary>
     public ProjectionSlotRegistry(
         ILogger<ProjectionSlotRegistry> logger,
-        IEnumerable<ProjectionSlotDescriptorSource> sources) {
+        IEnumerable<ProjectionSlotDescriptorSource> sources,
+        ICustomizationContractRejectionLog? rejectionLog = null) {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(sources);
         _logger = logger;
+        _rejectionLog = rejectionLog;
 
         foreach (ProjectionSlotDescriptorSource source in sources) {
             foreach (ProjectionSlotDescriptor descriptor in source.Descriptors) {
@@ -86,14 +92,51 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
             return;
         }
 
-        if (!IsCompatibleContractVersion(descriptor.ContractVersion)) {
+        CustomizationContractVersionComparison comparison =
+            CustomizationContractVersion.Compare(descriptor.ContractVersion, ProjectionSlotContractVersion.Current);
+        if (!comparison.CanSelect) {
+            // P13 — branch on Decision so the message identifies the comparison outcome.
             _logger.LogWarning(
-                "HFC1041: Level 3 slot descriptor for projection {Projection} field {Field} has incompatible contract version {ContractVersion}. Expected major {ExpectedMajor}. Descriptor ignored.",
+                "{DiagnosticId}: Level 3 slot descriptor for projection {Projection} field {Field} has incompatible contract version ({Decision}) expected {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} got {ActualMajor}.{ActualMinor}.{ActualBuild}. Descriptor ignored. Fix: rebuild the slot component against the installed framework. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1041",
+                FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch,
                 descriptor.ProjectionType.FullName,
                 descriptor.FieldName,
-                descriptor.ContractVersion,
-                ProjectionSlotContractVersion.Major);
+                comparison.Decision,
+                comparison.Expected.Major,
+                comparison.Expected.Minor,
+                comparison.Expected.Build,
+                comparison.Actual.Major,
+                comparison.Actual.Minor,
+                comparison.Actual.Build);
+            // P17 / AC2 — record the rejection so the strict-mode validation gate can fail
+            // closed at startup when the adopter opted into FailClosedOnMajorMismatch.
+            _rejectionLog?.Record(new CustomizationContractRejection(
+                Level: CustomizationLevel.Level3,
+                ProjectionTypeName: descriptor.ProjectionType.FullName ?? string.Empty,
+                ComponentTypeName: descriptor.ComponentType.FullName ?? string.Empty,
+                Role: descriptor.Role?.ToString() ?? "<any>",
+                FieldName: descriptor.FieldName,
+                Comparison: comparison,
+                DiagnosticId: FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch));
             return;
+        }
+
+        // P13 — surface MinorDrift at registry hydration so adopters can see why an override
+        // selected against a newer Minor framework version. AC3 (amended): runtime registries
+        // emit equivalent log messages naming expected/actual + rebuild guidance.
+        if (comparison.ShouldReportDiagnostic
+            && comparison.Decision == CustomizationContractVersionDecision.MinorDrift) {
+            _logger.LogInformation(
+                "{DiagnosticId}: Level 3 slot descriptor for projection {Projection} field {Field} targets contract minor {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} but installed framework reports {ActualMajor}.{ActualMinor}.{ActualBuild}. Override accepted (source-compatible). Fix: rebuild the slot to silence this message. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1041",
+                FcDiagnosticIds.HFC1041_ProjectionSlotContractVersionMismatch,
+                descriptor.ProjectionType.FullName,
+                descriptor.FieldName,
+                comparison.Expected.Major,
+                comparison.Expected.Minor,
+                comparison.Expected.Build,
+                comparison.Actual.Major,
+                comparison.Actual.Minor,
+                comparison.Actual.Build);
         }
 
         if (!IsCompatibleComponent(descriptor, out string? reason)) {
@@ -127,9 +170,6 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
                 return new RegistryEntry(existing.Descriptor, Ambiguous: true);
             });
     }
-
-    private static bool IsCompatibleContractVersion(int contractVersion)
-        => contractVersion / 1_000_000 == ProjectionSlotContractVersion.Major;
 
     [UnconditionalSuppressMessage(
         "Trimming",

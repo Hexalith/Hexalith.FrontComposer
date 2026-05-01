@@ -4,11 +4,13 @@ using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
+using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
 
@@ -19,8 +21,15 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Rendering;
 public sealed class FcProjectionViewOverrideHostTests : BunitContext {
     private readonly ListLogger<FcProjectionViewOverrideHost<ViewProjection>> _logger = new();
 
-    public FcProjectionViewOverrideHostTests()
-        => Services.Replace(ServiceDescriptor.Singleton<ILogger<FcProjectionViewOverrideHost<ViewProjection>>>(_logger));
+    public FcProjectionViewOverrideHostTests() {
+        // P1 / P2 — the diagnostic panel injects IStringLocalizer<FcShellResources> and uses
+        // Fluent UI primitives (FluentMessageBar / FluentButton). Register localization +
+        // Fluent UI services so the panel can render in the test bUnit context.
+        JSInterop.Mode = JSRuntimeMode.Loose;
+        _ = Services.AddFluentUIComponents();
+        _ = Services.AddLocalization();
+        Services.Replace(ServiceDescriptor.Singleton<ILogger<FcProjectionViewOverrideHost<ViewProjection>>>(_logger));
+    }
 
     [Fact]
     public void Render_ValidReplacement_PassesItemsThrough() {
@@ -60,6 +69,8 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
 
     [Fact]
     public void Render_ThrowingReplacement_IsolatesFault_AndRendersDiagnosticFallback() {
+        InMemoryDiagnosticSink sink = new(capacity: 4);
+        Services.AddSingleton<IDiagnosticSink>(sink);
         ProjectionViewContext<ViewProjection> context = NewContext([new ViewProjection(7, "PayloadValueMustNotLog")]);
         ProjectionViewOverrideDescriptor descriptor = NewDescriptor(typeof(ThrowingReplacement));
 
@@ -82,6 +93,18 @@ public sealed class FcProjectionViewOverrideHostTests : BunitContext {
         entry.Message.ShouldNotContain("raw replacement message");
         entry.Message.ShouldContain("TenantHash:");
         entry.Message.ShouldContain("UserHash:");
+
+        DevDiagnosticEvent evt = sink.RecentEvents.ShouldHaveSingleItem();
+        evt.Code.ShouldBe(FcDiagnosticIds.HFC2121_ProjectionViewOverrideRenderFault);
+        evt.Message.ShouldContain("What:");
+        evt.Message.ShouldContain("Expected:");
+        evt.Message.ShouldContain("Got:");
+        evt.Message.ShouldContain("Fix:");
+        evt.Message.ShouldContain("DocsLink:");
+        evt.Message.ShouldNotContain("PayloadValueMustNotLog");
+        evt.Message.ShouldNotContain("raw replacement message");
+        evt.Message.ShouldNotContain("tenant");
+        evt.Message.ShouldNotContain("user");
     }
 
     [Fact]

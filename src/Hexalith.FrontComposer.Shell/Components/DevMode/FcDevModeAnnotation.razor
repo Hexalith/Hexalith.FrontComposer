@@ -1,0 +1,67 @@
+@namespace Hexalith.FrontComposer.Shell.Components.DevMode
+@using Hexalith.FrontComposer.Contracts.DevMode
+@using Hexalith.FrontComposer.Shell.Services.DevMode
+@using Microsoft.Extensions.DependencyInjection
+@implements IAsyncDisposable
+@inject IServiceProvider Services
+
+@if (Controller?.IsActive == true && Node is not null)
+{
+    <button type="button"
+            class="@CssClass"
+            aria-label="@AccessibleName"
+            title="@AccessibleName"
+            @onclick="OpenAsync">
+        <span class="fc-devmode-badge">@Node.Convention.Name</span>
+    </button>
+}
+
+@code {
+    private IDisposable? _registration;
+
+    private IDevModeOverlayController? Controller => Services.GetService<IDevModeOverlayController>();
+
+    [Parameter]
+    public ComponentTreeNode? Node { get; set; }
+
+    [Parameter]
+    public string CssClass { get; set; } = "fc-devmode-annotation";
+
+    [Parameter]
+    public string? UnsupportedTypeName { get; set; }
+
+    private string AccessibleName
+        => Node is null
+            ? string.Empty
+            : string.IsNullOrWhiteSpace(UnsupportedTypeName)
+                ? $"{Node.Convention.Name} {Node.CurrentLevel}"
+                : $"{Node.Convention.Name} {Node.CurrentLevel} {UnsupportedTypeName}";
+
+    protected override void OnParametersSet()
+    {
+        _registration?.Dispose();
+        _registration = null;
+
+        if (Controller?.IsActive == true && Node is not null)
+        {
+            _registration = Controller.Register(Node);
+        }
+    }
+
+    private Task OpenAsync()
+    {
+        if (Controller is not null && Node is not null)
+        {
+            _ = Controller.Open(Node.AnnotationKey, Node.RenderEpoch);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _registration?.Dispose();
+        _registration = null;
+        return ValueTask.CompletedTask;
+    }
+}

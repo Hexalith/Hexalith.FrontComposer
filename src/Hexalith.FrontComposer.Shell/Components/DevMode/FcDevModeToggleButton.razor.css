@@ -1,0 +1,15 @@
+.fc-devmode-toggle {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 4px;
+    background: var(--neutral-fill-stealth-rest);
+    color: var(--neutral-foreground-rest);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.fc-devmode-toggle:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2);
+    outline-offset: 2px;
+}

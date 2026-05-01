@@ -2,8 +2,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.DevMode;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Services.Customization;
 
 using Microsoft.Extensions.Logging;
 
@@ -35,13 +37,16 @@ namespace Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 public sealed class ProjectionTemplateRegistry : IProjectionTemplateRegistry {
     private readonly ConcurrentDictionary<RegistryKey, RegistryEntry> _entries = new();
     private readonly ILogger<ProjectionTemplateRegistry> _logger;
+    private readonly ICustomizationContractRejectionLog? _rejectionLog;
 
     public ProjectionTemplateRegistry(
         ILogger<ProjectionTemplateRegistry> logger,
-        IEnumerable<ProjectionTemplateAssemblySource> assemblySources) {
+        IEnumerable<ProjectionTemplateAssemblySource> assemblySources,
+        ICustomizationContractRejectionLog? rejectionLog = null) {
         ArgumentNullException.ThrowIfNull(logger);
         ArgumentNullException.ThrowIfNull(assemblySources);
         _logger = logger;
+        _rejectionLog = rejectionLog;
 
         foreach (ProjectionTemplateAssemblySource source in assemblySources) {
             foreach (ProjectionTemplateDescriptor descriptor in source.Descriptors) {
@@ -55,14 +60,54 @@ public sealed class ProjectionTemplateRegistry : IProjectionTemplateRegistry {
         ArgumentNullException.ThrowIfNull(descriptor.ProjectionType);
         ArgumentNullException.ThrowIfNull(descriptor.TemplateType);
 
-        if (!IsSupportedContractVersion(descriptor.ContractVersion)) {
+        CustomizationContractVersionComparison comparison =
+            CustomizationContractVersion.Compare(descriptor.ContractVersion, ProjectionTemplateContractVersion.Current);
+        if (!comparison.CanSelect) {
+            // P13 — branch the message on Decision so MajorMismatch is named distinctly from
+            // other reject paths. Currently MajorMismatch is the only !CanSelect outcome, but
+            // future enum members may add more — Decision in the log lets operators triage.
             _logger.LogWarning(
-                "ProjectionTemplateDescriptor for projection {Projection} (role {Role}) uses incompatible contract version {ContractVersion}; current supported major is {CurrentMajor}. Descriptor ignored.",
+                "{DiagnosticId}: ProjectionTemplateDescriptor for projection {Projection} (role {Role}) uses incompatible contract version {Decision} expected {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} got {ActualMajor}.{ActualMinor}.{ActualBuild}; descriptor ignored. Fix: rebuild the template against the installed framework. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1035",
+                FcDiagnosticIds.HFC1035_ProjectionTemplateContractVersionMismatch,
                 descriptor.ProjectionType.FullName,
                 descriptor.Role?.ToString() ?? "<any>",
-                descriptor.ContractVersion,
-                ProjectionTemplateContractVersion.Major);
+                comparison.Decision,
+                comparison.Expected.Major,
+                comparison.Expected.Minor,
+                comparison.Expected.Build,
+                comparison.Actual.Major,
+                comparison.Actual.Minor,
+                comparison.Actual.Build);
+            // P17 / AC2 — record the rejection so the strict-mode validation gate can fail
+            // closed at startup when the adopter opted into FailClosedOnMajorMismatch.
+            _rejectionLog?.Record(new CustomizationContractRejection(
+                Level: CustomizationLevel.Level2,
+                ProjectionTypeName: descriptor.ProjectionType.FullName ?? string.Empty,
+                ComponentTypeName: descriptor.TemplateType.FullName ?? string.Empty,
+                Role: descriptor.Role?.ToString() ?? "<any>",
+                FieldName: null,
+                Comparison: comparison,
+                DiagnosticId: FcDiagnosticIds.HFC1035_ProjectionTemplateContractVersionMismatch));
             return;
+        }
+
+        // P13 — surface MinorDrift as an Information-level message at registry hydration so
+        // adopters running newer framework Minor than the manifest can see why an override
+        // selected without diagnostic at build time. AC3 (amended): runtime registries emit
+        // equivalent log messages naming expected/actual + rebuild guidance.
+        if (comparison.ShouldReportDiagnostic
+            && comparison.Decision == CustomizationContractVersionDecision.MinorDrift) {
+            _logger.LogInformation(
+                "{DiagnosticId}: ProjectionTemplateDescriptor for projection {Projection} (role {Role}) targets contract minor {ExpectedMajor}.{ExpectedMinor}.{ExpectedBuild} but installed framework reports {ActualMajor}.{ActualMinor}.{ActualBuild}. Override accepted (source-compatible). Fix: rebuild the template to silence this message. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1036",
+                FcDiagnosticIds.HFC1036_ProjectionTemplateContractVersionDrift,
+                descriptor.ProjectionType.FullName,
+                descriptor.Role?.ToString() ?? "<any>",
+                comparison.Expected.Major,
+                comparison.Expected.Minor,
+                comparison.Expected.Build,
+                comparison.Actual.Major,
+                comparison.Actual.Minor,
+                comparison.Actual.Build);
         }
 
         RegistryKey key = new(descriptor.ProjectionType, descriptor.Role);
@@ -120,6 +165,4 @@ public sealed class ProjectionTemplateRegistry : IProjectionTemplateRegistry {
 
     private readonly record struct RegistryEntry(ProjectionTemplateDescriptor Descriptor, bool Ambiguous);
 
-    private static bool IsSupportedContractVersion(int contractVersion)
-        => contractVersion / 1_000_000 == ProjectionTemplateContractVersion.Major;
 }

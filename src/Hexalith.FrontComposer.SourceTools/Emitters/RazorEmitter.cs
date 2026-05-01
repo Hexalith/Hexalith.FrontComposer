@@ -174,6 +174,12 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;");
         _ = sb.AppendLine();
 
+        _ = sb.AppendLine("#if DEBUG");
+        _ = sb.AppendLine("    [Inject]");
+        _ = sb.AppendLine("    private global::System.IServiceProvider DevModeServices { get; set; } = default!;");
+        _ = sb.AppendLine("#endif");
+        _ = sb.AppendLine();
+
         // Story 6-2 T5 — non-grid views also need RenderContext to flow through the template
         // context so wrapper-owned tenant/density/dev-mode behavior is preserved.
         if (!RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
@@ -456,7 +462,7 @@ public static class RazorEmitter {
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                    if (row is null) { return; }");
             _ = sb.AppendLine("                    int fieldSeq = 0;");
-            EmitTemplateFieldContent(sb, col, "row", "builder", "fieldSeq", "                    ");
+            EmitTemplateFieldContent(sb, model, col, "row", "builder", "fieldSeq", "                    ");
             _ = sb.AppendLine("                };");
         }
 
@@ -566,8 +572,67 @@ public static class RazorEmitter {
             ? value.Value.ToString(CultureInfo.InvariantCulture)
             : "(int?)null";
 
+    private static string RoleExpression(RazorModel model)
+        => model.Strategy == ProjectionRenderStrategy.Default
+            ? "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)null"
+            : "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)"
+                + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole." + model.Strategy.ToString();
+
+    private static void EmitDevModeAnnotation(
+        StringBuilder sb,
+        string builderName,
+        string seqVariable,
+        string indent,
+        RazorModel model,
+        string annotationKey,
+        string conventionName,
+        string description,
+        string recommendedOverride,
+        string contractTypeName,
+        string? fieldAccessor,
+        string? unsupportedTypeName,
+        string currentLevel = "Default",
+        bool isUnsupported = false) {
+        string roleExpr = RoleExpression(model);
+        string fieldLiteral = fieldAccessor is null
+            ? "(string?)null"
+            : "\"" + RoleBodyHelpers.EscapeString(fieldAccessor) + "\"";
+        string cssClass = isUnsupported
+            ? "fc-devmode-unsupported"
+            : "fc-devmode-annotation";
+
+        _ = sb.AppendLine(indent + "#if DEBUG");
+        _ = sb.AppendLine(indent + "if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)");
+        _ = sb.AppendLine(indent + "{");
+        _ = sb.AppendLine(indent + "    " + builderName + ".OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(" + seqVariable + "++);");
+        _ = sb.AppendLine(indent + "    " + builderName + ".AddAttribute(" + seqVariable + "++, \"Node\", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(");
+        _ = sb.AppendLine(indent + "        AnnotationKey: \"" + RoleBodyHelpers.EscapeString(annotationKey) + "\",");
+        _ = sb.AppendLine(indent + "        Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor(\"" + RoleBodyHelpers.EscapeString(conventionName) + "\", \"" + RoleBodyHelpers.EscapeString(description) + "\", \"" + RoleBodyHelpers.EscapeString(recommendedOverride) + "\", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel." + currentLevel + "),");
+        _ = sb.AppendLine(indent + "        ContractTypeName: \"" + RoleBodyHelpers.EscapeString(contractTypeName) + "\",");
+        _ = sb.AppendLine(indent + "        CurrentLevel: global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel." + currentLevel + ",");
+        _ = sb.AppendLine(indent + "        OriginatingProjectionTypeName: typeof(" + model.TypeName + ").FullName ?? typeof(" + model.TypeName + ").Name,");
+        _ = sb.AppendLine(indent + "        Role: " + roleExpr + ",");
+        _ = sb.AppendLine(indent + "        FieldAccessor: " + fieldLiteral + ",");
+        _ = sb.AppendLine(indent + "        Children: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode>.Empty,");
+        _ = sb.AppendLine(indent + "        RenderEpoch: 0,");
+        _ = sb.AppendLine(indent + "        ComponentTreeContractVersion: global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeContractVersion.Current,");
+        _ = sb.AppendLine(indent + "        DescriptorHash: \"" + RoleBodyHelpers.EscapeString(model.TypeName + ":" + annotationKey) + "\",");
+        _ = sb.AppendLine(indent + "        SourceComponentIdentity: \"" + RoleBodyHelpers.EscapeString(model.TypeName + "." + annotationKey) + "\",");
+        _ = sb.AppendLine(indent + "        StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,");
+        _ = sb.AppendLine(indent + "        IsUnsupported: " + (isUnsupported ? "true" : "false") + "));");
+        _ = sb.AppendLine(indent + "    " + builderName + ".AddAttribute(" + seqVariable + "++, \"CssClass\", \"" + cssClass + "\");");
+        if (unsupportedTypeName is not null) {
+            _ = sb.AppendLine(indent + "    " + builderName + ".AddAttribute(" + seqVariable + "++, \"UnsupportedTypeName\", \"" + RoleBodyHelpers.EscapeString(unsupportedTypeName) + "\");");
+        }
+
+        _ = sb.AppendLine(indent + "    " + builderName + ".CloseComponent();");
+        _ = sb.AppendLine(indent + "}");
+        _ = sb.AppendLine(indent + "#endif");
+    }
+
     private static void EmitTemplateFieldContent(
         StringBuilder sb,
+        RazorModel model,
         ColumnModel col,
         string instanceName,
         string builderName,
@@ -582,6 +647,21 @@ public static class RazorEmitter {
             _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqVariable + "++, \"TypeName\", \"" + RoleBodyHelpers.EscapeString(unsupportedTypeName) + "\");");
             _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqVariable + "++, \"IsDevMode\", RenderContext?.IsDevMode == true);");
             _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
+            EmitDevModeAnnotation(
+                sb,
+                builderName,
+                seqVariable,
+                indent,
+                model,
+                col.PropertyName + "-unsupported",
+                col.PropertyName + " unsupported field",
+                "Unsupported field placeholder for " + unsupportedTypeName + ".",
+                "Use a Level 3 slot override.",
+                unsupportedTypeName,
+                col.PropertyName,
+                unsupportedTypeName,
+                currentLevel: "Level3",
+                isUnsupported: true);
             return;
         }
 
@@ -1160,6 +1240,19 @@ public static class RazorEmitter {
         _ = sb.AppendLine("    {");
         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
         _ = sb.AppendLine("        int seq = 0;");
+        EmitDevModeAnnotation(
+            sb,
+            "builder",
+            "seq",
+            "        ",
+            model,
+            model.TypeName + "-view",
+            model.TypeName + " generated projection view",
+            "Generated projection view surface.",
+            "Use a Level 2 template for body changes, Level 4 for full replacement.",
+            model.TypeName,
+            fieldAccessor: null,
+            unsupportedTypeName: null);
         if (isGrid) {
             // Story 4-4 T2.1 / D20 — density resolved fresh on every render so user toggles
             // are reflected without remount. SetKey on the FluentDataGrid forces internal remount
@@ -1259,7 +1352,8 @@ public static class RazorEmitter {
         _ = sb.AppendLine("                rowRenderer: RenderTemplateRow,");
         _ = sb.AppendLine("                fieldRenderer: RenderTemplateField);");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("            builder.OpenComponent(seq++, __templateDescriptor.TemplateType);");
+        _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcProjectionTemplateHost<" + model.TypeName + ">>(seq++);");
+        _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Descriptor\", __templateDescriptor);");
         _ = sb.AppendLine("            builder.AddAttribute(seq++, \"Context\", __templateContext);");
         _ = sb.AppendLine("            builder.CloseComponent();");
         _ = sb.AppendLine("        }");

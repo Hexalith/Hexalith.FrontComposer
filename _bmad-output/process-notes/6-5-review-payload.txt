@@ -1,0 +1,2206 @@
+================================================================================
+STORY 6-5 REVIEW PAYLOAD
+Generated: 2026-05-01T11:28:28.6912760+02:00
+================================================================================
+
+#### SECTION 1: TRACKED FILE DIFFS (excluding low-signal snapshot rebaselines and spec) ####
+
+diff --git a/Hexalith.EventStore b/Hexalith.EventStore
+index 7544ff0..cf795fa 160000
+--- a/Hexalith.EventStore
++++ b/Hexalith.EventStore
+@@ -1 +1 @@
+-Subproject commit 7544ff0ea012d59c10f26ddf46c53b594a3b2227
++Subproject commit cf795fa0f590aa69a310efa4c60072cc2a47c2e3
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 5ce23c2..40ebc38 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -40,7 +40,7 @@
+ # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+ 
+ generated: 2026-04-12
+-last_updated: "2026-05-01 (story 6-4 Level 4 full component replacement code-review completed via bmad-code-review; status review -> done. 49 raw findings across 3 layers triaged to 6 decision-needed (all resolved) + 15 patches (all applied) + 10 deferred + 5 dismissed. Key changes: DN1 HFC1044 escalated to Error + registry constructor throws on ambiguous duplicates; DN2 dropped Items reference from recovery key + 3-consecutive-failure circuit breaker + log-once-per-fault-episode (replaces previous noisy reference-equals comparison); DN3 cascade fail-closed-on-exact documented; DN4 acknowledged Counter has only Default role so role-agnostic registration is correct + AC12 fallback evidence covered by SourceTools test fixtures; DN5 SHA256-truncated tenant/user hash in HFC2121; DN6 lifecycleState derived from state.IsLoading + Items.Count (label localization deferred to 6-5/6-6); P10 RegistrationSource included in HFC1043/1044/1045 logs; P11 idempotent re-registration excludes RegistrationSource from equality; P12 minor/build drift Info-level log within accepted Major; P13 duplicate-pair sorted before logging; P14 per-element null guard on descriptor sources; P3 OnParametersSet null Context guard; P4 IAsyncDisposable on host; P15 AC13 starter-shape contract test pinned. 14 generator approval snapshots rebaselined. Validation: dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false clean (0 warnings); dotnet test Hexalith.FrontComposer.sln -p:UseSharedCompilation=false => Contracts 133/0/0, Shell 1352/0/0, SourceTools 563/0/0, Bench 2/0/0.) | previous: 2026-05-01 (story 6-4 Level 4 full component replacement completed via bmad-dev-story; status in-progress -> review. Added typed ProjectionViewContext and view override descriptors, Shell registry/host validation, RazorEmitter Level 4 selection before Levels 2/3, Counter sample replacement, HFC1042-HFC1046/HFC2121 diagnostics, and generator approval rebaselines. Validation: dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false clean; dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false => Contracts 132/0/0, Shell 1346/0/0, SourceTools 563/0/0, Bench 2/0/0.)"
++last_updated: "2026-05-01 (story 6-5 FcDevModeOverlay & Starter Template Generator completed via bmad-dev-story; status in-progress -> review. Added dev-mode component-tree IR, DEBUG/Development gated Shell registration, overlay/toggle/annotation components, optional SourceTools annotation injection, starter Razor emitter, clipboard JS module, Counter sample unsupported placeholder path, HFC1047-HFC1049/HFC2010 reservations, and generator/shell snapshot rebaselines. Validation: dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false /m:1 clean; dotnet test Hexalith.FrontComposer.sln --no-build /p:UseSharedCompilation=false => Contracts 139/0/0, Shell 1363/0/0, SourceTools 566/0/0, Bench 2/0/0; dotnet build Hexalith.FrontComposer.sln -c Release -warnaserror /p:UseSharedCompilation=false /m:1 clean.) | previous: 2026-05-01 (story 6-5 FcDevModeOverlay & Starter Template Generator started via bmad-dev-story; status ready-for-dev -> in-progress.) | previous: 2026-05-01 (story 6-4 Level 4 full component replacement code-review completed via bmad-code-review; status review -> done. 49 raw findings across 3 layers triaged to 6 decision-needed (all resolved) + 15 patches (all applied) + 10 deferred + 5 dismissed. Key changes: DN1 HFC1044 escalated to Error + registry constructor throws on ambiguous duplicates; DN2 dropped Items reference from recovery key + 3-consecutive-failure circuit breaker + log-once-per-fault-episode (replaces previous noisy reference-equals comparison); DN3 cascade fail-closed-on-exact documented; DN4 acknowledged Counter has only Default role so role-agnostic registration is correct + AC12 fallback evidence covered by SourceTools test fixtures; DN5 SHA256-truncated tenant/user hash in HFC2121; DN6 lifecycleState derived from state.IsLoading + Items.Count (label localization deferred to 6-5/6-6); P10 RegistrationSource included in HFC1043/1044/1045 logs; P11 idempotent re-registration excludes RegistrationSource from equality; P12 minor/build drift Info-level log within accepted Major; P13 duplicate-pair sorted before logging; P14 per-element null guard on descriptor sources; P3 OnParametersSet null Context guard; P4 IAsyncDisposable on host; P15 AC13 starter-shape contract test pinned. 14 generator approval snapshots rebaselined. Validation: dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false clean (0 warnings); dotnet test Hexalith.FrontComposer.sln -p:UseSharedCompilation=false => Contracts 133/0/0, Shell 1352/0/0, SourceTools 563/0/0, Bench 2/0/0.)"
+ # previous: 2026-04-25 (story 3-4 Pass-6 / Chunk 2 review via bmad-code-review COMPLETED. 5 decision-needed resolved (C2-D1 unregisterShellKeyFilter pair / C2-D2 Mac Cmd+K preventDefault / C2-D3 fail-closed scope reset / C2-D4 extract LoadAndDispatchHydrateAsync / C2-D5 ratify Score=1000 via D32 addendum). 35 patches applied: 3 doc + 4 reducer + 12 effect + 1 shell + 1 JS + 2 contracts + 10 tests. All 1,529 tests pass (Contracts 76, Shell 972+2-skipped, SourceTools 481). dotnet build --warnaserror clean. Status: review (DN3 from Pass-3 user-gated — Playwright palette E2E + PaletteScorerBench BenchmarkDotNet remain blocking close).)
+ # previous: 2026-04-25 (story 4-6 Pass-3 human re-pass via bmad-code-review COMPLETED. All 11 decision-needed resolved (Pass-2: 6 with option a; Pass-3 supplemental: DN1-c require companion / DN6-c verb collision accept / DN7-c arity accept / DN9-c role status drop / DN10-c Fluent refactor defer). 22 of 28 patches applied. All 1,523 tests pass. Status: done. Story 5-2 prior pass also complete.)
+ project: Hexalith.FrontComposer
+@@ -109,7 +109,7 @@ development_status:
+   6-2-level-2-typed-razor-template-overrides: done
+   6-3-level-3-slot-level-field-replacement: done
+   6-4-level-4-full-component-replacement: done
+-  6-5-fcdevmodeoverlay-and-starter-template-generator: ready-for-dev
++  6-5-fcdevmodeoverlay-and-starter-template-generator: review
+   6-6-build-time-validation-error-boundaries-and-diagnostics: ready-for-dev
+   epic-6-retrospective: optional
+ 
+@@ -121,8 +121,8 @@ development_status:
+   epic-7-retrospective: optional
+ 
+   # Epic 8: MCP & Agent Integration
+-  epic-8: in-progress
+-  8-1-mcp-server-and-typed-tool-exposure: ready-for-dev
++  epic-8: in-progress
++  8-1-mcp-server-and-typed-tool-exposure: ready-for-dev
+   8-2-hallucination-rejection-and-tenant-scoped-tools: backlog
+   8-3-two-call-lifecycle-and-agent-command-semantics: backlog
+   8-4-projection-rendering-for-agents: backlog
+diff --git a/samples/Counter/Counter.Domain/Counter.Domain.csproj b/samples/Counter/Counter.Domain/Counter.Domain.csproj
+index 55521b9..f871b3c 100644
+--- a/samples/Counter/Counter.Domain/Counter.Domain.csproj
++++ b/samples/Counter/Counter.Domain/Counter.Domain.csproj
+@@ -3,7 +3,7 @@
+     <TargetFramework>net10.0</TargetFramework>
+     <IsPackable>false</IsPackable>
+     <!-- ASP0006: Generated RenderTreeBuilder code uses seq++ pattern; will be fixed in generator Story 1.8 -->
+-    <NoWarn>$(NoWarn);ASP0006</NoWarn>
++    <NoWarn>$(NoWarn);ASP0006;HFC1002</NoWarn>
+   </PropertyGroup>
+   <ItemGroup>
+     <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+diff --git a/samples/Counter/Counter.Domain/CounterProjection.cs b/samples/Counter/Counter.Domain/CounterProjection.cs
+index 2c86c86..10869a7 100644
+--- a/samples/Counter/Counter.Domain/CounterProjection.cs
++++ b/samples/Counter/Counter.Domain/CounterProjection.cs
+@@ -12,4 +12,7 @@ public partial class CounterProjection {
+     [Display(Name = "Last changed")]
+     [RelativeTime]
+     public DateTimeOffset LastUpdated { get; set; }
++#pragma warning disable HFC1002 // Story 6-5 sample intentionally exposes one unsupported placeholder for dev-mode discovery.
++    public Dictionary<string, string> Metadata { get; set; } = [];
++#pragma warning restore HFC1002
+ }
+diff --git a/samples/Counter/Counter.Web/Program.cs b/samples/Counter/Counter.Web/Program.cs
+index 458a186..a105d4a 100644
+--- a/samples/Counter/Counter.Web/Program.cs
++++ b/samples/Counter/Counter.Web/Program.cs
+@@ -28,6 +28,7 @@ builder.Services.AddFluentUIComponents();
+ // advanced adopters who want per-call control.
+ builder.Services.AddHexalithFrontComposerQuickstart(
+     o => o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly));
++builder.Services.AddFrontComposerDevMode(builder.Environment);
+ builder.Services.AddHexalithDomain<CounterDomain>();
+ 
+ // Story 6-2 T4 / T9 / AC3 — register the SourceTools-emitted Level 2 projection-template
+diff --git a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+index 9e35e05..19230b9 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+@@ -214,6 +214,24 @@ public static class FcDiagnosticIds {
+     /// </summary>
+     public const string HFC1046_ProjectionViewOverrideAccessibilityWarning = "HFC1046";
+ 
++    /// <summary>
++    /// Build-time Information: a dev-mode annotation site cannot be matched to stable descriptor
++    /// metadata, so the generated annotation is omitted or marked stale.
++    /// </summary>
++    public const string HFC1047_DevModeAnnotationSiteInvalid = "HFC1047";
++
++    /// <summary>
++    /// Runtime Information: a dev-mode starter template was requested for an unsupported
++    /// customization level or mismatched component-tree node.
++    /// </summary>
++    public const string HFC1048_DevModeUnsupportedEmissionLevel = "HFC1048";
++
++    /// <summary>
++    /// Runtime Information: a dev-mode component-tree node was stale relative to the running
++    /// contract version, descriptor hash, or source component identity.
++    /// </summary>
++    public const string HFC1049_DevModeContractVersionDrift = "HFC1049";
++
+     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
+     public const string HFC2100_UnknownCorrelationId = "HFC2100";
+ 
+@@ -349,4 +367,10 @@ public static class FcDiagnosticIds {
+     /// navigation or sibling projection surfaces.
+     /// </summary>
+     public const string HFC2121_ProjectionViewOverrideRenderFault = "HFC2121";
++
++    /// <summary>
++    /// Runtime Information: defensive log for a dev-mode overlay activation attempt outside a
++    /// development environment. Normal gates should prevent this from firing.
++    /// </summary>
++    public const string HFC2010_DevModeActivationOutsideDevelopment = "HFC2010";
+ }
+diff --git a/src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs b/src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs
+index f6a408a..c4f740b 100644
+--- a/src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs
++++ b/src/Hexalith.FrontComposer.Contracts/FcShellOptions.cs
+@@ -245,4 +245,26 @@ public sealed class FcShellOptions {
+     /// </summary>
+     [Range(0, 1_000, ErrorMessage = "MaxPendingCommandPollingPerTick must be between 0 and 1000.")]
+     public int MaxPendingCommandPollingPerTick { get; set; } = 25;
++
++    /// <summary>
++    /// Gets or sets development-only overlay and starter-template generation options.
++    /// </summary>
++    public FcShellDevModeOptions DevMode { get; set; } = new();
++}
++
++/// <summary>
++/// Development-only overlay limits for bounded starter-template generation.
++/// </summary>
++public sealed class FcShellDevModeOptions {
++    /// <summary>Maximum component-tree depth walked while emitting starter metadata.</summary>
++    [Range(1, 512, ErrorMessage = "DevMode.MaxNodeDepth must be between 1 and 512.")]
++    public int MaxNodeDepth { get; set; } = 64;
++
++    /// <summary>Maximum children emitted for a single node while walking starter metadata.</summary>
++    [Range(1, 10_000, ErrorMessage = "DevMode.MaxFanOut must be between 1 and 10000.")]
++    public int MaxFanOut { get; set; } = 512;
++
++    /// <summary>Maximum time a clipboard copy operation may take before timing out.</summary>
++    [Range(100, 30_000, ErrorMessage = "DevMode.CopyTimeoutMilliseconds must be between 100 and 30000.")]
++    public int CopyTimeoutMilliseconds { get; set; } = 2_000;
+ }
+diff --git a/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md b/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md
+index fd0d885..8ce76b8 100644
+--- a/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md
++++ b/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md
+@@ -16,3 +16,7 @@ HFC2111 | HexalithFrontComposer | Information | Palette hydration payload invali
+ HFC2112 | HexalithFrontComposer | Warning     | Badge initial-fetch / re-fetch / capability-seen persistence fault — per-type reader threw, async-void notifier handler threw, or seen-capability storage write failed (Story 3-5 D12, D13; emitted by `BadgeCountService.FetchOneAsync`, `BadgeCountService.OnProjectionChanged`, and `CapabilityDiscoveryEffects.HandleCapabilityVisited`)
+ HFC2113 | HexalithFrontComposer | Information | Projection type-name string from `IProjectionChangeNotifier.ProjectionChanged` failed `Type.GetType` resolution (Story 3-5 D7; emitted by `BadgeCountService.OnProjectionChanged` — de-duplicated per Scoped service instance via `ConcurrentDictionary<string, byte>` guard)
+ HFC2114 | HexalithFrontComposer | Information | DataGrid hydrate encountered an `Empty`/`Corrupt`/`OutOfScope`/`RegistryFailure` key during `{tenantId}:{userId}:datagrid:*` enumeration (Story 3-6 D11 / D14 / A9; emitted by `DataGridNavigationEffects.HandleAppInitialized` and `HandleStorageReady`; `OutOfScope` dedup is per-distinct-viewKey, `RegistryFailure` dedup is once-per-hydrate-pass)
++HFC1047 | HexalithFrontComposer | Information | Dev-mode annotation site lacks stable descriptor metadata; generated annotation is omitted or marked stale (Story 6-5)
++HFC1048 | HexalithFrontComposer | Information | Dev-mode starter emission requested an unsupported customization level or mismatched node level (Story 6-5)
++HFC1049 | HexalithFrontComposer | Information | Dev-mode starter metadata is stale relative to contract version, descriptor hash, or source component identity (Story 6-5)
++HFC2010 | HexalithFrontComposer | Information | Defensive runtime log for a dev-mode activation attempt outside Development; normal DEBUG/runtime gates prevent user-visible behavior (Story 6-5)
+diff --git a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor
+index bac451b..dbff961 100644
+--- a/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor
++++ b/src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor
+@@ -3,6 +3,7 @@
+ @using Microsoft.FluentUI.AspNetCore.Components
+ @using Hexalith.FrontComposer.Contracts.Registration
+ @using Hexalith.FrontComposer.Contracts.Rendering
++@using Hexalith.FrontComposer.Shell.Components.DevMode
+ @using Hexalith.FrontComposer.Shell.Components.EventStore
+ @using Hexalith.FrontComposer.Shell.Resources
+ @inherits Fluxor.Blazor.Web.Components.FluxorComponent
+@@ -57,6 +58,7 @@
+                     </FluentStack>
+                     <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center">
+                         <FcThemeToggle />
++                        <FcDevModeToggleButton />
+                         @if (HeaderEnd is not null)
+                         {
+                             @HeaderEnd
+@@ -114,4 +116,5 @@
+ 
+     <FluentProviders />
+     <Fluxor.Blazor.Web.StoreInitializer />
++    <FcDevModeOverlay />
+ </div>
+diff --git a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+index 0038f1d..e231b30 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+@@ -475,4 +475,7 @@
+   <data name="PendingCommandSummaryOverflowTemplate" xml:space="preserve">
+     <value>{0} commande(s) résolue(s) supplémentaire(s)</value>
+   </data>
++  <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
++    <value>Afficher ou masquer le calque développeur</value>
++  </data>
+ </root>
+diff --git a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+index 2f9c946..30d4e6e 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+@@ -573,4 +573,8 @@
+     <value>{0} additional resolved commands</value>
+     <comment>Story 5-5 — overflow line when bounded MaxDetails truncates the visible list.</comment>
+   </data>
++  <data name="DevModeOverlayShortcutDescription" xml:space="preserve">
++    <value>Toggle developer overlay</value>
++    <comment>Story 6-5 — command palette description for the Ctrl+Shift+D dev-mode overlay shortcut.</comment>
++  </data>
+ </root>
+diff --git a/src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs b/src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs
+index 048c32a..076eba6 100644
+--- a/src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs
++++ b/src/Hexalith.FrontComposer.Shell/Shortcuts/FrontComposerShortcutRegistrar.cs
+@@ -5,9 +5,11 @@ using Hexalith.FrontComposer.Contracts.Shortcuts;
+ using Hexalith.FrontComposer.Shell.Components.Layout;
+ using Hexalith.FrontComposer.Shell.Resources;
+ using Hexalith.FrontComposer.Shell.Services;
++using Hexalith.FrontComposer.Shell.Services.DevMode;
+ using Hexalith.FrontComposer.Shell.State.CommandPalette;
+ 
+ using Microsoft.AspNetCore.Components;
++using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.Extensions.Localization;
+ using Microsoft.FluentUI.AspNetCore.Components;
+ 
+@@ -47,7 +49,8 @@ public sealed class FrontComposerShortcutRegistrar(
+     NavigationManager navigation,
+     IStringLocalizer<FcShellResources> localizer,
+     IUlidFactory ulidFactory,
+-    DataGridFocusScope dataGridFocusScope)
++    DataGridFocusScope dataGridFocusScope,
++    IServiceProvider? services = null)
+ {
+     // Uses `int` + `Interlocked.Exchange` so two concurrent first-render paths (hot-reload
+     // restart, bUnit teardown race) cannot both observe zero and double-register the defaults
+@@ -105,6 +108,14 @@ public sealed class FrontComposerShortcutRegistrar(
+                 "/",
+                 "SlashFocusFilterShortcutDescription",
+                 FocusFirstColumnFilterAsync);
++
++            if (services?.GetService<IDevModeOverlayController>() is not null)
++            {
++                _ = shortcuts.Register(
++                    "ctrl+shift+d",
++                    "DevModeOverlayShortcutDescription",
++                    ToggleDevModeOverlayAsync);
++            }
+         }
+         catch
+         {
+@@ -227,4 +238,10 @@ public sealed class FrontComposerShortcutRegistrar(
+ 
+         _ = await dataGridFocusScope.FocusFirstColumnFilterAsync(viewKey!).ConfigureAwait(false);
+     }
++
++    private Task ToggleDevModeOverlayAsync()
++    {
++        services?.GetService<IDevModeOverlayController>()?.Toggle();
++        return Task.CompletedTask;
++    }
+ }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+index c492d6b..dd55806 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
++++ b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+@@ -45,3 +45,6 @@ HFC1043 | HexalithFrontComposer | Warning | Invalid Level 4 view override compon
+ HFC1044 | HexalithFrontComposer | Error | Duplicate Level 4 view override with different component types (Story 6-4 — registry construction fails hard; idempotent re-registration is allowed)
+ HFC1045 | HexalithFrontComposer | Warning | Level 4 view override contract version is incompatible (Story 6-4 — descriptor ignored)
+ HFC1046 | HexalithFrontComposer | Warning | Level 4 view override accessibility contract warning (Story 6-4 — partial static/sample enforcement)
++HFC1047 | HexalithFrontComposer | Info | Invalid dev-mode annotation site lacks stable descriptor metadata (Story 6-5)
++HFC1048 | HexalithFrontComposer | Info | Unsupported dev-mode starter emission level or mismatched component-tree node (Story 6-5)
++HFC1049 | HexalithFrontComposer | Info | Dev-mode starter metadata is stale relative to contract version, descriptor hash, or source identity (Story 6-5)
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+index 55696d2..ec6d888 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+@@ -561,4 +561,37 @@ public static class DiagnosticDescriptors {
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Warning,
+         isEnabledByDefault: true);
++
++    /// <summary>
++    /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.
++    /// </summary>
++    public static readonly DiagnosticDescriptor DevModeAnnotationSiteInvalid = new(
++        id: "HFC1047",
++        title: "Invalid dev-mode annotation site",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Info,
++        isEnabledByDefault: true);
++
++    /// <summary>
++    /// HFC1048: Starter emission requested an unsupported customization level.
++    /// </summary>
++    public static readonly DiagnosticDescriptor DevModeUnsupportedEmissionLevel = new(
++        id: "HFC1048",
++        title: "Unsupported dev-mode starter emission level",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Info,
++        isEnabledByDefault: true);
++
++    /// <summary>
++    /// HFC1049: Dev-mode starter output detected stale contract metadata.
++    /// </summary>
++    public static readonly DiagnosticDescriptor DevModeContractVersionDrift = new(
++        id: "HFC1049",
++        title: "Dev-mode starter contract metadata is stale",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Info,
++        isEnabledByDefault: true);
+ }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
+index 318c497..43fa8b3 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
+@@ -174,6 +174,12 @@ public static class RazorEmitter {
+         _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Contracts.Rendering.IProjectionViewOverrideRegistry ProjectionViewOverrideRegistry { get; set; } = default!;");
+         _ = sb.AppendLine();
+ 
++        _ = sb.AppendLine("#if DEBUG");
++        _ = sb.AppendLine("    [Inject]");
++        _ = sb.AppendLine("    private global::System.IServiceProvider DevModeServices { get; set; } = default!;");
++        _ = sb.AppendLine("#endif");
++        _ = sb.AppendLine();
++
+         // Story 6-2 T5 — non-grid views also need RenderContext to flow through the template
+         // context so wrapper-owned tenant/density/dev-mode behavior is preserved.
+         if (!RoleBodyHelpers.IsGridRenderingStrategy(model.Strategy)) {
+@@ -456,7 +462,7 @@ public static class RazorEmitter {
+             _ = sb.AppendLine("                {");
+             _ = sb.AppendLine("                    if (row is null) { return; }");
+             _ = sb.AppendLine("                    int fieldSeq = 0;");
+-            EmitTemplateFieldContent(sb, col, "row", "builder", "fieldSeq", "                    ");
++            EmitTemplateFieldContent(sb, model, col, "row", "builder", "fieldSeq", "                    ");
+             _ = sb.AppendLine("                };");
+         }
+ 
+@@ -566,8 +572,67 @@ public static class RazorEmitter {
+             ? value.Value.ToString(CultureInfo.InvariantCulture)
+             : "(int?)null";
+ 
++    private static string RoleExpression(RazorModel model)
++        => model.Strategy == ProjectionRenderStrategy.Default
++            ? "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)null"
++            : "(" + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole?)"
++                + ProjectionRoleBodyEmitter.ContractsAttributesNamespace + ".ProjectionRole." + model.Strategy.ToString();
++
++    private static void EmitDevModeAnnotation(
++        StringBuilder sb,
++        string builderName,
++        string seqVariable,
++        string indent,
++        RazorModel model,
++        string annotationKey,
++        string conventionName,
++        string description,
++        string recommendedOverride,
++        string contractTypeName,
++        string? fieldAccessor,
++        string? unsupportedTypeName,
++        string currentLevel = "Default",
++        bool isUnsupported = false) {
++        string roleExpr = RoleExpression(model);
++        string fieldLiteral = fieldAccessor is null
++            ? "(string?)null"
++            : "\"" + RoleBodyHelpers.EscapeString(fieldAccessor) + "\"";
++        string cssClass = isUnsupported
++            ? "fc-devmode-unsupported"
++            : "fc-devmode-annotation";
++
++        _ = sb.AppendLine(indent + "#if DEBUG");
++        _ = sb.AppendLine(indent + "if (DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)) is global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController)");
++        _ = sb.AppendLine(indent + "{");
++        _ = sb.AppendLine(indent + "    " + builderName + ".OpenComponent<global::Hexalith.FrontComposer.Shell.Components.DevMode.FcDevModeAnnotation>(" + seqVariable + "++);");
++        _ = sb.AppendLine(indent + "    " + builderName + ".AddAttribute(" + seqVariable + "++, \"Node\", new global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode(");
++        _ = sb.AppendLine(indent + "        AnnotationKey: \"" + RoleBodyHelpers.EscapeString(annotationKey) + "\",");
++        _ = sb.AppendLine(indent + "        Convention: new global::Hexalith.FrontComposer.Contracts.DevMode.ConventionDescriptor(\"" + RoleBodyHelpers.EscapeString(conventionName) + "\", \"" + RoleBodyHelpers.EscapeString(description) + "\", \"" + RoleBodyHelpers.EscapeString(recommendedOverride) + "\", global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel." + currentLevel + "),");
++        _ = sb.AppendLine(indent + "        ContractTypeName: \"" + RoleBodyHelpers.EscapeString(contractTypeName) + "\",");
++        _ = sb.AppendLine(indent + "        CurrentLevel: global::Hexalith.FrontComposer.Contracts.DevMode.CustomizationLevel." + currentLevel + ",");
++        _ = sb.AppendLine(indent + "        OriginatingProjectionTypeName: typeof(" + model.TypeName + ").FullName ?? typeof(" + model.TypeName + ").Name,");
++        _ = sb.AppendLine(indent + "        Role: " + roleExpr + ",");
++        _ = sb.AppendLine(indent + "        FieldAccessor: " + fieldLiteral + ",");
++        _ = sb.AppendLine(indent + "        Children: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeNode>.Empty,");
++        _ = sb.AppendLine(indent + "        RenderEpoch: 0,");
++        _ = sb.AppendLine(indent + "        ComponentTreeContractVersion: global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeContractVersion.Current,");
++        _ = sb.AppendLine(indent + "        DescriptorHash: \"" + RoleBodyHelpers.EscapeString(model.TypeName + ":" + annotationKey) + "\",");
++        _ = sb.AppendLine(indent + "        SourceComponentIdentity: \"" + RoleBodyHelpers.EscapeString(model.TypeName + "." + annotationKey) + "\",");
++        _ = sb.AppendLine(indent + "        StaleReasons: global::System.Collections.Immutable.ImmutableArray<global::Hexalith.FrontComposer.Contracts.DevMode.ComponentTreeStaleReason>.Empty,");
++        _ = sb.AppendLine(indent + "        IsUnsupported: " + (isUnsupported ? "true" : "false") + "));");
++        _ = sb.AppendLine(indent + "    " + builderName + ".AddAttribute(" + seqVariable + "++, \"CssClass\", \"" + cssClass + "\");");
++        if (unsupportedTypeName is not null) {
++            _ = sb.AppendLine(indent + "    " + builderName + ".AddAttribute(" + seqVariable + "++, \"UnsupportedTypeName\", \"" + RoleBodyHelpers.EscapeString(unsupportedTypeName) + "\");");
++        }
++
++        _ = sb.AppendLine(indent + "    " + builderName + ".CloseComponent();");
++        _ = sb.AppendLine(indent + "}");
++        _ = sb.AppendLine(indent + "#endif");
++    }
++
+     private static void EmitTemplateFieldContent(
+         StringBuilder sb,
++        RazorModel model,
+         ColumnModel col,
+         string instanceName,
+         string builderName,
+@@ -582,6 +647,21 @@ public static class RazorEmitter {
+             _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqVariable + "++, \"TypeName\", \"" + RoleBodyHelpers.EscapeString(unsupportedTypeName) + "\");");
+             _ = sb.AppendLine(indent + builderName + ".AddAttribute(" + seqVariable + "++, \"IsDevMode\", RenderContext?.IsDevMode == true);");
+             _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
++            EmitDevModeAnnotation(
++                sb,
++                builderName,
++                seqVariable,
++                indent,
++                model,
++                col.PropertyName + "-unsupported",
++                col.PropertyName + " unsupported field",
++                "Unsupported field placeholder for " + unsupportedTypeName + ".",
++                "Use a Level 3 slot override.",
++                unsupportedTypeName,
++                col.PropertyName,
++                unsupportedTypeName,
++                currentLevel: "Level3",
++                isUnsupported: true);
+             return;
+         }
+ 
+@@ -1160,6 +1240,19 @@ public static class RazorEmitter {
+         _ = sb.AppendLine("    {");
+         _ = sb.AppendLine("        var state = " + model.TypeName + "State.Value;");
+         _ = sb.AppendLine("        int seq = 0;");
++        EmitDevModeAnnotation(
++            sb,
++            "builder",
++            "seq",
++            "        ",
++            model,
++            model.TypeName + "-view",
++            model.TypeName + " generated projection view",
++            "Generated projection view surface.",
++            "Use a Level 2 template for body changes, Level 4 for full replacement.",
++            model.TypeName,
++            fieldAccessor: null,
++            unsupportedTypeName: null);
+         if (isGrid) {
+             // Story 4-4 T2.1 / D20 — density resolved fresh on every render so user toggles
+             // are reflected without remount. SetKey on the FluentDataGrid forces internal remount
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CounterProjectionApprovalTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CounterProjectionApprovalTests.cs
+index 701a4c9..8de03a9 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CounterProjectionApprovalTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CounterProjectionApprovalTests.cs
+@@ -102,6 +102,21 @@ public sealed class CounterProjectionApprovalTests {
+         "fragment.",
+         "buttons here per AC1b.",
+         "the cascade contract",
++        // Story 6-5 — DEBUG-only dev-mode annotation hooks.
++        "#if DEBUG",
++        "#endif",
++        "DevModeServices",
++        "FcDevModeAnnotation",
++        "ComponentTreeNode",
++        "ConventionDescriptor",
++        "ComponentTreeContractVersion",
++        "fc-devmode-annotation",
++        "AnnotationKey:",
++        "ContractTypeName:",
++        "FieldAccessor:",
++        "RenderEpoch:",
++        "SourceComponentIdentity:",
++        "IsUnsupported:",
+     };
+ 
+     [Fact]
+
+#### SECTION 2: NEW UNTRACKED FILES (full content) ####
+
+
+----- BEGIN: src/Hexalith.FrontComposer.Contracts/DevMode/ComponentTreeContractVersion.cs -----
+namespace Hexalith.FrontComposer.Contracts.DevMode;
+
+/// <summary>
+/// Contract version for the dev-mode component-tree read model.
+/// </summary>
+public static class ComponentTreeContractVersion {
+    /// <summary>Current major version.</summary>
+    public const int Major = 1;
+
+    /// <summary>Current minor version.</summary>
+    public const int Minor = 0;
+
+    /// <summary>Current build version.</summary>
+    public const int Build = 0;
+
+    /// <summary>Current packed version: <c>major * 1,000,000 + minor * 1,000 + build</c>.</summary>
+    public const int Current = (Major * 1_000_000) + (Minor * 1_000) + Build;
+}
+----- END: src/Hexalith.FrontComposer.Contracts/DevMode/ComponentTreeContractVersion.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Contracts/DevMode/ComponentTreeNode.cs -----
+using System.Collections.Immutable;
+
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace Hexalith.FrontComposer.Contracts.DevMode;
+
+/// <summary>
+/// Immutable dev-mode read model describing a generated component tree element.
+/// </summary>
+/// <remarks>
+/// This type is produced by generated projection metadata for the development overlay. It is never
+/// mutated by adopter code, never persisted across renders, and never read by production builds.
+/// </remarks>
+/// <param name="AnnotationKey">Stable key for the annotation within the current render epoch.</param>
+/// <param name="Convention">Convention descriptor that produced the annotated element.</param>
+/// <param name="ContractTypeName">Full contract type name represented by the annotation.</param>
+/// <param name="CurrentLevel">Highest effective customization level for this element.</param>
+/// <param name="OriginatingProjectionTypeName">Full projection type name that produced the element.</param>
+/// <param name="Role">Optional projection role for role-specific output.</param>
+/// <param name="FieldAccessor">Optional field accessor when the annotation describes a field seam.</param>
+/// <param name="Children">Child component-tree nodes for starter-template emission.</param>
+/// <param name="RenderEpoch">Render epoch used to reject stale annotation events.</param>
+/// <param name="ComponentTreeContractVersion">Packed component-tree contract version.</param>
+/// <param name="DescriptorHash">Descriptor metadata hash used for freshness checks.</param>
+/// <param name="SourceComponentIdentity">Generated source component identity used for freshness checks.</param>
+/// <param name="StaleReasons">Known stale reasons for this snapshot.</param>
+/// <param name="IsUnsupported">Whether this node represents an unsupported field placeholder.</param>
+/// <param name="HasActiveOverride">Whether a before/after comparison is meaningful for the node.</param>
+/// <param name="DiagnosticId">Optional diagnostic ID associated with the node.</param>
+public sealed record ComponentTreeNode(
+    string AnnotationKey,
+    ConventionDescriptor Convention,
+    string ContractTypeName,
+    CustomizationLevel CurrentLevel,
+    string OriginatingProjectionTypeName,
+    ProjectionRole? Role,
+    string? FieldAccessor,
+    ImmutableArray<ComponentTreeNode> Children,
+    long RenderEpoch,
+    int ComponentTreeContractVersion,
+    string DescriptorHash,
+    string SourceComponentIdentity,
+    ImmutableArray<ComponentTreeStaleReason> StaleReasons = default,
+    bool IsUnsupported = false,
+    bool HasActiveOverride = false,
+    string? DiagnosticId = null) {
+    /// <summary>Gets a value indicating whether this node is stale.</summary>
+    public bool IsStale => !StaleReasons.IsDefaultOrEmpty;
+
+    /// <summary>Gets a value indicating whether current starter-template emission is allowed.</summary>
+    public bool CanEmitStarterTemplate => !IsStale && CurrentLevel >= CustomizationLevel.Level2;
+
+    /// <summary>
+    /// Evaluates whether this node is stale compared with currently running descriptor metadata.
+    /// </summary>
+    public ImmutableArray<ComponentTreeStaleReason> DetectStaleReasons(
+        int runningComponentTreeContractVersion,
+        string? currentDescriptorHash,
+        string? currentSourceComponentIdentity,
+        int generatedContractVersion,
+        int runningContractVersion) {
+        ImmutableArray<ComponentTreeStaleReason>.Builder builder = ImmutableArray.CreateBuilder<ComponentTreeStaleReason>();
+
+        if (string.IsNullOrWhiteSpace(AnnotationKey)
+            || Convention is null
+            || string.IsNullOrWhiteSpace(ContractTypeName)
+            || string.IsNullOrWhiteSpace(OriginatingProjectionTypeName)
+            || string.IsNullOrWhiteSpace(DescriptorHash)
+            || string.IsNullOrWhiteSpace(SourceComponentIdentity)) {
+            builder.Add(ComponentTreeStaleReason.MissingMetadata);
+        }
+
+        if (ComponentTreeContractVersion != runningComponentTreeContractVersion) {
+            builder.Add(ComponentTreeStaleReason.ContractVersionMismatch);
+        }
+
+        if (!string.Equals(DescriptorHash, currentDescriptorHash, StringComparison.Ordinal)) {
+            builder.Add(ComponentTreeStaleReason.DescriptorHashMismatch);
+        }
+
+        if (!string.Equals(SourceComponentIdentity, currentSourceComponentIdentity, StringComparison.Ordinal)) {
+            builder.Add(ComponentTreeStaleReason.SourceComponentIdentityMismatch);
+        }
+
+        if (generatedContractVersion != runningContractVersion) {
+            builder.Add(ComponentTreeStaleReason.GeneratedRunningContractDrift);
+        }
+
+        return builder.ToImmutable();
+    }
+}
+----- END: src/Hexalith.FrontComposer.Contracts/DevMode/ComponentTreeNode.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Contracts/DevMode/ComponentTreeStaleReason.cs -----
+namespace Hexalith.FrontComposer.Contracts.DevMode;
+
+/// <summary>
+/// Reasons a dev-mode component-tree snapshot can no longer be trusted for current starter emission.
+/// </summary>
+public enum ComponentTreeStaleReason {
+    /// <summary>Required annotation metadata was missing.</summary>
+    MissingMetadata,
+
+    /// <summary>The generated component-tree contract version differs from the running Shell contract.</summary>
+    ContractVersionMismatch,
+
+    /// <summary>The descriptor hash differs from the currently registered descriptor metadata.</summary>
+    DescriptorHashMismatch,
+
+    /// <summary>The source component identity differs from the currently rendered component identity.</summary>
+    SourceComponentIdentityMismatch,
+
+    /// <summary>The generated contract version and running contract version drifted apart.</summary>
+    GeneratedRunningContractDrift,
+}
+----- END: src/Hexalith.FrontComposer.Contracts/DevMode/ComponentTreeStaleReason.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Contracts/DevMode/ConventionDescriptor.cs -----
+namespace Hexalith.FrontComposer.Contracts.DevMode;
+
+/// <summary>
+/// Describes the generated convention or customization seam represented by a dev-mode annotation.
+/// </summary>
+public sealed record ConventionDescriptor {
+    /// <summary>
+    /// Initializes a new instance of the <see cref="ConventionDescriptor"/> class.
+    /// </summary>
+    public ConventionDescriptor(
+        string name,
+        string description,
+        string recommendedOverride,
+        CustomizationLevel recommendedOverrideLevel) {
+        Validate(name, description, recommendedOverride);
+
+        Name = name;
+        Description = description;
+        RecommendedOverride = recommendedOverride;
+        RecommendedOverrideLevel = recommendedOverrideLevel;
+    }
+
+    /// <summary>Gets the stable convention name displayed by the overlay.</summary>
+    public string Name { get; init; }
+
+    /// <summary>Gets the localized or descriptor-derived explanation for the convention.</summary>
+    public string Description { get; init; }
+
+    /// <summary>Gets the short recommendation for the lowest viable override level.</summary>
+    public string RecommendedOverride { get; init; }
+
+    /// <summary>Gets the recommended customization level for common changes.</summary>
+    public CustomizationLevel RecommendedOverrideLevel { get; init; }
+
+    private static void Validate(string name, string description, string recommendedOverride) {
+        if (string.IsNullOrWhiteSpace(name)) {
+            throw new ArgumentException("Convention name is required.", nameof(name));
+        }
+
+        if (description is null) {
+            throw new ArgumentNullException(nameof(description));
+        }
+
+        if (recommendedOverride is null) {
+            throw new ArgumentNullException(nameof(recommendedOverride));
+        }
+    }
+}
+----- END: src/Hexalith.FrontComposer.Contracts/DevMode/ConventionDescriptor.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Contracts/DevMode/CustomizationLevel.cs -----
+namespace Hexalith.FrontComposer.Contracts.DevMode;
+
+/// <summary>
+/// Effective customization level for a generated element, ordered by override precedence.
+/// </summary>
+public enum CustomizationLevel {
+    /// <summary>Generated convention output with no adopter override.</summary>
+    Default = 0,
+
+    /// <summary>Level 1 attribute or descriptor metadata override.</summary>
+    Level1 = 1,
+
+    /// <summary>Level 2 typed Razor template override.</summary>
+    Level2 = 2,
+
+    /// <summary>Level 3 field-slot replacement override.</summary>
+    Level3 = 3,
+
+    /// <summary>Level 4 full projection-view replacement override.</summary>
+    Level4 = 4,
+}
+----- END: src/Hexalith.FrontComposer.Contracts/DevMode/CustomizationLevel.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor -----
+@namespace Hexalith.FrontComposer.Shell.Components.DevMode
+@using Hexalith.FrontComposer.Contracts.DevMode
+@using Hexalith.FrontComposer.Shell.Services.DevMode
+@using Microsoft.Extensions.DependencyInjection
+@implements IAsyncDisposable
+@inject IServiceProvider Services
+
+@if (Controller?.IsActive == true && Node is not null)
+{
+    <button type="button"
+            class="@CssClass"
+            aria-label="@AccessibleName"
+            title="@AccessibleName"
+            @onclick="OpenAsync">
+        <span class="fc-devmode-badge">@Node.Convention.Name</span>
+    </button>
+}
+
+@code {
+    private IDisposable? _registration;
+
+    private IDevModeOverlayController? Controller => Services.GetService<IDevModeOverlayController>();
+
+    [Parameter]
+    public ComponentTreeNode? Node { get; set; }
+
+    [Parameter]
+    public string CssClass { get; set; } = "fc-devmode-annotation";
+
+    [Parameter]
+    public string? UnsupportedTypeName { get; set; }
+
+    private string AccessibleName
+        => Node is null
+            ? string.Empty
+            : string.IsNullOrWhiteSpace(UnsupportedTypeName)
+                ? $"{Node.Convention.Name} {Node.CurrentLevel}"
+                : $"{Node.Convention.Name} {Node.CurrentLevel} {UnsupportedTypeName}";
+
+    protected override void OnParametersSet()
+    {
+        _registration?.Dispose();
+        _registration = null;
+
+        if (Controller?.IsActive == true && Node is not null)
+        {
+            _registration = Controller.Register(Node);
+        }
+    }
+
+    private Task OpenAsync()
+    {
+        if (Controller is not null && Node is not null)
+        {
+            _ = Controller.Open(Node.AnnotationKey, Node.RenderEpoch);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public ValueTask DisposeAsync()
+    {
+        _registration?.Dispose();
+        _registration = null;
+        return ValueTask.CompletedTask;
+    }
+}
+----- END: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor.css -----
+.fc-devmode-annotation,
+.fc-devmode-unsupported {
+    position: relative;
+    z-index: 20;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    cursor: pointer;
+}
+
+.fc-devmode-annotation {
+    outline: 1px dotted var(--accent-fill-rest);
+    outline-offset: 2px;
+}
+
+.fc-devmode-unsupported {
+    outline: 2px dashed var(--error);
+    outline-offset: 2px;
+}
+
+.fc-devmode-badge {
+    display: inline-block;
+    min-width: 1rem;
+    min-height: 1rem;
+    padding: 0 0.25rem;
+    border-radius: 999px;
+    background: var(--neutral-fill-stealth-rest);
+    font-size: 0.75rem;
+    line-height: 1rem;
+}
+----- END: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeAnnotation.razor.css -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor -----
+@namespace Hexalith.FrontComposer.Shell.Components.DevMode
+@using Hexalith.FrontComposer.Contracts.DevMode
+@using Hexalith.FrontComposer.Shell.Resources.DevMode
+@using Hexalith.FrontComposer.Shell.Services.DevMode
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@implements IDisposable
+@inject IServiceProvider Services
+@inject IStringLocalizer<DevModeStrings> Localizer
+
+@if (Controller?.IsActive == true)
+{
+    <div class="fc-devmode-overlay" aria-live="polite">
+        @if (Controller.SelectedNode is { } node)
+        {
+            <aside class="fc-devmode-drawer"
+                   role="complementary"
+                   aria-label="@Text("DrawerAriaLabel", "FrontComposer developer details")"
+                   tabindex="-1"
+                   @onkeydown="HandleKeyDown">
+                <header class="fc-devmode-drawer__header">
+                    <h2>@node.Convention.Name</h2>
+                    <button type="button"
+                            class="fc-devmode-icon-button"
+                            aria-label="@Text("CloseButtonLabel", "Close")"
+                            @onclick="Close">@Text("CloseButtonLabel", "Close")</button>
+                </header>
+                <dl class="fc-devmode-details">
+                    <dt>@Text("ConventionLabel", "Convention")</dt>
+                    <dd>@node.Convention.Description</dd>
+                    <dt>@Text("ContractTypeLabel", "Contract type")</dt>
+                    <dd>@node.ContractTypeName</dd>
+                    <dt>@Text("CurrentLevelLabel", "Current level")</dt>
+                    <dd>@node.CurrentLevel</dd>
+                    <dt>@Text("RecommendedOverrideLabel", "Recommended override")</dt>
+                    <dd>@node.Convention.RecommendedOverride</dd>
+                    @if (node.IsUnsupported)
+                    {
+                        <dt>@Text("UnsupportedTypeLabel", "Unsupported type")</dt>
+                        <dd>@(node.FieldAccessor): @node.ContractTypeName</dd>
+                    }
+                    @if (node.HasActiveOverride)
+                    {
+                        <dt>@Text("BeforeAfterLabel", "Before/after")</dt>
+                        <dd><input type="checkbox" /> @Text("BeforeAfterToggleLabel", "Show generated default")</dd>
+                    }
+                </dl>
+                <button type="button"
+                        class="fc-devmode-copy-button"
+                        disabled="@(!CanCopy(node))"
+                        @onclick="() => CopyAsync(node)">
+                    @Text("CopyStarterTemplateLabel", "Copy starter template")
+                </button>
+                <p class="fc-devmode-status" role="status">@_statusText</p>
+                @if (!string.IsNullOrEmpty(_sourcePreview))
+                {
+                    <textarea class="fc-devmode-source" readonly>@_sourcePreview</textarea>
+                }
+            </aside>
+        }
+        else
+        {
+            <p class="fc-devmode-status" role="status">@Text("EmptyTreeMessage", "Select an annotated element.")</p>
+        }
+    </div>
+}
+
+@code {
+    private string? _sourcePreview;
+    private string _statusText = string.Empty;
+
+    private IDevModeOverlayController? Controller => Services.GetService<IDevModeOverlayController>();
+    private IRazorEmitter? Emitter => Services.GetService<IRazorEmitter>();
+    private IClipboardJSModule? Clipboard => Services.GetService<IClipboardJSModule>();
+
+    protected override void OnInitialized()
+    {
+        if (Controller is not null)
+        {
+            Controller.Changed += HandleChanged;
+        }
+    }
+
+    private bool CanCopy(ComponentTreeNode node)
+        => node.CanEmitStarterTemplate && Emitter is not null;
+
+    private async Task CopyAsync(ComponentTreeNode node)
+    {
+        if (!CanCopy(node) || Emitter is null)
+        {
+            _statusText = Text("CopyUnavailable", "Copy unavailable");
+            return;
+        }
+
+        _statusText = string.Empty;
+        _sourcePreview = Emitter.EmitStarterTemplate(node, node.CurrentLevel);
+        ClipboardCopyResult result = Clipboard is null
+            ? ClipboardCopyResult.Unavailable
+            : await Clipboard.CopyToClipboardAsync(_sourcePreview).ConfigureAwait(true);
+        _statusText = result == ClipboardCopyResult.Success
+            ? Text("CopySucceeded", "Copied")
+            : Text("CopyFailedManual", "Copy failed - select and copy manually");
+    }
+
+    private void Close() => Controller?.Close();
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (string.Equals(args.Key, "Escape", StringComparison.Ordinal))
+        {
+            Close();
+        }
+    }
+
+    private void HandleChanged(object? sender, EventArgs args) => InvokeAsync(StateHasChanged);
+
+    private string Text(string key, string fallback)
+    {
+        string value = Localizer[key].Value;
+        return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal)
+            ? fallback
+            : value;
+    }
+
+    public void Dispose()
+    {
+        if (Controller is not null)
+        {
+            Controller.Changed -= HandleChanged;
+        }
+    }
+}
+----- END: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor.css -----
+.fc-devmode-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    pointer-events: none;
+}
+
+.fc-devmode-drawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: min(360px, 100vw);
+    height: 100vh;
+    padding: 1rem;
+    overflow: auto;
+    pointer-events: auto;
+    background: var(--neutral-layer-1);
+    border-left: 1px solid var(--neutral-stroke-divider-rest);
+    box-shadow: var(--elevation-shadow-card-rest);
+}
+
+.fc-devmode-drawer__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.fc-devmode-drawer__header h2 {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.25rem;
+}
+
+.fc-devmode-details {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 0.75rem;
+    margin: 1rem 0;
+}
+
+.fc-devmode-details dt {
+    font-weight: 600;
+}
+
+.fc-devmode-details dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.fc-devmode-copy-button,
+.fc-devmode-icon-button {
+    min-height: 32px;
+}
+
+.fc-devmode-status {
+    min-height: 1.25rem;
+}
+
+.fc-devmode-source {
+    width: 100%;
+    min-height: 12rem;
+    resize: vertical;
+    font-family: var(--type-ramp-base-font-family);
+}
+----- END: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeOverlay.razor.css -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor -----
+@namespace Hexalith.FrontComposer.Shell.Components.DevMode
+@using Hexalith.FrontComposer.Shell.Resources.DevMode
+@using Hexalith.FrontComposer.Shell.Services.DevMode
+@using Microsoft.Extensions.DependencyInjection
+@using Microsoft.Extensions.Localization
+@inject IServiceProvider Services
+@inject IStringLocalizer<DevModeStrings> Localizer
+
+@if (Controller is not null)
+{
+    <button type="button"
+            class="fc-devmode-toggle"
+            aria-label="@Text("ToggleAriaLabel", "Toggle developer overlay (Ctrl+Shift+D)")"
+            title="@Text("ToggleTooltip", "Toggle developer overlay (Ctrl+Shift+D)")"
+            @onclick="Toggle">
+        i
+    </button>
+}
+
+@code {
+    private IDevModeOverlayController? Controller => Services.GetService<IDevModeOverlayController>();
+
+    private void Toggle() => Controller?.Toggle();
+
+    private string Text(string key, string fallback)
+    {
+        string value = Localizer[key].Value;
+        return string.IsNullOrWhiteSpace(value) || string.Equals(value, key, StringComparison.Ordinal)
+            ? fallback
+            : value;
+    }
+}
+----- END: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor.css -----
+.fc-devmode-toggle {
+    width: 32px;
+    height: 32px;
+    border: 1px solid var(--neutral-stroke-rest);
+    border-radius: 4px;
+    background: var(--neutral-fill-stealth-rest);
+    color: var(--neutral-foreground-rest);
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.fc-devmode-toggle:focus-visible {
+    outline: 2px solid var(--colorStrokeFocus2);
+    outline-offset: 2px;
+}
+----- END: src/Hexalith.FrontComposer.Shell/Components/DevMode/FcDevModeToggleButton.razor.css -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Extensions/AddFrontComposerDevModeExtensions.cs -----
+using Hexalith.FrontComposer.Shell.Services.DevMode;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace Hexalith.FrontComposer.Shell.Extensions;
+
+/// <summary>
+/// Registers development-only FrontComposer overlay services.
+/// </summary>
+public static class AddFrontComposerDevModeExtensions {
+    /// <summary>
+    /// Adds the FrontComposer development overlay services when the host environment is Development.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddFrontComposerDevMode(this IServiceCollection services) {
+        ArgumentNullException.ThrowIfNull(services);
+
+#if DEBUG
+        IHostEnvironment? environment = FindRegisteredEnvironment(services);
+        if (environment is not null) {
+            _ = services.AddFrontComposerDevMode(environment);
+        }
+#endif
+        return services;
+    }
+
+    /// <summary>
+    /// Adds the FrontComposer development overlay services for an explicit host environment.
+    /// </summary>
+    /// <param name="services">The service collection to configure.</param>
+    /// <param name="environment">The host environment used to gate dev-mode registration.</param>
+    /// <returns>The service collection for chaining.</returns>
+    public static IServiceCollection AddFrontComposerDevMode(this IServiceCollection services, IHostEnvironment environment) {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(environment);
+
+#if DEBUG
+        if (environment.IsDevelopment()) {
+            services.TryAddScoped<IDevModeOverlayController, DevModeOverlayController>();
+            services.TryAddScoped<IRazorEmitter, RazorEmitter>();
+            services.TryAddScoped<IClipboardJSModule, ClipboardJSModule>();
+            services.TryAddScoped<IDevModeAnnotationSnapshotVisitor, DevModeAnnotationSnapshotVisitor>();
+            services.TryAddSingleton<DevModeRegistrationLogMarker>();
+            services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DevModeRegistrationLogger>());
+        }
+#endif
+        return services;
+    }
+
+#if DEBUG
+    private static IHostEnvironment? FindRegisteredEnvironment(IServiceCollection services) {
+        for (int i = services.Count - 1; i >= 0; i--) {
+            ServiceDescriptor descriptor = services[i];
+            if (descriptor.ServiceType == typeof(IHostEnvironment)
+                && descriptor.ImplementationInstance is IHostEnvironment environment) {
+                return environment;
+            }
+        }
+
+        return null;
+    }
+
+    private sealed class DevModeRegistrationLogMarker {
+        public int Logged;
+    }
+
+    private sealed class DevModeRegistrationLogger(
+        ILogger<DevModeRegistrationLogger> logger,
+        DevModeRegistrationLogMarker marker,
+        IHostEnvironment environment) : IHostedService {
+        public Task StartAsync(CancellationToken cancellationToken) {
+            if (Interlocked.Exchange(ref marker.Logged, 1) == 0) {
+                logger.LogInformation(
+                    "FrontComposer dev-mode overlay registered. Environment={EnvironmentName} OverlayVersion={OverlayVersion} GradientLevels={GradientLevels}",
+                    environment.EnvironmentName,
+                    "6.5",
+                    "Default,Level1,Level2,Level3,Level4");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+#endif
+}
+----- END: src/Hexalith.FrontComposer.Shell/Extensions/AddFrontComposerDevModeExtensions.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Resources/DevMode/DevModeStrings.cs -----
+namespace Hexalith.FrontComposer.Shell.Resources.DevMode;
+
+/// <summary>
+/// Resource marker for development overlay localization.
+/// </summary>
+public sealed class DevModeStrings {
+}
+----- END: src/Hexalith.FrontComposer.Shell/Resources/DevMode/DevModeStrings.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardCopyResult.cs -----
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Clipboard copy outcomes surfaced by the dev-mode overlay.
+/// </summary>
+public enum ClipboardCopyResult {
+    /// <summary>Copy succeeded.</summary>
+    Success,
+
+    /// <summary>The browser denied clipboard access.</summary>
+    Denied,
+
+    /// <summary>Clipboard APIs were unavailable.</summary>
+    Unavailable,
+
+    /// <summary>Copy failed for an unexpected JS or interop reason.</summary>
+    Failed,
+
+    /// <summary>Copy timed out.</summary>
+    TimedOut,
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardCopyResult.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardJSModule.cs -----
+using Hexalith.FrontComposer.Contracts;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using Microsoft.JSInterop;
+
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Scoped JS-module wrapper for dev-mode starter-template clipboard copies.
+/// </summary>
+public sealed class ClipboardJSModule(
+    IJSRuntime? jsRuntime = null,
+    IOptions<FcShellOptions>? options = null,
+    ILogger<ClipboardJSModule>? logger = null) : IClipboardJSModule {
+    private const string ModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-devmode-clipboard.js";
+
+    private readonly IJSRuntime? _jsRuntime = jsRuntime;
+    private readonly FcShellOptions _options = options?.Value ?? new FcShellOptions();
+    private readonly ILogger<ClipboardJSModule>? _logger = logger;
+    private readonly string _token = Guid.NewGuid().ToString("N");
+    private readonly object _sync = new();
+    private Task<IJSObjectReference>? _moduleTask;
+    private int _disposed;
+
+    /// <inheritdoc />
+    public async ValueTask<ClipboardCopyResult> CopyToClipboardAsync(string text, CancellationToken cancellationToken = default) {
+        ArgumentNullException.ThrowIfNull(text);
+        if (_jsRuntime is null || Volatile.Read(ref _disposed) == 1) {
+            return ClipboardCopyResult.Unavailable;
+        }
+
+        using CancellationTokenSource timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        timeout.CancelAfter(TimeSpan.FromMilliseconds(_options.DevMode.CopyTimeoutMilliseconds));
+
+        try {
+            IJSObjectReference? module = await GetModuleAsync(timeout.Token).ConfigureAwait(false);
+            if (module is null) {
+                return ClipboardCopyResult.Unavailable;
+            }
+
+            string outcome = await module
+                .InvokeAsync<string>("copyToClipboard", timeout.Token, text)
+                .ConfigureAwait(false);
+
+            ClipboardCopyResult result = MapOutcome(outcome);
+            _logger?.LogInformation(
+                "Dev-mode clipboard copy completed. Outcome={Outcome}",
+                result);
+            return result;
+        }
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested) {
+            _logger?.LogInformation("Dev-mode clipboard copy timed out.");
+            return ClipboardCopyResult.TimedOut;
+        }
+        catch (JSDisconnectedException) {
+            return ClipboardCopyResult.Failed;
+        }
+        catch (JSException ex) {
+            ClipboardCopyResult result = ex.Message.Contains("denied", StringComparison.OrdinalIgnoreCase)
+                ? ClipboardCopyResult.Denied
+                : ClipboardCopyResult.Failed;
+            _logger?.LogInformation(
+                "Dev-mode clipboard copy failed. Outcome={Outcome} ExceptionType={ExceptionType}",
+                result,
+                ex.GetType().FullName);
+            return result;
+        }
+    }
+
+    /// <inheritdoc />
+    public async ValueTask DisposeAsync() {
+        if (Interlocked.Exchange(ref _disposed, 1) == 1) {
+            return;
+        }
+
+        Task<IJSObjectReference>? snapshot;
+        lock (_sync) {
+            snapshot = _moduleTask;
+            _moduleTask = null;
+        }
+
+        if (snapshot is null) {
+            return;
+        }
+
+        try {
+            IJSObjectReference module = await snapshot.ConfigureAwait(false);
+            try { await module.InvokeVoidAsync("disposeClipboard", _token).ConfigureAwait(false); }
+            catch (OperationCanceledException) { }
+            catch (JSDisconnectedException) { }
+            catch (JSException) { }
+
+            await module.DisposeAsync().ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) { }
+        catch (JSDisconnectedException) { }
+        catch (JSException) { }
+        catch (InvalidOperationException) { }
+    }
+
+    private Task<IJSObjectReference> GetOrStartImport() {
+        lock (_sync) {
+            _moduleTask ??= _jsRuntime!.InvokeAsync<IJSObjectReference>("import", ModulePath).AsTask();
+            return _moduleTask;
+        }
+    }
+
+    private async ValueTask<IJSObjectReference?> GetModuleAsync(CancellationToken cancellationToken) {
+        Task<IJSObjectReference> task = GetOrStartImport();
+        try {
+            return await task.WaitAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch {
+            lock (_sync) {
+                if (ReferenceEquals(_moduleTask, task)) {
+                    _moduleTask = null;
+                }
+            }
+
+            throw;
+        }
+    }
+
+    private static ClipboardCopyResult MapOutcome(string outcome)
+        => outcome switch {
+            "Success" => ClipboardCopyResult.Success,
+            "Denied" => ClipboardCopyResult.Denied,
+            "Unavailable" => ClipboardCopyResult.Unavailable,
+            "TimedOut" => ClipboardCopyResult.TimedOut,
+            _ => ClipboardCopyResult.Failed,
+        };
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/ClipboardJSModule.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/DevModeAnnotationSnapshotVisitor.cs -----
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Default marker implementation for the generated annotation snapshot injection boundary.
+/// </summary>
+public sealed class DevModeAnnotationSnapshotVisitor : IDevModeAnnotationSnapshotVisitor {
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/DevModeAnnotationSnapshotVisitor.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/DevModeOverlayController.cs -----
+using System.Collections.Concurrent;
+
+using Hexalith.FrontComposer.Contracts.DevMode;
+
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Default scoped implementation of <see cref="IDevModeOverlayController"/>.
+/// </summary>
+public sealed class DevModeOverlayController : IDevModeOverlayController {
+    private readonly ConcurrentDictionary<string, ComponentTreeNode> _nodes = new(StringComparer.Ordinal);
+    private int _isActive;
+
+    /// <inheritdoc />
+    public event EventHandler? Changed;
+
+    /// <inheritdoc />
+    public bool IsActive => Volatile.Read(ref _isActive) == 1;
+
+    /// <inheritdoc />
+    public string? SelectedAnnotationKey { get; private set; }
+
+    /// <inheritdoc />
+    public ComponentTreeNode? SelectedNode { get; private set; }
+
+    /// <inheritdoc />
+    public void Toggle() {
+        bool nowActive = Interlocked.Exchange(ref _isActive, IsActive ? 0 : 1) == 0;
+        if (!nowActive) {
+            SelectedAnnotationKey = null;
+            SelectedNode = null;
+        }
+
+        NotifyChanged();
+    }
+
+    /// <inheritdoc />
+    public bool Open(string annotationKey) {
+        if (string.IsNullOrWhiteSpace(annotationKey) || !IsActive) {
+            return false;
+        }
+
+        if (!_nodes.TryGetValue(annotationKey, out ComponentTreeNode? node)) {
+            SelectedAnnotationKey = null;
+            SelectedNode = null;
+            NotifyChanged();
+            return false;
+        }
+
+        SelectedAnnotationKey = annotationKey;
+        SelectedNode = node;
+        NotifyChanged();
+        return true;
+    }
+
+    /// <inheritdoc />
+    public bool Open(string annotationKey, long renderEpoch) {
+        if (string.IsNullOrWhiteSpace(annotationKey) || !IsActive) {
+            return false;
+        }
+
+        if (!_nodes.TryGetValue(annotationKey, out ComponentTreeNode? node) || node.RenderEpoch != renderEpoch) {
+            return false;
+        }
+
+        SelectedAnnotationKey = annotationKey;
+        SelectedNode = node;
+        NotifyChanged();
+        return true;
+    }
+
+    /// <inheritdoc />
+    public void Close() {
+        if (SelectedAnnotationKey is null && SelectedNode is null) {
+            return;
+        }
+
+        SelectedAnnotationKey = null;
+        SelectedNode = null;
+        NotifyChanged();
+    }
+
+    /// <inheritdoc />
+    public IDisposable Register(ComponentTreeNode node) {
+        ArgumentNullException.ThrowIfNull(node);
+        ArgumentException.ThrowIfNullOrWhiteSpace(node.AnnotationKey);
+
+        _nodes[node.AnnotationKey] = node;
+        NotifyChanged();
+        return new Registration(this, node.AnnotationKey);
+    }
+
+    private void Unregister(string annotationKey) {
+        _ = _nodes.TryRemove(annotationKey, out _);
+        if (string.Equals(SelectedAnnotationKey, annotationKey, StringComparison.Ordinal)) {
+            SelectedAnnotationKey = null;
+            SelectedNode = null;
+        }
+
+        NotifyChanged();
+    }
+
+    private void NotifyChanged() => Changed?.Invoke(this, EventArgs.Empty);
+
+    private sealed class Registration(DevModeOverlayController owner, string annotationKey) : IDisposable {
+        private int _disposed;
+
+        public void Dispose() {
+            if (Interlocked.Exchange(ref _disposed, 1) == 0) {
+                owner.Unregister(annotationKey);
+            }
+        }
+    }
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/DevModeOverlayController.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/IClipboardJSModule.cs -----
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Development-only clipboard JS module boundary.
+/// </summary>
+public interface IClipboardJSModule : IAsyncDisposable {
+    /// <summary>Copies text to the browser clipboard.</summary>
+    ValueTask<ClipboardCopyResult> CopyToClipboardAsync(string text, CancellationToken cancellationToken = default);
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/IClipboardJSModule.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/IDevModeAnnotationSnapshotVisitor.cs -----
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Marker boundary for generated annotation snapshot injection.
+/// </summary>
+public interface IDevModeAnnotationSnapshotVisitor {
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/IDevModeAnnotationSnapshotVisitor.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/IDevModeOverlayController.cs -----
+using Hexalith.FrontComposer.Contracts.DevMode;
+
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Scoped controller for the development-only overlay state.
+/// </summary>
+public interface IDevModeOverlayController {
+    /// <summary>Raised when overlay state or the selected annotation changes.</summary>
+    event EventHandler? Changed;
+
+    /// <summary>Gets a value indicating whether annotation inspection is active.</summary>
+    bool IsActive { get; }
+
+    /// <summary>Gets the selected annotation key, if any.</summary>
+    string? SelectedAnnotationKey { get; }
+
+    /// <summary>Gets the selected node, if any.</summary>
+    ComponentTreeNode? SelectedNode { get; }
+
+    /// <summary>Toggles overlay inspection on or off.</summary>
+    void Toggle();
+
+    /// <summary>Opens an annotation by key using the currently registered node.</summary>
+    bool Open(string annotationKey);
+
+    /// <summary>Opens an annotation by key only when its render epoch is still current.</summary>
+    bool Open(string annotationKey, long renderEpoch);
+
+    /// <summary>Closes the selected annotation detail panel.</summary>
+    void Close();
+
+    /// <summary>Registers a rendered annotation snapshot for the active render epoch.</summary>
+    IDisposable Register(ComponentTreeNode node);
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/IDevModeOverlayController.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/IRazorEmitter.cs -----
+using Hexalith.FrontComposer.Contracts.DevMode;
+
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Emits starter Razor source for supported dev-mode component-tree nodes.
+/// </summary>
+public interface IRazorEmitter {
+    /// <summary>Emits starter source for the requested customization level.</summary>
+    string EmitStarterTemplate(ComponentTreeNode node, CustomizationLevel level);
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/IRazorEmitter.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/Services/DevMode/RazorEmitter.cs -----
+using System.Text;
+using System.Text.RegularExpressions;
+
+using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.DevMode;
+
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+
+namespace Hexalith.FrontComposer.Shell.Services.DevMode;
+
+/// <summary>
+/// Emits deterministic starter Razor source from dev-mode component-tree metadata.
+/// </summary>
+public sealed partial class RazorEmitter : IRazorEmitter {
+    private readonly FcShellOptions _options;
+    private readonly ILogger<RazorEmitter>? _logger;
+
+    /// <summary>Initializes a new instance of the <see cref="RazorEmitter"/> class.</summary>
+    public RazorEmitter(IOptions<FcShellOptions>? options = null, ILogger<RazorEmitter>? logger = null) {
+        _options = options?.Value ?? new FcShellOptions();
+        _logger = logger;
+    }
+
+    /// <inheritdoc />
+    public string EmitStarterTemplate(ComponentTreeNode node, CustomizationLevel level) {
+        ArgumentNullException.ThrowIfNull(node);
+        try {
+            if (node.CurrentLevel != level) {
+                _logger?.LogInformation(
+                    "HFC1034: Unsupported customization level requested for starter emission. AnnotationKey={AnnotationKey} CurrentLevel={CurrentLevel} RequestedLevel={RequestedLevel}",
+                    node.AnnotationKey,
+                    node.CurrentLevel,
+                    level);
+                return Header(node) + $"// Starter template unavailable: requested level does not match node level ({node.CurrentLevel} != {level}).";
+            }
+
+            if (node.IsStale) {
+                _logger?.LogInformation(
+                    "HFC1035: Stale component-tree metadata suppressed starter emission. AnnotationKey={AnnotationKey} Reasons={Reasons}",
+                    node.AnnotationKey,
+                    string.Join(",", node.StaleReasons));
+                return Header(node) + "// Starter template unavailable: stale metadata (" + string.Join(", ", node.StaleReasons) + ").";
+            }
+
+            if (level < CustomizationLevel.Level2) {
+                return Header(node) + "// Starter template unavailable: default and Level 1 annotations do not need Razor starter source.";
+            }
+
+            return level switch {
+                CustomizationLevel.Level2 => EmitLevel2(node),
+                CustomizationLevel.Level3 => EmitLevel3(node),
+                CustomizationLevel.Level4 => EmitLevel4(node),
+                _ => Header(node) + "// Starter template unavailable: unsupported customization level.",
+            };
+        }
+        catch (Exception ex) {
+            _logger?.LogInformation(
+                ex,
+                "HFC1034: Starter emission failed. AnnotationKey={AnnotationKey} Level={Level}",
+                node.AnnotationKey,
+                level);
+            return Header(node) + "// Starter template unavailable: emission failed.";
+        }
+    }
+
+    private string EmitLevel2(ComponentTreeNode node) {
+        string projectionType = TypeName(node.OriginatingProjectionTypeName);
+        string componentName = Identifier(ShortTypeName(node.OriginatingProjectionTypeName) + "Template");
+        StringBuilder sb = new(Header(node));
+        _ = sb.AppendLine("@using Hexalith.FrontComposer.Contracts.Rendering");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine($"<div class=\"fc-template-{Identifier(node.AnnotationKey).ToLowerInvariant()}\">");
+        _ = sb.AppendLine("    @Context.DefaultBody");
+        _ = sb.AppendLine("</div>");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("@code {");
+        _ = sb.AppendLine($"    [Microsoft.AspNetCore.Components.Parameter] public ProjectionViewContext<{projectionType}> Context {{ get; set; }} = default!;");
+        _ = sb.AppendLine("}");
+        AppendTree(sb, node);
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("/* Registration:");
+        _ = sb.AppendLine($"services.AddProjectionTemplate<{projectionType}, {componentName}>();");
+        _ = sb.AppendLine("*/");
+        return sb.ToString();
+    }
+
+    private string EmitLevel3(ComponentTreeNode node) {
+        string projectionType = TypeName(node.OriginatingProjectionTypeName);
+        string fieldType = TypeName(node.ContractTypeName);
+        string componentName = Identifier(ShortTypeName(node.OriginatingProjectionTypeName) + (node.FieldAccessor ?? "Field") + "Slot");
+        StringBuilder sb = new(Header(node));
+        _ = sb.AppendLine("@using Hexalith.FrontComposer.Contracts.Rendering");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("<span class=\"fc-slot-value\">@Context.Value</span>");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("@code {");
+        _ = sb.AppendLine($"    [Microsoft.AspNetCore.Components.Parameter] public FieldSlotContext<{projectionType}, {fieldType}> Context {{ get; set; }} = default!;");
+        _ = sb.AppendLine("}");
+        AppendTree(sb, node);
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("/* Registration:");
+        _ = sb.AppendLine($"services.AddSlotOverride<{projectionType}>(o => o.{Identifier(node.FieldAccessor ?? "Field")}, typeof({componentName}));");
+        _ = sb.AppendLine("*/");
+        return sb.ToString();
+    }
+
+    private string EmitLevel4(ComponentTreeNode node) {
+        string projectionType = TypeName(node.OriginatingProjectionTypeName);
+        string componentName = Identifier(ShortTypeName(node.OriginatingProjectionTypeName) + "ViewReplacement");
+        StringBuilder sb = new(Header(node));
+        _ = sb.AppendLine("@using Hexalith.FrontComposer.Contracts.Rendering");
+        _ = sb.AppendLine("@using Hexalith.FrontComposer.Shell.Components.Lifecycle");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("<section aria-label=\"@Context.EntityPluralLabel\">");
+        _ = sb.AppendLine("    <FcLifecycleWrapper State=\"@Context.LifecycleState\">");
+        _ = sb.AppendLine("        @Context.DefaultBody");
+        _ = sb.AppendLine("    </FcLifecycleWrapper>");
+        _ = sb.AppendLine("</section>");
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("@code {");
+        _ = sb.AppendLine($"    [Microsoft.AspNetCore.Components.Parameter] public ProjectionViewContext<{projectionType}> Context {{ get; set; }} = default!;");
+        _ = sb.AppendLine("}");
+        AppendTree(sb, node);
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("/* Registration:");
+        _ = sb.AppendLine($"services.AddViewOverride<{projectionType}, {componentName}>();");
+        _ = sb.AppendLine("*/");
+        return sb.ToString();
+    }
+
+    private static string Header(ComponentTreeNode node)
+        => $"// Generated for FrontComposer contract v{ComponentTreeContractVersion.Current}; rebuild required when contract version changes (HFC1035).{Environment.NewLine}"
+            + $"// Projection: {Comment(node.OriginatingProjectionTypeName)}{Environment.NewLine}"
+            + $"// Convention: {Comment(node.Convention.Name)}{Environment.NewLine}"
+            + $"// DescriptorHash: {Comment(node.DescriptorHash)}{Environment.NewLine}"
+            + $"// SourceComponentIdentity: {Comment(node.SourceComponentIdentity)}{Environment.NewLine}";
+
+    private void AppendTree(StringBuilder sb, ComponentTreeNode node) {
+        _ = sb.AppendLine();
+        _ = sb.AppendLine("@* Component tree snapshot:");
+        AppendNode(sb, node, depth: 0);
+        _ = sb.AppendLine("*@");
+    }
+
+    private void AppendNode(StringBuilder sb, ComponentTreeNode node, int depth) {
+        if (depth > _options.DevMode.MaxNodeDepth) {
+            _ = sb.AppendLine($"{Indent(depth)}- Component tree truncated at depth {_options.DevMode.MaxNodeDepth}");
+            return;
+        }
+
+        _ = sb.AppendLine($"{Indent(depth)}- {Comment(node.AnnotationKey)} ({node.CurrentLevel})");
+        int count = 0;
+        if (node.Children.IsDefaultOrEmpty) {
+            return;
+        }
+
+        foreach (ComponentTreeNode child in node.Children) {
+            if (count >= _options.DevMode.MaxFanOut) {
+                _ = sb.AppendLine($"{Indent(depth + 1)}- Component tree fan-out truncated after {_options.DevMode.MaxFanOut} children");
+                return;
+            }
+
+            AppendNode(sb, child, depth + 1);
+            count++;
+        }
+    }
+
+    private static string Indent(int depth) => new(' ', Math.Max(0, depth) * 2);
+
+    private static string TypeName(string value)
+        => string.IsNullOrWhiteSpace(value) ? "object" : SanitizedTypeNameRegex().Replace(value, string.Empty);
+
+    private static string ShortTypeName(string value) {
+        string sanitized = TypeName(value);
+        int index = sanitized.LastIndexOf('.');
+        return index >= 0 ? sanitized[(index + 1)..] : sanitized;
+    }
+
+    private static string Identifier(string value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return "GeneratedStarter";
+        }
+
+        StringBuilder sb = new(value.Length);
+        foreach (char ch in value) {
+            if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_') {
+                _ = sb.Append(ch);
+            }
+        }
+
+        if (sb.Length == 0 || char.IsDigit(sb[0])) {
+            _ = sb.Insert(0, "Generated");
+        }
+
+        return sb.ToString();
+    }
+
+    private static string Comment(string value)
+        => (value ?? string.Empty).Replace("*/", "* /", StringComparison.Ordinal).Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
+
+    [GeneratedRegex(@"[^A-Za-z0-9_.,<> ]")]
+    private static partial Regex SanitizedTypeNameRegex();
+}
+----- END: src/Hexalith.FrontComposer.Shell/Services/DevMode/RazorEmitter.cs -----
+
+----- BEGIN: src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-devmode-clipboard.js -----
+const disposedTokens = new Set();
+
+export async function copyToClipboard(text) {
+    if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+        return "Unavailable";
+    }
+
+    try {
+        await navigator.clipboard.writeText(text);
+        return "Success";
+    } catch (error) {
+        const name = error && typeof error.name === "string" ? error.name : "";
+        if (name === "NotAllowedError" || name === "SecurityError") {
+            return "Denied";
+        }
+
+        return "Failed";
+    }
+}
+
+export function disposeClipboard(token) {
+    if (token) {
+        disposedTokens.add(token);
+    }
+}
+----- END: src/Hexalith.FrontComposer.Shell/wwwroot/js/fc-devmode-clipboard.js -----
+
+----- BEGIN: tests/Hexalith.FrontComposer.Contracts.Tests/DevMode/ComponentTreeNodeTests.cs -----
+using System.Collections.Immutable;
+
+using Hexalith.FrontComposer.Contracts.Attributes;
+using Hexalith.FrontComposer.Contracts.DevMode;
+
+using Shouldly;
+
+using Xunit;
+
+namespace Hexalith.FrontComposer.Contracts.Tests.DevMode;
+
+public sealed class ComponentTreeNodeTests {
+    [Fact]
+    public void CustomizationLevel_PreservesPrecedenceOrdering() {
+        ((int)CustomizationLevel.Default).ShouldBeLessThan((int)CustomizationLevel.Level1);
+        ((int)CustomizationLevel.Level1).ShouldBeLessThan((int)CustomizationLevel.Level2);
+        ((int)CustomizationLevel.Level2).ShouldBeLessThan((int)CustomizationLevel.Level3);
+        ((int)CustomizationLevel.Level3).ShouldBeLessThan((int)CustomizationLevel.Level4);
+    }
+
+    [Fact]
+    public void ComponentTreeNode_CarriesImmutableDevModeSnapshotMetadata() {
+        ComponentTreeNode child = CreateNode("counter-name", CustomizationLevel.Level1);
+        ComponentTreeNode node = CreateNode(
+            "counter-grid",
+            CustomizationLevel.Level4,
+            children: [child],
+            role: ProjectionRole.ActionQueue,
+            fieldAccessor: "Name");
+
+        node.AnnotationKey.ShouldBe("counter-grid");
+        node.Convention.Name.ShouldBe("Generated DataGrid");
+        node.ContractTypeName.ShouldBe("Counter.Contracts.CounterProjection");
+        node.CurrentLevel.ShouldBe(CustomizationLevel.Level4);
+        node.OriginatingProjectionTypeName.ShouldBe("Counter.Contracts.CounterProjection");
+        node.Role.ShouldBe(ProjectionRole.ActionQueue);
+        node.FieldAccessor.ShouldBe("Name");
+        node.Children.ShouldHaveSingleItem().AnnotationKey.ShouldBe("counter-name");
+        node.RenderEpoch.ShouldBe(42);
+        node.ComponentTreeContractVersion.ShouldBe(ComponentTreeContractVersion.Current);
+        node.DescriptorHash.ShouldBe("sha256:1234");
+        node.SourceComponentIdentity.ShouldBe("CounterProjection.Default");
+        node.IsStale.ShouldBeFalse();
+        node.CanEmitStarterTemplate.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ComponentTreeNode_SuppressesStarterTemplateCopyForStaleMetadata() {
+        ComponentTreeNode node = CreateNode(
+            "counter-grid",
+            CustomizationLevel.Level3,
+            staleReasons: [ComponentTreeStaleReason.DescriptorHashMismatch, ComponentTreeStaleReason.ContractVersionMismatch]);
+
+        node.IsStale.ShouldBeTrue();
+        node.CanEmitStarterTemplate.ShouldBeFalse();
+        node.StaleReasons.ShouldContain(ComponentTreeStaleReason.DescriptorHashMismatch);
+        node.StaleReasons.ShouldContain(ComponentTreeStaleReason.ContractVersionMismatch);
+    }
+
+    [Fact]
+    public void ComponentTreeNode_CreatesFreshnessReasonsFromCurrentMetadata() {
+        ComponentTreeNode node = CreateNode(
+            "counter-grid",
+            CustomizationLevel.Level2,
+            componentTreeContractVersion: ComponentTreeContractVersion.Current - 1,
+            descriptorHash: "sha256:old",
+            sourceComponentIdentity: "CounterProjection.Old");
+
+        ImmutableArray<ComponentTreeStaleReason> reasons = node.DetectStaleReasons(
+            ComponentTreeContractVersion.Current,
+            "sha256:new",
+            "CounterProjection.New",
+            generatedContractVersion: 1,
+            runningContractVersion: 2);
+
+        reasons.ShouldBe([
+            ComponentTreeStaleReason.ContractVersionMismatch,
+            ComponentTreeStaleReason.DescriptorHashMismatch,
+            ComponentTreeStaleReason.SourceComponentIdentityMismatch,
+            ComponentTreeStaleReason.GeneratedRunningContractDrift,
+        ]);
+    }
+
+    [Fact]
+    public void ConventionDescriptor_IsValueObjectAndRejectsBlankName() {
+        ConventionDescriptor descriptor = new(
+            "RelativeTime",
+            "Relative time formatting",
+            "Level 1 annotation",
+            CustomizationLevel.Level1);
+
+        descriptor.Name.ShouldBe("RelativeTime");
+        descriptor.Description.ShouldBe("Relative time formatting");
+        descriptor.RecommendedOverrideLevel.ShouldBe(CustomizationLevel.Level1);
+
+        Should.Throw<ArgumentException>(() => new ConventionDescriptor(" ", "Description", "Recommendation", CustomizationLevel.Level2));
+    }
+
+    [Fact]
+    public void ComponentTreeContractVersion_IsPackedVersion() {
+        ComponentTreeContractVersion.Current.ShouldBe(
+            (ComponentTreeContractVersion.Major * 1_000_000)
+            + (ComponentTreeContractVersion.Minor * 1_000)
+            + ComponentTreeContractVersion.Build);
+    }
+
+    private static ComponentTreeNode CreateNode(
+        string annotationKey,
+        CustomizationLevel level,
+        ImmutableArray<ComponentTreeNode> children = default,
+        ProjectionRole? role = null,
+        string? fieldAccessor = null,
+        ImmutableArray<ComponentTreeStaleReason> staleReasons = default,
+        int componentTreeContractVersion = ComponentTreeContractVersion.Current,
+        string descriptorHash = "sha256:1234",
+        string sourceComponentIdentity = "CounterProjection.Default")
+        => new(
+            AnnotationKey: annotationKey,
+            Convention: new ConventionDescriptor("Generated DataGrid", "Generated projection grid.", "Use the lowest viable override.", level),
+            ContractTypeName: "Counter.Contracts.CounterProjection",
+            CurrentLevel: level,
+            OriginatingProjectionTypeName: "Counter.Contracts.CounterProjection",
+            Role: role,
+            FieldAccessor: fieldAccessor,
+            Children: children,
+            RenderEpoch: 42,
+            ComponentTreeContractVersion: componentTreeContractVersion,
+            DescriptorHash: descriptorHash,
+            SourceComponentIdentity: sourceComponentIdentity,
+            StaleReasons: staleReasons);
+}
+----- END: tests/Hexalith.FrontComposer.Contracts.Tests/DevMode/ComponentTreeNodeTests.cs -----
+
+----- BEGIN: tests/Hexalith.FrontComposer.Shell.Tests/Extensions/AddFrontComposerDevModeExtensionsTests.cs -----
+using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Services.DevMode;
+
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.FileProviders;
+
+using Shouldly;
+
+namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
+
+public sealed class AddFrontComposerDevModeExtensionsTests {
+    [Fact]
+    public void AddFrontComposerDevMode_RegistersDevModeServicesInDevelopment() {
+        ServiceCollection services = [];
+        services.AddLogging();
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment("Development"));
+
+        services.AddFrontComposerDevMode();
+
+        services.ShouldContain(d => d.ServiceType == typeof(IDevModeOverlayController) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(IRazorEmitter) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(IClipboardJSModule) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(IDevModeAnnotationSnapshotVisitor) && d.Lifetime == ServiceLifetime.Scoped);
+    }
+
+    [Fact]
+    public void AddFrontComposerDevMode_IsNoOpOutsideDevelopment() {
+        ServiceCollection services = [];
+        services.AddLogging();
+        services.AddSingleton<IHostEnvironment>(new TestHostEnvironment("Production"));
+
+        services.AddFrontComposerDevMode();
+
+        services.ShouldNotContain(d => d.ServiceType == typeof(IDevModeOverlayController));
+        services.ShouldNotContain(d => d.ServiceType == typeof(IRazorEmitter));
+        services.ShouldNotContain(d => d.ServiceType == typeof(IClipboardJSModule));
+        services.ShouldNotContain(d => d.ServiceType == typeof(IDevModeAnnotationSnapshotVisitor));
+    }
+
+    private sealed class TestHostEnvironment(string environmentName) : IHostEnvironment {
+        public string EnvironmentName { get; set; } = environmentName;
+        public string ApplicationName { get; set; } = "Tests";
+        public string ContentRootPath { get; set; } = AppContext.BaseDirectory;
+        public IFileProvider ContentRootFileProvider { get; set; } = new NullFileProvider();
+    }
+}
+----- END: tests/Hexalith.FrontComposer.Shell.Tests/Extensions/AddFrontComposerDevModeExtensionsTests.cs -----
+
+----- BEGIN: tests/Hexalith.FrontComposer.Shell.Tests/Services/DevMode/DevModeOverlayControllerTests.cs -----
+using Hexalith.FrontComposer.Contracts.DevMode;
+using Hexalith.FrontComposer.Shell.Services.DevMode;
+
+using Shouldly;
+
+namespace Hexalith.FrontComposer.Shell.Tests.Services.DevMode;
+
+public sealed class DevModeOverlayControllerTests {
+    [Fact]
+    public void ToggleOpenClose_IsIdempotentAndNotifiesSubscribers() {
+        DevModeOverlayController controller = new();
+        int changes = 0;
+        controller.Changed += (_, _) => changes++;
+
+        controller.IsActive.ShouldBeFalse();
+        controller.Toggle();
+        controller.IsActive.ShouldBeTrue();
+        controller.Toggle();
+        controller.IsActive.ShouldBeFalse();
+
+        controller.Open("missing");
+        controller.SelectedAnnotationKey.ShouldBeNull();
+        controller.Close();
+        controller.IsActive.ShouldBeFalse();
+        changes.ShouldBe(2);
+    }
+
+    [Fact]
+    public void RegisterOpenAndDispose_TrackCurrentEpochAnnotations() {
+        DevModeOverlayController controller = new();
+        ComponentTreeNode node = CreateNode("counter-name", 7);
+
+        controller.Toggle();
+        IDisposable registration = controller.Register(node);
+        controller.Open("counter-name", renderEpoch: 7).ShouldBeTrue();
+
+        controller.SelectedNode.ShouldBe(node);
+        controller.SelectedAnnotationKey.ShouldBe("counter-name");
+
+        registration.Dispose();
+        controller.SelectedNode.ShouldBeNull();
+        controller.SelectedAnnotationKey.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Open_IgnoresStaleEpoch() {
+        DevModeOverlayController controller = new();
+        controller.Toggle();
+        _ = controller.Register(CreateNode("counter-name", 8));
+
+        controller.Open("counter-name", renderEpoch: 7).ShouldBeFalse();
+
+        controller.SelectedNode.ShouldBeNull();
+    }
+
+    private static ComponentTreeNode CreateNode(string key, long epoch)
+        => new(
+            AnnotationKey: key,
+            Convention: new ConventionDescriptor("Generated field", "Field output.", "Use a slot override.", CustomizationLevel.Level3),
+            ContractTypeName: "Counter.Contracts.CounterProjection",
+            CurrentLevel: CustomizationLevel.Level3,
+            OriginatingProjectionTypeName: "Counter.Contracts.CounterProjection",
+            Role: null,
+            FieldAccessor: "Name",
+            Children: [],
+            RenderEpoch: epoch,
+            ComponentTreeContractVersion: ComponentTreeContractVersion.Current,
+            DescriptorHash: "sha256:abc",
+            SourceComponentIdentity: "CounterProjection.Name");
+}
+----- END: tests/Hexalith.FrontComposer.Shell.Tests/Services/DevMode/DevModeOverlayControllerTests.cs -----
+
+----- BEGIN: tests/Hexalith.FrontComposer.Shell.Tests/Services/DevMode/RazorEmitterTests.cs -----
+using System.Collections.Immutable;
+
+using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.DevMode;
+using Hexalith.FrontComposer.Shell.Services.DevMode;
+
+using Microsoft.Extensions.Options;
+
+using Shouldly;
+
+namespace Hexalith.FrontComposer.Shell.Tests.Services.DevMode;
+
+public sealed class RazorEmitterTests {
+    [Theory]
+    [InlineData(CustomizationLevel.Level2, "ProjectionViewContext<Counter.Contracts.CounterProjection>", "AddProjectionTemplate")]
+    [InlineData(CustomizationLevel.Level3, "FieldSlotContext<Counter.Contracts.CounterProjection, string>", "AddSlotOverride<Counter.Contracts.CounterProjection>")]
+    [InlineData(CustomizationLevel.Level4, "ProjectionViewContext<Counter.Contracts.CounterProjection>", "AddViewOverride<Counter.Contracts.CounterProjection")]
+    public void EmitStarterTemplate_ProducesLevelSpecificRazorAndRegistrationSnippet(CustomizationLevel level, string contextText, string registrationText) {
+        RazorEmitter emitter = new();
+        ComponentTreeNode node = CreateNode(level);
+
+        string source = emitter.EmitStarterTemplate(node, level);
+
+        source.ShouldStartWith("// Generated for FrontComposer contract v");
+        source.ShouldContain("HFC1035");
+        source.ShouldContain("Projection: Counter.Contracts.CounterProjection");
+        source.ShouldContain("DescriptorHash: sha256:abc");
+        source.ShouldContain(contextText);
+        source.ShouldContain(registrationText);
+        source.ShouldContain("Generated DataGrid");
+    }
+
+    [Fact]
+    public void EmitStarterTemplate_InvalidLevel_ReturnsSafeStub() {
+        RazorEmitter emitter = new();
+
+        string source = emitter.EmitStarterTemplate(CreateNode(CustomizationLevel.Level2), CustomizationLevel.Level4);
+
+        source.ShouldContain("Starter template unavailable");
+        source.ShouldContain("requested level does not match");
+    }
+
+    [Fact]
+    public void EmitStarterTemplate_StaleNode_ReturnsSafeStub() {
+        RazorEmitter emitter = new();
+        ComponentTreeNode node = CreateNode(
+            CustomizationLevel.Level3,
+            staleReasons: [ComponentTreeStaleReason.DescriptorHashMismatch]);
+
+        string source = emitter.EmitStarterTemplate(node, CustomizationLevel.Level3);
+
+        source.ShouldContain("Starter template unavailable");
+        source.ShouldContain("stale metadata");
+        source.ShouldContain("DescriptorHashMismatch");
+    }
+
+    [Fact]
+    public void EmitStarterTemplate_TruncatesDeepAndWideTrees() {
+        FcShellOptions options = new() {
+            DevMode = new FcShellDevModeOptions {
+                MaxNodeDepth = 1,
+                MaxFanOut = 1,
+            },
+        };
+        RazorEmitter emitter = new(Microsoft.Extensions.Options.Options.Create(options));
+        ComponentTreeNode node = CreateNode(
+            CustomizationLevel.Level2,
+            children: [
+                CreateNode(CustomizationLevel.Level1, annotationKey: "child-a", children: [CreateNode(CustomizationLevel.Level1, annotationKey: "grandchild")]),
+                CreateNode(CustomizationLevel.Level1, annotationKey: "child-b"),
+            ]);
+
+        string source = emitter.EmitStarterTemplate(node, CustomizationLevel.Level2);
+
+        source.ShouldContain("child-a");
+        source.ShouldContain("Component tree truncated at depth 1");
+        source.ShouldContain("Component tree fan-out truncated after 1 children");
+        source.ShouldNotContain("child-b");
+    }
+
+    private static ComponentTreeNode CreateNode(
+        CustomizationLevel level,
+        string annotationKey = "counter-grid",
+        ImmutableArray<ComponentTreeNode> children = default,
+        ImmutableArray<ComponentTreeStaleReason> staleReasons = default)
+        => new(
+            AnnotationKey: annotationKey,
+            Convention: new ConventionDescriptor("Generated DataGrid", "Generated grid body.", "Use the lowest viable override.", level),
+            ContractTypeName: level == CustomizationLevel.Level3 ? "string" : "Counter.Contracts.CounterProjection",
+            CurrentLevel: level,
+            OriginatingProjectionTypeName: "Counter.Contracts.CounterProjection",
+            Role: null,
+            FieldAccessor: "Name",
+            Children: children,
+            RenderEpoch: 42,
+            ComponentTreeContractVersion: ComponentTreeContractVersion.Current,
+            DescriptorHash: "sha256:abc",
+            SourceComponentIdentity: "CounterProjection.Default",
+            StaleReasons: staleReasons);
+}
+----- END: tests/Hexalith.FrontComposer.Shell.Tests/Services/DevMode/RazorEmitterTests.cs -----
+
+----- BEGIN: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/DevModeAnnotationInjectionTests.cs -----
+using System.Collections.Immutable;
+
+using Hexalith.FrontComposer.SourceTools.Emitters;
+using Hexalith.FrontComposer.SourceTools.Parsing;
+using Hexalith.FrontComposer.SourceTools.Transforms;
+
+using Microsoft.CodeAnalysis.CSharp;
+
+using Shouldly;
+
+namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
+
+public sealed class DevModeAnnotationInjectionTests {
+    private static readonly EquatableArray<BadgeMappingEntry> EmptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
+
+    [Fact]
+    public void ProjectionView_EmitsDebugOnlyDevModeAnnotation() {
+        string source = RazorEmitter.Emit(Model(Col("Name", TypeCategory.Text)));
+
+        source.ShouldContain("#if DEBUG");
+        source.ShouldContain("IServiceProvider DevModeServices");
+        source.ShouldContain("DevModeServices.GetService(typeof(global::Hexalith.FrontComposer.Shell.Services.DevMode.IDevModeOverlayController))");
+        source.ShouldContain("FcDevModeAnnotation");
+        source.ShouldContain("ComponentTreeNode");
+        source.ShouldContain("ComponentTreeContractVersion.Current");
+    }
+
+    [Fact]
+    public void UnsupportedPlaceholder_EmitsUnsupportedDevModeAnnotationSibling() {
+        string source = RazorEmitter.Emit(Model(Unsupported("Metadata", "System.Collections.Generic.Dictionary<string, string>")));
+
+        source.ShouldContain("FcFieldPlaceholder");
+        source.ShouldContain("fc-devmode-unsupported");
+        source.ShouldContain("IsUnsupported: true");
+        source.ShouldContain("Use a Level 3 slot override.");
+    }
+
+    [Fact]
+    public void DevModeAnnotationInjection_ParsesAsValidCSharp() {
+        string source = RazorEmitter.Emit(Model(Col("Name", TypeCategory.Text)));
+
+        CancellationToken cancellationToken = TestContext.Current.CancellationToken;
+        CSharpSyntaxTree.ParseText(source, cancellationToken: cancellationToken)
+            .GetDiagnostics(cancellationToken)
+            .ShouldBeEmpty();
+    }
+
+    private static RazorModel Model(params ColumnModel[] columns)
+        => new(
+            "OrderProjection",
+            "TestDomain",
+            "Orders",
+            new EquatableArray<ColumnModel>(columns.ToImmutableArray()));
+
+    private static ColumnModel Col(string name, TypeCategory category)
+        => new(name, name, category, formatHint: null, isNullable: false, EmptyBadges);
+
+    private static ColumnModel Unsupported(string name, string typeName)
+        => new(
+            name,
+            name,
+            TypeCategory.Unsupported,
+            formatHint: null,
+            isNullable: false,
+            EmptyBadges,
+            unsupportedTypeFullyQualifiedName: typeName);
+}
+----- END: tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/DevModeAnnotationInjectionTests.cs -----
+
+----- BEGIN: _bmad-output/implementation-artifacts/6-5-hot-reload-rebuild-matrix.md -----
+# Story 6-5 Hot Reload and Rebuild Matrix
+
+| Change type | Expected behavior |
+| --- | --- |
+| Projection annotation argument tweak | Source generator hot reload can refresh generated metadata. |
+| New Level 2/3/4 override registration | Full restart required because DI and descriptor registries are startup metadata. |
+| Component-tree contract version change | Full rebuild/restart required; starter output references HFC1035 drift guidance. |
+| Dev-mode shortcut rebinding | Reload required for the scoped shortcut registrar to register the new binding. |
+| Overlay Razor/CSS edit | Blazor hot reload applies while the overlay is active; no persisted overlay state is required. |
+
+Story 6-6 owns the dedicated user-facing "Full restart required for this change type" diagnostic channel. Story 6-5 surfaces stale metadata in the drawer and suppresses current starter copying.
+----- END: _bmad-output/implementation-artifacts/6-5-hot-reload-rebuild-matrix.md -----

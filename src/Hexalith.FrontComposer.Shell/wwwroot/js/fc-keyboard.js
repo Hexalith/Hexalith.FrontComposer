@@ -111,6 +111,19 @@ export function registerShellKeyFilter(element) {
             return;
         }
 
+        // P25 — Ctrl+Shift+D collides with browser bookmark defaults (Chrome/Edge "Bookmark all
+        // tabs", Firefox "Bookmarks sidebar"). Prevent the browser default so the dev-mode overlay
+        // toggle reaches the Blazor handler. Mac Cmd+Shift+D maps the same way.
+        if (
+            isPrimaryMod &&
+            event.shiftKey &&
+            !event.altKey &&
+            key === "d"
+        ) {
+            event.preventDefault();
+            return;
+        }
+
         // Bare-letter keys targeting an editable element must NEVER reach the Blazor global
         // router — stopPropagation avoids the circuit round-trip previously paid by
         // IsEditableElementActiveAsync (DN3). P17 (Pass-6): walk composedPath() so shadow-DOM

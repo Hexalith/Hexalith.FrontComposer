@@ -1,0 +1,37 @@
+.fc-customization-diagnostic {
+    /* Outer wrapper hosts the focus target (tabindex=-1) and aria-live region.
+       Visual styling lives on the FluentMessageBar inside. */
+    display: block;
+}
+
+.fc-customization-diagnostic:focus-visible {
+    outline: 2px solid var(--focus-stroke-outer, #605e5c);
+    outline-offset: 2px;
+}
+
+.fc-customization-diagnostic__sections {
+    margin: 0;
+}
+
+.fc-customization-diagnostic__sections dt {
+    font-weight: 600;
+    margin-top: 0.25rem;
+}
+
+.fc-customization-diagnostic__sections dd {
+    margin: 0 0 0.5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fc-customization-diagnostic,
+    .fc-customization-diagnostic * {
+        transition-duration: 0.001ms !important;
+        animation-duration: 0.001ms !important;
+    }
+}
+
+@media (forced-colors: active) {
+    .fc-customization-diagnostic:focus-visible {
+        outline-color: CanvasText;
+    }
+}

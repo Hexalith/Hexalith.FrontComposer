@@ -102,6 +102,21 @@ public sealed class CounterProjectionApprovalTests {
         "fragment.",
         "buttons here per AC1b.",
         "the cascade contract",
+        // Story 6-5 — DEBUG-only dev-mode annotation hooks.
+        "#if DEBUG",
+        "#endif",
+        "DevModeServices",
+        "FcDevModeAnnotation",
+        "ComponentTreeNode",
+        "ConventionDescriptor",
+        "ComponentTreeContractVersion",
+        "fc-devmode-annotation",
+        "AnnotationKey:",
+        "ContractTypeName:",
+        "FieldAccessor:",
+        "RenderEpoch:",
+        "SourceComponentIdentity:",
+        "IsUnsupported:",
     };
 
     [Fact]

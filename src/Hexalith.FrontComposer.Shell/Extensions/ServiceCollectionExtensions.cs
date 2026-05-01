@@ -328,6 +328,14 @@ public static class ServiceCollectionExtensions
         // exposed as a stateless static helper (no DI registration needed).
         services.TryAddScoped<ICommandFeedbackPublisher, CommandFeedbackPublisher>();
 
+        // Story 6-6 P17 / AC2 — singleton aggregator for Major-mismatched contract rejections
+        // emitted by the three customization registries during construction. Read by
+        // CustomizationContractValidationGate at host startup when the adopter opted into
+        // FailClosedOnMajorMismatch. Registered before the registries so their ctors can
+        // resolve the optional dependency.
+        services.TryAddSingleton<Services.Customization.ICustomizationContractRejectionLog,
+            Services.Customization.CustomizationContractRejectionLog>();
+
         // Story 6-2 T4 — Level 2 projection-template registry. Singleton because descriptors
         // carry only type metadata (no per-tenant / per-user / per-render state — see D15 /
         // AC15). Adopters add per-assembly descriptor sources via AddHexalithProjectionTemplates.
@@ -342,6 +350,10 @@ public static class ServiceCollectionExtensions
         // it stores immutable descriptor metadata only. Per-render ProjectionViewContext values
         // are constructed by the generated body boundary and never cached here.
         services.TryAddSingleton<IProjectionViewOverrideRegistry, ProjectionViewOverrideRegistry>();
+
+        // Story 6-6 P17 / AC2 — startup gate that throws if any Major-mismatched override
+        // descriptor was rejected and the adopter opted into FailClosedOnMajorMismatch.
+        _ = services.AddHostedService<Services.Customization.CustomizationContractValidationGate>();
 
         // Story 4-5 D2 / T3.3 — ExpandedRowFeature is auto-discovered by the AddFluxor
         // ScanAssemblies(typeof(FrontComposerThemeState).Assembly) call above (line 158).
