@@ -20,3 +20,7 @@ HFC1047 | HexalithFrontComposer | Information | Dev-mode annotation site lacks s
 HFC1048 | HexalithFrontComposer | Information | Dev-mode starter emission requested an unsupported customization level or mismatched node level (Story 6-5)
 HFC1049 | HexalithFrontComposer | Information | Dev-mode starter metadata is stale relative to contract version, descriptor hash, or source component identity (Story 6-5)
 HFC2010 | HexalithFrontComposer | Information | Defensive runtime log for a dev-mode activation attempt outside Development; normal DEBUG/runtime gates prevent user-visible behavior (Story 6-5)
+HFC2011 | HexalithFrontComposer | Error       | FrontComposer authentication bridge configuration is invalid at startup (Story 7-1)
+HFC2012 | HexalithFrontComposer | Warning     | Authenticated claim extraction failed closed without exposing raw claim values (Story 7-1)
+HFC2013 | HexalithFrontComposer | Warning     | EventStore access-token relay failed without exposing token material (Story 7-1)
+HFC2014 | HexalithFrontComposer | Error       | GitHub OAuth sign-in requires an adopter broker/custom provider before EventStore bearer relay (Story 7-1)

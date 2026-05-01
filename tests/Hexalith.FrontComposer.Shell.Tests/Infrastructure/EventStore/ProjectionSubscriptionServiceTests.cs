@@ -140,6 +140,59 @@ public sealed class ProjectionSubscriptionServiceTests {
     }
 
     [Fact]
+    public async Task Subscribe_WhenAccessTokenProviderReturnsEmpty_DoesNotStartSignalRConnection() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = true,
+                AccessTokenProvider = _ => ValueTask.FromResult<string?>(null),
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(),
+            new TestRefreshScheduler(),
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await sut.SubscribeAsync("orders", "acme", TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
+
+        connection.StartCount.ShouldBe(0);
+        connection.JoinedGroups.ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Subscribe_WhenTokenAcquisitionIsCanceled_DoesNotStartSignalRConnection() {
+        FakeProjectionHubConnection connection = new();
+        TestNotifier notifier = new();
+        using CancellationTokenSource cts = new();
+        await cts.CancelAsync();
+        ProjectionSubscriptionService sut = new(
+            global::Microsoft.Extensions.Options.Options.Create(new EventStoreOptions {
+                BaseAddress = new Uri("https://eventstore.test"),
+                RequireAccessToken = true,
+                AccessTokenProvider = token => {
+                    token.ThrowIfCancellationRequested();
+                    return ValueTask.FromResult<string?>("token");
+                },
+                ProjectionChangesHubPath = "/hubs/projection-changes",
+            }),
+            new FakeProjectionHubConnectionFactory(connection, "https://eventstore.test/hubs/projection-changes"),
+            new TestProjectionConnectionState(),
+            new TestRefreshScheduler(),
+            notifier,
+            NullLogger<ProjectionSubscriptionService>.Instance);
+
+        _ = await Should.ThrowAsync<OperationCanceledException>(
+            async () => await sut.SubscribeAsync("orders", "acme", cts.Token).ConfigureAwait(true)).ConfigureAwait(true);
+
+        connection.StartCount.ShouldBe(0);
+        connection.JoinedGroups.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task Subscribe_WhenJoinFails_DoesNotLeaveStaleActiveGroup() {
         FakeProjectionHubConnection connection = new() { JoinException = new InvalidOperationException("join failed") };
         TestNotifier notifier = new();

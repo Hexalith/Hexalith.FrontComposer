@@ -20,6 +20,8 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
     private readonly IProjectionFallbackRefreshScheduler _refreshScheduler;
     private readonly IProjectionChangeNotifier _notifier;
     private readonly ILogger<ProjectionSubscriptionService> _logger;
+    private readonly Func<CancellationToken, ValueTask<string?>>? _accessTokenProvider;
+    private readonly bool _requireAccessToken;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly ConcurrentDictionary<GroupKey, GroupHealth> _activeGroups = new();
     private readonly IDisposable _projectionChangedRegistration;
@@ -56,8 +58,15 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         _reconciliationCoordinator = reconciliationCoordinator;
         _pendingCommandPolling = pendingCommandPolling;
         EventStoreOptions current = options.Value;
+        _requireAccessToken = current.RequireAccessToken;
+        _accessTokenProvider = current.AccessTokenProvider is null
+            ? null
+            : cancellationToken => EventStoreAccessTokenGuard.GetRequiredTokenAsync(
+                current.AccessTokenProvider,
+                current.RequireAccessToken,
+                cancellationToken);
         Uri hubUri = BuildHubUri(current.BaseAddress ?? throw new InvalidOperationException("EventStore BaseAddress is required."), current.ProjectionChangesHubPath);
-        _connection = connectionFactory.Create(hubUri, current.AccessTokenProvider);
+        _connection = connectionFactory.Create(hubUri, _accessTokenProvider);
         _projectionChangedRegistration = _connection.OnProjectionChanged(OnProjectionChangedAsync);
         _connectionStateRegistration = _connection.OnConnectionStateChanged(OnConnectionStateChangedAsync);
         // DN1 — wire the bounded fallback polling driver. The driver subscribes to connection
@@ -77,6 +86,7 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
 
             if (!_connection.IsConnected) {
                 try {
+                    await EnsureRequiredAccessTokenAvailableAsync(cancellationToken).ConfigureAwait(false);
                     await _connection.StartAsync(cancellationToken).ConfigureAwait(false);
                 }
                 catch {
@@ -354,6 +364,18 @@ internal sealed class ProjectionSubscriptionService : IProjectionSubscription, I
         if (_disposed) {
             throw new ObjectDisposedException(nameof(ProjectionSubscriptionService));
         }
+    }
+
+    private async ValueTask EnsureRequiredAccessTokenAvailableAsync(CancellationToken cancellationToken) {
+        if (!_requireAccessToken) {
+            return;
+        }
+
+        if (_accessTokenProvider is null) {
+            throw new InvalidOperationException("EventStore access token provider is required.");
+        }
+
+        _ = await _accessTokenProvider(cancellationToken).ConfigureAwait(false);
     }
 
     private static GroupKey ValidateGroup(string projectionType, string tenantId)

@@ -433,4 +433,24 @@ public static class FcDiagnosticIds {
     /// development environment. Normal gates should prevent this from firing.
     /// </summary>
     public const string HFC2010_DevModeActivationOutsideDevelopment = "HFC2010";
+
+    /// <summary>
+    /// Runtime/startup Error: FrontComposer authentication bridge configuration is invalid.
+    /// </summary>
+    public const string HFC2011_AuthenticationConfigurationInvalid = "HFC2011";
+
+    /// <summary>
+    /// Runtime Warning: authenticated claim extraction failed closed without exposing raw values.
+    /// </summary>
+    public const string HFC2012_AuthenticationClaimExtractionFailed = "HFC2012";
+
+    /// <summary>
+    /// Runtime Warning: per-operation EventStore access-token relay failed.
+    /// </summary>
+    public const string HFC2013_AuthenticationTokenRelayFailed = "HFC2013";
+
+    /// <summary>
+    /// Runtime Error: GitHub OAuth sign-in needs an adopter broker before EventStore bearer relay.
+    /// </summary>
+    public const string HFC2014_GitHubTokenExchangeRequired = "HFC2014";
 }

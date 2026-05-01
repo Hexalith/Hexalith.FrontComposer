@@ -57,8 +57,11 @@ builder.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>(
 builder.Services.Configure<FcShellOptions>(builder.Configuration.GetSection("Hexalith:Shell"));
 
 // Story 2-2 Task 9.4 — demo user context so LastUsed pre-fill works end-to-end without real auth.
-// Production adopters replace this with a real accessor (OIDC claims via Story 7.1).
-builder.Services.Replace(new ServiceDescriptor(typeof(IUserContextAccessor), typeof(DemoUserContextAccessor), ServiceLifetime.Scoped));
+// Story 7-1 keeps this default credential-free; fake auth is opt-in and visibly sample-only.
+Type userContextAccessorType = builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:FakeAuth:Enabled")
+    ? typeof(CounterFakeAuthUserContextAccessor)
+    : typeof(DemoUserContextAccessor);
+builder.Services.Replace(new ServiceDescriptor(typeof(IUserContextAccessor), userContextAccessorType, ServiceLifetime.Scoped));
 
 // Slightly higher stub latencies so the 5-state lifecycle is observable in the Counter sample.
 builder.Services.Configure<StubCommandServiceOptions>(o =>

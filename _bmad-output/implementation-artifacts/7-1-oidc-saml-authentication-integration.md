@@ -1,6 +1,6 @@
 # Story 7.1: OIDC/SAML Authentication Integration
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 7** - Authentication, Authorization & Multi-Tenancy. Covers **FR37**, prepares **FR35 / FR46**, and enforces **NFR20 / NFR21 / NFR102**. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, and **L10**.
 
@@ -59,71 +59,71 @@ An adopter should be able to point FrontComposer at a standard enterprise or soc
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define FrontComposer authentication options and validation (AC1-AC4, AC13, AC16)
-  - [ ] Add `FrontComposerAuthenticationOptions` under `src/Hexalith.FrontComposer.Shell/Options/` or `Services/Auth/` with provider kind, scheme names, tenant/user claim names, allowed issuer/audience settings, return URL behavior, and token relay settings.
-  - [ ] Enforce exactly one provider per deployment for v1: OIDC, SAML, GitHub OAuth, or custom/brokered provider. More than one configured provider is a startup error.
-  - [ ] Add options validation that fails on missing provider, missing tenant/user claim names, missing authority/metadata address, insecure HTTP authority outside development, and unsupported provider/protocol combinations.
-  - [ ] Add HFC20xx Shell diagnostics for invalid auth configuration, claim extraction failure, token relay failure, and GitHub token-exchange requirement. Use existing `FcDiagnosticIds` patterns and do not reuse IDs.
-  - [ ] Add tests for every validation branch, including provider-specific fix text and docs-link shape.
+- [x] T1. Define FrontComposer authentication options and validation (AC1-AC4, AC13, AC16)
+  - [x] Add `FrontComposerAuthenticationOptions` under `src/Hexalith.FrontComposer.Shell/Options/` or `Services/Auth/` with provider kind, scheme names, tenant/user claim names, allowed issuer/audience settings, return URL behavior, and token relay settings.
+  - [x] Enforce exactly one provider per deployment for v1: OIDC, SAML, GitHub OAuth, or custom/brokered provider. More than one configured provider is a startup error.
+  - [x] Add options validation that fails on missing provider, missing tenant/user claim names, missing authority/metadata address, insecure HTTP authority outside development, and unsupported provider/protocol combinations.
+  - [x] Add HFC20xx Shell diagnostics for invalid auth configuration, claim extraction failure, token relay failure, and GitHub token-exchange requirement. Use existing `FcDiagnosticIds` patterns and do not reuse IDs.
+  - [x] Add tests for every validation branch, including provider-specific fix text and docs-link shape.
 
-- [ ] T2. Add authentication registration extensions (AC1-AC5, AC11-AC12, AC16)
-  - [ ] Add `AddHexalithFrontComposerAuthentication(...)` in `src/Hexalith.FrontComposer.Shell/Extensions/` that composes with `AddHexalithFrontComposer()` and `AddHexalithEventStore()`.
-  - [ ] Register `IHttpContextAccessor` only where needed for server-side claim/token access; do not add HTTP pipeline dependencies to Contracts.
-  - [ ] For OIDC, integrate with ASP.NET Core `AddAuthentication().AddCookie().AddOpenIdConnect(...)` or an equivalent authenticated BFF/cookie pattern. Keep provider UI external.
-  - [ ] For SAML, expose a handler-configuration hook instead of hard-coding every SAML option in FrontComposer. If Sustainsys.Saml2 remains the selected package, add it as an optional documented package and pin it centrally when implementation starts.
-  - [ ] For GitHub, support OAuth sign-in as an identity provider recipe but require an adopter token-exchange/broker path before treating any token as EventStore bearer JWT.
-  - [ ] Add DI tests proving the extension replaces the default `NullUserContextAccessor` and `NoOpAuthRedirector` only when auth is configured.
-  - [ ] Add dependency-boundary tests or source checks proving generated UI, EventStore clients, and Contracts do not reference provider-specific OIDC/SAML/GitHub implementation types.
+- [x] T2. Add authentication registration extensions (AC1-AC5, AC11-AC12, AC16)
+  - [x] Add `AddHexalithFrontComposerAuthentication(...)` in `src/Hexalith.FrontComposer.Shell/Extensions/` that composes with `AddHexalithFrontComposer()` and `AddHexalithEventStore()`.
+  - [x] Register `IHttpContextAccessor` only where needed for server-side claim/token access; do not add HTTP pipeline dependencies to Contracts.
+  - [x] For OIDC, integrate with ASP.NET Core `AddAuthentication().AddCookie().AddOpenIdConnect(...)` or an equivalent authenticated BFF/cookie pattern. Keep provider UI external.
+  - [x] For SAML, expose a handler-configuration hook instead of hard-coding every SAML option in FrontComposer. If Sustainsys.Saml2 remains the selected package, add it as an optional documented package and pin it centrally when implementation starts.
+  - [x] For GitHub, support OAuth sign-in as an identity provider recipe but require an adopter token-exchange/broker path before treating any token as EventStore bearer JWT.
+  - [x] Add DI tests proving the extension replaces the default `NullUserContextAccessor` and `NoOpAuthRedirector` only when auth is configured.
+  - [x] Add dependency-boundary tests or source checks proving generated UI, EventStore clients, and Contracts do not reference provider-specific OIDC/SAML/GitHub implementation types.
 
-- [ ] T3. Implement claims-based `IUserContextAccessor` adapters (AC6-AC8, AC13, AC15)
-  - [ ] Add a server-side `ClaimsPrincipalUserContextAccessor` that reads the authenticated principal from `IHttpContextAccessor` or `AuthenticationStateProvider` according to host mode.
-  - [ ] Add a WASM-friendly adapter seam that can read claims from the host authentication state without FrontComposer owning token storage.
-  - [ ] Normalize tenant/user claim values by trimming and rejecting null, empty, whitespace, multi-valued, and colon-containing values.
-  - [ ] Do not lowercase tenant IDs. Preserve existing storage-key precedent: tenants may be case-sensitive; user ID canonicalization beyond trimming is an explicit policy decision and must be documented if added.
-  - [ ] Return unauthenticated/null-equivalent values on missing context so existing fail-closed consumers continue to short-circuit.
-  - [ ] Add table-driven fake-principal tests for OIDC, SAML, and GitHub OAuth claim shapes, including `sub`, `nameidentifier`, `NameID`, `email`, configured tenant/user claim aliases, missing claims, multi-valued claims, whitespace, colon rejection, unauthenticated principal, and no leakage of raw claim values in logs/diagnostics.
+- [x] T3. Implement claims-based `IUserContextAccessor` adapters (AC6-AC8, AC13, AC15)
+  - [x] Add a server-side `ClaimsPrincipalUserContextAccessor` that reads the authenticated principal from `IHttpContextAccessor` or `AuthenticationStateProvider` according to host mode.
+  - [x] Add a WASM-friendly adapter seam that can read claims from the host authentication state without FrontComposer owning token storage.
+  - [x] Normalize tenant/user claim values by trimming and rejecting null, empty, whitespace, multi-valued, and colon-containing values.
+  - [x] Do not lowercase tenant IDs. Preserve existing storage-key precedent: tenants may be case-sensitive; user ID canonicalization beyond trimming is an explicit policy decision and must be documented if added.
+  - [x] Return unauthenticated/null-equivalent values on missing context so existing fail-closed consumers continue to short-circuit.
+  - [x] Add table-driven fake-principal tests for OIDC, SAML, and GitHub OAuth claim shapes, including `sub`, `nameidentifier`, `NameID`, `email`, configured tenant/user claim aliases, missing claims, multi-valued claims, whitespace, colon rejection, unauthenticated principal, and no leakage of raw claim values in logs/diagnostics.
 
-- [ ] T4. Bridge redirect and token relay seams (AC5, AC9-AC12)
-  - [ ] Implement an `IAuthRedirector` that triggers the configured challenge/sign-in route and preserves a sanitized return URL.
-  - [ ] Reject absolute or cross-origin return URLs; only local return paths are allowed.
-  - [ ] Implement a token provider bridge for `EventStoreOptions.AccessTokenProvider` that can retrieve current access tokens from the configured ASP.NET Core authentication session or host-supplied token accessor.
-  - [ ] Ensure command/query clients keep their existing `RequireAccessToken` fail-fast behavior when token acquisition fails.
-  - [ ] Add tests proving tokens are applied to command/query HTTP requests and SignalR access-token callback paths without logging token values.
-  - [ ] Add deterministic SignalR token-failure tests: null, empty, or thrown token acquisition prevents connection or produces the explicit authenticated failure path; no stale token reuse is allowed.
-  - [ ] Cover cancellation: if token acquisition observes cancellation, no redirect, cache mutation, or partial send occurs.
+- [x] T4. Bridge redirect and token relay seams (AC5, AC9-AC12)
+  - [x] Implement an `IAuthRedirector` that triggers the configured challenge/sign-in route and preserves a sanitized return URL.
+  - [x] Reject absolute or cross-origin return URLs; only local return paths are allowed.
+  - [x] Implement a token provider bridge for `EventStoreOptions.AccessTokenProvider` that can retrieve current access tokens from the configured ASP.NET Core authentication session or host-supplied token accessor.
+  - [x] Ensure command/query clients keep their existing `RequireAccessToken` fail-fast behavior when token acquisition fails.
+  - [x] Add tests proving tokens are applied to command/query HTTP requests and SignalR access-token callback paths without logging token values.
+  - [x] Add deterministic SignalR token-failure tests: null, empty, or thrown token acquisition prevents connection or produces the explicit authenticated failure path; no stale token reuse is allowed.
+  - [x] Cover cancellation: if token acquisition observes cancellation, no redirect, cache mutation, or partial send occurs.
 
-- [ ] T5. Provider recipes and fixtures (AC3, AC6, AC9, AC14)
-  - [ ] Add provider recipe tests/fixtures for Keycloak OIDC discovery, Entra issuer/audience validation, Google OIDC standard claims, GitHub OAuth challenge/token-exchange requirement, and SAML handler bridging.
-  - [ ] Use fake handlers or local test doubles. Do not require live Keycloak, Entra, GitHub, Google, or SAML IdP credentials in CI.
-  - [ ] Name fake fixtures explicitly (`FakeOidc`, `FakeSaml`, `FakeGitHubOAuth`) and include expected positive/negative claim sets so CI cannot drift toward live-provider assumptions.
-  - [ ] Document required provider metadata: authority/metadata address, client ID, client secret storage expectations, redirect callback path, sign-out callback path, scopes, tenant claim, user claim, audience, and issuer.
-  - [ ] Ensure provider recipes include both development and production notes. Development may use user secrets or fake handlers; production must use secure secret storage owned by the host.
-  - [ ] Add sample `appsettings` snippets with placeholder values only. Never commit real secrets or tenant-specific examples.
+- [x] T5. Provider recipes and fixtures (AC3, AC6, AC9, AC14)
+  - [x] Add provider recipe tests/fixtures for Keycloak OIDC discovery, Entra issuer/audience validation, Google OIDC standard claims, GitHub OAuth challenge/token-exchange requirement, and SAML handler bridging.
+  - [x] Use fake handlers or local test doubles. Do not require live Keycloak, Entra, GitHub, Google, or SAML IdP credentials in CI.
+  - [x] Name fake fixtures explicitly (`FakeOidc`, `FakeSaml`, `FakeGitHubOAuth`) and include expected positive/negative claim sets so CI cannot drift toward live-provider assumptions.
+  - [x] Document required provider metadata: authority/metadata address, client ID, client secret storage expectations, redirect callback path, sign-out callback path, scopes, tenant claim, user claim, audience, and issuer.
+  - [x] Ensure provider recipes include both development and production notes. Development may use user secrets or fake handlers; production must use secure secret storage owned by the host.
+  - [x] Add sample `appsettings` snippets with placeholder values only. Never commit real secrets or tenant-specific examples.
 
-- [ ] T6. Secure token and storage behavior (AC9-AC13)
-  - [ ] Audit framework code paths for raw token persistence; add a regression test that fails if FrontComposer writes access/refresh/ID token names or JWT-looking values to `IStorageService` or local-storage wrappers.
-  - [ ] Add a structured logging redaction test with JWT-like strings, email addresses, tenant IDs, and user IDs in exception messages and claims.
-  - [ ] Keep ETag/session persistence keyed by `IUserContextAccessor`; do not introduce alternate auth-specific cache keys.
-  - [ ] Ensure token refresh or re-auth errors cannot leave stale bearer tokens in `EventStoreOptions` or long-lived delegates.
+- [x] T6. Secure token and storage behavior (AC9-AC13)
+  - [x] Audit framework code paths for raw token persistence; add a regression test that fails if FrontComposer writes access/refresh/ID token names or JWT-looking values to `IStorageService` or local-storage wrappers.
+  - [x] Add a structured logging redaction test with JWT-like strings, email addresses, tenant IDs, and user IDs in exception messages and claims.
+  - [x] Keep ETag/session persistence keyed by `IUserContextAccessor`; do not introduce alternate auth-specific cache keys.
+  - [x] Ensure token refresh or re-auth errors cannot leave stale bearer tokens in `EventStoreOptions` or long-lived delegates.
 
-- [ ] T7. Counter sample and developer experience (AC5, AC14)
-  - [ ] Preserve `DemoUserContextAccessor` as the default Counter local-development path.
-  - [ ] Add an opt-in fake auth mode for Counter or a test-only sample host that demonstrates the registration extension and authenticated route behavior without external credentials.
-  - [ ] Add a short README section showing where adopters replace the demo stub with the auth bridge.
-  - [ ] Show the exact registration order with `AddHexalithFrontComposerQuickstart`, `AddHexalithFrontComposerAuthentication`, `AddHexalithEventStore`, and `services.Replace` patterns where needed.
+- [x] T7. Counter sample and developer experience (AC5, AC14)
+  - [x] Preserve `DemoUserContextAccessor` as the default Counter local-development path.
+  - [x] Add an opt-in fake auth mode for Counter or a test-only sample host that demonstrates the registration extension and authenticated route behavior without external credentials.
+  - [x] Add a short README section showing where adopters replace the demo stub with the auth bridge.
+  - [x] Show the exact registration order with `AddHexalithFrontComposerQuickstart`, `AddHexalithFrontComposerAuthentication`, `AddHexalithEventStore`, and `services.Replace` patterns where needed.
 
-- [ ] T8. Tests and verification (AC1-AC16)
-  - [ ] Shell options validation tests for every invalid provider setup.
-  - [ ] Configuration/build-time tests proving zero providers and multiple providers fail before runtime traffic is accepted.
-  - [ ] DI registration tests proving default null/no-op seams are replaced only when configured.
-  - [ ] Claims adapter tests for OIDC, SAML, GitHub OAuth, unauthenticated, missing claim, colon claim, whitespace claim, and claim-alias behavior.
-  - [ ] Redirector tests for challenge route, local return URL, absolute URL rejection, and cancellation.
-  - [ ] Token relay tests for command, query, and SignalR subscription clients.
-  - [ ] Fail-closed tests proving unauthenticated or invalid-claim contexts do not dispatch command/query work, do not start SignalR with a null token, and do not write cache entries.
-  - [ ] Redaction tests proving no token/profile/claim payload leakage to logs, diagnostics, telemetry, cache, serialized client-visible state, or `IStorageService`.
-  - [ ] Counter/sample tests for demo mode preserved and fake-auth mode working.
-  - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
-  - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Shell.Tests` auth, EventStore, and sample-host lanes.
+- [x] T8. Tests and verification (AC1-AC16)
+  - [x] Shell options validation tests for every invalid provider setup.
+  - [x] Configuration/build-time tests proving zero providers and multiple providers fail before runtime traffic is accepted.
+  - [x] DI registration tests proving default null/no-op seams are replaced only when configured.
+  - [x] Claims adapter tests for OIDC, SAML, GitHub OAuth, unauthenticated, missing claim, colon claim, whitespace claim, and claim-alias behavior.
+  - [x] Redirector tests for challenge route, local return URL, absolute URL rejection, and cancellation.
+  - [x] Token relay tests for command, query, and SignalR subscription clients.
+  - [x] Fail-closed tests proving unauthenticated or invalid-claim contexts do not dispatch command/query work, do not start SignalR with a null token, and do not write cache entries.
+  - [x] Redaction tests proving no token/profile/claim payload leakage to logs, diagnostics, telemetry, cache, serialized client-visible state, or `IStorageService`.
+  - [x] Counter/sample tests for demo mode preserved and fake-auth mode working.
+  - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
+  - [x] Targeted tests: `tests/Hexalith.FrontComposer.Shell.Tests` auth, EventStore, and sample-host lanes.
 
 ---
 
@@ -360,16 +360,56 @@ Do not implement these in Story 7-1:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --no-restore --filter "FullyQualifiedName~Auth|FullyQualifiedName~FrontComposerAuthentication" -p:UseSharedCompilation=false` (red phase: expected missing auth bridge types)
+- `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter "FullyQualifiedName~Auth|FullyQualifiedName~FrontComposerAuthentication" -p:UseSharedCompilation=false` (44/0/0)
+- `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --filter "FullyQualifiedName~Auth|FullyQualifiedName~FrontComposerAuthentication|FullyQualifiedName~ProjectionSubscriptionServiceTests|FullyQualifiedName~Counter" -p:UseSharedCompilation=false` (80/0/0)
+- `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` (0 warnings)
+- `dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false` (Contracts 148/0/0, Shell 1409/0/0, SourceTools 587/0/0, Bench 2/0/0)
 
 ### Completion Notes List
 
-(to be filled in by dev agent)
+- Added `FrontComposerAuthenticationOptions` with OIDC, SAML2 handler-hook, GitHub OAuth, and custom/brokered provider recipes, validation enforcing the single-provider v1 constraint, HTTPS metadata outside Development, claim alias presence, protocol honesty, and GitHub broker requirements.
+- Added Shell auth registration through `AddHexalithFrontComposerAuthentication`, keeping provider-specific types inside Shell auth code while replacing `IUserContextAccessor` and `IAuthRedirector` only when auth is configured.
+- Added claims-backed server and authentication-state user context adapters with trim-only normalization, case-preserving tenant IDs, multi-valued/empty/colon/conflicting-alias fail-closed behavior, and sanitized HFC2012 diagnostics.
+- Added safe return URL sanitization and a configured challenge redirector that preserves only local paths.
+- Added per-operation access token relay through `FrontComposerAccessTokenProvider`, EventStore options wiring, and SignalR subscription preflight/wrapper guards so missing, empty, or canceled required tokens prevent connection/startup work.
+- Added HFC2011-HFC2014 runtime diagnostic reservations and release notes.
+- Preserved Counter's default credential-free demo accessor and added an opt-in sample-only fake-auth accessor plus README registration guidance.
+- Added auth options, claims, redirect, token relay, DI, SignalR token-failure, storage no-token-write, and provider-boundary tests using fake/local handlers and source guards only.
 
 ### File List
 
-(to be filled in by dev agent)
+- `Directory.Packages.props`
+- `_bmad-output/implementation-artifacts/7-1-oidc-saml-authentication-integration.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `samples/Counter/Counter.Web/CounterFakeAuthUserContextAccessor.cs`
+- `samples/Counter/Counter.Web/Program.cs`
+- `samples/Counter/Counter.Web/README.md`
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
+- `src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md`
+- `src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj`
+- `src/Hexalith.FrontComposer.Shell/Extensions/FrontComposerAuthenticationServiceExtensions.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreAccessTokenGuard.cs`
+- `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/ProjectionSubscriptionService.cs`
+- `src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthenticationOptions.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/AuthenticationStateUserContextAccessor.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/ClaimsPrincipalUserContextAccessor.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerAccessTokenProvider.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerAuthRedirector.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerAuthenticationException.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerAuthenticationOptionsValidator.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerClaimExtractor.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Auth/FrontComposerReturnUrl.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Architecture/AuthBoundaryTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Extensions/FrontComposerAuthenticationServiceExtensionsTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/ProjectionSubscriptionServiceTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/CapturingLogger.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/ClaimsPrincipalUserContextAccessorTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/FrontComposerAccessTokenProviderTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/FrontComposerAuthRedirectorTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/FrontComposerAuthenticationOptionsTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Auth/TestHostEnvironment.cs`
