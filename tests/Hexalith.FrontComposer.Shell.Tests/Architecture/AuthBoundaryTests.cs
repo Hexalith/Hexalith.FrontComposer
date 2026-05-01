@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+
 using Shouldly;
 
 using Xunit;
@@ -29,13 +31,16 @@ public sealed class AuthBoundaryTests {
         List<string> violations = [];
         foreach (string file in Directory.EnumerateFiles(root, "*.cs", SearchOption.AllDirectories)) {
             string relative = Normalize(Path.GetRelativePath(root, file));
-            if (relative.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                || relative.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal)
-                || allowedPathFragments.Any(relative.StartsWith)) {
+            // P18 — case-insensitive path comparison (Windows-developed, may run on Linux CI).
+            if (relative.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                || relative.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
+                || allowedPathFragments.Any(p => relative.StartsWith(p, StringComparison.OrdinalIgnoreCase))) {
                 continue;
             }
 
-            string text = File.ReadAllText(file);
+            // P18 — strip line and block comments before scanning so a doc-comment that legitimately
+            // mentions "OpenIdConnect" does not trigger a boundary violation.
+            string text = StripComments(File.ReadAllText(file));
             foreach (string fragment in bannedFragments) {
                 if (text.Contains(fragment, StringComparison.Ordinal)) {
                     violations.Add(relative + " contains " + fragment);
@@ -55,8 +60,19 @@ public sealed class AuthBoundaryTests {
                 SearchOption.AllDirectories)
             .Where(file => Normalize(Path.GetRelativePath(root, file)).Contains(
                 Normalize("Services/Auth/"),
-                StringComparison.Ordinal))
+                StringComparison.OrdinalIgnoreCase))
             .ToArray();
+
+        // P18 — exemptions are per-literal, not per-file. Only `access_token` and the
+        // Authorization header literals are allowed in the two files where token-name plumbing
+        // legitimately lives. Other token-sensitive literals remain banned even there.
+        Dictionary<string, HashSet<string>> perFileLiteralExemptions = new(StringComparer.OrdinalIgnoreCase) {
+            [Normalize("FrontComposerAuthenticationOptions.cs")] = new(StringComparer.Ordinal) { "access_token" },
+            [Normalize("FrontComposerAccessTokenProvider.cs")] = new(StringComparer.Ordinal) { "access_token" },
+            // Validator emits a teaching diagnostic that NAMES the token-name option default
+            // ("default 'access_token'") so adopters know what to set; not a token value.
+            [Normalize("FrontComposerAuthenticationOptionsValidator.cs")] = new(StringComparer.Ordinal) { "access_token" },
+        };
 
         List<string> violations = [];
         foreach (string file in authFiles) {
@@ -69,15 +85,26 @@ public sealed class AuthBoundaryTests {
             }
 
             foreach (string tokenName in new[] { "access_token", "refresh_token", "id_token", "Headers.Authorization", "\"Authorization\"" }) {
-                if (text.Contains(tokenName, StringComparison.Ordinal)
-                    && !relative.EndsWith(Normalize("FrontComposerAuthenticationOptions.cs"), StringComparison.Ordinal)
-                    && !relative.EndsWith(Normalize("FrontComposerAccessTokenProvider.cs"), StringComparison.Ordinal)) {
+                if (!text.Contains(tokenName, StringComparison.Ordinal)) {
+                    continue;
+                }
+
+                bool exempt = perFileLiteralExemptions
+                    .Any(kvp => relative.EndsWith(kvp.Key, StringComparison.OrdinalIgnoreCase)
+                        && kvp.Value.Contains(tokenName));
+                if (!exempt) {
                     violations.Add(relative + " contains token-sensitive literal " + tokenName);
                 }
             }
         }
 
         violations.ShouldBeEmpty();
+    }
+
+    private static string StripComments(string source) {
+        // Block comments first (greedy reluctant), then line comments.
+        string noBlocks = Regex.Replace(source, @"/\*.*?\*/", string.Empty, RegexOptions.Singleline);
+        return Regex.Replace(noBlocks, @"//.*?$", string.Empty, RegexOptions.Multiline);
     }
 
     private static string FindRepositoryRoot() {

@@ -31,6 +31,9 @@ public sealed class FrontComposerAuthenticationOptions {
     /// <summary>Gets per-operation access token relay options.</summary>
     public FrontComposerTokenRelayOptions TokenRelay { get; } = new();
 
+    /// <summary>Gets cookie scheme security options (Story 7-1 P10).</summary>
+    public FrontComposerAuthCookieOptions Cookie { get; } = new();
+
     /// <summary>Configures the Keycloak OIDC authorization-code recipe.</summary>
     public void UseKeycloak(
         Uri authority,
@@ -39,6 +42,11 @@ public sealed class FrontComposerAuthenticationOptions {
         string tenantClaimType,
         string userClaimType) {
         ArgumentNullException.ThrowIfNull(authority);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientSecret);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantClaimType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userClaimType);
+        ResetProviderEnablement();
         SetSingleClaim(TenantClaimTypes, tenantClaimType);
         SetSingleClaim(UserClaimTypes, userClaimType);
         OpenIdConnect.Enabled = true;
@@ -57,6 +65,11 @@ public sealed class FrontComposerAuthenticationOptions {
         string tenantClaimType = "tid",
         string userClaimType = "sub") {
         ArgumentNullException.ThrowIfNull(authority);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientSecret);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantClaimType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userClaimType);
+        ResetProviderEnablement();
         SetSingleClaim(TenantClaimTypes, tenantClaimType);
         SetSingleClaim(UserClaimTypes, userClaimType);
         OpenIdConnect.Enabled = true;
@@ -73,6 +86,11 @@ public sealed class FrontComposerAuthenticationOptions {
         string clientSecret,
         string tenantClaimType,
         string userClaimType = "sub") {
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientSecret);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantClaimType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userClaimType);
+        ResetProviderEnablement();
         SetSingleClaim(TenantClaimTypes, tenantClaimType);
         SetSingleClaim(UserClaimTypes, userClaimType);
         OpenIdConnect.Enabled = true;
@@ -85,11 +103,24 @@ public sealed class FrontComposerAuthenticationOptions {
 
     /// <summary>Configures GitHub OAuth sign-in. EventStore token relay still requires a broker.</summary>
     public void UseGitHubOAuth(string clientId, string clientSecret, string tenantClaimType, string userClaimType = "id") {
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(clientSecret);
+        ArgumentException.ThrowIfNullOrWhiteSpace(tenantClaimType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(userClaimType);
+        ResetProviderEnablement();
         SetSingleClaim(TenantClaimTypes, tenantClaimType);
         SetSingleClaim(UserClaimTypes, userClaimType);
         GitHubOAuth.Enabled = true;
         GitHubOAuth.ClientId = clientId;
         GitHubOAuth.ClientSecret = clientSecret;
+    }
+
+    private void ResetProviderEnablement() {
+        // P19 — recipes are mutually exclusive. Calling a second recipe must replace, not stack.
+        OpenIdConnect.Enabled = false;
+        Saml2.Enabled = false;
+        GitHubOAuth.Enabled = false;
+        CustomBrokered.Enabled = false;
     }
 
     internal FrontComposerAuthenticationProviderKind SelectedProviderKind {
@@ -147,8 +178,15 @@ public sealed class FrontComposerOpenIdConnectOptions {
     public string? ClientId { get; set; }
     public string? ClientSecret { get; set; }
     public string? Audience { get; set; }
+
+    /// <summary>P15 — explicit issuer validation (Story 7-1 Provider Strategy: "Validate issuer and audience explicitly").</summary>
+    public string? ValidIssuer { get; set; }
+
     public string ResponseType { get; set; } = "code";
     public IList<string> Scopes { get; } = ["openid", "profile"];
+
+    /// <summary>P9 — request the OIDC handler to retain access tokens server-side so the framework token relay can replay them per outbound operation. Default true.</summary>
+    public bool SaveTokens { get; set; } = true;
 }
 
 public sealed class FrontComposerSaml2Options {
@@ -180,6 +218,18 @@ public sealed class FrontComposerCustomBrokeredOptions {
 
 public sealed class FrontComposerAuthRedirectOptions {
     public string DefaultChallengeScheme { get; set; } = "Hexalith.FrontComposer.Auth";
+
+    /// <summary>DN4/P33 — cookie middleware redirects unauthenticated requests here. Default endpoint is mapped by `MapHexalithFrontComposerAuthenticationEndpoints` to issue a `ChallengeAsync` against the configured provider.</summary>
+    public string LoginPath { get; set; } = "/authentication/challenge";
+
+    /// <summary>DN4/P33 — cookie middleware redirects sign-out requests here. Default endpoint is mapped by `MapHexalithFrontComposerAuthenticationEndpoints` to issue a `SignOutAsync`.</summary>
+    public string LogoutPath { get; set; } = "/authentication/sign-out";
+}
+
+/// <summary>P10 — cookie scheme security policy (Story 7-1 NFR20/NFR21 BFF cookie posture).</summary>
+public sealed class FrontComposerAuthCookieOptions {
+    /// <summary>When true (default), cookies are issued with `Secure=Always` outside Development; SameSite=Lax; HttpOnly=true; SlidingExpiration=false.</summary>
+    public bool ApplySecureDefaults { get; set; } = true;
 }
 
 public sealed class FrontComposerTokenRelayOptions {

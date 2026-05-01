@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
 
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -58,7 +59,23 @@ builder.Services.Configure<FcShellOptions>(builder.Configuration.GetSection("Hex
 
 // Story 2-2 Task 9.4 — demo user context so LastUsed pre-fill works end-to-end without real auth.
 // Story 7-1 keeps this default credential-free; fake auth is opt-in and visibly sample-only.
-Type userContextAccessorType = builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:FakeAuth:Enabled")
+// P11 — fake auth is permitted ONLY in Development. In any other environment the configuration
+// flag is rejected at startup so a stray appsettings entry cannot silently disable real auth.
+bool fakeAuthRequested = builder.Configuration.GetValue<bool>("Hexalith:FrontComposer:FakeAuth:Enabled");
+if (fakeAuthRequested && !builder.Environment.IsDevelopment()) {
+    throw new InvalidOperationException(
+        "Hexalith:FrontComposer:FakeAuth:Enabled is only permitted when ASPNETCORE_ENVIRONMENT=Development. "
+        + "Remove the configuration entry or run with the Development environment for sample smoke tests.");
+}
+
+if (fakeAuthRequested) {
+    LoggerFactory.Create(b => b.AddConsole())
+        .CreateLogger("Counter.FakeAuth")
+        .LogCritical(
+            "Counter sample is running with FAKE authentication (Hexalith:FrontComposer:FakeAuth:Enabled=true). All requests share a single shared identity. Do not deploy with this flag set.");
+}
+
+Type userContextAccessorType = fakeAuthRequested
     ? typeof(CounterFakeAuthUserContextAccessor)
     : typeof(DemoUserContextAccessor);
 builder.Services.Replace(new ServiceDescriptor(typeof(IUserContextAccessor), userContextAccessorType, ServiceLifetime.Scoped));

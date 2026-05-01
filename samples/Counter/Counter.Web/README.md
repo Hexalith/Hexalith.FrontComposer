@@ -25,7 +25,8 @@ builder.Services.AddHexalithFrontComposerAuthentication(options =>
     options.UseKeycloak(
         authority: new Uri("https://identity.example.com/realms/frontcomposer"),
         clientId: "frontcomposer",
-        clientSecret: builder.Configuration["Auth:ClientSecret"]!,
+        clientSecret: builder.Configuration["Auth:ClientSecret"]
+            ?? throw new InvalidOperationException("Auth:ClientSecret is required."),
         tenantClaimType: "tenant_id",
         userClaimType: "sub");
 });

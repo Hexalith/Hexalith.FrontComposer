@@ -33,6 +33,11 @@ public sealed class FrontComposerAccessTokenProvider(
                 : await ReadHttpContextTokenAsync(current).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(token)) {
+                // P6 — log HFC2013 on the empty-token branch so the diagnostic is observable.
+                logger.LogWarning(
+                    "{DiagnosticId}: Access token acquisition returned no token. ProviderKind={ProviderKind}.",
+                    FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
+                    current.SelectedProviderKind.ToString());
                 throw new FrontComposerAuthenticationException(
                     FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
                     $"{FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed}: Access token acquisition returned no token.");
@@ -46,14 +51,22 @@ public sealed class FrontComposerAccessTokenProvider(
         catch (FrontComposerAuthenticationException) {
             throw;
         }
-        catch (Exception ex) when (ex is not OutOfMemoryException) {
+        // P6 — narrow exception filter. Catching only the HTTP/IO/auth exceptions adopters can
+        // realistically throw from a token provider; let SO/AccessViolation/ThreadAbort/OOM
+        // unwind. Pass `ex` as inner exception so operators retain the root cause.
+        catch (Exception ex) when (ex is HttpRequestException
+                                   or TaskCanceledException
+                                   or TimeoutException
+                                   or InvalidOperationException
+                                   or AuthenticationFailureException) {
             logger.LogWarning(
                 "{DiagnosticId}: Access token acquisition failed. FailureCategory={FailureCategory}.",
                 FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
                 ex.GetType().Name);
             throw new FrontComposerAuthenticationException(
                 FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed,
-                $"{FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed}: Access token acquisition failed.");
+                $"{FcDiagnosticIds.HFC2013_AuthenticationTokenRelayFailed}: Access token acquisition failed.",
+                ex);
         }
     }
 
