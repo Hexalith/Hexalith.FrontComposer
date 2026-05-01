@@ -69,3 +69,4 @@
 2026-05-01T07:10:56+02:00	none	-	none	all ready-for-dev stories already have party-mode and advanced elicitation traces
 2026-05-01T08:10:51.9010432+02:00	none	-	none	all ready-for-dev stories already have party-mode and advanced elicitation traces
 2026-05-01T09:18:17+02:00	create-story	7-3-command-authorization-policies	ok	created story artifact and marked ready-for-dev
+2026-05-01T09:50:02.0615199+02:00	party-mode-review	7-3-command-authorization-policies	ok	applied authorization resource, surface, diagnostics, and executable test-oracle hardening

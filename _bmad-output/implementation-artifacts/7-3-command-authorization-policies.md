@@ -215,6 +215,75 @@ Expected new or changed files:
 - Pair generated snapshots with runtime/bUnit tests; snapshots alone cannot prove dispatch prevention.
 - Redaction tests must include sentinel values and exact absence assertions.
 
+### Party-Mode Hardening Addendum (2026-05-01)
+
+This story remains `ready-for-dev`, but implementation must treat the following review findings as binding pre-dev guardrails.
+
+#### Authorization Resource Contract
+
+- `ICommandAuthorizationEvaluator` must pass a stable resource object to `IAuthorizationService.AuthorizeAsync(user, resource, policyName)`.
+- The resource must contain command type, command display/action label, command metadata identifier, bounded context when available, source surface (`GeneratedForm`, `InlineAction`, `CompactInlineAction`, `FullPage`, `EmptyStateCta`, `CommandPalette`, `HomeCapability`, or `DirectDispatch`), and the validated Story 7-2 tenant-context snapshot when available.
+- The resource must not contain access tokens, raw claims, roles, provider payloads, authorization codes, SAML assertions, tenant IDs/user IDs outside the validated sanitized context contract, render fragments, or arbitrary command payload values.
+- Tests must use a deterministic fake `IAuthorizationService` keyed by policy name, command type, source surface, principal state, and tenant-context category. Do not test authorization by shortcutting to hard-coded roles in generated components.
+
+#### Submit And Destructive Flow Ordering
+
+- Generated command forms must authorize policy-protected commands through the submit path that runs before validation side effects, lifecycle `SubmittedAction`, pending-command registration, command-service dispatch, EventStore payload serialization, HTTP send, token acquisition, SignalR side effects, or telemetry containing command payloads.
+- Denial may update only localized warning UI/status state and sanitized diagnostics. It must not mutate command lifecycle state, pending-command state, validation model state beyond the denial warning, cache state, or transport state.
+- Destructive protected commands must authorize before opening the destructive confirmation dialog so unauthorized users do not see destructive-flow copy. They must authorize again immediately after confirmation and before dispatch because auth, tenant, or policy state can change while the dialog is open.
+- Policy-protected direct command dispatch through framework services must perform the same authoritative submit-time check. UI gating is advisory UX only.
+
+#### Authentication Scope And Failure Boundaries
+
+- Story 7-3 fail-closed behavior applies to commands that carry `[RequiresPolicy]` metadata. Commands without policy metadata must keep the previous behavior and must not fail merely because authorization services, policy catalogs, or auth-state UI helpers are absent.
+- Baseline authentication requirements for non-policy commands remain owned by Stories 7-1 and 7-2. Story 7-3 must not turn every command into an authenticated-only command unless another existing framework seam already requires it.
+- For policy-protected commands, unresolved/prerender authentication state, missing `IAuthorizationService`, unauthenticated principal, missing or stale tenant context when the resource requires it, missing policy, authorization handler exception, cancellation before a decision, inconsistent catalog state, or auth transition from allowed to denied all block execution.
+- Cancellation before an authorization decision is treated as non-executable and side-effect-free; it may surface a neutral retryable status rather than a permission-denied message when the UX surface supports that distinction.
+
+#### Policy Catalog And Diagnostics Timing
+
+- Invalid `[RequiresPolicy]` attribute values (null, empty, whitespace, unsupported duplicate declarations, malformed values) are SourceTools diagnostics and must prevent invalid policy metadata from being emitted.
+- A missing policy catalog is not an error by itself for simple hosts. When a catalog is configured, policy names absent from the catalog produce warning diagnostics by default and can become startup/build errors only through an explicit strict-mode option.
+- Missing catalog and missing policy entry are distinct diagnostic conditions. Diagnostics must name command type and policy identifier only as developer/operator configuration data; they must never include claims, roles, tenant IDs, user IDs, tokens, or command payloads.
+- Runtime missing-policy or handler failures still fail closed for protected commands even if catalog validation was not enabled.
+
+#### Authorization Surface Matrix
+
+| Surface | Unauthorized default | Required executable check |
+| --- | --- | --- |
+| Generated form / full-page command | Render disabled or pending state, then localized warning on attempted submit. | Re-evaluate immediately on submit before lifecycle/dispatch side effects. |
+| Inline / compact inline DataGrid action | Prefer disabled with accessible reason when layout can preserve context; hide only when the command would otherwise reveal unsafe metadata. | Re-evaluate before invoking the command flow. |
+| Empty-state CTA | Use existing `EmptyStateCta.AuthorizationPolicy` metadata and `AuthorizeView` for presentation. | Re-evaluate before CTA command dispatch; `AuthorizeView` alone is not sufficient. |
+| Command palette | Do not present unauthorized commands as executable. It may hide them or show non-executable discovery rows only when metadata-safe and clearly disabled. | Re-evaluate before routing/opening/submitting any command action. |
+| Home / capability discovery | Same as command palette: metadata-safe discovery is allowed, executable routing is not. | Re-evaluate before opening or executing protected commands. |
+| Future MCP | Emit policy/action metadata only for future enumeration. | No MCP execution or tool authorization is implemented in this story. |
+
+User-facing warnings must use localized action-label copy such as "You do not have permission to {ActionLabel}" and must not show policy names, role names, claim names/values, tenant/user identifiers, diagnostic internals, or provider details. Developer/operator diagnostics may include command type and policy name when useful as configuration identifiers, under the redaction rules above.
+
+#### Generated Metadata Compatibility
+
+- Command IR, generated form models, renderer models, registration/manifest output, CTA metadata, palette entries, and home/capability descriptors must carry the same optional policy-name field from SourceTools.
+- UI surfaces consume policy metadata but do not interpret policy semantics. Only `IAuthorizationService` decides allow/deny.
+- Older generated manifests or command metadata with no policy field must be treated as unprotected by Story 7-3 and preserve existing execution behavior.
+
+#### Executable Test Oracles
+
+- Add a shared auth test fixture builder for fake principals, fake tenant-context snapshots, fake `IAuthorizationService`, fake policy catalog, strict side-effect counters, and localized warning assertions.
+- Zero-side-effect denial tests must explicitly assert no validation mutation beyond warning state, no lifecycle submitted state, no pending-command registration, no command-service dispatch, no EventStore serialization, no token acquisition, no HTTP send, no SignalR side effect, no cache mutation, and no command-payload telemetry.
+- Failure-matrix tests must cover allow, deny, missing service, missing policy, missing catalog, missing catalog entry, strict catalog failure, handler throw, cancellation, unauthenticated principal, prerender/no principal, stale tenant context, auth state changing from allowed to denied, and no-policy command behavior.
+- Generated UI tests must include representative interaction coverage for full-page form, inline/compact action, empty-state CTA, command palette, and home/capability discovery. Snapshot tests may prove metadata propagation, but interaction tests must prove non-executable routing and submit-time recheck.
+- Redaction tests must seed command payload fragments, route parameters, policy names, role names, claim values, JWT-like strings, tenant IDs, user IDs, and provider-looking data, then assert forbidden raw values are absent from UI, logs, diagnostics, telemetry, generated metadata, and test render output.
+- Keep the test matrix bounded: one canonical evaluator matrix, one metadata propagation suite, one generated submit-order suite, one discovery-surface suite, and one redaction suite are sufficient unless implementation adds a new seam.
+
+#### Deferred Decisions From Review
+
+| Decision | Deferred owner |
+| --- | --- |
+| Whether unauthorized command palette/home entries should be hidden everywhere or shown as disabled discovery rows in specific product contexts. | Product/UX; implementation must default to non-executable and metadata-safe behavior. |
+| Whether policy names may ever be shown to end users as support details. | Product/security; default is no end-user policy names. |
+| Whether backend EventStore endpoints must independently enforce the same command policies. | EventStore auth contract backlog or consumer-driven contract story. |
+| Multi-policy composition, policy expression language, dynamic policy builders, and per-row policy inference. | v1.x authorization follow-up. |
+
 ### Scope Guardrails
 
 Do not implement these in Story 7-3:
@@ -285,7 +354,19 @@ Do not implement these in Story 7-3:
 ### Completion Notes List
 
 - 2026-05-01: Story created via `/bmad-create-story 7-3-command-authorization-policies` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-01: Party-mode review applied via `/bmad-party-mode 7-3-command-authorization-policies; review;`. Added hardening addendum for the authorization resource contract, submit/destructive ordering, auth-scope boundaries, policy catalog diagnostics, surface behavior, generated metadata compatibility, executable test oracles, and deferred decisions.
 
 ### File List
 
 (to be filled in by dev agent)
+
+## Party-Mode Review
+
+- Date/time: 2026-05-01T09:50:02.0615199+02:00
+- Selected story key: `7-3-command-authorization-policies`
+- Command/skill invocation used: `/bmad-party-mode 7-3-command-authorization-policies; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), John (Product Manager)
+- Findings summary: The review found the story valuable and bounded, but pre-dev implementation risk remained around the `IAuthorizationService` resource contract, the exact submit/destructive flow seam, the scope of fail-closed behavior for policy-protected versus unprotected commands, policy catalog diagnostic timing, unauthorized-surface behavior, user-warning versus developer-diagnostic separation, generated metadata compatibility, and executable zero-side-effect test oracles.
+- Changes applied: Added a Party-Mode Hardening Addendum defining the authorization resource shape and forbidden payloads; requiring pre-confirmation and post-confirmation authorization for destructive commands; clarifying that Story 7-3 fail-closed behavior applies only to policy-protected commands; defining policy catalog diagnostics and strict-mode behavior; adding an authorization surface matrix for forms, inline actions, CTA, palette, home, and future MCP metadata; preserving older no-policy metadata behavior; and adding bounded executable test oracles for side effects, failure matrices, generated UI interactions, and redaction sentinels.
+- Findings deferred: Product/UX decision on hiding versus disabled discovery rows for unauthorized palette/home entries; whether policy names may ever appear in end-user support details; backend EventStore independent policy enforcement; multi-policy composition, dynamic policy builders, policy expressions, and per-row policy inference.
+- Final recommendation: ready-for-dev
