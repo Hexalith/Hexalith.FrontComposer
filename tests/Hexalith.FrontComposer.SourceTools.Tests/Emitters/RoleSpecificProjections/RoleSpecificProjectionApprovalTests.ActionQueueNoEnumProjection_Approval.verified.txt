@@ -110,35 +110,41 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
         switch (columnPropertyName)
         {
             case "Id":
-                return RenderSlotField(row,
-                    fieldName: "Id",
-                    displayName: "Id",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Id,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+                return HasProjectionSlot("Id")
+                    ? RenderSlotField(row,
+                        fieldName: "Id",
+                        displayName: "Id",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Id,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))
+                    : RenderTemplateDefaultField(row, "Id");
             case "Summary":
-                return RenderSlotField(row,
-                    fieldName: "Summary",
-                    displayName: "Summary",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Summary,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Summary"));
+                return HasProjectionSlot("Summary")
+                    ? RenderSlotField(row,
+                        fieldName: "Summary",
+                        displayName: "Summary",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Summary,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Summary"))
+                    : RenderTemplateDefaultField(row, "Summary");
             case "Priority":
-                return RenderSlotField(row,
-                    fieldName: "Priority",
-                    displayName: "Priority",
-                    format: "N0",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Priority,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"));
+                return HasProjectionSlot("Priority")
+                    ? RenderSlotField(row,
+                        fieldName: "Priority",
+                        displayName: "Priority",
+                        format: "N0",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Priority,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"))
+                    : RenderTemplateDefaultField(row, "Priority");
             default:
                 return static _ => { };
         }
@@ -818,24 +824,36 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Id",
-                displayName: "Id",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Id,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Id"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Id,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Id);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Id);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -845,24 +863,36 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                 labelBuilder.AddContent(0, "Summary");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Summary",
-                displayName: "Summary",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Summary,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Summary"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Summary",
+                    displayName: "Summary",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Summary,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Summary);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Summary);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -872,24 +902,36 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
                 labelBuilder.AddContent(0, "Priority");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Priority",
-                displayName: "Priority",
-                format: "N0",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Priority,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Priority"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Priority",
+                    displayName: "Priority",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Priority,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Priority.ToString("N0", CultureInfo.CurrentCulture));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Priority.ToString("N0", CultureInfo.CurrentCulture));
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();

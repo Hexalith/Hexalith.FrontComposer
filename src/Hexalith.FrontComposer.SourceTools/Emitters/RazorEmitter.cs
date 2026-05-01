@@ -409,18 +409,26 @@ public static class RazorEmitter {
         _ = sb.AppendLine();
         _ = sb.AppendLine("        switch (columnPropertyName)");
         _ = sb.AppendLine("        {");
+        // GD-P3 (review of Story 6-3 Group D, 2026-05-01) — Level 2 template field renderer
+        // gates on HasProjectionSlot so that when no slot is registered the template's
+        // FieldRenderer call routes directly to RenderTemplateDefaultField, preserving the
+        // pre-Story-6-3 default render shape and avoiding a per-render FieldSlotContext<,>
+        // allocation. AC10 still holds: the slot override is resolved before falling back.
         for (int i = 0; i < model.Columns.Count; i++) {
             ColumnModel col = model.Columns[i];
+            string fieldNameLiteral = "\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"";
             _ = sb.AppendLine("            case \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\":");
-            _ = sb.AppendLine("                return RenderSlotField(row,");
-            _ = sb.AppendLine("                    fieldName: \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\",");
-            _ = sb.AppendLine("                    displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
-            _ = sb.AppendLine("                    format: " + SlotStringLiteral(col.FormatHint) + ",");
-            _ = sb.AppendLine("                    order: " + SlotNullableIntLiteral(col.Priority) + ",");
-            _ = sb.AppendLine("                    isFieldReadOnly: false,");
-            _ = sb.AppendLine("                    description: " + SlotStringLiteral(col.Description) + ",");
-            _ = sb.AppendLine("                    value: row." + col.PropertyName + ",");
-            _ = sb.AppendLine("                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"));");
+            _ = sb.AppendLine("                return HasProjectionSlot(" + fieldNameLiteral + ")");
+            _ = sb.AppendLine("                    ? RenderSlotField(row,");
+            _ = sb.AppendLine("                        fieldName: " + fieldNameLiteral + ",");
+            _ = sb.AppendLine("                        displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
+            _ = sb.AppendLine("                        format: " + SlotStringLiteral(col.FormatHint) + ",");
+            _ = sb.AppendLine("                        order: " + SlotNullableIntLiteral(col.Priority) + ",");
+            _ = sb.AppendLine("                        isFieldReadOnly: false,");
+            _ = sb.AppendLine("                        description: " + SlotStringLiteral(col.Description) + ",");
+            _ = sb.AppendLine("                        value: row." + col.PropertyName + ",");
+            _ = sb.AppendLine("                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, " + fieldNameLiteral + "))");
+            _ = sb.AppendLine("                    : RenderTemplateDefaultField(row, " + fieldNameLiteral + ");");
         }
 
         _ = sb.AppendLine("            default:");
@@ -505,6 +513,15 @@ public static class RazorEmitter {
         _ = sb.AppendLine("        TField? value,");
         _ = sb.AppendLine("        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<" + model.TypeName + ", TField>> renderDefault)");
         _ = sb.AppendLine("    {");
+        // GD-DN3 (review of Story 6-3 Group D, 2026-05-01, resolved option 3) — Synthesize a
+        // sentinel RenderContext when the cascading parameter is absent. The framework does not
+        // require host pages to wire a CascadingValue<RenderContext>; the sentinel acts as the
+        // canonical "anonymous preview" default so slot hosts can render in dev/preview surfaces
+        // (component explorers, sample pages, bUnit tests) without manual cascade setup. Note:
+        // this is a render-time UI state default, NOT a persistence-scope key — the
+        // feedback_tenant_isolation_fail_closed memory rule applies to scoped keys (per-user
+        // persistence services), not to UI rendering. AC14 "per-render context flow" is honored
+        // because the sentinel is constructed per render, not cached.
         _ = sb.AppendLine("        return builder =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            var __renderContext = RenderContext ?? new global::Hexalith.FrontComposer.Contracts.Rendering.RenderContext(");

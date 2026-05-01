@@ -66,95 +66,113 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
         switch (columnPropertyName)
         {
             case "Id":
-                return RenderSlotField(row,
-                    fieldName: "Id",
-                    displayName: "Id",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Id,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+                return HasProjectionSlot("Id")
+                    ? RenderSlotField(row,
+                        fieldName: "Id",
+                        displayName: "Id",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Id,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))
+                    : RenderTemplateDefaultField(row, "Id");
             case "LegalName":
-                return RenderSlotField(row,
-                    fieldName: "LegalName",
-                    displayName: "Legal Name",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.LegalName,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LegalName"));
+                return HasProjectionSlot("LegalName")
+                    ? RenderSlotField(row,
+                        fieldName: "LegalName",
+                        displayName: "Legal Name",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.LegalName,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LegalName"))
+                    : RenderTemplateDefaultField(row, "LegalName");
             case "TaxId":
-                return RenderSlotField(row,
-                    fieldName: "TaxId",
-                    displayName: "Tax Id",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.TaxId,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "TaxId"));
+                return HasProjectionSlot("TaxId")
+                    ? RenderSlotField(row,
+                        fieldName: "TaxId",
+                        displayName: "Tax Id",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.TaxId,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "TaxId"))
+                    : RenderTemplateDefaultField(row, "TaxId");
             case "ContactEmail":
-                return RenderSlotField(row,
-                    fieldName: "ContactEmail",
-                    displayName: "Contact Email",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.ContactEmail,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "ContactEmail"));
+                return HasProjectionSlot("ContactEmail")
+                    ? RenderSlotField(row,
+                        fieldName: "ContactEmail",
+                        displayName: "Contact Email",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.ContactEmail,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "ContactEmail"))
+                    : RenderTemplateDefaultField(row, "ContactEmail");
             case "BillingAddress":
-                return RenderSlotField(row,
-                    fieldName: "BillingAddress",
-                    displayName: "Billing Address",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.BillingAddress,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "BillingAddress"));
+                return HasProjectionSlot("BillingAddress")
+                    ? RenderSlotField(row,
+                        fieldName: "BillingAddress",
+                        displayName: "Billing Address",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.BillingAddress,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "BillingAddress"))
+                    : RenderTemplateDefaultField(row, "BillingAddress");
             case "OnboardedAt":
-                return RenderSlotField(row,
-                    fieldName: "OnboardedAt",
-                    displayName: "Onboarded At",
-                    format: "d",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.OnboardedAt,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OnboardedAt"));
+                return HasProjectionSlot("OnboardedAt")
+                    ? RenderSlotField(row,
+                        fieldName: "OnboardedAt",
+                        displayName: "Onboarded At",
+                        format: "d",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.OnboardedAt,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OnboardedAt"))
+                    : RenderTemplateDefaultField(row, "OnboardedAt");
             case "AccountManager":
-                return RenderSlotField(row,
-                    fieldName: "AccountManager",
-                    displayName: "Account Manager",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.AccountManager,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "AccountManager"));
+                return HasProjectionSlot("AccountManager")
+                    ? RenderSlotField(row,
+                        fieldName: "AccountManager",
+                        displayName: "Account Manager",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.AccountManager,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "AccountManager"))
+                    : RenderTemplateDefaultField(row, "AccountManager");
             case "LoyaltyTier":
-                return RenderSlotField(row,
-                    fieldName: "LoyaltyTier",
-                    displayName: "Loyalty Tier",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.LoyaltyTier,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LoyaltyTier"));
+                return HasProjectionSlot("LoyaltyTier")
+                    ? RenderSlotField(row,
+                        fieldName: "LoyaltyTier",
+                        displayName: "Loyalty Tier",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.LoyaltyTier,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LoyaltyTier"))
+                    : RenderTemplateDefaultField(row, "LoyaltyTier");
             case "Seats":
-                return RenderSlotField(row,
-                    fieldName: "Seats",
-                    displayName: "Seats",
-                    format: "N0",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Seats,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Seats"));
+                return HasProjectionSlot("Seats")
+                    ? RenderSlotField(row,
+                        fieldName: "Seats",
+                        displayName: "Seats",
+                        format: "N0",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Seats,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Seats"))
+                    : RenderTemplateDefaultField(row, "Seats");
             default:
                 return static _ => { };
         }
@@ -508,24 +526,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Id",
-                displayName: "Id",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Id,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Id"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Id,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Id);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Id);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -535,24 +565,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Legal Name");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "LegalName",
-                displayName: "Legal Name",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.LegalName,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("LegalName"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "LegalName",
+                    displayName: "Legal Name",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.LegalName,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.LegalName);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.LegalName);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -562,24 +604,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Tax Id");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "TaxId",
-                displayName: "Tax Id",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.TaxId,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("TaxId"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "TaxId",
+                    displayName: "Tax Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.TaxId,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.TaxId);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.TaxId);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -589,24 +643,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Contact Email");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "ContactEmail",
-                displayName: "Contact Email",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.ContactEmail,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("ContactEmail"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "ContactEmail",
+                    displayName: "Contact Email",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.ContactEmail,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.ContactEmail);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.ContactEmail);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -616,24 +682,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Billing Address");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "BillingAddress",
-                displayName: "Billing Address",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.BillingAddress,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("BillingAddress"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "BillingAddress",
+                    displayName: "Billing Address",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.BillingAddress,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.BillingAddress);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.BillingAddress);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -643,24 +721,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                 labelBuilder.AddContent(0, "Onboarded At");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "OnboardedAt",
-                displayName: "Onboarded At",
-                format: "d",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.OnboardedAt,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("OnboardedAt"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "OnboardedAt",
+                    displayName: "Onboarded At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.OnboardedAt,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.OnboardedAt.ToString("d", CultureInfo.CurrentCulture));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.OnboardedAt.ToString("d", CultureInfo.CurrentCulture));
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();
@@ -682,24 +772,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                     labelBuilder.AddContent(0, "Account Manager");
                 }));
                 ib.CloseComponent();
-                RenderSlotField(entity,
-                    fieldName: "AccountManager",
-                    displayName: "Account Manager",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: entity.AccountManager,
-                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                if (HasProjectionSlot("AccountManager"))
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    RenderSlotField(entity,
+                        fieldName: "AccountManager",
+                        displayName: "Account Manager",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: entity.AccountManager,
+                        renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                    {
+                        int slotSeq = 0;
+                        slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                        {
+                            textBuilder.AddContent(0, entity.AccountManager);
+                        }));
+                        slotBuilder.CloseComponent();
+                    })(ib);
+                }
+                else
+                {
+                    ib.OpenComponent<FluentText>(secFieldSeq++);
+                    ib.AddAttribute(secFieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.AccountManager);
                     }));
-                    slotBuilder.CloseComponent();
-                })(ib);
+                    ib.CloseComponent();
+                }
                 ib.CloseElement();
                 ib.OpenElement(secFieldSeq++, "div");
                 ib.AddAttribute(secFieldSeq++, "class", "fc-detail-field");
@@ -709,24 +811,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                     labelBuilder.AddContent(0, "Loyalty Tier");
                 }));
                 ib.CloseComponent();
-                RenderSlotField(entity,
-                    fieldName: "LoyaltyTier",
-                    displayName: "Loyalty Tier",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: entity.LoyaltyTier,
-                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                if (HasProjectionSlot("LoyaltyTier"))
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    RenderSlotField(entity,
+                        fieldName: "LoyaltyTier",
+                        displayName: "Loyalty Tier",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: entity.LoyaltyTier,
+                        renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                    {
+                        int slotSeq = 0;
+                        slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                        {
+                            textBuilder.AddContent(0, entity.LoyaltyTier);
+                        }));
+                        slotBuilder.CloseComponent();
+                    })(ib);
+                }
+                else
+                {
+                    ib.OpenComponent<FluentText>(secFieldSeq++);
+                    ib.AddAttribute(secFieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.LoyaltyTier);
                     }));
-                    slotBuilder.CloseComponent();
-                })(ib);
+                    ib.CloseComponent();
+                }
                 ib.CloseElement();
                 ib.OpenElement(secFieldSeq++, "div");
                 ib.AddAttribute(secFieldSeq++, "class", "fc-detail-field");
@@ -736,24 +850,36 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
                     labelBuilder.AddContent(0, "Seats");
                 }));
                 ib.CloseComponent();
-                RenderSlotField(entity,
-                    fieldName: "Seats",
-                    displayName: "Seats",
-                    format: "N0",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: entity.Seats,
-                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                if (HasProjectionSlot("Seats"))
                 {
-                    int slotSeq = 0;
-                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    RenderSlotField(entity,
+                        fieldName: "Seats",
+                        displayName: "Seats",
+                        format: "N0",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: entity.Seats,
+                        renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                    {
+                        int slotSeq = 0;
+                        slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                        slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                        {
+                            textBuilder.AddContent(0, entity.Seats.ToString("N0", CultureInfo.CurrentCulture));
+                        }));
+                        slotBuilder.CloseComponent();
+                    })(ib);
+                }
+                else
+                {
+                    ib.OpenComponent<FluentText>(secFieldSeq++);
+                    ib.AddAttribute(secFieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                     {
                         textBuilder.AddContent(0, entity.Seats.ToString("N0", CultureInfo.CurrentCulture));
                     }));
-                    slotBuilder.CloseComponent();
-                })(ib);
+                    ib.CloseComponent();
+                }
                 ib.CloseElement();
             }));
             b.CloseComponent();

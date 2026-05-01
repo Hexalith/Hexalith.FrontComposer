@@ -13,12 +13,15 @@ using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
+using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
 using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Time.Testing;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -29,6 +32,11 @@ namespace Hexalith.FrontComposer.Shell.Tests.Generated;
 
 public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 {
+    // GC-P5 — pin TimeProvider to a deterministic instant well outside the [RelativeTime]
+    // 7-day window relative to LastUpdated = 2026-04-14 so the formatter falls back to absolute
+    // date format ("04/14/2026") regardless of the wall clock when the test runs.
+    private static readonly DateTimeOffset s_fixedNow = new(2026, 5, 15, 0, 0, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset s_lastUpdated = new(2026, 4, 14, 0, 0, 0, TimeSpan.Zero);
 
     public CounterStoryVerificationTests()
         : base(typeof(CounterProjection).Assembly, typeof(StatusProjection).Assembly)
@@ -94,6 +102,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     [Fact]
     public async Task CounterProjectionView_LoadedState_RendersColumnsAndFormatting()
     {
+        UseFakeTime(s_fixedNow);
+
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
 
@@ -106,7 +116,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
                 {
                     Id = "counter-1",
                     Count = 1234,
-                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+                    LastUpdated = s_lastUpdated,
                 },
             ]));
 
@@ -137,6 +147,8 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     [Fact]
     public async Task CounterProjectionView_SelectedTemplate_RendersInsideGridEnvelopeAndUsesFieldRenderer()
     {
+        UseFakeTime(s_fixedNow);
+
         Services.AddSingleton(new ProjectionTemplateAssemblySource(
         [
             new ProjectionTemplateDescriptor(
@@ -158,7 +170,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
                 {
                     Id = "counter-1",
                     Count = 1234,
-                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+                    LastUpdated = s_lastUpdated,
                 },
             ]));
 
@@ -178,9 +190,10 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
     [Fact]
     public async Task CounterProjectionView_Level3Slot_ReplacesOneFieldAndLeavesAdjacentFieldsGenerated()
     {
-        Services.AddSlotOverride<CounterProjection, int>(
-            field: x => x.Count,
-            componentType: typeof(CounterCountSlot));
+        UseFakeTime(s_fixedNow);
+
+        // GC-P4 — typed <TComponent> overload catches component-type mismatches at compile time.
+        Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(field: x => x.Count);
 
         await InitializeStoreAsync();
         IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
@@ -194,7 +207,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
                 {
                     Id = "counter-1",
                     Count = 1234,
-                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
+                    LastUpdated = s_lastUpdated,
                 },
             ]));
 
@@ -203,12 +216,140 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         await cut.WaitForAssertionAsync(() =>
         {
             string markup = cut.Markup;
+
+            // Slot replaces Count cell content.
             markup.ShouldContain("counter-count-slot");
             markup.ShouldContain("aria-label=\"Count: 1,234\"");
+
+            // GC-P3 — DataGrid envelope and adjacent generated rendering preserved.
+            markup.ShouldContain("data-fc-datagrid");
             markup.ShouldContain("counter-1");
             markup.ShouldContain("04/14/2026");
+
+            // GC-P3 / GC-P8 — column headers (including the slot's own column) remain
+            // generated. Slot replaces cell content only; header is part of grid metadata.
             markup.ShouldContain(">Id<");
+            markup.ShouldContain(">Count<");
             markup.ShouldContain(">Last changed<");
+        });
+
+        // GC-P9 — visible-label invariant from Spec line 328 ("slot replacing a badge-like
+        // field must preserve visible label text and equivalent accessible name"). Use a
+        // DOM-anchored assertion rather than substring matching on the raw markup.
+        AngleSharp.Dom.IElement labelElement = cut.Find(".counter-count-slot__label");
+        labelElement.TextContent.Trim().ShouldBe("Count");
+
+        // GC-P9 — exactly one slot rendered (one row × one slot field).
+        cut.FindAll(".counter-count-slot").Count.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_Level3Slot_InvalidComponent_LogsHfc1039_AndRendersGeneratedDefault()
+    {
+        // GC-P1 / AC15 — invalid-registration test fixture. Component lacks a Context parameter,
+        // so IsCompatibleComponent rejects it and HFC1039 is logged. Resolve returns null and
+        // FcFieldSlotHost falls back to RenderDefault, so the cell still shows the generated
+        // value "1,234" and no "counter-count-slot" markup appears.
+        UseFakeTime(s_fixedNow);
+
+        ListLogger<ProjectionSlotRegistry> capturedLogger = new();
+        Services.Replace(ServiceDescriptor.Singleton<ILogger<ProjectionSlotRegistry>>(capturedLogger));
+
+        Services.AddSlotOverride<CounterProjection, int>(
+            field: x => x.Count,
+            componentType: typeof(InvalidSlotMissingContext));
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = s_lastUpdated,
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            string markup = cut.Markup;
+
+            // Slot was REJECTED — no slot markup visible.
+            markup.ShouldNotContain("counter-count-slot");
+            markup.ShouldNotContain("INVALID-SLOT-RENDERED");
+
+            // Generated default still renders the field.
+            markup.ShouldContain("1,234");
+            markup.ShouldContain(">Count<");
+        });
+
+        // HFC1039 fired with the canonical Expected/Got/Fix teaching shape.
+        capturedLogger.Entries.ShouldContain(e =>
+            e.Level == LogLevel.Warning
+            && e.Message.Contains("HFC1039", StringComparison.Ordinal)
+            && e.Message.Contains("Expected:", StringComparison.Ordinal)
+            && e.Message.Contains("Got:", StringComparison.Ordinal)
+            && e.Message.Contains("Fix:", StringComparison.Ordinal)
+            && e.Message.Contains(typeof(CounterProjection).FullName!, StringComparison.Ordinal)
+            && e.Message.Contains(typeof(InvalidSlotMissingContext).FullName!, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task CounterProjectionView_Level2TemplateAndLevel3Slot_TemplateFieldRendererResolvesSlot()
+    {
+        // GC-P2 / AC10 / T6 spec line 122 — "tests proving a Level 2 template still renders a
+        // Level 3 slot for one field and default generated delegates for adjacent fields".
+        UseFakeTime(s_fixedNow);
+
+        Services.AddSingleton(new ProjectionTemplateAssemblySource(
+        [
+            new ProjectionTemplateDescriptor(
+                ProjectionType: typeof(CounterProjection),
+                Role: null,
+                TemplateType: typeof(SelectedCounterTemplate),
+                ContractVersion: ProjectionTemplateContractVersion.Current),
+        ]));
+
+        Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(field: x => x.Count);
+
+        await InitializeStoreAsync();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+
+        using CultureScope _ = new(CultureInfo.InvariantCulture);
+
+        dispatcher.Dispatch(new CounterProjectionLoadedAction(
+            Guid.NewGuid().ToString(),
+            [
+                new CounterProjection
+                {
+                    Id = "counter-1",
+                    Count = 1234,
+                    LastUpdated = s_lastUpdated,
+                },
+            ]));
+
+        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
+
+        await cut.WaitForAssertionAsync(() =>
+        {
+            string markup = cut.Markup;
+
+            // Level 2 template owns the body — selected-template marker present, no FluentDataGrid.
+            markup.ShouldContain("fc-selected-template");
+            markup.ShouldNotContain("fluent-data-grid");
+
+            // Level 2 template's FieldRenderer invocation for "Count" resolves through the
+            // Level 3 slot per spec line 281 ("the helper checks a Level 3 slot descriptor for
+            // (projection, role, field) and falls back to ... generated default field renderer").
+            markup.ShouldContain("counter-count-slot");
+            markup.ShouldContain("aria-label=\"Count: 1,234\"");
         });
     }
 
@@ -236,6 +377,12 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         });
 
         _ = await Verify(NormalizeGridMarkup(cut.Markup));
+    }
+
+    private void UseFakeTime(DateTimeOffset utcNow)
+    {
+        FakeTimeProvider fake = new(utcNow);
+        Services.Replace(ServiceDescriptor.Singleton<TimeProvider>(fake));
     }
 
     private static string NormalizeGridMarkup(string markup)
@@ -284,6 +431,45 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
             builder.AddContent(2, "sections:" + Context.Sections.Count.ToString(CultureInfo.InvariantCulture));
             builder.AddContent(3, Context.FieldRenderer(row, nameof(CounterProjection.Count)));
             builder.CloseElement();
+        }
+    }
+
+    // GC-P1 — invalid Level 3 slot fixture: lacks the required [Parameter] Context property.
+    // Triggers IsCompatibleComponent rejection → HFC1039 → fail-soft to default rendering.
+    private sealed class InvalidSlotMissingContext : ComponentBase
+    {
+        protected override void BuildRenderTree(RenderTreeBuilder builder)
+        {
+            builder.OpenElement(0, "span");
+            builder.AddAttribute(1, "class", "invalid-slot-marker");
+            builder.AddContent(2, "INVALID-SLOT-RENDERED");
+            builder.CloseElement();
+        }
+    }
+
+    private sealed class ListLogger<T> : ILogger<T>
+    {
+        public List<(LogLevel Level, string Message)> Entries { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Entries.Add((logLevel, formatter(state, exception)));
+
+        private sealed class NullScope : IDisposable
+        {
+            public static readonly NullScope Instance = new();
+
+            public void Dispose()
+            {
+            }
         }
     }
 }

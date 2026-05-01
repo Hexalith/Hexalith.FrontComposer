@@ -48,7 +48,12 @@ public sealed class FcFieldPlaceholderColumnEmissionTests {
 
         // Story 6-3: unsupported grid cells now enter the Level 3 slot host and share the
         // template default renderer, so placeholder source appears once per default renderer path.
-        CountOccurrences(output, "FcFieldPlaceholder").ShouldBe(4);
+        // GD-P3 (review of Story 6-3 Group D, 2026-05-01): EmitDetailField gates on
+        // HasProjectionSlot, emitting EmitDetailFieldValue in BOTH the slot-path renderDefault
+        // and the else branch (only one runs at runtime). Total per unsupported column:
+        // 1× grid TemplateColumn cell + 2× detail panel (slot renderDefault + non-slot else) = 3.
+        // 2 unsupported columns × 3 = 6.
+        CountOccurrences(output, "FcFieldPlaceholder").ShouldBe(6);
         output.ShouldContain("FluentDataGrid<OrderProjection>");
     }
 

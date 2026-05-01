@@ -106,35 +106,41 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         switch (columnPropertyName)
         {
             case "Name":
-                return RenderSlotField(row,
-                    fieldName: "Name",
-                    displayName: "Name",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Name,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"));
+                return HasProjectionSlot("Name")
+                    ? RenderSlotField(row,
+                        fieldName: "Name",
+                        displayName: "Name",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Name,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"))
+                    : RenderTemplateDefaultField(row, "Name");
             case "Count":
-                return RenderSlotField(row,
-                    fieldName: "Count",
-                    displayName: "Count",
-                    format: "N0",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Count,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"));
+                return HasProjectionSlot("Count")
+                    ? RenderSlotField(row,
+                        fieldName: "Count",
+                        displayName: "Count",
+                        format: "N0",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Count,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"))
+                    : RenderTemplateDefaultField(row, "Count");
             case "IsActive":
-                return RenderSlotField(row,
-                    fieldName: "IsActive",
-                    displayName: "Is Active",
-                    format: "Yes/No",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.IsActive,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"));
+                return HasProjectionSlot("IsActive")
+                    ? RenderSlotField(row,
+                        fieldName: "IsActive",
+                        displayName: "Is Active",
+                        format: "Yes/No",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.IsActive,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"))
+                    : RenderTemplateDefaultField(row, "IsActive");
             default:
                 return static _ => { };
         }
@@ -769,24 +775,36 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Name");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Name",
-                displayName: "Name",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Name,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Name"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Name",
+                    displayName: "Name",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Name,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Name ?? "\u2014");
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Name ?? "\u2014");
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -796,24 +814,36 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Count");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Count",
-                displayName: "Count",
-                format: "N0",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Count,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Count"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Count",
+                    displayName: "Count",
+                    format: "N0",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Count,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Count.HasValue ? entity.Count.Value.ToString("N0", CultureInfo.CurrentCulture) : "\u2014");
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Count.HasValue ? entity.Count.Value.ToString("N0", CultureInfo.CurrentCulture) : "\u2014");
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -823,24 +853,36 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Is Active");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "IsActive",
-                displayName: "Is Active",
-                format: "Yes/No",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.IsActive,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("IsActive"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "IsActive",
+                    displayName: "Is Active",
+                    format: "Yes/No",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.IsActive,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.IsActive.HasValue ? (entity.IsActive.Value ? "Yes" : "No") : "\u2014");
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.IsActive.HasValue ? (entity.IsActive.Value ? "Yes" : "No") : "\u2014");
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();

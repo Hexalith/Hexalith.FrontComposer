@@ -20,9 +20,10 @@
                             @Context.FieldRenderer(counter, nameof(CounterProjection.Count))
                         </FluentText>
                         <FluentText Size="TextSize.Size100" Weight="TextWeight.Regular">
-                            <span aria-label="Last changed">
-                                @Context.FieldRenderer(counter, nameof(CounterProjection.LastUpdated))
-                            </span>
+                            @* GC-P6 — let the FieldRenderer's [Display(Name="Last changed")]-derived
+                               header own the accessible name. A wrapping <span aria-label="..."> would
+                               duplicate the label and drift on localization. *@
+                            @Context.FieldRenderer(counter, nameof(CounterProjection.LastUpdated))
                         </FluentText>
                     </FluentStack>
                 </FluentCard>

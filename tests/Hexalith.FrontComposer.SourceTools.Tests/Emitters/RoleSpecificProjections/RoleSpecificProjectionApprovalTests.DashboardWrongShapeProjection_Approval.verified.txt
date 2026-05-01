@@ -107,35 +107,41 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
         switch (columnPropertyName)
         {
             case "Id":
-                return RenderSlotField(row,
-                    fieldName: "Id",
-                    displayName: "Id",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Id,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+                return HasProjectionSlot("Id")
+                    ? RenderSlotField(row,
+                        fieldName: "Id",
+                        displayName: "Id",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Id,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))
+                    : RenderTemplateDefaultField(row, "Id");
             case "FreeFormNote":
-                return RenderSlotField(row,
-                    fieldName: "FreeFormNote",
-                    displayName: "Free Form Note",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.FreeFormNote,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "FreeFormNote"));
+                return HasProjectionSlot("FreeFormNote")
+                    ? RenderSlotField(row,
+                        fieldName: "FreeFormNote",
+                        displayName: "Free Form Note",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.FreeFormNote,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "FreeFormNote"))
+                    : RenderTemplateDefaultField(row, "FreeFormNote");
             case "RecordedAt":
-                return RenderSlotField(row,
-                    fieldName: "RecordedAt",
-                    displayName: "Recorded At",
-                    format: "d",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.RecordedAt,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "RecordedAt"));
+                return HasProjectionSlot("RecordedAt")
+                    ? RenderSlotField(row,
+                        fieldName: "RecordedAt",
+                        displayName: "Recorded At",
+                        format: "d",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.RecordedAt,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "RecordedAt"))
+                    : RenderTemplateDefaultField(row, "RecordedAt");
             default:
                 return static _ => { };
         }
@@ -768,24 +774,36 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Id",
-                displayName: "Id",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Id,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Id"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Id,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Id);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Id);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -795,24 +813,36 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
                 labelBuilder.AddContent(0, "Free Form Note");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "FreeFormNote",
-                displayName: "Free Form Note",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.FreeFormNote,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("FreeFormNote"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "FreeFormNote",
+                    displayName: "Free Form Note",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.FreeFormNote,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.FreeFormNote);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.FreeFormNote);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -822,24 +852,36 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
                 labelBuilder.AddContent(0, "Recorded At");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "RecordedAt",
-                displayName: "Recorded At",
-                format: "d",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.RecordedAt,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("RecordedAt"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "RecordedAt",
+                    displayName: "Recorded At",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.RecordedAt,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.RecordedAt.ToString("d", CultureInfo.CurrentCulture));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.RecordedAt.ToString("d", CultureInfo.CurrentCulture));
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();

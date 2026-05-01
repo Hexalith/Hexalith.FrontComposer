@@ -104,15 +104,17 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         switch (columnPropertyName)
         {
             case "Status":
-                return RenderSlotField(row,
-                    fieldName: "Status",
-                    displayName: "Status",
-                    format: "Humanize:30",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Status,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+                return HasProjectionSlot("Status")
+                    ? RenderSlotField(row,
+                        fieldName: "Status",
+                        displayName: "Status",
+                        format: "Humanize:30",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Status,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))
+                    : RenderTemplateDefaultField(row, "Status");
             default:
                 return static _ => { };
         }
@@ -715,40 +717,68 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Status");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Status",
-                displayName: "Status",
-                format: "Humanize:30",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Status,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Status"))
             {
-                int slotSeq = 0;
+                RenderSlotField(entity,
+                    fieldName: "Status",
+                    displayName: "Status",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Status,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    var _memberName = entity.Status.ToString();
+                    var _label = HumanizeEnumLabel(_memberName);
+                    switch (_memberName)
+                    {
+                        case "Active":
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                            slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                            slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                            slotBuilder.CloseComponent();
+                            break;
+                        case "Inactive":
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                            slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                            slotBuilder.CloseComponent();
+                            break;
+                        default:
+                            slotBuilder.AddContent(slotSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            break;
+                    }
+                })(b);
+            }
+            else
+            {
                 var _memberName = entity.Status.ToString();
                 var _label = HumanizeEnumLabel(_memberName);
                 switch (_memberName)
                 {
                     case "Active":
-                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
-                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
-                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
-                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
-                        slotBuilder.CloseComponent();
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                        b.AddAttribute(fieldSeq++, "Label", _label);
+                        b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                        b.CloseComponent();
                         break;
                     case "Inactive":
-                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
-                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
-                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
-                        slotBuilder.CloseComponent();
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                        b.AddAttribute(fieldSeq++, "Label", _label);
+                        b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                        b.CloseComponent();
                         break;
                     default:
-                        slotBuilder.AddContent(slotSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                        b.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
                         break;
                 }
-            })(b);
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();

@@ -104,15 +104,17 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         switch (columnPropertyName)
         {
             case "Id":
-                return RenderSlotField(row,
-                    fieldName: "Id",
-                    displayName: "Id",
-                    format: "Truncate:8",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Id,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+                return HasProjectionSlot("Id")
+                    ? RenderSlotField(row,
+                        fieldName: "Id",
+                        displayName: "Id",
+                        format: "Truncate:8",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Id,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))
+                    : RenderTemplateDefaultField(row, "Id");
             default:
                 return static _ => { };
         }
@@ -669,24 +671,36 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Id",
-                displayName: "Id",
-                format: "Truncate:8",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Id,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Id"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: "Truncate:8",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Id,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Id.ToString("N"));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Id.ToString("N"));
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();

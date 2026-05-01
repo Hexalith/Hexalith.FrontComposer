@@ -1,0 +1,1217 @@
+commit 1ffff205aa86bb47614dd97198fc32fcd1a33d19
+Author: Jérôme Piquot <jpiquot@itaneo.com>
+Date:   Thu Apr 30 13:43:18 2026 +0200
+
+    feat: Implement Level 3 field-slot functionality with registry and rendering support
+    
+    - Added `FcFieldSlotHost<TProjection, TField>` component for rendering field slots.
+    - Introduced `ProjectionSlotRegistry` for managing field-slot descriptors.
+    - Created `ProjectionSlotServiceCollectionExtensions` for registering slot overrides.
+    - Implemented tests for `FcFieldSlotHost` and `ProjectionSlotRegistry` to ensure correct behavior.
+    - Added support for fallback rendering and logging for null parameters.
+    - Enhanced service registration methods for projection templates and slots.
+
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs
+index d6fe320..c2d6bb6 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/ColumnEmitter.cs
+@@ -389,6 +389,7 @@ internal static class ColumnEmitter {
+         _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(slotFormatOverride ?? col.FormatHint) + ",");
+         _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
+         _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
++        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
+         _ = sb.AppendLine(indent + "    value: item." + col.PropertyName + ",");
+         _ = sb.AppendLine(indent + "    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))));");
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs
+index 5842087..d3d1041 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/ProjectionRoleBodyEmitter.cs
+@@ -731,6 +731,7 @@ public static class ProjectionRoleBodyEmitter {
+         _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
+         _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
+         _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
++        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
+         _ = sb.AppendLine(indent + "    value: " + instanceName + "." + col.PropertyName + ",");
+         _ = sb.AppendLine(indent + "    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))(" + builderName + ");");
+     }
+@@ -767,6 +768,7 @@ public static class ProjectionRoleBodyEmitter {
+         _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
+         _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
+         _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
++        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
+         _ = sb.AppendLine(indent + "    value: entity." + col.PropertyName + ",");
+         _ = sb.AppendLine(indent + "    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>");
+         _ = sb.AppendLine(indent + "{");
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
+index 32a7965..c4f7820 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/RazorEmitter.cs
+@@ -418,6 +418,7 @@ public static class RazorEmitter {
+             _ = sb.AppendLine("                    format: " + SlotStringLiteral(col.FormatHint) + ",");
+             _ = sb.AppendLine("                    order: " + SlotNullableIntLiteral(col.Priority) + ",");
+             _ = sb.AppendLine("                    isFieldReadOnly: false,");
++            _ = sb.AppendLine("                    description: " + SlotStringLiteral(col.Description) + ",");
+             _ = sb.AppendLine("                    value: row." + col.PropertyName + ",");
+             _ = sb.AppendLine("                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"));");
+         }
+@@ -500,6 +501,7 @@ public static class RazorEmitter {
+         _ = sb.AppendLine("        string? format,");
+         _ = sb.AppendLine("        int? order,");
+         _ = sb.AppendLine("        bool isFieldReadOnly,");
++        _ = sb.AppendLine("        string? description,");
+         _ = sb.AppendLine("        TField? value,");
+         _ = sb.AppendLine("        global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<" + model.TypeName + ", TField>> renderDefault)");
+         _ = sb.AppendLine("    {");
+@@ -519,7 +521,8 @@ public static class RazorEmitter {
+         _ = sb.AppendLine("                Format: format,");
+         _ = sb.AppendLine("                Order: order,");
+         _ = sb.AppendLine("                IsReadOnly: isFieldReadOnly,");
+-        _ = sb.AppendLine("                Hints: null);");
++        _ = sb.AppendLine("                Hints: null,");
++        _ = sb.AppendLine("                Description: description);");
+         _ = sb.AppendLine("            builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<" + model.TypeName + ", TField>>(0);");
+         _ = sb.AppendLine("            builder.AddAttribute(1, \"Parent\", row);");
+         _ = sb.AppendLine("            builder.AddAttribute(2, \"Value\", value);");
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.BasicProjection_Snapshot.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.BasicProjection_Snapshot.verified.txt
+index e94df7a..14c9196 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.BasicProjection_Snapshot.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.BasicProjection_Snapshot.verified.txt
+@@ -113,6 +113,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Name,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"));
+             case "Count":
+@@ -122,6 +123,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Count,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"));
+             case "IsActive":
+@@ -131,6 +133,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Yes/No",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.IsActive,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"));
+             case "CreatedAt":
+@@ -140,6 +143,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.CreatedAt,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CreatedAt"));
+             default:
+@@ -243,6 +247,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
+     {
+@@ -262,7 +267,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -672,6 +678,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Name,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"))));
+                 b.CloseComponent();
+@@ -696,6 +703,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Count,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"))));
+                 b.CloseComponent();
+@@ -720,6 +728,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Yes/No",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.IsActive,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"))));
+                 b.CloseComponent();
+@@ -743,6 +752,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.CreatedAt,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CreatedAt"))));
+                 b.CloseComponent();
+@@ -814,6 +824,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Name,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -840,6 +851,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "N0",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Count,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -866,6 +878,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "Yes/No",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.IsActive,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -892,6 +905,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "d",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.CreatedAt,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DisplayNameOverrides_Snapshot.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DisplayNameOverrides_Snapshot.verified.txt
+index a8df56c..a1d708d 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DisplayNameOverrides_Snapshot.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.DisplayNameOverrides_Snapshot.verified.txt
+@@ -110,6 +110,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.OrderDate,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OrderDate"));
+             default:
+@@ -171,6 +172,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
+     {
+@@ -190,7 +192,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -600,6 +603,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.OrderDate,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OrderDate"))));
+                 b.CloseComponent();
+@@ -671,6 +675,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "d",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.OrderDate,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.EnumAndBadgeMappings_Snapshot.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.EnumAndBadgeMappings_Snapshot.verified.txt
+index 7d6405d..04a69b6 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.EnumAndBadgeMappings_Snapshot.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.EnumAndBadgeMappings_Snapshot.verified.txt
+@@ -110,6 +110,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Status,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+             default:
+@@ -192,6 +193,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
+     {
+@@ -211,7 +213,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -621,6 +624,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Status,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))));
+                 b.CloseComponent();
+@@ -717,6 +721,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "Humanize:30",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Status,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.GuidTruncation_Snapshot.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.GuidTruncation_Snapshot.verified.txt
+index e7ac1c0..fdab154 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.GuidTruncation_Snapshot.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.GuidTruncation_Snapshot.verified.txt
+@@ -110,6 +110,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Truncate:8",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             default:
+@@ -171,6 +172,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
+     {
+@@ -190,7 +192,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -600,6 +603,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Truncate:8",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
+                 b.CloseComponent();
+@@ -671,6 +675,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "Truncate:8",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.NullableProperties_Snapshot.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.NullableProperties_Snapshot.verified.txt
+index 21d5d2f..bde3a74 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.NullableProperties_Snapshot.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RazorEmitterTests.NullableProperties_Snapshot.verified.txt
+@@ -112,6 +112,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Name,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"));
+             case "Count":
+@@ -121,6 +122,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Count,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"));
+             case "IsActive":
+@@ -130,6 +132,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Yes/No",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.IsActive,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"));
+             default:
+@@ -219,6 +222,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<OrderProjection, TField>> renderDefault)
+     {
+@@ -238,7 +242,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<OrderProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -648,6 +653,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Name,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Name"))));
+                 b.CloseComponent();
+@@ -672,6 +678,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Count,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Count"))));
+                 b.CloseComponent();
+@@ -696,6 +703,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Yes/No",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.IsActive,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "IsActive"))));
+                 b.CloseComponent();
+@@ -767,6 +775,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Name,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -793,6 +802,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "N0",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Count,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -819,6 +829,7 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
+                 format: "Yes/No",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.IsActive,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueNoEnumProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueNoEnumProjection_Approval.verified.txt
+index 390f505..410ba0e 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueNoEnumProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueNoEnumProjection_Approval.verified.txt
+@@ -116,6 +116,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "Summary":
+@@ -125,6 +126,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Summary,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Summary"));
+             case "Priority":
+@@ -134,6 +136,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Priority,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"));
+             default:
+@@ -223,6 +226,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<ActionQueueNoEnumProjection, TField>> renderDefault)
+     {
+@@ -242,7 +246,8 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<ActionQueueNoEnumProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -660,6 +665,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
+                 b.AddAttribute(colSeq++, "Sortable", true);
+@@ -691,6 +697,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Summary,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Summary"))));
+                 b.CloseComponent();
+@@ -715,6 +722,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Priority,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"))));
+                 b.CloseComponent();
+@@ -816,6 +824,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -842,6 +851,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Summary,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -868,6 +878,7 @@ public partial class ActionQueueNoEnumProjectionView : ComponentBase, IAsyncDisp
+                 format: "N0",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Priority,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt
+index e16f2d0..36358e9 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.ActionQueueProjection_Approval.verified.txt
+@@ -117,6 +117,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "CustomerName":
+@@ -126,6 +127,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.CustomerName,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CustomerName"));
+             case "Status":
+@@ -135,6 +137,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Status,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+             case "Priority":
+@@ -144,6 +147,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Priority,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"));
+             default:
+@@ -282,6 +286,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<ActionQueueProjection, TField>> renderDefault)
+     {
+@@ -301,7 +306,8 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<ActionQueueProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -719,6 +725,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
+                 b.CloseComponent();
+@@ -742,6 +749,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.CustomerName,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "CustomerName"))));
+                 b.CloseComponent();
+@@ -765,6 +773,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Status,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))));
+                 b.AddAttribute(colSeq++, "Sortable", true);
+@@ -836,6 +845,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Priority,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Priority"))));
+                 b.CloseComponent();
+@@ -938,6 +948,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -964,6 +975,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.CustomerName,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -990,6 +1002,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                 format: "Humanize:30",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Status,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -1046,6 +1059,7 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
+                 format: "N0",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Priority,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardProjection_Approval.verified.txt
+index b1f4624..a7192bf 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardProjection_Approval.verified.txt
+@@ -113,6 +113,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "Kpi":
+@@ -122,6 +123,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Kpi,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Kpi"));
+             case "Value":
+@@ -131,6 +133,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N2",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Value,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Value"));
+             default:
+@@ -220,6 +223,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<DashboardProjection, TField>> renderDefault)
+     {
+@@ -239,7 +243,8 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<DashboardProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -649,6 +654,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
+                 b.CloseComponent();
+@@ -672,6 +678,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Kpi,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Kpi"))));
+                 b.CloseComponent();
+@@ -696,6 +703,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                     format: "N2",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Value,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Value"))));
+                 b.CloseComponent();
+@@ -768,6 +776,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -794,6 +803,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Kpi,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -820,6 +830,7 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
+                 format: "N2",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Value,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardWrongShapeProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardWrongShapeProjection_Approval.verified.txt
+index cf29353..7d28986 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardWrongShapeProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DashboardWrongShapeProjection_Approval.verified.txt
+@@ -113,6 +113,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "FreeFormNote":
+@@ -122,6 +123,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.FreeFormNote,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "FreeFormNote"));
+             case "RecordedAt":
+@@ -131,6 +133,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.RecordedAt,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "RecordedAt"));
+             default:
+@@ -220,6 +223,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<DashboardWrongShapeProjection, TField>> renderDefault)
+     {
+@@ -239,7 +243,8 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<DashboardWrongShapeProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -649,6 +654,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
+                 b.CloseComponent();
+@@ -672,6 +678,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.FreeFormNote,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "FreeFormNote"))));
+                 b.CloseComponent();
+@@ -695,6 +702,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.RecordedAt,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "RecordedAt"))));
+                 b.CloseComponent();
+@@ -766,6 +774,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -792,6 +801,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.FreeFormNote,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -818,6 +828,7 @@ public partial class DashboardWrongShapeProjectionView : ComponentBase, IAsyncDi
+                 format: "d",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.RecordedAt,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DetailRecordProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DetailRecordProjection_Approval.verified.txt
+index 05ac47f..c7ba78b 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DetailRecordProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.DetailRecordProjection_Approval.verified.txt
+@@ -72,6 +72,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "LegalName":
+@@ -81,6 +82,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.LegalName,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LegalName"));
+             case "TaxId":
+@@ -90,6 +92,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.TaxId,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "TaxId"));
+             case "ContactEmail":
+@@ -99,6 +102,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.ContactEmail,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "ContactEmail"));
+             case "BillingAddress":
+@@ -108,6 +112,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.BillingAddress,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "BillingAddress"));
+             case "OnboardedAt":
+@@ -117,6 +122,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.OnboardedAt,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OnboardedAt"));
+             case "AccountManager":
+@@ -126,6 +132,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.AccountManager,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "AccountManager"));
+             case "LoyaltyTier":
+@@ -135,6 +142,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.LoyaltyTier,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "LoyaltyTier"));
+             case "Seats":
+@@ -144,6 +152,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Seats,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Seats"));
+             default:
+@@ -317,6 +326,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<DetailRecordProjection, TField>> renderDefault)
+     {
+@@ -336,7 +346,8 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<DetailRecordProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -503,6 +514,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -529,6 +541,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.LegalName,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -555,6 +568,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.TaxId,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -581,6 +595,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.ContactEmail,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -607,6 +622,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.BillingAddress,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -633,6 +649,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                 format: "d",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.OnboardedAt,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -671,6 +688,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: entity.AccountManager,
+                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                 {
+@@ -697,6 +715,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: entity.LoyaltyTier,
+                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                 {
+@@ -723,6 +742,7 @@ public partial class DetailRecordProjectionView : ComponentBase, IDisposable
+                     format: "N0",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: entity.Seats,
+                     renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                 {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt
+index f1380b7..84103c0 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.StatusOverviewProjection_Approval.verified.txt
+@@ -132,6 +132,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "Title":
+@@ -141,6 +142,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Title,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Title"));
+             case "Status":
+@@ -150,6 +152,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Status,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+             default:
+@@ -274,6 +277,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<StatusOverviewProjection, TField>> renderDefault)
+     {
+@@ -293,7 +297,8 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<StatusOverviewProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -823,6 +828,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -849,6 +855,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Title,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -875,6 +882,7 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
+                 format: "Humanize:30",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Status,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.TimelineProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.TimelineProjection_Approval.verified.txt
+index 7d35202..76f7d16 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.TimelineProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.TimelineProjection_Approval.verified.txt
+@@ -72,6 +72,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "Actor":
+@@ -81,6 +82,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Actor,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Actor"));
+             case "Description":
+@@ -90,6 +92,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Description,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"));
+             case "OccurredAt":
+@@ -99,6 +102,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.OccurredAt,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"));
+             case "Severity":
+@@ -108,6 +112,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Severity,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"));
+             default:
+@@ -253,6 +258,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<TimelineProjection, TField>> renderDefault)
+     {
+@@ -272,7 +278,8 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<TimelineProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -435,6 +442,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: "d",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.OccurredAt,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"))(b);
+                 b.AddMarkupContent(rowSeq++, " ");
+@@ -444,6 +452,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Description,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"))(b);
+                 b.AddMarkupContent(rowSeq++, " ");
+@@ -453,6 +462,7 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Severity,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"))(b);
+                 b.CloseElement();
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt
+index c80a52d..cd49dec 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RoleSpecificProjections/RoleSpecificProjectionApprovalTests.WhenStateTypoProjection_Approval.verified.txt
+@@ -115,6 +115,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+             case "Status":
+@@ -124,6 +125,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: row.Status,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+             default:
+@@ -227,6 +229,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+         string? format,
+         int? order,
+         bool isFieldReadOnly,
++        string? description,
+         TField? value,
+         global::Microsoft.AspNetCore.Components.RenderFragment<global::Hexalith.FrontComposer.Contracts.Rendering.FieldSlotContext<WhenStateTypoProjection, TField>> renderDefault)
+     {
+@@ -246,7 +249,8 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+                 Format: format,
+                 Order: order,
+                 IsReadOnly: isFieldReadOnly,
+-                Hints: null);
++                Hints: null,
++                Description: description);
+             builder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Rendering.FcFieldSlotHost<WhenStateTypoProjection, TField>>(0);
+             builder.AddAttribute(1, "Parent", row);
+             builder.AddAttribute(2, "Value", value);
+@@ -664,6 +668,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+                     format: (string?)null,
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Id,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))));
+                 b.CloseComponent();
+@@ -687,6 +692,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+                     format: "Humanize:30",
+                     order: (int?)null,
+                     isFieldReadOnly: false,
++                    description: (string?)null,
+                     value: item.Status,
+                     renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))));
+                 b.AddAttribute(colSeq++, "Sortable", true);
+@@ -826,6 +832,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+                 format: (string?)null,
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Id,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {
+@@ -852,6 +859,7 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
+                 format: "Humanize:30",
+                 order: (int?)null,
+                 isFieldReadOnly: false,
++                description: (string?)null,
+                 value: entity.Status,
+                 renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+             {

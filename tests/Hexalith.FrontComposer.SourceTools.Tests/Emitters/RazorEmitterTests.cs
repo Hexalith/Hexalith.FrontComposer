@@ -163,6 +163,22 @@ public class RazorEmitterTests {
         return Verify(result);
     }
 
+    [Fact]
+    public Task DescriptionWithEscapeEdgeCases_Snapshot() {
+        // GD-P1 (review of Story 6-3 Group D, 2026-05-01) — Lock down the slot-line description
+        // literalizer (RazorEmitter.SlotStringLiteral) for non-null values containing escape
+        // edge cases that prior snapshots never exercised: embedded quotes, backslash, and a
+        // newline. The verified.txt snapshot proves SlotStringLiteral routes through the same
+        // EscapeString helper as DescriptionTooltipEmissionTests.
+        const string EdgeCaseDescription = "Quoted \"value\", \\ backslash, and \n newline.";
+        var model = new RazorModel("OrderProjection", "TestDomain", "Orders",
+            new EquatableArray<ColumnModel>(ImmutableArray.Create(
+                new ColumnModel("Name", "Name", TypeCategory.Text, formatHint: null, isNullable: false, badgeMappings: _emptyBadges, description: EdgeCaseDescription))));
+
+        string result = RazorEmitter.Emit(model);
+        return Verify(result);
+    }
+
     private static ColumnModel Col(string name, string header, TypeCategory cat, string? formatHint = null, bool isNullable = false)
                                                 => new(name, header, cat, formatHint, isNullable, _emptyBadges);
 

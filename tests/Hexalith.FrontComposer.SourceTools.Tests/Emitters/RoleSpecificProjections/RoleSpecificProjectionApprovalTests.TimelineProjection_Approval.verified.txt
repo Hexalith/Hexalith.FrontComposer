@@ -66,55 +66,65 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
         switch (columnPropertyName)
         {
             case "Id":
-                return RenderSlotField(row,
-                    fieldName: "Id",
-                    displayName: "Id",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Id,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+                return HasProjectionSlot("Id")
+                    ? RenderSlotField(row,
+                        fieldName: "Id",
+                        displayName: "Id",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Id,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))
+                    : RenderTemplateDefaultField(row, "Id");
             case "Actor":
-                return RenderSlotField(row,
-                    fieldName: "Actor",
-                    displayName: "Actor",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Actor,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Actor"));
+                return HasProjectionSlot("Actor")
+                    ? RenderSlotField(row,
+                        fieldName: "Actor",
+                        displayName: "Actor",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Actor,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Actor"))
+                    : RenderTemplateDefaultField(row, "Actor");
             case "Description":
-                return RenderSlotField(row,
-                    fieldName: "Description",
-                    displayName: "Description",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Description,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"));
+                return HasProjectionSlot("Description")
+                    ? RenderSlotField(row,
+                        fieldName: "Description",
+                        displayName: "Description",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Description,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"))
+                    : RenderTemplateDefaultField(row, "Description");
             case "OccurredAt":
-                return RenderSlotField(row,
-                    fieldName: "OccurredAt",
-                    displayName: "Occurred At",
-                    format: "d",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.OccurredAt,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"));
+                return HasProjectionSlot("OccurredAt")
+                    ? RenderSlotField(row,
+                        fieldName: "OccurredAt",
+                        displayName: "Occurred At",
+                        format: "d",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.OccurredAt,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"))
+                    : RenderTemplateDefaultField(row, "OccurredAt");
             case "Severity":
-                return RenderSlotField(row,
-                    fieldName: "Severity",
-                    displayName: "Severity",
-                    format: "Humanize:30",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Severity,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"));
+                return HasProjectionSlot("Severity")
+                    ? RenderSlotField(row,
+                        fieldName: "Severity",
+                        displayName: "Severity",
+                        format: "Humanize:30",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Severity,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"))
+                    : RenderTemplateDefaultField(row, "Severity");
             default:
                 return static _ => { };
         }
@@ -436,35 +446,56 @@ public partial class TimelineProjectionView : ComponentBase, IDisposable
             {
                 b.OpenElement(rowSeq++, "div");
                 b.AddAttribute(rowSeq++, "class", "fc-timeline-row");
-                RenderSlotField(item,
-                    fieldName: "OccurredAt",
-                    displayName: "Occurred At",
-                    format: "d",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: item.OccurredAt,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"))(b);
+                if (HasProjectionSlot("OccurredAt"))
+                {
+                    RenderSlotField(item,
+                        fieldName: "OccurredAt",
+                        displayName: "Occurred At",
+                        format: "d",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: item.OccurredAt,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OccurredAt"))(b);
+                }
+                else
+                {
+                    RenderTemplateDefaultField(item, "OccurredAt")(b);
+                }
                 b.AddMarkupContent(rowSeq++, " ");
-                RenderSlotField(item,
-                    fieldName: "Description",
-                    displayName: "Description",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: item.Description,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"))(b);
+                if (HasProjectionSlot("Description"))
+                {
+                    RenderSlotField(item,
+                        fieldName: "Description",
+                        displayName: "Description",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: item.Description,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Description"))(b);
+                }
+                else
+                {
+                    RenderTemplateDefaultField(item, "Description")(b);
+                }
                 b.AddMarkupContent(rowSeq++, " ");
-                RenderSlotField(item,
-                    fieldName: "Severity",
-                    displayName: "Severity",
-                    format: "Humanize:30",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: item.Severity,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"))(b);
+                if (HasProjectionSlot("Severity"))
+                {
+                    RenderSlotField(item,
+                        fieldName: "Severity",
+                        displayName: "Severity",
+                        format: "Humanize:30",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: item.Severity,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Severity"))(b);
+                }
+                else
+                {
+                    RenderTemplateDefaultField(item, "Severity")(b);
+                }
                 b.CloseElement();
             }
         }));

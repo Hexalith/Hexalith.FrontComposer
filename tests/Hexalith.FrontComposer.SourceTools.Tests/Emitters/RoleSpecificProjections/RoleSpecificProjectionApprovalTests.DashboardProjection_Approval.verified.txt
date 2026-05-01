@@ -107,35 +107,41 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
         switch (columnPropertyName)
         {
             case "Id":
-                return RenderSlotField(row,
-                    fieldName: "Id",
-                    displayName: "Id",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Id,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+                return HasProjectionSlot("Id")
+                    ? RenderSlotField(row,
+                        fieldName: "Id",
+                        displayName: "Id",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Id,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))
+                    : RenderTemplateDefaultField(row, "Id");
             case "Kpi":
-                return RenderSlotField(row,
-                    fieldName: "Kpi",
-                    displayName: "Kpi",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Kpi,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Kpi"));
+                return HasProjectionSlot("Kpi")
+                    ? RenderSlotField(row,
+                        fieldName: "Kpi",
+                        displayName: "Kpi",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Kpi,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Kpi"))
+                    : RenderTemplateDefaultField(row, "Kpi");
             case "Value":
-                return RenderSlotField(row,
-                    fieldName: "Value",
-                    displayName: "Value",
-                    format: "N2",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Value,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Value"));
+                return HasProjectionSlot("Value")
+                    ? RenderSlotField(row,
+                        fieldName: "Value",
+                        displayName: "Value",
+                        format: "N2",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Value,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Value"))
+                    : RenderTemplateDefaultField(row, "Value");
             default:
                 return static _ => { };
         }
@@ -770,24 +776,36 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Id",
-                displayName: "Id",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Id,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Id"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Id,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Id);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Id);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -797,24 +815,36 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Kpi");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Kpi",
-                displayName: "Kpi",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Kpi,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Kpi"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Kpi",
+                    displayName: "Kpi",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Kpi,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Kpi);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Kpi);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -824,24 +854,36 @@ public partial class DashboardProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Value");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Value",
-                displayName: "Value",
-                format: "N2",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Value,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Value"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Value",
+                    displayName: "Value",
+                    format: "N2",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Value,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Value.ToString("N2", CultureInfo.CurrentCulture));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Value.ToString("N2", CultureInfo.CurrentCulture));
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();

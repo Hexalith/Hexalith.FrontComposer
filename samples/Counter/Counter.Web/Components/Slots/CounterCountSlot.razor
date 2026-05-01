@@ -1,18 +1,25 @@
 @using Counter.Domain
 @using Hexalith.FrontComposer.Contracts.Rendering
 
-<span class="counter-count-slot" aria-label="@AriaLabel">
+@* GC-P7 (deferred) — `Context.Field.Description` is reachable but rendering it as
+   visible/`title` content depends on the Story 4-6 description-emission emitter bug
+   being fixed (Typography.Caption FcTypoToken / FluentLabel.Typography enum mismatch
+   in ProjectionRoleBodyEmitter.cs:838). Reaching the channel from inside the slot is
+   safe here; we just don't bind a description on CounterProjection.Count yet. *@
+<span class="counter-count-slot" aria-label="@AriaLabel" title="@(Description ?? string.Empty)">
     <strong>@FormattedValue</strong>
     <span class="counter-count-slot__label">@Label</span>
 </span>
 
 @code {
-    [Parameter]
+    [Parameter, EditorRequired]
     public FieldSlotContext<CounterProjection, int> Context { get; set; } = default!;
 
     private string Label => Context.Field.DisplayName ?? Context.Field.Name;
 
     private string FormattedValue => Context.Value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    private string? Description => Context.Field.Description;
 
     private string AriaLabel => $"{Label}: {FormattedValue}";
 }

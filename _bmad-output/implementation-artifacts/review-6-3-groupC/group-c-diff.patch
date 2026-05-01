@@ -1,0 +1,315 @@
+diff --git a/samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor b/samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor
+new file mode 100644
+index 0000000..22550a8
+--- /dev/null
++++ b/samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor
+@@ -0,0 +1,18 @@
++@using Counter.Domain
++@using Hexalith.FrontComposer.Contracts.Rendering
++
++<span class="counter-count-slot" aria-label="@AriaLabel">
++    <strong>@FormattedValue</strong>
++    <span class="counter-count-slot__label">@Label</span>
++</span>
++
++@code {
++    [Parameter]
++    public FieldSlotContext<CounterProjection, int> Context { get; set; } = default!;
++
++    private string Label => Context.Field.DisplayName ?? Context.Field.Name;
++
++    private string FormattedValue => Context.Value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
++
++    private string AriaLabel => $"{Label}: {FormattedValue}";
++}
+diff --git a/samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor.css b/samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor.css
+new file mode 100644
+index 0000000..38eca2d
+--- /dev/null
++++ b/samples/Counter/Counter.Web/Components/Slots/CounterCountSlot.razor.css
+@@ -0,0 +1,14 @@
++.counter-count-slot {
++    align-items: baseline;
++    display: inline-flex;
++    gap: 0.375rem;
++}
++
++.counter-count-slot strong {
++    font-variant-numeric: tabular-nums;
++}
++
++.counter-count-slot__label {
++    color: var(--neutral-foreground-hint);
++    font-size: 0.875rem;
++}
+diff --git a/samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor b/samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor
+new file mode 100644
+index 0000000..2cfa7fc
+--- /dev/null
++++ b/samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor
+@@ -0,0 +1,36 @@
++@using Counter.Domain
++@using Hexalith.FrontComposer.Contracts.Rendering
++@using Microsoft.FluentUI.AspNetCore.Components
++
++@if (Context is not null && Context.Items.Count > 0)
++{
++    <FluentStack Orientation="Orientation.Vertical" Style="gap: 12px;">
++        <FluentText Size="TextSize.Size300" Weight="TextWeight.Semibold">
++            Counter cards (Level 2 template)
++        </FluentText>
++        <div class="counter-cards" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px;">
++            @foreach (var counter in Context.Items)
++            {
++                <FluentCard role="article" Style="padding: 16px;">
++                    <FluentStack Orientation="Orientation.Vertical" Style="gap: 6px;">
++                        <FluentText Size="TextSize.Size200" Weight="TextWeight.Semibold">
++                            @Context.FieldRenderer(counter, nameof(CounterProjection.Id))
++                        </FluentText>
++                        <FluentText Size="TextSize.Size500" Weight="TextWeight.Bold">
++                            @Context.FieldRenderer(counter, nameof(CounterProjection.Count))
++                        </FluentText>
++                        <FluentText Size="TextSize.Size100" Weight="TextWeight.Regular">
++                            <span aria-label="Last changed">
++                                @Context.FieldRenderer(counter, nameof(CounterProjection.LastUpdated))
++                            </span>
++                        </FluentText>
++                    </FluentStack>
++                </FluentCard>
++            }
++        </div>
++    </FluentStack>
++}
++else
++{
++    @Context?.DefaultBody
++}
+diff --git a/samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor.cs b/samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor.cs
+new file mode 100644
+index 0000000..05ce1ea
+--- /dev/null
++++ b/samples/Counter/Counter.Web/Components/Templates/CounterCardLayoutTemplate.razor.cs
+@@ -0,0 +1,21 @@
++using Counter.Domain;
++
++using Hexalith.FrontComposer.Contracts.Attributes;
++using Hexalith.FrontComposer.Contracts.Rendering;
++
++using Microsoft.AspNetCore.Components;
++
++namespace Counter.Web.Components.Templates;
++
++/// <summary>
++/// Story 6-2 T9 / AC9 — Level 2 typed Razor template for <see cref="CounterProjection"/>.
++/// Rearranges the projection into a card grid summary while letting the framework render
++/// individual fields via <see cref="ProjectionTemplateContext{TProjection}.FieldRenderer"/>
++/// so Level 1 annotations (the [RelativeTime] LastUpdated formatter and the Display(Name)
++/// "Last changed" header) flow through unchanged.
++/// </summary>
++[ProjectionTemplate(typeof(CounterProjection), ProjectionTemplateContractVersion.Current)]
++public partial class CounterCardLayoutTemplate {
++    [Parameter, EditorRequired]
++    public ProjectionTemplateContext<CounterProjection> Context { get; set; } = default!;
++}
+diff --git a/samples/Counter/Counter.Web/Counter.Web.csproj b/samples/Counter/Counter.Web/Counter.Web.csproj
+index c489149..027cb23 100644
+--- a/samples/Counter/Counter.Web/Counter.Web.csproj
++++ b/samples/Counter/Counter.Web/Counter.Web.csproj
+@@ -8,5 +8,10 @@
+   <ItemGroup>
+     <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
+     <ProjectReference Include="..\Counter.Domain\Counter.Domain.csproj" />
++    <!-- Story 6-2 T9 — discover [ProjectionTemplate] markers authored in this Razor/Web project. -->
++    <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj"
++                      OutputItemType="Analyzer"
++                      ReferenceOutputAssembly="false"
++                      SetTargetFramework="TargetFramework=netstandard2.0" />
+   </ItemGroup>
+ </Project>
+diff --git a/samples/Counter/Counter.Web/Program.cs b/samples/Counter/Counter.Web/Program.cs
+index 0a42963..8f655ae 100644
+--- a/samples/Counter/Counter.Web/Program.cs
++++ b/samples/Counter/Counter.Web/Program.cs
+@@ -1,5 +1,6 @@
+ using Counter.Domain;
+ using Counter.Web;
++using Counter.Web.Components.Slots;
+ 
+ using Hexalith.FrontComposer.Contracts;
+ using Hexalith.FrontComposer.Contracts.Rendering;
+@@ -28,6 +29,16 @@ builder.Services.AddHexalithFrontComposerQuickstart(
+     o => o.ScanAssemblies(typeof(Program).Assembly, typeof(CounterDomain).Assembly));
+ builder.Services.AddHexalithDomain<CounterDomain>();
+ 
++// Story 6-2 T4 / T9 / AC3 — register the SourceTools-emitted Level 2 projection-template
++// manifest through a direct generated descriptor reference so startup stays trim/AOT friendly.
++builder.Services.AddHexalithProjectionTemplates(__FrontComposerProjectionTemplatesRegistration.Descriptors);
++
++// Story 6-3 T9 / AC15 — reference Level 3 slot override. Only Count is custom-rendered;
++// Id and Last changed continue through generated FrontComposer field rendering.
++builder.Services.AddSlotOverride<CounterProjection, int>(
++    field: x => x.Count,
++    componentType: typeof(CounterCountSlot));
++
+ // Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune
+ // lifecycle thresholds AND (Story 3-1) the new AccentColor / LocalStorageMaxEntries / DefaultCulture
+ // / SupportedCultures values from appsettings.
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
+index 20ce40b..8c6a6c2 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/CounterStoryVerificationTests.cs
+@@ -4,14 +4,19 @@ using System.Text.RegularExpressions;
+ using Bunit;
+ 
+ using Counter.Domain;
++using Counter.Web.Components.Slots;
+ using Counter.Web.Components.Pages;
+ 
+ using Fluxor;
+ 
+ using Hexalith.FrontComposer.Contracts.Registration;
++using Hexalith.FrontComposer.Contracts.Rendering;
+ using Hexalith.FrontComposer.Contracts.Storage;
+ using Hexalith.FrontComposer.Shell.Extensions;
++using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
+ 
++using Microsoft.AspNetCore.Components;
++using Microsoft.AspNetCore.Components.Rendering;
+ using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.Extensions.DependencyInjection.Extensions;
+ using Microsoft.FluentUI.AspNetCore.Components;
+@@ -129,6 +134,84 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
+         await Verify(NormalizeGridMarkup(cut.Markup));
+     }
+ 
++    [Fact]
++    public async Task CounterProjectionView_SelectedTemplate_RendersInsideGridEnvelopeAndUsesFieldRenderer()
++    {
++        Services.AddSingleton(new ProjectionTemplateAssemblySource(
++        [
++            new ProjectionTemplateDescriptor(
++                ProjectionType: typeof(CounterProjection),
++                Role: null,
++                TemplateType: typeof(SelectedCounterTemplate),
++                ContractVersion: ProjectionTemplateContractVersion.Current),
++        ]));
++
++        await InitializeStoreAsync();
++        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
++
++        using CultureScope _ = new(CultureInfo.InvariantCulture);
++
++        dispatcher.Dispatch(new CounterProjectionLoadedAction(
++            Guid.NewGuid().ToString(),
++            [
++                new CounterProjection
++                {
++                    Id = "counter-1",
++                    Count = 1234,
++                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
++                },
++            ]));
++
++        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
++
++        await cut.WaitForAssertionAsync(() =>
++        {
++            string markup = cut.Markup;
++            markup.ShouldContain("data-fc-datagrid");
++            markup.ShouldContain("fc-selected-template");
++            markup.ShouldContain("sections:2");
++            markup.ShouldContain("1,234");
++            markup.ShouldNotContain("fluent-data-grid");
++        });
++    }
++
++    [Fact]
++    public async Task CounterProjectionView_Level3Slot_ReplacesOneFieldAndLeavesAdjacentFieldsGenerated()
++    {
++        Services.AddSlotOverride<CounterProjection, int>(
++            field: x => x.Count,
++            componentType: typeof(CounterCountSlot));
++
++        await InitializeStoreAsync();
++        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
++
++        using CultureScope _ = new(CultureInfo.InvariantCulture);
++
++        dispatcher.Dispatch(new CounterProjectionLoadedAction(
++            Guid.NewGuid().ToString(),
++            [
++                new CounterProjection
++                {
++                    Id = "counter-1",
++                    Count = 1234,
++                    LastUpdated = new DateTimeOffset(2026, 4, 14, 0, 0, 0, TimeSpan.Zero),
++                },
++            ]));
++
++        IRenderedComponent<CounterProjectionView> cut = Render<CounterProjectionView>();
++
++        await cut.WaitForAssertionAsync(() =>
++        {
++            string markup = cut.Markup;
++            markup.ShouldContain("counter-count-slot");
++            markup.ShouldContain("aria-label=\"Count: 1,234\"");
++            markup.ShouldContain("counter-1");
++            markup.ShouldContain("04/14/2026");
++            markup.ShouldContain(">Id<");
++            markup.ShouldContain(">Last changed<");
++        });
++    }
++
+     [Fact]
+     public async Task StatusProjectionView_NullAndBooleanValues_RenderSnapshot()
+     {
+@@ -187,4 +270,20 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
+             CultureInfo.CurrentUICulture = _originalUICulture;
+         }
+     }
++
++    private sealed class SelectedCounterTemplate : ComponentBase
++    {
++        [Parameter]
++        public ProjectionTemplateContext<CounterProjection> Context { get; set; } = default!;
++
++        protected override void BuildRenderTree(RenderTreeBuilder builder)
++        {
++            CounterProjection row = Context.Items[0];
++            builder.OpenElement(0, "div");
++            builder.AddAttribute(1, "class", "fc-selected-template");
++            builder.AddContent(2, "sections:" + Context.Sections.Count.ToString(CultureInfo.InvariantCulture));
++            builder.AddContent(3, Context.FieldRenderer(row, nameof(CounterProjection.Count)));
++            builder.CloseElement();
++        }
++    }
+ }
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs
+index 61cf0e5..cede2e0 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Generated/GeneratedComponentTestBase.cs
+@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
+ using Hexalith.FrontComposer.Contracts.Rendering;
+ using Hexalith.FrontComposer.Shell.Services;
+ using Hexalith.FrontComposer.Shell.Services.Lifecycle;
++using Hexalith.FrontComposer.Shell.Services.ProjectionSlots;
+ using Hexalith.FrontComposer.Shell.State.PendingCommands;
+ using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
+ using Hexalith.FrontComposer.Shell.State.ReconnectionReconciliation;
+@@ -130,6 +131,16 @@ public abstract class GeneratedComponentTestBase : BunitContext
+             Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector,
+             Hexalith.FrontComposer.Shell.Services.Auth.NoOpAuthRedirector>();
+         _ = Services.AddScoped<IPendingCommandStateService, PendingCommandStateService>();
++
++        // Story 6-2 T4 — generated views inject IProjectionTemplateRegistry; bUnit tests use the
++        // empty registry by default so DefaultBody is always selected.
++        _ = Services.AddSingleton<
++            Hexalith.FrontComposer.Contracts.Rendering.IProjectionTemplateRegistry,
++            Hexalith.FrontComposer.Shell.Services.ProjectionTemplates.ProjectionTemplateRegistry>();
++
++        // Story 6-3 T5 — generated field boundaries inject IProjectionSlotRegistry through
++        // FcFieldSlotHost. Tests register descriptor sources only when they need an override.
++        _ = Services.AddSingleton<IProjectionSlotRegistry, ProjectionSlotRegistry>();
+     }
+ 
+     protected async Task InitializeStoreAsync()

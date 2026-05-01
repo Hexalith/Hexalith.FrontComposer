@@ -126,35 +126,41 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
         switch (columnPropertyName)
         {
             case "Id":
-                return RenderSlotField(row,
-                    fieldName: "Id",
-                    displayName: "Id",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Id,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"));
+                return HasProjectionSlot("Id")
+                    ? RenderSlotField(row,
+                        fieldName: "Id",
+                        displayName: "Id",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Id,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Id"))
+                    : RenderTemplateDefaultField(row, "Id");
             case "Title":
-                return RenderSlotField(row,
-                    fieldName: "Title",
-                    displayName: "Title",
-                    format: (string?)null,
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Title,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Title"));
+                return HasProjectionSlot("Title")
+                    ? RenderSlotField(row,
+                        fieldName: "Title",
+                        displayName: "Title",
+                        format: (string?)null,
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Title,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Title"))
+                    : RenderTemplateDefaultField(row, "Title");
             case "Status":
-                return RenderSlotField(row,
-                    fieldName: "Status",
-                    displayName: "Status",
-                    format: "Humanize:30",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.Status,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"));
+                return HasProjectionSlot("Status")
+                    ? RenderSlotField(row,
+                        fieldName: "Status",
+                        displayName: "Status",
+                        format: "Humanize:30",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.Status,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "Status"))
+                    : RenderTemplateDefaultField(row, "Status");
             default:
                 return static _ => { };
         }
@@ -822,24 +828,36 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 labelBuilder.AddContent(0, "Id");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Id",
-                displayName: "Id",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Id,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Id"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Id",
+                    displayName: "Id",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Id,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Id);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Id);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -849,24 +867,36 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 labelBuilder.AddContent(0, "Title");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Title",
-                displayName: "Title",
-                format: (string?)null,
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Title,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Title"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "Title",
+                    displayName: "Title",
+                    format: (string?)null,
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Title,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.Title);
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.Title);
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
             b.OpenElement(fieldSeq++, "div");
             b.AddAttribute(fieldSeq++, "class", "fc-detail-field");
@@ -876,54 +906,96 @@ public partial class StatusOverviewProjectionView : ComponentBase, IAsyncDisposa
                 labelBuilder.AddContent(0, "Status");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "Status",
-                displayName: "Status",
-                format: "Humanize:30",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.Status,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("Status"))
             {
-                int slotSeq = 0;
+                RenderSlotField(entity,
+                    fieldName: "Status",
+                    displayName: "Status",
+                    format: "Humanize:30",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.Status,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    var _memberName = entity.Status.ToString();
+                    var _label = HumanizeEnumLabel(_memberName);
+                    switch (_memberName)
+                    {
+                        case "Open":
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
+                            slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                            slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                            slotBuilder.CloseComponent();
+                            break;
+                        case "InProgress":
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
+                            slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                            slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                            slotBuilder.CloseComponent();
+                            break;
+                        case "Resolved":
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                            slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                            slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                            slotBuilder.CloseComponent();
+                            break;
+                        case "Closed":
+                            slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
+                            slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                            slotBuilder.AddAttribute(slotSeq++, "Label", _label);
+                            slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
+                            slotBuilder.CloseComponent();
+                            break;
+                        default:
+                            slotBuilder.AddContent(slotSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                            break;
+                    }
+                })(b);
+            }
+            else
+            {
                 var _memberName = entity.Status.ToString();
                 var _label = HumanizeEnumLabel(_memberName);
                 switch (_memberName)
                 {
                     case "Open":
-                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
-                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
-                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
-                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
-                        slotBuilder.CloseComponent();
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Info);
+                        b.AddAttribute(fieldSeq++, "Label", _label);
+                        b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                        b.CloseComponent();
                         break;
                     case "InProgress":
-                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
-                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
-                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
-                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
-                        slotBuilder.CloseComponent();
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Warning);
+                        b.AddAttribute(fieldSeq++, "Label", _label);
+                        b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                        b.CloseComponent();
                         break;
                     case "Resolved":
-                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
-                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
-                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
-                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
-                        slotBuilder.CloseComponent();
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Success);
+                        b.AddAttribute(fieldSeq++, "Label", _label);
+                        b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                        b.CloseComponent();
                         break;
                     case "Closed":
-                        slotBuilder.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(slotSeq++);
-                        slotBuilder.AddAttribute(slotSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
-                        slotBuilder.AddAttribute(slotSeq++, "Label", _label);
-                        slotBuilder.AddAttribute(slotSeq++, "ColumnHeader", "Status");
-                        slotBuilder.CloseComponent();
+                        b.OpenComponent<global::Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge>(fieldSeq++);
+                        b.AddAttribute(fieldSeq++, "Slot", global::Hexalith.FrontComposer.Contracts.Attributes.BadgeSlot.Neutral);
+                        b.AddAttribute(fieldSeq++, "Label", _label);
+                        b.AddAttribute(fieldSeq++, "ColumnHeader", "Status");
+                        b.CloseComponent();
                         break;
                     default:
-                        slotBuilder.AddContent(slotSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
+                        b.AddContent(fieldSeq++, FcShellLocalizer["StatusBadgeUnknownStateFallback"].Value);
                         break;
                 }
-            })(b);
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();

@@ -725,15 +725,28 @@ public static class ProjectionRoleBodyEmitter {
         string instanceName,
         string builderName,
         string indent) {
-        _ = sb.AppendLine(indent + "RenderSlotField(" + instanceName + ",");
-        _ = sb.AppendLine(indent + "    fieldName: \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\",");
-        _ = sb.AppendLine(indent + "    displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
-        _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
-        _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
-        _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
-        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
-        _ = sb.AppendLine(indent + "    value: " + instanceName + "." + col.PropertyName + ",");
-        _ = sb.AppendLine(indent + "    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"))(" + builderName + ");");
+        // GD-P3 (review of Story 6-3 Group D, 2026-05-01) — Mirror DataGrid's HasProjectionSlot
+        // gate (ColumnEmitter.EmitSlotColumnBranch) so non-grid roles (Timeline / DetailRecord /
+        // StatusOverview / Dashboard / ActionQueue body / Default body) preserve the no-slot
+        // baseline (spec line 111) and avoid a per-render FieldSlotContext<,> allocation when
+        // the registry has no descriptor for the field.
+        string fieldNameLiteral = "\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"";
+        _ = sb.AppendLine(indent + "if (HasProjectionSlot(" + fieldNameLiteral + "))");
+        _ = sb.AppendLine(indent + "{");
+        _ = sb.AppendLine(indent + "    RenderSlotField(" + instanceName + ",");
+        _ = sb.AppendLine(indent + "        fieldName: " + fieldNameLiteral + ",");
+        _ = sb.AppendLine(indent + "        displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
+        _ = sb.AppendLine(indent + "        format: " + SlotStringLiteral(col.FormatHint) + ",");
+        _ = sb.AppendLine(indent + "        order: " + SlotNullableIntLiteral(col.Priority) + ",");
+        _ = sb.AppendLine(indent + "        isFieldReadOnly: false,");
+        _ = sb.AppendLine(indent + "        description: " + SlotStringLiteral(col.Description) + ",");
+        _ = sb.AppendLine(indent + "        value: " + instanceName + "." + col.PropertyName + ",");
+        _ = sb.AppendLine(indent + "        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, " + fieldNameLiteral + "))(" + builderName + ");");
+        _ = sb.AppendLine(indent + "}");
+        _ = sb.AppendLine(indent + "else");
+        _ = sb.AppendLine(indent + "{");
+        _ = sb.AppendLine(indent + "    RenderTemplateDefaultField(" + instanceName + ", " + fieldNameLiteral + ")(" + builderName + ");");
+        _ = sb.AppendLine(indent + "}");
     }
 
     private static string SlotStringLiteral(string? value)
@@ -762,19 +775,30 @@ public static class ProjectionRoleBodyEmitter {
         _ = sb.AppendLine(indent + "}));");
         _ = sb.AppendLine(indent + builderName + ".CloseComponent();");
 
-        _ = sb.AppendLine(indent + "RenderSlotField(entity,");
-        _ = sb.AppendLine(indent + "    fieldName: \"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\",");
-        _ = sb.AppendLine(indent + "    displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
-        _ = sb.AppendLine(indent + "    format: " + SlotStringLiteral(col.FormatHint) + ",");
-        _ = sb.AppendLine(indent + "    order: " + SlotNullableIntLiteral(col.Priority) + ",");
-        _ = sb.AppendLine(indent + "    isFieldReadOnly: false,");
-        _ = sb.AppendLine(indent + "    description: " + SlotStringLiteral(col.Description) + ",");
-        _ = sb.AppendLine(indent + "    value: entity." + col.PropertyName + ",");
-        _ = sb.AppendLine(indent + "    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>");
+        // GD-P3 (review of Story 6-3 Group D, 2026-05-01) — DetailRecord field gate matches
+        // DataGrid's HasProjectionSlot discipline; the no-slot path inlines EmitDetailFieldValue
+        // directly so the existing DetailRecord shape is unchanged when no slot is registered.
+        string fieldNameLiteral = "\"" + RoleBodyHelpers.EscapeString(col.PropertyName) + "\"";
+        _ = sb.AppendLine(indent + "if (HasProjectionSlot(" + fieldNameLiteral + "))");
         _ = sb.AppendLine(indent + "{");
-        _ = sb.AppendLine(indent + "    int slotSeq = 0;");
-        EmitDetailFieldValue(sb, col, indent + "    ", builderName: "slotBuilder", seqName: "slotSeq");
-        _ = sb.AppendLine(indent + "})(" + builderName + ");");
+        _ = sb.AppendLine(indent + "    RenderSlotField(entity,");
+        _ = sb.AppendLine(indent + "        fieldName: " + fieldNameLiteral + ",");
+        _ = sb.AppendLine(indent + "        displayName: \"" + RoleBodyHelpers.EscapeString(col.Header) + "\",");
+        _ = sb.AppendLine(indent + "        format: " + SlotStringLiteral(col.FormatHint) + ",");
+        _ = sb.AppendLine(indent + "        order: " + SlotNullableIntLiteral(col.Priority) + ",");
+        _ = sb.AppendLine(indent + "        isFieldReadOnly: false,");
+        _ = sb.AppendLine(indent + "        description: " + SlotStringLiteral(col.Description) + ",");
+        _ = sb.AppendLine(indent + "        value: entity." + col.PropertyName + ",");
+        _ = sb.AppendLine(indent + "        renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>");
+        _ = sb.AppendLine(indent + "    {");
+        _ = sb.AppendLine(indent + "        int slotSeq = 0;");
+        EmitDetailFieldValue(sb, col, indent + "        ", builderName: "slotBuilder", seqName: "slotSeq");
+        _ = sb.AppendLine(indent + "    })(" + builderName + ");");
+        _ = sb.AppendLine(indent + "}");
+        _ = sb.AppendLine(indent + "else");
+        _ = sb.AppendLine(indent + "{");
+        EmitDetailFieldValue(sb, col, indent + "    ", builderName, seqName);
+        _ = sb.AppendLine(indent + "}");
         EmitDetailDescription(sb, col, indent, builderName, seqName);
         _ = sb.AppendLine(indent + builderName + ".CloseElement();");
     }

@@ -34,10 +34,11 @@ builder.Services.AddHexalithDomain<CounterDomain>();
 builder.Services.AddHexalithProjectionTemplates(__FrontComposerProjectionTemplatesRegistration.Descriptors);
 
 // Story 6-3 T9 / AC15 — reference Level 3 slot override. Only Count is custom-rendered;
-// Id and Last changed continue through generated FrontComposer field rendering.
-builder.Services.AddSlotOverride<CounterProjection, int>(
-    field: x => x.Count,
-    componentType: typeof(CounterCountSlot));
+// Id and Last changed continue through generated FrontComposer field rendering. The typed
+// 3-generic overload (GB-P10) catches component-type mismatches at compile time, which is
+// what adopters should reach for; the Type-taking overload exists for codegen scenarios.
+builder.Services.AddSlotOverride<CounterProjection, int, CounterCountSlot>(
+    field: x => x.Count);
 
 // Story 2-4 Task 6.2 — bind FcShellOptions from configuration so adopters can tune
 // lifecycle thresholds AND (Story 3-1) the new AccentColor / LocalStorageMaxEntries / DefaultCulture

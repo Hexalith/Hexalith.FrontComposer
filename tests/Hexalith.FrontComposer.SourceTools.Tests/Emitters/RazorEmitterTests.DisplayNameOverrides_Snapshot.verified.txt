@@ -104,15 +104,17 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
         switch (columnPropertyName)
         {
             case "OrderDate":
-                return RenderSlotField(row,
-                    fieldName: "OrderDate",
-                    displayName: "Date Ordered",
-                    format: "d",
-                    order: (int?)null,
-                    isFieldReadOnly: false,
-                    description: (string?)null,
-                    value: row.OrderDate,
-                    renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OrderDate"));
+                return HasProjectionSlot("OrderDate")
+                    ? RenderSlotField(row,
+                        fieldName: "OrderDate",
+                        displayName: "Date Ordered",
+                        format: "d",
+                        order: (int?)null,
+                        isFieldReadOnly: false,
+                        description: (string?)null,
+                        value: row.OrderDate,
+                        renderDefault: __ctx => RenderTemplateDefaultField(__ctx.Parent, "OrderDate"))
+                    : RenderTemplateDefaultField(row, "OrderDate");
             default:
                 return static _ => { };
         }
@@ -669,24 +671,36 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
                 labelBuilder.AddContent(0, "Date Ordered");
             }));
             b.CloseComponent();
-            RenderSlotField(entity,
-                fieldName: "OrderDate",
-                displayName: "Date Ordered",
-                format: "d",
-                order: (int?)null,
-                isFieldReadOnly: false,
-                description: (string?)null,
-                value: entity.OrderDate,
-                renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+            if (HasProjectionSlot("OrderDate"))
             {
-                int slotSeq = 0;
-                slotBuilder.OpenComponent<FluentText>(slotSeq++);
-                slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                RenderSlotField(entity,
+                    fieldName: "OrderDate",
+                    displayName: "Date Ordered",
+                    format: "d",
+                    order: (int?)null,
+                    isFieldReadOnly: false,
+                    description: (string?)null,
+                    value: entity.OrderDate,
+                    renderDefault: __ctx => (RenderTreeBuilder slotBuilder) =>
+                {
+                    int slotSeq = 0;
+                    slotBuilder.OpenComponent<FluentText>(slotSeq++);
+                    slotBuilder.AddAttribute(slotSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
+                    {
+                        textBuilder.AddContent(0, entity.OrderDate.ToString("d", CultureInfo.CurrentCulture));
+                    }));
+                    slotBuilder.CloseComponent();
+                })(b);
+            }
+            else
+            {
+                b.OpenComponent<FluentText>(fieldSeq++);
+                b.AddAttribute(fieldSeq++, "ChildContent", (RenderFragment)((RenderTreeBuilder textBuilder) =>
                 {
                     textBuilder.AddContent(0, entity.OrderDate.ToString("d", CultureInfo.CurrentCulture));
                 }));
-                slotBuilder.CloseComponent();
-            })(b);
+                b.CloseComponent();
+            }
             b.CloseElement();
         }));
         builder.CloseComponent();
