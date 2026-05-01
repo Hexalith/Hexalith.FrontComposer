@@ -126,7 +126,7 @@ development_status:
   8-2-hallucination-rejection-and-tenant-scoped-tools: ready-for-dev
   8-3-two-call-lifecycle-and-agent-command-semantics: ready-for-dev
   8-4-projection-rendering-for-agents: ready-for-dev
-  8-5-skill-corpus-and-build-time-agent-support: backlog
+  8-5-skill-corpus-and-build-time-agent-support: ready-for-dev
   8-6-schema-versioning-and-multi-surface-abstraction: backlog
   epic-8-retrospective: optional
 
