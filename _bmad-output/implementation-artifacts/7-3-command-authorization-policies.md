@@ -79,12 +79,15 @@ An adopter should be able to annotate a domain command once, register normal ASP
   - [ ] Add a scoped Shell service, e.g. `ICommandAuthorizationEvaluator`, that accepts command type/policy name, current command instance or metadata resource, and cancellation token.
   - [ ] Use ASP.NET Core `IAuthorizationService` and the current authenticated `ClaimsPrincipal` from Story 7-1 host-auth seams.
   - [ ] Pass a resource object containing at minimum command type, policy name, bounded context, display label, and the validated Story 7-2 tenant context when available.
+  - [ ] Return a deterministic decision object such as `Allowed`, `Denied`, `Pending`, or `FailedClosed` plus a sanitized reason category; do not return raw handler exceptions, claim values, role values, tenant IDs, user IDs, tokens, or command payload fragments.
+  - [ ] Do not cache allow decisions across executable boundaries. Render-time decisions may be memoized only inside a single render/evaluation cycle for UI stability; submit-time and post-confirmation checks must acquire fresh principal and tenant-context snapshots.
   - [ ] Fail closed on missing authorization service, missing principal, unauthenticated principal, thrown handler, missing policy, cancellation, stale tenant context, or auth-state transition.
   - [ ] Log/telemetry only sanitized categories, command type, policy name presence/name if approved as non-secret config, diagnostic ID, and correlation ID. Never log raw claims, roles, token values, tenant IDs, or user IDs.
 
 - [ ] T5. Gate generated command forms/renderers before dispatch (AC2-AC5, AC8-AC11, AC14)
   - [ ] Inject the evaluator into generated form or renderer code in a way that preserves current `BeforeSubmit`, destructive confirmation, derived-value prefill, validation, and lifecycle ordering.
   - [ ] Ensure protected commands check authorization immediately before submit and before `SubmittedAction` is dispatched.
+  - [ ] Treat UI authorization state as advisory. The generated submit path must not reuse a stale render-time `Allowed` value after navigation, tenant switch, principal refresh, prerender completion, reconnection, or destructive-dialog delay.
   - [ ] For destructive protected commands, choose and document ordering: policy check should happen before opening the destructive confirmation dialog so unauthorized users do not see sensitive destructive flow copy.
   - [ ] Add explicit zero-side-effect tests for unauthorized submit: no validation mutation beyond the warning, no lifecycle submitted state, no pending-command registration, no command service dispatch, no EventStore HTTP send.
 
@@ -105,6 +108,7 @@ An adopter should be able to annotate a domain command once, register normal ASP
   - [ ] SourceTools parser/transform/emitter tests for policy metadata, invalid values, duplicate attribute protection, generated form/render output, and manifest/registration output.
   - [ ] Shell evaluator tests using fake `IAuthorizationService`, fake principals, allow/deny/throw/missing-policy outcomes, and tenant-context resource assertions.
   - [ ] Generated component tests proving unauthorized commands are hidden/disabled and cannot dispatch across inline, compact inline, full-page, empty-state CTA, palette, and home surfaces.
+  - [ ] Race and staleness tests for tenant switch, sign-out, auth-state refresh, prerender-to-interactive transition, and destructive-dialog delay between an initial allowed render and the final submit-time check.
   - [ ] Redaction tests with sentinel claim names/values, role names, tenant IDs, user IDs, JWT-like strings, policy names, and command payload fragments.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -warnaserror /p:UseSharedCompilation=false`.
   - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Contracts.Tests`, `tests/Hexalith.FrontComposer.SourceTools.Tests`, and `tests/Hexalith.FrontComposer.Shell.Tests`.
@@ -284,6 +288,46 @@ User-facing warnings must use localized action-label copy such as "You do not ha
 | Whether backend EventStore endpoints must independently enforce the same command policies. | EventStore auth contract backlog or consumer-driven contract story. |
 | Multi-policy composition, policy expression language, dynamic policy builders, and per-row policy inference. | v1.x authorization follow-up. |
 
+### Advanced Elicitation Hardening Addendum (2026-05-01)
+
+This story remains `ready-for-dev`. The advanced elicitation pass keeps the party-mode scope intact and adds the following implementation guardrails.
+
+#### Authorization Decision Freshness
+
+- Every executable action must create a fresh authorization resource immediately before the action boundary. This applies to generated form submit, inline/compact action invoke, full-page command submit, empty-state CTA execution, palette route/open/submit, home capability route/open/submit, direct framework dispatch, and the second destructive check after confirmation.
+- Render-time authorization decisions may drive disabled/pending/hide affordances, but they must never become proof for dispatch. The submit-time evaluator result is the only executable decision.
+- A previously allowed render must become non-executable after sign-out, principal refresh, tenant switch, stale tenant snapshot, Blazor prerender-to-interactive transition, SignalR reconnect, or navigation restoration until the evaluator returns a fresh allow.
+- The evaluator result should expose only sanitized categories (`Allowed`, `Denied`, `Unauthenticated`, `Pending`, `MissingService`, `MissingPolicy`, `StaleTenantContext`, `Canceled`, `HandlerFailed`, `CatalogInconsistent`) and a correlation ID. UI copy and diagnostics must map from these categories without exposing handler internals.
+
+#### Minimal Implementation Spine
+
+- Keep one Shell-owned authorization spine: command metadata -> generated policy field -> `ICommandAuthorizationEvaluator` -> ASP.NET Core `IAuthorizationService`. Do not add separate per-surface policy interpreters.
+- Prefer a single command authorization resource record and a single decision result record shared by generated forms, renderers, CTA/palette/home surfaces, and direct framework dispatch.
+- If a direct-dispatch guard or decorator is introduced, it must guard only policy-protected commands and must preserve existing no-policy command behavior when auth services or catalog options are absent.
+- Startup/catalog validation should be isolated from submit-time authorization. Catalog warnings improve operator feedback, but runtime evaluation must still fail closed for protected commands when the policy is missing or inconsistent.
+
+#### Redaction Classification Matrix
+
+| Channel | Allowed values | Forbidden values |
+| --- | --- | --- |
+| End-user UI | Localized action label, neutral retry text, generic permission warning. | Policy names, role names, claim names/values, tenant IDs, user IDs, tokens, provider details, diagnostic IDs, handler exception text. |
+| Developer diagnostics | Command type, approved policy identifier, sanitized reason category, diagnostic ID, docs link, correlation ID. | Raw claims, role values, tenant IDs, user IDs, tokens, SAML assertions, authorization codes, command payload values, route parameter values. |
+| Logs/telemetry | Event name, command type, policy presence/name when treated as configuration, sanitized category, correlation ID, surface enum. | Principal contents, token material, provider payloads, tenant/user identifiers outside the validated sanitized context contract, command payload fragments. |
+| Generated metadata | Optional policy name, command type/identifier, bounded context, action label, surface capability metadata. | Runtime principal data, token data, claim/role values, tenant/user IDs, authorization results captured from a prior user/session. |
+
+#### Bounded Failure Matrix
+
+- Required canonical matrix: no policy metadata; allowed; denied; unauthenticated; pending/prerender; missing authorization service; missing policy; missing catalog; missing catalog entry; strict catalog failure; handler throw; cancellation before decision; stale tenant context; tenant switch after render; sign-out after render; destructive dialog delay; palette/home route opened after auth change.
+- Collapse duplicate surface tests into representative interaction suites. The evaluator matrix owns most failure combinations; generated UI suites only need enough coverage to prove each surface routes through the shared evaluator and blocks dispatch side effects.
+- Assertions must prove both positive behavior and absence of side effects. The most important negative assertions are no `SubmittedAction`, no pending-command registration, no command dispatch, no EventStore serialization/send, no token acquisition, no SignalR side effect, no cache mutation, and no command-payload telemetry.
+
+#### Deferred Decisions From Elicitation
+
+| Decision | Deferred owner |
+| --- | --- |
+| Whether authorization decisions may use a bounded short-lived cache after v1. | Performance follow-up; v1 must use fresh executable checks. |
+| Whether command payload fields may be projected into policy resources for per-instance decisions. | v1.x authorization follow-up; v1 resource must remain metadata and validated context only. |
+
 ### Scope Guardrails
 
 Do not implement these in Story 7-3:
@@ -355,6 +399,7 @@ Do not implement these in Story 7-3:
 
 - 2026-05-01: Story created via `/bmad-create-story 7-3-command-authorization-policies` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-01: Party-mode review applied via `/bmad-party-mode 7-3-command-authorization-policies; review;`. Added hardening addendum for the authorization resource contract, submit/destructive ordering, auth-scope boundaries, policy catalog diagnostics, surface behavior, generated metadata compatibility, executable test oracles, and deferred decisions.
+- 2026-05-01: Advanced elicitation applied via `/bmad-advanced-elicitation 7-3-command-authorization-policies`. Added freshness, minimal-spine, redaction-channel, bounded failure-matrix, race/staleness, and decision-cache guardrails.
 
 ### File List
 
@@ -369,4 +414,16 @@ Do not implement these in Story 7-3:
 - Findings summary: The review found the story valuable and bounded, but pre-dev implementation risk remained around the `IAuthorizationService` resource contract, the exact submit/destructive flow seam, the scope of fail-closed behavior for policy-protected versus unprotected commands, policy catalog diagnostic timing, unauthorized-surface behavior, user-warning versus developer-diagnostic separation, generated metadata compatibility, and executable zero-side-effect test oracles.
 - Changes applied: Added a Party-Mode Hardening Addendum defining the authorization resource shape and forbidden payloads; requiring pre-confirmation and post-confirmation authorization for destructive commands; clarifying that Story 7-3 fail-closed behavior applies only to policy-protected commands; defining policy catalog diagnostics and strict-mode behavior; adding an authorization surface matrix for forms, inline actions, CTA, palette, home, and future MCP metadata; preserving older no-policy metadata behavior; and adding bounded executable test oracles for side effects, failure matrices, generated UI interactions, and redaction sentinels.
 - Findings deferred: Product/UX decision on hiding versus disabled discovery rows for unauthorized palette/home entries; whether policy names may ever appear in end-user support details; backend EventStore independent policy enforcement; multi-policy composition, dynamic policy builders, policy expressions, and per-row policy inference.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-01T09:58:35.5895805+02:00
+- Selected story key: `7-3-command-authorization-policies`
+- Command/skill invocation used: `/bmad-advanced-elicitation 7-3-command-authorization-policies`
+- Batch 1 method names: Security Audit Personas; Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Occam's Razor Application; Comparative Analysis Matrix; Hindsight Reflection; First Principles Analysis.
+- Findings summary: The elicitation found the remaining pre-dev risks were mostly time-of-check/time-of-use gaps, stale render-time authorization decisions, accidental per-surface policy interpreters, oversized failure matrices, and inconsistent redaction expectations across UI, diagnostics, logs, telemetry, and generated metadata.
+- Changes applied: Added task-level requirements for deterministic sanitized decision results, no cross-boundary allow caching, fresh submit-time/post-confirmation checks, stale render-state rejection, and race/staleness tests. Added an Advanced Elicitation Hardening Addendum covering authorization decision freshness, the minimal shared implementation spine, redaction classification by channel, a bounded canonical failure matrix, and two deferred follow-up decisions.
+- Findings deferred: Short-lived authorization decision caching is deferred to a performance follow-up; command-payload-derived policy resources are deferred to a v1.x authorization follow-up.
 - Final recommendation: ready-for-dev
