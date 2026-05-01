@@ -117,7 +117,7 @@ development_status:
   epic-7: in-progress
   7-1-oidc-saml-authentication-integration: ready-for-dev
   7-2-tenant-context-propagation-and-isolation: ready-for-dev
-  7-3-command-authorization-policies: backlog
+  7-3-command-authorization-policies: ready-for-dev
   epic-7-retrospective: optional
 
   # Epic 8: MCP & Agent Integration
