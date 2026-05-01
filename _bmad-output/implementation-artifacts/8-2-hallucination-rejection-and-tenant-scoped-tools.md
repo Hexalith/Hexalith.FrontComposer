@@ -45,7 +45,7 @@ An adopter should be able to enable the MCP package and trust that an agent cann
 | AC9 | A command descriptor carries Story 7-3 `RequiresPolicy` metadata | The active agent satisfies the required policy | The tool is visible and callable subject to normal schema validation and Story 8-1 command adapter rules. |
 | AC10 | Authentication is absent, ambiguous, expired, malformed, missing tenant context, or inconsistent between token/API-key/principal sources | The MCP request enters list, suggestion, or call handling | The request fails closed without browser redirects and without listing, suggesting, or executing tools. |
 | AC11 | A rejected response includes a visible tool list | The response is inspected | Tool names and descriptions are domain-generic and protocol-stable. They contain no tenant IDs, user IDs, role/claim values, customer names, environment names, localized runtime values, payload values, or provider internals. |
-| AC12 | Unknown-name rejection performance is measured on a generated catalog large enough to represent v1 adopters | The rejection path runs in unit/performance tests | P95 is below 100 ms for the rejection path and below 50 ms for the ideal target where the test lane supports a stable timer. |
+| AC12 | Unknown-name rejection performance is measured on a generated catalog large enough to represent v1 adopters | The rejection path runs in unit/performance tests with a warmed immutable registry, fixed candidate limits, and representative visible/hidden/cross-tenant near-matches | P95 is below 100 ms for the rejection path and below 50 ms for the ideal target where the test lane supports a stable timer. |
 | AC13 | Rejection, validation, auth, and policy failures are logged or traced | Telemetry is inspected | Logs and spans contain only sanitized category, bounded context, descriptor kind, correlation/request ID where safe, and outcome; they do not contain raw exception text, claims, tokens, tenant/user identifiers, roles, payload fragments, or hidden tool names. |
 | AC14 | The MCP SDK returns protocol errors differently across transports | The adapter maps FrontComposer rejection categories to SDK responses | The public response remains deterministic and protocol-appropriate while SDK DTO churn stays inside `Hexalith.FrontComposer.Mcp`. |
 | AC15 | The story completes | Story 8-3 or 8-4 continues Epic 8 | The hallucination rejection, visible catalog, and policy-filtering services are reusable by lifecycle tools and projection resources without redesign. |
@@ -56,6 +56,8 @@ An adopter should be able to enable the MCP package and trust that an agent cann
 
 - [ ] T1. Define visible tool catalog and matching contracts (AC1-AC4, AC7-AC9, AC15)
   - [ ] Add MCP-package contracts for a request-scoped `McpVisibleToolCatalog`, `McpToolVisibilityContext`, and `McpToolSuggestion` or equivalent names.
+  - [ ] Define an explicit admission result contract such as `McpToolResolutionResult` with `accepted | rejected`, sanitized rejection category, requested name, optional visible suggestion, and bounded visible list fields.
+  - [ ] Ensure `tools/list`, unknown-tool rejection, hidden direct calls, and validation helper lists all consume the same visible-catalog service; do not duplicate policy filtering in separate list and call paths.
   - [ ] Build the visible catalog from Story 8-1 generated descriptors plus authenticated tenant/policy context; do not scan assemblies or ask services for runtime domain type discovery.
   - [ ] Keep catalog entries immutable after construction and bounded by explicit options such as `MaxVisibleToolListItems`, `MaxSuggestionCandidates`, and `MaxToolNameLength`.
   - [ ] Define one canonical hidden outcome for tools not visible because they are absent, stale, cross-tenant, policy-hidden, or removed. Do not distinguish these cases in agent-visible responses.
@@ -64,13 +66,16 @@ An adopter should be able to enable the MCP package and trust that an agent cann
   - [ ] Normalize requested and candidate names for matching only: case fold invariantly, normalize separators, trim protocol-safe whitespace, reject control characters, and detect unsupported Unicode/confusable forms instead of executing them.
   - [ ] Use a deterministic low-cost algorithm such as bounded edit distance or prefix/token scoring over only visible candidates. Avoid semantic/LLM matching in v1.
   - [ ] Return at most one best suggestion when it clears a documented threshold; otherwise return no suggestion but still include the visible tool list.
+  - [ ] Apply deterministic tie-breaking for equal scores and duplicate visible display labels; the same request and same visible catalog must always produce the same suggestion/null result.
   - [ ] Reject direct execution of aliases, stale names, close matches, case variants, and cosmetic variants; the agent must call the canonical visible tool name.
-  - [ ] Add tests proving hidden candidates never influence suggested names, timing-visible branches, or response copy.
+  - [ ] Add tests proving hidden candidates never influence suggested names, ranking, thresholds, timing-visible branches, telemetry labels, logs, or response copy.
 
 - [ ] T3. Harden schema validation and invocation envelope normalization (AC5, AC6, AC13)
   - [ ] Reuse Story 8-1 JSON Schema/descriptor metadata as the validation source of truth.
+  - [ ] Validate stale descriptor/version/registry epoch mismatches before command construction and map them to the same agent-visible hidden/unknown category unless a safe schema-version category is explicitly documented.
   - [ ] Reject missing required fields, wrong primitive types, enum mismatches, unsupported nested JSON, unknown properties, duplicate property names, case-variant spoofing, oversized argument objects, and unsupported CLR categories before command construction.
   - [ ] Reject all derivable/system-owned fields (`TenantId`, `UserId`, message/correlation IDs, policy IDs, cache keys, lifecycle values) even when the generated schema omits them.
+  - [ ] Add a malicious-descriptor guardrail: derivable/system-owned fields fail closed even if a malformed generated descriptor or stale manifest attempts to expose them as ordinary arguments.
   - [ ] Produce parameter-level diagnostics such as `field`, `reason`, and `expectedShape` without echoing actual values or secrets.
   - [ ] Preserve cancellation tokens and request IDs through rejection paths without allowing cancellation to skip cleanup or telemetry finalization.
 
@@ -95,16 +100,19 @@ An adopter should be able to enable the MCP package and trust that an agent cann
 - [ ] T7. Performance and bounded-state implementation (AC12, AC15)
   - [ ] Precompute immutable normalized lookup keys at startup or descriptor-registry build time; do not allocate unbounded per-request dictionaries.
   - [ ] Bound candidate scoring by visible catalog size and configured limits.
-  - [ ] Add a timer-based unit/performance test for unknown-name rejection P95 < 100 ms using a representative generated catalog.
+  - [ ] Add a timer-based unit/performance test for unknown-name rejection P95 < 100 ms using a representative generated catalog with warmed immutable registries, fixed descriptor counts, visible near-misses, hidden near-misses, and random unknown names.
   - [ ] Add stress tests for long names, many near-matches, empty visible catalog, all tools hidden, repeated requests, and cancellation.
 
 - [ ] T8. Tests and verification (AC1-AC15)
   - [ ] MCP tests for unknown tool rejection before side effects using fake `ICommandService`, fake EventStore clients, fake lifecycle tracker, fake query service, and side-effect counters.
+  - [ ] Side-effect spy harness asserting rejected paths make zero calls to command construction, backend validation services, `ICommandService`, EventStore serialization/client calls, token relay, lifecycle/cache mutation, SignalR, and sensitive telemetry enrichment.
   - [ ] Visibility tests for two tenants, no tenant, tenant mismatch, denied policy, allowed policy, hidden direct call, and hidden near-match.
   - [ ] Schema tests for required/optional fields, primitive mismatch, enum mismatch, unknown fields, duplicate/case-variant fields, derivable field spoofing, oversized payload, and unsupported nested shape.
   - [ ] Redaction tests with JWT-like strings, API keys, role names, claim values, tenant IDs, user IDs, customer names, payload fragments, exception text, provider internals, and hidden tool names.
   - [ ] Determinism tests for candidate ordering, tie-breaking, normalized-name handling, response ordering, truncation, and repeated build output.
+  - [ ] Timing-oracle tests comparing visible near-miss, hidden near-miss, cross-tenant near-miss, policy-hidden near-miss, and random unknown rejection paths without exposing hidden candidates through duration buckets.
   - [ ] Package-boundary tests proving `Contracts` and SourceTools public surfaces do not reference MCP SDK DTOs.
+  - [ ] SDK adapter-boundary tests proving internal rejection contracts and snapshots remain stable when mapped through official MCP SDK response/error DTOs.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
   - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Mcp.Tests`, `tests/Hexalith.FrontComposer.SourceTools.Tests`, plus Shell/EventStore tests only if shared seams change.
 
@@ -132,6 +140,8 @@ An adopter should be able to enable the MCP package and trust that an agent cann
 - Tenant isolation is a security boundary. Cross-tenant visibility is not a UX bug; it is a security bug per NFR28.
 - Unknown, hidden, unauthorized, stale, and removed names share an agent-visible failure category to prevent enumeration through error differences.
 - Matching is deterministic and local. No LLM calls, embeddings, external search, runtime reflection, or network requests are allowed on the rejection path.
+- Suggestion input is exactly the authenticated, tenant-scoped, policy-visible catalog. Hidden, cross-tenant, stale, removed, and policy-denied descriptors are nonexistent for matching, ranking, logging, telemetry labels, response shaping, and timing-visible branches.
+- Rejection and enumeration must use one admission/visibility service so `tools/list`, direct calls, validation helper lists, and unknown-tool suggestions cannot drift.
 
 ### Latest MCP Notes
 
@@ -152,6 +162,28 @@ Story 8-1 already established:
 - Descriptor registries and caches must be bounded and immutable after startup.
 
 This story should not reopen those decisions. It should make the deferred 8-2 behavior executable and testable.
+
+### Pre-Invocation Admission Contract
+
+Every MCP tool call goes through one admission pipeline before command construction or backend validation:
+
+1. Resolve authenticated agent identity and canonical Story 7-2 tenant context; absent, ambiguous, expired, malformed, missing-tenant, or mismatched auth fails closed before catalog enumeration.
+2. Build the request-scoped visible catalog from Story 8-1 descriptors filtered by tenant and Story 7-3 policy metadata.
+3. Resolve the requested tool name against the visible catalog only; absent, hidden, cross-tenant, unauthorized, stale, removed, alias, close-match, case-variant, and confusable names all reject externally as the same hidden/unknown category.
+4. Validate the MCP invocation envelope, descriptor provenance/version, request size, schema shape, duplicate/case-variant fields, unsupported nesting, and derivable/system-owned field spoofing before command construction.
+5. Only after all checks pass may the adapter construct the command and call the Story 8-1 command dispatch path.
+
+Stable internal contracts should include:
+
+| Contract | Required behavior |
+| --- | --- |
+| `McpVisibleToolCatalog` | Immutable request-scoped list of tenant/policy-visible tools with safe display metadata only. |
+| `McpToolResolutionResult` | Accepted/rejected result with sanitized category, requested name, optional visible suggestion, bounded visible list, and no hidden-candidate detail. |
+| `McpInvocationEnvelopeValidator` | Validates SDK envelope, descriptor provenance, schema shape, stale versions, forbidden fields, size limits, and cancellation/request ID propagation. |
+| `McpToolVisibilityPolicy` | Consumes Story 7-3 metadata and shared evaluator only; no MCP-only policy model. |
+| `McpSanitizedRejectionLog` | Records coarse outcome, descriptor kind, bounded context, safe request/correlation ID, and duration bucket without tenant/user/claims/payload/hidden names. |
+
+The visible list in a self-correction response is complete only within configured bounds. If `MaxVisibleToolListItems` truncates it, the continuation marker must be deterministic and sanitized, and must not expose hidden counts or excluded candidate names.
 
 ### Binding Decisions
 
@@ -272,6 +304,17 @@ Do not implement these in Story 8-2:
 ### Completion Notes List
 
 - 2026-05-01: Story created via `/bmad-create-story 8-2-hallucination-rejection-and-tenant-scoped-tools` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+
+### Party-Mode Review
+
+- **Date/time:** 2026-05-01T14:54:08+02:00
+- **Selected story key:** `8-2-hallucination-rejection-and-tenant-scoped-tools`
+- **Command/skill invocation used:** `/bmad-party-mode 8-2-hallucination-rejection-and-tenant-scoped-tools; review;`
+- **Participating BMAD agents:** Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- **Findings summary:** The review found the story product intent sound but identified pre-dev risks around suggestion leakage, list/call policy drift, ambiguous hidden-vs-unknown semantics, stale descriptor handling, timing/log enumeration oracles, undefined admission DTOs, and an under-specified AC12 performance fixture.
+- **Changes applied:** Added architecture guidance that suggestions are computed only from the authenticated tenant-scoped policy-visible catalog; added a pre-invocation admission contract defining pipeline order and stable internal DTO/service expectations; hardened T1/T2/T3/T7/T8 with one shared visible-catalog service, deterministic tie-breaking, stale descriptor validation, malicious descriptor/system-field guardrails, side-effect spy harnesses, timing-oracle tests, and SDK adapter-boundary tests; clarified AC12 to require warmed immutable registries with representative visible/hidden/cross-tenant near-matches.
+- **Findings deferred:** Semantic or LLM-based suggestions, lifecycle tool orchestration, projection resource visibility/rendering, schema fingerprint negotiation, richer analytics, and new authorization policy language remain deferred to their owning Epic 8 / Story 7-3 follow-ups.
+- **Final recommendation:** ready-for-dev
 
 ### File List
 

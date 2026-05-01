@@ -76,3 +76,4 @@
 2026-05-01T11:14:48+02:00	party-mode-review	8-1-mcp-server-and-typed-tool-exposure	ok	applied MCP auth, determinism, adapter, policy, resource, and test hardening
 2026-05-01T12:03:06+02:00	advanced-elicitation	8-1-mcp-server-and-typed-tool-exposure	ok	applied invocation-envelope, stale-client, SDK-boundary, failure-taxonomy, response-bound, and runtime-state hardening
 2026-05-01T13:06:30+02:00	create-story	8-2-hallucination-rejection-and-tenant-scoped-tools	ok	created story artifact and marked ready-for-dev
+2026-05-01T14:54:08+02:00	party-mode-review	8-2-hallucination-rejection-and-tenant-scoped-tools	ok	applied admission-gate, visible-catalog, suggestion, timing, and test hardening
