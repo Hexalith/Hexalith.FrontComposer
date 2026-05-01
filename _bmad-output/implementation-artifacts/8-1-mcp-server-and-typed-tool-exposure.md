@@ -80,6 +80,7 @@ An adopter should be able to register FrontComposer once for a bounded context, 
   - [ ] Emit `additionalProperties: false` for command tools unless a deliberate extension point is documented.
   - [ ] Do not expose derivable infrastructure fields as model-controlled input. Tenant and user context come from authenticated agent context, not from tool arguments.
   - [ ] Reject spoofed derivable fields such as `TenantId`, `UserId`, message/idempotency identifiers, correlation IDs, and system-owned values before command construction or dispatch.
+  - [ ] Canonicalize tool arguments into an immutable invocation envelope before validation; reject duplicate, case-variant, oversized, or unsupported nested JSON members before command construction.
   - [ ] Define deterministic behavior for unsupported CLR/type categories instead of inventing adapter-side schema semantics.
   - [ ] Keep validation constraints generated from the same source as web form validation; if a constraint cannot be represented in JSON Schema, include bounded tool-description guidance and server-side validation.
 
@@ -89,6 +90,7 @@ An adopter should be able to register FrontComposer once for a bounded context, 
   - [ ] Support the configured transport selected for v1; HTTP/SSE or streamable HTTP should live behind the MCP package and not leak into Contracts.
   - [ ] Implement unknown tool/resource handling as a bounded protocol error in Story 8-1. Closest-match suggestion, tenant-scoped list, and self-correction copy are Story 8-2.
   - [ ] Add startup validation for duplicate descriptors, missing manifest registration, unsupported transport config, and sanitized diagnostic output.
+  - [ ] Keep MCP SDK transport/protocol types behind the MCP package adapter boundary; generated descriptors and SourceTools-facing contracts must remain SDK-neutral.
 
 - [ ] T6. Implement MCP command invocation adapter (AC8, AC10-AC12, AC15)
   - [ ] Route generated tool calls to the existing `ICommandService.DispatchAsync<TCommand>` path or its lifecycle-aware companion when already available.
@@ -96,6 +98,7 @@ An adopter should be able to register FrontComposer once for a bounded context, 
   - [ ] Validate tool arguments against generated schema before constructing the command. Rejections must occur before `ICommandService`, EventStore serialization, token acquisition, HTTP send, lifecycle state mutation, or SignalR/cache side effects.
   - [ ] Return a minimal acknowledged result shape with command/message/correlation data already available from `CommandResult`. Full two-call lifecycle subscription remains Story 8-3.
   - [ ] Carry but do not fully enforce Story 7-3 policy metadata unless the existing shared evaluator is ready; record any gap as a deferred decision rather than adding a parallel policy engine.
+  - [ ] Treat timeout, cancellation, command rejection, auth failure, validation failure, and downstream exception outcomes as distinct sanitized protocol categories while preserving request cancellation tokens through dispatch.
 
 - [ ] T7. Implement projection resource adapter (AC3, AC9, AC15)
   - [ ] Route projection reads to the existing `IQueryService.QueryAsync<T>` path with tenant context from authenticated agent state.
@@ -103,6 +106,7 @@ An adopter should be able to register FrontComposer once for a bounded context, 
   - [ ] Define resource vs. resource-template behavior, URI shape, query parameter binding, validation failure mapping, pagination or size limits, and content type before implementation.
   - [ ] Keep rich role-specific Markdown rendering, status cards, timelines, empty-state suggestions, and badge text polish scoped to Story 8-4 unless simple reuse already exists.
   - [ ] Do not let clients supply raw tenant IDs to query resources; tenant comes from authenticated context.
+  - [ ] Enforce deterministic response size bounds for projection resources; any truncation or paging hint must be sanitized and must not reveal hidden tenant/resource existence.
 
 - [ ] T8. Add machine-to-machine authentication seam (AC11, AC12, AC15)
   - [ ] Add options for API key or client credentials and document which one is first-class in v1.
@@ -119,6 +123,7 @@ An adopter should be able to register FrontComposer once for a bounded context, 
   - [ ] Projection adapter tests covering two sample projections, tenant context injection, query-service invocation, Markdown/text determinism, and no raw tenant/user leakage.
   - [ ] Determinism/golden tests covering descriptor ordering, stable tool/resource identifiers, URI templates, JSON Schema serialization, localization-neutral fallback labels, optional policy metadata, and repeatable output across builds.
   - [ ] Auth and tenant-context tests covering missing, malformed, expired, wrong-tenant, ambiguous, and spoofed tenant/user inputs for both API key and client-credentials paths.
+  - [ ] Invocation-envelope tests covering duplicate JSON property names, case-variant spoofing, unsupported nested payloads, oversized arguments/resources, stale manifest identifiers, and cancellation/timeout mapping.
   - [ ] Adapter boundary tests proving request IDs and cancellation flow through, invalid arguments fail before side effects, unknown tools/resources/templates return deterministic errors, stale client manifest names do not dispatch, and command/query adapters preserve existing validation, tenant scoping, authorization hooks, and domain error mapping.
   - [ ] Redaction tests with JWT-like strings, API keys, claim values, role names, tenant IDs, user IDs, command payload fragments, query filters, exception messages, and provider internals.
   - [ ] Policy metadata guardrail tests proving the descriptor carries Story 7-3 policy identifiers while 8-1 does not claim full tenant-scoped authorization filtering.
@@ -164,6 +169,15 @@ An adopter should be able to register FrontComposer once for a bounded context, 
 - **Adapter response mapping:** MCP request IDs and cancellation tokens must flow through the adapter. Validation errors, auth failures, unknown tool/resource/template names, domain rejections, timeouts, cancellation, and downstream exceptions map to bounded protocol errors with stable error categories and correlation IDs where already available. Error responses must not include stack traces, internal type names, tenant/resource existence hints, raw exception text, claims, tokens, tenant IDs, user IDs, payload fragments, or provider internals.
 - **Policy metadata non-goal:** Story 8-1 emits and carries the existing Story 7-3 policy identifier metadata, but MCP listing/discovery in this story must not imply that full tenant-scoped authorization filtering is implemented. Runtime list/call filtering, closest-match suggestions, hidden unauthorized tools, and semantic hallucination handling are Story 8-2.
 - **Localization contract:** MCP names, URIs, schema property names, and protocol identifiers are invariant technical contracts. Human-readable titles and descriptions should preserve SourceTools display/description metadata and localization keys where already present, with deterministic fallback text; they must not depend on per-request user culture or contain hard-coded adapter-only copy when IR metadata exists.
+
+### Advanced Elicitation Clarifications
+
+- **Invocation envelope boundary:** MCP requests should be normalized once into an immutable envelope containing protocol name, request ID, authenticated principal handle, canonical tenant context, raw argument object, cancellation token, and descriptor reference. Spoofed derivable fields, duplicate or case-variant JSON names, unsupported nested payloads, and oversize arguments fail before command construction, query construction, telemetry enrichment, EventStore serialization, token relay, cache mutation, or SignalR side effects.
+- **Descriptor provenance and stale clients:** Generated MCP descriptors need stable provenance metadata such as bounded context, generator/source version, descriptor kind, protocol identifier, and optional policy identifier. A client calling a removed or stale tool/resource name receives the same bounded unknown-name category as any unknown call; Story 8-1 must not infer a replacement or leak that a similar unauthorized descriptor exists.
+- **SDK volatility containment:** The official MCP C# SDK is the transport/server implementation detail, not the schema source of truth. Keep protocol DTO conversion inside `Hexalith.FrontComposer.Mcp` so SourceTools manifest snapshots, generated descriptor contracts, and tests do not churn when SDK transport types change.
+- **Failure taxonomy:** Auth failure, tenant ambiguity, validation failure, unsupported schema, unknown name, stale manifest name, command rejection, query rejection, timeout, cancellation, duplicate descriptor, missing manifest, and unexpected downstream exception must map to deterministic sanitized categories. No category may echo raw exception messages, internal type names, provider details, tenant/user identifiers, claims, tokens, payload fragments, or resource-existence hints.
+- **Minimal runnable spine:** The first implementation should be the smallest vertical slice that proves manifest generation, hosting, M2M auth, three command tool calls, two projection resource reads, no-side-effect rejection, and redaction. Rich listing, suggestions, lifecycle subscriptions, skill corpus resources, schema fingerprints, and role-polished Markdown stay deferred unless they are required to keep this spine coherent.
+- **Bounded runtime state:** Descriptor registries, schema caches, response buffers, and resource render buffers must be immutable after startup or bounded by explicit options. Do not add request-time unbounded dictionaries, per-agent descriptor accumulation, or culture/tenant-specific manifest caches in 8-1.
 
 ### Proposed Minimal Flow
 
@@ -299,6 +313,18 @@ Do not implement these in Story 8-1:
 - **Findings summary:** The review found that the story was ready in product scope but needed sharper pre-dev contracts for deterministic SourceTools-driven MCP descriptors, stable schema serialization, tenant/auth precedence, spoofed derivable field rejection, adapter error mapping, policy-metadata non-goals, resource/template boundaries, and testable sanitization.
 - **Changes applied:** Added stable-abstraction dependency guidance; restricted MCP descriptor generation to mechanical SourceTools IR transforms; clarified tenant/auth precedence and fail-closed mismatches; added hardened party-mode clarifications for determinism, command input schema, projection resources, adapter response mapping, policy metadata non-goals, and localization contracts; tightened name/URI collision domains; expanded T4/T7/T8/T9 with spoofed-field, unsupported-type, resource-template, auth, determinism, adapter-boundary, and policy guardrail tests.
 - **Findings deferred:** Full tenant-scoped listing/filtering, policy-based hiding, closest-match/hallucination suggestions, lifecycle subscription, rich role-specific Markdown rendering, skill corpus resources, schema fingerprints/version negotiation, and new authorization policy language remain deferred to their owning Epic 8 / Epic 7 follow-up stories.
+- **Final recommendation:** ready-for-dev
+
+### Advanced Elicitation
+
+- **Date/time:** 2026-05-01T12:03:06+02:00
+- **Selected story key:** `8-1-mcp-server-and-typed-tool-exposure`
+- **Command/skill invocation used:** `/bmad-advanced-elicitation 8-1-mcp-server-and-typed-tool-exposure`
+- **Batch 1 method names:** Security Audit Personas; Red Team vs Blue Team; Pre-mortem Analysis; Failure Mode Analysis; Self-Consistency Validation.
+- **Reshuffled Batch 2 method names:** First Principles Analysis; Architecture Decision Records; Chaos Monkey Scenarios; Occam's Razor Application; Hindsight Reflection.
+- **Findings summary:** The elicitation found that the story had strong architectural boundaries but needed executable pre-dev detail for immutable invocation normalization, stale client behavior, SDK volatility containment, deterministic failure taxonomy, bounded runtime state, and proof that invalid MCP input cannot reach command/query side effects.
+- **Changes applied:** Added an `Advanced Elicitation Clarifications` section; strengthened T4 with immutable invocation envelope and duplicate/case-variant/oversize argument rejection; strengthened T5 with SDK adapter containment; strengthened T6 with explicit sanitized outcome categories and cancellation propagation; strengthened T7 with deterministic resource response bounds; strengthened T9 with invocation-envelope tests for stale identifiers, oversized payloads, unsupported nesting, and timeout/cancellation mapping.
+- **Findings deferred:** Full tenant-scoped listing and hiding, closest-match suggestions, lifecycle subscription, rich role-specific Markdown rendering, skill corpus resources, schema fingerprints/version negotiation, and new authorization policy semantics remain deferred to their existing Epic 8 / Epic 7 owners.
 - **Final recommendation:** ready-for-dev
 
 ### File List
