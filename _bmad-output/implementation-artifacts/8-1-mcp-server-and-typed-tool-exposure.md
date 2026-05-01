@@ -79,6 +79,8 @@ An adopter should be able to register FrontComposer once for a bounded context, 
   - [ ] Build JSON Schema object output for command user-entered properties, using nullable/required state, enum members, numeric/date/string categories, descriptions, display labels, and known FluentValidation-derived constraints where available.
   - [ ] Emit `additionalProperties: false` for command tools unless a deliberate extension point is documented.
   - [ ] Do not expose derivable infrastructure fields as model-controlled input. Tenant and user context come from authenticated agent context, not from tool arguments.
+  - [ ] Reject spoofed derivable fields such as `TenantId`, `UserId`, message/idempotency identifiers, correlation IDs, and system-owned values before command construction or dispatch.
+  - [ ] Define deterministic behavior for unsupported CLR/type categories instead of inventing adapter-side schema semantics.
   - [ ] Keep validation constraints generated from the same source as web form validation; if a constraint cannot be represented in JSON Schema, include bounded tool-description guidance and server-side validation.
 
 - [ ] T5. Host and route the MCP server (AC1, AC7, AC10, AC15)
@@ -98,12 +100,14 @@ An adopter should be able to register FrontComposer once for a bounded context, 
 - [ ] T7. Implement projection resource adapter (AC3, AC9, AC15)
   - [ ] Route projection reads to the existing `IQueryService.QueryAsync<T>` path with tenant context from authenticated agent state.
   - [ ] Return deterministic text/Markdown or structured content for at least Default/ActionQueue-style table output sufficient for AC9.
+  - [ ] Define resource vs. resource-template behavior, URI shape, query parameter binding, validation failure mapping, pagination or size limits, and content type before implementation.
   - [ ] Keep rich role-specific Markdown rendering, status cards, timelines, empty-state suggestions, and badge text polish scoped to Story 8-4 unless simple reuse already exists.
   - [ ] Do not let clients supply raw tenant IDs to query resources; tenant comes from authenticated context.
 
 - [ ] T8. Add machine-to-machine authentication seam (AC11, AC12, AC15)
   - [ ] Add options for API key or client credentials and document which one is first-class in v1.
   - [ ] Normalize successful authentication into the existing Story 7-1 / Story 7-2 principal and tenant-context seams.
+  - [ ] Define precedence and failure behavior for API key/client-credentials identities, JWT/principal claims, and any attempted tenant/user values in tool/resource input; ambiguous or mismatched values fail closed.
   - [ ] Fail closed when auth is absent, token/API key is invalid, tenant claim is missing/empty/whitespace, policy metadata requires a future check, or auth state cannot be resolved.
   - [ ] Ensure auth failures do not trigger browser redirects and do not leak token, provider, client secret, tenant, or user values in responses or logs.
 
@@ -113,7 +117,11 @@ An adopter should be able to register FrontComposer once for a bounded context, 
   - [ ] MCP hosting tests proving DI registration, endpoint mapping, duplicate descriptor rejection, unknown tool/resource behavior, and sanitized diagnostics.
   - [ ] Command adapter tests covering three sample commands: valid call acknowledged, invalid arguments rejected before side effects, unauthorized/unauthenticated rejected before side effects, and command-service rejection translated to protocol-safe output.
   - [ ] Projection adapter tests covering two sample projections, tenant context injection, query-service invocation, Markdown/text determinism, and no raw tenant/user leakage.
+  - [ ] Determinism/golden tests covering descriptor ordering, stable tool/resource identifiers, URI templates, JSON Schema serialization, localization-neutral fallback labels, optional policy metadata, and repeatable output across builds.
+  - [ ] Auth and tenant-context tests covering missing, malformed, expired, wrong-tenant, ambiguous, and spoofed tenant/user inputs for both API key and client-credentials paths.
+  - [ ] Adapter boundary tests proving request IDs and cancellation flow through, invalid arguments fail before side effects, unknown tools/resources/templates return deterministic errors, stale client manifest names do not dispatch, and command/query adapters preserve existing validation, tenant scoping, authorization hooks, and domain error mapping.
   - [ ] Redaction tests with JWT-like strings, API keys, claim values, role names, tenant IDs, user IDs, command payload fragments, query filters, exception messages, and provider internals.
+  - [ ] Policy metadata guardrail tests proving the descriptor carries Story 7-3 policy identifiers while 8-1 does not claim full tenant-scoped authorization filtering.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
   - [ ] Targeted tests: `tests/Hexalith.FrontComposer.SourceTools.Tests`, `tests/Hexalith.FrontComposer.Mcp.Tests`, plus Shell/EventStore tests only if shared runtime seams are changed.
 
@@ -139,11 +147,23 @@ An adopter should be able to register FrontComposer once for a bounded context, 
 ### Architecture Contracts
 
 - `Hexalith.FrontComposer.Mcp` sits after Shell/EventStore in the package graph and may reference Contracts plus runtime hosting dependencies. Contracts and SourceTools must not reference MCP SDK packages.
+- The MCP package must depend on stable FrontComposer application abstractions (`ICommandService`, `IQueryService`, generated descriptor registry, auth/tenant context services) rather than Shell component internals, so the same package can run in web, worker, test-host, or future gateway hosts.
 - MCP schema generation must be SourceTools-driven, deterministic, and compile-time owned. Runtime reflection may instantiate generated adapters when needed, but it is not the source of schema truth.
+- MCP descriptors may only mechanically transform SourceTools IR into protocol-safe names, URIs, and JSON Schema. They must not redefine command parameters, projection shape, display metadata, policy metadata, or validation semantics outside the existing parse/transform source of truth.
 - Commands are tools. Projections are resources/resource templates. The naming scheme must be unique within a server and must satisfy MCP tool-name character guidance: ASCII letters/digits plus `_`, `-`, and `.`; no spaces or commas.
 - Tenant context is authenticated context, not tool input. Missing tenant/user context fails closed per L03.
+- When API key or client-credentials auth, JWT/principal claims, and command/query context disagree on tenant identity, the authenticated canonical tenant context wins only when it is singular and non-empty; any absent, ambiguous, spoofed, or mismatched tenant/user input fails before command construction, query construction, dispatch, or side effects.
 - Story 8-1 ships the MCP spine and minimal runnable calls. Story 8-2 owns closest-match hallucination suggestions and tenant-scoped tool enumeration. Story 8-3 owns the two-call lifecycle subscription tool. Story 8-4 owns role-rich Markdown projection rendering. Story 8-5 owns skill corpus payloads. Story 8-6 owns schema fingerprints/version negotiation.
 - Official MCP C# SDK usage is preferred. As of 2026-05-01, the official SDK docs list C# as a Tier 1 SDK and the official C# repository publishes `ModelContextProtocol.Core`, `ModelContextProtocol`, and `ModelContextProtocol.AspNetCore`, with `ModelContextProtocol.AspNetCore` intended for HTTP-based MCP servers.
+
+### Hardened Party-Mode Clarifications
+
+- **Determinism:** Generated descriptor ordering, protocol identifiers, URI templates, JSON Schema serialization, policy metadata, and fallback labels must be stable across repeated builds for the same SourceTools IR. Current UI culture, tenant/user state, loaded service instances, runtime authorization decisions, and assembly enumeration order must not affect generated descriptors.
+- **Command input schema:** Story 8-1 supports the command property categories already represented by SourceTools IR: strings, booleans, numeric types, date/time-like values, enums, nullable/required state, arrays or nested objects only when the existing command-form model already represents them, and known validation constraints when available. Unsupported CLR/type categories fail at build/manifest generation with a deterministic diagnostic or explicit unsupported-schema marker; they are not guessed in the MCP adapter.
+- **Projection resources:** Resource identifiers and templates use the story's documented URI rules, bind only non-secret protocol parameters, and validate query/paging inputs before calling `IQueryService`. Large result limits, pagination defaults, and content type must be deterministic and documented by the adapter; rich role-specific Markdown and UI-template rendering remain Story 8-4.
+- **Adapter response mapping:** MCP request IDs and cancellation tokens must flow through the adapter. Validation errors, auth failures, unknown tool/resource/template names, domain rejections, timeouts, cancellation, and downstream exceptions map to bounded protocol errors with stable error categories and correlation IDs where already available. Error responses must not include stack traces, internal type names, tenant/resource existence hints, raw exception text, claims, tokens, tenant IDs, user IDs, payload fragments, or provider internals.
+- **Policy metadata non-goal:** Story 8-1 emits and carries the existing Story 7-3 policy identifier metadata, but MCP listing/discovery in this story must not imply that full tenant-scoped authorization filtering is implemented. Runtime list/call filtering, closest-match suggestions, hidden unauthorized tools, and semantic hallucination handling are Story 8-2.
+- **Localization contract:** MCP names, URIs, schema property names, and protocol identifiers are invariant technical contracts. Human-readable titles and descriptions should preserve SourceTools display/description metadata and localization keys where already present, with deterministic fallback text; they must not depend on per-request user culture or contain hard-coded adapter-only copy when IR metadata exists.
 
 ### Proposed Minimal Flow
 
@@ -189,6 +209,7 @@ An adopter should be able to register FrontComposer once for a bounded context, 
 - Tool names should be stable and MCP-safe. Use a documented form such as `{boundedContext}.{CommandTypeName}.Execute` after sanitizing to `[A-Za-z0-9_.-]`.
 - Projection resource URIs should be stable and non-secret, such as `frontcomposer://{boundedContext}/projections/{ProjectionTypeName}` or an SDK-recommended equivalent.
 - If display names collide but FQNs differ, display titles may repeat but protocol identifiers must remain unique.
+- Collision detection covers command tool names, projection resource identifiers, resource templates, generated aliases if any, bounded-context prefixes, and case-insensitive protocol lookup behavior. Collisions either produce deterministic disambiguated names or fail at compile/startup before the MCP server starts accepting traffic.
 - Names must not include tenant identifiers, environment names, user identifiers, role/claim values, localized strings, or sample payload values.
 
 ### Security And Redaction Matrix
@@ -206,6 +227,7 @@ Do not implement these in Story 8-1:
 
 - Closest-match hallucination suggestions or tenant-scoped full tool listing beyond basic rejection. Owner: Story 8-2.
 - Full tenant-scoped enumeration and command policy enforcement for every MCP list/call edge. Owner: Story 8-2, consuming Story 7-3 metadata.
+- Policy-based hiding of tools/resources or fuzzy/semantic hallucination correction for unauthorized or misspelled names. Owner: Story 8-2.
 - `lifecycle/subscribe`, guaranteed terminal state polling, or the full two-call lifecycle contract. Owner: Story 8-3.
 - Role-rich Markdown rendering for Default/ActionQueue/StatusOverview/Timeline, empty-state suggestions, badge text mapping, and locale formatting parity beyond minimal deterministic output. Owner: Story 8-4.
 - Versioned skill corpus resources. Owner: Story 8-5.
@@ -267,6 +289,17 @@ Do not implement these in Story 8-1:
 ### Completion Notes List
 
 - 2026-05-01: Story created via `/bmad-create-story 8-1-mcp-server-and-typed-tool-exposure` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+
+### Party-Mode Review
+
+- **Date/time:** 2026-05-01T11:14:48+02:00
+- **Selected story key:** `8-1-mcp-server-and-typed-tool-exposure`
+- **Command/skill invocation used:** `/bmad-party-mode 8-1-mcp-server-and-typed-tool-exposure; review;`
+- **Participating BMAD agents:** Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- **Findings summary:** The review found that the story was ready in product scope but needed sharper pre-dev contracts for deterministic SourceTools-driven MCP descriptors, stable schema serialization, tenant/auth precedence, spoofed derivable field rejection, adapter error mapping, policy-metadata non-goals, resource/template boundaries, and testable sanitization.
+- **Changes applied:** Added stable-abstraction dependency guidance; restricted MCP descriptor generation to mechanical SourceTools IR transforms; clarified tenant/auth precedence and fail-closed mismatches; added hardened party-mode clarifications for determinism, command input schema, projection resources, adapter response mapping, policy metadata non-goals, and localization contracts; tightened name/URI collision domains; expanded T4/T7/T8/T9 with spoofed-field, unsupported-type, resource-template, auth, determinism, adapter-boundary, and policy guardrail tests.
+- **Findings deferred:** Full tenant-scoped listing/filtering, policy-based hiding, closest-match/hallucination suggestions, lifecycle subscription, rich role-specific Markdown rendering, skill corpus resources, schema fingerprints/version negotiation, and new authorization policy language remain deferred to their owning Epic 8 / Epic 7 follow-up stories.
+- **Final recommendation:** ready-for-dev
 
 ### File List
 
