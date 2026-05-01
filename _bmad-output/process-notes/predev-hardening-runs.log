@@ -82,3 +82,4 @@
 2026-05-01T18:02:00+02:00	create-story	8-4-projection-rendering-for-agents	ok	created story artifact and marked ready-for-dev
 2026-05-01T20:10:02+02:00	party-mode-review	8-3-two-call-lifecycle-and-agent-command-semantics	ok	applied lifecycle source, ordering, replay, redaction, and benchmark hardening
 2026-05-01T21:15:47+02:00	create-story	8-5-skill-corpus-and-build-time-agent-support	ok	created ready-for-dev story and updated sprint buffer
+2026-05-01T22:58:51+02:00	advanced-elicitation	8-3-two-call-lifecycle-and-agent-command-semantics	ok	applied snapshot ordering, crash-window, malformed-handle, retry-bound, and retention hardening

@@ -55,6 +55,10 @@ An adopter should be able to expose command tools to an agent and trust that com
 | AC18 | Lifecycle transitions are observed while SignalR, EventStore reconciliation, polling, or repeated lifecycle reads overlap | Concurrent readers inspect the lifecycle surface | Transitions are monotonic, ordered, bounded, and source-of-truth backed; terminal state never regresses, appears at most once, and repeated reads return the same terminal outcome without duplicate registration or dispatch. |
 | AC19 | The same idempotency key or lifecycle identifier is replayed across same-tenant, different-tenant, same-payload, changed-payload, in-progress, confirmed, and rejected cases | The MCP command or lifecycle surface receives the replay | Replay behavior follows the documented matrix: intent-equivalent duplicate commands may resolve to `IdempotentConfirmed`; materially different payloads or tenant/policy mismatches fail closed; lifecycle-read idempotency is distinct from command-dispatch idempotency. |
 | AC20 | Authorization, tenant, policy, or authentication state changes after an acknowledgment | The lifecycle tracking surface is called again | Current revalidation wins. Loss of access returns the Story 8-2 hidden/unknown-safe response shape and does not reveal whether the caller previously created the command, whether the identifier was once valid, or whether a terminal outcome exists. |
+| AC21 | Lifecycle snapshots are produced from overlapping SignalR, EventStore, polling, pending-command, or repeated read observations | The MCP lifecycle adapter serializes the result | Ordering is based only on source-of-truth transition sequence/version metadata, not client timestamps or arrival order; snapshots include server-observed metadata sufficient for deterministic tests without exposing tenant, user, policy, payload, or provider internals. |
+| AC22 | A process restart, cancellation, transport disconnect, or adapter exception occurs after durable lifecycle allocation but before backend dispatch or terminal reconciliation completes | The command is later inspected through the lifecycle surface | The shared lifecycle source either reconciles to the real command outcome or emits a sanitized bounded `NeedsReview`/`TimedOut` category; no acknowledged command becomes permanently untrackable or silently disappears. |
+| AC23 | A lifecycle request supplies an oversized, mixed-case, non-canonical, path-traversal-like, Unicode-confusable, near-match, or otherwise malformed lifecycle identifier | The request reaches the MCP boundary | The identifier is rejected or normalized before any source lookup, using the same hidden/unknown-safe response size class and timing envelope as unknown authorized identifiers, with no side effects or telemetry leakage. |
+| AC24 | Many agents poll lifecycle handles concurrently or receive retry guidance from in-progress, hidden/unknown, timeout, and terminal paths | The lifecycle surface returns retry metadata | Retry-after, long-poll wait, transition-history count, and response-size limits are bounded by options and use non-enumerating defaults so guidance cannot become a timing oracle or thundering-herd amplifier. |
 
 ---
 
@@ -66,6 +70,7 @@ An adopter should be able to expose command tools to an agent and trust that com
   - [ ] Model terminal outcomes as `Confirmed`, `Rejected`, `IdempotentConfirmed`, and bounded failure categories such as `TimedOut` or `NeedsReview`; do not overload `CommandLifecycleState.Rejected` for idempotent success.
   - [ ] Include `messageId`, `correlationId`, state, terminal outcome, safe retry guidance, and optional subscription URI/tool reference. Exclude raw command payload and raw principal/tenant data.
   - [ ] Define deterministic JSON serialization ordering for snapshots and terminal outcomes to support approval tests.
+  - [ ] Include source-of-truth transition sequence/version metadata and server-observed timestamps for diagnostics; never rely on client timestamps, arrival order, or agent-supplied state to order transitions.
 
 - [ ] T2. Wire command acknowledgment to the existing command dispatch path (AC1, AC2, AC8, AC13)
   - [ ] Invoke command tools only after Story 8-2 visible-catalog, schema, tenant, and policy admission succeeds.
@@ -75,10 +80,12 @@ An adopter should be able to expose command tools to an agent and trust that com
   - [ ] Enforce the ordering contract: admission pass -> durable lifecycle identity allocation with initial `Acknowledged` transition -> backend dispatch through existing seams -> in-progress/terminal transitions; define sanitized failure behavior at each boundary.
   - [ ] Preserve cancellation tokens and request IDs through admission, command dispatch, acknowledgment, lifecycle registration, and telemetry finalization.
   - [ ] If the registered command service cannot provide lifecycle callbacks where this story requires them, fail loudly with a sanitized configuration category rather than pretending terminal tracking is available.
+  - [ ] Define the crash/restart window after durable allocation and before dispatch or terminal reconciliation; recovery must reconcile against the shared lifecycle source or emit sanitized bounded `NeedsReview`/`TimedOut` instead of leaving an acknowledged handle untrackable.
 
 - [ ] T3. Add the lifecycle tracking MCP surface (AC3-AC5, AC9-AC11, AC14)
   - [ ] Add a lifecycle tool or resource template with a stable name/URI such as `frontcomposer.lifecycle.subscribe` or `frontcomposer://lifecycle/{correlationId}`; document the chosen shape in the manifest.
   - [ ] Accept only framework-issued correlation/message identifiers from the acknowledgment. Reject raw tenant/user, policy, command payload, projection filter, or descriptor override inputs.
+  - [ ] Validate lifecycle identifiers for canonical length, character set, casing, URI segment shape, and normalization before lookup. Malformed, oversized, confusable, or near-match identifiers use the same public response class as unknown identifiers.
   - [ ] Re-check authenticated tenant and policy visibility on every lifecycle request. A prior acknowledgment or subscription URI never bypasses current authorization.
   - [ ] Return the latest snapshot plus bounded transition history. Bound history length, response size, and wait/long-poll duration with explicit options.
   - [ ] Support concurrent and repeated lifecycle calls without duplicate registration, duplicate dispatch, duplicate terminal outcomes, or unbounded per-agent state.
@@ -113,20 +120,25 @@ An adopter should be able to expose command tools to an agent and trust that com
   - [ ] Treat subscription URIs as opaque handles scoped to current auth/tenant/policy context; they are not bearer secrets and not proof of authorization.
   - [ ] Reject lifecycle inputs that attempt to override tenant, user, policy, descriptor, command payload, lifecycle state, or retry metadata.
   - [ ] Sanitize all message/correlation IDs in responses and logs; bound length and allowed characters.
+  - [ ] Keep hidden/unknown, malformed, expired, evicted, unauthorized, and cross-tenant lifecycle responses within the same public size class and practical timing envelope; telemetry may record only sanitized internal categories.
   - [ ] Do not reveal evicted command counts, hidden tenant existence, hidden policy names, denied tool names, or whether a correlation ID was once valid for another principal.
   - [ ] Add stale replay tests for copied acknowledgment payloads after sign-out, tenant switch, policy change, descriptor rebuild, and lifecycle-store eviction.
   - [ ] Distinguish command-dispatch idempotency from lifecycle-read idempotency; same-key/different-payload and cross-tenant replays must fail closed without exposing prior command state.
 
-- [ ] T8. Tests and verification (AC1-AC20)
+- [ ] T8. Tests and verification (AC1-AC24)
   - [ ] MCP command tests for valid command acknowledgment, shape of subscription URI/tool reference, ULID/correlation presence, and no payload/tenant/principal leakage.
   - [ ] Lifecycle tracking tests for in-progress snapshots, ordered transitions, terminal `Confirmed`, terminal `Rejected`, terminal `IdempotentConfirmed`, repeated reads, concurrent reads, and duplicate terminal suppression.
+  - [ ] Snapshot consistency tests proving transition sequence/version ordering is deterministic under out-of-order observer delivery, clock skew, concurrent reads, and repeated serialization.
   - [ ] Zero-side-effect tests proving unknown/hidden/unauthorized/stale lifecycle tracking requests do not dispatch commands, mutate lifecycle state, query EventStore, relay tokens, mutate cache, or emit sensitive telemetry.
   - [ ] Negative admission tests proving rejected commands return no lifecycle ID and leave no lifecycle row, pending-command entry, EventStore append/send, token relay, cache mutation, or SignalR side effect.
   - [ ] Rejection schema tests covering domain rejection, validation rejection, retryable conflict, non-retryable conflict, idempotent success, timeout, cancellation, and downstream exception categories.
   - [ ] Replay/idempotency matrix tests covering same tenant/key/payload, same tenant/key/different payload, different tenant/same key, replay while in progress, replay after confirmed, and replay after rejected.
   - [ ] Concurrency tests covering simultaneous lifecycle reads, terminal observation races, duplicate dispatch attempts, no terminal regression, no duplicate terminal events, and bounded transition history.
   - [ ] Replay/security tests covering tenant switch, policy loss, sign-out, expired auth, stale subscription URI, copied message ID, evicted lifecycle entry, hidden direct correlation ID, and cross-tenant near-match identifiers.
+  - [ ] Malformed-handle tests covering oversized values, mixed-case variants, path traversal, percent-encoding, Unicode confusables, whitespace, null/empty values, and near-match ULIDs with hidden/unknown-safe public results and no store lookup when validation fails.
   - [ ] Bounded-state tests for maximum transition history, maximum active lifecycle entries, TTL/eviction behavior, repeated lifecycle reads, long-running commands, and disposal/cancellation races.
+  - [ ] Crash-window tests covering restart or exception after lifecycle allocation but before dispatch, disconnect after acknowledgment, cancellation during long-poll, and reconciliation to terminal or sanitized `NeedsReview`/`TimedOut`.
+  - [ ] Retry-guidance tests proving retry-after, long-poll duration, response size, and transition history caps are enforced consistently for in-progress, hidden/unknown, timeout, and terminal paths.
   - [ ] Adapter-boundary tests proving internal lifecycle DTOs map to official MCP SDK responses while SDK DTOs stay out of Contracts and SourceTools public surfaces.
   - [ ] Architecture/package-boundary tests preventing MCP SDK package references or transport DTOs from leaking outside `Hexalith.FrontComposer.Mcp`.
   - [ ] Redaction oracle tests for acknowledgments, lifecycle snapshots, rejection payloads, logs, metrics, traces, and EventStore-derived observations.
@@ -172,6 +184,25 @@ An adopter should be able to expose command tools to an agent and trust that com
 - **Unavailable is not terminal:** SignalR gaps, EventStore lookup delay, projection reconciliation lag, and polling outages are observation conditions. They produce bounded in-progress/retry metadata until the shared source reports a terminal outcome or retention/timeout policy emits a sanitized `TimedOut`/`NeedsReview` category.
 - **Hidden/unknown equivalence:** Unknown, expired, evicted, cross-tenant, policy-hidden, stale, and unauthorized lifecycle identifiers must have indistinguishable external response shape, size class, and timing envelope where practical. Internal telemetry may record sanitized categories without denied names, tenant IDs, policy names, payload fragments, or existence hints.
 - **Benchmark scope:** The P95 read-your-writes target is measured only on the documented localhost Aspire v1 benchmark lane using existing configured command, lifecycle, EventStore, SignalR/polling, and projection services. The story must document dataset, command type, projection path, warm/cold setup, concurrency, polling cadence, timing boundaries, and whether CI treats the benchmark as gating or diagnostic.
+
+### Advanced Elicitation Clarifications
+
+- **Source-ordered snapshots:** Lifecycle output ordering comes from the shared lifecycle/pending-command source's monotonic sequence or version, not from SignalR arrival order, polling completion order, client clocks, or agent-supplied timestamps. If observers disagree, the adapter returns the highest valid source-backed snapshot and preserves ordered history within configured bounds.
+- **Crash-window recovery:** After an acknowledgment is issued, process restart, cancellation, transport disconnect, or adapter exception must not strand the handle. Recovery either reconciles with the existing command/lifecycle record or returns a bounded sanitized `NeedsReview`/`TimedOut` result after the configured retention and timeout rules.
+- **Malformed handle parity:** Invalid, oversized, confusable, percent-encoded, path-like, mixed-case, or near-match lifecycle handles fail before state lookup where possible and share the same public response class as unknown handles. This prevents identifier parsing from becoming an enumeration or timing side channel.
+- **Retry guidance discipline:** Retry-after and long-poll metadata are operational hints, not proof that a command exists. They must respect configured min/max bounds and avoid category-specific values that distinguish hidden, cross-tenant, expired, evicted, or unauthorized handles.
+- **Terminal retention boundary:** Terminal snapshots remain idempotently readable only inside the configured retention window for currently authorized callers. After retention or eviction, lifecycle reads fall back to hidden/unknown-safe semantics without exposing that the command was once valid.
+
+### Lifecycle Snapshot Consistency Contract
+
+| Field or behavior | Rule |
+| --- | --- |
+| `messageId` / `correlationId` | Framework-issued, canonicalized, bounded, and validated before lookup. |
+| Transition order | Determined by source-of-truth sequence/version metadata, never by client clocks or delivery order. |
+| `observedAt` / timestamps | Server-observed diagnostic metadata only; not the authority for terminal precedence. |
+| Retry metadata | Bounded by options and safe to return without revealing existence, tenant, policy, or terminal detail. |
+| Transition history | Capped by count and response-size limits; truncation is explicit and sanitized. |
+| Hidden/unknown responses | Same public category, practical size class, and timing envelope for malformed, unknown, expired, evicted, unauthorized, policy-hidden, and cross-tenant handles. |
 
 ### Replay And Idempotency Matrix
 
@@ -341,6 +372,18 @@ Do not implement these in Story 8-3:
 - **Findings summary:** The review found that the story preserved the right two-call lifecycle product shape but needed sharper pre-dev contracts for source-of-truth ownership, admission ordering, durable acknowledgment, per-read authorization loss, hidden/unknown equivalence, replay/idempotency boundaries, concurrency races, redaction oracles, and benchmark scope.
 - **Changes applied:** Added AC16-AC20 for side-effect-free admission failure, durable shared lifecycle allocation before acknowledgment, monotonic terminal behavior under concurrency, replay/idempotency matrix behavior, and current-authorization-wins lifecycle reads; hardened T2/T3/T4/T7/T8 with ordering, shared-source parity, unavailable-as-non-terminal, negative admission, replay, concurrency, package-boundary, redaction, and benchmark-scope tests; added party-mode clarifications, replay/idempotency matrix, and redaction contract tables.
 - **Findings deferred:** Rich projection rendering, skill corpus resources, schema fingerprints/version negotiation, deep agent E2E and signed benchmark releases, new authorization policy language, semantic retry planning, autonomous compensation, workflow orchestration, and multi-command transactions remain deferred to their named owning stories/backlog entries.
+- **Final recommendation:** ready-for-dev
+
+### Advanced Elicitation
+
+- **Date/time:** 2026-05-01T22:58:51+02:00
+- **Selected story key:** `8-3-two-call-lifecycle-and-agent-command-semantics`
+- **Command/skill invocation used:** `/bmad-advanced-elicitation 8-3-two-call-lifecycle-and-agent-command-semantics`
+- **Batch 1 method names:** Security Audit Personas; Failure Mode Analysis; Self-Consistency Validation; 5 Whys Deep Dive; Critique and Refine
+- **Batch 2 method names:** Pre-mortem Analysis; Chaos Monkey Scenarios; Occam's Razor Application; Graph of Thoughts; Performance Profiler Panel
+- **Findings summary:** The two-batch pass found the story was strong on admission ordering and terminal semantics but still needed explicit guardrails for source-ordered snapshots, crash/restart windows after acknowledgment, malformed lifecycle handle parity, retry-guidance bounds, terminal retention semantics, and deterministic test oracles for those paths.
+- **Changes applied:** Added AC21-AC24; hardened T1/T2/T3/T7/T8 with sequence/version ordering, crash-window recovery, identifier canonicalization, hidden/unknown size/timing parity, malformed-handle tests, retry-bound tests, and restart/cancellation reconciliation tests; added advanced elicitation clarifications and a lifecycle snapshot consistency contract.
+- **Findings deferred:** Schema fingerprint/version negotiation remains Story 8-6; rich projection result shape remains Story 8-4; deep signed agent E2E and benchmark release criteria remain Story 10-2/10-6; semantic retry planning and multi-command workflow compensation remain post-v1 backlog.
 - **Final recommendation:** ready-for-dev
 
 ### File List
