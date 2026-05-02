@@ -86,3 +86,4 @@
 2026-05-02T08:57:21+02:00	party-mode-review	8-4-projection-rendering-for-agents	ok	applied renderer contract, response taxonomy, bounds, formatting, suggestions, and test-scope hardening
 2026-05-02T10:13:09+02:00	advanced-elicitation	8-4-projection-rendering-for-agents	ok	applied snapshot, atomic render, inert text, deferred streaming/cache/count hardening
 2026-05-02T11:28:32+02:00	party-mode-review	8-5-skill-corpus-and-build-time-agent-support	ok	applied corpus metadata, URI/order, validator, and offline benchmark clarifications
+2026-05-02T12:08:08+02:00	create-story	8-6-schema-versioning-and-multi-surface-abstraction	ok	created schema fingerprint, negotiation, migration delta, and renderer abstraction story
