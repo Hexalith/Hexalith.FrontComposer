@@ -51,18 +51,22 @@ An adopter should keep defining projections once with FrontComposer attributes a
 | AC15 | Projection metadata, query rows, or cell values contain unstable ordering, missing labels, duplicate timestamps, unsupported strategies, or unsafe Markdown-like text | Markdown is rendered | The renderer follows the canonical contract in Dev Notes: stable heading levels, row/group/timeline ordering, fallback labels, formatting matrix, escaping rules, and unsupported-strategy behavior are fixed and covered by golden fixtures. |
 | AC16 | A projection read fails admission, visibility, freshness, bounds, query, timeout, or cancellation checks | The MCP adapter maps the result for an agent | The response uses the sanitized response taxonomy in Dev Notes, preserving hidden/unknown equivalence where required and never confirming resource existence, tenant membership, policy names, or hidden row counts. |
 | AC17 | Story 8-4 test work is implemented | Tests are planned and executed | P0/P1/P2 risk tiers, shared projection fixtures, constrained golden snapshots, and explicit redaction/Markdown-safety oracles keep test scope bounded while proving no-leak, deterministic, bounded, SDK-neutral behavior. |
+| AC18 | Auth, tenant, policy, descriptor epoch, or catalog visibility can change while an agent projection read is in progress | The request moves from admission to query to rendering | Story 8-4 uses one immutable per-read context snapshot, revalidates freshness before query/render handoff, and aborts with a sanitized stale/unavailable category instead of mixing old visibility with new data. |
+| AC19 | Rendering is cancelled, times out, exceeds bounds, or fails after some rows/cells have been formatted | The MCP adapter produces the agent-visible response | Output is committed atomically: no partial Markdown, partial table rows, hidden labels, exact row counts, raw exception text, or retained renderer buffers are returned or cached. |
+| AC20 | Projection labels, descriptions, status text, command labels, or row values contain prompt-like instructions, Markdown directives, links, mentions, task-list syntax, front matter, HTML, or command-looking text | Markdown is rendered for an agent | All untrusted text is rendered as inert escaped data and test fixtures prove the agent surface cannot turn projection content into executable instructions, clickable hidden links, checklists, or out-of-band commands. |
 
 ---
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define SDK-neutral Markdown projection renderer contracts (AC1-AC6, AC10, AC12, AC14)
+- [ ] T1. Define SDK-neutral Markdown projection renderer contracts (AC1-AC6, AC10, AC12, AC14, AC18, AC19)
   - [ ] Add package-owned models such as `McpProjectionRenderRequest`, `McpProjectionRenderResult`, `McpMarkdownProjectionDocument`, `McpMarkdownTable`, `McpMarkdownStatusSummary`, and `McpMarkdownTimeline`.
   - [ ] Place pure renderer contracts under an SDK-neutral `Hexalith.FrontComposer.Mcp` rendering namespace/folder; keep MCP SDK DTOs, transport status mapping, and `TextResourceContents` conversion in the MCP adapter edge only.
   - [ ] Keep contracts SDK-neutral until the final MCP resource adapter edge; do not expose MCP SDK DTOs from Contracts, SourceTools, or generated descriptors.
   - [ ] Represent rendered output as `text/markdown` plus safe metadata: projection identifier, role, bounded context, row count category, truncation state, and correlation/request ID when already available.
   - [ ] Exclude tenant IDs, user IDs, claims, roles, API keys, tokens, raw query filters, hidden resource names, service instances, `ClaimsPrincipal`, and raw exception text from renderer contracts.
   - [ ] Define deterministic Markdown serialization rules for headings, tables, escaped cell text, status summaries, timelines, empty states, and truncation notices.
+  - [ ] Define output as an atomically committed render result: the adapter returns either a complete sanitized document or a sanitized failure category, never a partially formatted buffer.
 
 - [ ] T2. Reuse SourceTools projection metadata as the render source of truth (AC1-AC6, AC10, AC13)
   - [ ] Consume the same projection descriptor/manifest data emitted by Story 8-1 rather than reflecting over arbitrary loaded assemblies at request time.
@@ -77,7 +81,7 @@ An adopter should keep defining projections once with FrontComposer attributes a
   - [ ] Render ActionQueue projections with the same table baseline plus pending-action context, safe CTA command labels, and semantic badge text where visible.
   - [ ] Format null values, enums, booleans, dates/times, numbers, arrays/objects, unsupported values, and missing labels exactly as defined in the canonical formatting matrix.
   - [ ] Do not include Markdown links or command suggestions that would bypass Story 8-2 tenant/policy visibility.
-  - [ ] Add tests for Markdown escaping of pipes, backticks, brackets, Markdown links/images, HTML-like text, code fences, newlines, RTL/BOM/control characters, long words, and secret-looking payload fragments.
+  - [ ] Add tests for Markdown escaping of pipes, backticks, brackets, Markdown links/images, reference definitions, autolinks, HTML-like text, code fences, front matter, task-list syntax, blockquotes, mentions, slash-command-looking text, newlines, RTL/BOM/control characters, long words, and secret-looking payload fragments.
   - [ ] Enforce default bounds: 100 rows, 20 columns, 256 characters per cell, 32,768 characters per Markdown document, and the exact truncation marker `Output truncated by FrontComposer agent rendering limits.`.
 
 - [ ] T4. Implement StatusOverview Markdown summaries (AC3, AC5, AC6, AC10, AC11)
@@ -99,6 +103,7 @@ An adopter should keep defining projections once with FrontComposer attributes a
   - [ ] Route all projection reads through existing `IQueryService.QueryAsync<T>` or the Story 8-1 projection adapter; do not add a second EventStore or REST query client.
   - [ ] Accept only Story 8-1/8-2 approved resource names, URI templates, and query parameters. Reject raw tenant/user overrides and descriptor overrides.
   - [ ] Revalidate current auth, tenant, resource visibility, and policy scope for every read; previous list results, lifecycle terminal results, and copied URIs do not bypass visibility.
+  - [ ] Capture auth, tenant context, policy scope, descriptor epoch, catalog epoch, query request shape, and request ID into an immutable per-read snapshot after admission; if freshness changes before query/render handoff, return the sanitized stale descriptor/category response without querying or rendering.
   - [ ] Preserve cancellation tokens, request IDs, ETag/cache discriminator rules, pagination, and degraded EventStore categories.
   - [ ] Map successful render output to MCP C# SDK resource contents inside the MCP package, using `text/markdown` text resources.
   - [ ] Treat malformed resource URIs, stale descriptors, oversized query parameters, hidden resources, unauthorized resources, query failures, timeouts, and cancellations as deterministic sanitized categories using the taxonomy in Dev Notes.
@@ -112,14 +117,16 @@ An adopter should keep defining projections once with FrontComposer attributes a
   - [ ] Do not implement fuzzy command suggestions, hallucination correction, or tenant-scoped listing rules here; consume Story 8-2 results only.
   - [ ] Keep rich natural-language advice bounded and deterministic. No per-agent memory, dynamic planning, or generated prose that depends on request history.
 
-- [ ] T8. Security, redaction, and bounded runtime state (AC8-AC11)
+- [ ] T8. Security, redaction, and bounded runtime state (AC8-AC11, AC18-AC20)
   - [ ] Redact JWT-like strings, API keys, client secrets, claims, role names, tenant IDs, user IDs, raw query filters, command payload fragments, provider internals, and exception text from Markdown, logs, and telemetry.
   - [ ] Add zero-side-effect tests proving hidden/unknown/malformed/unauthorized/stale resource reads do not query EventStore, mutate cache, relay tokens, update SignalR state, allocate renderer state, or emit sensitive telemetry.
   - [ ] Make descriptor registries, renderer lookup tables, response buffers, and render caches immutable after startup or bounded by explicit options.
+  - [ ] Do not add a renderer-owned cross-request Markdown cache in v1; rely on existing query/ETag seams and local per-request buffers unless a later versioned story defines a scoped cache contract.
+  - [ ] Discard local render buffers on cancellation, timeout, bounds failure, stale context, or exception; telemetry records only sanitized outcome categories and duration buckets.
   - [ ] Add options for max projection rows, max columns, max cell length, max Markdown bytes/chars, max timeline entries, max status groups, max suggestions, and truncation behavior with range validation and documented defaults.
   - [ ] Log sanitized outcome categories and duration buckets only; do not log rendered row payloads.
 
-- [ ] T9. Tests and verification (AC1-AC14)
+- [ ] T9. Tests and verification (AC1-AC20)
   - [ ] Use the risk-based test scope below: P0 must pass before review; P1 should be covered unless shared seams make it redundant; P2 is bounded and may be deferred only with an owner.
   - [ ] Markdown renderer unit tests for Default, ActionQueue, StatusOverview, and Timeline roles using one constrained golden fixture per role.
   - [ ] SourceTools parity tests for labels, descriptions, column ordering, badge mappings, entity labels, empty-state CTA metadata, field display formats, and unsupported placeholders.
@@ -127,6 +134,8 @@ An adopter should keep defining projections once with FrontComposer attributes a
   - [ ] Query integration tests covering two sample projections, tenant context injection, pagination, ETag/cache behavior, read-your-writes after Story 8-3 terminal confirmation, and degraded query outcomes.
   - [ ] Hidden/unknown/unauthorized/stale resource tests consuming Story 8-2 semantics and proving no query or render side effects.
   - [ ] Markdown safety tests for escaping, control characters, oversized rows, secret-looking values, raw exception text, tenant/user values, and deterministic truncation.
+  - [ ] Atomicity tests proving mid-render cancellation, timeout, formatter exception, and document-bound overflow return only sanitized taxonomy responses and never partial Markdown.
+  - [ ] Snapshot-staleness tests proving descriptor/catalog epoch changes between admission, query, and rendering are rejected without mixing old visibility with new query data.
   - [ ] Snapshot/golden tests proving stable Markdown for supported projection roles across repeated runs; normalize timestamps/culture and avoid SDK-generated DTO snapshots.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
   - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Mcp.Tests`, `tests/Hexalith.FrontComposer.SourceTools.Tests`, and Shell/EventStore query tests only if shared query/render seams change.
@@ -248,6 +257,48 @@ All options require range validation. Truncation does not change ETag/read-your-
 
 Shared fixtures should be reused across renderer, adapter, and integration tests: agent with role, agent without role, hidden source, unknown metadata, empty projection, large bounded projection, localized labels, Markdown-injection values, degraded query result, and post-terminal-command projection read. Golden snapshots are limited to minimal normalized Markdown documents, not SDK DTOs, live timestamps, dictionary enumeration, or localized strings without pinned culture.
 
+### Advanced Elicitation Clarifications
+
+These clarifications were applied by `/bmad-advanced-elicitation 8-4-projection-rendering-for-agents` on 2026-05-02 and are part of the pre-dev contract.
+
+#### Immutable Read Snapshot Contract
+
+| Stage | Requirement |
+| --- | --- |
+| Admission | Validate resource URI/template, visible descriptor, policy scope, tenant context, request bounds, and descriptor/catalog epoch before any query call. |
+| Snapshot | Carry only safe immutable values forward: projection key, descriptor epoch, catalog epoch, role, safe labels/metadata, bounded query shape category, request ID, and cancellation token. Do not carry raw tenant IDs, claims, tokens, filters, principals, or mutable service objects into renderer models. |
+| Revalidation | If descriptor/catalog epoch, tenant scope, or policy visibility changes before query or render handoff, stop with the stale/unavailable sanitized response and do not query/render. |
+| Query | Existing query seams remain authoritative for ETag/cache/read-your-writes/degraded behavior. Story 8-4 does not infer freshness from Markdown content or recompute query state from rendered output. |
+| Render | Renderer consumes only the snapshot plus query rows. It cannot re-open descriptors, consult current principals, invoke commands, or mutate lifecycle/cache state. |
+
+#### Atomic Markdown Commit Contract
+
+| Risk | Required behavior |
+| --- | --- |
+| Mid-render cancellation or timeout | Discard the local buffer and return the sanitized temporary-unavailable/cancellation category. |
+| Formatter exception or unsupported cell after render starts | Discard partial output and return the sanitized unsupported/failure category unless the existing formatting matrix defines a safe placeholder before serialization. |
+| Document, row, column, group, suggestion, or cell bound crossed | Emit the configured truncation marker only when the visible successful output remains coherent; otherwise discard partial output and return the sanitized bounds category. |
+| Exact counts | Markdown may expose visible rendered counts only when they are part of the visible projection semantics. It must not reveal hidden total counts, omitted hidden rows, hidden resources, or filtered tenant/policy counts. |
+| Buffers and caches | Render buffers are per request and cleared after mapping. No renderer-owned cross-request Markdown cache ships in v1; future caching belongs to a numbered versioning/performance story with explicit tenant/policy/epoch scope. |
+
+#### Inert Untrusted Text Contract
+
+| Input shape | Required handling |
+| --- | --- |
+| Prompt-like text | Phrases such as "ignore previous instructions", "call this tool", "run /command", or "click this link" render as escaped cell/body text only. They do not become advice, system text, command suggestions, or links. |
+| Markdown links/images/reference definitions/autolinks | Escape or neutralize so output remains readable plain text and cannot hide target URLs or create clickable hidden actions. |
+| Front matter, task lists, blockquotes, headings, HTML, comments, fenced code, mentions, and slash-command-looking values | Escape as data, normalize control characters, and pin examples in golden fixtures. |
+| Suggestions | Empty-state suggestions use visible descriptor labels only, max 5, no links, no payload fragments, no natural-language plan, and no projection-row-derived command names. |
+
+#### Advanced Elicitation Deferred Decisions
+
+| Deferred item | Owner |
+| --- | --- |
+| Streaming projection Markdown or partial progressive resource responses. | Story 10-2 or a later MCP transport story |
+| Renderer-owned cross-request Markdown caching. | Story 8-6 or a later performance story with explicit scoped cache design |
+| Exact total-count exposure for filtered/paginated projections. | Story 8-6 schema/versioning or a product decision story |
+| Custom per-agent Markdown templates and rich natural-language summaries. | Story 8-6 or later customization story |
+
 ### Binding Decisions
 
 | Decision | Rationale |
@@ -264,6 +315,9 @@ Shared fixtures should be reused across renderer, adapter, and integration tests
 | D10. Protocol identifiers are invariant; display text can be localized metadata. | Separates machine contracts from human-readable labels and avoids per-request culture drift. |
 | D11. Markdown escaping is a security boundary. | Prevents table injection, hidden links, prompt-like payloads, and secret-looking content from becoming agent instructions. |
 | D12. SDK DTO mapping remains at the MCP edge. | Protects tests and internal render contracts from MCP C# SDK transport churn. |
+| D13. Per-read immutable snapshots gate query and render handoff. | Prevents tenant/policy/catalog changes from mixing stale visibility with fresh query data. |
+| D14. Markdown output commits atomically. | Prevents mid-render failures from leaking partial rows, hidden labels, exact counts, or exception text. |
+| D15. Projection text is data, not agent instruction. | Keeps untrusted labels, descriptions, row values, and suggestions inert in chat-oriented Markdown surfaces. |
 
 ### Markdown Shape Examples
 
@@ -321,6 +375,7 @@ Do not implement these in Story 8-4:
 - Versioned skill corpus resources or agent code-generation instructions. Owner: Story 8-5.
 - Schema fingerprints, migration delta diagnostics, client/server version negotiation, or full multi-surface renderer abstraction redesign. Owner: Story 8-6.
 - New projection role attributes, new badge slots, custom per-agent templates, or dynamic LLM-authored Markdown templates. Owner: Story 8-6 for renderer abstraction/versioning, or a later numbered customization story created before implementation.
+- Streaming/partial Markdown resources, exact hidden/filtered total-count exposure, or renderer-owned cross-request Markdown caching. Owner: Story 8-6, Story 10-2, or a later numbered performance/versioning story.
 - Renderer-specific demos for Claude Code, Codex, Cursor, Mistral, or native chat matrix. Owner: Story 10-2.
 - New command policy language, policy UI, or backend authorization engine. Owner: Story 7-3 or later authorization follow-up.
 
@@ -376,6 +431,7 @@ Do not implement these in Story 8-4:
 
 - 2026-05-01: Story created via `/bmad-create-story 8-4-projection-rendering-for-agents` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-4-projection-rendering-for-agents; review;`. Applied renderer contract, response taxonomy, bounds, formatting, suggestion, and test-scope hardening. Ready for advanced elicitation on a later run.
+- 2026-05-02: Advanced elicitation completed via `/bmad-advanced-elicitation 8-4-projection-rendering-for-agents`. Applied immutable read snapshot, atomic render commit, inert untrusted text, and deferred streaming/cache/count guidance. Ready for development.
 
 ### Party-Mode Review
 
@@ -386,6 +442,18 @@ Do not implement these in Story 8-4:
 - **Findings summary:** The review found the story product shape valuable but under-specified for development: deterministic Markdown ordering, sanitized failure behavior, exact bounds, formatting rules, safe suggestion limits, renderer ownership, unsupported-strategy fallback, read-your-writes metadata handling, and risk-ranked test oracles needed to be pinned before implementation.
 - **Changes applied:** Added AC15-AC17; clarified SDK-neutral renderer ownership; hardened T1-T9 with IR-only reuse, exact bounds, Markdown injection coverage, status/timeline ordering, safe suggestion limits, ETag/read-your-writes metadata handling, sanitized response categories, risk-based test tiers, fixture reuse, and constrained golden snapshots; added Party-Mode Review Clarifications covering the canonical renderer contract, formatting matrix, default bounds, response taxonomy, and P0/P1/P2 test scope.
 - **Findings deferred:** Fuzzy/semantic suggestions remain Story 8-2; lifecycle polling and idempotent command semantics remain Story 8-3; skill corpus resources remain Story 8-5; schema fingerprints, version negotiation, multi-surface renderer abstraction, and custom agent Markdown templates remain Story 8-6; deep agent E2E and chat-matrix demos remain Story 10-2; signed benchmarks remain Story 10-6; new authorization policy language remains Story 7-3 or a later numbered authorization follow-up.
+- **Final recommendation:** ready-for-dev
+
+### Advanced Elicitation
+
+- **Date/time:** 2026-05-02T10:13:09+02:00
+- **Selected story key:** `8-4-projection-rendering-for-agents`
+- **Command/skill invocation used:** `/bmad-advanced-elicitation 8-4-projection-rendering-for-agents`
+- **Batch 1 method names:** Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Self-Consistency Validation; Occam's Razor Application
+- **Batch 2 method names:** Chaos Monkey Scenarios; Hindsight Reflection; First Principles Analysis; Challenge from Critical Perspective; Comparative Analysis Matrix
+- **Findings summary:** The elicitation found three remaining pre-dev gaps after party-mode hardening: visibility and descriptor freshness could change between admission/query/render; mid-render cancellation or bounds failures could leak partial Markdown; and projection text that looks like instructions, links, tasks, mentions, or commands needed to be explicitly treated as inert data.
+- **Changes applied:** Added AC18-AC20; hardened T1, T3, T6, T8, and T9 with immutable read snapshots, atomic render commit behavior, broader Markdown/prompt-injection escaping fixtures, no renderer-owned cross-request Markdown cache in v1, and tests for mid-render failure plus descriptor/catalog epoch staleness; added Advanced Elicitation Clarifications for snapshot, atomic commit, inert text, and deferred streaming/cache/count decisions; added binding decisions D13-D15.
+- **Findings deferred:** Streaming or partial progressive Markdown responses remain Story 10-2 or a later MCP transport story; renderer-owned cross-request Markdown caching remains Story 8-6 or a later performance story; exact total-count exposure for filtered/paginated projections remains Story 8-6 or a product decision story; custom per-agent Markdown templates and rich natural-language summaries remain Story 8-6 or later customization work.
 - **Final recommendation:** ready-for-dev
 
 ### File List
