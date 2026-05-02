@@ -54,3 +54,5 @@ HFC1052 | HexalithFrontComposer | Warning | Custom override suppresses focus vis
 HFC1053 | HexalithFrontComposer | Warning | Custom override is missing aria-live parity (Story 6-6)
 HFC1054 | HexalithFrontComposer | Warning | Custom override motion has no reduced-motion fallback (Story 6-6)
 HFC1055 | HexalithFrontComposer | Warning | Custom override color styling has no forced-colors fallback (Story 6-6)
+HFC1056 | HexalithFrontComposer | Error | Command [RequiresPolicy] value is invalid (Story 7-3)
+HFC1057 | HexalithFrontComposer | Error | Command declares duplicate [RequiresPolicy] attributes (Story 7-3)

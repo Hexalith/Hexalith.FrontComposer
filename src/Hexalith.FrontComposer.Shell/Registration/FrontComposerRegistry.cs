@@ -12,11 +12,13 @@ namespace Hexalith.FrontComposer.Shell.Registration;
 internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry {
     private readonly List<DomainManifest> _manifests = [];
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
+    private readonly ILogger<FrontComposerRegistry> _logger;
 
     public FrontComposerRegistry(
         IEnumerable<DomainRegistrationAction> registrationActions,
         IEnumerable<DomainRegistrationWarning> warnings,
         ILogger<FrontComposerRegistry> logger) {
+        _logger = logger;
         foreach (DomainRegistrationWarning warning in warnings) {
             logger.LogWarning(
                 "Skipping registration type {RegistrationType}: expected a static Manifest member and RegisterDomain(IFrontComposerRegistry) method. Found Manifest={HasManifest}, RegisterDomain={HasRegisterMethod}.",
@@ -122,7 +124,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             name,
             existing.BoundedContext,
             [.. existing.Projections.Concat(manifest.Projections).Distinct(StringComparer.Ordinal)],
-            [.. existing.Commands.Concat(manifest.Commands).Distinct(StringComparer.Ordinal)]);
+            [.. existing.Commands.Concat(manifest.Commands).Distinct(StringComparer.Ordinal)],
+            MergeCommandPolicies(existing.CommandPolicies, manifest.CommandPolicies));
     }
 
     private static DomainManifest Clone(DomainManifest manifest)
@@ -130,7 +133,33 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
             manifest.Name,
             manifest.BoundedContext,
             [.. manifest.Projections],
-            [.. manifest.Commands]);
+            [.. manifest.Commands],
+            new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal));
+
+    private IReadOnlyDictionary<string, string> MergeCommandPolicies(
+        IReadOnlyDictionary<string, string> existing,
+        IReadOnlyDictionary<string, string> incoming) {
+        Dictionary<string, string> merged = new(existing, StringComparer.Ordinal);
+        foreach (KeyValuePair<string, string> pair in incoming) {
+            if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value)) {
+                continue;
+            }
+
+            string incomingTrimmed = pair.Value.Trim();
+            if (merged.TryGetValue(pair.Key, out string? prior)
+                && !string.Equals(prior, incomingTrimmed, StringComparison.Ordinal)) {
+                _logger.LogWarning(
+                    "FrontComposer registry merge: command {CommandTypeName} policy was overwritten from {PriorPolicy} to {IncomingPolicy} during manifest merge. Last-write-wins is the legacy default — duplicate policy declarations across manifests should be reconciled by the adopter.",
+                    pair.Key,
+                    prior,
+                    incomingTrimmed);
+            }
+
+            merged[pair.Key] = incomingTrimmed;
+        }
+
+        return merged;
+    }
 
     private static string ChooseName(string currentName, string candidateName, string boundedContext) {
         if (string.IsNullOrWhiteSpace(currentName)) {

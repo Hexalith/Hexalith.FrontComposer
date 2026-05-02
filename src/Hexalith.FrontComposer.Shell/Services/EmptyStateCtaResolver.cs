@@ -131,7 +131,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
                 matches[0].Command);
         }
 
-        return BuildCta(matches[0].BoundedContext, matches[0].Command);
+        return BuildCta(matches[0].BoundedContext, matches[0].Command, manifests);
     }
 
     private EmptyStateCta? ResolveByBoundedContext(
@@ -192,7 +192,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
             .ThenBy(x => x.BoundedContext, StringComparer.Ordinal)
             .ToList();
 
-        return BuildCta(ordered[0].BoundedContext, ordered[0].Command);
+        return BuildCta(ordered[0].BoundedContext, ordered[0].Command, manifests);
     }
 
     private static string? ResolveBoundedContext(
@@ -212,7 +212,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
         return owningManifest?.BoundedContext;
     }
 
-    private EmptyStateCta? BuildCta(string boundedContext, string commandFqn) {
+    private EmptyStateCta? BuildCta(string boundedContext, string commandFqn, IReadOnlyList<DomainManifest> manifests) {
         string route = CommandRouteBuilder.BuildRoute(boundedContext, commandFqn);
 
         // P-13: defense-in-depth — refuse to emit a CTA whose route is not a safe internal target.
@@ -230,13 +230,23 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
             commandFqn,
             HumanizeCommandName(TypeName(commandFqn)),
             route,
-            // AuthorizationPolicy is intentionally null in v1: the component wraps every CTA in
-            // a default <AuthorizeView> (no Policy=) which delivers AC2.5 (anonymous users see
-            // no CTA). Per-command policy discovery requires either a trim-safe registry
-            // companion (Story 4-7+ follow-up — see Story 4-6 review findings) or AOT-friendly
-            // source-generator emit; reflection-based discovery is incompatible with the
-            // project's IsTrimmable=true posture.
-            AuthorizationPolicy: null);
+            AuthorizationPolicy: ResolveCommandPolicy(commandFqn, manifests));
+    }
+
+    private static string? ResolveCommandPolicy(string commandFqn, IReadOnlyList<DomainManifest> manifests) {
+        // Mirror FrontComposerRegistry.MergeCommandPolicies last-write-wins semantics so a CTA cannot
+        // disagree with a runtime policy lookup. Trim values so a registry that stored ` OrderApprover `
+        // matches a host catalog entry of `OrderApprover` (Pass-2 NP8). Linear scan is fine — manifest
+        // count is small (one per registered domain).
+        string? winning = null;
+        foreach (DomainManifest manifest in manifests) {
+            if (manifest.CommandPolicies.TryGetValue(commandFqn, out string? policy)
+                && !string.IsNullOrWhiteSpace(policy)) {
+                winning = policy.Trim();
+            }
+        }
+
+        return winning;
     }
 
     private static string? NormalizeCommandName(string? commandName)

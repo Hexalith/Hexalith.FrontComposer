@@ -113,6 +113,15 @@ public class CommandFormTransformTests {
     }
 
     [Fact]
+    public void Transform_CarriesAuthorizationPolicyName() {
+        CommandModel command = BuildCommand(authorizationPolicyName: "OrderApprover");
+
+        CommandFormModel result = CommandFormTransform.Transform(command);
+
+        result.AuthorizationPolicyName.ShouldBe("OrderApprover");
+    }
+
+    [Fact]
     public void HumanizeAndTruncateEnumMember_TruncatesLongNames() {
         string input = "ThisIsAnExtremelyLongEnumMemberName";
 
@@ -191,7 +200,8 @@ public class CommandFormTransformTests {
         string? boundedContext = null,
         string? displayName = null,
         IReadOnlyList<PropertyModel>? nonDerivable = null,
-        IReadOnlyList<PropertyModel>? derivable = null) {
+        IReadOnlyList<PropertyModel>? derivable = null,
+        string? authorizationPolicyName = null) {
         IReadOnlyList<PropertyModel> all = ((derivable ?? Array.Empty<PropertyModel>()).Concat(nonDerivable ?? Array.Empty<PropertyModel>())).ToList();
 
         return new CommandModel(
@@ -202,6 +212,7 @@ public class CommandFormTransformTests {
             displayName,
             new EquatableArray<PropertyModel>(all.ToImmutableArray()),
             new EquatableArray<PropertyModel>((derivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()),
-            new EquatableArray<PropertyModel>((nonDerivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()));
+            new EquatableArray<PropertyModel>((nonDerivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()),
+            authorizationPolicyName: authorizationPolicyName);
     }
 }

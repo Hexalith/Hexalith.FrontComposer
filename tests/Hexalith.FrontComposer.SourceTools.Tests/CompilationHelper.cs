@@ -36,6 +36,7 @@ internal static class CompilationHelper {
         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Rendering.RenderTreeBuilder)); // ASP.NET Rendering
         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Forms.EditContext)); // ASP.NET Forms
         TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Forms.EditForm));    // ASP.NET Components.Web
+        TryAddAssemblyRef(refs, typeof(Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider)); // ASP.NET Components.Authorization (Story 7-3 Pass 2 DN1)
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Localization.IStringLocalizer<>)); // Localization
         TryAddAssemblyRef(refs, typeof(Microsoft.Extensions.Logging.ILogger<>));            // Logging
         TryAddAssemblyRef(refs, typeof(Microsoft.FluentUI.AspNetCore.Components.FluentDataGrid<>));   // FluentUI

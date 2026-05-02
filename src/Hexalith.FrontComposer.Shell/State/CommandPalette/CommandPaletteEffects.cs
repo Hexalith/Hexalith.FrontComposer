@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Components.Layout;
 using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.AspNetCore.Components;
@@ -380,6 +381,10 @@ public sealed class CommandPaletteEffects : IDisposable {
                     }
 
                     if (scoringRegistry is not null && !scoringRegistry.HasFullPageRoute(command)) {
+                        continue;
+                    }
+
+                    if (!await CanSurfaceCommandAsync(manifest, command, cts.Token).ConfigureAwait(false)) {
                         continue;
                     }
 
@@ -821,6 +826,36 @@ public sealed class CommandPaletteEffects : IDisposable {
             Score: score,
             IsInCurrentContext: isInCurrentContext,
             ProjectionType: ProjectionTypeResolver.Resolve(projection));
+    }
+
+    private async Task<bool> CanSurfaceCommandAsync(DomainManifest manifest, string commandTypeName, CancellationToken cancellationToken) {
+        if (!manifest.CommandPolicies.TryGetValue(commandTypeName, out string? policyName)
+            || string.IsNullOrWhiteSpace(policyName)) {
+            return true;
+        }
+
+        ICommandAuthorizationEvaluator? evaluator = TryGetService<ICommandAuthorizationEvaluator>();
+        if (evaluator is null) {
+            return false;
+        }
+
+        Type? commandType = ProjectionTypeResolver.Resolve(commandTypeName);
+        if (commandType is null) {
+            return false;
+        }
+
+        string displayLabel = ShortName(commandTypeName);
+        CommandAuthorizationDecision decision = await evaluator.EvaluateAsync(
+            new CommandAuthorizationRequest(
+                commandType,
+                policyName,
+                null,
+                manifest.BoundedContext,
+                displayLabel,
+                CommandAuthorizationSurface.CommandPalette),
+            cancellationToken).ConfigureAwait(false);
+
+        return decision.IsAllowed;
     }
 
     private static bool IsInCurrentContext(string? boundedContext, string? currentContext)

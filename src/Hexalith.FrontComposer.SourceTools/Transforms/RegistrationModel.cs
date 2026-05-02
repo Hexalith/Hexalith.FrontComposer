@@ -9,12 +9,14 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
         string typeName,
         string @namespace,
         string? displayLabel,
-        bool isCommand = false) {
+        bool isCommand = false,
+        string? authorizationPolicyName = null) {
         BoundedContext = boundedContext;
         TypeName = typeName;
         Namespace = @namespace;
         DisplayLabel = displayLabel;
         IsCommand = isCommand;
+        AuthorizationPolicyName = authorizationPolicyName;
     }
 
     public string BoundedContext { get; }
@@ -31,6 +33,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
     /// </summary>
     public bool IsCommand { get; }
 
+    public string? AuthorizationPolicyName { get; }
+
     public bool Equals(RegistrationModel? other) {
         if (other is null) {
             return false;
@@ -44,7 +48,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
             && TypeName == other.TypeName
             && Namespace == other.Namespace
             && DisplayLabel == other.DisplayLabel
-            && IsCommand == other.IsCommand;
+            && IsCommand == other.IsCommand
+            && AuthorizationPolicyName == other.AuthorizationPolicyName;
     }
 
     public override bool Equals(object? obj) => Equals(obj as RegistrationModel);
@@ -57,6 +62,7 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DisplayLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + IsCommand.GetHashCode();
+            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
             return hash;
         }
     }

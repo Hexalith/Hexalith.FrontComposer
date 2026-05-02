@@ -112,13 +112,15 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
         string? boundedContext,
         string commandFullyQualifiedName,
         string buttonLabel,
-        EquatableArray<FormFieldModel> fields) {
+        EquatableArray<FormFieldModel> fields,
+        string? authorizationPolicyName = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
         CommandFullyQualifiedName = commandFullyQualifiedName;
         ButtonLabel = buttonLabel;
         Fields = fields;
+        AuthorizationPolicyName = authorizationPolicyName;
     }
 
     public string TypeName { get; }
@@ -132,6 +134,8 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
     public string ButtonLabel { get; }
 
     public EquatableArray<FormFieldModel> Fields { get; }
+
+    public string? AuthorizationPolicyName { get; }
 
     public bool Equals(CommandFormModel? other) {
         if (other is null) {
@@ -147,7 +151,8 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
             && BoundedContext == other.BoundedContext
             && CommandFullyQualifiedName == other.CommandFullyQualifiedName
             && ButtonLabel == other.ButtonLabel
-            && Fields == other.Fields;
+            && Fields == other.Fields
+            && AuthorizationPolicyName == other.AuthorizationPolicyName;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandFormModel);
@@ -161,6 +166,7 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
             hash = (hash * 31) + (CommandFullyQualifiedName?.GetHashCode() ?? 0);
             hash = (hash * 31) + (ButtonLabel?.GetHashCode() ?? 0);
             hash = (hash * 31) + Fields.GetHashCode();
+            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
             return hash;
         }
     }

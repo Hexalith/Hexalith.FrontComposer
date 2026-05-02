@@ -24,7 +24,8 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
         string subscriberTypeName,
         bool isDestructive = false,
         string? destructiveConfirmTitle = null,
-        string? destructiveConfirmBody = null) {
+        string? destructiveConfirmBody = null,
+        string? authorizationPolicyName = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -42,6 +43,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
         IsDestructive = isDestructive;
         DestructiveConfirmTitle = destructiveConfirmTitle;
         DestructiveConfirmBody = destructiveConfirmBody;
+        AuthorizationPolicyName = authorizationPolicyName;
     }
 
     public string TypeName { get; }
@@ -85,6 +87,8 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
     /// <summary>Story 2-5 D1 — optional <c>[Destructive(ConfirmationBody)]</c> override; null → localized default body.</summary>
     public string? DestructiveConfirmBody { get; }
 
+    public string? AuthorizationPolicyName { get; }
+
     public bool Equals(CommandRendererModel? other) {
         if (other is null) {
             return false;
@@ -110,7 +114,8 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
             && SubscriberTypeName == other.SubscriberTypeName
             && IsDestructive == other.IsDestructive
             && DestructiveConfirmTitle == other.DestructiveConfirmTitle
-            && DestructiveConfirmBody == other.DestructiveConfirmBody;
+            && DestructiveConfirmBody == other.DestructiveConfirmBody
+            && AuthorizationPolicyName == other.AuthorizationPolicyName;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandRendererModel);
@@ -135,6 +140,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
             hash = (hash * 31) + IsDestructive.GetHashCode();
             hash = (hash * 31) + (DestructiveConfirmTitle?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DestructiveConfirmBody?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
             return hash;
         }
     }

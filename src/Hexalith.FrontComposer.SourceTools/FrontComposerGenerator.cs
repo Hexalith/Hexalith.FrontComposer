@@ -224,6 +224,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1039" => DiagnosticDescriptors.ProjectionSlotComponentInvalid,
         "HFC1040" => DiagnosticDescriptors.ProjectionSlotDuplicate,
         "HFC1041" => DiagnosticDescriptors.ProjectionSlotContractVersionMismatch,
+        "HFC1056" => DiagnosticDescriptors.CommandAuthorizationPolicyInvalid,
+        "HFC1057" => DiagnosticDescriptors.CommandAuthorizationPolicyDuplicate,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

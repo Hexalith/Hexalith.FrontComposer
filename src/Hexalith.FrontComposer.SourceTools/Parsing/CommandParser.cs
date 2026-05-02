@@ -31,6 +31,7 @@ public static class CommandParser {
     private const string IconAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.IconAttribute";
     private const string DefaultValueAttributeName = "System.ComponentModel.DefaultValueAttribute";
     private const string DestructiveAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.DestructiveAttribute";
+    private const string RequiresPolicyAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.RequiresPolicyAttribute";
 
     /// <summary>
     /// Story 2-5 D20 / ADR-026 — commands whose TypeName matches this pattern AND lack
@@ -145,6 +146,11 @@ public static class CommandParser {
         string? boundedContext = ParseBoundedContext(typeSymbol, out string? boundedContextDisplayLabel);
         string? displayName = ParseDisplayAttribute(typeSymbol);
         string? iconName = ParseIconAttribute(typeSymbol);
+        string? authorizationPolicyName = ParseRequiresPolicyAttribute(typeSymbol, diagnostics, filePath, linePos);
+        if (diagnostics.Any(d => d.Id is "HFC1056" or "HFC1057")) {
+            return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
+        }
+
         // Story 2-5 Task 2.2 — parse [Destructive] opt-in marker + optional confirmation copy overrides.
         bool isDestructive = ParseDestructiveAttribute(
             typeSymbol,
@@ -341,7 +347,8 @@ public static class CommandParser {
             iconName,
             isDestructive,
             destructiveConfirmTitle,
-            destructiveConfirmBody);
+            destructiveConfirmBody,
+            authorizationPolicyName);
 
         return new CommandParseResult(
             model,
@@ -501,6 +508,82 @@ public static class CommandParser {
         }
 
         return null;
+    }
+
+    private static string? ParseRequiresPolicyAttribute(
+        INamedTypeSymbol typeSymbol,
+        List<DiagnosticInfo> diagnostics,
+        string filePath,
+        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
+        List<AttributeData> attributes = [];
+        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
+            if (attr.AttributeClass?.ToDisplayString() == RequiresPolicyAttributeName) {
+                attributes.Add(attr);
+            }
+        }
+
+        if (attributes.Count == 0) {
+            return null;
+        }
+
+        if (attributes.Count > 1) {
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1057",
+                string.Format(
+                    "Command '{0}' declares [RequiresPolicy] more than once. Expected at most one policy per command in v1.",
+                    typeSymbol.Name),
+                "Error",
+                filePath,
+                linePos.Line,
+                linePos.Character));
+            return null;
+        }
+
+        AttributeData policyAttribute = attributes[0];
+        string? value = null;
+        if (policyAttribute.ConstructorArguments.Length > 0) {
+            TypedConstant ctorArg = policyAttribute.ConstructorArguments[0];
+            // Defensive: typeof(...) / array constants surface as non-Primitive Kinds. The cast to
+            // string then yields null and would silently drop policy metadata. Reject as HFC1056.
+            if (ctorArg.Kind == TypedConstantKind.Primitive) {
+                value = ctorArg.Value as string;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(value) || !IsPolicyNameWellFormed(value!)) {
+            Microsoft.CodeAnalysis.Text.LinePosition attrLine = (policyAttribute.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax)
+                ?.GetLocation()
+                .GetLineSpan()
+                .StartLinePosition ?? linePos;
+
+            diagnostics.Add(new DiagnosticInfo(
+                "HFC1056",
+                string.Format(
+                    "Command '{0}' has an invalid [RequiresPolicy] value. Expected a non-empty policy name using letters, digits, '.', ':', '_', or '-'.",
+                    typeSymbol.Name),
+                "Error",
+                filePath,
+                attrLine.Line,
+                attrLine.Character));
+            return null;
+        }
+
+        return value!.Trim();
+    }
+
+    private static bool IsPolicyNameWellFormed(string value) {
+        string trimmed = value.Trim();
+        if (trimmed.Length == 0) {
+            return false;
+        }
+
+        foreach (char c in trimmed) {
+            if (!(char.IsLetterOrDigit(c) || c is '.' or ':' or '_' or '-')) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /// <summary>

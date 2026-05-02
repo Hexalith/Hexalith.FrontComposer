@@ -138,6 +138,34 @@ public class CommandParserTests {
     }
 
     [Fact]
+    public void Parse_RequiresPolicyAttribute_CapturesPolicyName() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyProtectedCommand, "TestDomain.ApproveOrderCommand");
+
+        _ = result.Model.ShouldNotBeNull();
+        result.Model.AuthorizationPolicyName.ShouldBe("OrderApprover");
+    }
+
+    [Fact]
+    public void Parse_RequiresPolicyAttribute_EmptyValue_EmitsHFC1056() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.EmptyPolicyCommand, "TestDomain.EmptyPolicyCommand");
+
+        result.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1056");
+        diagnostic.Severity.ShouldBe("Error");
+        diagnostic.Message.ShouldContain("RequiresPolicy");
+    }
+
+    [Fact]
+    public void Parse_RequiresPolicyAttribute_Duplicate_EmitsHFC1057() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.DuplicatePolicyCommand, "TestDomain.DuplicatePolicyCommand");
+
+        result.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1057");
+        diagnostic.Severity.ShouldBe("Error");
+        diagnostic.Message.ShouldContain("at most one");
+    }
+
+    [Fact]
     public void Parse_TooManyProperties_WarningThreshold_EmitsHFC1007Warning() {
         string source = CommandTestSources.TooManyPropertiesCommand(CommandParser.NonDerivableWarningThreshold + 1);
         CommandParseResult result = CompilationHelper.ParseCommand(source, "TestDomain.TooManyPropertiesCommand");

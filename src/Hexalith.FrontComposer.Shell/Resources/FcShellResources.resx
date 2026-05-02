@@ -625,4 +625,20 @@
     <value>Customization diagnostic {0}</value>
     <comment>Story 6-6 P3 — diagnostic panel root aria-label template; {0} is the HFC ID.</comment>
   </data>
+  <data name="UnauthorizedCommandWarningTitle" xml:space="preserve">
+    <value>Permission required</value>
+    <comment>Story 7-3 — warning title when a protected command is blocked before dispatch.</comment>
+  </data>
+  <data name="UnauthorizedCommandWarningMessage" xml:space="preserve">
+    <value>You do not have permission to {0}.</value>
+    <comment>Story 7-3 — warning body when a protected command is blocked; {0} is the command action label.</comment>
+  </data>
+  <data name="AuthorizationActionUnavailableTitle" xml:space="preserve">
+    <value>Action temporarily unavailable</value>
+    <comment>Story 7-3 Pass 2 DN7 — warning title when authorization fails for infrastructure reasons (missing service, stale tenant, handler error) rather than user denial.</comment>
+  </data>
+  <data name="AuthorizationActionUnavailableMessage" xml:space="preserve">
+    <value>This action could not be authorized right now. Please retry, and contact support if the problem persists.</value>
+    <comment>Story 7-3 Pass 2 DN7 — warning body for infrastructure-class authorization failures; intentionally has no {0} placeholder so callers can use it without a label argument.</comment>
+  </data>
 </root>

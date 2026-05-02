@@ -14,6 +14,7 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Forms;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.Localization;
@@ -189,12 +190,6 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             previous.Dispose();
         }
 
-        if (BeforeSubmit is not null)
-        {
-            await BeforeSubmit().ConfigureAwait(false);
-            if (_disposed || _cts.IsCancellationRequested) return;
-        }
-
         // Story 5-2 D5 — clear server-driven validation state from the prior submit.
         _serverValidationMessages?.Clear();
         if (_serverFormLevelErrors.Count > 0)
@@ -203,6 +198,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         }
         _serverWarning = null;
         _editContext?.NotifyValidationStateChanged();
+
+        if (BeforeSubmit is not null)
+        {
+            await BeforeSubmit().ConfigureAwait(false);
+            if (_disposed || _cts.IsCancellationRequested) return;
+        }
 
         var correlationId = Guid.NewGuid().ToString();
         _submittedCorrelationId = correlationId;

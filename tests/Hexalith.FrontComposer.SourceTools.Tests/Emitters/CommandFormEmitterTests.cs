@@ -24,14 +24,19 @@ public class CommandFormEmitterTests {
             @namespace + "." + typeName + "LifecycleState");
     }
 
-    private static CommandFormModel BuildForm(IEnumerable<FormFieldModel> fields, string typeName = "IncrementCommand", string @namespace = "Counter.Domain") {
+    private static CommandFormModel BuildForm(
+        IEnumerable<FormFieldModel> fields,
+        string typeName = "IncrementCommand",
+        string @namespace = "Counter.Domain",
+        string? authorizationPolicyName = null) {
         return new CommandFormModel(
             typeName,
             @namespace,
             null,
             @namespace + "." + typeName,
             "Send " + typeName,
-            new EquatableArray<FormFieldModel>(fields.ToImmutableArray()));
+            new EquatableArray<FormFieldModel>(fields.ToImmutableArray()),
+            authorizationPolicyName);
     }
 
     [Fact]
@@ -110,6 +115,33 @@ public class CommandFormEmitterTests {
         source.ShouldContain("IncrementCommandActions.SyncingAction(correlationId)");
         source.ShouldContain("IncrementCommandActions.ConfirmedAction(correlationId)");
         source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution)");
+    }
+
+    [Fact]
+    public void Emit_PolicyProtectedCommand_ChecksAuthorizationBeforeBeforeSubmitAndDispatch() {
+        CommandFormModel form = BuildForm(
+            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
+            authorizationPolicyName: "OrderApprover");
+
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("ICommandAuthorizationEvaluator");
+        source.ShouldContain("IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources>");
+        // Pass-2 P1: surface is now a closed-set enum, not a free-form string literal.
+        source.ShouldContain("CommandAuthorizationSurface.GeneratedForm");
+        source.ShouldContain("UnauthorizedCommandWarningTitle");
+        source.ShouldContain("UnauthorizedCommandWarningMessage");
+        source.ShouldContain("protected override async Task OnInitializedAsync()");
+        source.ShouldContain("RefreshPresentationAuthorizationAsync");
+        source.ShouldContain("|| !_authorizationPresentationReady");
+        source.ShouldContain("|| !_authorizationPresentationAllowed");
+        int authIndex = source.IndexOf("CommandAuthorizationEvaluator.EvaluateAsync", StringComparison.Ordinal);
+        int beforeSubmitIndex = source.IndexOf("if (BeforeSubmit is not null)", StringComparison.Ordinal);
+        int submittedIndex = source.IndexOf(".SubmittedAction", StringComparison.Ordinal);
+        authIndex.ShouldBeGreaterThan(0);
+        authIndex.ShouldBeLessThan(beforeSubmitIndex);
+        authIndex.ShouldBeLessThan(submittedIndex);
+        source.ShouldContain("CommandWarningKind.Forbidden");
     }
 
     [Fact]

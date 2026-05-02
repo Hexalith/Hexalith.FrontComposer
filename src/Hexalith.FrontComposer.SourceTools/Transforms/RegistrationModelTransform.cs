@@ -35,7 +35,8 @@ public static class RegistrationModelTransform {
             model.TypeName,
             model.Namespace,
             model.BoundedContextDisplayLabel,
-            isCommand: true);
+            isCommand: true,
+            authorizationPolicyName: model.AuthorizationPolicyName);
     }
 
     private static string GetNamespaceLastSegment(string @namespace) {

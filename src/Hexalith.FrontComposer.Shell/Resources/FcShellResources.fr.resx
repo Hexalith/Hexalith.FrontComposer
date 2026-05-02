@@ -514,4 +514,16 @@
   <data name="CustomizationDiagnosticPanelAriaLabelTemplate" xml:space="preserve">
     <value>Diagnostic de personnalisation {0}</value>
   </data>
+  <data name="UnauthorizedCommandWarningTitle" xml:space="preserve">
+    <value>Autorisation requise</value>
+  </data>
+  <data name="UnauthorizedCommandWarningMessage" xml:space="preserve">
+    <value>Vous n'avez pas l'autorisation d'exécuter {0}.</value>
+  </data>
+  <data name="AuthorizationActionUnavailableTitle" xml:space="preserve">
+    <value>Action momentanément indisponible</value>
+  </data>
+  <data name="AuthorizationActionUnavailableMessage" xml:space="preserve">
+    <value>Cette action n'a pas pu être autorisée pour le moment. Veuillez réessayer&#160;; contactez l'assistance si le problème persiste.</value>
+  </data>
 </root>

@@ -37,7 +37,8 @@ public static class CommandFormTransform {
             model.BoundedContext,
             commandFqn,
             buttonLabel,
-            new EquatableArray<FormFieldModel>(fields.ToImmutable()));
+            new EquatableArray<FormFieldModel>(fields.ToImmutable()),
+            model.AuthorizationPolicyName);
     }
 
     private static FormFieldModel MapField(PropertyModel property) {

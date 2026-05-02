@@ -638,6 +638,28 @@ public static class DiagnosticDescriptors {
         isEnabledByDefault: true);
 
     /// <summary>
+    /// HFC1056: A command declares an invalid <c>[RequiresPolicy]</c> value.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyInvalid = new(
+        id: "HFC1056",
+        title: "Command authorization policy is invalid",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// HFC1057: A command declares duplicate <c>[RequiresPolicy]</c> attributes.
+    /// </summary>
+    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyDuplicate = new(
+        id: "HFC1057",
+        title: "Command declares duplicate authorization policies",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
     /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.
     /// </summary>
     public static readonly DiagnosticDescriptor DevModeAnnotationSiteInvalid = new(

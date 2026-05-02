@@ -52,7 +52,8 @@ public static class CommandRendererTransform {
             subscriberTypeName: model.TypeName + "LastUsedSubscriber",
             isDestructive: model.IsDestructive,
             destructiveConfirmTitle: model.DestructiveConfirmTitle,
-            destructiveConfirmBody: model.DestructiveConfirmBody);
+            destructiveConfirmBody: model.DestructiveConfirmBody,
+            authorizationPolicyName: model.AuthorizationPolicyName);
     }
 
     private static string BuildDisplayLabel(CommandModel model) {

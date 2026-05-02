@@ -1,0 +1,1748 @@
+warning: in the working copy of 'src/Hexalith.FrontComposer.Contracts/Registration/DomainManifest.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.FrontComposer.Shell.Tests/Services/EmptyStateCtaResolverTests.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RegistrationEmitterTests.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Contracts/Attributes/RequiresPolicyAttribute.cs', LF will be replaced by CRLF the next time Git touches it
+diff --git a/src/Hexalith.FrontComposer.Contracts/Attributes/RequiresPolicyAttribute.cs b/src/Hexalith.FrontComposer.Contracts/Attributes/RequiresPolicyAttribute.cs
+new file mode 100644
+index 0000000..76f63c3
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Attributes/RequiresPolicyAttribute.cs
+@@ -0,0 +1,25 @@
++namespace Hexalith.FrontComposer.Contracts.Attributes;
++
++/// <summary>
++/// Declares the ASP.NET Core authorization policy required to execute a command.
++/// Policy registration, claim mapping, and authorization handlers remain host concerns.
++/// </summary>
++[AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
++public sealed class RequiresPolicyAttribute : Attribute {
++    /// <summary>
++    /// Initializes a new instance of the <see cref="RequiresPolicyAttribute"/> class.
++    /// </summary>
++    /// <param name="policyName">The non-empty host authorization policy name.</param>
++    public RequiresPolicyAttribute(string policyName) {
++        if (string.IsNullOrWhiteSpace(policyName)) {
++            throw new ArgumentException("Policy name must not be empty.", nameof(policyName));
++        }
++
++        PolicyName = policyName.Trim();
++    }
++
++    /// <summary>
++    /// Gets the host authorization policy name required for the annotated command.
++    /// </summary>
++    public string PolicyName { get; }
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Registration/DomainManifest.cs b/src/Hexalith.FrontComposer.Contracts/Registration/DomainManifest.cs
+index e8165c0..5974127 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Registration/DomainManifest.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Registration/DomainManifest.cs
+@@ -8,8 +8,16 @@ namespace Hexalith.FrontComposer.Contracts.Registration;
+ /// <param name="BoundedContext">The bounded context this domain belongs to.</param>
+ /// <param name="Projections">Fully qualified type names of projections in this domain.</param>
+ /// <param name="Commands">Fully qualified type names of commands in this domain.</param>
++/// <param name="CommandPolicies">Optional command fully qualified type name to policy-name map.</param>
+ public record DomainManifest(
+     string Name,
+     string BoundedContext,
+     IReadOnlyList<string> Projections,
+-    IReadOnlyList<string> Commands);
++    IReadOnlyList<string> Commands,
++    IReadOnlyDictionary<string, string>? CommandPolicies = null) {
++    /// <summary>
++    /// Gets command authorization policies keyed by command fully qualified type name.
++    /// </summary>
++    public IReadOnlyDictionary<string, string> CommandPolicies { get; init; } =
++        CommandPolicies ?? new Dictionary<string, string>(StringComparer.Ordinal);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+index 04edebf..24834e0 100644
+--- a/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs
+@@ -21,6 +21,7 @@ using Hexalith.FrontComposer.Shell.Options;
+ using Hexalith.FrontComposer.Shell.Registration;
+ using Hexalith.FrontComposer.Shell.Services;
+ using Hexalith.FrontComposer.Shell.Services.Auth;
++using Hexalith.FrontComposer.Shell.Services.Authorization;
+ using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
+ using Hexalith.FrontComposer.Shell.Services.DerivedValues;
+ using Hexalith.FrontComposer.Shell.Services.Feedback;
+@@ -213,6 +214,7 @@ public static class ServiceCollectionExtensions
+         services.TryAddScoped<IUserContextAccessor, NullUserContextAccessor>();
+         services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
+         services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
++        services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
+         // Story 7-2 DN1 — production guardrail. See EventStoreServiceExtensions for context.
+         services.TryAddEnumerable(Swarning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthorizationOptions.cs', LF will be replaced by CRLF the next time Git touches it
+erviceDescriptor.Singleton<IValidateOptions<FcShellOptions>, FcShellTenantOptionsValidator>());
+ 
+@@ -225,6 +227,8 @@ public static class ServiceCollectionExtensions
+ 
+         // Story 2-3 — options binding for LifecycleOptions (Chaos CM7 defensive wire-up).
+         _ = services.AddOptions<LifecycleOptions>();
++        _ = services.AddOptions<FrontComposerAuthorizationOptions>();
++        _ = services.AddHostedService<FrontComposerAuthorizationPolicyCatalogValidator>();
+ 
+         // Story 2-3 Decision D12 — scoped lifecycle state service (per-circuit / per-user).
+         services.TryAddScoped<ILifecycleStateService, LifecycleStateService>();
+diff --git a/src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthorizationOptions.cs b/src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthorizationOptions.cs
+new file mode 100644
+index 0000000..ef49692
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthorizationOptions.cs
+@@ -0,0 +1,7 @@
++namespace Hexalith.FrontComposer.Shell.Options;
++
++public sealed class FrontComposerAuthorizationOptions {
++    public ISet<string> KnownPolicies { get; } = new HashSet<string>(StringComparer.Ordinal);
++
++    public bool StrictPolicyCatalogValidation { get; set; }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs b/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
+index 85325cc..f0d35c9 100644
+--- a/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
++++ b/src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs
+@@ -122,7 +122,8 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
+             name,
+             existing.BoundedContext,
+             [.. existing.Projections.Concat(manifest.Projections).Distinct(StringComparer.Ordinal)],
+-            [.. existing.Commands.Concat(manifest.Commands).Distinct(StringComparer.Ordinal)]);
++            [.. existing.Commands.Concat(manifest.Commands).Distinct(StringComparer.Ordinal)],
++            MergeCommandPolicies(existing.CommandPolicies, manifest.CommandPolicies));
+     }
+ 
+     private static DomainManifest Clone(DomainManifest manifest)
+@@ -130,7 +131,21 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
+             manifest.Name,
+             manifest.BoundedContext,
+             [.. manifest.Projections],
+-            [.. manifest.Commands]);
++            [.. manifest.Commands],
++            new Dictionary<string, string>(manifest.CommandPolicies, StringComparer.Ordinal));
++
++    private static IReadOnlyDictionary<string, string> MergeCommandPolicies(
++        IReadOnlyDictionary<string, string> existing,
++        IReadOnlyDictionary<string, string> incoming) {
++        Dictionary<string, string> merged = new(existing, StringComparer.Ordinal);
++        foreach (KeyValuePair<string, string> pair in incoming) {
++            if (!string.IsNullOrWhiteSpace(pair.Key) && !string.IsNullOrWhiteSpace(pair.Value)) {
++                merged[pair.Key] = pair.Value;
++            }
++        }
++
++        return merged;
++    }
+ 
+     private static string ChooseName(string currentName, string candidateName, string boundedContext) {
+         if (string.IsNullOrWhiteSpace(currentName)) {
+diff --git a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+index 6168772..35b6ba9 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx
+@@ -514,4 +514,10 @@
+   <data name="CustomizationDiagnosticPanelAriaLabelTemplate" xml:space="preserve">
+     <value>Diagnostic de personnalisation {0}</value>
+   </data>
++  <data name="UnauthorizedCommandWarningTitle" xml:space="preserve">
++    <value>Autorisation requise</value>
++  </data>
++  <data name="UnauthorizedCommandWarningMessage" xml:space="preserve">
++    <value>Vous n'avez pas l'autorisation d'exécuter {0}.</value>
++  </data>
+ </root>
+diff --git warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationDecision.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationEvaluator.cs', LF will be replaced by CRLF the next time Git touches it
+a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+index d6670ba..a8cdfcd 100644
+--- a/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
++++ b/src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx
+@@ -625,4 +625,12 @@
+     <value>Customization diagnostic {0}</value>
+     <comment>Story 6-6 P3 — diagnostic panel root aria-label template; {0} is the HFC ID.</comment>
+   </data>
++  <data name="UnauthorizedCommandWarningTitle" xml:space="preserve">
++    <value>Permission required</value>
++    <comment>Story 7-3 — warning title when a protected command is blocked before dispatch.</comment>
++  </data>
++  <data name="UnauthorizedCommandWarningMessage" xml:space="preserve">
++    <value>You do not have permission to {0}.</value>
++    <comment>Story 7-3 — warning body when a protected command is blocked; {0} is the command action label.</comment>
++  </data>
+ </root>
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationDecision.cs b/src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationDecision.cs
+new file mode 100644
+index 0000000..246aea4
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationDecision.cs
+@@ -0,0 +1,51 @@
++using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
++
++namespace Hexalith.FrontComposer.Shell.Services.Authorization;
++
++public enum CommandAuthorizationDecisionKind {
++    Allowed,
++    Denied,
++    Pending,
++    FailedClosed,
++}
++
++public enum CommandAuthorizationReason {
++    None,
++    NoPolicy,
++    Denied,
++    Unauthenticated,
++    MissingService,
++    MissingPolicy,
++    StaleTenantContext,
++    Canceled,
++    HandlerFailed,
++}
++
++public sealed record CommandAuthorizationRequest(
++    Type CommandType,
++    string? PolicyName,
++    object? Command,
++    string? BoundedContext,
++    string DisplayLabel,
++    string SourceSurface = "DirectDispatch");
++
++public sealed record CommandAuthorizationResource(
++    Type CommandType,
++    string PolicyName,
++    string? BoundedContext,
++    string DisplayLabel,
++    string SourceSurface,
++    TenantContextSnapshot? TenantContext);
++
++public sealed record CommandAuthorizationDecision(
++    CommandAuthorizationDecisionKind Kind,
++    CommandAuthorizationReason Reason,
++    string CorrelationId) {
++    public static CommandAuthorizationDecision Allowed(string correlationId, CommandAuthorizationReason reason = CommandAuthorizationReason.None)
++        => new(CommandAuthorizationDecisionKind.Allowed, reason, correlationId);
++
++    public static CommandAuthorizationDecision Blocked(CommandAuthorizationReason reason, string correlationId)
++        => new(CommandAuthorizationDecisionKind.FailedClosed, reason, correlationId);
++
++    public bool IsAllowed => Kind == CommandAuthorizationDecisionKind.Allowed;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationEvaluator.cs b/src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationEvaluator.cs
+new file mode 100644
+index 0000000..4569e7f
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationEvaluator.cs
+@@ -0,0 +1,104 @@
++using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
++
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Http;
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++
++namespace Hexalith.FrontComposer.Shell.Services.Authorization;
++
++public sealed class CommandAuthorizationEvaluator(
++    IServiceProvider serviceProvider,
++    IFrontComposerTenantContextAccessor tenantContextAccessor,
++    ILogger<CommandAuthorizationEvaluator> logger) : ICommandAuthorizationEvaluator {
++    public async Task<CommandAuthorizationDecision> EvaluateAsync(
++        CommandAuthorizationRequest request,
++        CancellationToken cancellationToken = default) {
++        ArgumentNullException.ThrowIfNull(request);
++        string correlationId = Guid.NewGuid().ToString("N");
++
++        if (string.IsNullOrWhiteSpace(request.PolicyName)) {
++            return CommandAuthorizationDecision.Allowed(correlationId, CommandAuthorizationReason.NoPolicy);
++        }
++
++        if (cancellationToken.IsCancellationRequested) {
++            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
++        }
++
++        IAuthorizationService? authorizationService = serviceProvider.GetService<IAuthorizationService>();
++        if (authorizationService is null) {
++            LogBlocked(request, CommandAuthorizationReason.MissingService, correlationId);
++            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingService, correlationId);
++        }
++
++        IHttpContextAccessor? http = serviceProvider.GetService<IHttpContextAccessor>();
++        System.Security.Claims.ClaimsPrincipal? user = http?.HttpContext?.User;
++        if (user?.Identity?.IsAuthenticated != true) {
++            LogBlocked(request, CommandAuthorizationReason.Unauthenticated, correlationId);
++            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Unauthenticated, correlationId);
++        }
++
++        TenantContextResult tenant = tenantContextAccessor.TryGetContext(operationKind: "command-authorization");
++        if (!tenant.Succeeded) {
++            LogBlocked(request, CommandAuthorizationReason.StaleTenantContext, tenant.CorrelationId);
++            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.StaleTenantContext, tenant.CorrelationId);
++        }
++
++        var resource = new CommandAuthorizationResource(
++            request.CommandType,
++            request.PolicyName.Trim(),
++            request.BoundedContext,
++            request.DisplayLabel,
++            request.SourceSurface,
++            tenant.Context);
++
++        try {
++            AuthorizationResult result = await authorizationService
++                .AuthorizeAsync(user, resource, resource.PolicyName)
++                .ConfigureAwait(false);
++
++            if (result.Succeeded) {
++                return CommandAuthorizationDecision.Allowed(correlationId);
++            }
++
++            LogBlocked(request, CommandAuthorizationReason.Denied, correlationId);
++            return new CommandAuthorizationDecision(
++                CommandAuthorizationDecisionKind.Denied,
++                CommandAuthorizationReason.Denied,
++                correlationId);
++        }
++        catch (OperationCanceledException) {
++            LogBlocked(request, CommandAuthorizationReason.Canceled, correlationId);
++            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Canceled, correlationId);
++        }
++        catch (InvalidOperationException ex) {
++            logger.LogWarning(
++                ex,
++                "Command authorization failed closed. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
++                CommandAuthorizationReason.MissingPolicy,
++                request.CommandType.FullName ?? request.CommandType.Name,
++                request.PolicyName.Trim(),
++                correlationId);
++            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.MissingPolicy, correlationId);
++        }
++        catch (Exception ex) when (ex is not OutOfMemoryException) {
++            logger.LogWarning(
++                ex,
++                "Command authorization failed closed. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
++                CommandAuthorizationReason.HandlerFailed,
++                request.CommandType.FullName ?? request.CommandType.Name,
++                request.PolicyName.Trim(),
++                correlationId);
++            return CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
++        }
++    }
++
++    private void LogBlocked(CommandAuthorizationRequest request, CommandAuthorizationReason reason, string correlationId) {
++        logwarning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidator.cs', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'src/Hexalith.FrontComposer.Shell/Services/Authorization/ICommandAuthorizationEvaluator.cs', LF will be replaced by CRLF the next time Git touches it
+ger.LogWarning(
++            "Command authorization blocked. Reason={Reason} CommandType={CommandType} PolicyName={PolicyName} CorrelationId={CorrelationId}",
++            reason,
++            request.CommandType.FullName ?? request.CommandType.Name,
++            string.IsNullOrWhiteSpace(request.PolicyName) ? "<none>" : request.PolicyName.Trim(),
++            correlationId);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidator.cs b/src/Hexalith.FrontComposer.Shell/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidator.cs
+new file mode 100644
+index 0000000..49840c2
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidator.cs
+@@ -0,0 +1,46 @@
++using Hexalith.FrontComposer.Contracts.Registration;
++using Hexalith.FrontComposer.Shell.Options;
++
++using Microsoft.Extensions.Hosting;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Options;
++
++namespace Hexalith.FrontComposer.Shell.Services.Authorization;
++
++public sealed class FrontComposerAuthorizationPolicyCatalogValidator(
++    IFrontComposerRegistry registry,
++    IOptions<FrontComposerAuthorizationOptions> options,
++    ILogger<FrontComposerAuthorizationPolicyCatalogValidator> logger) : IHostedService {
++    public Task StartAsync(CancellationToken cancellationToken) {
++        FrontComposerAuthorizationOptions value = options.Value;
++        if (value.KnownPolicies.Count == 0) {
++            return Task.CompletedTask;
++        }
++
++        List<string> missing = [];
++        foreach (DomainManifest manifest in registry.GetManifests()) {
++            foreach (KeyValuePair<string, string> policy in manifest.CommandPolicies) {
++                if (!value.KnownPolicies.Contains(policy.Value)) {
++                    missing.Add($"{policy.Key}:{policy.Value}");
++                }
++            }
++        }
++
++        if (missing.Count == 0) {
++            return Task.CompletedTask;
++        }
++
++        string payload = string.Join("|", missing.OrderBy(static x => x, StringComparer.Ordinal));
++        if (value.StrictPolicyCatalogValidation) {
++            throw new InvalidOperationException(
++                "FrontComposer command authorization policy catalog is missing generated command policy entries: " + payload);
++        }
++
++        logger.LogWarning(
++            "FrontComposer command authorization policy catalog is missing generated command policy entries: {MissingPolicies}",
++            payload);
++        return Task.CompletedTask;
++    }
++
++    public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/Authorization/ICommandAuthorizationEvaluator.cs b/src/Hexalith.FrontComposer.Shell/Services/Authorization/ICommandAuthorizationEvaluator.cs
+new file mode 100644
+index 0000000..1e6c2f5
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Shell/Services/Authorization/ICommandAuthorizationEvaluator.cs
+@@ -0,0 +1,7 @@
++namespace Hexalith.FrontComposer.Shell.Services.Authorization;
++
++public interface ICommandAuthorizationEvaluator {
++    Task<CommandAuthorizationDecision> EvaluateAsync(
++        CommandAuthorizationRequest request,
++        CancellationToken cancellationToken = default);
++}
+diff --git a/src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs b/src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs
+index 25ef98e..df19923 100644
+--- a/src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs
++++ b/src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs
+@@ -131,7 +131,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
+                 matches[0].Command);
+         }
+ 
+-        return BuildCta(matches[0].BoundedContext, matches[0].Command);
++        return BuildCta(matches[0].BoundedContext, matches[0].Command, manifests);
+     }
+ 
+     private EmptyStateCta? ResolveByBoundedContext(
+@@ -192,7 +192,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
+             .ThenBy(x => x.BoundedContext, StringComparer.Ordinal)
+             .ToList();
+ 
+-        return BuildCta(ordered[0].BoundedContext, ordered[0].Command);
++        return BuildCta(ordered[0].BoundedContext, ordered[0].Command, manifests);
+     }
+ 
+     private static string? ResolveBoundedContext(
+@@ -212,7 +212,7 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
+         return owningManifest?.BoundedContext;
+     }
+ 
+-    private EmptyStateCta? BuildCta(string boundedContext, string commandFqn) {
++    private EmptyStateCta? BuildCta(string boundedContext, string commandFqn, IReadOnlyList<DomainManifest> manifests) {
+         string route = CommandRouteBuilder.BuildRoute(boundedContext, commandFqn);
+ 
+         // P-13: defense-in-depth — refuse to emit a CTA whose route is not a safe internal target.
+@@ -230,13 +230,18 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
+             commandFqn,
+             HumanizeCommandName(TypeName(commandFqn)),
+             route,
+-            // AuthorizationPolicy is intentionally null in v1: the component wraps every CTA in
+-            // a default <AuthorizeView> (no Policy=) which delivers AC2.5 (anonymous users see
+-            // no CTA). Per-command policy discovery requires either a trim-safe registry
+-            // companion (Story 4-7+ follow-up — see Story 4-6 review findings) or AOT-friendly
+-            // source-generator emit; reflection-based discovery is incompatible with the
+-            // project's IsTrimmable=true posture.
+-            AuthorizationPolicy: null);
++            AuthorizationPolicy: ResolveCommandPolicy(commandFqn, manifests));
++    }
++
++    private static string? ResolveCommandPolicy(string commandFqn, IReadOnlyList<DomainManifest> manifests) {
++        foreach (DomainManifest manifest in manifests) {
++            if (manifest.CommandPolicies.TryGetValue(commandFqn, out string? policy)
++                && !string.IsNullOrWhiteSpace(policy)) {
++                return policy;
++            }
++        }
++
++        return null;
+     }
+ 
+     private static string? NormalizeCommandName(string? commandName)
+diff --git a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs
+index 3354af0..67d90e5 100644
+--- a/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs
++++ b/src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs
+@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Storage;
+ using Hexalith.FrontComposer.Shell.Components.Layout;
+ using Hexalith.FrontComposer.Shell.Resources;
+ using Hexalith.FrontComposer.Shell.Routing;
++using Hexalith.FrontComposer.Shell.Services.Authorization;
+ using Hexalith.FrontComposer.Shell.State.Navigation;
+ 
+ using Microsoft.AspNetCore.Components;
+@@ -383,6 +384,10 @@ public sealed class CommandPaletteEffects : IDisposable {
+                         continue;
+                     }
+ 
++                    if (!await CanSurfaceCommandAsync(manifest, command, cts.Token).ConfigureAwait(false)) {
++                        continue;
++                    }
++
+                     bool inContext = IsInCurrentContext(manifest.BoundedContext, currentContext);
+                     int finalScore = score + (inContext ? ContextualBonus : 0);
+                     scored.Add(new PaletteResult(
+@@ -823,6 +828,36 @@ public sealed class CommandPaletteEffects : IDisposable {
+             ProjectionType: ProjectionTypeResolver.Resolve(projection));
+     }
+ 
++    private async Task<bool> CanSurfaceCommandAsync(DomainManifest manifest, string commandTypeName, CancellationToken cancellationToken) {
++        if (!manifest.CommandPolicies.TryGetValue(commandTypeName, out string? policyName)
++            || string.IsNullOrWhiteSpace(policyName)) {
++            return true;
++        }
++
++        ICommandAuthorizationEvaluator? evaluator = TryGetService<ICommandAuthorizationEvaluator>();
++        if (evaluator is null) {
++            return false;
++        }
++
++        Type? commandType = ProjectionTypeResolver.Resolve(commandTypeName);
++        if (commandType is null) {
++            return false;
++        }
++
++        string displayLabel = ShortName(commandTypeName);
++        CommandAuthorizationDecision decision = await evaluator.EvaluateAsync(
++            new CommandAuthorizationRequest(
++                commandType,
++                policyName,
++                null,
++                manifest.BoundedContext,
++                displayLabel,
++                "CommandPalette"),
++            cancellationToken).ConfigureAwait(false);
++
++        return decision.IsAllowed;
++    }
++
+     private static bool IsInCurrentContext(string? boundedContext, string? currentContext)
+         => !string.IsNullOrWhiteSpace(currentContext)
+             && !string.IsNullOrWhiteSpace(boundedContext)
+diff --git a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+index e194e58..48c380c 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
++++ b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+@@ -54,3 +54,5 @@ HFC1052 | HexalithFrontComposer | Warning | Custom override suppresses focus vis
+ HFC1053 | HexalithFrontComposer | Warning | Custom override is missing aria-live parity (Story 6-6)
+ HFC1054 | HexalithFrontComposer | Warning | Custom override motion has no reduced-motion fallback (Story 6-6)
+ HFC1055 | HexalithFrontComposer | Warning | Custom override color styling has no forced-colors fallback (Story 6-6)
++HFC1056 | HexalithFrontComposer | Error | Command [RequiresPolicy] value is invalid (Story 7-3)
++HFC1057 | HexalithFrontComposer | Error | Command declares duplicate [RequiresPolicy] attributes (Story 7-3)
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+index 8ee3e38..5cd01cc 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+@@ -637,6 +637,28 @@ public static class DiagnosticDescriptors {
+         defaultSeverity: DiagnosticSeverity.Warning,
+         isEnabledByDefault: true);
+ 
++    /// <summary>
++    /// HFC1056: A command declares an invalid <c>[RequiresPolicy]</c> value.
++    /// </summary>
++    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyInvalid = new(
++        id: "HFC1056",
++        title: "Command authorization policy is invalid",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Error,
++        isEnabledByDefault: true);
++
++    /// <summary>
++    /// HFC1057: A command declares duplicate <c>[RequiresPolicy]</c> attributes.
++    /// </summary>
++    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyDuplicate = new(
++        id: "HFC1057",
++        title: "Command declares duplicate authorization policies",
++        messageFormat: "{0}",
++        category: "HexalithFrontComposer",
++        defaultSeverity: DiagnosticSeverity.Error,
++        isEnabledByDefault: true);
++
+     /// <summary>
+     /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.
+     /// </summary>
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs
+index 45029da..9e723a0 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs
+@@ -60,6 +60,7 @@ public static class CommandFormEmitter {
+         string componentName = form.TypeName + "Form";
+         string escapedButtonLabel = EscapeString(form.ButtonLabel);
+         string commandFqn = form.CommandFullyQualifiedName;
++        bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(form.AuthorizationPolicyName);
+ 
+         _ = sb.AppendLine("/// <summary>");
+         _ = sb.AppendLine("/// Auto-generated command form for <see cref=\"" + form.TypeName + "\"/>.");
+@@ -98,6 +99,10 @@ public static class CommandFormEmitter {
+         // Story 5-2 T5 — server-driven warning publication + auth-redirect seam (validation is applied via a stateless static helper).
+         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Feedback.ICommandFeedbackPublisher CommandFeedbackPublisher { get; set; } = default!;");
+         _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Contracts.Communication.IAuthRedirector AuthRedirector { get; set; } = default!;");
++        if (hasAuthorizationPolicy) {
++            _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator CommandAuthorizationEvaluator { get; set; } = default!;");
++            _ = sb.AppendLine("    [Inject] private IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> CommandAuthorizationLocalizer { get; set; } = default!;");
++        }
+         _ = sb.AppendLine();
+         _ = sb.AppendLine("    private " + commandFqn + " _model = new();");
+         _ = sb.AppendLine("    private EditContext? _editContext;");
+@@ -108,6 +113,16 @@ public static class CommandFormEmitter {
+         _ = sb.AppendLine("    private bool _disposed;");
+         _ = sb.AppendLine("    private bool _externalSubmitRegistered;");
+         _ = sb.AppendLine("    private string? _submittedCorrelationId;");
++        if (hasAuthorizationPolicy) {
++            _ = sb.AppendLine("    private bool _authorizationPresentationReady;");
++            _ = sb.AppendLine("    private bool _authorizationPresentationAllowed;");
++            string authorizationPolicyLiteral = "\"" + EscapeString(form.AuthorizationPolicyName!) + "\"";
++            string boundedContextLiteral = string.IsNullOrWhiteSpace(form.BoundedContext)
++                ? "null"
++                : "\"" + EscapeString(form.BoundedContext!) + "\"";
++            _ = sb.AppendLine("    private const string AuthorizationPolicyName = " + authorizationPolicyLiteral + ";");
++            _ = sb.AppendLine("    private const string? BoundedContextName = " + boundedContextLiteral + ";");
++        }
+         // Story 5-2 — per-command static allowlist (reflection default, stateless, safely cached).
+         _ = sb.AppendLine("    private static readonly global::Hexalith.FrontComposer.Contracts.Communication.ICommandValidationFieldAllowlist _serverValidationAllowlist = new global::Hexalith.FrontComposer.Shell.Services.Validation.ReflectionCommandValidationFieldAllowlist<" + commandFqn + ">();");
+         _ = sb.AppendLine("    /// <summary>Indicates the form has been modified since creation. Used by later stories to warn on navigation.</summary>");
+@@ -128,6 +143,50 @@ public static class CommandFormEmitter {
+         _ = sb.AppendLine("        if (OnEditContextReady.HasDelegate) { _ = OnEditContextReady.InvokeAsync(_editContext); }");
+         _ = sb.AppendLine("    }");
+         _ = sb.AppendLine();
++        if (hasAuthorizationPolicy) {
++            _ = sb.AppendLine("    /// <inheritdoc />");
++            _ = sb.AppendLine("    protected override async Task OnInitializedAsync()");
++            _ = sb.AppendLine("    {");
++            _ = sb.AppendLine("        await RefreshPresentationAuthorizationAsync().ConfigureAwait(false);");
++            _ = sb.AppendLine("    }");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("    private async Task RefreshPresentationAuthorizationAsync()");
++            _ = sb.AppendLine("    {");
++            _ = sb.AppendLine("        var authorization = await CommandAuthorizationEvaluator.EvaluateAsync(");
++            _ = sb.AppendLine("            CreateAuthorizationRequest(),");
++            _ = sb.AppendLine("            _cts?.Token ?? CancellationToken.None).ConfigureAwait(false);");
++            _ = sb.AppendLine("        _authorizationPresentationReady = true;");
++            _ = sb.AppendLine("        _authorizationPresentationAllowed = authorization.IsAllowed;");
++            _ = sb.AppendLine("        if (!authorization.IsAllowed)");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            SetAuthorizationWarning();");
++            _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked. CorrelationId={CorrelationId} Reason={Reason}\", authorization.CorrelationId, authorization.Reason);");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine("        await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
++            _ = sb.AppendLine("    }");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationRequest CreateAuthorizationRequest()");
++            _ = sb.AppendLine("        => new(");
++            _ = sb.AppendLine("            typeof(" + commandFqn + "),");
++            _ = sb.AppendLine("            AuthorizationPolicyName,");
++            _ = sb.AppendLine("            _model,");
++            _ = sb.AppendLine("            BoundedContextName,");
++            _ = sb.AppendLine("            \"" + EscapeString(form.ButtonLabel) + "\",");
++            _ = sb.AppendLine("            \"GeneratedForm\");");
++            _ = sb.AppendLine();
++            _ = sb.AppendLine("    private void SetAuthorizationWarning()");
++            _ = sb.AppendLine("    {");
++            _ = sb.AppendLine("        string warningTitle = CommandAuthorizationLocalizer[\"UnauthorizedCommandWarningTitle\"].Value;");
++            _ = sb.AppendLine("        string warningBody = CommandAuthorizationLocalizer[\"UnauthorizedCommandWarningMessage\", \"" + EscapeString(form.ButtonLabel) + "\"].Value;");
++            _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
++            _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden,");
++            _ = sb.AppendLine("            warningTitle,");
++            _ = sb.AppendLine("            warningBody,");
++            _ = sb.AppendLine("            null,");
++            _ = sb.AppendLine("            null);");
++            _ = sb.AppendLine("    }");
++            _ = sb.AppendLine();
++        }
+         _ = sb.AppendLine("    private void OnEditContextFieldChanged(object? sender, FieldChangedEventArgs e) {");
+         _ = sb.AppendLine("        IsDirty = true;");
+         _ = sb.AppendLine("        // Story 5-2 D5 — clear stale server-side validation for the edited field.");
+@@ -258,6 +317,7 @@ public static class CommandFormEmitter {
+ 
+     private static void EmitSubmitMethod(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor) {
+         string commandFqn = form.CommandFullyQualifiedName;
++        bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(form.AuthorizationPolicyName);
+ 
+         _ = sb.AppendLine("    private async Task OnValidSubmitAsync()");
+         _ = sb.AppendLine("    {");
+@@ -288,12 +348,6 @@ public static class CommandFormEmitter {
+         _ = sb.AppendLine("            previous.Dispose();");
+         _ = sb.AppendLine("        }");
+         _ = sb.AppendLine();
+-        _ = sb.AppendLine("        if (BeforeSubmit is not null)");
+-        _ = sb.AppendLine("        {");
+-        _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(false);");
+-        _ = sb.AppendLine("            if (_disposed || _cts.IsCancellationRequested) return;");
+-        _ = sb.AppendLine("        }");
+-        _ = sb.AppendLine();
+         _ = sb.AppendLine("        // Story 5-2 D5 — clear server-driven validation state from the prior submit.");
+         _ = sb.AppendLine("        _serverValidationMessages?.Clear();");
+         _ = sb.AppendLine("        if (_serverFormLevelErrors.Count > 0)");
+@@ -303,6 +357,26 @@ public static class CommandFormEmitter {
+         _ = sb.AppendLine("        _serverWarning = null;");
+         _ = sb.AppendLine("        _editContext?.NotifyValidationStateChanged();");
+         _ = sb.AppendLine();
++        if (hasAuthorizationPolicy) {
++            _ = sb.AppendLine("        var authorization = await CommandAuthorizationEvaluator.EvaluateAsync(");
++            _ = sb.AppendLine("            CreateAuthorizationRequest(),");
++            _ = sb.AppendLine("            _cts.Token).ConfigureAwait(false);");
++            _ = sb.AppendLine("        if (!authorization.IsAllowed)");
++            _ = sb.AppendLine("        {");
++            _ = sb.AppendLine("            SetAuthorizationWarning();");
++            _ = sb.AppendLine("            CommandFeedbackPublisher.PublishWarning(_serverWarning);");
++            _ = sb.AppendLine("            await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
++            _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked. CorrelationId={CorrelationId} Reason={Reason}\", authorization.CorrelationId, authorization.Reason);");
++            _ = sb.AppendLine("            return;");
++            _ = sb.AppendLine("        }");
++            _ = sb.AppendLine();
++        }
++        _ = sb.AppendLine("        if (BeforeSubmit is not null)");
++        _ = sb.AppendLine("        {");
++        _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(false);");
++        _ = sb.AppendLine("            if (_disposed || _cts.IsCancellationRequested) return;");
++        _ = sb.AppendLine("        }");
++        _ = sb.AppendLine();
+         _ = sb.AppendLine("        var correlationId = Guid.NewGuid().ToString();");
+         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
+         _ = sb.AppendLine("        var cts = _cts;");
+@@ -457,6 +531,8 @@ public static class CommandFormEmitter {
+     }
+ 
+     private static void EmitBuildRenderTree(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor, string escapedButtonLabel) {
++        bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(form.AuthorizationPolicyName);
++
+         _ = sb.AppendLine("    /// <inheritdoc />");
+         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
+         _ = sb.AppendLine("    {");
+@@ -543,7 +619,14 @@ public static class CommandFormEmitter {
+         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"Disabled\",");
+         _ = sb.AppendLine("                LifecycleState.Value.State != CommandLifecycleState.Idle");
+         _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Confirmed");
+-        _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Rejected);");
++        if (hasAuthorizationPolicy) {
++            _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Rejected");
++            _ = sb.AppendLine("                || !_authorizationPresentationReady");
++            _ = sb.AppendLine("                || !_authorizationPresentationAllowed);");
++        }
++        else {
++            _ = sb.AppendLine("                && LifecycleState.Value.State != CommandLifecycleState.Rejected);");
++        }
+         _ = sb.AppendLine("            __b.AddAttribute(cseq++, \"ChildContent\", (RenderFragment)(__btn =>");
+         _ = sb.AppendLine("            {");
+         _ = sb.AppendLine("                int bseq = 0;");
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs
+index b9eb802..b0c072d 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/RegistrationEmitter.cs
+@@ -52,12 +52,22 @@ public static class RegistrationEmitter {
+         string commandsList = model.IsCommand
+             ? "new List<string> { typeof(" + model.TypeName + ").FullName! }"
+             : "new List<string>()";
++        bool hasPolicyMap = model.IsCommand && !string.IsNullOrWhiteSpace(model.AuthorizationPolicyName);
++        string policyMap = hasPolicyMap
++            ? "new Dictionary<string, string> { [typeof(" + model.TypeName + ").FullName!] = \"" + EscapeString(model.AuthorizationPolicyName!) + "\" }"
++            : string.Empty;
+ 
+         _ = sb.AppendLine("    public static DomainManifest Manifest { get; } = new DomainManifest(");
+         _ = sb.AppendLine("        Name: \"" + EscapeString(displayName) + "\",");
+         _ = sb.AppendLine("        BoundedContext: \"" + EscapeString(model.BoundedContext) + "\",");
+         _ = sb.AppendLine("        Projections: " + projectionsList + ",");
+-        _ = sb.AppendLine("        Commands: " + commandsList + ");");
++        if (hasPolicyMap) {
++            _ = sb.AppendLine("        Commands: " + commandsList + ",");
++            _ = sb.AppendLine("        CommandPolicies: " + policyMap + ");");
++        }
++        else {
++            _ = sb.AppendLine("        Commands: " + commandsList + ");");
++        }
+         _ = sb.AppendLine();
+ 
+         // RegisterDomain method
+diff --git a/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs b/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
+index 8545b8e..54a3e5d 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs
+@@ -224,6 +224,8 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
+         "HFC1039" => DiagnosticDescriptors.ProjectionSlotComponentInvalid,
+         "HFC1040" => DiagnosticDescriptors.ProjectionSlotDuplicate,
+         "HFC1041" => DiagnosticDescriptors.ProjectionSlotContractVersionMismatch,
++        "HFC1056" => DiagnosticDescriptors.CommandAuthorizationPolicyInvalid,
++        "HFC1057" => DiagnosticDescriptors.CommandAuthorizationPolicyDuplicate,
+         _ => new DiagnosticDescriptor(
+             id,
+             "FrontComposer Diagnostic",
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs b/src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs
+index acedafa..7ca5687 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Parsing/CommandParser.cs
+@@ -31,6 +31,7 @@ public static class CommandParser {
+     private const string IconAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.IconAttribute";
+     private const string DefaultValueAttributeName = "System.ComponentModel.DefaultValueAttribute";
+     private const string DestructiveAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.DestructiveAttribute";
++    private const string RequiresPolicyAttributeName = "Hexalith.FrontComposer.Contracts.Attributes.RequiresPolicyAttribute";
+ 
+     /// <summary>
+     /// Story 2-5 D20 / ADR-026 — commands whose TypeName matches this pattern AND lack
+@@ -145,6 +146,11 @@ public static class CommandParser {
+         string? boundedContext = ParseBoundedContext(typeSymbol, out string? boundedContextDisplayLabel);
+         string? displayName = ParseDisplayAttribute(typeSymbol);
+         string? iconName = ParseIconAttribute(typeSymbol);
++        string? authorizationPolicyName = ParseRequiresPolicyAttribute(typeSymbol, diagnostics, filePath, linePos);
++        if (diagnostics.Any(d => d.Id is "HFC1056" or "HFC1057")) {
++            return new CommandParseResult(null, new EquatableArray<DiagnosticInfo>([.. diagnostics]));
++        }
++
+         // Story 2-5 Task 2.2 — parse [Destructive] opt-in marker + optional confirmation copy overrides.
+         bool isDestructive = ParseDestructiveAttribute(
+             typeSymbol,
+@@ -341,7 +347,8 @@ public static class CommandParser {
+             iconName,
+             isDestructive,
+             destructiveConfirmTitle,
+-            destructiveConfirmBody);
++            destructiveConfirmBody,
++            authorizationPolicyName);
+ 
+         return new CommandParseResult(
+             model,
+@@ -503,6 +510,76 @@ public static class CommandParser {
+         return null;
+     }
+ 
++    private static string? ParseRequiresPolicyAttribute(
++        INamedTypeSymbol typeSymbol,
++        List<DiagnosticInfo> diagnostics,
++        string filePath,
++        Microsoft.CodeAnalysis.Text.LinePosition linePos) {
++        List<AttributeData> attributes = [];
++        foreach (AttributeData attr in typeSymbol.GetAttributes()) {
++            if (attr.AttributeClass?.ToDisplayString() == RequiresPolicyAttributeName) {
++                attributes.Add(attr);
++            }
++        }
++
++        if (attributes.Count == 0) {
++            return null;
++        }
++
++        if (attributes.Count > 1) {
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1057",
++                string.Format(
++                    "Command '{0}' declares [RequiresPolicy] more than once. Expected at most one policy per command in v1.",
++                    typeSymbol.Name),
++                "Error",
++                filePath,
++                linePos.Line,
++                linePos.Character));
++            return null;
++        }
++
++        AttributeData policyAttribute = attributes[0];
++        string? value = policyAttribute.ConstructorArguments.Length > 0
++            ? policyAttribute.ConstructorArguments[0].Value as string
++            : null;
++
++        if (string.IsNullOrWhiteSpace(value) || !IsPolicyNameWellFormed(value!)) {
++            Microsoft.CodeAnalysis.Text.LinePosition attrLine = (policyAttribute.ApplicationSyntaxReference?.GetSyntax() as AttributeSyntax)
++                ?.GetLocation()
++                .GetLineSpan()
++                .StartLinePosition ?? linePos;
++
++            diagnostics.Add(new DiagnosticInfo(
++                "HFC1056",
++                string.Format(
++                    "Command '{0}' has an invalid [RequiresPolicy] value. Expected a non-empty policy name using letters, digits, '.', ':', '_', or '-'.",
++                    typeSymbol.Name),
++                "Error",
++                filePath,
++                attrLine.Line,
++                attrLine.Character));
++            return null;
++        }
++
++        return value!.Trim();
++    }
++
++    private static bool IsPolicyNameWellFormed(string value) {
++        string trimmed = value.Trim();
++        if (trimmed.Length == 0) {
++            return false;
++        }
++
++        foreach (char c in trimmed) {
++            if (!(char.IsLetterOrDigit(c) || c is '.' or ':' or '_' or '-')) {
++                return false;
++            }
++        }
++
++        return true;
++    }
++
+     /// <summary>
+     /// Story 2-5 Task 2.2 — resolves <c>[Destructive]</c> (with optional named args
+     /// <c>ConfirmationTitle</c> / <c>ConfirmationBody</c>) when declared on the command type.
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs b/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
+index 4b9dadf..2ccc368 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Parsing/DomainModel.cs
+@@ -154,7 +154,8 @@ public sealed class CommandModel : IEquatable<CommandModel> {
+         string? iconName = null,
+         bool isDestructive = false,
+         string? destructiveConfirmTitle = null,
+-        string? destructiveConfirmBody = null) {
++        string? destructiveConfirmBody = null,
++        string? authorizationPolicyName = null) {
+         TypeName = typeName;
+         Namespace = @namespace;
+         BoundedContext = boundedContext;
+@@ -167,6 +168,7 @@ public sealed class CommandModel : IEquatable<CommandModel> {
+         IsDestructive = isDestructive;
+         DestructiveConfirmTitle = destructiveConfirmTitle;
+         DestructiveConfirmBody = destructiveConfirmBody;
++        AuthorizationPolicyName = authorizationPolicyName;
+         Density = ComputeDensity(nonDerivableProperties.Count);
+     }
+ 
+@@ -226,6 +228,12 @@ public sealed class CommandModel : IEquatable<CommandModel> {
+     /// <summary>Gets the optional <c>[Destructive(ConfirmationBody)]</c> override; null → renderer uses localized "This action cannot be undone.".</summary>
+     public string? DestructiveConfirmBody { get; }
+ 
++    /// <summary>
++    /// Gets the optional command authorization policy declared by <c>[RequiresPolicy]</c>.
++    /// Null means the command is unprotected by Story 7-3 policy metadata.
++    /// </summary>
++    public string? AuthorizationPolicyName { get; }
++
+     public bool Equals(CommandModel? other) {
+         if (other is null) {
+             return false;
+@@ -247,7 +255,8 @@ public sealed class CommandModel : IEquatable<CommandModel> {
+             && Density == other.Density
+             && IsDestructive == other.IsDestructive
+             && DestructiveConfirmTitle == other.DestructiveConfirmTitle
+-            && DestructiveConfirmBody == other.DestructiveConfirmBody;
++            && DestructiveConfirmBody == other.DestructiveConfirmBody
++            && AuthorizationPolicyName == other.AuthorizationPolicyName;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as CommandModel);
+@@ -268,6 +277,7 @@ public sealed class CommandModel : IEquatable<CommandModel> {
+             hash = (hash * 31) + IsDestructive.GetHashCode();
+             hash = (hash * 31) + (DestructiveConfirmTitle?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (DestructiveConfirmBody?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs
+index dc5510d..1022ecd 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandFormTransform.cs
+@@ -37,7 +37,8 @@ public static class CommandFormTransform {
+             model.BoundedContext,
+             commandFqn,
+             buttonLabel,
+-            new EquatableArray<FormFieldModel>(fields.ToImmutable()));
++            new EquatableArray<FormFieldModel>(fields.ToImmutable()),
++            model.AuthorizationPolicyName);
+     }
+ 
+     private static FormFieldModel MapField(PropertyModel property) {
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs
+index cd81066..4c347c0 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererModel.cs
+@@ -24,7 +24,8 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
+         string subscriberTypeName,
+         bool isDestructive = false,
+         string? destructiveConfirmTitle = null,
+-        string? destructiveConfirmBody = null) {
++        string? destructiveConfirmBody = null,
++        string? authorizationPolicyName = null) {
+         TypeName = typeName;
+         Namespace = @namespace;
+         BoundedContext = boundedContext;
+@@ -42,6 +43,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
+         IsDestructive = isDestructive;
+         DestructiveConfirmTitle = destructiveConfirmTitle;
+         DestructiveConfirmBody = destructiveConfirmBody;
++        AuthorizationPolicyName = authorizationPolicyName;
+     }
+ 
+     public string TypeName { get; }
+@@ -85,6 +87,8 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
+     /// <summary>Story 2-5 D1 — optional <c>[Destructive(ConfirmationBody)]</c> override; null → localized default body.</summary>
+     public string? DestructiveConfirmBody { get; }
+ 
++    public string? AuthorizationPolicyName { get; }
++
+     public bool Equals(CommandRendererModel? other) {
+         if (other is null) {
+             return false;
+@@ -110,7 +114,8 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
+             && SubscriberTypeName == other.SubscriberTypeName
+             && IsDestructive == other.IsDestructive
+             && DestructiveConfirmTitle == other.DestructiveConfirmTitle
+-            && DestructiveConfirmBody == other.DestructiveConfirmBody;
++            && DestructiveConfirmBody == other.DestructiveConfirmBody
++            && AuthorizationPolicyName == other.AuthorizationPolicyName;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as CommandRendererModel);
+@@ -135,6 +140,7 @@ public sealed class CommandRendererModel : IEquatable<CommandRendererModel> {
+             hash = (hash * 31) + IsDestructive.GetHashCode();
+             hash = (hash * 31) + (DestructiveConfirmTitle?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (DestructiveConfirmBody?.GetHashCode() ?? 0);
++            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs
+index 7f4fc9c..1893e1a 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/CommandRendererTransform.cs
+@@ -52,7 +52,8 @@ public static class CommandRendererTransform {
+             subscriberTypeName: model.TypeName + "LastUsedSubscriber",
+             isDestructive: model.IsDestructive,
+             destructiveConfirmTitle: model.DestructiveConfirmTitle,
+-            destructiveConfirmBody: model.DestructiveConfirmBody);
++            destructiveConfirmBody: model.DestructiveConfirmBody,
++            authorizationPolicyName: model.AuthorizationPolicyName);
+     }
+ 
+     private static string BuildDisplayLabel(CommandModel model) {
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs
+index 6d156ea..eb1384b 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs
+@@ -112,13 +112,15 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
+         string? boundedContext,
+         string commandFullyQualifiedName,
+         string buttonLabel,
+-        EquatableArray<FormFieldModel> fields) {
++        EquatableArray<FormFieldModel> fields,
++        string? authorizationPolicyName = null) {
+         TypeName = typeName;
+         Namespace = @namespace;
+         BoundedContext = boundedContext;
+         CommandFullyQualifiedName = commandFullyQualifiedName;
+         ButtonLabel = buttonLabel;
+         Fields = fields;
++        AuthorizationPolicyName = authorizationPolicyName;
+     }
+ 
+     public string TypeName { get; }
+@@ -133,6 +135,8 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
+ 
+     public EquatableArray<FormFieldModel> Fields { get; }
+ 
++    public string? AuthorizationPolicyName { get; }
++
+     public bool Equals(CommandFormModel? other) {
+         if (other is null) {
+             return false;
+@@ -147,7 +151,8 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
+             && BoundedContext == other.BoundedContext
+             && CommandFullyQualifiedName == other.CommandFullyQualifiedName
+             && ButtonLabel == other.ButtonLabel
+-            && Fields == other.Fields;
++            && Fields == other.Fields
++            && AuthorizationPolicyName == other.AuthorizationPolicyName;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as CommandFormModel);
+@@ -161,6 +166,7 @@ public sealed class CommandFormModel : IEquatable<CommandFormModel> {
+             hash = (hash * 31) + (CommandFullyQualifiedName?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (ButtonLabel?.GetHashCode() ?? 0);
+             hash = (hash * 31) + Fields.GetHashCode();
++            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs
+index cc3ewarning: in the working copy of 'tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/RequiresPolicyAttributeTests.cs', LF will be replaced by CRLF the next time Git touches it
+dd1..cf95a4a 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs
+@@ -9,12 +9,14 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+         string typeName,
+         string @namespace,
+         string? displayLabel,
+-        bool isCommand = false) {
++        bool isCommand = false,
++        string? authorizationPolicyName = null) {
+         BoundedContext = boundedContext;
+         TypeName = typeName;
+         Namespace = @namespace;
+         DisplayLabel = displayLabel;
+         IsCommand = isCommand;
++        AuthorizationPolicyName = authorizationPolicyName;
+     }
+ 
+     public string BoundedContext { get; }
+@@ -31,6 +33,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+     /// </summary>
+     public bool IsCommand { get; }
+ 
++    public string? AuthorizationPolicyName { get; }
++
+     public bool Equals(RegistrationModel? other) {
+         if (other is null) {
+             return false;
+@@ -44,7 +48,8 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+             && TypeName == other.TypeName
+             && Namespace == other.Namespace
+             && DisplayLabel == other.DisplayLabel
+-            && IsCommand == other.IsCommand;
++            && IsCommand == other.IsCommand
++            && AuthorizationPolicyName == other.AuthorizationPolicyName;
+     }
+ 
+     public override bool Equals(object? obj) => Equals(obj as RegistrationModel);
+@@ -57,6 +62,7 @@ public sealed class RegistrationModel : IEquatable<RegistrationModel> {
+             hash = (hash * 31) + (Namespace?.GetHashCode() ?? 0);
+             hash = (hash * 31) + (DisplayLabel?.GetHashCode() ?? 0);
+             hash = (hash * 31) + IsCommand.GetHashCode();
++            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
+             return hash;
+         }
+     }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs
+index 3f60bb7..908c253 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs
+@@ -35,7 +35,8 @@ public static class RegistrationModelTransform {
+             model.TypeName,
+             model.Namespace,
+             model.BoundedContextDisplayLabel,
+-            isCommand: true);
++            isCommand: true,
++            authorizationPolicyName: model.AuthorizationPolicyName);
+     }
+ 
+     private static string GetNamespaceLastSegment(string @namespace) {
+diff --git a/tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/RequiresPolicyAttributeTests.cs b/tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/RequiresPolicyAttributeTests.cs
+new file mode 100644
+index 0000000..5f5e600
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Contracts.Tests/Attributes/RequiresPolicyAttributeTests.cs
+@@ -0,0 +1,35 @@
++using System.Reflection;
++
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Contracts.Tests.Attributes;
++
++public sealed class RequiresPolicyAttributeTests {
++    [Fact]
++    public void Constructor_StoresTrimmedPolicyName() {
++        var attribute = new RequiresPolicyAttribute(" OrderApprover ");
++
++        attribute.PolicyName.ShouldBe("OrderApprover");
++    }
++
++    [Theory]
++    [InlineData("")]
++    [InlineData("   ")]
++    public void Constructor_RejectsEmptyPolicyName(string value) {
++        Should.Throw<ArgumentException>(() => new RequiresPolicyAttribute(value));
++    }
++
++    [Fact]
++    public void AttributeUsage_AllowsCommandClassOnly() {
++        AttributeUsageAttribute usage = typeof(RequiresPolicyAttribute)
++            .GetCustomAttribute<AttributeUsageAttribute>()
++            .ShouldNotBeNull();
++
++        usage.ValidOn.ShouldBe(AttributeTargets.Class);
++        usage.AllowMultiple.ShouldBeFalse();
++    warning: in the working copy of 'tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandAuthorizationEvaluatorTests.cs', LF will be replaced by CRLF the next time Git touches it
+    usage.Inherited.ShouldBeFalse();
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandAuthorizationEvaluatorTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandAuthorizationEvaluatorTests.cs
+new file mode 100644
+index 0000000..3c58734
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandAuthorizationEvaluatorTests.cs
+@@ -0,0 +1,105 @@
++using System.Security.Claims;
++
++using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
++using Hexalith.FrontComposer.Shell.Services.Authorization;
++
++using Microsoft.AspNetCore.Authorization;
++using Microsoft.AspNetCore.Http;
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging.Abstractions;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Services.Authorization;
++
++public sealed class CommandAuthorizationEvaluatorTests {
++    [Fact]
++    public async Task EvaluateAsync_NoPolicy_AllowsWithoutAuthorizationService() {
++        CommandAuthorizationEvaluator sut = Create(authorizationService: null);
++
++        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request(policy: null), TestContext.Current.CancellationToken);
++
++        result.IsAllowed.ShouldBeTrue();
++        result.Reason.ShouldBe(CommandAuthorizationReason.NoPolicy);
++    }
++
++    [Fact]
++    public async Task EvaluateAsync_ProtectedCommand_Denied_FailsClosed() {
++        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
++        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object>(), "OrderApprover")
++            .Returns(Task.FromResult(AuthorizationResult.Failed()));
++        CommandAuthorizationEvaluator sut = Create(authorizationService: authorization);
++
++        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
++
++        result.IsAllowed.ShouldBeFalse();
++        result.Kind.ShouldBe(CommandAuthorizationDecisionKind.Denied);
++        result.Reason.ShouldBe(CommandAuthorizationReason.Denied);
++    }
++
++    [Fact]
++    public async Task EvaluateAsync_ProtectedCommand_Allowed_PassesResourceWithTenantContext() {
++        CommandAuthorizationResource? captured = null;
++        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
++        authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Do<object>(r => captured = (CommandAuthorizationResource)r), "OrderApprover")
++            .Returns(Task.FromResult(AuthorizationResult.Success()));
++        CommandAuthorizationEvaluator sut = Create(authorizationService: authorization);
++
++        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
++
++        result.IsAllowed.ShouldBeTrue();
++        captured.ShouldNotBeNull();
++        captured.PolicyName.ShouldBe("OrderApprover");
++        captured.SourceSurface.ShouldBe("DirectDispatch");
++        captured.TenantContext.ShouldNotBeNull();
++        captured.TenantContext.TenantId.ShouldBe("tenant-a");
++    }
++
++    [Fact]
++    public async Task EvaluateAsync_UnauthenticatedPrincipal_FailsClosedBeforePolicyHandler() {
++        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
++        CommandAuthorizationEvaluator sut = Create(authorizationService: authorization, authenticated: false);
++
++        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
++
++        result.IsAllowed.ShouldBeFalse();
++        result.Reason.ShouldBe(CommandAuthorizationReason.Unauthenticated);
++        await authorization.DidNotReceive().AuthorizeAsync(
++            Arg.Any<ClaimsPrincipal>(),
++            Arg.Any<object?>(),
++            Arg.Any<string>());
++    }
++
++    private static CommandAuthorizationEvaluator Create(
++        IAuthorizationService? authorizationService,
++        bool authenticated = true) {
++        Servicwarning: in the working copy of 'tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidatorTests.cs', LF will be replaced by CRLF the next time Git touches it
+eCollection services = new();
++        if (authorizationService is not null) {
++            services.AddSingleton(authorizationService);
++        }
++
++        var identity = authenticated
++            ? new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "user-a")], "Test")
++            : new ClaimsIdentity();
++        services.AddSingleton<IHttpContextAccessor>(new HttpContextAccessor {
++            HttpContext = new DefaultHttpContext { User = new ClaimsPrincipal(identity) },
++        });
++
++        IServiceProvider provider = services.BuildServiceProvider();
++        IFrontComposerTenantContextAccessor tenant = Substitute.For<IFrontComposerTenantContextAccessor>();
++        tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>()).Returns(
++            TenantContextResult.Success(new TenantContextSnapshot("tenant-a", "user-a", true, "corr-1")));
++
++        return new CommandAuthorizationEvaluator(
++            provider,
++            tenant,
++            NullLogger<CommandAuthorizationEvaluator>.Instance);
++    }
++
++    private static CommandAuthorizationRequest Request(string? policy)
++        => new(typeof(TestCommand), policy, new TestCommand(), "Orders", "Approve Order");
++
++    private sealed class TestCommand { }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidatorTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidatorTests.cs
+new file mode 100644
+index 0000000..db8e486
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidatorTests.cs
+@@ -0,0 +1,63 @@
++using Hexalith.FrontComposer.Contracts.Registration;
++using Hexalith.FrontComposer.Shell.Options;
++using Hexalith.FrontComposer.Shell.Services.Authorization;
++
++using Microsoft.Extensions.Logging.Abstractions;
++using Microsoft.Extensions.Options;
++
++using NSubstitute;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Shell.Tests.Services.Authorization;
++
++public sealed class FrontComposerAuthorizationPolicyCatalogValidatorTests {
++    [Fact]
++    public async Task StartAsync_NoCatalog_DoesNotFail() {
++        FrontComposerAuthorizationPolicyCatalogValidator sut = Create(new FrontComposerAuthorizationOptions());
++
++        await sut.StartAsync(TestContext.Current.CancellationToken);
++    }
++
++    [Fact]
++    public async Task StartAsync_StrictCatalogMissingPolicy_FailsClosedWithCommandAndPolicyOnly() {
++        FrontComposerAuthorizationOptions options = new() { StrictPolicyCatalogValidation = true };
++        options.KnownPolicies.Add("OtherPolicy");
++        FrontComposerAuthorizationPolicyCatalogValidator sut = Create(options);
++
++        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
++            () => sut.StartAsync(TestContext.Current.CancellationToken));
++
++        ex.Message.ShouldContain("Orders.ApproveOrderCommand:OrderApprover");
++        ex.Message.ShouldNotContain("tenant-a");
++        ex.Message.ShouldNotContain("user-a");
++    }
++
++    [Fact]
++    public async Task StartAsync_CatalogContainsPolicy_DoesNotFail() {
++        FrontComposerAuthorizationOptions options = new();
++        options.KnownPolicies.Add("OrderApprover");
++        FrontComposerAuthorizationPolicyCatalogValidator sut = Create(options);
++
++        await sut.StartAsync(TestContext.Current.CancellationToken);
++    }
++
++    private static FrontComposerAuthorizationPolicyCatalogValidator Create(FrontComposerAuthorizationOptions options) {
++        IFrontComposerRegistry registry = Substitute.For<IFrontComposerRegistry>();
++        registry.GetManifests().Returns([
++            new DomainManifest(
++                "Orders",
++                "Orders",
++                Projections: [],
++                Commands: ["Orders.ApproveOrderCommand"],
++                CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) {
++                    ["Orders.ApproveOrderCommand"] = "OrderApprover",
++                }),
++        ]);
++
++        return new FrontComposerAuthorizationPolicyCatalogValidator(
++            registry,
++            Microsoft.Extensions.Options.Options.Create(options),
++            NullLogger<FrontComposerAuthorizationPolicyCatalogValidator>.Instance);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Services/EmptyStateCtaResolverTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Services/EmptyStateCtaResolverTests.cs
+index ee21add..7d8bf4d 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Services/EmptyStateCtaResolverTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Services/EmptyStateCtaResolverTests.cs
+@@ -56,6 +56,24 @@ public sealed class EmptyStateCtaResolverTests {
+         cta.CommandFqn.ShouldBe("ApproveOrderCommand");
+     }
+ 
++    [Fact]
++    public void Resolve_CommandWithPolicy_CarriesAuthorizationPolicy() {
++        EmptyStateCtaResolver resolver = CreateResolver(
++            new DomainManifest(
++                "Orders",
++                "Orders",
++                [typeof(OrderProjection).FullName!],
++                ["Orders.CreateOrderCommand"],
++                new Dictionary<string, string>(StringComparer.Ordinal) {
++                    ["Orders.CreateOrderCommand"] = "OrderApprover",
++                }));
++
++        EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
++
++        cta.ShouldNotBeNull();
++        cta.AuthorizationPolicy.ShouldBe("OrderApprover");
++    }
++
+     [Fact]
+     public void NoAttribute_CreationVerbPrefixWinsThenAlphabetical() {
+         // Spec D4: partition into matches vs non-matches, order each alphabetically.
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs
+index c2a7903..b8e0630 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/State/CommandPalette/CommandPaletteEffectsTests.cs
+@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
+ using Hexalith.FrontComposer.Contracts.Shortcuts;
+ using Hexalith.FrontComposer.Contracts.Storage;
+ using Hexalith.FrontComposer.Shell.Routing;
++using Hexalith.FrontComposer.Shell.Services.Authorization;
+ using Hexalith.FrontComposer.Shell.Shortcuts;
+ using Hexalith.FrontComposer.Shell.State;
+ using Hexalith.FrontComposer.Shell.State.CommandPalette;
+@@ -372,6 +373,44 @@ public class CommandPaletteEffectsTests
+             !a.Results.Any(r => r.CommandTypeName == "Counter.UnreachableCommand")));
+     }
+ 
++    [Fact]
++    public async Task HandlePaletteQueryChanged_FiltersDeniedProtectedCommands()
++    {
++        string commandTypeName = typeof(PaletteProtectedCommand).FullName!;
++        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
++        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
++            .Returns(CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Denied, "corr-1"));
++
++        CommandPaletteEffects sut = BuildEffects(
++            out FakeTimeProvider time,
++            out IDispatcher dispatcher,
++            out _,
++            manifests: [
++                new DomainManifest(
++                    "Orders",
++                    "Orders",
++                    [],
++                    [commandTypeName],
++                    CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) {
++                        [commandTypeName] = "OrderApprover",
++                    }),
++            ],
++            authorizationEvaluator: evaluator);
++
++        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "Protected"), dispatcher);
++        time.Advance(TimeSpan.FromMilliseconds(150));
++        await pending;
++
++        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
++            !a.Results.Any(r => r.CommandTypeName == commandTypeName)));
++        await evaluator.Received(1).EvaluateAsync(
++            Arg.Is<CommandAuthorizationRequest>(r =>
++                r.PolicyName == "OrderApprover"
++                && r.SourceSurface == "CommandPalette"
++                && r.BoundedContext == "Orders"),
++            Arg.Any<CancellationToken>());
++    }
++
+     private static CommandPaletteEffects BuildEffects(
+         out FakeTimeProvider time,
+         out IDispatcher dispatcher,
+@@ -380,7 +419,8 @@ public class CommandPaletteEffectsTests
+         IReadOnlyList<DomainManifest>? manifests = null,
+         IReadOnlyList<PaletteResult>? paletteResults = null,
+         IReadOnlyList<string>? recentRoutes = null,
+-        string? currentContext = null)
++        string? currentContext = null,
++        ICommandAuthorizationEvaluator? authorizationEvaluator = null)
+     {
+         time = new FakeTimeProvider();
+         dispatcher = Substitute.For<IDispatcher>();
+@@ -407,6 +447,11 @@ public class CommandPaletteEffectsTests
+         ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
+         services.AddSingleton(ulids);
+ 
++        if (authorizationEvaluator is not null)
++        {
++            services.AddSingleton(authorizationEvaluator);
++        }
++
+         // P6 (2026-04-21 pass-3) — register a test NavigationManager so activation happy-path tests
+         // can observe the expected RecentRouteVisitedAction dispatch. The new effect contract logs
+         // and early-returns (no RecentRouteVisited) when NavigationManager is unresolvable; that
+@@ -459,3 +504,5 @@ public class CommandPaletteEffectsTests
+         protected override void NavigateToCore(string uri, bool forceLoad) { }
+     }
+ }
++
++public sealed class PaletteProtectedCommand { }
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt
+index d4b5194..e330973 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_DerivableFieldsHidden_OmitsHiddenFieldsOnly.verified.txt
+@@ -189,12 +189,6 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
+             previous.Dispose();
+         }
+ 
+-        if (BeforeSubmit is not null)
+-        {
+-            await BeforeSubmit().ConfigureAwait(false);
+-            if (_disposed || _cts.IsCancellationRequested) return;
+-        }
+-
+         // Story 5-2 D5 — clear server-driven validation state from the prior submit.
+         _serverValidationMessages?.Clear();
+         if (_serverFormLevelErrors.Count > 0)
+@@ -204,6 +198,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
+         _serverWarning = null;
+         _editContext?.NotifyValidationStateChanged();
+ 
++        if (BeforeSubmit is not null)
++        {
++            await BeforeSubmit().ConfigureAwait(false);
++            if (_disposed || _cts.IsCancellationRequested) return;
++        }
++
+         var correlationId = Guid.NewGuid().ToString();
+         _submittedCorrelationId = correlationId;
+         var cts = _cts;
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt
+index 9cdc0ce..5aa0e9f 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.CommandForm_ShowFieldsOnly_RendersOnlyNamedFields.verified.txt
+@@ -189,12 +189,6 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
+             previous.Dispose();
+         }
+ 
+-        if (BeforeSubmit is not null)
+-        {
+-            await BeforeSubmit().ConfigureAwait(false);
+-            if (_disposed || _cts.IsCancellationRequested) return;
+-        }
+-
+         // Story 5-2 D5 — clear server-driven validation state from the prior submit.
+         _serverValidationMessages?.Clear();
+         if (_serverFormLevelErrors.Count > 0)
+@@ -204,6 +198,12 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
+         _serverWarning = null;
+         _editContext?.NotifyValidationStateChanged();
+ 
++        if (BeforeSubmit is not null)
++        {
++            await BeforeSubmit().ConfigureAwait(false);
++            if (_disposed || _cts.IsCancellationRequested) return;
++        }
++
+         var correlationId = Guid.NewGuid().ToString();
+         _submittedCorrelationId = correlationId;
+         var cts = _cts;
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs
+index c97ab8d..5be3571 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/CommandFormEmitterTests.cs
+@@ -24,14 +24,19 @@ public class CommandFormEmitterTests {
+             @namespace + "." + typeName + "LifecycleState");
+     }
+ 
+-    private static CommandFormModel BuildForm(IEnumerable<FormFieldModel> fields, string typeName = "IncrementCommand", string @namespace = "Counter.Domain") {
++    private static CommandFormModel BuildForm(
++        IEnumerable<FormFieldModel> fields,
++        string typeName = "IncrementCommand",
++        string @namespace = "Counter.Domain",
++        string? authorizationPolicyName = null) {
+         return new CommandFormModel(
+             typeName,
+             @namespace,
+             null,
+             @namespace + "." + typeName,
+             "Send " + typeName,
+-            new EquatableArray<FormFieldModel>(fields.ToImmutableArray()));
++            new EquatableArray<FormFieldModel>(fields.ToImmutableArray()),
++            authorizationPolicyName);
+     }
+ 
+     [Fact]
+@@ -112,6 +117,32 @@ public class CommandFormEmitterTests {
+         source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution)");
+     }
+ 
++    [Fact]
++    public void Emit_PolicyProtectedCommand_ChecksAuthorizationBeforeBeforeSubmitAndDispatch() {
++        CommandFormModel form = BuildForm(
++            [new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null)],
++            authorizationPolicyName: "OrderApprover");
++
++        string source = CommandFormEmitter.Emit(form, BuildFluxor());
++
++        source.ShouldContain("ICommandAuthorizationEvaluator");
++        source.ShouldContain("IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources>");
++        source.ShouldContain("\"GeneratedForm\"");
++        source.ShouldContain("UnauthorizedCommandWarningTitle");
++        source.ShouldContain("UnauthorizedCommandWarningMessage");
++        source.ShouldContain("protected override async Task OnInitializedAsync()");
++        source.ShouldContain("RefreshPresentationAuthorizationAsync");
++        source.ShouldContain("|| !_authorizationPresentationReady");
++        source.ShouldContain("|| !_authorizationPresentationAllowed");
++        int authIndex = source.IndexOf("CommandAuthorizationEvaluator.EvaluateAsync", StringComparison.Ordinal);
++        int beforeSubmitIndex = source.IndexOf("if (BeforeSubmit is not null)", StringComparison.Ordinal);
++        int submittedIndex = source.IndexOf(".SubmittedAction", StringComparison.Ordinal);
++        authIndex.ShouldBeGreaterThan(0);
++        authIndex.ShouldBeLessThan(beforeSubmitIndex);
++        authIndex.ShouldBeLessThan(submittedIndex);
++        source.ShouldContain("CommandWarningKind.Forbidden");
++    }
++
+     [Fact]
+     public void Emit_RegistersPendingCommandOnlyAfterAcceptedDispatchResult() {
+         CommandFormModel form = BuildForm([
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RegistrationEmitterTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RegistrationEmitterTests.cs
+index 94b648d..28e0e92 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RegistrationEmitterTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/RegistrationEmitterTests.cs
+@@ -30,4 +30,15 @@ public class RegistrationEmitterTests {
+         Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
+         tree.GetDiagnostics(ct).ShouldBeEmpty("Emitted Registration code should parse without syntax errors");
+     }
++
++    [Fact]
++    public void CommandPolicy_EmitsManifestPolicyMap() {
++        var model = new RegistrationModel("Orders", "ApproveOrderCommand", "TestDomain", null, isCommand: true, authorizationPolicyName: "OrderApprover");
++
++        string source = RegistrationEmitter.Emit(model);
++
++        source.ShouldContain("CommandPolicies:");
++        source.ShouldContain("typeof(ApproveOrderCommand).FullName!");
++        source.ShouldContain("\"OrderApprover\"");
++    }
+ }
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs
+index f6e1c59..e424789 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/CommandParserTests.cs
+@@ -137,6 +137,34 @@ public class CommandParserTests {
+         raw.IsUnsupported.ShouldBeTrue();
+     }
+ 
++    [Fact]
++    public void Parse_RequiresPolicyAttribute_CapturesPolicyName() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyProtectedCommand, "TestDomain.ApproveOrderCommand");
++
++        _ = result.Model.ShouldNotBeNull();
++        result.Model.AuthorizationPolicyName.ShouldBe("OrderApprover");
++    }
++
++    [Fact]
++    public void Parse_RequiresPolicyAttribute_EmptyValue_EmitsHFC1056() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.EmptyPolicyCommand, "TestDomain.EmptyPolicyCommand");
++
++        result.Model.ShouldBeNull();
++        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1056");
++        diagnostic.Severity.ShouldBe("Error");
++        diagnostic.Message.ShouldContain("RequiresPolicy");
++    }
++
++    [Fact]
++    public void Parse_RequiresPolicyAttribute_Duplicate_EmitsHFC1057() {
++        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.DuplicatePolicyCommand, "TestDomain.DuplicatePolicyCommand");
++
++        result.Model.ShouldBeNull();
++        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1057");
++        diagnostic.Severity.ShouldBe("Error");
++        diagnostic.Message.ShouldContain("at most one");
++    }
++
+     [Fact]
+     public void Parse_TooManyProperties_WarningThreshold_EmitsHFC1007Warning() {
+         string source = CommandTestSources.TooManyPropertiesCommand(CommandParser.NonDerivableWarningThreshold + 1);
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs
+index a43a0f2..0dff91f 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs
+@@ -171,6 +171,44 @@ public class UnsupportedCommand
+     public Dictionary<string, string> Map { get; set; } = new();
+ }";
+ 
++    internal const string PolicyProtectedCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++[RequiresPolicy(""OrderApprover"")]
++public class ApproveOrderCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++    public string OrderId { get; set; } = string.Empty;
++}";
++
++    internal const string EmptyPolicyCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++[RequiresPolicy(""   "")]
++public class EmptyPolicyCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++}";
++
++    internal const string DuplicatePolicyCommand = @"
++using Hexalith.FrontComposer.Contracts.Attributes;
++
++namespace TestDomain;
++
++[Command]
++[RequiresPolicy(""OrderApprover"")]
++[RequiresPolicy(""OrderAuditor"")]
++public class DuplicatePolicyCommand
++{
++    public string MessageId { get; set; } = string.Empty;
++}";
++
+     internal const string StructCommand = @"
+ using Hexalith.FrontComposer.Contracts.Attributes;
+ 
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs
+index 304ac3d..a33bbc2 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs
+@@ -112,6 +112,15 @@ public class CommandFormTransformTests {
+         result.Fields.Count.ShouldBe(0);
+     }
+ 
++    [Fact]
++    public void Transform_CarriesAuthorizationPolicyName() {
++        CommandModel command = BuildCommand(authorizationPolicyName: "OrderApprover");
++
++        CommandFormModel result = CommandFormTransform.Transform(command);
++
++        result.AuthorizationPolicyName.ShouldBe("OrderApprover");
++    }
++
+     [Fact]
+     public void HumanizeAndTruncateEnumMember_TruncatesLongNames() {
+         string input = "ThisIsAnExtremelyLongEnumMemberName";
+@@ -191,7 +200,8 @@ public class CommandFormTransformTests {
+         string? boundedContext = null,
+         string? displayName = null,
+         IReadOnlyList<PropertyModel>? nonDerivable = null,
+-        IReadOnlyList<PropertyModel>? derivable = null) {
++        IReadOnlyList<PropertyModel>? derivable = null,
++        string? authorizationPolicyName = null) {
+         IReadOnlyList<PropertyModel> all = ((derivable ?? Array.Empty<PropertyModel>()).Concat(nonDerivable ?? Array.Empty<PropertyModel>())).ToList();
+ 
+         return new CommandModel(
+@@ -202,6 +212,7 @@ public class CommandFormTransformTests {
+             displayName,
+             new EquatableArray<PropertyModel>(all.ToImmutableArray()),
+             new EquatableArray<PropertyModel>((derivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()),
+-            new EquatableArray<PropertyModel>((nonDerivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()));
++            new EquatableArray<PropertyModel>((nonDerivable ?? Array.Empty<PropertyModel>()).ToImmutableArray()),
++            authorizationPolicyName: authorizationPolicyName);
+     }
+ }

@@ -57,6 +57,24 @@ public sealed class EmptyStateCtaResolverTests {
     }
 
     [Fact]
+    public void Resolve_CommandWithPolicy_CarriesAuthorizationPolicy() {
+        EmptyStateCtaResolver resolver = CreateResolver(
+            new DomainManifest(
+                "Orders",
+                "Orders",
+                [typeof(OrderProjection).FullName!],
+                ["Orders.CreateOrderCommand"],
+                new Dictionary<string, string>(StringComparer.Ordinal) {
+                    ["Orders.CreateOrderCommand"] = "OrderApprover",
+                }));
+
+        EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
+
+        cta.ShouldNotBeNull();
+        cta.AuthorizationPolicy.ShouldBe("OrderApprover");
+    }
+
+    [Fact]
     public void NoAttribute_CreationVerbPrefixWinsThenAlphabetical() {
         // Spec D4: partition into matches vs non-matches, order each alphabetically.
         // "AddOrderItemCommand" and "CreateOrderCommand" both have creation prefixes →

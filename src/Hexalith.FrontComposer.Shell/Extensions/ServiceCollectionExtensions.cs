@@ -21,6 +21,7 @@ using Hexalith.FrontComposer.Shell.Options;
 using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Services.ProjectionTemplates;
 using Hexalith.FrontComposer.Shell.Services.DerivedValues;
 using Hexalith.FrontComposer.Shell.Services.Feedback;
@@ -213,6 +214,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IUserContextAccessor, NullUserContextAccessor>();
         services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
         services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
+        services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
         // Story 7-2 DN1 — production guardrail. See EventStoreServiceExtensions for context.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FcShellOptions>, FcShellTenantOptionsValidator>());
 
@@ -225,6 +227,8 @@ public static class ServiceCollectionExtensions
 
         // Story 2-3 — options binding for LifecycleOptions (Chaos CM7 defensive wire-up).
         _ = services.AddOptions<LifecycleOptions>();
+        _ = services.AddOptions<FrontComposerAuthorizationOptions>();
+        _ = services.AddHostedService<FrontComposerAuthorizationPolicyCatalogValidator>();
 
         // Story 2-3 Decision D12 — scoped lifecycle state service (per-circuit / per-user).
         services.TryAddScoped<ILifecycleStateService, LifecycleStateService>();

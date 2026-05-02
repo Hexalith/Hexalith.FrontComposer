@@ -11,6 +11,7 @@ using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Shortcuts;
 using Hexalith.FrontComposer.Shell.State;
 using Hexalith.FrontComposer.Shell.State.CommandPalette;
@@ -372,6 +373,44 @@ public class CommandPaletteEffectsTests
             !a.Results.Any(r => r.CommandTypeName == "Counter.UnreachableCommand")));
     }
 
+    [Fact]
+    public async Task HandlePaletteQueryChanged_FiltersDeniedProtectedCommands()
+    {
+        string commandTypeName = typeof(PaletteProtectedCommand).FullName!;
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns(CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.Denied, "corr-1"));
+
+        CommandPaletteEffects sut = BuildEffects(
+            out FakeTimeProvider time,
+            out IDispatcher dispatcher,
+            out _,
+            manifests: [
+                new DomainManifest(
+                    "Orders",
+                    "Orders",
+                    [],
+                    [commandTypeName],
+                    CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) {
+                        [commandTypeName] = "OrderApprover",
+                    }),
+            ],
+            authorizationEvaluator: evaluator);
+
+        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "Protected"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await pending;
+
+        dispatcher.Received().Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+            !a.Results.Any(r => r.CommandTypeName == commandTypeName)));
+        await evaluator.Received(1).EvaluateAsync(
+            Arg.Is<CommandAuthorizationRequest>(r =>
+                r.PolicyName == "OrderApprover"
+                && r.SourceSurface == CommandAuthorizationSurface.CommandPalette
+                && r.BoundedContext == "Orders"),
+            Arg.Any<CancellationToken>());
+    }
+
     private static CommandPaletteEffects BuildEffects(
         out FakeTimeProvider time,
         out IDispatcher dispatcher,
@@ -380,7 +419,8 @@ public class CommandPaletteEffectsTests
         IReadOnlyList<DomainManifest>? manifests = null,
         IReadOnlyList<PaletteResult>? paletteResults = null,
         IReadOnlyList<string>? recentRoutes = null,
-        string? currentContext = null)
+        string? currentContext = null,
+        ICommandAuthorizationEvaluator? authorizationEvaluator = null)
     {
         time = new FakeTimeProvider();
         dispatcher = Substitute.For<IDispatcher>();
@@ -406,6 +446,11 @@ public class CommandPaletteEffectsTests
         IUlidFactory ulids = Substitute.For<IUlidFactory>();
         ulids.NewUlid().Returns(_ => Guid.NewGuid().ToString("N"));
         services.AddSingleton(ulids);
+
+        if (authorizationEvaluator is not null)
+        {
+            services.AddSingleton(authorizationEvaluator);
+        }
 
         // P6 (2026-04-21 pass-3) — register a test NavigationManager so activation happy-path tests
         // can observe the expected RecentRouteVisitedAction dispatch. The new effect contract logs
@@ -459,3 +504,5 @@ public class CommandPaletteEffectsTests
         protected override void NavigateToCore(string uri, bool forceLoad) { }
     }
 }
+
+public sealed class PaletteProtectedCommand { }

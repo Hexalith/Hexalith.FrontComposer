@@ -154,7 +154,8 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         string? iconName = null,
         bool isDestructive = false,
         string? destructiveConfirmTitle = null,
-        string? destructiveConfirmBody = null) {
+        string? destructiveConfirmBody = null,
+        string? authorizationPolicyName = null) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -167,6 +168,7 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         IsDestructive = isDestructive;
         DestructiveConfirmTitle = destructiveConfirmTitle;
         DestructiveConfirmBody = destructiveConfirmBody;
+        AuthorizationPolicyName = authorizationPolicyName;
         Density = ComputeDensity(nonDerivableProperties.Count);
     }
 
@@ -226,6 +228,12 @@ public sealed class CommandModel : IEquatable<CommandModel> {
     /// <summary>Gets the optional <c>[Destructive(ConfirmationBody)]</c> override; null → renderer uses localized "This action cannot be undone.".</summary>
     public string? DestructiveConfirmBody { get; }
 
+    /// <summary>
+    /// Gets the optional command authorization policy declared by <c>[RequiresPolicy]</c>.
+    /// Null means the command is unprotected by Story 7-3 policy metadata.
+    /// </summary>
+    public string? AuthorizationPolicyName { get; }
+
     public bool Equals(CommandModel? other) {
         if (other is null) {
             return false;
@@ -247,7 +255,8 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             && Density == other.Density
             && IsDestructive == other.IsDestructive
             && DestructiveConfirmTitle == other.DestructiveConfirmTitle
-            && DestructiveConfirmBody == other.DestructiveConfirmBody;
+            && DestructiveConfirmBody == other.DestructiveConfirmBody
+            && AuthorizationPolicyName == other.AuthorizationPolicyName;
     }
 
     public override bool Equals(object? obj) => Equals(obj as CommandModel);
@@ -268,6 +277,7 @@ public sealed class CommandModel : IEquatable<CommandModel> {
             hash = (hash * 31) + IsDestructive.GetHashCode();
             hash = (hash * 31) + (DestructiveConfirmTitle?.GetHashCode() ?? 0);
             hash = (hash * 31) + (DestructiveConfirmBody?.GetHashCode() ?? 0);
+            hash = (hash * 31) + (AuthorizationPolicyName?.GetHashCode() ?? 0);
             return hash;
         }
     }

@@ -171,6 +171,44 @@ public class UnsupportedCommand
     public Dictionary<string, string> Map { get; set; } = new();
 }";
 
+    internal const string PolicyProtectedCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""OrderApprover"")]
+public class ApproveOrderCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+    public string OrderId { get; set; } = string.Empty;
+}";
+
+    internal const string EmptyPolicyCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""   "")]
+public class EmptyPolicyCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
+    internal const string DuplicatePolicyCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""OrderApprover"")]
+[RequiresPolicy(""OrderAuditor"")]
+public class DuplicatePolicyCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
     internal const string StructCommand = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 

@@ -52,12 +52,22 @@ public static class RegistrationEmitter {
         string commandsList = model.IsCommand
             ? "new List<string> { typeof(" + model.TypeName + ").FullName! }"
             : "new List<string>()";
+        bool hasPolicyMap = model.IsCommand && !string.IsNullOrWhiteSpace(model.AuthorizationPolicyName);
+        string policyMap = hasPolicyMap
+            ? "new Dictionary<string, string> { [typeof(" + model.TypeName + ").FullName!] = \"" + EscapeString(model.AuthorizationPolicyName!) + "\" }"
+            : string.Empty;
 
         _ = sb.AppendLine("    public static DomainManifest Manifest { get; } = new DomainManifest(");
         _ = sb.AppendLine("        Name: \"" + EscapeString(displayName) + "\",");
         _ = sb.AppendLine("        BoundedContext: \"" + EscapeString(model.BoundedContext) + "\",");
         _ = sb.AppendLine("        Projections: " + projectionsList + ",");
-        _ = sb.AppendLine("        Commands: " + commandsList + ");");
+        if (hasPolicyMap) {
+            _ = sb.AppendLine("        Commands: " + commandsList + ",");
+            _ = sb.AppendLine("        CommandPolicies: " + policyMap + ");");
+        }
+        else {
+            _ = sb.AppendLine("        Commands: " + commandsList + ");");
+        }
         _ = sb.AppendLine();
 
         // RegisterDomain method

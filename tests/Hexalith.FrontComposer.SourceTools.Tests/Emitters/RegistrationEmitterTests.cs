@@ -30,4 +30,15 @@ public class RegistrationEmitterTests {
         Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
         tree.GetDiagnostics(ct).ShouldBeEmpty("Emitted Registration code should parse without syntax errors");
     }
+
+    [Fact]
+    public void CommandPolicy_EmitsManifestPolicyMap() {
+        var model = new RegistrationModel("Orders", "ApproveOrderCommand", "TestDomain", null, isCommand: true, authorizationPolicyName: "OrderApprover");
+
+        string source = RegistrationEmitter.Emit(model);
+
+        source.ShouldContain("CommandPolicies:");
+        source.ShouldContain("typeof(ApproveOrderCommand).FullName!");
+        source.ShouldContain("\"OrderApprover\"");
+    }
 }
