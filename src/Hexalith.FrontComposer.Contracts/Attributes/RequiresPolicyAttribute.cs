@@ -11,9 +11,10 @@ public sealed class RequiresPolicyAttribute : Attribute {
     /// </summary>
     /// <param name="policyName">The non-empty host authorization policy name.</param>
     /// <exception cref="ArgumentException">
-    /// Thrown when <paramref name="policyName"/> is null/empty/whitespace, or contains characters
-    /// other than letters, digits, '.', ':', '_', or '-'. Mirrors the source-generator HFC1056
-    /// validation so reflection callers (Epic 8 MCP enumeration, custom command discovery)
+    /// Thrown when <paramref name="policyName"/> is null/empty/whitespace, contains at least one
+    /// character that is not a letter, digit, '.', ':', '_', or '-', or contains no
+    /// alphanumeric character at all (e.g., <c>"-"</c> or <c>"::"</c>). Mirrors the source-generator
+    /// HFC1056 validation so reflection callers (Epic 8 MCP enumeration, custom command discovery)
     /// cannot bypass the well-formedness contract.
     /// </exception>
     public RequiresPolicyAttribute(string policyName) {
@@ -24,7 +25,7 @@ public sealed class RequiresPolicyAttribute : Attribute {
         string trimmed = policyName.Trim();
         if (!IsWellFormed(trimmed)) {
             throw new ArgumentException(
-                "Policy name must contain only letters, digits, '.', ':', '_', or '-'.",
+                "Policy name must contain only letters, digits, '.', ':', '_', or '-' and include at least one alphanumeric character.",
                 nameof(policyName));
         }
 
@@ -37,12 +38,20 @@ public sealed class RequiresPolicyAttribute : Attribute {
     public string PolicyName { get; }
 
     private static bool IsWellFormed(string value) {
+        bool hasAlphanumeric = false;
         foreach (char c in value) {
-            if (!(char.IsLetterOrDigit(c) || c is '.' or ':' or '_' or '-')) {
+            if (char.IsLetterOrDigit(c)) {
+                hasAlphanumeric = true;
+                continue;
+            }
+
+            if (c is not ('.' or ':' or '_' or '-')) {
                 return false;
             }
         }
 
-        return true;
+        // Pass 3 — punctuation-only names like "-", ".", ":", or "::" pass the per-character check
+        // but produce no meaningful policy lookup. Require at least one alphanumeric character.
+        return hasAlphanumeric;
     }
 }

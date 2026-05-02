@@ -5,6 +5,7 @@ using Hexalith.FrontComposer.Shell.Services.Authorization;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Components.Authorization;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 using NSubstitute;
@@ -234,6 +235,85 @@ public sealed class CommandAuthorizationEvaluatorTests {
         text.ShouldNotContain(sentinelToken);
         text.ShouldNotContain(sentinelClaim);
         text.ShouldContain("<redacted>");
+    }
+
+    // Pass 3 / Pass-2 P5-partial — sentinel redaction across the second leak channel: the resource
+    // record passed to IAuthorizationHandler. Custom handlers commonly log resource.ToString() at
+    // Debug level; the auto-generated record formatter would otherwise expose the tenant snapshot.
+    [Fact]
+    public void ResourceRecord_RedactsTenantContext_FromPrintMembers() {
+        const string sentinelTenant = "sentinel-tenant-id-leak";
+        const string sentinelUser = "sentinel-user-id-leak";
+        var resource = new CommandAuthorizationResource(
+            typeof(TestCommand),
+            "OrderApprover",
+            "Orders",
+            "Approve Order",
+            CommandAuthorizationSurface.GeneratedForm,
+            new TenantContextSnapshot(sentinelTenant, sentinelUser, true, "corr-sentinel"));
+
+        string text = resource.ToString();
+
+        text.ShouldNotContain(sentinelTenant);
+        text.ShouldNotContain(sentinelUser);
+        text.ShouldContain("<redacted>");
+    }
+
+    [Fact]
+    public void ResourceRecord_WithNoTenantContext_FormatsAsNone() {
+        var resource = new CommandAuthorizationResource(
+            typeof(TestCommand),
+            "OrderApprover",
+            "Orders",
+            "Approve Order",
+            CommandAuthorizationSurface.GeneratedForm,
+            TenantContext: null);
+
+        string text = resource.ToString();
+
+        text.ShouldContain("TenantContext = <none>");
+    }
+
+    // Pass 3 / Pass-2 P5-partial — third leak channel: structured-logger payload from LogBlocked.
+    // Asserts no JWT/claim/tenant sentinels appear in the rendered log line.
+    [Fact]
+    public async Task EvaluateAsync_BlockedDecision_LogPayloadDoesNotLeakSentinels() {
+        const string sentinelTenant = "sentinel-tenant-id-leak";
+        const string sentinelUser = "sentinel-user-id-leak";
+        IAuthorizationService authorization = Substitute.For<IAuthorizationService>();
+        _ = authorization.AuthorizeAsync(Arg.Any<ClaimsPrincipal>(), Arg.Any<object?>(), Arg.Any<string>())
+            .Returns(AuthorizationResult.Failed(AuthorizationFailure.ExplicitFail()));
+
+        IFrontComposerTenantContextAccessor tenant = Substitute.For<IFrontComposerTenantContextAccessor>();
+        _ = tenant.TryGetContext(Arg.Any<string?>(), Arg.Any<string>())
+            .Returns(TenantContextResult.Success(new TenantContextSnapshot(sentinelTenant, sentinelUser, true, "corr-blocked")));
+
+        var capturingLogger = new CapturingLogger<CommandAuthorizationEvaluator>();
+        ClaimsIdentity identity = new([new Claim(ClaimTypes.NameIdentifier, sentinelUser)], "Test");
+        var stateProvider = new FakeAuthenticationStateProvider(new AuthenticationState(new ClaimsPrincipal(identity)));
+        var sut = new CommandAuthorizationEvaluator(authorization, stateProvider, tenant, capturingLogger);
+
+        CommandAuthorizationDecision result = await sut.EvaluateAsync(Request("OrderApprover"), TestContext.Current.CancellationToken);
+
+        result.IsAllowed.ShouldBeFalse();
+        foreach (string entry in capturingLogger.RenderedEntries) {
+            entry.ShouldNotContain(sentinelTenant);
+            entry.ShouldNotContain(sentinelUser);
+        }
+    }
+
+    private sealed class CapturingLogger<T> : ILogger<T> {
+        private readonly List<string> _entries = [];
+
+        public IReadOnlyList<string> RenderedEntries => _entries;
+
+        public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) {
+            _entries.Add(formatter(state, exception));
+        }
     }
 
     private static CommandAuthorizationEvaluator Create(

@@ -165,6 +165,60 @@ public class CommandParserTests {
         diagnostic.Message.ShouldContain("at most one");
     }
 
+    // Pass 3 / Pass-2 P27 — invalid-character policy-name fixtures.
+
+    [Fact]
+    public void Parse_RequiresPolicyAttribute_ContainsSpace_EmitsHFC1056() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithSpaceCommand, "TestDomain.PolicyWithSpaceCommand");
+
+        result.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1056");
+        diagnostic.Severity.ShouldBe("Error");
+        diagnostic.Message.ShouldContain("Got: 'with space'");
+    }
+
+    [Fact]
+    public void Parse_RequiresPolicyAttribute_ContainsSlash_EmitsHFC1056() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithSlashCommand, "TestDomain.PolicyWithSlashCommand");
+
+        result.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1056");
+        diagnostic.Severity.ShouldBe("Error");
+        diagnostic.Message.ShouldContain("Got: 'with/slash'");
+    }
+
+    [Fact]
+    public void Parse_RequiresPolicyAttribute_ContainsStar_EmitsHFC1056() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithStarCommand, "TestDomain.PolicyWithStarCommand");
+
+        result.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1056");
+        diagnostic.Severity.ShouldBe("Error");
+        diagnostic.Message.ShouldContain("Got: 'with*char'");
+    }
+
+    [Fact]
+    public void Parse_RequiresPolicyAttribute_TabOnly_EmitsHFC1056() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyWithTabCommand, "TestDomain.PolicyWithTabCommand");
+
+        result.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1056");
+        diagnostic.Severity.ShouldBe("Error");
+    }
+
+    // Pass 3 — punctuation-only names like "::" require at least one alphanumeric character.
+
+    [Fact]
+    public void Parse_RequiresPolicyAttribute_PunctuationOnly_EmitsHFC1056() {
+        CommandParseResult result = CompilationHelper.ParseCommand(CommandTestSources.PolicyPunctuationOnlyCommand, "TestDomain.PolicyPunctuationOnlyCommand");
+
+        result.Model.ShouldBeNull();
+        DiagnosticInfo diagnostic = result.Diagnostics.Single(d => d.Id == "HFC1056");
+        diagnostic.Severity.ShouldBe("Error");
+        diagnostic.Message.ShouldContain("at least one alphanumeric");
+        diagnostic.Message.ShouldContain("Got: '::'");
+    }
+
     [Fact]
     public void Parse_TooManyProperties_WarningThreshold_EmitsHFC1007Warning() {
         string source = CommandTestSources.TooManyPropertiesCommand(CommandParser.NonDerivableWarningThreshold + 1);

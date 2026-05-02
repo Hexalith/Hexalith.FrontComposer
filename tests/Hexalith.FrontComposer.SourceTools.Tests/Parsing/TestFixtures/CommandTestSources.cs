@@ -209,6 +209,70 @@ public class DuplicatePolicyCommand
     public string MessageId { get; set; } = string.Empty;
 }";
 
+    // Pass 3 / Pass-2 P27 — invalid-character policy-name fixtures covering the well-formedness
+    // regex non-whitespace branches. Each must trigger HFC1056.
+    internal const string PolicyWithSpaceCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""with space"")]
+public class PolicyWithSpaceCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
+    internal const string PolicyWithSlashCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""with/slash"")]
+public class PolicyWithSlashCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
+    internal const string PolicyWithStarCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""with*char"")]
+public class PolicyWithStarCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
+    internal const string PolicyWithTabCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""\t"")]
+public class PolicyWithTabCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
+    // Pass 3 — punctuation-only policy names like "-" / ":" / "::" pass the per-character regex but
+    // produce no meaningful policy lookup. The Pass-3 alphanumeric requirement rejects them.
+    internal const string PolicyPunctuationOnlyCommand = @"
+using Hexalith.FrontComposer.Contracts.Attributes;
+
+namespace TestDomain;
+
+[Command]
+[RequiresPolicy(""::"")]
+public class PolicyPunctuationOnlyCommand
+{
+    public string MessageId { get; set; } = string.Empty;
+}";
+
     internal const string StructCommand = @"
 using Hexalith.FrontComposer.Contracts.Attributes;
 

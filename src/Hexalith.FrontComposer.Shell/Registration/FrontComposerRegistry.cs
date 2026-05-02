@@ -142,20 +142,27 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         Dictionary<string, string> merged = new(existing, StringComparer.Ordinal);
         foreach (KeyValuePair<string, string> pair in incoming) {
             if (string.IsNullOrWhiteSpace(pair.Key) || string.IsNullOrWhiteSpace(pair.Value)) {
+                _logger.LogInformation(
+                    "FrontComposer registry merge: skipping command policy entry with empty key or value during manifest merge.");
                 continue;
             }
 
+            // Trim both key (command FQN) and value (policy name). The source generator emits
+            // un-padded FullName keys but hand-rolled manifests may carry stray whitespace; the
+            // catalog validator and palette filter compare ordinally so a single trailing space
+            // would otherwise produce a phantom missing-policy entry.
+            string keyTrimmed = pair.Key.Trim();
             string incomingTrimmed = pair.Value.Trim();
-            if (merged.TryGetValue(pair.Key, out string? prior)
+            if (merged.TryGetValue(keyTrimmed, out string? prior)
                 && !string.Equals(prior, incomingTrimmed, StringComparison.Ordinal)) {
                 _logger.LogWarning(
                     "FrontComposer registry merge: command {CommandTypeName} policy was overwritten from {PriorPolicy} to {IncomingPolicy} during manifest merge. Last-write-wins is the legacy default — duplicate policy declarations across manifests should be reconciled by the adopter.",
-                    pair.Key,
+                    keyTrimmed,
                     prior,
                     incomingTrimmed);
             }
 
-            merged[pair.Key] = incomingTrimmed;
+            merged[keyTrimmed] = incomingTrimmed;
         }
 
         return merged;

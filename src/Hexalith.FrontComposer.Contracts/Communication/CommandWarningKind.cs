@@ -23,4 +23,12 @@ public enum CommandWarningKind {
     /// retry guidance from <see cref="CommandWarningException.RetryAfter"/> when present.
     /// </summary>
     RateLimited,
+
+    /// <summary>
+    /// Story 7-3 Pass 3 — transient pending state surfaced when the framework is in flight
+    /// resolving an authorization decision (e.g., during prerender / SSR-to-interactive
+    /// transition). Render as a low-emphasis informational hint (not a denial) so users
+    /// see why the action is temporarily disabled.
+    /// </summary>
+    Pending,
 }

@@ -526,4 +526,16 @@
   <data name="AuthorizationActionUnavailableMessage" xml:space="preserve">
     <value>Cette action n'a pas pu être autorisée pour le moment. Veuillez réessayer&#160;; contactez l'assistance si le problème persiste.</value>
   </data>
+  <data name="UnauthenticatedCommandWarningTitle" xml:space="preserve">
+    <value>Connexion requise</value>
+  </data>
+  <data name="UnauthenticatedCommandWarningMessage" xml:space="preserve">
+    <value>Veuillez vous connecter pour {0}.</value>
+  </data>
+  <data name="AuthorizationCheckingPermissionTitle" xml:space="preserve">
+    <value>Vérification des autorisations…</value>
+  </data>
+  <data name="AuthorizationCheckingPermissionMessage" xml:space="preserve">
+    <value>Vérification de votre autorisation à {0}. Cela ne prend qu'un instant.</value>
+  </data>
 </root>

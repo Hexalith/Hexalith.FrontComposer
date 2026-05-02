@@ -646,7 +646,8 @@ public static class DiagnosticDescriptors {
         messageFormat: "{0}",
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.io/docs/policies/well-formedness");
 
     /// <summary>
     /// HFC1057: A command declares duplicate <c>[RequiresPolicy]</c> attributes.
@@ -657,7 +658,8 @@ public static class DiagnosticDescriptors {
         messageFormat: "{0}",
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.io/docs/policies/duplicate-attributes");
 
     /// <summary>
     /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.

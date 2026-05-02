@@ -62,6 +62,7 @@ public sealed class CommandPaletteEffects : IDisposable {
     private readonly SemaphoreSlim _persistGate = new(1, 1);
     private CancellationTokenSource? _queryCts;
     private bool _disposed;
+    private int _evaluatorMissingLogged;
 
     /// <summary>
     /// Initialises a new instance of the <see cref="CommandPaletteEffects"/> class.
@@ -836,11 +837,22 @@ public sealed class CommandPaletteEffects : IDisposable {
 
         ICommandAuthorizationEvaluator? evaluator = TryGetService<ICommandAuthorizationEvaluator>();
         if (evaluator is null) {
+            // Pass 3 — surface a one-line per-session warning so adopters that bypass AddHexalithFrontComposer*
+            // see a clear signal that protected commands will be hidden from the palette.
+            if (System.Threading.Interlocked.Exchange(ref _evaluatorMissingLogged, 1) == 0) {
+                _logger.LogWarning(
+                    "Command palette filter could not resolve ICommandAuthorizationEvaluator; protected commands will be hidden. Ensure the host registers FrontComposer authorization services via AddHexalithFrontComposer* or equivalent.");
+            }
+
             return false;
         }
 
         Type? commandType = ProjectionTypeResolver.Resolve(commandTypeName);
         if (commandType is null) {
+            // Pass 3 — distinguish silent-deny-due-to-missing-type from authorization deny per Pass-2 NP20.
+            _logger.LogInformation(
+                "Command palette filter dropped {CommandTypeName}: ProjectionTypeResolver could not resolve the type. Possible trim/AOT mismatch or assembly removal.",
+                commandTypeName);
             return false;
         }
 

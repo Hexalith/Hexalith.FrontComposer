@@ -641,4 +641,20 @@
     <value>This action could not be authorized right now. Please retry, and contact support if the problem persists.</value>
     <comment>Story 7-3 Pass 2 DN7 — warning body for infrastructure-class authorization failures; intentionally has no {0} placeholder so callers can use it without a label argument.</comment>
   </data>
+  <data name="UnauthenticatedCommandWarningTitle" xml:space="preserve">
+    <value>Sign-in required</value>
+    <comment>Story 7-3 Pass 3 — warning title when a protected command is blocked because the user is not authenticated.</comment>
+  </data>
+  <data name="UnauthenticatedCommandWarningMessage" xml:space="preserve">
+    <value>Please sign in to {0}.</value>
+    <comment>Story 7-3 Pass 3 — warning body when a protected command is blocked because the user is not authenticated; {0} is the command action label.</comment>
+  </data>
+  <data name="AuthorizationCheckingPermissionTitle" xml:space="preserve">
+    <value>Checking permission…</value>
+    <comment>Story 7-3 Pass 3 — title when the authorization decision is still pending; surfaces the disabled-pending state instead of leaving the button silently disabled.</comment>
+  </data>
+  <data name="AuthorizationCheckingPermissionMessage" xml:space="preserve">
+    <value>Verifying you can {0}. This usually takes a moment.</value>
+    <comment>Story 7-3 Pass 3 — body when authorization is pending; {0} is the command action label.</comment>
+  </data>
 </root>

@@ -190,7 +190,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
             previous.Dispose();
         }
 
-        // Story 5-2 D5 — clear server-driven validation state from the prior submit.
+        // Story 5-2 D5 — clear server-driven validation state from the prior submit (auth has already passed if a policy is in scope).
         _serverValidationMessages?.Clear();
         if (_serverFormLevelErrors.Count > 0)
         {

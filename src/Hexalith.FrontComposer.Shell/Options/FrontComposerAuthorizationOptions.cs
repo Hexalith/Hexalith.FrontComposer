@@ -15,6 +15,18 @@ public sealed class FrontComposerAuthorizationOptions {
     /// compare ordinally; adopters must spell entries exactly as declared in
     /// <c>[RequiresPolicy]</c> attribute usage. Trailing/leading whitespace is trimmed by
     /// the validator before comparison.
+    /// <para>
+    /// Policy names appear in startup warnings and (under <see cref="StrictPolicyCatalogValidation"/>)
+    /// in <see cref="System.InvalidOperationException"/> messages emitted by the validator. They must
+    /// not embed personally-identifiable information. Use stable PascalCase identifiers
+    /// (e.g., <c>"OrderApprover"</c>, <c>"InvoiceReader"</c>); never embed customer / tenant / user
+    /// IDs in policy names.
+    /// </para>
+    /// <para>
+    /// The validator snapshots this collection once during <c>StartAsync</c>. Mutations applied
+    /// after host startup (e.g., via <c>IOptionsMonitor</c> reload or direct mutation of the bound
+    /// instance) do not re-trigger validation. To change the catalog at runtime, restart the host.
+    /// </para>
     /// </remarks>
     public IList<string> KnownPolicies { get; set; } = [];
 

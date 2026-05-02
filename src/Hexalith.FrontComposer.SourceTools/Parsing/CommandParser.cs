@@ -556,11 +556,15 @@ public static class CommandParser {
                 .GetLineSpan()
                 .StartLinePosition ?? linePos;
 
+            // Pass 3 — echo the (escaped, truncated) offending value so authors can see WHICH character
+            // failed without having to count chars in the source. Keeps message length bounded.
+            string offending = FormatOffendingPolicyValue(value);
             diagnostics.Add(new DiagnosticInfo(
                 "HFC1056",
                 string.Format(
-                    "Command '{0}' has an invalid [RequiresPolicy] value. Expected a non-empty policy name using letters, digits, '.', ':', '_', or '-'.",
-                    typeSymbol.Name),
+                    "Command '{0}' has an invalid [RequiresPolicy] value. Expected a non-empty policy name using letters, digits, '.', ':', '_', or '-' with at least one alphanumeric character. Got: {1}",
+                    typeSymbol.Name,
+                    offending),
                 "Error",
                 filePath,
                 attrLine.Line,
@@ -577,13 +581,54 @@ public static class CommandParser {
             return false;
         }
 
+        bool hasAlphanumeric = false;
         foreach (char c in trimmed) {
-            if (!(char.IsLetterOrDigit(c) || c is '.' or ':' or '_' or '-')) {
+            if (char.IsLetterOrDigit(c)) {
+                hasAlphanumeric = true;
+                continue;
+            }
+
+            if (c is not ('.' or ':' or '_' or '-')) {
                 return false;
             }
         }
 
-        return true;
+        // Pass 3 — punctuation-only names like "-", ".", ":", or "::" pass the per-character check
+        // but produce no meaningful policy lookup. Mirror RequiresPolicyAttribute.IsWellFormed.
+        return hasAlphanumeric;
+    }
+
+    private static string FormatOffendingPolicyValue(string? raw) {
+        if (raw is null) {
+            return "<null>";
+        }
+
+        const int MaxEcho = 64;
+        string truncated = raw.Length > MaxEcho ? raw.Substring(0, MaxEcho) + "..." : raw;
+
+        // Escape control characters so log readers see "\\t" / "\\n" rather than embedded whitespace.
+        var sb = new System.Text.StringBuilder(truncated.Length + 2);
+        sb.Append('\'');
+        foreach (char c in truncated) {
+            switch (c) {
+                case '\t': sb.Append("\\t"); break;
+                case '\r': sb.Append("\\r"); break;
+                case '\n': sb.Append("\\n"); break;
+                case '\\': sb.Append("\\\\"); break;
+                default:
+                    if (char.IsControl(c)) {
+                        sb.Append("\\u").Append(((int)c).ToString("X4", System.Globalization.CultureInfo.InvariantCulture));
+                    }
+                    else {
+                        sb.Append(c);
+                    }
+
+                    break;
+            }
+        }
+
+        sb.Append('\'');
+        return sb.ToString();
     }
 
     /// <summary>

@@ -300,6 +300,67 @@ public sealed class FcShellResourcesTests {
         precedingChar.ShouldBe(' ', $"Expected U+00A0 NBSP before colon in French StatusBadgeAriaLabelTemplate; got U+{(int)precedingChar:X4}");
     }
 
+    // Story 7-3 Pass 3 / Pass-2 P35 — placeholder count parity across EN/FR for new authorization
+    // resource keys. If EN later adds {1} and FR is missed, runtime IndexOutOfRange at warning render.
+    [Theory]
+    [InlineData("UnauthorizedCommandWarningTitle")]
+    [InlineData("UnauthorizedCommandWarningMessage")]
+    [InlineData("AuthorizationActionUnavailableTitle")]
+    [InlineData("AuthorizationActionUnavailableMessage")]
+    [InlineData("UnauthenticatedCommandWarningTitle")]
+    [InlineData("UnauthenticatedCommandWarningMessage")]
+    [InlineData("AuthorizationCheckingPermissionTitle")]
+    [InlineData("AuthorizationCheckingPermissionMessage")]
+    public void AuthorizationResourceKey_PlaceholderCountMatchesAcrossLocales(string key) {
+        ResourceManager manager = new(typeof(FcShellResources));
+        string? enValue = manager.GetString(key, new CultureInfo("en"));
+        string? frValue = manager.GetString(key, new CultureInfo("fr"));
+
+        enValue.ShouldNotBeNull($"EN value missing for key '{key}'.");
+        frValue.ShouldNotBeNull($"FR value missing for key '{key}'.");
+
+        HashSet<int> enPlaceholders = ExtractFormatPlaceholderIndices(enValue);
+        HashSet<int> frPlaceholders = ExtractFormatPlaceholderIndices(frValue);
+
+        frPlaceholders.SetEquals(enPlaceholders).ShouldBeTrue(
+            $"Placeholder set mismatch for key '{key}'. EN={string.Join(",", enPlaceholders.OrderBy(static i => i))} FR={string.Join(",", frPlaceholders.OrderBy(static i => i))}. Update the missing locale to keep placeholder counts aligned.");
+    }
+
+    private static HashSet<int> ExtractFormatPlaceholderIndices(string template) {
+        // Walk the template extracting every {N} index. Mirrors String.Format index detection without
+        // consulting the format provider — sufficient for parity comparison.
+        HashSet<int> indices = [];
+        for (int i = 0; i < template.Length; i++) {
+            char c = template[i];
+            if (c != '{') {
+                continue;
+            }
+
+            // Escaped '{{' literal; skip past it.
+            if (i + 1 < template.Length && template[i + 1] == '{') {
+                i++;
+                continue;
+            }
+
+            int closing = template.IndexOf('}', i + 1);
+            if (closing < 0) {
+                break;
+            }
+
+            string body = template.Substring(i + 1, closing - i - 1);
+            // Strip optional ',alignment' or ':format' suffix per String.Format grammar.
+            int commaOrColon = body.IndexOfAny([',', ':']);
+            string indexText = commaOrColon >= 0 ? body.Substring(0, commaOrColon) : body;
+            if (int.TryParse(indexText, NumberStyles.Integer, CultureInfo.InvariantCulture, out int index)) {
+                indices.Add(index);
+            }
+
+            i = closing;
+        }
+
+        return indices;
+    }
+
     private static ServiceProvider BuildLocalizedProvider() {
         ServiceCollection services = new();
         _ = services.AddLogging();

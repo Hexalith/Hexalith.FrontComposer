@@ -118,6 +118,8 @@ public static class CommandFormEmitter {
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    private bool _authorizationPresentationReady;");
             _ = sb.AppendLine("    private bool _authorizationPresentationAllowed;");
+            // Pass 3 — sequence guard: each refresh stamps the counter; only the latest completion applies its result.
+            _ = sb.AppendLine("    private int _authorizationRefreshSequence;");
             string authorizationPolicyLiteral = "\"" + EscapeString(form.AuthorizationPolicyName!) + "\"";
             string boundedContextLiteral = string.IsNullOrWhiteSpace(form.BoundedContext)
                 ? "null"
@@ -158,20 +160,36 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("    private void OnAuthenticationStateChanged(Task<AuthenticationState> _)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        if (_disposed) return;");
-            _ = sb.AppendLine("        _ = InvokeAsync(async () =>");
+            _ = sb.AppendLine("        // Pass 3 — wrap the InvokeAsync call itself (not just the lambda body) so a synchronous");
+            _ = sb.AppendLine("        // ObjectDisposedException from a torn-down RendererSynchronizationContext does not become");
+            _ = sb.AppendLine("        // an UnobservedTaskException at process level.");
+            _ = sb.AppendLine("        try");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            try { await RefreshPresentationAuthorizationAsync().ConfigureAwait(false); }");
-            _ = sb.AppendLine("            catch (Exception ex) when (ex is not OperationCanceledException) { Logger?.LogWarning(ex, \"Refresh after auth-state-changed failed.\"); }");
-            _ = sb.AppendLine("        });");
+            _ = sb.AppendLine("            _ = InvokeAsync(async () =>");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                try { await RefreshPresentationAuthorizationAsync().ConfigureAwait(false); }");
+            _ = sb.AppendLine("                catch (Exception ex) when (ex is not OperationCanceledException) { Logger?.LogWarning(ex, \"Refresh after auth-state-changed failed.\"); }");
+            _ = sb.AppendLine("            });");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (ObjectDisposedException) { /* Renderer torn down between dispose and event firing; safe to ignore. */ }");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private async Task RefreshPresentationAuthorizationAsync()");
             _ = sb.AppendLine("    {");
-            _ = sb.AppendLine("        var token = _cts?.Token ?? CancellationToken.None;");
+            _ = sb.AppendLine("        // Pass 3 — synchronously force Ready=false BEFORE the await so the button");
+            _ = sb.AppendLine("        // is disabled during the in-flight check (covers the auth-state-changed-during-refresh window).");
+            _ = sb.AppendLine("        _authorizationPresentationReady = false;");
+            _ = sb.AppendLine("        // Pass 3 — sequence guard: stamp before await, compare after; only the latest completion applies.");
+            _ = sb.AppendLine("        int sequence = System.Threading.Interlocked.Increment(ref _authorizationRefreshSequence);");
+            _ = sb.AppendLine("        // Pass 3 — capture _cts once so concurrent disposal does not race the post-await access.");
+            _ = sb.AppendLine("        CancellationTokenSource? cts = _cts;");
+            _ = sb.AppendLine("        var token = cts?.Token ?? CancellationToken.None;");
             _ = sb.AppendLine("        var authorization = await CommandAuthorizationEvaluator.EvaluateAsync(");
             _ = sb.AppendLine("            CreateAuthorizationRequest(),");
             _ = sb.AppendLine("            token).ConfigureAwait(false);");
             _ = sb.AppendLine("        if (_disposed) return;");
+            _ = sb.AppendLine("        // Pass 3 — sequence guard: if a newer refresh has been started, drop this stale result.");
+            _ = sb.AppendLine("        if (sequence != System.Threading.Volatile.Read(ref _authorizationRefreshSequence)) return;");
             _ = sb.AppendLine("        bool isPending = authorization.Kind == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending;");
             _ = sb.AppendLine("        _authorizationPresentationReady = !isPending;");
             _ = sb.AppendLine("        _authorizationPresentationAllowed = authorization.IsAllowed;");
@@ -182,7 +200,8 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        else if (isPending)");
             _ = sb.AppendLine("        {");
-            _ = sb.AppendLine("            _serverWarning = null;");
+            _ = sb.AppendLine("            // Pass 3 — surface a localized 'Checking permission...' hint so users see why the button is disabled.");
+            _ = sb.AppendLine("            SetAuthorizationCheckingHint();");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        else");
             _ = sb.AppendLine("        {");
@@ -209,6 +228,7 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("    private void SetAuthorizationWarning(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason reason)");
             _ = sb.AppendLine("    {");
             _ = sb.AppendLine("        // DN7 — distinguish infrastructure failures from user-denied so users see a retry hint instead of a permission error.");
+            _ = sb.AppendLine("        // Pass 3 DN-7-3-3-1 — Unauthenticated routes to a distinct sign-in copy variant.");
             _ = sb.AppendLine("        bool infrastructureFailure = reason is");
             _ = sb.AppendLine("            global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.MissingService");
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.MissingPolicy");
@@ -216,14 +236,54 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.HandlerFailed");
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.Canceled");
             _ = sb.AppendLine("            or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.CatalogInconsistent;");
-            _ = sb.AppendLine("        string titleKey = infrastructureFailure ? \"AuthorizationActionUnavailableTitle\" : \"UnauthorizedCommandWarningTitle\";");
-            _ = sb.AppendLine("        string bodyKey = infrastructureFailure ? \"AuthorizationActionUnavailableMessage\" : \"UnauthorizedCommandWarningMessage\";");
-            _ = sb.AppendLine("        string warningTitle = ResolveAuthorizationLocalized(titleKey, infrastructureFailure ? \"Action temporarily unavailable\" : \"You don't have permission to perform this action\");");
-            _ = sb.AppendLine("        string warningBody = ResolveAuthorizationLocalized(bodyKey, infrastructureFailure ? \"Please retry. If the problem persists, contact support.\" : \"You do not have permission to {0}.\", \"" + EscapeString(form.ButtonLabel) + "\");");
+            _ = sb.AppendLine("        bool unauthenticated = reason == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.Unauthenticated;");
+            _ = sb.AppendLine("        string titleKey;");
+            _ = sb.AppendLine("        string bodyKey;");
+            _ = sb.AppendLine("        string fallbackTitle;");
+            _ = sb.AppendLine("        string fallbackBody;");
+            _ = sb.AppendLine("        if (unauthenticated)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            titleKey = \"UnauthenticatedCommandWarningTitle\";");
+            _ = sb.AppendLine("            bodyKey = \"UnauthenticatedCommandWarningMessage\";");
+            _ = sb.AppendLine("            fallbackTitle = \"Sign-in required\";");
+            _ = sb.AppendLine("            fallbackBody = \"Please sign in to {0}.\";");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        else if (infrastructureFailure)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            titleKey = \"AuthorizationActionUnavailableTitle\";");
+            _ = sb.AppendLine("            bodyKey = \"AuthorizationActionUnavailableMessage\";");
+            _ = sb.AppendLine("            fallbackTitle = \"Action temporarily unavailable\";");
+            _ = sb.AppendLine("            fallbackBody = \"Please retry. If the problem persists, contact support.\";");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        else");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            titleKey = \"UnauthorizedCommandWarningTitle\";");
+            _ = sb.AppendLine("            bodyKey = \"UnauthorizedCommandWarningMessage\";");
+            _ = sb.AppendLine("            fallbackTitle = \"You don't have permission to perform this action\";");
+            _ = sb.AppendLine("            fallbackBody = \"You do not have permission to {0}.\";");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        string warningTitle = ResolveAuthorizationLocalized(titleKey, fallbackTitle);");
+            _ = sb.AppendLine("        // Infrastructure-failure body intentionally has no {0} placeholder; pass no args so a custom localizer cannot throw FormatException.");
+            _ = sb.AppendLine("        string warningBody = infrastructureFailure");
+            _ = sb.AppendLine("            ? ResolveAuthorizationLocalized(bodyKey, fallbackBody)");
+            _ = sb.AppendLine("            : ResolveAuthorizationLocalized(bodyKey, fallbackBody, \"" + EscapeString(form.ButtonLabel) + "\");");
             _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
             _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Forbidden,");
             _ = sb.AppendLine("            warningTitle,");
             _ = sb.AppendLine("            warningBody,");
+            _ = sb.AppendLine("            null,");
+            _ = sb.AppendLine("            null);");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private void SetAuthorizationCheckingHint()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        // Pass 3 DN-7-3-3-5 — surface a localized 'Checking permission...' hint while the evaluator is mid-flight or returns Pending.");
+            _ = sb.AppendLine("        string hintTitle = ResolveAuthorizationLocalized(\"AuthorizationCheckingPermissionTitle\", \"Checking permission...\");");
+            _ = sb.AppendLine("        string hintBody = ResolveAuthorizationLocalized(\"AuthorizationCheckingPermissionMessage\", \"Verifying you can {0}. This usually takes a moment.\", \"" + EscapeString(form.ButtonLabel) + "\");");
+            _ = sb.AppendLine("        _serverWarning = new global::Hexalith.FrontComposer.Shell.Services.Feedback.CommandFeedbackWarning(");
+            _ = sb.AppendLine("            global::Hexalith.FrontComposer.Contracts.Communication.CommandWarningKind.Pending,");
+            _ = sb.AppendLine("            hintTitle,");
+            _ = sb.AppendLine("            hintBody,");
             _ = sb.AppendLine("            null,");
             _ = sb.AppendLine("            null);");
             _ = sb.AppendLine("    }");
@@ -390,16 +450,11 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("            previous.Dispose();");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
-        _ = sb.AppendLine("        // Story 5-2 D5 — clear server-driven validation state from the prior submit.");
-        _ = sb.AppendLine("        _serverValidationMessages?.Clear();");
-        _ = sb.AppendLine("        if (_serverFormLevelErrors.Count > 0)");
-        _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            _serverFormLevelErrors = System.Array.Empty<string>();");
-        _ = sb.AppendLine("        }");
-        _ = sb.AppendLine("        _serverWarning = null;");
-        _ = sb.AppendLine("        _editContext?.NotifyValidationStateChanged();");
-        _ = sb.AppendLine();
         if (hasAuthorizationPolicy) {
+            // Pass 3 P-B70 — auth check FIRST, before clearing validation state, so denied submits keep prior validation messages visible.
+            // Pass 3 DN-7-3-3-1 also clears _serverWarning here so the prior warning (if any) does not leak into the success path.
+            _ = sb.AppendLine("        // Pass 3 — clear auth-warning slot only; validation state stays put until we know auth passes.");
+            _ = sb.AppendLine("        _serverWarning = null;");
             _ = sb.AppendLine("        var authorization = await CommandAuthorizationEvaluator.EvaluateAsync(");
             _ = sb.AppendLine("            CreateAuthorizationRequest(),");
             _ = sb.AppendLine("            _cts.Token).ConfigureAwait(false);");
@@ -417,12 +472,47 @@ public static class CommandFormEmitter {
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine();
         }
+        _ = sb.AppendLine("        // Story 5-2 D5 — clear server-driven validation state from the prior submit (auth has already passed if a policy is in scope).");
+        _ = sb.AppendLine("        _serverValidationMessages?.Clear();");
+        _ = sb.AppendLine("        if (_serverFormLevelErrors.Count > 0)");
+        _ = sb.AppendLine("        {");
+        _ = sb.AppendLine("            _serverFormLevelErrors = System.Array.Empty<string>();");
+        _ = sb.AppendLine("        }");
+        if (!hasAuthorizationPolicy) {
+            _ = sb.AppendLine("        _serverWarning = null;");
+        }
+
+        _ = sb.AppendLine("        _editContext?.NotifyValidationStateChanged();");
+        _ = sb.AppendLine();
         _ = sb.AppendLine("        if (BeforeSubmit is not null)");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            await BeforeSubmit().ConfigureAwait(false);");
         _ = sb.AppendLine("            if (_disposed || _cts.IsCancellationRequested) return;");
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine();
+        if (hasAuthorizationPolicy) {
+            // Pass 3 / Pass-2 P2 — second authorization check AFTER BeforeSubmit (which may include destructive confirmation dialog).
+            // Catches sign-out / tenant switch / policy revocation that occurred while the dialog was open or while a derivable-field
+            // BeforeSubmit was running. Resource-based policies that read the post-mutation _model see fresh state here.
+            _ = sb.AppendLine("        // Pass 3 P2 — re-authorize after BeforeSubmit returns. Sign-out / tenant switch / policy revocation may have happened mid-await.");
+            _ = sb.AppendLine("        var authorizationPostBeforeSubmit = await CommandAuthorizationEvaluator.EvaluateAsync(");
+            _ = sb.AppendLine("            CreateAuthorizationRequest(),");
+            _ = sb.AppendLine("            _cts.Token).ConfigureAwait(false);");
+            _ = sb.AppendLine("        if (_disposed || _cts.IsCancellationRequested) return;");
+            _ = sb.AppendLine("        if (!authorizationPostBeforeSubmit.IsAllowed)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            SetAuthorizationWarning(authorizationPostBeforeSubmit.Reason);");
+            _ = sb.AppendLine("            if (_serverWarning is not null)");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                CommandFeedbackPublisher.PublishWarning(_serverWarning);");
+            _ = sb.AppendLine("            }");
+            _ = sb.AppendLine("            await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
+            _ = sb.AppendLine("            Logger?.LogWarning(\"Command authorization blocked after BeforeSubmit. CorrelationId={CorrelationId} Reason={Reason}\", authorizationPostBeforeSubmit.CorrelationId, authorizationPostBeforeSubmit.Reason);");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine();
+        }
+
         _ = sb.AppendLine("        var correlationId = Guid.NewGuid().ToString();");
         _ = sb.AppendLine("        _submittedCorrelationId = correlationId;");
         _ = sb.AppendLine("        var cts = _cts;");

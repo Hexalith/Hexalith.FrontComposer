@@ -60,7 +60,17 @@ public sealed record CommandAuthorizationResource(
     string? BoundedContext,
     string DisplayLabel,
     CommandAuthorizationSurface SourceSurface,
-    TenantContextSnapshot? TenantContext);
+    TenantContextSnapshot? TenantContext) {
+    private bool PrintMembers(StringBuilder builder) {
+        builder.Append("CommandType = ").Append(CommandType.FullName ?? CommandType.Name)
+            .Append(", PolicyName = ").Append(PolicyName)
+            .Append(", BoundedContext = ").Append(BoundedContext ?? "<none>")
+            .Append(", DisplayLabel = ").Append(DisplayLabel)
+            .Append(", SourceSurface = ").Append(SourceSurface)
+            .Append(", TenantContext = ").Append(TenantContext is null ? "<none>" : "<redacted>");
+        return true;
+    }
+}
 
 public sealed record CommandAuthorizationDecision {
     private CommandAuthorizationDecision(
