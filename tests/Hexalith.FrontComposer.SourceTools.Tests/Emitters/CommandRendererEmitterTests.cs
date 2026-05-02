@@ -113,6 +113,7 @@ public class CommandRendererEmitterTests {
         tree.GetDiagnostics(ct).ShouldBeEmpty("protected renderer should parse cleanly");
 
         source.ShouldContain("ICommandAuthorizationEvaluator CommandAuthorizationEvaluator");
+        source.ShouldContain("IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> AuthorizationLocalizer");
         source.ShouldContain("AuthorizationPolicyName = \"OrderApprover\"");
         source.ShouldContain("CommandAuthorizationSurface.InlineAction");
         // Pass-4 DN-7-3-4-7 hardening — emitted code includes the cancellation token capture and
@@ -121,6 +122,10 @@ public class CommandRendererEmitterTests {
         source.ShouldContain("_authorizationDisposed");
         source.ShouldContain("_authorizationRefreshSequence");
         source.ShouldContain("AuthenticationStateChanged += OnAuthenticationStateChanged");
+        source.ShouldContain("await InvokeAsync(StateHasChanged)");
+        source.ShouldContain("ScheduleAuthorizationRetryAsync");
+        source.ShouldContain("AuthorizationCheckingPermissionMessage");
+        source.ShouldContain("UnauthorizedCommandWarningMessage");
         // Pass-4 AA-15 / BH-37 — presentation-time auth must not include unvalidated user input.
         // The emitted CommandAuthorizationRequest passes null (not _prefilledModel) for the
         // command resource. Verified by parsing and inspecting the literal arg in the request.

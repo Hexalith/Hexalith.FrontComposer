@@ -1,12 +1,18 @@
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
+using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
+using Hexalith.FrontComposer.Shell.Registration;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
 using Hexalith.FrontComposer.Shell.Services.Authorization;
+using Hexalith.FrontComposer.Shell.Services.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Options;
@@ -32,15 +38,20 @@ public static class EventStoreServiceExtensions {
             .Configure(options => configure?.Invoke(options))
             .ValidateOnStart();
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<EventStoreOptions>, EventStoreOptionsValidator>());
+        _ = services.AddAuthorizationCore();
 
         _ = services.AddHttpClient(EventStoreCommandClient.HttpClientName, ConfigureHttpClient);
         _ = services.AddHttpClient(EventStoreQueryClient.HttpClientName, ConfigureHttpClient);
 
         // Story 5-2 T6 — singleton classifier (stateless apart from logger).
         services.TryAddSingleton<EventStoreResponseClassifier>();
+        services.TryAddSingleton<IFrontComposerRegistry, FrontComposerRegistry>();
         services.TryAddScoped<Hexalith.FrontComposer.Contracts.Rendering.IUserContextAccessor, NullUserContextAccessor>();
         services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
         services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
+        services.TryAddScoped<AuthenticationStateProvider, NullAuthenticationStateProvider>();
+        services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
+        services.TryAddScoped<ICommandDispatchAuthorizationGate, CommandDispatchAuthorizationGate>();
         // Story 7-2 DN1 — production guardrail. Refuses to start when AllowDemoTenantContext is
         // enabled in IHostEnvironment.Production so synthetic tenant identifiers cannot reach
         // command/query/subscription validation in production hosts. IHostEnvironment is
@@ -49,6 +60,7 @@ public static class EventStoreServiceExtensions {
 
         services.TryAddScoped<EventStoreCommandClient>();
         services.TryAddScoped<EventStoreQueryClient>();
+        services.TryAddSingleton<IUlidFactory, UlidFactory>();
         services.TryAddScoped<IAuthRedirector, NoOpAuthRedirector>();
         // P12 — TryAdd is idempotent; this duplicates the registration in
         // AddHexalithFrontComposer so adopters that wire EventStore without first calling

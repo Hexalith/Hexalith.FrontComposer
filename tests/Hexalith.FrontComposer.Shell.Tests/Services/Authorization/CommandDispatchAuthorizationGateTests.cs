@@ -47,6 +47,54 @@ public sealed class CommandDispatchAuthorizationGateTests {
     }
 
     [Fact]
+    public async Task EnsureAuthorizedAsync_ProtectedDeclaredType_UsesDeclaredTypeWhenRuntimeTypeDiffers() {
+        DerivedProtectedCommand command = new();
+        CommandAuthorizationRequest? captured = null;
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Do<CommandAuthorizationRequest>(r => captured = r), Arg.Any<CancellationToken>())
+            .Returns(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator);
+
+        await sut.EnsureAuthorizedAsync<ProtectedCommand>(command, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        captured.ShouldNotBeNull();
+        captured.CommandType.ShouldBe(typeof(ProtectedCommand));
+        captured.Command.ShouldBeSameAs(command);
+        captured.PolicyName.ShouldBe("OrderApprover");
+    }
+
+    [Fact]
+    public async Task EnsureAuthorizedAsync_ProtectedRuntimeType_FallsBackWhenDeclaredTypeIsBroad() {
+        ProtectedCommand command = new();
+        CommandAuthorizationRequest? captured = null;
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Do<CommandAuthorizationRequest>(r => captured = r), Arg.Any<CancellationToken>())
+            .Returns(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator);
+
+        await sut.EnsureAuthorizedAsync<object>(command, TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        captured.ShouldNotBeNull();
+        captured.CommandType.ShouldBe(typeof(ProtectedCommand));
+        captured.Command.ShouldBeSameAs(command);
+    }
+
+    [Fact]
+    public async Task EnsureAuthorizedAsync_ProtectedPlainRegistry_UsesManifestPolicyFallback() {
+        CommandAuthorizationRequest? captured = null;
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Do<CommandAuthorizationRequest>(r => captured = r), Arg.Any<CancellationToken>())
+            .Returns(CommandAuthorizationDecision.Allowed("corr-allowed"));
+        CommandDispatchAuthorizationGate sut = NewSut(PlainRegistry("OrderApprover"), evaluator);
+
+        await sut.EnsureAuthorizedAsync(new ProtectedCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true);
+
+        captured.ShouldNotBeNull();
+        captured.PolicyName.ShouldBe("OrderApprover");
+        captured.BoundedContext.ShouldBe("Orders");
+    }
+
+    [Fact]
     public async Task EnsureAuthorizedAsync_ProtectedDenied_ThrowsCommandWarningBeforeDispatch() {
         ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
         evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
@@ -79,6 +127,19 @@ public sealed class CommandDispatchAuthorizationGateTests {
         // Pass-4 DN-7-3-4-5 — Pending must surface as the dedicated retryable warning kind, not
         // collapse to Forbidden.
         ex.Kind.ShouldBe(CommandWarningKind.Pending);
+    }
+
+    [Fact]
+    public async Task EnsureAuthorizedAsync_EvaluatorThrows_ThrowsForbiddenWarning() {
+        ICommandAuthorizationEvaluator evaluator = Substitute.For<ICommandAuthorizationEvaluator>();
+        evaluator.EvaluateAsync(Arg.Any<CommandAuthorizationRequest>(), Arg.Any<CancellationToken>())
+            .Returns<Task<CommandAuthorizationDecision>>(_ => throw new InvalidOperationException("broken evaluator"));
+        CommandDispatchAuthorizationGate sut = NewSut(Registry("OrderApprover"), evaluator);
+
+        CommandWarningException ex = await Should.ThrowAsync<CommandWarningException>(
+            async () => await sut.EnsureAuthorizedAsync(new ProtectedCommand(), TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
+
+        ex.Kind.ShouldBe(CommandWarningKind.Forbidden);
     }
 
     [Fact]
@@ -136,7 +197,31 @@ public sealed class CommandDispatchAuthorizationGateTests {
         return registry;
     }
 
-    private sealed class ProtectedCommand { }
+    private static IFrontComposerRegistry PlainRegistry(string? policy)
+        => new PlainFrontComposerRegistry(new DomainManifest(
+            "Orders",
+            "Orders",
+            [],
+            [typeof(ProtectedCommand).FullName!],
+            policy is null
+                ? new Dictionary<string, string>(StringComparer.Ordinal)
+                : new Dictionary<string, string>(StringComparer.Ordinal) {
+                    [typeof(ProtectedCommand).FullName!] = policy,
+                }));
+
+    private class ProtectedCommand { }
+
+    private sealed class DerivedProtectedCommand : ProtectedCommand { }
+
+    private sealed class PlainFrontComposerRegistry(params DomainManifest[] manifests) : IFrontComposerRegistry {
+        public void RegisterDomain(DomainManifest manifest) {
+        }
+
+        public void AddNavGroup(string name, string boundedContext) {
+        }
+
+        public IReadOnlyList<DomainManifest> GetManifests() => manifests;
+    }
 
     /// <summary>Minimal IStringLocalizer that returns ResourceNotFound for every key, exercising the
     /// gate's static fallback strings (so tests don't depend on resx loading from another assembly).</summary>

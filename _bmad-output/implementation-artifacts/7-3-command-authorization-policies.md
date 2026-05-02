@@ -1,6 +1,6 @@
 # Story 7.3: Command Authorization Policies
 
-Status: review
+Status: done
 
 > **Epic 7** - Authentication, Authorization & Multi-Tenancy. Covers **FR46**, consumes Story **7-1** authentication seams and Story **7-2** tenant-context seams, and enforces **NFR23** plus the existing command lifecycle and feedback contracts. Applies lessons **L01**, **L03**, **L06**, **L07**, **L08**, and **L10**.
 
@@ -591,7 +591,23 @@ dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false 
   total 2294/0/0
 ```
 
-Story status moves to `review` (was `in-progress`); Pass 4 patch wave is complete, AC1–AC16 covered (AC13 by architectural fact per DN-7-3-4-1 closure). Two cross-story carry-overs documented above will be picked up by Story 10-1 (bUnit suite) and Epic 9-6 (decision cache).
+Story status moves to `review` (was `in-progress`); Pass 4 patch wave is complete. Code-level AC checks are covered by the targeted Contracts/Shell/SourceTools suites, while generated cross-surface bUnit verification remains explicitly deferred to Story 10-1 (adopter test host and component testing utilities). AC13 is satisfied by architectural fact per DN-7-3-4-1 closure. Cross-story carry-overs documented above will be picked up by Story 10-1 (bUnit suite) and Epic 9-6 (decision cache).
+
+---
+
+### Review Findings — Pass 5 (2026-05-02)
+
+- [x] [Review][Patch] Use the compile-time command type for direct-dispatch policy lookup [src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandDispatchAuthorizationGate.cs:41] — `EnsureAuthorizedAsync<TCommand>` currently derives the manifest key from `command.GetType()`. If a protected command is dispatched through a base/interface/static `TCommand` but the runtime instance is a derived/proxy type, the gate can miss the registered protected command policy and return before authorization. Use `typeof(TCommand)` as the authoritative command identity for lookup/evaluator resource, with a deliberate fallback only when needed.
+- [x] [Review][Patch] Restore manifest-walk fallback for command policy lookup when the registry lacks `IFrontComposerCommandPolicyRegistry` [src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandDispatchAuthorizationGate.cs:182] — the comment says custom registries still get the default manifest-walk semantics, but a registry that only implements `IFrontComposerRegistry` never satisfies the type check and `TryResolvePolicy` returns false. That fails open for protected direct dispatch. Add a fallback over `registry.GetManifests()` with the same trim / last-write-wins / bounded-context behavior and cover it with a plain custom-registry test.
+- [x] [Review][Patch] Preserve empty-state CTA policy gating for plain custom registries [src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs:247] — `ResolveCommandPolicy` now returns `(null, null)` unless the registry implements `IFrontComposerCommandPolicyRegistry`, so existing custom registries exposing `DomainManifest.CommandPolicies` downgrade protected CTAs to the unprotected `<AuthorizeView>` path. Reuse the same manifest-walk fallback as the dispatch gate.
+- [x] [Review][Patch] Register or avoid the dispatch gate in EventStore-only service setup [src/Hexalith.FrontComposer.Shell/Extensions/EventStoreServiceExtensions.cs:77] — `AddHexalithEventStore` wraps `EventStoreCommandClient` in `AuthorizingCommandServiceDecorator`, but it does not register `ICommandDispatchAuthorizationGate`; that registration exists only in `AddHexalithFrontComposer`. A host that wires EventStore without the shell cannot resolve `ICommandService`, including unprotected commands. Either register the minimal gate dependencies here or keep EventStore-only unwrapped until the shell auth stack is present.
+- [x] [Review][Patch] Add a fail-closed default `AuthenticationStateProvider` or equivalent guard [src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs:176] — `AddAuthorizationCore()` does not supply an `AuthenticationStateProvider`, while protected renderers, `FcAuthorizedCommandRegion`, and `CommandAuthorizationEvaluator` require one. Missing auth services should fail closed for protected commands, not fail DI activation/rendering.
+- [x] [Review][Patch] Convert evaluator exceptions in direct dispatch into sanitized fail-closed warnings [src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandDispatchAuthorizationGate.cs:78] — the decorator path catches `OperationCanceledException` only. A custom or broken evaluator throwing `InvalidOperationException`/recoverable exceptions escapes the command service instead of producing the documented `CommandWarningException` fail-closed result.
+- [x] [Review][Patch] Keep Blazor `StateHasChanged` calls on the renderer dispatcher after async authorization refresh [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcAuthorizedCommandRegion.razor.cs:120] — `FcAuthorizedCommandRegion` awaits the evaluator with `ConfigureAwait(false)` and later calls `StateHasChanged()` directly. The generated renderer emits the same pattern in `CommandRendererEmitter.cs:174`/`:197`. Use Blazor-safe continuations (`InvokeAsync(StateHasChanged)` or no off-context resume) so real async evaluators do not trip renderer thread-affinity failures.
+- [x] [Review][Patch] Render localized blocked/pending copy in protected CompactInline and FullPage placeholders [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:659] — the blocked branches emit a warning `FluentMessageBar` with only `Title = <command label>` and no message content. AC3/T7 require localized warning copy equivalent to "You don't have permission to {command action}" or temporary-unavailable/pending copy, with accessible status text.
+- [x] [Review][Patch] Avoid permanently disabled protected triggers after a transient pending decision [src/Hexalith.FrontComposer.SourceTools/Emitters/CommandRendererEmitter.cs:194] — generated renderers set `_authorizationPresentationReady = false` when the evaluator returns `Pending`, and `AuthorizationTriggerDisabled()` keeps the trigger disabled, but no retry is scheduled unless an auth-state event happens. Add an explicit re-evaluation path for pending/prerender transitions or otherwise guarantee the transition to an allowed/denied state.
+- [x] [Review][Patch] Resolve protected CTA command types across registered manifests instead of only `ProjectionType.Assembly` / `Type.GetType` [src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs:123] — protected CTAs are suppressed when the command FQN cannot be loaded from the projection assembly or by bare `Type.GetType`. Cross-assembly bounded contexts with non-assembly-qualified command FQNs can therefore hide valid CTAs for authorized users. Use registry/domain assembly metadata or carry the command type through the resolver when available.
+- [x] [Review][Patch] Add generated authorization bUnit coverage or remove the story's "AC1-AC16 covered" claim [tests/Hexalith.FrontComposer.Shell.Tests/Generated/*Authorization*:1] — the story still lists generated component gating and zero-side-effect bUnit tests as required, while the Pass 4 notes re-defer them to Story 10-1 and no generated authorization fixtures exist. Either add representative cross-surface tests now or make the story status/coverage language explicit that AC10-AC13 remain only partially verified.
 
 ---
 
@@ -882,6 +898,10 @@ GPT-5 Codex
 - `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --no-restore -p:UseSharedCompilation=false --logger "console;verbosity=minimal"` => 593 passed.
 - `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --no-restore -p:UseSharedCompilation=false --logger "console;verbosity=minimal"` => 1498 passed.
 - `dotnet build Hexalith.FrontComposer.sln --no-restore -warnaserror -p:UseSharedCompilation=false -v:minimal` => 0 warnings, 0 errors.
+- `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --no-restore -p:UseSharedCompilation=false --logger "console;verbosity=minimal"` => 1542 passed.
+- `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --no-restore -p:UseSharedCompilation=false --logger "console;verbosity=minimal"` => 600 passed.
+- `dotnet build Hexalith.FrontComposer.sln -warnaserror -p:UseSharedCompilation=false -v:minimal` => 0 warnings, 0 errors.
+- `dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false --logger "console;verbosity=minimal"` => Contracts 156/0/0, Shell 1542/0/0, SourceTools 600/0/0, Bench 2/0/0.
 
 ### Completion Notes List
 
@@ -892,6 +912,7 @@ GPT-5 Codex
 - 2026-05-01: Policy-protected generated forms now fail closed while presentation authorization is pending or denied, re-evaluate immediately on submit before lifecycle/dispatch side effects, and keep unprotected command behavior unchanged when auth services are absent.
 - 2026-05-02: Completed the dedicated 7-3 follow-up surface work: direct framework dispatch now fails closed for protected commands before Stub/EventStore side effects, renderer-emitted inline triggers use evaluator-backed presentation gating, empty-state CTAs route through `FcAuthorizedCommandRegion` with the same evaluator/resource shape as forms and palette, and CTA policy lookup uses the registry's canonical merged command-policy source.
 - 2026-05-02: Validated Story 7-3 with `dotnet build Hexalith.FrontComposer.sln --no-restore -warnaserror -p:UseSharedCompilation=false -v:minimal -m:1` (0 warnings/errors) and `dotnet test Hexalith.FrontComposer.sln --no-build -p:UseSharedCompilation=false --logger "console;verbosity=minimal"` => Contracts 156/0/0, Shell 1529/0/0, SourceTools 599/0/0, Bench 2/0/0.
+- 2026-05-02: Pass 5 code-review patches applied. Direct dispatch now uses the declared command type first with runtime fallback, custom registries retain manifest-walk policy lookup for dispatch and CTA surfaces, EventStore-only registration wires the authorization gate dependencies, missing auth state fails closed through `NullAuthenticationStateProvider`, direct-dispatch evaluator exceptions become sanitized forbidden warnings, Blazor authorization refreshes marshal rendering through `InvokeAsync`, protected renderer placeholders show localized pending/blocked copy and retry pending decisions, protected CTA type resolution scans loaded assemblies, and generated bUnit coverage remains explicitly deferred to Story 10-1 instead of claimed as complete. Story status moved to done after full regression.
 
 ### File List
 
@@ -913,6 +934,7 @@ GPT-5 Codex
 - `src/Hexalith.FrontComposer.SourceTools/Transforms/FormFieldModel.cs`
 - `src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModel.cs`
 - `src/Hexalith.FrontComposer.SourceTools/Transforms/RegistrationModelTransform.cs`
+- `src/Hexalith.FrontComposer.Shell/Extensions/EventStoreServiceExtensions.cs`
 - `src/Hexalith.FrontComposer.Shell/Extensions/ServiceCollectionExtensions.cs`
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcAuthorizedCommandRegion.razor`
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcAuthorizedCommandRegion.razor.cs`
@@ -920,14 +942,18 @@ GPT-5 Codex
 - `src/Hexalith.FrontComposer.Shell/Components/Rendering/FcProjectionEmptyPlaceholder.razor.cs`
 - `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs`
 - `src/Hexalith.FrontComposer.Shell/Options/FrontComposerAuthorizationOptions.cs`
+- `src/Hexalith.FrontComposer.Shell/Registration/FrontComposerCommandPolicyLookup.cs`
 - `src/Hexalith.FrontComposer.Shell/Registration/IFrontComposerCommandPolicyRegistry.cs`
 - `src/Hexalith.FrontComposer.Shell/Registration/FrontComposerRegistry.cs`
 - `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.fr.resx`
 - `src/Hexalith.FrontComposer.Shell/Resources/FcShellResources.resx`
 - `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationDecision.cs`
 - `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandAuthorizationEvaluator.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/CommandDispatchAuthorizationGate.cs`
 - `src/Hexalith.FrontComposer.Shell/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidator.cs`
 - `src/Hexalith.FrontComposer.Shell/Services/Authorization/ICommandAuthorizationEvaluator.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/ICommandDispatchAuthorizationGate.cs`
+- `src/Hexalith.FrontComposer.Shell/Services/Authorization/NullAuthenticationStateProvider.cs`
 - `src/Hexalith.FrontComposer.Shell/Services/EmptyStateCtaResolver.cs`
 - `src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs`
 - `src/Hexalith.FrontComposer.Shell/State/CommandPalette/CommandPaletteEffects.cs`
@@ -941,6 +967,8 @@ GPT-5 Codex
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Parsing/TestFixtures/CommandTestSources.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/CommandFormTransformTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Components/Rendering/FcProjectionEmptyPlaceholderTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/EventStoreRegistrationTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/AuthorizingCommandServiceDecoratorTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandDispatchAuthorizationGateTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/CommandAuthorizationEvaluatorTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Services/Authorization/FrontComposerAuthorizationPolicyCatalogValidatorTests.cs`

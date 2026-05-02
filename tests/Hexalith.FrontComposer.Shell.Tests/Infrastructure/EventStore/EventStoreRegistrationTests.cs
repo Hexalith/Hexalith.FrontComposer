@@ -2,7 +2,9 @@ using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -55,6 +57,22 @@ public sealed class EventStoreRegistrationTests {
         await using ServiceProvider provider = services.BuildServiceProvider();
 
         provider.GetRequiredService<ICommandService>().ShouldBeOfType<ReplacementCommandService>();
+    }
+
+    [Fact]
+    public async Task AddHexalithEventStore_Alone_RegistersDispatchAuthorizationDependencies() {
+        ServiceCollection services = new();
+        _ = services.AddHexalithEventStore(options => {
+            options.BaseAddress = new Uri("https://eventstore.test");
+            options.RequireAccessToken = false;
+        });
+
+        await using ServiceProvider provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<ICommandService>().ShouldNotBeNull();
+        provider.GetRequiredService<ICommandServiceWithLifecycle>().ShouldNotBeNull();
+        provider.GetRequiredService<ICommandDispatchAuthorizationGate>().ShouldNotBeNull();
+        provider.GetRequiredService<AuthenticationStateProvider>().ShouldNotBeNull();
     }
 
     [Fact]

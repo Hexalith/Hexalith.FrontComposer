@@ -238,16 +238,17 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
 
     /// <summary>
     /// Resolves the effective policy and owning bounded context through the canonical registry.
-    /// Pass-4 DN-7-3-4-4 (b): replaces the prior <c>manifests</c>-snapshot scan with a single
-    /// registry lookup so dispatch, palette, CTA, and home surfaces cannot disagree on the
-    /// effective policy. Adopters with a custom <see cref="IFrontComposerRegistry"/> that does
-    /// not implement <see cref="IFrontComposerCommandPolicyRegistry"/> get a <c>null</c> result
-    /// here (no policy gating); they should implement the companion to enable CTA gating.
+    /// Pass-5: custom registries that expose <see cref="DomainManifest.CommandPolicies"/> but do
+    /// not implement <see cref="IFrontComposerCommandPolicyRegistry"/> still get manifest-walk
+    /// semantics so protected CTAs do not silently downgrade to the unprotected path.
     /// </summary>
     private (string? Policy, string? BoundedContext) ResolveCommandPolicy(string commandFqn) {
-        if (_registry is IFrontComposerCommandPolicyRegistry policyRegistry
-            && policyRegistry.TryGetCommandPolicy(commandFqn, out string policyName, out string? policyBoundedContext)) {
-            return (policyName.Trim(), policyBoundedContext);
+        if (FrontComposerCommandPolicyLookup.TryGetCommandPolicy(
+                _registry,
+                commandFqn,
+                out string policyName,
+                out string? policyBoundedContext)) {
+            return (policyName, policyBoundedContext);
         }
 
         return (null, null);

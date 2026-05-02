@@ -44,6 +44,7 @@ using Microsoft.Extensions.Logging;
 
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -235,6 +236,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IUserContextAccessor, NullUserContextAccessor>();
         services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
         services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
+        services.TryAddScoped<AuthenticationStateProvider, NullAuthenticationStateProvider>();
         services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
         services.TryAddScoped<ICommandDispatchAuthorizationGate, CommandDispatchAuthorizationGate>();
         // Story 7-2 DN1 — production guardrail. See EventStoreServiceExtensions for context.

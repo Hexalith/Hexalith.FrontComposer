@@ -126,6 +126,17 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
         }
 
         Type? resolved = Type.GetType(commandFqn, throwOnError: false);
+        if (resolved is not null) {
+            return resolved;
+        }
+
+        foreach (System.Reflection.Assembly assembly in AppDomain.CurrentDomain.GetAssemblies()) {
+            resolved = assembly.GetType(commandFqn, throwOnError: false, ignoreCase: false);
+            if (resolved is not null) {
+                return resolved;
+            }
+        }
+
         if (resolved is null) {
             // Operators need to distinguish "CTA suppressed because user is not authorized" from
             // "CTA suppressed because the type couldn't be loaded" (assembly trimmed, type

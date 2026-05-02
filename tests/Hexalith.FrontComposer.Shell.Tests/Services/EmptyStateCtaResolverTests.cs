@@ -128,6 +128,25 @@ public sealed class EmptyStateCtaResolverTests {
     }
 
     [Fact]
+    public void Resolve_CommandWithPolicy_PlainWriteAwareRegistry_UsesManifestPolicyFallback() {
+        var registry = new PlainWriteAwareRegistry(new DomainManifest(
+            "Orders",
+            "Orders",
+            [typeof(OrderProjection).FullName!],
+            ["Orders.CreateOrderCommand"],
+            new Dictionary<string, string>(StringComparer.Ordinal) {
+                ["Orders.CreateOrderCommand"] = "OrderApprover",
+            }));
+        EmptyStateCtaResolver resolver = new(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+
+        EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
+
+        cta.ShouldNotBeNull();
+        cta.AuthorizationPolicy.ShouldBe("OrderApprover");
+        cta.BoundedContext.ShouldBe("Orders");
+    }
+
+    [Fact]
     public void NoAttribute_CreationVerbPrefixWinsThenAlphabetical() {
         // Spec D4: partition into matches vs non-matches, order each alphabetically.
         // "AddOrderItemCommand" and "CreateOrderCommand" both have creation prefixes →
@@ -286,4 +305,17 @@ public sealed class EmptyStateCtaResolverTests {
             BoundedContext: boundedContext,
             Projections: [projectionType.FullName ?? projectionType.Name],
             Commands: commands);
+
+    private sealed class PlainWriteAwareRegistry(params DomainManifest[] manifests)
+        : IFrontComposerRegistry, IFrontComposerCommandWriteAccessRegistry {
+        public void AddNavGroup(string name, string boundedContext) {
+        }
+
+        public IReadOnlyList<DomainManifest> GetManifests() => manifests;
+
+        public void RegisterDomain(DomainManifest manifest) {
+        }
+
+        public bool IsCommandWritable(string commandTypeName) => true;
+    }
 }

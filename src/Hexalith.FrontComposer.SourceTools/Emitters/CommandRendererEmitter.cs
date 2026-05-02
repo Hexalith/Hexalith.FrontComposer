@@ -93,6 +93,7 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    [Inject] private IState<" + lifecycleStateTypeFqn + "> _lifecycleState { get; set; } = default!;");
         if (hasAuthorizationPolicy) {
             _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator CommandAuthorizationEvaluator { get; set; } = default!;");
+            _ = sb.AppendLine("    [Inject] private global::Microsoft.Extensions.Localization.IStringLocalizer<global::Hexalith.FrontComposer.Shell.Resources.FcShellResources> AuthorizationLocalizer { get; set; } = default!;");
         }
         if (model.IsDestructive) {
             // Story 2-5 Task 6.1 — destructive commands open a FluentDialog via IDialogService (D11).
@@ -123,6 +124,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("    private bool _authorizationDisposed;");
             _ = sb.AppendLine("    private long _authorizationRefreshSequence;");
             _ = sb.AppendLine("    private bool _authorizationStateSubscribed;");
+            _ = sb.AppendLine("    private string _authorizationPresentationTitle = string.Empty;");
+            _ = sb.AppendLine("    private string _authorizationPresentationMessage = string.Empty;");
         }
         _ = sb.AppendLine();
 
@@ -156,6 +159,7 @@ public static class CommandRendererEmitter {
             // (Pass-3 form-emitter pattern; mirror in renderer).
             _ = sb.AppendLine("        _authorizationPresentationReady = false;");
             _ = sb.AppendLine("        _authorizationPresentationAllowed = false;");
+            _ = sb.AppendLine("        SetAuthorizationPresentationMessage(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision.Pending(global::System.Guid.NewGuid().ToString(\"N\")));");
             _ = sb.AppendLine("        long sequence = global::System.Threading.Interlocked.Increment(ref _authorizationRefreshSequence);");
             _ = sb.AppendLine("        var cts = _authorizationCts;");
             _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision? decision;");
@@ -171,7 +175,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                \"" + EscapeString(model.BoundedContext) + "\",");
             _ = sb.AppendLine("                \"" + displayLabelEscaped + "\",");
             _ = sb.AppendLine("                ResolveAuthorizationSurface()),");
-            _ = sb.AppendLine("                cts?.Token ?? global::System.Threading.CancellationToken.None).ConfigureAwait(false);");
+            _ = sb.AppendLine("                cts?.Token ?? global::System.Threading.CancellationToken.None);");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (global::System.OperationCanceledException)");
             _ = sb.AppendLine("        {");
@@ -194,7 +198,51 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("            _authorizationPresentationReady = decision.Kind != global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending;");
             _ = sb.AppendLine("            _authorizationPresentationAllowed = decision.IsAllowed;");
             _ = sb.AppendLine("        }");
-            _ = sb.AppendLine("        StateHasChanged();");
+            _ = sb.AppendLine("        SetAuthorizationPresentationMessage(decision);");
+            _ = sb.AppendLine("        await InvokeAsync(StateHasChanged).ConfigureAwait(false);");
+            _ = sb.AppendLine("        if (decision?.Kind == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _ = ScheduleAuthorizationRetryAsync(sequence);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private async Task ScheduleAuthorizationRetryAsync(long observedSequence)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            await global::System.Threading.Tasks.Task.Delay(global::System.TimeSpan.FromMilliseconds(250), _authorizationCts?.Token ?? global::System.Threading.CancellationToken.None).ConfigureAwait(false);");
+            _ = sb.AppendLine("            if (_authorizationDisposed) { return; }");
+            _ = sb.AppendLine("            if (global::System.Threading.Interlocked.Read(ref _authorizationRefreshSequence) != observedSequence) { return; }");
+            _ = sb.AppendLine("            await InvokeAsync(RefreshPresentationAuthorizationAsync).ConfigureAwait(false);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (global::System.OperationCanceledException) { }");
+            _ = sb.AppendLine("        catch (global::System.ObjectDisposedException) { }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private void SetAuthorizationPresentationMessage(global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision? decision)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (decision?.Kind == global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _authorizationPresentationTitle = ResolveAuthorizationLocalized(\"AuthorizationCheckingPermissionTitle\", \"Checking permission...\");");
+            _ = sb.AppendLine("            _authorizationPresentationMessage = ResolveAuthorizationLocalized(\"AuthorizationCheckingPermissionMessage\", \"Verifying you can {0}. This usually takes a moment.\", \"" + displayLabelEscaped + "\");");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        if (decision?.Reason is global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.Denied or global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationReason.Unauthenticated)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _authorizationPresentationTitle = ResolveAuthorizationLocalized(\"UnauthorizedCommandWarningTitle\", \"Permission required\");");
+            _ = sb.AppendLine("            _authorizationPresentationMessage = ResolveAuthorizationLocalized(\"UnauthorizedCommandWarningMessage\", \"You do not have permission to {0}.\", \"" + displayLabelEscaped + "\");");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        _authorizationPresentationTitle = ResolveAuthorizationLocalized(\"AuthorizationActionUnavailableTitle\", \"Action unavailable\");");
+            _ = sb.AppendLine("        _authorizationPresentationMessage = ResolveAuthorizationLocalized(\"AuthorizationActionUnavailableMessage\", \"This action is not available for the current user or session.\");");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private string ResolveAuthorizationLocalized(string key, string fallback, params object[] args)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        global::Microsoft.Extensions.Localization.LocalizedString candidate = args.Length == 0 ? AuthorizationLocalizer[key] : AuthorizationLocalizer[key, args];");
+            _ = sb.AppendLine("        return candidate.ResourceNotFound");
+            _ = sb.AppendLine("            ? string.Format(CultureInfo.CurrentCulture, fallback, args)");
+            _ = sb.AppendLine("            : candidate.Value;");
             _ = sb.AppendLine("    }");
             _ = sb.AppendLine();
             _ = sb.AppendLine("    private void OnAuthenticationStateChanged(global::System.Threading.Tasks.Task<global::Microsoft.AspNetCore.Components.Authorization.AuthenticationState> task)");
@@ -205,8 +253,8 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("            _ = InvokeAsync(async () =>");
             _ = sb.AppendLine("            {");
             _ = sb.AppendLine("                if (_authorizationDisposed) { return; }");
-            _ = sb.AppendLine("                _ = await task.ConfigureAwait(false);");
-            _ = sb.AppendLine("                await RefreshPresentationAuthorizationAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("                _ = await task.ConfigureAwait(true);");
+            _ = sb.AppendLine("                await RefreshPresentationAuthorizationAsync().ConfigureAwait(true);");
             _ = sb.AppendLine("            });");
             _ = sb.AppendLine("        }");
             _ = sb.AppendLine("        catch (global::System.ObjectDisposedException) { /* circuit torn down */ }");
@@ -660,8 +708,9 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                {");
             _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageIntent.Warning);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", \"" + displayLabelEscaped + "\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", _authorizationPresentationTitle);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");
             _ = sb.AppendLine("                    builder.CloseComponent();");
             _ = sb.AppendLine("                    break;");
             _ = sb.AppendLine("                }");
@@ -705,8 +754,9 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"style\", $\"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;\");");
             _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageIntent.Warning);");
-            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", \"" + displayLabelEscaped + "\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", _authorizationPresentationTitle);");
             _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__message => __message.AddContent(0, _authorizationPresentationMessage)));");
             _ = sb.AppendLine("                    builder.CloseComponent();");
             _ = sb.AppendLine("                    builder.CloseElement();");
             _ = sb.AppendLine("                    break;");

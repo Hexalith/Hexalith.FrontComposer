@@ -148,7 +148,7 @@ public partial class FcAuthorizedCommandRegion : ComponentBase, IDisposable {
         }
 
         _decision = next ?? CommandAuthorizationDecision.Blocked(CommandAuthorizationReason.HandlerFailed, correlationId);
-        StateHasChanged();
+        await InvokeAsync(StateHasChanged).ConfigureAwait(false);
     }
 
     private void OnAuthenticationStateChanged(Task<AuthenticationState> task) {
@@ -165,13 +165,13 @@ public partial class FcAuthorizedCommandRegion : ComponentBase, IDisposable {
                     return;
                 }
 
-                _ = await task.ConfigureAwait(false);
+                _ = await task.ConfigureAwait(true);
 
                 if (CommandType is null || string.IsNullOrWhiteSpace(PolicyName)) {
                     return;
                 }
 
-                await RefreshAsync(CommandType, PolicyName.Trim(), BoundedContext).ConfigureAwait(false);
+                await RefreshAsync(CommandType, PolicyName.Trim(), BoundedContext).ConfigureAwait(true);
             });
         }
         catch (ObjectDisposedException) {

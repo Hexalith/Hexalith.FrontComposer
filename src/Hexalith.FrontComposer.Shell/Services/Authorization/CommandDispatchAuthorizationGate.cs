@@ -38,21 +38,41 @@ public sealed class CommandDispatchAuthorizationGate(
         ArgumentNullException.ThrowIfNull(command);
         cancellationToken.ThrowIfCancellationRequested();
 
-        Type commandType = command.GetType();
-        if (commandType.FullName is not { } commandTypeName) {
+        Type declaredCommandType = typeof(TCommand);
+        Type runtimeCommandType = command.GetType();
+        Type? commandType = null;
+        string? commandTypeName = null;
+        string policyName = string.Empty;
+        string? boundedContext = null;
+
+        if (!TryResolvePolicyForCandidate(declaredCommandType, out commandTypeName, out policyName, out boundedContext)) {
+            if (runtimeCommandType != declaredCommandType
+                && TryResolvePolicyForCandidate(runtimeCommandType, out commandTypeName, out policyName, out boundedContext)) {
+                commandType = runtimeCommandType;
+            }
+            else {
+                if (declaredCommandType.FullName is null && runtimeCommandType.FullName is null) {
+                    logger.LogWarning(
+                        "Direct command dispatch failed closed because command type {CommandShortName} has no fully qualified name; refusing to authorize. Wrap such commands in a concrete type before dispatching.",
+                        runtimeCommandType.Name);
+                    throw CreateForbiddenWarning(runtimeCommandType);
+                }
+
+                return;
+            }
+        }
+        else {
+            commandType = declaredCommandType;
+        }
+
+        if (commandType is null || commandTypeName is null) {
             // Open generics, dynamic assemblies, and reflection-emitted types can produce a null
             // FullName. The legacy fallback to commandType.Name would let two unrelated commands
             // collide in the manifest lookup → silent fail-OPEN. Fail-closed instead.
             logger.LogWarning(
                 "Direct command dispatch failed closed because command type {CommandShortName} has no fully qualified name; refusing to authorize. Wrap such commands in a concrete type before dispatching.",
-                commandType.Name);
-            throw CreateForbiddenWarning(commandType);
-        }
-
-        commandTypeName = commandTypeName.Trim();
-
-        if (!TryResolvePolicy(commandTypeName, out string policyName, out string? boundedContext)) {
-            return;
+                runtimeCommandType.Name);
+            throw CreateForbiddenWarning(runtimeCommandType);
         }
 
         ICommandAuthorizationEvaluator? evaluator;
@@ -89,6 +109,14 @@ public sealed class CommandDispatchAuthorizationGate(
         catch (OperationCanceledException) {
             // Honour cancellation as cancellation, not as a permission denial. Pass-4 DN-7-3-4-5.
             throw;
+        }
+        catch (Exception ex) when (IsRecoverable(ex)) {
+            logger.LogWarning(
+                ex,
+                "Direct command dispatch failed closed because authorization evaluation threw. CommandType={CommandType} PolicyName={PolicyName}",
+                commandTypeName,
+                policyName);
+            throw CreateForbiddenWarning(commandType);
         }
 
         if (decision is null) {
@@ -169,22 +197,30 @@ public sealed class CommandDispatchAuthorizationGate(
         return candidate.ResourceNotFound ? fallback : candidate.Value;
     }
 
-    private bool TryResolvePolicy(string commandTypeName, out string policyName, out string? boundedContext) {
-        policyName = string.Empty;
-        boundedContext = null;
-
-        // Pass-4 DN-7-3-4-4 (b): the registry's IFrontComposerCommandPolicyRegistry companion is
-        // the single canonical lookup. Adopters with a custom IFrontComposerRegistry that does
-        // not implement the companion still get the default-implemented interface method (manifest
-        // walk with trimming) so the gate has no separate fallback path. This eliminates the
-        // canonical-vs-fallback divergence the audit flagged (AA-23 / EH-12 / EH-13 / EH-14 /
-        // EH-42) and keeps every consumer routed through one BC-aware lookup.
-        if (registry is IFrontComposerCommandPolicyRegistry policyRegistry) {
-            return policyRegistry.TryGetCommandPolicy(commandTypeName, out policyName, out boundedContext);
+    private bool TryResolvePolicyForCandidate(
+        Type candidateType,
+        out string? commandTypeName,
+        out string policyName,
+        out string? boundedContext) {
+        commandTypeName = candidateType.FullName?.Trim();
+        if (string.IsNullOrWhiteSpace(commandTypeName)) {
+            policyName = string.Empty;
+            boundedContext = null;
+            return false;
         }
 
-        return false;
+        return FrontComposerCommandPolicyLookup.TryGetCommandPolicy(
+            registry,
+            commandTypeName,
+            out policyName,
+            out boundedContext);
     }
+
+    private static bool IsRecoverable(Exception ex)
+        => ex is not (OutOfMemoryException
+            or StackOverflowException
+            or System.Threading.ThreadAbortException
+            or AccessViolationException);
 
     private static string DisplayLabel(Type commandType) {
         // Strip the trailing "Command" suffix using ordinal comparison so types named MyCOMMAND
