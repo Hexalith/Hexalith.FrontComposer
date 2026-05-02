@@ -29,6 +29,14 @@ public sealed class FrontComposerMcpOptions {
 
     public int MaxFieldsPerResource { get; set; } = 8;
 
+    public int MaxVisibleToolListItems { get; set; } = 50;
+
+    public int MaxSuggestionCandidates { get; set; } = 100;
+
+    public int MaxToolNameLength { get; set; } = 160;
+
+    public int MaxToolDisplayTextLength { get; set; } = 240;
+
     public IList<string> TenantClaimTypes { get; } = [
         "TenantId",
         "tenant_id",

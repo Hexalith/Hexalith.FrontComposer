@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.Mcp.Invocation;
 
 using Microsoft.Extensions.Options;
 
@@ -11,6 +12,7 @@ public sealed class FrontComposerMcpDescriptorRegistry {
     private readonly IReadOnlyDictionary<string, McpResourceDescriptor> _resources;
     private readonly IReadOnlyList<McpCommandDescriptor> _orderedCommands;
     private readonly IReadOnlyList<McpResourceDescriptor> _orderedResources;
+    private readonly IReadOnlyDictionary<string, string> _normalizedNames;
 
     public FrontComposerMcpDescriptorRegistry(IOptions<FrontComposerMcpOptions> options) {
         ArgumentNullException.ThrowIfNull(options);
@@ -24,11 +26,22 @@ public sealed class FrontComposerMcpDescriptorRegistry {
         _resources = BuildResourceMap(manifests);
         _orderedCommands = [.. _commands.Values.OrderBy(c => c.ProtocolName, StringComparer.Ordinal)];
         _orderedResources = [.. _resources.Values.OrderBy(r => r.ProtocolUri, StringComparer.Ordinal)];
+        _normalizedNames = BuildNormalizedNameMap(_orderedCommands);
     }
 
     public IReadOnlyList<McpCommandDescriptor> Commands => _orderedCommands;
 
     public IReadOnlyList<McpResourceDescriptor> Resources => _orderedResources;
+
+    /// <summary>
+    /// Returns the normalized matching key for the descriptor, computed once at registry construction
+    /// time per spec T7 ("Precompute immutable normalized lookup keys at startup"). Returns
+    /// <see cref="string.Empty"/> for descriptors whose protocol name produces an unsupported normalized form.
+    /// </summary>
+    public string GetNormalizedName(McpCommandDescriptor descriptor) {
+        ArgumentNullException.ThrowIfNull(descriptor);
+        return _normalizedNames.TryGetValue(descriptor.ProtocolName, out string? value) ? value : string.Empty;
+    }
 
     public bool TryGetCommand(string protocolName, out McpCommandDescriptor descriptor) {
         if (string.IsNullOrWhiteSpace(protocolName)) {
@@ -80,6 +93,16 @@ public sealed class FrontComposerMcpDescriptorRegistry {
             if (!map.TryAdd(descriptor.ProtocolName, descriptor)) {
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.DuplicateDescriptor);
             }
+        }
+
+        return map;
+    }
+
+    private static IReadOnlyDictionary<string, string> BuildNormalizedNameMap(IEnumerable<McpCommandDescriptor> commands) {
+        Dictionary<string, string> map = new(StringComparer.Ordinal);
+        foreach (McpCommandDescriptor descriptor in commands) {
+            string normalized = FrontComposerMcpToolAdmissionService.NormalizeForMatching(descriptor.ProtocolName, out bool unsupported);
+            map[descriptor.ProtocolName] = unsupported ? string.Empty : normalized;
         }
 
         return map;

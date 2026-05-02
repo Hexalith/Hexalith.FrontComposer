@@ -1,0 +1,1124 @@
+diff --git a/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
+index dfac79a..cd3d9ee 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
+@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
+ using Microsoft.Extensions.Options;
+ 
+ using ModelContextProtocol.AspNetCore;
++using ModelContextProtocol.Protocol;
++using ModelContextProtocol.Server;
+ 
+ namespace Hexalith.FrontComposer.Mcp.Extensions;
+ 
+@@ -21,6 +23,8 @@ public static class FrontComposerMcpServiceCollectionExtensions {
+         services.AddSingleton<IValidateOptions<FrontComposerMcpOptions>, FrontComposerMcpOptionsValidator>();
+         services.AddHttpContextAccessor();
+         services.TryAddSingleton<FrontComposerMcpDescriptorRegistry>();
++        services.TryAddScoped<FrontComposerMcpToolAdmissionService>();
++        services.TryAddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+         services.TryAddScoped<IFrontComposerMcpAgentContextAccessor, HttpFrontComposerMcpAgentContextAccessor>();
+         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
+         services.TryAddScoped<FrontComposerMcpProjectionReader>();
+@@ -32,20 +36,51 @@ public static class FrontComposerMcpServiceCollectionExtensions {
+         // probe time so misconfiguration fails fast with a deterministic message.
+         using ServiceProvider probe = services.BuildServiceProvider();
+         FrontComposerMcpDescriptorRegistry registry = probe.GetRequiredService<FrontComposerMcpDescriptorRegistry>();
+-        IEnumerable<ModelContextProtocol.Server.McpServerTool> tools = registry.Commands
+-            .Select(c => new FrontComposerMcpTool(c))
+-            .ToArray();
+         IEnumerable<ModelContextProtocol.Server.McpServerResource> resources = registry.Resources
+             .Select(r => new FrontComposerMcpResource(r))
+             .ToArray();
+ 
+         services.AddMcpServer()
+             .WithHttpTransport()
+-            .WithTools(tools)
++            .WithListToolsHandler(ListToolsAsync)
++            .WithCallToolHandler(CallToolAsync)
+             .WithResources(resources);
+ 
+         return services;
+     }
++
++    private static async ValueTask<ListToolsResult> ListToolsAsync(
++        RequestContext<ListToolsRequestParams> request,
++        CancellationToken cancellationToken) {
++        if (request.Services is null) {
++            return new ListToolsResult { Tools = [] };
++        }
++
++        FrontComposerMcpToolAdmissionService admission = request.Services.GetRequiredService<FrontComposerMcpToolAdmissionService>();
++        McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
++        return new ListToolsResult {
++            Tools = [.. catalog.Tools.Select(FrontComposerMcpProtocolMapper.ToProtocolTool)],
++        };
++    }
++
++    private static async ValueTask<CallToolResult> CallToolAsync(
++        RequestContext<CallToolRequestParams> request,
++        CancellationToken cancellationToken) {
++        if (request.Services is null) {
++            return FrontComposerMcpProtocolMapper.ToCallToolResult(
++                FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed));
++        }
++
++        FrontComposerMcpCommandInvoker invoker = request.Services.GetRequiredService<FrontComposerMcpCommandInvoker>();
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            request.Params?.Name!,
++            request.Params?.Arguments is null
++                ? null
++                : new Dictionary<string, System.Text.Json.JsonElement>(request.Params.Arguments, StringComparer.Ordinal),
++            cancellationToken).ConfigureAwait(false);
++
++        return FrontComposerMcpProtocolMapper.ToCallToolResult(result);
++    }
+ }
+ 
+ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontComposerMcpOptions> {
+@@ -76,6 +111,18 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
+             errors.Add("Per-resource render limits must be positive.");
+         }
+ 
++        if (options.MaxVisibleToolListItems < 0) {
++            errors.Add($"{nameof(FrontComposerMcpOptions.MaxVisibleToolListItems)} must not be negative.");
++        }
++
++        if (options.MaxSuggestionCandidates <= 0) {
++            errors.Add($"{nameof(FrontComposerMcpOptions.MaxSuggestionCandidates)} must be positive.");
++        }
++
++        if (options.MaxToolNameLength <= 0 || options.MaxToolDisplayTextLength <= 0) {
++            errors.Add("Tool response bounds must be positive.");
++        }
++
+         foreach (KeyValuePair<string, FrontComposerMcpApiKeyIdentity> entry in options.ApiKeys) {
+             if (string.IsNullOrWhiteSpace(entry.Key)) {
+                 errors.Add("API key entries must not have empty/whitespace keys.");
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs
+index b45c7b8..69658d3 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs
+@@ -29,6 +29,14 @@ public sealed class FrontComposerMcpOptions {
+ 
+     public int MaxFieldsPerResource { get; set; } = 8;
+ 
++    public int MaxVisibleToolListItems { get; set; } = 50;
++
++    public int MaxSuggestionCandidates { get; set; } = 100;
++
++    public int MaxToolNameLength { get; set; } = 160;
++
++    public int MaxToolDisplayTextLength { get; set; } = 240;
++
+     public IList<string> TenantClaimTypes { get; } = [
+         "TenantId",
+         "tenant_id",
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs
+new file mode 100644
+index 0000000..1d3e060
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs
+@@ -0,0 +1,23 @@
++using System.Text.Json;
++using System.Text.Json.Nodes;
++
++using ModelContextProtocol.Protocol;
++
++namespace Hexalith.FrontComposer.Mcp;
++
++internal static class FrontComposerMcpProtocolMapper {
++    public static Tool ToProtocolTool(McpVisibleToolCatalogEntry entry)
++        => new() {
++            Name = entry.Name,
++            Title = entry.Title,
++            Description = entry.Description,
++            InputSchema = McpJsonSchemaBuilder.BuildInputSchema(entry.Descriptor.Parameters),
++        };
++
++    public static CallToolResult ToCallToolResult(FrontComposerMcpResult result)
++        => new() {
++            IsError = result.IsError,
++            StructuredContent = result.StructuredContent?.Deserialize<JsonElement>(),
++            Content = [new TextContentBlock { Text = result.Text }],
++        };
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs
+index 58ac9cb..5524923 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs
+@@ -14,4 +14,7 @@ public sealed record FrontComposerMcpResult(
+ 
+     public static FrontComposerMcpResult Failure(FrontComposerMcpFailureCategory category)
+         => new(true, category, GenericFailureText);
++
++    public static FrontComposerMcpResult Failure(FrontComposerMcpFailureCategory category, JsonObject structuredContent)
++        => new(true, category, GenericFailureText, structuredContent);
+ }
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpTool.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpTool.cs
+index 8ad0fb9..8eb2536 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpTool.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpTool.cs
+@@ -38,9 +38,6 @@ internal sealed class FrontComposerMcpTool(McpCommandDescriptor descriptor) : Mc
+         return BuildResult(result);
+     }
+ 
+-    private static CallToolResult BuildResult(FrontComposerMcpResult result) => new() {
+-        IsError = result.IsError,
+-        StructuredContent = result.StructuredContent?.Deserialize<JsonElement>(),
+-        Content = [new TextContentBlock { Text = result.Text }],
+-    };
++    private static CallToolResult BuildResult(FrontComposerMcpResult result)
++        => FrontComposerMcpProtocolMapper.ToCallToolResult(result);
+ }
+diff --git a/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpTenantToolGate.cs b/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpTenantToolGate.cs
+new file mode 100644
+index 0000000..16d1133
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpTenantToolGate.cs
+@@ -0,0 +1,22 @@
++using Hexalith.FrontComposer.Contracts.Mcp;
++
++namespace Hexalith.FrontComposer.Mcp;
++
++public interface IFrontComposerMcpTenantToolGate {
++    ValueTask<bool> IsVisibleAsync(
++        McpCommandDescriptor descriptor,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken);
++}
++
++public sealed class AllowAllMcpTenantToolGate : IFrontComposerMcpTenantToolGate {
++    public ValueTask<bool> IsVisibleAsync(
++        McpCommandDescriptor descriptor,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken) {
++        ArgumentNullException.ThrowIfNull(descriptor);
++        ArgumentNullException.ThrowIfNull(context);
++
++        return ValueTask.FromResult(!string.IsNullOrWhiteSpace(context.TenantId));
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs
+index db45d54..d4c32ce 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs
+@@ -12,8 +12,8 @@ using Microsoft.Extensions.Options;
+ namespace Hexalith.FrontComposer.Mcp.Invocation;
+ 
+ public sealed class FrontComposerMcpCommandInvoker(
+-    FrontComposerMcpDescriptorRegistry registry,
+     IFrontComposerMcpAgentContextAccessor agentContextAccessor,
++    FrontComposerMcpToolAdmissionService admissionService,
+     IServiceProvider services,
+     IOptions<FrontComposerMcpOptions> options) {
+     private static readonly HashSet<string> SpoofedDerivableNames = new(StringComparer.OrdinalIgnoreCase) {
+@@ -28,27 +28,16 @@ public sealed class FrontComposerMcpCommandInvoker(
+         string toolName,
+         IReadOnlyDictionary<string, JsonElement>? arguments,
+         CancellationToken cancellationToken = default) {
+-        if (string.IsNullOrWhiteSpace(toolName) || !registry.TryGetCommand(toolName, out McpCommandDescriptor? descriptor)) {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.UnknownTool);
+-        }
+-
+         try {
+-            FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
+-
+-            // Story 7-3 policy fail-closed gate: if descriptor carries a policy name, a host-supplied
+-            // gate must approve before dispatch. Hosts without a gate registered fail-closed.
+-            if (!string.IsNullOrWhiteSpace(descriptor.AuthorizationPolicyName)) {
+-                IFrontComposerMcpCommandPolicyGate? gate = services.GetService<IFrontComposerMcpCommandPolicyGate>();
+-                if (gate is null) {
+-                    return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.PolicyGateMissing);
+-                }
+-
+-                bool approved = await gate.EvaluateAsync(descriptor.AuthorizationPolicyName!, context, cancellationToken).ConfigureAwait(false);
+-                if (!approved) {
+-                    return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.AuthFailed);
+-                }
++            McpToolResolutionResult resolution = await admissionService.ResolveAsync(toolName, cancellationToken).ConfigureAwait(false);
++            if (!resolution.Accepted || resolution.Tool is null) {
++                return FrontComposerMcpResult.Failure(
++                    FrontComposerMcpFailureCategory.UnknownTool,
++                    FrontComposerMcpToolAdmissionService.BuildUnknownToolStructuredContent(resolution));
+             }
+ 
++            McpCommandDescriptor descriptor = resolution.Tool.Descriptor;
++            FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
+             ValidateArguments(descriptor, arguments);
+             Type commandType = ResolveType(descriptor.CommandTypeName);
+             object command = CreateInstanceOrThrow(commandType);
+@@ -146,6 +135,31 @@ public sealed class FrontComposerMcpCommandInvoker(
+                     throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
+                 }
+             }
++
++            if (arguments.TryGetValue(parameter.Name, out JsonElement supplied)
++                && supplied.ValueKind is not JsonValueKind.Null) {
++                ValidatePrimitiveShape(parameter, supplied);
++            }
++        }
++    }
++
++    private static void ValidatePrimitiveShape(McpParameterDescriptor parameter, JsonElement value) {
++        bool valid = parameter.JsonType switch {
++            "string" => value.ValueKind == JsonValueKind.String,
++            "number" => value.ValueKind == JsonValueKind.Number,
++            "integer" => value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out _),
++            "boolean" => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
++            _ => false,
++        };
++
++        if (!valid) {
++            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
++        }
++
++        if (parameter.EnumValues.Count > 0
++            && (value.ValueKind != JsonValueKind.String
++                || !parameter.EnumValues.Contains(value.GetString(), StringComparer.Ordinal))) {
++            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
+         }
+     }
+ 
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs
+new file mode 100644
+index 0000000..45615dd
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs
+@@ -0,0 +1,306 @@
++using System.Globalization;
++using System.Text;
++using System.Text.Json.Nodes;
++
++using Hexalith.FrontComposer.Contracts.Mcp;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Options;
++
++namespace Hexalith.FrontComposer.Mcp.Invocation;
++
++public sealed class FrontComposerMcpToolAdmissionService(
++    FrontComposerMcpDescriptorRegistry registry,
++    IFrontComposerMcpAgentContextAccessor agentContextAccessor,
++    IServiceProvider services,
++    IOptions<FrontComposerMcpOptions> options) {
++    private const int SuggestionThreshold = 75;
++
++    public async ValueTask<McpVisibleToolCatalog> BuildVisibleCatalogAsync(CancellationToken cancellationToken = default) {
++        FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
++        ValidateContext(context);
++
++        IFrontComposerMcpTenantToolGate tenantGate =
++            services.GetService<IFrontComposerMcpTenantToolGate>() ?? new AllowAllMcpTenantToolGate();
++        IFrontComposerMcpCommandPolicyGate? policyGate = services.GetService<IFrontComposerMcpCommandPolicyGate>();
++
++        List<McpVisibleToolCatalogEntry> visible = [];
++        int maxItems = Math.Max(0, options.Value.MaxVisibleToolListItems);
++        bool truncated = false;
++        foreach (McpCommandDescriptor descriptor in registry.Commands) {
++            cancellationToken.ThrowIfCancellationRequested();
++
++            if (!await IsTenantVisibleAsync(tenantGate, descriptor, context, cancellationToken).ConfigureAwait(false)
++                || !await IsPolicyVisibleAsync(policyGate, descriptor, context, cancellationToken).ConfigureAwait(false)
++                || ContainsContextSensitiveText(descriptor, context)) {
++                continue;
++            }
++
++            if (visible.Count >= maxItems) {
++                truncated = true;
++                continue;
++            }
++
++            string normalized = NormalizeForMatching(descriptor.ProtocolName, out bool unsupported);
++            if (unsupported || normalized.Length == 0) {
++                continue;
++            }
++
++            visible.Add(new McpVisibleToolCatalogEntry(
++                descriptor.ProtocolName,
++                SanitizeDisplayText(descriptor.Title, options.Value.MaxToolDisplayTextLength),
++                string.IsNullOrWhiteSpace(descriptor.Description)
++                    ? null
++                    : SanitizeDisplayText(descriptor.Description!, options.Value.MaxToolDisplayTextLength),
++                descriptor.BoundedContext,
++                BuildInputSummary(descriptor),
++                descriptor,
++                normalized));
++        }
++
++        return new McpVisibleToolCatalog(
++            McpToolVisibilityContext.FromAgentContext(context),
++            visible
++                .OrderBy(t => t.Name, StringComparer.Ordinal)
++                .ToArray(),
++            truncated);
++    }
++
++    public async ValueTask<McpToolResolutionResult> ResolveAsync(string? requestedName, CancellationToken cancellationToken = default) {
++        McpVisibleToolCatalog catalog = await BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
++        string sanitizedRequested = SanitizeToolName(requestedName, options.Value.MaxToolNameLength);
++        if (string.IsNullOrWhiteSpace(requestedName)) {
++            return McpToolResolutionResult.Reject(sanitizedRequested, null, catalog);
++        }
++
++        McpVisibleToolCatalogEntry? exact = catalog.Tools
++            .FirstOrDefault(t => string.Equals(t.Name, requestedName, StringComparison.Ordinal));
++        if (exact is not null) {
++            return McpToolResolutionResult.Accept(exact, catalog);
++        }
++
++        McpToolSuggestion? suggestion = FindSuggestion(requestedName, catalog.Tools);
++        return McpToolResolutionResult.Reject(sanitizedRequested, suggestion, catalog);
++    }
++
++    public static JsonObject BuildUnknownToolStructuredContent(McpToolResolutionResult resolution) {
++        ArgumentNullException.ThrowIfNull(resolution);
++
++        JsonArray visibleTools = [];
++        foreach (McpVisibleToolCatalogEntry tool in resolution.VisibleTools) {
++            visibleTools.Add(new JsonObject {
++                ["name"] = tool.Name,
++                ["title"] = tool.Title,
++                ["description"] = tool.Description,
++                ["inputSummary"] = tool.InputSummary,
++            });
++        }
++
++        JsonObject result = new() {
++            ["category"] = "unknown_tool",
++            ["requestedToolName"] = resolution.RequestedName,
++            ["suggestion"] = resolution.Suggestion?.Name,
++            ["visibleTools"] = visibleTools,
++            ["docsCode"] = "HFC-MCP-UNKNOWN-TOOL",
++        };
++
++        if (resolution.IsVisibleListTruncated) {
++            result["continuation"] = "visible-list-truncated";
++        }
++
++        return result;
++    }
++
++    private static void ValidateContext(FrontComposerMcpAgentContext context) {
++        if (string.IsNullOrWhiteSpace(context.TenantId)
++            || string.IsNullOrWhiteSpace(context.UserId)
++            || context.Principal.Identity is { IsAuthenticated: false }) {
++            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
++        }
++    }
++
++    private static async ValueTask<bool> IsTenantVisibleAsync(
++        IFrontComposerMcpTenantToolGate gate,
++        McpCommandDescriptor descriptor,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken) {
++        try {
++            return await gate.IsVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) {
++            throw;
++        }
++        catch {
++            return false;
++        }
++    }
++
++    private static async ValueTask<bool> IsPolicyVisibleAsync(
++        IFrontComposerMcpCommandPolicyGate? gate,
++        McpCommandDescriptor descriptor,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken) {
++        if (string.IsNullOrWhiteSpace(descriptor.AuthorizationPolicyName)) {
++            return true;
++        }
++
++        if (gate is null) {
++            return false;
++        }
++
++        try {
++            return await gate.EvaluateAsync(descriptor.AuthorizationPolicyName!, context, cancellationToken).ConfigureAwait(false);
++        }
++        catch (OperationCanceledException) {
++            throw;
++        }
++        catch {
++            return false;
++        }
++    }
++
++    private McpToolSuggestion? FindSuggestion(string requestedName, IReadOnlyList<McpVisibleToolCatalogEntry> visibleTools) {
++        string normalizedRequested = NormalizeForMatching(requestedName, out bool unsupported);
++        if (unsupported || normalizedRequested.Length == 0) {
++            return null;
++        }
++
++        return visibleTools
++            .Take(Math.Max(0, options.Value.MaxSuggestionCandidates))
++            .Select(t => new McpToolSuggestion(t.Name, Score(normalizedRequested, t.NormalizedName)))
++            .Where(s => s.Score >= SuggestionThreshold)
++            .OrderByDescending(s => s.Score)
++            .ThenBy(s => s.Name, StringComparer.Ordinal)
++            .FirstOrDefault();
++    }
++
++    private static int Score(string requested, string candidate) {
++        if (string.Equals(requested, candidate, StringComparison.Ordinal)) {
++            return 100;
++        }
++
++        if (candidate.StartsWith(requested, StringComparison.Ordinal)
++            || requested.StartsWith(candidate, StringComparison.Ordinal)) {
++            int min = Math.Min(requested.Length, candidate.Length);
++            int max = Math.Max(requested.Length, candidate.Length);
++            return 80 + (20 * min / max);
++        }
++
++        int distance = BoundedLevenshteinDistance(requested, candidate, Math.Max(4, Math.Max(requested.Length, candidate.Length) / 4));
++        if (distance < 0) {
++            return 0;
++        }
++
++        int longest = Math.Max(requested.Length, candidate.Length);
++        return Math.Max(0, 100 - (distance * 100 / longest));
++    }
++
++    private static int BoundedLevenshteinDistance(string left, string right, int maxDistance) {
++        if (Math.Abs(left.Length - right.Length) > maxDistance) {
++            return -1;
++        }
++
++        int[] previous = new int[right.Length + 1];
++        int[] current = new int[right.Length + 1];
++        for (int j = 0; j <= right.Length; j++) {
++            previous[j] = j;
++        }
++
++        for (int i = 1; i <= left.Length; i++) {
++            current[0] = i;
++            int rowMin = current[0];
++            for (int j = 1; j <= right.Length; j++) {
++                int cost = left[i - 1] == right[j - 1] ? 0 : 1;
++                current[j] = Math.Min(
++                    Math.Min(current[j - 1] + 1, previous[j] + 1),
++                    previous[j - 1] + cost);
++                rowMin = Math.Min(rowMin, current[j]);
++            }
++
++            if (rowMin > maxDistance) {
++                return -1;
++            }
++
++            (previous, current) = (current, previous);
++        }
++
++        return previous[right.Length] <= maxDistance ? previous[right.Length] : -1;
++    }
++
++    private static string NormalizeForMatching(string value, out bool unsupported) {
++        unsupported = false;
++        if (string.IsNullOrWhiteSpace(value)) {
++            return string.Empty;
++        }
++
++        string normalized = value.Trim().Normalize(NormalizationForm.FormKC);
++        StringBuilder sb = new(normalized.Length);
++        foreach (char ch in normalized) {
++            if (char.IsControl(ch) || ch > 127) {
++                unsupported = true;
++                continue;
++            }
++
++            if (char.IsLetterOrDigit(ch)) {
++                _ = sb.Append(char.ToLower(ch, CultureInfo.InvariantCulture));
++            }
++        }
++
++        return sb.ToString();
++    }
++
++    private static string SanitizeToolName(string? value, int maxLength) {
++        if (string.IsNullOrEmpty(value)) {
++            return string.Empty;
++        }
++
++        return SanitizeDisplayText(value, maxLength);
++    }
++
++    private static string SanitizeDisplayText(string value, int maxLength) {
++        if (string.IsNullOrEmpty(value)) {
++            return string.Empty;
++        }
++
++        int cap = Math.Max(0, maxLength);
++        StringBuilder sb = new(Math.Min(value.Length, cap));
++        foreach (char ch in value) {
++            if (sb.Length >= cap) {
++                break;
++            }
++
++            if (char.IsControl(ch)) {
++                _ = sb.Append("\\u").Append(((int)ch).ToString("X4", CultureInfo.InvariantCulture));
++                continue;
++            }
++
++            _ = sb.Append(ch > 127 ? '?' : ch);
++        }
++
++        return sb.ToString();
++    }
++
++    private static bool ContainsContextSensitiveText(McpCommandDescriptor descriptor, FrontComposerMcpAgentContext context) {
++        string[] sensitive = [context.TenantId, context.UserId];
++        foreach (string marker in sensitive.Where(s => !string.IsNullOrWhiteSpace(s))) {
++            if (Contains(descriptor.ProtocolName, marker)
++                || Contains(descriptor.Title, marker)
++                || Contains(descriptor.Description, marker)) {
++                return true;
++            }
++        }
++
++        return false;
++
++        static bool Contains(string? text, string marker)
++            => text?.IndexOf(marker, StringComparison.OrdinalIgnoreCase) >= 0;
++    }
++
++    private static string BuildInputSummary(McpCommandDescriptor descriptor) {
++        string[] parts = [.. descriptor.Parameters
++            .Where(p => !p.IsUnsupported)
++            .OrderBy(p => p.Name, StringComparer.Ordinal)
++            .Select(p => $"{p.Name}{(p.IsRequired ? string.Empty : "?")}: {p.JsonType}")];
++        return string.Join("; ", parts);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/McpToolResolutionResult.cs b/src/Hexalith.FrontComposer.Mcp/McpToolResolutionResult.cs
+new file mode 100644
+index 0000000..59822bd
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/McpToolResolutionResult.cs
+@@ -0,0 +1,33 @@
++namespace Hexalith.FrontComposer.Mcp;
++
++public sealed record McpToolResolutionResult(
++    bool Accepted,
++    FrontComposerMcpFailureCategory Category,
++    string RequestedName,
++    McpVisibleToolCatalogEntry? Tool,
++    McpToolSuggestion? Suggestion,
++    IReadOnlyList<McpVisibleToolCatalogEntry> VisibleTools,
++    bool IsVisibleListTruncated) {
++    public static McpToolResolutionResult Accept(McpVisibleToolCatalogEntry tool, McpVisibleToolCatalog catalog) {
++        ArgumentNullException.ThrowIfNull(tool);
++        ArgumentNullException.ThrowIfNull(catalog);
++
++        return new(true, FrontComposerMcpFailureCategory.None, tool.Name, tool, null, catalog.Tools, catalog.IsTruncated);
++    }
++
++    public static McpToolResolutionResult Reject(
++        string requestedName,
++        McpToolSuggestion? suggestion,
++        McpVisibleToolCatalog catalog) {
++        ArgumentNullException.ThrowIfNull(catalog);
++
++        return new(
++            false,
++            FrontComposerMcpFailureCategory.UnknownTool,
++            requestedName,
++            null,
++            suggestion,
++            catalog.Tools,
++            catalog.IsTruncated);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/McpToolSuggestion.cs b/src/Hexalith.FrontComposer.Mcp/McpToolSuggestion.cs
+new file mode 100644
+index 0000000..d26d2ef
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/McpToolSuggestion.cs
+@@ -0,0 +1,3 @@
++namespace Hexalith.FrontComposer.Mcp;
++
++public sealed record McpToolSuggestion(string Name, int Score);
+diff --git a/src/Hexalith.FrontComposer.Mcp/McpToolVisibilityContext.cs b/src/Hexalith.FrontComposer.Mcp/McpToolVisibilityContext.cs
+new file mode 100644
+index 0000000..4390966
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/McpToolVisibilityContext.cs
+@@ -0,0 +1,11 @@
++using System.Security.Claims;
++
++namespace Hexalith.FrontComposer.Mcp;
++
++public sealed record McpToolVisibilityContext(string TenantId, string UserId, ClaimsPrincipal Principal) {
++    public static McpToolVisibilityContext FromAgentContext(FrontComposerMcpAgentContext context) {
++        ArgumentNullException.ThrowIfNull(context);
++
++        return new(context.TenantId, context.UserId, context.Principal);
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/McpVisibleToolCatalog.cs b/src/Hexalith.FrontComposer.Mcp/McpVisibleToolCatalog.cs
+new file mode 100644
+index 0000000..7aef246
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/McpVisibleToolCatalog.cs
+@@ -0,0 +1,17 @@
++using Hexalith.FrontComposer.Contracts.Mcp;
++
++namespace Hexalith.FrontComposer.Mcp;
++
++public sealed record McpVisibleToolCatalog(
++    McpToolVisibilityContext Context,
++    IReadOnlyList<McpVisibleToolCatalogEntry> Tools,
++    bool IsTruncated);
++
++public sealed record McpVisibleToolCatalogEntry(
++    string Name,
++    string Title,
++    string? Description,
++    string BoundedContext,
++    string InputSummary,
++    McpCommandDescriptor Descriptor,
++    string NormalizedName);
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs
+index 2f99272..93ae7d3 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs
+@@ -159,6 +159,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<ICommandService>(service);
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+         var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+@@ -169,7 +170,7 @@ public sealed class CommandInvokerCoverageTests {
+             TestContext.Current.CancellationToken);
+ 
+         result.IsError.ShouldBeTrue();
+-        result.Category.ShouldBe(FrontComposerMcpFailureCategory.PolicyGateMissing);
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+         service.Dispatched.ShouldBeNull();
+     }
+ 
+@@ -180,6 +181,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<ICommandService>(service);
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingGate());
+         ServiceProvider provider = sc.BuildServiceProvider();
+@@ -191,7 +193,7 @@ public sealed class CommandInvokerCoverageTests {
+             TestContext.Current.CancellationToken);
+ 
+         result.IsError.ShouldBeTrue();
+-        result.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+         service.Dispatched.ShouldBeNull();
+     }
+ 
+@@ -202,6 +204,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<ICommandService>(service);
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(PolicyProtectedManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new AllowingGate());
+         ServiceProvider provider = sc.BuildServiceProvider();
+@@ -224,6 +227,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<ICommandService>(service);
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(LabelManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+         var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+@@ -249,6 +253,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<ICommandService>(service);
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(NoArgManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+         var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+@@ -271,6 +276,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<ICommandService>(service);
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(RecordManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+         var invoker = ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+@@ -316,6 +322,7 @@ public sealed class CommandInvokerCoverageTests {
+             configure?.Invoke(o);
+         });
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs
+index e0ce172..9a3e469 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs
+@@ -53,6 +53,7 @@ public sealed class CommandInvokerTests {
+         services.AddSingleton(commandService);
+         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
+         return services;
+     }
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs
+new file mode 100644
+index 0000000..07487d3
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs
+@@ -0,0 +1,346 @@
++using System.Security.Claims;
++using System.Diagnostics;
++using System.Text.Json;
++
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Mcp.Invocation;
++
++using Microsoft.Extensions.DependencyInjection;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
++
++public sealed class ToolAdmissionTests {
++    [Fact]
++    public async Task UnknownTool_ReturnsVisibleSuggestion_WithoutDispatch() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "billing-payinvoicecommand-execute",
++            null,
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
++        result.StructuredContent!["requestedToolName"]!.GetValue<string>().ShouldBe("billing-payinvoicecommand-execute");
++        result.StructuredContent!["suggestion"]!.GetValue<string>().ShouldBe("Billing.PayInvoiceCommand.Execute");
++        result.StructuredContent!["visibleTools"]!.AsArray().Select(v => v!["name"]!.GetValue<string>())
++            .ShouldBe(["Billing.PayInvoiceCommand.Execute", "Catalog.LabelProductCommand.Execute"]);
++        service.Dispatched.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task CaseVariantCanonicalToolName_IsSuggestedButNotExecuted() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "billing.payinvoicecommand.execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        result.StructuredContent!["suggestion"]!.GetValue<string>().ShouldBe("Billing.PayInvoiceCommand.Execute");
++        service.Dispatched.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task PolicyHiddenNearMatch_DoesNotInfluenceSuggestionOrVisibleList() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            out RecordingCommandService service,
++            services => services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingPolicyGate()));
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.RestrictedCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        string json = result.StructuredContent!.ToJsonString();
++        json.ShouldNotContain("RestrictedPolicy");
++        result.StructuredContent!["visibleTools"]!.AsArray().Select(v => v!["name"]!.GetValue<string>())
++            .ShouldNotContain("Billing.RestrictedCommand.Execute");
++        service.Dispatched.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task TenantHiddenNearMatch_DoesNotInfluenceSuggestionOrVisibleList() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            out RecordingCommandService service,
++            services => services.AddSingleton<IFrontComposerMcpTenantToolGate>(
++                new TenantBoundedContextGate(new Dictionary<string, string>(StringComparer.Ordinal) {
++                    ["Billing"] = "tenant-a",
++                    ["Catalog"] = "tenant-b",
++                })));
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "catalog-labelproductcommand-execute",
++            Args("""{"Label":"Widget"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        string json = result.StructuredContent!.ToJsonString();
++        json.ShouldContain("Billing.PayInvoiceCommand.Execute");
++        json.ShouldNotContain("Catalog.LabelProductCommand.Execute");
++        service.Dispatched.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task AllowedPolicy_ExecutesAfterAdmissionAndValidation() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            out RecordingCommandService service,
++            services => services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new AllowingPolicyGate()));
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.RestrictedCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeFalse();
++        service.Dispatched.ShouldBeOfType<RestrictedCommand>();
++    }
++
++    [Fact]
++    public async Task InvalidPrimitiveType_IsRejectedBeforeCommandConstruction() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(out RecordingCommandService service);
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":"not-a-number"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.ValidationFailed);
++        service.Dispatched.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task UnknownTool_SanitizesControlCharactersAndTruncatesVisibleList() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            out _,
++            configureOptions: o => o.MaxVisibleToolListItems = 1);
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Bad\u0001Name",
++            null,
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        string json = result.StructuredContent!.ToJsonString();
++        json.ShouldContain("Bad\\\\u0001Name");
++        json.ShouldContain("visible-list-truncated");
++        result.StructuredContent!["visibleTools"]!.AsArray().Count.ShouldBe(1);
++        json.ShouldNotContain("tenant-a");
++        json.ShouldNotContain("agent-a");
++    }
++
++    [Fact]
++    public async Task ContextSensitiveDescriptorText_IsHiddenFromVisibleCatalog() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            out RecordingCommandService service,
++            configureOptions: o => o.Manifests.Add(new McpManifest("frontcomposer.mcp.v1", [
++                new McpCommandDescriptor(
++                    "Billing.tenant-a.SecretCommand.Execute",
++                    typeof(PayInvoiceCommand).FullName!,
++                    "Billing",
++                    "tenant-a secret",
++                    "Do not show agent-a internals.",
++                    null,
++                    [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
++                    ["TenantId", "UserId", "MessageId"]),
++            ], [])));
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.tenant-a.SecretCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        string json = result.StructuredContent!.ToJsonString();
++        json.ShouldNotContain("tenant-a secret");
++        json.ShouldNotContain("agent-a internals");
++        service.Dispatched.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task FreshPolicySnapshot_PreventsReplayOfPreviouslyVisibleTool() {
++        TogglePolicyGate gate = new(allowed: true);
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            out RecordingCommandService service,
++            services => services.AddSingleton<IFrontComposerMcpCommandPolicyGate>(gate));
++
++        FrontComposerMcpResult first = await invoker.InvokeAsync(
++            "Billing.RestrictedCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        first.IsError.ShouldBeFalse();
++        gate.Allowed = false;
++
++        FrontComposerMcpResult replay = await invoker.InvokeAsync(
++            "Billing.RestrictedCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        replay.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        service.DispatchCount.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task UnknownToolRejection_P95_IsBelowOneHundredMilliseconds() {
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            out _,
++            configureOptions: o => o.Manifests.Add(LargeCatalogManifest(150)));
++
++        List<long> elapsed = [];
++        for (int i = 0; i < 30; i++) {
++            Stopwatch sw = Stopwatch.StartNew();
++            FrontComposerMcpResult result = await invoker.InvokeAsync(
++                $"Billing.Missing{i}.Execute",
++                null,
++                TestContext.Current.CancellationToken);
++            sw.Stop();
++            result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++            elapsed.Add(sw.ElapsedMilliseconds);
++        }
++
++        long p95 = elapsed.Order().ElementAt((int)Math.Floor((elapsed.Count - 1) * 0.95));
++        p95.ShouldBeLessThan(100);
++    }
++
++    private static FrontComposerMcpCommandInvoker BuildInvoker(
++        out RecordingCommandService service,
++        Action<IServiceCollection>? configureServices = null,
++        Action<FrontComposerMcpOptions>? configureOptions = null) {
++        service = new RecordingCommandService();
++        ServiceCollection sc = new();
++        sc.AddSingleton<ICommandService>(service);
++        sc.Configure<FrontComposerMcpOptions>(o => {
++            o.Manifests.Add(Manifest());
++            configureOptions?.Invoke(o);
++        });
++        sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
++        sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
++        configureServices?.Invoke(sc);
++        ServiceProvider provider = sc.BuildServiceProvider();
++        return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
++    }
++
++    private static Dictionary<string, JsonElement> Args(string json)
++        => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
++
++    private static McpManifest Manifest()
++        => new("frontcomposer.mcp.v1", [
++            new McpCommandDescriptor(
++                "Billing.PayInvoiceCommand.Execute",
++                typeof(PayInvoiceCommand).FullName!,
++                "Billing",
++                "Pay invoice",
++                "Pay invoice.",
++                null,
++                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
++                ["TenantId", "UserId", "MessageId"]),
++            new McpCommandDescriptor(
++                "Billing.RestrictedCommand.Execute",
++                typeof(RestrictedCommand).FullName!,
++                "Billing",
++                "Restricted command",
++                "Runs a restricted command.",
++                "RestrictedPolicy",
++                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
++                ["TenantId", "UserId", "MessageId"]),
++            new McpCommandDescriptor(
++                "Catalog.LabelProductCommand.Execute",
++                typeof(LabelProductCommand).FullName!,
++                "Catalog",
++                "Label product",
++                "Labels a product.",
++                null,
++                [new McpParameterDescriptor("Label", "String", "string", true, false, "Label", null, [], false)],
++                ["TenantId", "UserId", "MessageId"]),
++        ], []);
++
++    private static McpManifest LargeCatalogManifest(int count)
++        => new("frontcomposer.mcp.v1", [.. Enumerable.Range(0, count).Select(i => new McpCommandDescriptor(
++            $"Generated.Tool{i:D3}.Execute",
++            typeof(PayInvoiceCommand).FullName!,
++            "Generated",
++            $"Generated tool {i:D3}",
++            "Generated test tool.",
++            null,
++            [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
++            ["TenantId", "UserId", "MessageId"]))], []);
++
++    public sealed class PayInvoiceCommand {
++        public string MessageId { get; set; } = "";
++        public string TenantId { get; set; } = "";
++        public string UserId { get; set; } = "";
++        public int Amount { get; set; }
++    }
++
++    public sealed class RestrictedCommand {
++        public string MessageId { get; set; } = "";
++        public string TenantId { get; set; } = "";
++        public string UserId { get; set; } = "";
++        public int Amount { get; set; }
++    }
++
++    public sealed class LabelProductCommand {
++        public string MessageId { get; set; } = "";
++        public string TenantId { get; set; } = "";
++        public string UserId { get; set; } = "";
++        public string Label { get; set; } = "";
++    }
++
++    private sealed class RecordingCommandService : ICommandService {
++        public object? Dispatched { get; private set; }
++        public int DispatchCount { get; private set; }
++
++        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
++            where TCommand : class {
++            Dispatched = command;
++            DispatchCount++;
++            return Task.FromResult(new CommandResult("message-a", "Accepted", "corr-a"));
++        }
++    }
++
++    private sealed class StaticAccessor : IFrontComposerMcpAgentContextAccessor {
++        public FrontComposerMcpAgentContext GetContext()
++            => new("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity("test")));
++    }
++
++    private sealed class AllowingPolicyGate : IFrontComposerMcpCommandPolicyGate {
++        public ValueTask<bool> EvaluateAsync(string policyName, FrontComposerMcpAgentContext context, CancellationToken cancellationToken)
++            => ValueTask.FromResult(true);
++    }
++
++    private sealed class DenyingPolicyGate : IFrontComposerMcpCommandPolicyGate {
++        public ValueTask<bool> EvaluateAsync(string policyName, FrontComposerMcpAgentContext context, CancellationToken cancellationToken)
++            => ValueTask.FromResult(false);
++    }
++
++    private sealed class TogglePolicyGate(bool allowed) : IFrontComposerMcpCommandPolicyGate {
++        public bool Allowed { get; set; } = allowed;
++
++        public ValueTask<bool> EvaluateAsync(string policyName, FrontComposerMcpAgentContext context, CancellationToken cancellationToken)
++            => ValueTask.FromResult(Allowed);
++    }
++
++    private sealed class TenantBoundedContextGate(IReadOnlyDictionary<string, string> tenants) : IFrontComposerMcpTenantToolGate {
++        public ValueTask<bool> IsVisibleAsync(
++            McpCommandDescriptor descriptor,
++            FrontComposerMcpAgentContext context,
++            CancellationToken cancellationToken)
++            => ValueTask.FromResult(
++                tenants.TryGetValue(descriptor.BoundedContext, out string? tenant)
++                && string.Equals(tenant, context.TenantId, StringComparison.Ordinal));
++    }
++}

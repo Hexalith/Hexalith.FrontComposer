@@ -6,6 +6,8 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 using Shouldly;
@@ -53,6 +55,9 @@ public sealed class CommandInvokerTests {
         services.AddSingleton(commandService);
         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
         return services;
     }

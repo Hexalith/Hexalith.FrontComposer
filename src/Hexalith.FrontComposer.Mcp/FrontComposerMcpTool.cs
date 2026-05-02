@@ -38,9 +38,6 @@ internal sealed class FrontComposerMcpTool(McpCommandDescriptor descriptor) : Mc
         return BuildResult(result);
     }
 
-    private static CallToolResult BuildResult(FrontComposerMcpResult result) => new() {
-        IsError = result.IsError,
-        StructuredContent = result.StructuredContent?.Deserialize<JsonElement>(),
-        Content = [new TextContentBlock { Text = result.Text }],
-    };
+    private static CallToolResult BuildResult(FrontComposerMcpResult result)
+        => FrontComposerMcpProtocolMapper.ToCallToolResult(result);
 }

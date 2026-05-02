@@ -12,6 +12,7 @@ public sealed class HostingTests {
     public void AddFrontComposerMcp_RegistersManifestDescriptors() {
         McpManifest manifest = CreateManifest("billing.invoice.create");
         var services = new ServiceCollection();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
 
         services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
 
@@ -24,11 +25,23 @@ public sealed class HostingTests {
     [Fact]
     public void AddFrontComposerMcp_RejectsDuplicateCommandNames() {
         var services = new ServiceCollection();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
 
         Should.Throw<FrontComposerMcpException>(() => services.AddFrontComposerMcp(options => {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
             options.Manifests.Add(CreateManifest("BILLING.INVOICE.CREATE"));
         })).Category.ShouldBe(FrontComposerMcpFailureCategory.DuplicateDescriptor);
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_FailsClosed_WhenTenantGateNotRegistered() {
+        // D1: tenant isolation is fail-closed by contract; the host MUST register a real gate
+        // (or AllowAllMcpTenantToolGate explicitly for samples). Default registration was removed
+        // to honor the project's fail-closed memory rule.
+        var services = new ServiceCollection();
+
+        Should.Throw<InvalidOperationException>(() => services.AddFrontComposerMcp(options =>
+            options.Manifests.Add(CreateManifest("billing.invoice.create"))));
     }
 
     private static McpManifest CreateManifest(string protocolName)

@@ -12,8 +12,8 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Mcp.Invocation;
 
 public sealed class FrontComposerMcpCommandInvoker(
-    FrontComposerMcpDescriptorRegistry registry,
     IFrontComposerMcpAgentContextAccessor agentContextAccessor,
+    FrontComposerMcpToolAdmissionService admissionService,
     IServiceProvider services,
     IOptions<FrontComposerMcpOptions> options) {
     private static readonly HashSet<string> SpoofedDerivableNames = new(StringComparer.OrdinalIgnoreCase) {
@@ -28,27 +28,16 @@ public sealed class FrontComposerMcpCommandInvoker(
         string toolName,
         IReadOnlyDictionary<string, JsonElement>? arguments,
         CancellationToken cancellationToken = default) {
-        if (string.IsNullOrWhiteSpace(toolName) || !registry.TryGetCommand(toolName, out McpCommandDescriptor? descriptor)) {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.UnknownTool);
-        }
-
         try {
-            FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
-
-            // Story 7-3 policy fail-closed gate: if descriptor carries a policy name, a host-supplied
-            // gate must approve before dispatch. Hosts without a gate registered fail-closed.
-            if (!string.IsNullOrWhiteSpace(descriptor.AuthorizationPolicyName)) {
-                IFrontComposerMcpCommandPolicyGate? gate = services.GetService<IFrontComposerMcpCommandPolicyGate>();
-                if (gate is null) {
-                    return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.PolicyGateMissing);
-                }
-
-                bool approved = await gate.EvaluateAsync(descriptor.AuthorizationPolicyName!, context, cancellationToken).ConfigureAwait(false);
-                if (!approved) {
-                    return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.AuthFailed);
-                }
+            McpToolResolutionResult resolution = await admissionService.ResolveAsync(toolName, cancellationToken).ConfigureAwait(false);
+            if (!resolution.Accepted || resolution.Tool is null) {
+                return FrontComposerMcpResult.Failure(
+                    FrontComposerMcpFailureCategory.UnknownTool,
+                    FrontComposerMcpToolAdmissionService.BuildUnknownToolStructuredContent(resolution));
             }
 
+            McpCommandDescriptor descriptor = resolution.Tool.Descriptor;
+            FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
             ValidateArguments(descriptor, arguments);
             Type commandType = ResolveType(descriptor.CommandTypeName);
             object command = CreateInstanceOrThrow(commandType);
@@ -146,6 +135,31 @@ public sealed class FrontComposerMcpCommandInvoker(
                     throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
                 }
             }
+
+            if (arguments.TryGetValue(parameter.Name, out JsonElement supplied)
+                && supplied.ValueKind is not JsonValueKind.Null) {
+                ValidatePrimitiveShape(parameter, supplied);
+            }
+        }
+    }
+
+    private static void ValidatePrimitiveShape(McpParameterDescriptor parameter, JsonElement value) {
+        bool valid = parameter.JsonType switch {
+            "string" => value.ValueKind == JsonValueKind.String,
+            "number" => value.ValueKind == JsonValueKind.Number,
+            "integer" => value.ValueKind == JsonValueKind.Number && value.TryGetInt64(out _),
+            "boolean" => value.ValueKind is JsonValueKind.True or JsonValueKind.False,
+            _ => false,
+        };
+
+        if (!valid) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
+        }
+
+        if (parameter.EnumValues.Count > 0
+            && (value.ValueKind != JsonValueKind.String
+                || !parameter.EnumValues.Contains(value.GetString(), StringComparer.Ordinal))) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
         }
     }
 
@@ -197,7 +211,17 @@ public sealed class FrontComposerMcpCommandInvoker(
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
             }
 
-            object? typed = value.Deserialize(property.PropertyType);
+            object? typed;
+            try {
+                typed = value.Deserialize(property.PropertyType);
+            }
+            catch (JsonException) {
+                // Range/format failure on a primitive (e.g., Int64 supplied for an Int32 property,
+                // fractional value for an integer target) is a client-input error, not a downstream
+                // failure — surface as ValidationFailed so the agent can self-correct.
+                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
+            }
+
             property.SetValue(command, typed);
         }
     }

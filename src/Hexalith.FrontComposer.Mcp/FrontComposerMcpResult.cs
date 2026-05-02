@@ -14,4 +14,7 @@ public sealed record FrontComposerMcpResult(
 
     public static FrontComposerMcpResult Failure(FrontComposerMcpFailureCategory category)
         => new(true, category, GenericFailureText);
+
+    public static FrontComposerMcpResult Failure(FrontComposerMcpFailureCategory category, JsonObject structuredContent)
+        => new(true, category, GenericFailureText, structuredContent);
 }
