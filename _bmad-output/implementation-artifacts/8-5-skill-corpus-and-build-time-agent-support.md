@@ -48,6 +48,11 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
 | AC12 | MCP resources expose skill content | Authorization, tenant, and visibility context exists | Skill resources are framework reference material, not tenant-specific domain data; they must not include runtime tenant/user context, command payloads, policy decisions, hidden tool lists, or query results. |
 | AC13 | The official MCP SDK or resource APIs change | The skill resource adapter is updated | Corpus source files, validator contracts, and benchmark artifacts remain SDK-neutral; SDK DTO mapping stays inside `Hexalith.FrontComposer.Mcp`. |
 | AC14 | Story 8-5 completes | Stories 8-6, 9-5, 10-2, and 10-6 continue | Skill corpus resources can later be tied to schema fingerprints, Diataxis docs publication, agent E2E, and signed benchmark releases without redesigning the corpus format. |
+| AC15 | A shared docs source contains malformed, nested, overlapping, or unknown section markers | MCP skill extraction runs | Extraction fails closed with a diagnostic naming the source file and marker problem; no human-only narrative or unknown section text is exposed as an MCP resource. |
+| AC16 | Agent-generated code is structurally validated | The harness prepares to compile it | The validator first rejects unsafe project shape, including custom MSBuild targets, `Exec` tasks, unapproved `PackageReference`s, generated-file edits, local path imports, post-build hooks, and network/package-source mutations before any compile step runs. |
+| AC17 | Cached benchmark outputs exist | The corpus, framework version, prompt text, model/provider config, scorer version, or validator version changes | The harness refuses stale cache reuse and records a deterministic cache-miss reason instead of scoring output produced against a different contract. |
+| AC18 | Benchmark prompts, captured outputs, or diagnostics are persisted | Redaction runs | Persistence is blocked unless redaction status is `passed`; summaries may retain stable failure category and sanitized section/path tokens but not raw provider internals, prompt secrets, tenant/user data, local paths, or generated payload values. |
+| AC19 | Story 8-6 later adds schema fingerprints and negotiation | Story 8-5 artifacts are consumed | Story 8-5 provides stable corpus manifest/resource schema version fields and canonical IDs, but does not compute fingerprints, negotiate compatibility, or publish migration deltas in this story. |
 
 ---
 
@@ -57,19 +62,21 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
   - [ ] Add a source directory such as `docs/skills/frontcomposer/` or `_bmad-output/planning-artifacts/docs/skills/` only if it aligns with the existing docs pipeline; final packaged content must flow into `Hexalith.FrontComposer.Mcp`.
   - [ ] Define normative front matter for `id`, `title`, `version`, `audience`, `docfx`, `mcpResource`, `resourceUri`, `order`, `sourceDoc`, `narrative`, `references`, and optional `migrationOwner`; unknown required-shape fields or malformed values fail validation.
   - [ ] Use explicit section markers for human-only narrative vs MCP-exposed reference content; MCP extraction exposes only `agent-reference` sections and must fail validation on unknown marker names instead of relying on heading text heuristics.
+  - [ ] Reject nested, overlapping, unterminated, or duplicated section marker blocks before resource generation; extraction must fail closed rather than best-effort rendering mixed human/agent text.
   - [ ] Require stable resource IDs and URI slugs independent of localized titles or file paths.
-  - [ ] Include a corpus manifest listing every skill resource, source file, public API references, sample snippets, and owning story/follow-up.
+  - [ ] Include a corpus manifest listing every skill resource, source file, public API references, sample snippets, schema version, and owning story/follow-up; leave fingerprint fields for Story 8-6.
 
 - [ ] T2. Author the v1 skill corpus content set (AC2-AC4, AC6, AC11, AC12)
   - [ ] Create concise agent-facing Markdown for: package setup, domain attributes, bounded-context registration, command records, projection records, validation rules, policy attributes, tenant context rules, EventStore command/query flow, MCP tool/resource flow, two-call lifecycle, Markdown projection reading, and generated partial boundaries.
   - [ ] Include one complete "new bounded context" path with commands, events or command DTOs as appropriate, projections, validators, registration, and tests using the existing Counter/sample conventions.
   - [ ] Include "do not" rules: do not edit `.g.cs`, do not add MCP SDK references to Contracts/SourceTools, do not invent tenant/user inputs, do not call EventStore directly, do not fork label/humanizer rules, and do not hand-maintain tool schemas.
   - [ ] Keep content reference-oriented for MCP resources: no marketing prose, long narrative, provider-specific prompt hacks, hidden tenant names, customer examples, or runtime environment details.
+  - [ ] Keep examples and warnings inert: fenced code stays example-only, front matter cannot impersonate system/developer/tool roles, and content must not instruct agents to bypass authorization, validation, generated-code boundaries, or local team policy.
   - [ ] Support external team skill overlays by documenting precedence as "framework defaults first, team conventions second" while keeping framework validation independent of team files.
 
 - [ ] T3. Package and expose skill resources through MCP (AC1, AC2, AC12, AC13)
   - [ ] Embed or pack the approved skill Markdown and corpus manifest into `Hexalith.FrontComposer.Mcp` via central package configuration.
-  - [ ] Add a skill resource provider inside the MCP package with stable resource descriptors, URI templates only where necessary, `text/markdown` content, deterministic ordering by manifest `order` then canonical `frontcomposer://skills/...` URI, duplicate slug/case collision rejection, and bounded response size.
+  - [ ] Add a skill resource provider inside the MCP package with stable resource descriptors, URI templates only where necessary, `text/markdown` content, deterministic ordering by manifest `order` then canonical `frontcomposer://skills/...` URI, duplicate slug/case collision rejection, immutable package-resource snapshots, and bounded response size.
   - [ ] Map resource descriptors and content to official MCP C# SDK resource DTOs only at the adapter edge.
   - [ ] Apply Story 8-2 hidden/unknown-safe response categories for missing or stale skill resources, but do not apply tenant-specific command visibility to framework reference resources.
   - [ ] Add resource tests for listing, reading, deterministic ordering, content type, missing resource, truncation, cancellation, and SDK-boundary containment.
@@ -83,6 +90,7 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
 
 - [ ] T5. Implement the structural validator for agent-generated code (AC6, AC7, AC9, AC10)
   - [ ] Add a validation entry point in an appropriate test/tooling location such as `tests/Hexalith.FrontComposer.Mcp.Tests` or a future testing package seam; avoid creating a separate CLI unless required by Story 9-2.
+  - [ ] Run a static project-shape admission pass before compile: reject custom targets, `Exec` tasks, unapproved package references, external package sources, local path imports, post-build hooks, generated-file edits, and network-dependent restore behavior.
   - [ ] Validate generated bounded-context projects for required project files, command/projection attributes, validators, registration calls, SourceTools output, test fixtures, no forbidden package references, and no direct infrastructure coupling beyond approved packages.
   - [ ] Check generated code compiles with `TreatWarningsAsErrors=true` and does not modify generated artifacts.
   - [ ] Classify failures into stable machine-readable categories: compile, package-boundary, missing-registration, invalid-attribute, validation-shape, tenant-spoofing, generated-file-edit, test-scaffold, SourceTools-manifest, and unknown.
@@ -92,7 +100,9 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
   - [ ] Define the 20-prompt v1 corpus as versioned input files with ids, expected bounded-context shape, allowed variation notes, and scorer expectations.
   - [ ] Store model/provider configuration as data: model id, temperature 0, seed when supported, timeout, retry policy, and cache-key derivation.
   - [ ] Implement deterministic offline scoring over captured agent output; live model invocation may be stubbed or opt-in until Story 10-6 signs and publishes the benchmark lane.
+  - [ ] Derive cache keys from prompt id/text hash, framework version, corpus manifest version, model/provider config hash, scorer version, validator version, and redaction policy version; refuse reuse with an explicit cache-miss reason when any input changes.
   - [ ] Persist offline result artifacts with prompt id, framework version, corpus version, model/provider id, provider configuration hash, scorer/validator version, compile result, validator result, failure category, redaction status, generated artifact hash/path token, and sanitized diagnostics.
+  - [ ] Block persistence when redaction status is not `passed`; failed redaction becomes a stable benchmark failure category rather than a best-effort warning.
   - [ ] Record the benchmark target as `>=80%` one-shot pass for v1, with the PRD-documented option to set an honest lower shipping floor only through explicit release governance.
   - [ ] Ensure benchmark artifacts are append-only or content-addressed and do not commit secret prompt additions, provider responses containing sensitive user data, or local machine paths.
 
@@ -103,12 +113,12 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
   - [ ] Keep the guardrail scoped: it protects shipped skill corpus examples, not every doc prose paragraph or every post-v1 experimental sample.
 
 - [ ] T8. Tests and verification (AC1-AC14)
-  - [ ] Corpus manifest tests for stable IDs, duplicate slug detection, required front matter, invalid narrative/reference markers, missing migration owner, and deterministic ordering.
+  - [ ] Corpus manifest tests for stable IDs, duplicate slug detection, required front matter, invalid narrative/reference markers, nested/overlapping marker rejection, missing migration owner, and deterministic ordering.
   - [ ] MCP resource tests for list/read, `text/markdown`, reference-section extraction, bounded output, cancellation, missing resource, SDK DTO containment, and no tenant/user/runtime data leakage.
   - [ ] Packaging tests proving skill files are included in `Hexalith.FrontComposer.Mcp` package output and versioned with the package.
   - [ ] Roslyn/reference tests proving skill snippets compile or fail with clear diagnostics when public API names drift.
-  - [ ] Structural validator tests using one good generated bounded-context fixture plus targeted negative fixtures for generated-file edits, tenant spoofing, forbidden dependencies, missing registrations, missing validation tests, and invalid attributes.
-  - [ ] Benchmark harness tests for prompt metadata, cache-key determinism, scorer category stability, result artifact schema, pre-persistence redaction, and 20-prompt aggregation math.
+  - [ ] Structural validator tests using one good generated bounded-context fixture plus targeted negative fixtures for generated-file edits, tenant spoofing, forbidden dependencies, unsafe MSBuild targets, local path imports, package-source mutation, missing registrations, missing validation tests, and invalid attributes.
+  - [ ] Benchmark harness tests for prompt metadata, cache-key determinism, stale-cache refusal, scorer category stability, result artifact schema, redaction-blocked persistence, and 20-prompt aggregation math.
   - [ ] Migration-guide guardrail tests for skill-breaking API/reference changes with and without guide metadata.
   - [ ] Adopter-experience tests that diagnostics identify the exact source file/section for missing manifest entries, broken URIs, duplicate titles/slugs, and invalid migration-guide links without requiring repo-local absolute paths.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
@@ -207,6 +217,20 @@ These clarifications were applied by `/bmad-party-mode 8-5-skill-corpus-and-buil
 | Benchmark boundary | Story 8-5 proves cached/offline prompt enumeration, scoring, artifact schema, pinned config loading, and redaction. Live provider execution, signed benchmark releases, and CI gate policy remain Story 10-6. |
 | Test budget | Use a small golden corpus fixture plus targeted negative fixtures for high-risk structural failures instead of broad near-duplicate Markdown/prose cases. |
 
+### Advanced Elicitation Clarifications
+
+These clarifications were applied by `/bmad-advanced-elicitation 8-5-skill-corpus-and-build-time-agent-support` on 2026-05-02 and are part of the pre-dev contract.
+
+| Area | Clarification |
+| --- | --- |
+| Extraction fail-closed | MCP extraction rejects malformed, nested, overlapping, unterminated, or unknown section markers before rendering; no best-effort fallback may expose human-only narrative. |
+| Inert corpus content | Skill Markdown may teach agents, but front matter, examples, and warnings must not impersonate system/developer/tool roles or instruct bypassing generated-code, authorization, validation, or tenant-policy boundaries. |
+| Runtime resource source | The MCP provider reads immutable package-resource snapshots and manifest metadata; it must not read mutable repo/docs paths at runtime to satisfy a resource request. |
+| Unsafe generated projects | Generated-code validation runs a static admission pass before compile and rejects unsafe MSBuild/project shape, package-source mutation, local imports, custom targets, post-build hooks, and unapproved dependencies. |
+| Benchmark cache integrity | Prompt response caches are valid only for the exact prompt text, framework version, corpus manifest version, model/provider config, scorer, validator, and redaction policy. Stale cache reuse is a failure, not an optimization. |
+| Redaction gate | Benchmark result persistence requires redaction status `passed`; redaction failure becomes a stable result category with no raw payload or provider internals written. |
+| Story 8-6 boundary | Story 8-5 emits stable corpus IDs and manifest schema version metadata only. Fingerprint computation, compatibility negotiation, and migration delta publishing remain Story 8-6. |
+
 ### Scope Guardrails
 
 Do not implement these in Story 8-5:
@@ -270,6 +294,7 @@ Do not implement these in Story 8-5:
 
 - 2026-05-01: Story created via `/bmad-create-story 8-5-skill-corpus-and-build-time-agent-support` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-5-skill-corpus-and-build-time-agent-support; review;`. Applied corpus metadata schema, URI/order, section extraction, structural drift-check, validator diagnostic, offline benchmark artifact, and test-budget clarifications. Ready for advanced elicitation on a later run.
+- 2026-05-02: Advanced elicitation completed via `/bmad-advanced-elicitation 8-5-skill-corpus-and-build-time-agent-support`. Applied extraction fail-closed, inert content, immutable package-resource, unsafe generated-project admission, stale benchmark cache, redaction persistence, and Story 8-6 boundary hardening. Ready for development.
 
 ### Party-Mode Review
 
@@ -280,6 +305,18 @@ Do not implement these in Story 8-5:
 - **Findings summary:** The round found that the story direction is sound, but implementation needed sharper pre-dev contracts around front matter and section markers, deterministic MCP resource identity/order, structural drift inputs, generated-code diagnostic shape, offline benchmark artifact schema, and L06/L07 test-budget discipline.
 - **Changes applied:** Tightened T1, T3, T4, T5, T6, and T8; added Party-Mode Review Clarifications covering corpus metadata, URI identity, MCP extraction, drift checks, SDK-neutral diagnostics, benchmark boundaries, and fixture-focused test budgeting.
 - **Findings deferred:** Schema fingerprinting and manifest negotiation remain Story 8-6; full DocFX/site publication remains Story 9-5; IDE/client E2E remains Story 10-2; live provider execution, signed benchmark releases, and CI gate policy remain Story 10-6; team-specific overlays remain external and are not bundled framework defaults.
+- **Final recommendation:** ready-for-dev
+
+### Advanced Elicitation
+
+- **Date/time:** 2026-05-02T14:01:13+02:00
+- **Selected story key:** `8-5-skill-corpus-and-build-time-agent-support`
+- **Command/skill invocation used:** `/bmad-advanced-elicitation 8-5-skill-corpus-and-build-time-agent-support`
+- **Batch 1 method names:** Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; First Principles Analysis; Comparative Analysis Matrix
+- **Reshuffled Batch 2 method names:** Pre-mortem Analysis; Chaos Monkey Scenarios; Occam's Razor Application; Active Recall Testing; Hindsight Reflection
+- **Findings summary:** The elicitation found high-risk ambiguity around mixed human/agent Markdown extraction, mutable runtime docs reads, potentially unsafe agent-generated project files, benchmark cache poisoning, redaction as a best-effort warning, and premature ownership of Story 8-6 fingerprint/negotiation work.
+- **Changes applied:** Added AC15-AC19; hardened T1, T2, T3, T5, T6, and T8; added Advanced Elicitation Clarifications for fail-closed marker parsing, inert corpus content, immutable package snapshots, static admission before compile, exact cache-key inputs, mandatory redaction pass, and the Story 8-6 boundary.
+- **Findings deferred:** Schema fingerprint computation, compatibility negotiation, and migration delta diagnostics remain Story 8-6; full docs-site publication remains Story 9-5; live provider execution and signed benchmark release gates remain Story 10-6; external team overlay discovery remains post-v1 adopter tooling.
 - **Final recommendation:** ready-for-dev
 
 ### File List
