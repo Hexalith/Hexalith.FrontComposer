@@ -48,6 +48,9 @@ An adopter should keep defining projections once with FrontComposer attributes a
 | AC12 | MCP SDK resource DTOs or transport APIs change | Story 8-4 maps internal renderer results to SDK output | Internal Markdown renderer contracts and tests remain SDK-neutral; SDK DTO conversion stays inside `Hexalith.FrontComposer.Mcp`. |
 | AC13 | Accessibility/localization-sensitive labels and descriptions exist in SourceTools IR | Markdown output is produced | Human-readable text preserves existing labels/descriptions and localization keys where available, while MCP resource names, URIs, and protocol identifiers remain invariant technical contracts. |
 | AC14 | Story 8-4 completes | Later Epic 8 stories continue | Projection Markdown rendering is reusable by skill corpus resources, schema versioning, and agent E2E benchmarks without redesigning Story 8-1 descriptor or Story 8-3 lifecycle contracts. |
+| AC15 | Projection metadata, query rows, or cell values contain unstable ordering, missing labels, duplicate timestamps, unsupported strategies, or unsafe Markdown-like text | Markdown is rendered | The renderer follows the canonical contract in Dev Notes: stable heading levels, row/group/timeline ordering, fallback labels, formatting matrix, escaping rules, and unsupported-strategy behavior are fixed and covered by golden fixtures. |
+| AC16 | A projection read fails admission, visibility, freshness, bounds, query, timeout, or cancellation checks | The MCP adapter maps the result for an agent | The response uses the sanitized response taxonomy in Dev Notes, preserving hidden/unknown equivalence where required and never confirming resource existence, tenant membership, policy names, or hidden row counts. |
+| AC17 | Story 8-4 test work is implemented | Tests are planned and executed | P0/P1/P2 risk tiers, shared projection fixtures, constrained golden snapshots, and explicit redaction/Markdown-safety oracles keep test scope bounded while proving no-leak, deterministic, bounded, SDK-neutral behavior. |
 
 ---
 
@@ -55,6 +58,7 @@ An adopter should keep defining projections once with FrontComposer attributes a
 
 - [ ] T1. Define SDK-neutral Markdown projection renderer contracts (AC1-AC6, AC10, AC12, AC14)
   - [ ] Add package-owned models such as `McpProjectionRenderRequest`, `McpProjectionRenderResult`, `McpMarkdownProjectionDocument`, `McpMarkdownTable`, `McpMarkdownStatusSummary`, and `McpMarkdownTimeline`.
+  - [ ] Place pure renderer contracts under an SDK-neutral `Hexalith.FrontComposer.Mcp` rendering namespace/folder; keep MCP SDK DTOs, transport status mapping, and `TextResourceContents` conversion in the MCP adapter edge only.
   - [ ] Keep contracts SDK-neutral until the final MCP resource adapter edge; do not expose MCP SDK DTOs from Contracts, SourceTools, or generated descriptors.
   - [ ] Represent rendered output as `text/markdown` plus safe metadata: projection identifier, role, bounded context, row count category, truncation state, and correlation/request ID when already available.
   - [ ] Exclude tenant IDs, user IDs, claims, roles, API keys, tokens, raw query filters, hidden resource names, service instances, `ClaimsPrincipal`, and raw exception text from renderer contracts.
@@ -63,6 +67,7 @@ An adopter should keep defining projections once with FrontComposer attributes a
 - [ ] T2. Reuse SourceTools projection metadata as the render source of truth (AC1-AC6, AC10, AC13)
   - [ ] Consume the same projection descriptor/manifest data emitted by Story 8-1 rather than reflecting over arbitrary loaded assemblies at request time.
   - [ ] Use `RazorModel`, `ColumnModel`, `ProjectionRenderStrategy`, badge mappings, entity labels, plural labels, empty-state CTA command names, descriptions, `FieldDisplayFormat`, and SourceTools label resolution.
+  - [ ] Consume IR semantics only; do not depend on Shell component types, Fluent UI tokens, CSS classes, visual layout hints, or web-only component implementation details.
   - [ ] Preserve column order from the SourceTools transform: priority ordering and declaration-order tiebreaks where already defined by web rendering.
   - [ ] Reuse web label/humanizer behavior. Do not add an MCP-only label parser or hard-coded adapter copy when IR metadata exists.
   - [ ] Add manifest/descriptor tests proving Markdown projection metadata is single-source with web projection metadata and stable across repeated builds.
@@ -70,23 +75,24 @@ An adopter should keep defining projections once with FrontComposer attributes a
 - [ ] T3. Implement Default and ActionQueue Markdown tables (AC1, AC2, AC5-AC8, AC10, AC11)
   - [ ] Render Default projections as GitHub-flavored Markdown tables with deterministic headers, escaped cell values, and stable row ordering from the query result.
   - [ ] Render ActionQueue projections with the same table baseline plus pending-action context, safe CTA command labels, and semantic badge text where visible.
-  - [ ] Format null values as `-`, enums as human-readable labels, booleans as deterministic text, dates/times using configured agent-surface culture/invariant fallback, numeric values with deterministic precision, and unsupported values through existing placeholder semantics.
+  - [ ] Format null values, enums, booleans, dates/times, numbers, arrays/objects, unsupported values, and missing labels exactly as defined in the canonical formatting matrix.
   - [ ] Do not include Markdown links or command suggestions that would bypass Story 8-2 tenant/policy visibility.
-  - [ ] Add tests for Markdown escaping of pipes, backticks, brackets, HTML-like text, newlines, RTL/BOM/control characters, long words, and secret-looking payload fragments.
-  - [ ] Add bounds for max rows, max columns, max cell characters, max document characters, and truncation/paging hints.
+  - [ ] Add tests for Markdown escaping of pipes, backticks, brackets, Markdown links/images, HTML-like text, code fences, newlines, RTL/BOM/control characters, long words, and secret-looking payload fragments.
+  - [ ] Enforce default bounds: 100 rows, 20 columns, 256 characters per cell, 32,768 characters per Markdown document, and the exact truncation marker `Output truncated by FrontComposer agent rendering limits.`.
 
 - [ ] T4. Implement StatusOverview Markdown summaries (AC3, AC5, AC6, AC10, AC11)
   - [ ] Map status/badge fields to text-only semantic slots: `Neutral`, `Info`, `Success`, `Warning`, `Danger`, and `Accent`.
   - [ ] Render totals and grouped counts without colors, icons, CSS class names, or UI-only tokens.
   - [ ] Preserve source labels and status text from projection metadata; fall back deterministically when metadata is absent.
-  - [ ] Define behavior for missing badge mappings, unknown status values, unsupported fields, empty groups, and multiple status fields.
+  - [ ] Define behavior for missing badge mappings, duplicate badge mappings, unknown status values, unsupported fields, empty groups, multiple status fields, and max 12 rendered status groups.
   - [ ] Add approval tests covering stable grouping order, totals, zero-count suppression policy, and redaction.
 
 - [ ] T5. Implement Timeline Markdown rendering (AC4-AC6, AC10, AC11)
   - [ ] Reuse the web timeline field selection rule where available, including first suitable date/time field and deterministic tiebreaks.
   - [ ] Render chronological entries with timestamp, status label, primary title/description, and selected supporting fields.
-  - [ ] Define ascending vs. descending order explicitly and keep it stable across repeated reads.
+  - [ ] Render timelines newest-first by default; ties sort by stable query ordinal, then stable item key when available, and null timestamps render after timestamped entries.
   - [ ] Handle missing timestamps, duplicate timestamps, unsupported event fields, null descriptions, and large timelines with bounded output.
+  - [ ] Enforce a default max timeline entry count of 100, sharing the document and cell/field bounds from table rendering.
   - [ ] Add tests for timestamp ordering, duplicate ordering, badge text, multiline descriptions, truncation, and no raw tenant/user leakage.
 
 - [ ] T6. Wire MCP resource reads to the query and lifecycle seams (AC7-AC9, AC11, AC12)
@@ -95,11 +101,13 @@ An adopter should keep defining projections once with FrontComposer attributes a
   - [ ] Revalidate current auth, tenant, resource visibility, and policy scope for every read; previous list results, lifecycle terminal results, and copied URIs do not bypass visibility.
   - [ ] Preserve cancellation tokens, request IDs, ETag/cache discriminator rules, pagination, and degraded EventStore categories.
   - [ ] Map successful render output to MCP C# SDK resource contents inside the MCP package, using `text/markdown` text resources.
-  - [ ] Treat malformed resource URIs, stale descriptors, oversized query parameters, hidden resources, unauthorized resources, query failures, timeouts, and cancellations as deterministic sanitized categories.
+  - [ ] Treat malformed resource URIs, stale descriptors, oversized query parameters, hidden resources, unauthorized resources, query failures, timeouts, and cancellations as deterministic sanitized categories using the taxonomy in Dev Notes.
+  - [ ] Pass ETag/cache/degraded/read-your-writes classification into safe render metadata only; do not place opaque ETags, cache keys, tenant discriminators, lifecycle handles, or raw query filters into Markdown.
 
 - [ ] T7. Empty states, command suggestions, and scope discipline (AC7, AC9, AC13, AC14)
   - [ ] Return `No [entities] found.` using entity plural labels from SourceTools when the result set is empty.
   - [ ] Include safe command suggestions only from the Story 8-2 visible catalog, only when already represented by projection empty-state CTA metadata or explicit visible descriptors.
+  - [ ] Limit suggestions to empty-state-visible projections, max 5 suggestions, deterministic descriptor order, no Markdown links, and no suggestions for hidden/unknown/unauthorized/stale/malformed/oversized responses.
   - [ ] Never suggest hidden, unauthorized, cross-tenant, stale, destructive, or policy-filtered commands.
   - [ ] Do not implement fuzzy command suggestions, hallucination correction, or tenant-scoped listing rules here; consume Story 8-2 results only.
   - [ ] Keep rich natural-language advice bounded and deterministic. No per-agent memory, dynamic planning, or generated prose that depends on request history.
@@ -108,17 +116,18 @@ An adopter should keep defining projections once with FrontComposer attributes a
   - [ ] Redact JWT-like strings, API keys, client secrets, claims, role names, tenant IDs, user IDs, raw query filters, command payload fragments, provider internals, and exception text from Markdown, logs, and telemetry.
   - [ ] Add zero-side-effect tests proving hidden/unknown/malformed/unauthorized/stale resource reads do not query EventStore, mutate cache, relay tokens, update SignalR state, allocate renderer state, or emit sensitive telemetry.
   - [ ] Make descriptor registries, renderer lookup tables, response buffers, and render caches immutable after startup or bounded by explicit options.
-  - [ ] Add options for max projection rows, max cell length, max Markdown bytes/chars, max timeline entries, max status groups, and truncation behavior with range validation.
+  - [ ] Add options for max projection rows, max columns, max cell length, max Markdown bytes/chars, max timeline entries, max status groups, max suggestions, and truncation behavior with range validation and documented defaults.
   - [ ] Log sanitized outcome categories and duration buckets only; do not log rendered row payloads.
 
 - [ ] T9. Tests and verification (AC1-AC14)
-  - [ ] Markdown renderer unit tests for Default, ActionQueue, StatusOverview, and Timeline roles.
+  - [ ] Use the risk-based test scope below: P0 must pass before review; P1 should be covered unless shared seams make it redundant; P2 is bounded and may be deferred only with an owner.
+  - [ ] Markdown renderer unit tests for Default, ActionQueue, StatusOverview, and Timeline roles using one constrained golden fixture per role.
   - [ ] SourceTools parity tests for labels, descriptions, column ordering, badge mappings, entity labels, empty-state CTA metadata, field display formats, and unsupported placeholders.
   - [ ] MCP resource adapter tests for direct resources vs. resource templates, `text/markdown` content mapping, SDK boundary containment, and cancellation propagation.
   - [ ] Query integration tests covering two sample projections, tenant context injection, pagination, ETag/cache behavior, read-your-writes after Story 8-3 terminal confirmation, and degraded query outcomes.
   - [ ] Hidden/unknown/unauthorized/stale resource tests consuming Story 8-2 semantics and proving no query or render side effects.
   - [ ] Markdown safety tests for escaping, control characters, oversized rows, secret-looking values, raw exception text, tenant/user values, and deterministic truncation.
-  - [ ] Snapshot/golden tests proving stable Markdown for all supported projection roles across repeated runs.
+  - [ ] Snapshot/golden tests proving stable Markdown for supported projection roles across repeated runs; normalize timestamps/culture and avoid SDK-generated DTO snapshots.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
   - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Mcp.Tests`, `tests/Hexalith.FrontComposer.SourceTools.Tests`, and Shell/EventStore query tests only if shared query/render seams change.
 
@@ -147,11 +156,13 @@ An adopter should keep defining projections once with FrontComposer attributes a
 
 - Markdown rendering is a surface adapter over projection query results and SourceTools metadata, not a new projection model.
 - SourceTools/web metadata remains the source of truth for labels, ordering, role hints, badge mappings, nullability, and display intent.
+- MCP consumes IR semantics, not UI implementation details. Do not couple the renderer to Shell component classes, Fluent UI tokens, CSS classes, or web-only layout hints.
 - MCP resources return text resources with `text/markdown`; JSON remains an internal/query shape, not the public agent presentation in this story.
 - Every projection read revalidates current authentication, tenant context, resource visibility, and policy scope.
 - Read-your-writes belongs to Story 8-3 and Epic 5 query/reconciliation behavior. Story 8-4 renders the resulting projection read; it does not create a second lifecycle or polling subsystem.
 - Markdown is deterministic and bounded. No request-time unbounded caches, per-agent descriptor accumulation, or culture/tenant-specific manifest caches.
 - SDK volatility containment follows Story 8-1: official MCP C# SDK types stay at the `Hexalith.FrontComposer.Mcp` edge.
+- The adopter job is inspectable chat readability, not conversational interpretation. Do not add per-agent templates, per-agent configuration, LLM-authored prose, or a second hallucination-prevention layer.
 
 ### Proposed Projection Read Flow
 
@@ -163,6 +174,79 @@ An adopter should keep defining projections once with FrontComposer attributes a
 6. Markdown renderer combines query results with SourceTools projection metadata.
 7. MCP package maps the SDK-neutral render result to `text/markdown` resource contents.
 8. Bounded sanitized errors are returned for unknown, hidden, stale, unauthorized, malformed, oversized, timeout, cancellation, and downstream failures.
+
+### Party-Mode Review Clarifications
+
+These clarifications were applied by `/bmad-party-mode 8-4-projection-rendering-for-agents; review;` on 2026-05-02 and are part of the pre-dev contract.
+
+#### Canonical Markdown Renderer Contract
+
+| Area | Contract |
+| --- | --- |
+| Contract ownership | Pure renderer request/result/document models live under an SDK-neutral MCP rendering namespace/folder. MCP SDK resource DTO conversion remains at the MCP adapter edge. Do not move MCP SDK types into Contracts, SourceTools, or generated descriptors. |
+| Heading levels | Projection documents use one `## {Projection label}` heading. Empty-state, truncation, or degraded notices render as bounded paragraphs or bullets under that heading, not extra arbitrary heading levels. |
+| Table columns | Default/ActionQueue table columns follow SourceTools transformed column order: priority order first, declaration-order tie-break second, unsupported-placeholder columns retained where Story 4-6 semantics require visibility. Columns beyond the configured maximum are omitted only after appending the truncation notice. |
+| Table rows | Table rows preserve the deterministic query-result order returned by the existing query seam. Story 8-4 does not invent an alternate sort for tables; if the adapter requests default sorting, it must do so before rendering and cover that with query tests. |
+| Status grouping | StatusOverview groups render `Total` first, then semantic slots in severity order `Danger`, `Warning`, `Success`, `Info`, `Accent`, `Neutral`, then unknown labels sorted ordinally by sanitized label. Zero-count groups are suppressed unless all groups are zero, in which case the empty-state path applies. |
+| Timeline ordering | Timeline entries render newest-first. Timestamp ties sort by query ordinal, then by stable item key when one exists. Null timestamps render after timestamped entries in query ordinal order. |
+| Badge text | Badge output uses `Slot: Label` when a mapping exists. Missing mappings render the sanitized value label without inventing a slot. Duplicate mappings resolve by SourceTools order, first mapping wins, and tests pin the behavior. |
+| Unsupported strategies | Default, ActionQueue, StatusOverview, and Timeline are supported. DetailRecord may use the Default table fallback only when the descriptor exposes tabular fields safely. Dashboard and unknown strategies return the sanitized unsupported-render response and do not query. |
+| Suggestions | Suggestions appear only for visible empty-state projection reads, only from already-visible Story 8-2 catalog entries explicitly referenced by empty-state CTA metadata or visible descriptors, max 5, stable descriptor order, no Markdown links. |
+| Future reuse | Keep extension points minimal. Skill corpus and schema-version stories may reference this renderer, but Story 8-4 must not redesign non-MCP transports or multi-surface renderer abstractions. |
+
+#### Canonical Formatting Matrix
+
+| Input | Markdown output |
+| --- | --- |
+| `null` / missing optional value | `-` |
+| Empty string | `-` unless SourceTools metadata distinguishes meaningful empty text; then render escaped empty text consistently in golden tests. |
+| Enum/member value | SourceTools/humanized label when available; otherwise invariant member name split the same way as web labels. |
+| Boolean | `Yes` / `No` using invariant English for protocol-stable agent output. |
+| Date/time | `yyyy-MM-dd HH:mm:ss 'UTC'` after converting to UTC when offset-aware; unspecified/local values render with the configured agent-surface culture fallback pinned in tests. |
+| Numeric | Invariant-culture formatting with deterministic precision from metadata; no tenant/user culture thousands separators unless explicitly supplied as safe display metadata. |
+| Relative-time hint | Render the absolute deterministic timestamp; relative prose remains a web/UI affordance unless SourceTools already provides safe static text. |
+| Arrays/objects | Unsupported placeholder text unless an existing SourceTools display formatter provides a scalar safe value. Do not serialize raw JSON into Markdown cells. |
+| Unsupported field | Existing placeholder semantics from Story 4-6, escaped as Markdown text. |
+| Missing label | SourceTools fallback label, then property name humanized invariantly, then sanitized technical field name as last resort. |
+| Untrusted text | Escape Markdown table pipes, brackets, images/links, HTML-like text, backticks/code fences, control characters, RTL/BOM, and newlines into plain text. |
+
+#### Default Bounds And Truncation
+
+| Option | Default | Notes |
+| --- | --- | --- |
+| `MaxProjectionRows` | 100 | Applies to Default/ActionQueue tables. |
+| `MaxProjectionColumns` | 20 | Applies before document character bound. |
+| `MaxCellCharacters` | 256 | Applies after sanitization; long words are truncated deterministically. |
+| `MaxMarkdownCharacters` | 32768 | Whole document bound, including heading and notices. |
+| `MaxTimelineEntries` | 100 | Timeline-specific row bound. |
+| `MaxStatusGroups` | 12 | StatusOverview-specific group bound. |
+| `MaxEmptyStateSuggestions` | 5 | Empty-state-only suggestions. |
+| Truncation marker | `Output truncated by FrontComposer agent rendering limits.` | Marker is sanitized, stable, and must not reveal hidden row counts or tenant/resource existence. |
+
+All options require range validation. Truncation does not change ETag/read-your-writes semantics; those belong to query metadata and must not be recomputed from Markdown length.
+
+#### Sanitized Response Taxonomy
+
+| Category | Agent-visible behavior | Side effects allowed |
+| --- | --- | --- |
+| Hidden, unknown, unauthorized, policy-filtered, cross-tenant | Same public response shape and text: `Projection is not available.` No suggestions, no resource name echo, no hidden existence distinction. | No query, no cache mutation, no SignalR/lifecycle mutation, sanitized telemetry only. |
+| Malformed URI or invalid query parameter | `Projection request is invalid.` Echo only bounded sanitized parameter category, never raw value. | No query or render allocation beyond validation. |
+| Oversized request | `Projection request exceeds FrontComposer agent rendering limits.` | No query when size can be rejected before query; otherwise discard payload and log sanitized category only. |
+| Stale descriptor or catalog epoch mismatch | `Projection descriptor is stale. Refresh available resources and retry.` | No query; Story 8-2 list replay rules remain authoritative. |
+| Unsupported render strategy | `Projection rendering is not available for this resource.` | No query when strategy is known before query; sanitized telemetry only. |
+| Query timeout, cancellation, downstream failure | `Projection is temporarily unavailable.` Include only sanitized degraded/failure category when already safe. | Existing query seam side effects only; no renderer cache mutation or raw exception text. |
+| Empty visible result | `No [entities] found.` using safe plural label, with optional safe suggestions under the suggestion contract. | Query already occurred; no command invocation. |
+| Degraded but successful visible result | Render Markdown plus a bounded notice such as `Projection data may be stale.` when the query seam provides a safe category. | No raw ETags, cache keys, tenant discriminators, lifecycle handles, or query filters in Markdown. |
+
+#### Risk-Based Test Scope
+
+| Priority | Required coverage |
+| --- | --- |
+| P0 | No-leak hidden/unknown/unauthorized/cross-tenant equivalence; zero-side-effect admission failures; deterministic Default/ActionQueue/StatusOverview/Timeline golden fixtures; bounds/truncation; SDK-neutral conversion; read-your-writes query handoff; Markdown injection escaping for labels, values, descriptions, badge text, suggestions, and timeline text. |
+| P1 | SourceTools parity for labels/order/badges/descriptions/empty-state metadata; localization fallback; stale descriptor behavior; degraded query categories; badge duplicate/missing behavior; unsupported strategy behavior. |
+| P2 | Broader formatting permutations, additional localized snapshots, large matrix combinations, and non-v1 renderer demos. Defer only with owner Story 10-2 or Story 10-6 when needed. |
+
+Shared fixtures should be reused across renderer, adapter, and integration tests: agent with role, agent without role, hidden source, unknown metadata, empty projection, large bounded projection, localized labels, Markdown-injection values, degraded query result, and post-terminal-command projection read. Golden snapshots are limited to minimal normalized Markdown documents, not SDK DTOs, live timestamps, dictionary enumeration, or localized strings without pinned culture.
 
 ### Binding Decisions
 
@@ -236,7 +320,7 @@ Do not implement these in Story 8-4:
 - Command lifecycle polling, terminal-state guarantee, or idempotent command semantics. Owner: Story 8-3.
 - Versioned skill corpus resources or agent code-generation instructions. Owner: Story 8-5.
 - Schema fingerprints, migration delta diagnostics, client/server version negotiation, or full multi-surface renderer abstraction redesign. Owner: Story 8-6.
-- New projection role attributes, new badge slots, custom per-agent templates, or dynamic LLM-authored Markdown templates. Owner: post-v1 or explicit future story.
+- New projection role attributes, new badge slots, custom per-agent templates, or dynamic LLM-authored Markdown templates. Owner: Story 8-6 for renderer abstraction/versioning, or a later numbered customization story created before implementation.
 - Renderer-specific demos for Claude Code, Codex, Cursor, Mistral, or native chat matrix. Owner: Story 10-2.
 - New command policy language, policy UI, or backend authorization engine. Owner: Story 7-3 or later authorization follow-up.
 
@@ -249,7 +333,7 @@ Do not implement these in Story 8-4:
 | Deep agent E2E across command, lifecycle, and projection rendering. | Story 10-2 |
 | Signed LLM benchmark releases and agent projection-read quality gates. | Story 10-6 |
 | Full five-renderer chat matrix demos. | Story 10-2 |
-| Custom adopter Markdown templates for agents. | Post-v1 customization backlog |
+| Custom adopter Markdown templates for agents. | Story 8-6 or a later numbered customization story created before implementation |
 
 ---
 
@@ -291,6 +375,18 @@ Do not implement these in Story 8-4:
 ### Completion Notes List
 
 - 2026-05-01: Story created via `/bmad-create-story 8-4-projection-rendering-for-agents` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-4-projection-rendering-for-agents; review;`. Applied renderer contract, response taxonomy, bounds, formatting, suggestion, and test-scope hardening. Ready for advanced elicitation on a later run.
+
+### Party-Mode Review
+
+- **Date/time:** 2026-05-02T08:57:21+02:00
+- **Selected story key:** `8-4-projection-rendering-for-agents`
+- **Command/skill invocation used:** `/bmad-party-mode 8-4-projection-rendering-for-agents; review;`
+- **Participating BMAD agents:** Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- **Findings summary:** The review found the story product shape valuable but under-specified for development: deterministic Markdown ordering, sanitized failure behavior, exact bounds, formatting rules, safe suggestion limits, renderer ownership, unsupported-strategy fallback, read-your-writes metadata handling, and risk-ranked test oracles needed to be pinned before implementation.
+- **Changes applied:** Added AC15-AC17; clarified SDK-neutral renderer ownership; hardened T1-T9 with IR-only reuse, exact bounds, Markdown injection coverage, status/timeline ordering, safe suggestion limits, ETag/read-your-writes metadata handling, sanitized response categories, risk-based test tiers, fixture reuse, and constrained golden snapshots; added Party-Mode Review Clarifications covering the canonical renderer contract, formatting matrix, default bounds, response taxonomy, and P0/P1/P2 test scope.
+- **Findings deferred:** Fuzzy/semantic suggestions remain Story 8-2; lifecycle polling and idempotent command semantics remain Story 8-3; skill corpus resources remain Story 8-5; schema fingerprints, version negotiation, multi-surface renderer abstraction, and custom agent Markdown templates remain Story 8-6; deep agent E2E and chat-matrix demos remain Story 10-2; signed benchmarks remain Story 10-6; new authorization policy language remains Story 7-3 or a later numbered authorization follow-up.
+- **Final recommendation:** ready-for-dev
 
 ### File List
 
