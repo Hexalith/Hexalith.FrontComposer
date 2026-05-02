@@ -90,3 +90,4 @@
 2026-05-02T14:01:13+02:00	advanced-elicitation	8-5-skill-corpus-and-build-time-agent-support	ok	applied extraction, unsafe-project, stale-cache, redaction, and 8-6 boundary hardening
 2026-05-02T14:52:53+02:00	party-mode-review	8-6-schema-versioning-and-multi-surface-abstraction	ok	applied canonical JSON, package ownership, negotiation precedence, and fixture hardening
 2026-05-02T18:28:47+02:00	create-story	9-1-build-time-drift-detection	ok	created build-time drift detection story and marked ready-for-dev
+2026-05-02T18:52:00+02:00	create-story	9-2-cli-inspection-and-migration-tools	ok	created CLI inspection and migration tooling story and marked ready-for-dev
