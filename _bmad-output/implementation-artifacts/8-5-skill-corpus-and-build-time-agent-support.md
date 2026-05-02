@@ -55,8 +55,8 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
 
 - [ ] T1. Define the skill corpus source layout and metadata contract (AC1, AC3, AC4, AC8, AC14)
   - [ ] Add a source directory such as `docs/skills/frontcomposer/` or `_bmad-output/planning-artifacts/docs/skills/` only if it aligns with the existing docs pipeline; final packaged content must flow into `Hexalith.FrontComposer.Mcp`.
-  - [ ] Define front matter for `id`, `title`, `version`, `audience`, `docfx`, `mcpResource`, `narrative`, `references`, and optional `migrationOwner`.
-  - [ ] Use explicit section markers for human-only narrative vs MCP-exposed reference content; do not rely on heading text heuristics alone.
+  - [ ] Define normative front matter for `id`, `title`, `version`, `audience`, `docfx`, `mcpResource`, `resourceUri`, `order`, `sourceDoc`, `narrative`, `references`, and optional `migrationOwner`; unknown required-shape fields or malformed values fail validation.
+  - [ ] Use explicit section markers for human-only narrative vs MCP-exposed reference content; MCP extraction exposes only `agent-reference` sections and must fail validation on unknown marker names instead of relying on heading text heuristics.
   - [ ] Require stable resource IDs and URI slugs independent of localized titles or file paths.
   - [ ] Include a corpus manifest listing every skill resource, source file, public API references, sample snippets, and owning story/follow-up.
 
@@ -69,7 +69,7 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
 
 - [ ] T3. Package and expose skill resources through MCP (AC1, AC2, AC12, AC13)
   - [ ] Embed or pack the approved skill Markdown and corpus manifest into `Hexalith.FrontComposer.Mcp` via central package configuration.
-  - [ ] Add a skill resource provider inside the MCP package with stable resource descriptors, URI templates only where necessary, `text/markdown` content, deterministic ordering, and bounded response size.
+  - [ ] Add a skill resource provider inside the MCP package with stable resource descriptors, URI templates only where necessary, `text/markdown` content, deterministic ordering by manifest `order` then canonical `frontcomposer://skills/...` URI, duplicate slug/case collision rejection, and bounded response size.
   - [ ] Map resource descriptors and content to official MCP C# SDK resource DTOs only at the adapter edge.
   - [ ] Apply Story 8-2 hidden/unknown-safe response categories for missing or stale skill resources, but do not apply tenant-specific command visibility to framework reference resources.
   - [ ] Add resource tests for listing, reading, deterministic ordering, content type, missing resource, truncation, cancellation, and SDK-boundary containment.
@@ -77,7 +77,7 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
 - [ ] T4. Add static drift checks for corpus references and examples (AC4, AC5, AC8)
   - [ ] Build a validator that extracts C# fenced snippets and declared API references from the skill corpus manifest.
   - [ ] Compile snippets against the current solution/package references where feasible; otherwise validate symbol references via Roslyn against `Hexalith.FrontComposer.Contracts`, `SourceTools`, `Shell`, and `Mcp`.
-  - [ ] Verify referenced attribute names, namespaces, enum members, generated partial type names, package names, resource URI prefixes, and command/projection conventions still exist.
+  - [ ] Verify referenced attribute names, namespaces, enum members, generated partial type names, package names, package content paths, sample project paths, resource URI prefixes, SourceTools references, and command/projection conventions still exist.
   - [ ] Fail or emit an explicit diagnostic when any shipped skill example no longer compiles or references a removed convention.
   - [ ] Detect whether a migration guide link is present for each breaking corpus change and block release packaging when missing.
 
@@ -85,13 +85,14 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
   - [ ] Add a validation entry point in an appropriate test/tooling location such as `tests/Hexalith.FrontComposer.Mcp.Tests` or a future testing package seam; avoid creating a separate CLI unless required by Story 9-2.
   - [ ] Validate generated bounded-context projects for required project files, command/projection attributes, validators, registration calls, SourceTools output, test fixtures, no forbidden package references, and no direct infrastructure coupling beyond approved packages.
   - [ ] Check generated code compiles with `TreatWarningsAsErrors=true` and does not modify generated artifacts.
-  - [ ] Classify failures into stable categories: compile, package-boundary, missing-registration, invalid-attribute, validation-shape, tenant-spoofing, generated-file-edit, test-scaffold, SourceTools-manifest, and unknown.
-  - [ ] Redact generated payload values and local paths from benchmark summaries while keeping enough file/diagnostic context for maintainers.
+  - [ ] Classify failures into stable machine-readable categories: compile, package-boundary, missing-registration, invalid-attribute, validation-shape, tenant-spoofing, generated-file-edit, test-scaffold, SourceTools-manifest, and unknown.
+  - [ ] Redact generated payload values and local paths before benchmark summaries or result artifacts are persisted while keeping enough file/section/diagnostic context for maintainers.
 
 - [ ] T6. Scaffold the v1 benchmark harness without taking over Story 10-6 (AC6, AC9, AC10, AC14)
   - [ ] Define the 20-prompt v1 corpus as versioned input files with ids, expected bounded-context shape, allowed variation notes, and scorer expectations.
   - [ ] Store model/provider configuration as data: model id, temperature 0, seed when supported, timeout, retry policy, and cache-key derivation.
   - [ ] Implement deterministic offline scoring over captured agent output; live model invocation may be stubbed or opt-in until Story 10-6 signs and publishes the benchmark lane.
+  - [ ] Persist offline result artifacts with prompt id, framework version, corpus version, model/provider id, provider configuration hash, scorer/validator version, compile result, validator result, failure category, redaction status, generated artifact hash/path token, and sanitized diagnostics.
   - [ ] Record the benchmark target as `>=80%` one-shot pass for v1, with the PRD-documented option to set an honest lower shipping floor only through explicit release governance.
   - [ ] Ensure benchmark artifacts are append-only or content-addressed and do not commit secret prompt additions, provider responses containing sensitive user data, or local machine paths.
 
@@ -103,12 +104,13 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
 
 - [ ] T8. Tests and verification (AC1-AC14)
   - [ ] Corpus manifest tests for stable IDs, duplicate slug detection, required front matter, invalid narrative/reference markers, missing migration owner, and deterministic ordering.
-  - [ ] MCP resource tests for list/read, `text/markdown`, bounded output, cancellation, missing resource, SDK DTO containment, and no tenant/user/runtime data leakage.
+  - [ ] MCP resource tests for list/read, `text/markdown`, reference-section extraction, bounded output, cancellation, missing resource, SDK DTO containment, and no tenant/user/runtime data leakage.
   - [ ] Packaging tests proving skill files are included in `Hexalith.FrontComposer.Mcp` package output and versioned with the package.
   - [ ] Roslyn/reference tests proving skill snippets compile or fail with clear diagnostics when public API names drift.
-  - [ ] Structural validator tests using good and bad generated bounded-context fixtures.
-  - [ ] Benchmark harness tests for prompt metadata, cache-key determinism, scorer category stability, redaction, and 20-prompt aggregation math.
+  - [ ] Structural validator tests using one good generated bounded-context fixture plus targeted negative fixtures for generated-file edits, tenant spoofing, forbidden dependencies, missing registrations, missing validation tests, and invalid attributes.
+  - [ ] Benchmark harness tests for prompt metadata, cache-key determinism, scorer category stability, result artifact schema, pre-persistence redaction, and 20-prompt aggregation math.
   - [ ] Migration-guide guardrail tests for skill-breaking API/reference changes with and without guide metadata.
+  - [ ] Adopter-experience tests that diagnostics identify the exact source file/section for missing manifest entries, broken URIs, duplicate titles/slugs, and invalid migration-guide links without requiring repo-local absolute paths.
   - [ ] Regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
   - [ ] Targeted tests: `tests/Hexalith.FrontComposer.Mcp.Tests`, `tests/Hexalith.FrontComposer.SourceTools.Tests`, and packaging tests; Story 10-6 owns live multi-agent/provider benchmark gates.
 
@@ -191,6 +193,20 @@ The concrete file layout can differ, but the resource IDs must be stable and tes
 - The official MCP "Build with Agent Skills" guidance describes skills as portable instruction sets with `SKILL.md` plus supporting references. FrontComposer's corpus can mirror that shape internally while exposing it through MCP resources.
 - The MCP C# SDK repository identifies `ModelContextProtocol.AspNetCore` as the HTTP-server package and latest release `v1.2.0` on 2026-03-27. Keep SDK usage behind `.Mcp` adapter tests.
 
+### Party-Mode Review Clarifications
+
+These clarifications were applied by `/bmad-party-mode 8-5-skill-corpus-and-build-time-agent-support; review;` on 2026-05-02 and are part of the pre-dev contract.
+
+| Area | Clarification |
+| --- | --- |
+| Corpus metadata | Front matter, manifest fields, and section marker names are normative contracts. Unknown or malformed extraction-critical values fail validation so docs, MCP resources, and packaging do not invent divergent interpretations. |
+| Resource identity | Canonical `frontcomposer://skills/...` URIs are lowercase, stable, independent of titles/file paths, duplicate-checked case-insensitively, and ordered by manifest `order` then URI. Corpus version stays in metadata; schema negotiation is deferred to Story 8-6. |
+| MCP extraction | MCP resources expose only marked `agent-reference` sections. Human narrative can share the source file, but narrative must not leak into resource payloads. |
+| Drift checks | Build-time drift detection is structural: snippets, declared symbols, generated partial expectations, package content paths, sample project paths, SourceTools references, and migration-guide links. It is not a prose-quality linter. |
+| Validator diagnostics | Generated-code validator output is SDK-neutral and machine-readable. Diagnostics include stable category, source file/section where applicable, sanitized path tokens, and enough context for maintainers without persisting secrets or local paths. |
+| Benchmark boundary | Story 8-5 proves cached/offline prompt enumeration, scoring, artifact schema, pinned config loading, and redaction. Live provider execution, signed benchmark releases, and CI gate policy remain Story 10-6. |
+| Test budget | Use a small golden corpus fixture plus targeted negative fixtures for high-risk structural failures instead of broad near-duplicate Markdown/prose cases. |
+
 ### Scope Guardrails
 
 Do not implement these in Story 8-5:
@@ -253,6 +269,18 @@ Do not implement these in Story 8-5:
 ### Completion Notes List
 
 - 2026-05-01: Story created via `/bmad-create-story 8-5-skill-corpus-and-build-time-agent-support` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-5-skill-corpus-and-build-time-agent-support; review;`. Applied corpus metadata schema, URI/order, section extraction, structural drift-check, validator diagnostic, offline benchmark artifact, and test-budget clarifications. Ready for advanced elicitation on a later run.
+
+### Party-Mode Review
+
+- **Date/time:** 2026-05-02T11:28:32+02:00
+- **Selected story key:** `8-5-skill-corpus-and-build-time-agent-support`
+- **Command/skill invocation used:** `/bmad-party-mode 8-5-skill-corpus-and-build-time-agent-support; review;`
+- **Participating BMAD agents:** Winston (System Architect), Amelia (Senior Software Engineer), Murat (Master Test Architect and Quality Advisor), Paige (Technical Writer)
+- **Findings summary:** The round found that the story direction is sound, but implementation needed sharper pre-dev contracts around front matter and section markers, deterministic MCP resource identity/order, structural drift inputs, generated-code diagnostic shape, offline benchmark artifact schema, and L06/L07 test-budget discipline.
+- **Changes applied:** Tightened T1, T3, T4, T5, T6, and T8; added Party-Mode Review Clarifications covering corpus metadata, URI identity, MCP extraction, drift checks, SDK-neutral diagnostics, benchmark boundaries, and fixture-focused test budgeting.
+- **Findings deferred:** Schema fingerprinting and manifest negotiation remain Story 8-6; full DocFX/site publication remains Story 9-5; IDE/client E2E remains Story 10-2; live provider execution, signed benchmark releases, and CI gate policy remain Story 10-6; team-specific overlays remain external and are not bundled framework defaults.
+- **Final recommendation:** ready-for-dev
 
 ### File List
 
