@@ -1,9 +1,11 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
 using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -45,38 +47,63 @@ public sealed class FrontComposerMcpCommandInvoker(
             ApplyDerivableValues(command, context);
 
             ICommandService commandService = services.GetRequiredService<ICommandService>();
-            MethodInfo? method = typeof(ICommandService).GetMethod(nameof(ICommandService.DispatchAsync));
-            if (method is null) {
-                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+            FrontComposerMcpLifecycleTracker? lifecycleTracker = services.GetService<FrontComposerMcpLifecycleTracker>();
+            ConcurrentQueue<(CommandLifecycleState State, string? MessageId)> lifecycleTransitions = new();
+            Action<CommandLifecycleState, string?>? onLifecycleChange = lifecycleTracker is null
+                ? null
+                : (state, messageId) => lifecycleTransitions.Enqueue((state, messageId));
+
+            CommandResult result = await DispatchAsync(commandService, command, commandType, onLifecycleChange, cancellationToken)
+                .ConfigureAwait(false);
+            if (lifecycleTracker is not null) {
+                McpCommandAcknowledgement acknowledgement = lifecycleTracker.TrackAcknowledged(
+                    descriptor,
+                    result,
+                    [.. lifecycleTransitions],
+                    cancellationToken);
+                return FrontComposerMcpResult.Success("Command acknowledged.", acknowledgement.ToJson());
             }
 
-            object? resultTask;
-            try {
-                resultTask = method.MakeGenericMethod(commandType).Invoke(commandService, [command, cancellationToken]);
-            }
-            catch (TargetInvocationException ex) when (ex.InnerException is not null) {
-                throw ex.InnerException;
-            }
-
-            CommandResult result = await ((Task<CommandResult>)resultTask!).ConfigureAwait(false);
-            JsonObject structured = new() {
+            JsonObject fallback = new() {
                 ["status"] = result.Status,
             };
             if (!string.IsNullOrWhiteSpace(result.MessageId)) {
-                structured["messageId"] = result.MessageId;
+                fallback["messageId"] = result.MessageId;
             }
 
             if (!string.IsNullOrWhiteSpace(result.CorrelationId)) {
-                structured["correlationId"] = result.CorrelationId;
+                fallback["correlationId"] = result.CorrelationId;
             }
 
-            return FrontComposerMcpResult.Success("Command acknowledged.", structured);
+            return FrontComposerMcpResult.Success("Command acknowledged.", fallback);
         }
         catch (CommandRejectedException) {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.CommandRejected);
+            return FrontComposerMcpResult.Failure(
+                FrontComposerMcpFailureCategory.CommandRejected,
+                BuildRejectionPayload(
+                    errorCode: "COMMAND_REJECTED",
+                    reasonCategory: "domain_conflict",
+                    message: "Command failed: the command was rejected by domain rules. No changes were applied.",
+                    suggestedAction: "abort",
+                    retryAppropriate: false,
+                    docsCode: "HFC-MCP-COMMAND-REJECTED"));
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Canceled);
+        catch (CommandValidationException) {
+            return FrontComposerMcpResult.Failure(
+                FrontComposerMcpFailureCategory.ValidationFailed,
+                BuildRejectionPayload(
+                    errorCode: "COMMAND_VALIDATION_FAILED",
+                    reasonCategory: "validation",
+                    message: "Validation failed: the command arguments did not satisfy the contract. The command was not dispatched.",
+                    suggestedAction: "correct-input",
+                    retryAppropriate: true,
+                    docsCode: "HFC-MCP-COMMAND-VALIDATION"));
+        }
+        catch (OperationCanceledException) {
+            return FrontComposerMcpResult.Failure(
+                cancellationToken.IsCancellationRequested
+                    ? FrontComposerMcpFailureCategory.Canceled
+                    : FrontComposerMcpFailureCategory.Timeout);
         }
         catch (TimeoutException) {
             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Timeout);
@@ -89,10 +116,46 @@ public sealed class FrontComposerMcpCommandInvoker(
         }
     }
 
+    private static Task<CommandResult> DispatchAsync(
+        ICommandService commandService,
+        object command,
+        Type commandType,
+        Action<CommandLifecycleState, string?>? onLifecycleChange,
+        CancellationToken cancellationToken) {
+        // CommandServiceExtensions.DispatchAsync<TCommand> is a generic static extension; binding it
+        // by full parameter signature avoids the FirstOrDefault collision risk that a future 4-arg
+        // overload would create. The cached delegate-style reflection is unavoidable here because
+        // commandType is only known at runtime, but the signature filter pins us to the right method.
+        MethodInfo method = LifecycleDispatchMethod.Value
+            ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        try {
+            return (Task<CommandResult>)method.MakeGenericMethod(commandType).Invoke(
+                null,
+                [commandService, command, onLifecycleChange, cancellationToken])!;
+        }
+        catch (TargetInvocationException ex) when (ex.InnerException is not null) {
+            throw ex.InnerException;
+        }
+    }
+
+    private static readonly Lazy<MethodInfo?> LifecycleDispatchMethod = new(() =>
+        typeof(CommandServiceExtensions)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .FirstOrDefault(m => m.Name == nameof(CommandServiceExtensions.DispatchAsync)
+                && m.IsGenericMethodDefinition
+                && MatchesLifecycleSignature(m.GetParameters())));
+
+    private static bool MatchesLifecycleSignature(ParameterInfo[] parameters) {
+        if (parameters.Length != 4) {
+            return false;
+        }
+
+        return parameters[0].ParameterType == typeof(ICommandService)
+            && parameters[2].ParameterType == typeof(Action<CommandLifecycleState, string?>)
+            && parameters[3].ParameterType == typeof(CancellationToken);
+    }
+
     private static object CreateInstanceOrThrow(Type commandType) {
-        // Records and types with positional / parameterized primary constructors do not have a public
-        // parameterless ctor — surface that deterministically as UnsupportedSchema rather than letting
-        // Activator's MissingMethodException collapse into the generic catch.
         ConstructorInfo? ctor = commandType.GetConstructor(Type.EmptyTypes);
         if (ctor is null) {
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
@@ -108,8 +171,6 @@ public sealed class FrontComposerMcpCommandInvoker(
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
         }
 
-        // Allowed names use Ordinal to match descriptor casing exactly; spoofed-derivable names use
-        // OrdinalIgnoreCase so case-variant TenantId / tenantid / TENANTID all fail-closed.
         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
         HashSet<string> allowed = descriptor.Parameters
             .Where(p => !p.IsUnsupported)
@@ -164,11 +225,6 @@ public sealed class FrontComposerMcpCommandInvoker(
     }
 
     private Type ResolveType(string typeName) {
-        // Resolution preference: assembly-qualified Type.GetType, then explicitly registered
-        // ManifestAssemblies, then a load-context scan as a last-resort fallback for hosts that
-        // registered manifests through Options.Manifests without listing their assemblies. The
-        // bounded preference reduces type-confusion risk from arbitrary plugin assemblies that
-        // happen to share an FQN; the fallback preserves the minimal-config developer flow.
         Type? direct = Type.GetType(typeName);
         if (direct is not null) {
             return direct;
@@ -216,9 +272,6 @@ public sealed class FrontComposerMcpCommandInvoker(
                 typed = value.Deserialize(property.PropertyType);
             }
             catch (JsonException) {
-                // Range/format failure on a primitive (e.g., Int64 supplied for an Int32 property,
-                // fractional value for an integer target) is a client-input error, not a downstream
-                // failure — surface as ValidationFailed so the agent can self-correct.
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
             }
 
@@ -226,15 +279,17 @@ public sealed class FrontComposerMcpCommandInvoker(
         }
     }
 
-    private static void ApplyDerivableValues(object command, FrontComposerMcpAgentContext context) {
+    private void ApplyDerivableValues(object command, FrontComposerMcpAgentContext context) {
         Type commandType = command.GetType();
         SetIfWritable(command, commandType, "TenantId", context.TenantId);
         SetIfWritable(command, commandType, "UserId", context.UserId);
 
-        // MessageId and CommandId share a single value so EventStore idempotency stays consistent
-        // with a single MCP invocation. CorrelationId honors the ambient OpenTelemetry trace when
-        // present so agent → EventStore traces can be joined.
-        string messageId = Guid.NewGuid().ToString("N");
+        // AC17 / D11: when an IUlidFactory is registered the message identity is allocated up front
+        // via that factory so the lifecycle tracker can key off the same canonical ULID before
+        // dispatch. When no factory is configured (legacy hosts without the MCP lifecycle tracker)
+        // we fall back to a Guid to preserve the historical contract.
+        IUlidFactory? ulidFactory = services.GetService<IUlidFactory>();
+        string messageId = ulidFactory?.NewUlid() ?? Guid.NewGuid().ToString("N");
         SetIfWritable(command, commandType, "MessageId", messageId);
         SetIfWritable(command, commandType, "CommandId", messageId);
         SetIfWritable(command, commandType, "CorrelationId", Activity.Current?.TraceId.ToString() ?? messageId);
@@ -246,4 +301,29 @@ public sealed class FrontComposerMcpCommandInvoker(
             property.SetValue(target, value);
         }
     }
+
+    private static JsonObject BuildRejectionPayload(
+        string errorCode,
+        string reasonCategory,
+        string message,
+        string suggestedAction,
+        bool retryAppropriate,
+        string docsCode)
+        => new() {
+            ["state"] = "Rejected",
+            ["terminal"] = true,
+            ["outcome"] = new JsonObject {
+                ["category"] = "rejected",
+                ["retryAppropriate"] = retryAppropriate,
+                ["rejection"] = new JsonObject {
+                    ["errorCode"] = errorCode,
+                    ["message"] = message,
+                    ["dataImpact"] = "No changes were applied.",
+                    ["suggestedAction"] = suggestedAction,
+                    ["retryAppropriate"] = retryAppropriate,
+                    ["reasonCategory"] = reasonCategory,
+                    ["docsCode"] = docsCode,
+                },
+            },
+        };
 }

@@ -1,5 +1,14 @@
 # Deferred Work
 
+## Deferred from: code review of 8-3-two-call-lifecycle-and-agent-command-semantics (2026-05-02)
+
+- **DF8.3-1 — AC13 MCP-side telemetry + redaction oracle test missing** [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleTracker.cs`, `Invocation/FrontComposerMcpCommandInvoker.cs`] — Tracker and invoker emit no logs/activities/metrics of their own; vacuously safe but AC13's positive obligations (sanitized correlation/message id, descriptor kind, duration bucket, outcome category) are unmet. **Owner:** Broader Epic 8 telemetry hardening (T8 line 144). Sources: auditor F12.
+- **DF8.3-2 — `IPendingCommandStateService` / `IPendingCommandOutcomeResolver` not consumed** [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleTracker.cs`] — `IdempotentConfirmed` is derived from a boolean flag on `CommandLifecycleTransition`, not from the existing pending-command resolver. T4 line 96 prescribed reusing the resolver. Current tested behavior is correct, but MCP and Shell can diverge if the resolver later carries richer classification. **Owner:** Story 8-4 / 8-6. Sources: auditor F9.
+- **DF8.3-3 — AC24 size-class parity between hidden/unknown vs in-progress vs terminal not asserted** [`tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs`] — `HiddenUnknown` returns ~5 fixed fields; in-progress snapshot is variable size. Pair size-trim + parity assertion with timing-oracle/retry-guidance hardening. **Owner:** Story 10-6 (signed releases / agent benchmark gates). Sources: auditor F14.
+- **DF8.3-4 — `_historyTruncated` is monotonic forever, never resets** [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleTracker.cs:262`] — Once truncated, `historyTruncated: true` is sticky even if the cap is later raised. Document semantics or expose `transitionsObservedCount`. **Owner:** v1.x snapshot-shape hardening. Sources: blind 22.
+- **DF8.3-5 — `CommandRejectedException` inner reason dropped without trace logging** [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs:88-96`] — Operators lose forensic trail for repeat rejections; should be paired with redaction-oracle work. **Owner:** Telemetry follow-up. Sources: edge 27.
+- **DF8.3-6 — Per-entry `_gate` reentrancy under recursive transitions** [`Invocation/FrontComposerMcpLifecycleTracker.cs:230-265`] — Speculative; depends on whether `ILifecycleStateService` callback contract is reentrant. Document or harden. **Owner:** Concurrency hardening backlog. Sources: edge 40.
+
 ## Deferred from: code review of 7-3-command-authorization-policies (2026-05-01)
 
 - **DF1 — Out-of-scope submodule pointer changes in `Hexalith.EventStore` and `Hexalith.Tenants`** — Working-tree carries unrelated submodule pointer drifts (release tags, doc updates) not declared in the Story 7-3 File List. Should be reverted or committed under a separate change. **Owner:** Pre-merge cleanup. Sources: A.

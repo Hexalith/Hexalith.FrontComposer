@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Mcp.Invocation;
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -32,6 +33,8 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         services.TryAddScoped<IFrontComposerMcpAgentContextAccessor, HttpFrontComposerMcpAgentContextAccessor>();
         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
         services.TryAddScoped<FrontComposerMcpProjectionReader>();
+        services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
+        services.TryAddSingleton<IUlidFactory, FrontComposerMcpUlidFactory>();
 
         // The MCP SDK's WithTools/WithResources takes a static enumerable, so the descriptor list
         // is materialized once at AddFrontComposerMcp time. Adopters MUST call AddFrontComposerMcp
@@ -70,8 +73,12 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         FrontComposerMcpToolAdmissionService admission = request.Services.GetRequiredService<FrontComposerMcpToolAdmissionService>();
         try {
             McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
+            FrontComposerMcpOptions options = request.Services.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value;
             return new ListToolsResult {
-                Tools = [.. catalog.Tools.Select(FrontComposerMcpProtocolMapper.ToProtocolTool)],
+                Tools = [
+                    .. catalog.Tools.Select(FrontComposerMcpProtocolMapper.ToProtocolTool),
+                    FrontComposerMcpProtocolMapper.ToLifecycleTool(options),
+                ],
             };
         }
         catch (FrontComposerMcpException) {
@@ -89,6 +96,26 @@ public static class FrontComposerMcpServiceCollectionExtensions {
             // not as a downstream service failure that operators would chase.
             return FrontComposerMcpProtocolMapper.ToCallToolResult(
                 FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.UnsupportedSchema));
+        }
+
+        FrontComposerMcpOptions options = request.Services.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value;
+        if (string.Equals(request.Params?.Name, options.LifecycleToolName, StringComparison.Ordinal)) {
+            // D6 / AC10: the lifecycle tool requires a resolvable agent context (auth + tenant
+            // claims) before any handle lookup. Per-handle revalidation runs again inside ReadAsync;
+            // the entry-point check fails closed for callers without context so the lifecycle tool
+            // cannot be probed anonymously.
+            try {
+                _ = request.Services.GetRequiredService<IFrontComposerMcpAgentContextAccessor>().GetContext();
+            }
+            catch (FrontComposerMcpException ex) {
+                return FrontComposerMcpProtocolMapper.ToCallToolResult(FrontComposerMcpResult.Failure(ex.Category));
+            }
+
+            FrontComposerMcpLifecycleTracker tracker = request.Services.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+            FrontComposerMcpResult lifecycle = await tracker.ReadAsync(
+                BuildArguments(request.Params?.Arguments),
+                cancellationToken).ConfigureAwait(false);
+            return FrontComposerMcpProtocolMapper.ToCallToolResult(lifecycle);
         }
 
         FrontComposerMcpCommandInvoker invoker = request.Services.GetRequiredService<FrontComposerMcpCommandInvoker>();
@@ -151,6 +178,29 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
 
         if (options.MaxToolNameLength <= 0 || options.MaxToolDisplayTextLength <= 0) {
             errors.Add("Tool response bounds must be positive.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.LifecycleToolName)) {
+            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleToolName)} must be non-empty.");
+        }
+
+        if (string.IsNullOrWhiteSpace(options.LifecycleUriPrefix)
+            || !options.LifecycleUriPrefix.EndsWith("/", StringComparison.Ordinal)
+            || !Uri.TryCreate(options.LifecycleUriPrefix, UriKind.Absolute, out Uri? prefixUri)
+            || !string.IsNullOrEmpty(prefixUri.Query)
+            || !string.IsNullOrEmpty(prefixUri.Fragment)) {
+            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleUriPrefix)} must be a non-empty absolute URI ending with '/' and free of query/fragment.");
+        }
+
+        if (options.DefaultLifecycleRetryAfterMs <= 0
+            || options.MinLifecycleRetryAfterMs <= 0
+            || options.MaxLifecycleRetryAfterMs < options.MinLifecycleRetryAfterMs
+            || options.DefaultLifecycleRetryAfterMs < options.MinLifecycleRetryAfterMs
+            || options.DefaultLifecycleRetryAfterMs > options.MaxLifecycleRetryAfterMs
+            || options.MaxLifecycleLongPollMs < 0
+            || options.MaxLifecycleTransitionHistory <= 0
+            || options.MaxActiveLifecycleEntries <= 0) {
+            errors.Add("Lifecycle bounds must be positive and internally consistent (Default within [Min, Max]).");
         }
 
         foreach (KeyValuePair<string, FrontComposerMcpApiKeyIdentity> entry in options.ApiKeys) {

@@ -58,6 +58,10 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
 | AC22 | Canonical schema material is serialized for hashing | The canonical payload is produced | The JSON policy is executable and deterministic: UTF-8, ordinal property ordering, invariant culture, stable enum/string casing, explicit null/empty collection handling, normalized newlines/protocol identifiers, no timestamps/paths/comments, and no indentation-sensitive meaning. |
 | AC23 | Migration delta output is large or deeply nested | Diagnostics are generated | Output is bounded by configured schema size, nesting depth, and maximum delta count; truncation is deterministic, ordered, and reported with a stable category. |
 | AC24 | Negotiation results or migration diagnostics are surfaced to adopters, agents, logs, or tests | Messages are produced | Outputs use stable diagnostic IDs, message keys, and structured parameters suitable for localization; Story 8-6 does not choose final end-user UI copy, admin dashboard behavior, or tenant-specific override policy. |
+| AC25 | Canonical payloads, baseline snapshots, or client fingerprint envelopes are parsed | Duplicate keys, case-variant duplicate keys, malformed roots, or unknown contract-family discriminators are present | Validation fails closed with a sanitized diagnostic category before comparison; no duplicate-key last-writer-wins behavior is allowed in canonical material. |
+| AC26 | A baseline snapshot is resolved for negotiation or migration diagnostics | The resolver receives a client-supplied path, path traversal segment, absolute local path, package-external file, or untrusted generated output | Resolution is rejected before comparison; trusted baselines come only from checked-in/package-owned structural snapshots or test fixtures. |
+| AC27 | Aggregate manifest fingerprints and nested command/resource/renderer/corpus fingerprints are emitted together | The aggregate and nested fingerprint metadata disagree, are missing required algorithm ids, or were produced from different canonical schema versions | The result fails closed as an internal schema-integrity mismatch and does not expose partial schema details to agents. |
+| AC28 | Negotiation, baseline comparison, or migration diagnostics emit telemetry or logs | The event is recorded | Events use bounded category/message-key fields and coarse counts only; they never include hidden resource names, exact hidden counts, raw client envelopes, local paths, runtime values, or exception text. |
 
 ---
 
@@ -69,6 +73,7 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Exclude runtime state by type and by tests: no tenant/user/claim/token/payload/query row/cache/ETag/local path/timestamp/service object.
   - [ ] Define one canonical JSON serialization policy: ordinal property order, invariant culture, normalized newlines, normalized protocol identifiers, no indentation-sensitive meaning, and versioned root discriminator.
   - [ ] Add a `SchemaFingerprintAlgorithm` identifier so future hashing changes are detectable without pretending hashes are comparable.
+  - [ ] Reject duplicate JSON keys, case-variant duplicate keys, malformed contract-family roots, and unknown root discriminators before producing or comparing canonical material.
   - [ ] Owner package: shared SDK-neutral models live in `Hexalith.FrontComposer.Contracts`; SourceTools-only canonicalization helpers may live in `Hexalith.FrontComposer.SourceTools` only when they are not public runtime contracts.
 
 - [ ] T2. Implement deterministic fingerprint generation in SourceTools (AC1-AC4, AC11, AC12, AC22, AC23)
@@ -78,6 +83,7 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Add collision and ordering tests for protocol names, projection URIs, fields, parameters, enum values, validation constraints, resource ordering, and renderer capability ordering.
   - [ ] Ensure any protocol-name/URI disambiguation from Stories 8-1/8-2 is reflected before hashing.
   - [ ] Add a two-clean-generation test proving identical canonical JSON and hash from the same domain source despite generated-source ordering, line endings, culture, timezone, path separator, and build machine differences.
+  - [ ] Recompute aggregate manifest fingerprints from emitted nested fingerprints and fail generation/tests when aggregate and nested metadata disagree.
 
 - [ ] T3. Extend SDK-neutral descriptor contracts without breaking package boundaries (AC1, AC5, AC10-AC15)
   - [ ] Add optional fingerprint metadata to `McpManifest`, `McpCommandDescriptor`, `McpResourceDescriptor`, and equivalent lifecycle/renderer/corpus descriptors only where those records are already stable public contracts.
@@ -91,12 +97,14 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Define internal negotiation results: `Exact`, `CompatibleAdditive`, `Incompatible`, `UnknownClientVersion`, `UnknownServerBaseline`, `HiddenOrUnknown`, `StaleDescriptor`, `UnsupportedAlgorithm`, and `Unavailable`.
   - [ ] Accept client fingerprint hints only as hints. Never trust them as proof of current visibility, authorization, tenant scope, or descriptor freshness.
   - [ ] Reuse Story 8-2 admission order: visibility, tenant, policy, descriptor/catalog epoch, and request bounds are validated before side effects; hidden/unknown equivalence overrides schema mismatch reporting.
+  - [ ] Resolve trusted baselines through server/package-owned identifiers only; reject client-supplied file paths, path traversal, absolute paths, and package-external baseline locations.
   - [ ] Return sanitized agent-visible categories such as `schema-compatible-warning`, `schema-mismatch`, or `projection temporarily unavailable`; no hidden names, tenant identifiers, policy names, exact hidden counts, raw baseline paths, or exception text.
   - [ ] Add zero-side-effect tests proving incompatible/unknown/stale negotiation does not invoke command dispatch, query execution, lifecycle mutation, cache writes, or renderer buffers.
   - [ ] Add a table-driven precedence matrix for hidden, unknown, unauthorized, cross-tenant, stale descriptor, unsupported algorithm, unknown baseline, compatible drift, and incompatible drift.
 
 - [ ] T5. Build migration delta diagnostics and baselines (AC6-AC8, AC16, AC17, AC21, AC23, AC24)
   - [ ] Define a checked-in baseline snapshot format for shipped public schema shapes. Store only canonical structural data and fingerprint metadata, not generated code blobs or runtime payloads.
+  - [ ] Include baseline provenance fields: contract family, schema version, fingerprint algorithm, package/source owner, fixture id, and migration-guide requirement flag; exclude filesystem paths and build machine metadata.
   - [ ] Compare old/new snapshots and classify deltas into additive-compatible, compatible-warning, breaking, unknown, or unsupported-algorithm.
   - [ ] Emit HFC diagnostics with the existing Expected/Got/Fix/DocsLink style: changed field/path, old value category, new value category, impact, and remediation.
   - [ ] Map migration-guide requirements for breaking public descriptor, skill corpus example, renderer contract, lifecycle result, and projection resource deltas.
@@ -123,6 +131,7 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Negotiation tests for exact, additive, breaking, unsupported algorithm, unknown baseline, stale descriptor, hidden/unknown, unauthorized, cross-tenant, and malformed fingerprint hints.
   - [ ] Migration delta tests for added optional field, added required field, removed field, type/category change, enum change, validation constraint change, URI/name change, lifecycle result change, renderer capability change, and corpus resource change.
   - [ ] Security tests proving tenant IDs, user IDs, claims, tokens, payload values, query rows, local paths, ETags, timestamps, exception text, and provider internals never appear in fingerprints, deltas, logs, telemetry, or agent-visible responses.
+  - [ ] Parser/security tests for duplicate keys, case-variant duplicates, malformed discriminators, client-supplied baseline paths, path traversal, aggregate/nested fingerprint mismatch, and telemetry redaction/cardinality bounds.
   - [ ] API/package-boundary tests proving Contracts stays SDK-free, SourceTools computes canonical fingerprints, and `.Mcp` performs only adapter mapping.
   - [ ] Minimal fixture suite: `baseline-known-v1`, `baseline-known-v2-compatible`, `baseline-known-v2-structural-delta`, `baseline-unknown`, `schema-same-different-order`, `schema-same-different-runtime-data`, `schema-hidden-precedence`, `schema-unknown-precedence`, and `surface-metadata-only-renderer`.
   - [ ] Each fixture states expected fingerprint material, algorithm id, negotiation result, delta category, bounded/truncation behavior where relevant, and renderer abstraction metadata where relevant.
@@ -155,6 +164,8 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
 - Migration diagnostics must be actionable: what changed, impact, and fix. Pure "hash mismatch" output is not enough.
 - Renderer abstraction metadata is a compatibility layer, not permission to implement new surfaces in this story.
 - Baselines are shipped framework contracts. They must be small, deterministic, reviewable, and free of runtime data.
+- Client fingerprints and envelopes are lookup hints only; they never supply baseline material, filesystem locations, tenant visibility, or compatibility decisions.
+- Aggregate manifest fingerprints are integrity checks over nested structural fingerprints; aggregate/nested disagreement is a schema-integrity failure, not a partial success.
 
 ### Package Ownership
 
@@ -186,7 +197,15 @@ Exclude:
 - Use stable string and enum casing, explicit null handling, explicit empty collection handling, normalized newlines, and normalized protocol identifiers before hashing.
 - Do not include comments, whitespace-sensitive indentation, absolute paths, timestamps, generator banner text, build machine data, assembly load order, runtime service state, or SDK DTO serialization artifacts.
 - Include the contract family, contract schema version, and `SchemaFingerprintAlgorithm` in fingerprint metadata. Unsupported or missing algorithms are negotiation failures, not hash mismatches.
+- Reject duplicate keys, case-variant duplicate keys, malformed root discriminators, and unknown contract families before hashing or comparing canonical material.
 - Hash the canonical payload, not generated C# source, rendered Markdown, runtime DTO JSON, telemetry envelopes, or exception payloads.
+
+### Baseline Trust and Provenance
+
+- Trusted baselines are checked-in/package-owned structural snapshots or explicit test fixtures. They are not read from agent/client-provided paths, local absolute paths, package-external folders, generated-output scratch directories, or tenant-owned storage.
+- Baseline lookup keys are stable public identifiers: contract family, contract schema version, package/source owner, fingerprint algorithm, and fixture/baseline id. Local filenames can be implementation details but must not appear in diagnostics, logs, telemetry, or agent-visible responses.
+- Snapshot writes used by build/test tooling must be atomic: write to a package-owned temporary file, validate duplicate keys/discriminators/provenance, then replace. A partial snapshot is treated as unavailable/unknown baseline, never as compatible.
+- Migration diagnostics may include old/new structural categories and public contract identifiers, but they must not include raw baseline JSON, full client envelopes, hidden resource names, local paths, runtime values, or exception text.
 
 ### Negotiation Contract
 
@@ -200,6 +219,7 @@ Exclude:
 | `HiddenOrUnknown` | Preserve Story 8-2 hidden/unknown response. | No side effects. |
 | `StaleDescriptor` | Preserve stale/unavailable category. | No side effects. |
 | `UnsupportedAlgorithm` | Return sanitized unsupported schema fingerprint category. | No side effects. |
+| `SchemaIntegrityMismatch` | Return sanitized unavailable/schema category and emit maintainer diagnostic. | No side effects. |
 
 ### Negotiation Precedence
 
@@ -209,8 +229,9 @@ Evaluate in this order before any command/query/render side effects:
 2. Tenant, authorization, visibility, and hidden/unknown equivalence.
 3. Descriptor/catalog epoch freshness and stale descriptor handling.
 4. Fingerprint algorithm support.
-5. Trusted baseline availability.
-6. Exact/compatible/incompatible schema comparison and migration delta classification.
+5. Trusted baseline availability and provenance.
+6. Aggregate/nested fingerprint integrity.
+7. Exact/compatible/incompatible schema comparison and migration delta classification.
 
 When earlier checks fail, later schema details must not be reported to the agent. This is especially important for hidden, unauthorized, cross-tenant, and stale resources, where schema mismatch metadata would become an existence oracle.
 
@@ -269,6 +290,9 @@ public sealed record FrontComposerRenderContract(
 | D12. Skill corpus fingerprints cover framework corpus only. | Team overlays are adopter data and need a separate future baseline story. |
 | D13. Unknown baseline fails closed. | Prevents "no baseline, proceed anyway" from hiding real schema drift. |
 | D14. Fingerprint computation is bounded and deterministic. | Applies L14 to generated metadata and avoids unbounded manifest/corpus growth. |
+| D15. Baseline resolution is package-owned and path-safe. | Prevents clients, agents, or generated-output folders from steering comparison toward untrusted snapshots. |
+| D16. Duplicate-key canonical material is invalid. | Prevents parser-dependent last-writer-wins behavior from producing inconsistent fingerprints or deltas. |
+| D17. Aggregate and nested fingerprints must be self-consistent. | Detects partial generation, stale nested metadata, or mixed schema-version artifacts before runtime negotiation. |
 
 ### Latest MCP Notes
 

@@ -46,4 +46,32 @@ internal static class McpJsonSchemaBuilder {
 
         return schema.Deserialize<JsonElement>();
     }
+
+    public static JsonElement BuildLifecycleInputSchema() => LifecycleSchema.Value;
+
+    private static readonly Lazy<JsonElement> LifecycleSchema = new(BuildLifecycleSchemaCore);
+
+    private static JsonElement BuildLifecycleSchemaCore() {
+        JsonObject properties = new() {
+            ["correlationId"] = new JsonObject {
+                ["type"] = "string",
+                ["title"] = "Correlation ID",
+            },
+            ["messageId"] = new JsonObject {
+                ["type"] = "string",
+                ["title"] = "Message ID",
+            },
+        };
+        JsonArray oneOf = [
+            new JsonObject { ["required"] = new JsonArray("correlationId") },
+            new JsonObject { ["required"] = new JsonArray("messageId") },
+        ];
+        JsonObject schema = new() {
+            ["type"] = "object",
+            ["additionalProperties"] = false,
+            ["properties"] = properties,
+            ["oneOf"] = oneOf,
+        };
+        return schema.Deserialize<JsonElement>();
+    }
 }

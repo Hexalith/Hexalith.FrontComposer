@@ -37,6 +37,22 @@ public sealed class FrontComposerMcpOptions {
 
     public int MaxToolDisplayTextLength { get; set; } = 240;
 
+    public string LifecycleToolName { get; set; } = "frontcomposer.lifecycle.subscribe";
+
+    public string LifecycleUriPrefix { get; set; } = "frontcomposer://lifecycle/";
+
+    public int DefaultLifecycleRetryAfterMs { get; set; } = 250;
+
+    public int MinLifecycleRetryAfterMs { get; set; } = 100;
+
+    public int MaxLifecycleRetryAfterMs { get; set; } = 5_000;
+
+    public int MaxLifecycleLongPollMs { get; set; } = 1_000;
+
+    public int MaxLifecycleTransitionHistory { get; set; } = 32;
+
+    public int MaxActiveLifecycleEntries { get; set; } = 1_000;
+
     public IList<string> TenantClaimTypes { get; } = [
         "TenantId",
         "tenant_id",
