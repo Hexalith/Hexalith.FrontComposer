@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.Shell.Registration;
 /// Stores registered domain manifests and navigation groups for runtime composition.
 /// Domain registrations from <see cref="DomainRegistrationAction"/> are applied on construction.
 /// </summary>
-internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry {
+internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComposerFullPageRouteRegistry, IFrontComposerCommandWriteAccessRegistry, IFrontComposerCommandPolicyRegistry {
     private readonly List<DomainManifest> _manifests = [];
     private readonly List<(string Name, string BoundedContext)> _navGroups = [];
     private readonly ILogger<FrontComposerRegistry> _logger;
@@ -108,6 +108,45 @@ internal sealed class FrontComposerRegistry : IFrontComposerRegistry, IFrontComp
         }
 
         return false;
+    }
+
+    /// <inheritdoc />
+    public bool TryGetCommandPolicy(string commandTypeName, out string policyName, out string? boundedContext) {
+        policyName = string.Empty;
+        boundedContext = null;
+        if (string.IsNullOrWhiteSpace(commandTypeName)) {
+            return false;
+        }
+
+        string trimmedKey = commandTypeName.Trim();
+
+        // Snapshot the manifest list to a local array so a concurrent RegisterDomain call cannot
+        // throw InvalidOperationException("Collection was modified") mid-enumeration. The
+        // dispatch gate, palette filter, and CTA resolver all call this on the hot path, and
+        // RegisterDomain runs during host startup hosted-service execution.
+        DomainManifest[] snapshot = [.. _manifests];
+
+        foreach (DomainManifest manifest in snapshot) {
+            if (!manifest.CommandPolicies.TryGetValue(trimmedKey, out string? candidate)
+                || string.IsNullOrWhiteSpace(candidate)) {
+                continue;
+            }
+
+            string trimmedCandidate = candidate.Trim();
+            if (policyName.Length > 0
+                && !string.Equals(policyName, trimmedCandidate, StringComparison.Ordinal)) {
+                _logger.LogWarning(
+                    "FrontComposer registry policy lookup: command {CommandTypeName} resolved to multiple policies across manifests ({PriorPolicy} vs {IncomingPolicy}). Last-write-wins is the legacy default — duplicate cross-bounded-context policy declarations should be reconciled by the adopter.",
+                    trimmedKey,
+                    policyName,
+                    trimmedCandidate);
+            }
+
+            policyName = trimmedCandidate;
+            boundedContext = manifest.BoundedContext;
+        }
+
+        return policyName.Length > 0;
     }
 
     /// <inheritdoc />

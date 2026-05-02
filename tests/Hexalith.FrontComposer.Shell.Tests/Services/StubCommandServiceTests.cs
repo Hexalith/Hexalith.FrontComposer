@@ -11,6 +11,10 @@ namespace Hexalith.FrontComposer.Shell.Tests.Services;
 
 public class StubCommandServiceTests {
     private static StubCommandService BuildService(StubCommandServiceOptions options) {
+        // Story 7-3 Pass 4 DN-7-3-4-2 — authorization is enforced by AuthorizingCommandServiceDecorator
+        // at the DI seam; StubCommandService no longer accepts an optional gate, so its tests focus
+        // on lifecycle / cancellation / rejection behaviour (gate behaviour is covered by
+        // AuthorizingCommandServiceDecoratorTests).
         return new StubCommandService(new OptionsSnapshotStub(options), new UlidFactory());
     }
 

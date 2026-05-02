@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Diagnostics.CodeAnalysis;
 
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Shell.Resources;
@@ -7,6 +8,7 @@ using Hexalith.FrontComposer.Shell.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Rendering;
 using Microsoft.Extensions.Localization;
+using Microsoft.Extensions.Logging;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 namespace Hexalith.FrontComposer.Shell.Components.Rendering;
@@ -40,6 +42,9 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
 
     [Inject]
     private IEmptyStateCtaResolver CtaResolver { get; set; } = default!;
+
+    [Inject]
+    private ILogger<FcProjectionEmptyPlaceholder>? Logger { get; set; }
 
     /// <summary>Gets or sets the projection type this placeholder represents.</summary>
     [Parameter, EditorRequired]
@@ -101,6 +106,38 @@ public partial class FcProjectionEmptyPlaceholder : ComponentBase {
     }
 
     private string? ResolvedSecondaryText => _resolvedSecondaryText;
+
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2026:RequiresUnreferencedCode",
+        Justification = "CTA command type resolution is optional presentation gating. Unresolved types fail closed by hiding the protected CTA.")]
+    [UnconditionalSuppressMessage(
+        "Trimming",
+        "IL2057:Unrecognized value passed to Type.GetType",
+        Justification = "Command FQNs come from source-generated manifests. If trimming removes the type, the CTA is suppressed.")]
+    private Type? ResolveCommandType(string commandFqn) {
+        if (string.IsNullOrWhiteSpace(commandFqn)) {
+            return null;
+        }
+
+        Type? sameAssembly = ProjectionType?.Assembly.GetType(commandFqn, throwOnError: false, ignoreCase: false);
+        if (sameAssembly is not null) {
+            return sameAssembly;
+        }
+
+        Type? resolved = Type.GetType(commandFqn, throwOnError: false);
+        if (resolved is null) {
+            // Operators need to distinguish "CTA suppressed because user is not authorized" from
+            // "CTA suppressed because the type couldn't be loaded" (assembly trimmed, type
+            // renamed, FQN typo, cross-assembly without assembly-qualified name). Pass-4 P-CR17
+            // mirrors the palette's Pass-2 P-NP20 pattern.
+            Logger?.LogInformation(
+                "Empty-state CTA suppressed: command type {CommandFqn} could not be resolved. The type may be trimmed, renamed, or live in a different assembly than the projection.",
+                commandFqn);
+        }
+
+        return resolved;
+    }
 
     private string FormatCtaLabel(EmptyStateCta cta) {
         LocalizedString template = Localizer["EmptyStateCtaTemplate"];

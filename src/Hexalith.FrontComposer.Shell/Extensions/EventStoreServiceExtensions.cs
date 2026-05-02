@@ -4,6 +4,7 @@ using Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 using Hexalith.FrontComposer.Shell.Infrastructure.Tenancy;
 using Hexalith.FrontComposer.Shell.Services;
 using Hexalith.FrontComposer.Shell.Services.Auth;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -68,8 +69,17 @@ public static class EventStoreServiceExtensions {
         ReplaceActionQueueCountReader(services);
 
         RemoveStubCommandService(services);
-        services.TryAddScoped<ICommandService>(sp => sp.GetRequiredService<EventStoreCommandClient>());
-        services.TryAddScoped<ICommandServiceWithLifecycle>(sp => sp.GetRequiredService<EventStoreCommandClient>());
+        // Story 7-3 Pass 4 DN-7-3-4-2: AuthorizingCommandServiceDecorator wraps the EventStore
+        // client identically to the Stub registration path so direct dispatch always passes
+        // through the authorization gate before HTTP send. ICommandService delegates to the
+        // (already-decorated) ICommandServiceWithLifecycle so consumers of either interface share
+        // one decorator instance per circuit.
+        services.TryAddScoped<ICommandServiceWithLifecycle>(sp =>
+            new AuthorizingCommandServiceDecorator(
+                sp.GetRequiredService<EventStoreCommandClient>(),
+                sp.GetRequiredService<ICommandDispatchAuthorizationGate>()));
+        services.TryAddScoped<ICommandService>(sp =>
+            sp.GetRequiredService<ICommandServiceWithLifecycle>());
         services.TryAddScoped<IQueryService>(sp => sp.GetRequiredService<EventStoreQueryClient>());
         services.TryAddScoped<IProjectionSubscription>(sp => sp.GetRequiredService<ProjectionSubscriptionService>());
 
@@ -95,10 +105,16 @@ public static class EventStoreServiceExtensions {
     }
 
     private static void RemoveStubCommandService(IServiceCollection services) {
+        // Story 7-3 Pass 4 DN-7-3-4-2: AddHexalithFrontComposer registers ICommandService /
+        // ICommandServiceWithLifecycle through a decorator FACTORY (not a typed registration), so
+        // ImplementationType is null on those descriptors. We remove every framework-provided
+        // ICommandService / ICommandServiceWithLifecycle / StubCommandService descriptor so
+        // EventStore's own decorator factory below is the last writer and TryAddScoped succeeds.
         for (int i = services.Count - 1; i >= 0; i--) {
             ServiceDescriptor descriptor = services[i];
             if (descriptor.ServiceType == typeof(ICommandService)
-                && descriptor.ImplementationType == typeof(StubCommandService)) {
+                || descriptor.ServiceType == typeof(ICommandServiceWithLifecycle)
+                || descriptor.ServiceType == typeof(StubCommandService)) {
                 services.RemoveAt(i);
             }
         }

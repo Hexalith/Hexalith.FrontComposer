@@ -63,9 +63,19 @@ public static class CommandRendererEmitter {
         string lifecycleStateTypeFqn = string.IsNullOrEmpty(model.Namespace)
             ? model.StateName
             : model.Namespace + "." + model.StateName;
+        bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(model.AuthorizationPolicyName);
 
         _ = sb.AppendLine("/// <summary>Auto-generated density-driven renderer for <see cref=\"" + model.TypeName + "\"/> (Story 2-2).</summary>");
-        _ = sb.AppendLine("public partial class " + rendererName + " : ComponentBase, IInlinePopover");
+        // Story 7-3 Pass 4 DN-7-3-4-7 — protected renderers implement IDisposable so the
+        // CTS / AuthState subscription can be cleaned up on circuit teardown. Unprotected renderers
+        // keep the prior signature.
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("public partial class " + rendererName + " : ComponentBase, IInlinePopover, global::System.IDisposable");
+        }
+        else {
+            _ = sb.AppendLine("public partial class " + rendererName + " : ComponentBase, IInlinePopover");
+        }
+
         _ = sb.AppendLine("{");
         _ = sb.AppendLine("    [Parameter] public CommandRenderMode? RenderMode { get; set; }");
         _ = sb.AppendLine("    [Parameter] public " + commandFqn + "? InitialValue { get; set; }");
@@ -81,6 +91,9 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    [Inject] private ILogger<" + rendererName + ">? Logger { get; set; }");
         _ = sb.AppendLine("    [Inject] private ICommandPageContext PageContext { get; set; } = default!;");
         _ = sb.AppendLine("    [Inject] private IState<" + lifecycleStateTypeFqn + "> _lifecycleState { get; set; } = default!;");
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("    [Inject] private global::Hexalith.FrontComposer.Shell.Services.Authorization.ICommandAuthorizationEvaluator CommandAuthorizationEvaluator { get; set; } = default!;");
+        }
         if (model.IsDestructive) {
             // Story 2-5 Task 6.1 — destructive commands open a FluentDialog via IDialogService (D11).
             _ = sb.AppendLine("    [Inject] private IDialogService DialogService { get; set; } = default!;");
@@ -101,6 +114,16 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("    private Action? _externalSubmit;");
         _ = sb.AppendLine("    private IJSObjectReference? _expandInRowModule;");
         _ = sb.AppendLine("    private " + commandFqn + " _prefilledModel = new();");
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("    [Inject] private global::Microsoft.AspNetCore.Components.Authorization.AuthenticationStateProvider AuthenticationStateProvider { get; set; } = default!;");
+            _ = sb.AppendLine("    private const string AuthorizationPolicyName = \"" + EscapeString(model.AuthorizationPolicyName!) + "\";");
+            _ = sb.AppendLine("    private bool _authorizationPresentationReady;");
+            _ = sb.AppendLine("    private bool _authorizationPresentationAllowed;");
+            _ = sb.AppendLine("    private global::System.Threading.CancellationTokenSource? _authorizationCts;");
+            _ = sb.AppendLine("    private bool _authorizationDisposed;");
+            _ = sb.AppendLine("    private long _authorizationRefreshSequence;");
+            _ = sb.AppendLine("    private bool _authorizationStateSubscribed;");
+        }
         _ = sb.AppendLine();
 
         _ = sb.AppendLine("    protected override async Task OnInitializedAsync()");
@@ -113,8 +136,110 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("        Logger?.LogInformation(\"Rendering {CommandType} in {Mode} (density=" + densityName + ")\", \"" + commandFqn + "\", _effectiveMode);");
         _ = sb.AppendLine("        _prefilledModel = InitialValue ?? new();");
         _ = sb.AppendLine("        await PrefillDerivableFieldsAsync().ConfigureAwait(false);");
+        if (hasAuthorizationPolicy) {
+            // Initialize CTS synchronously so disposal during the first await actually cancels.
+            _ = sb.AppendLine("        _authorizationCts ??= new global::System.Threading.CancellationTokenSource();");
+            _ = sb.AppendLine("        if (!_authorizationStateSubscribed)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            AuthenticationStateProvider.AuthenticationStateChanged += OnAuthenticationStateChanged;");
+            _ = sb.AppendLine("            _authorizationStateSubscribed = true;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        await RefreshPresentationAuthorizationAsync().ConfigureAwait(false);");
+        }
         _ = sb.AppendLine("    }");
         _ = sb.AppendLine();
+        if (hasAuthorizationPolicy) {
+            _ = sb.AppendLine("    private async Task RefreshPresentationAuthorizationAsync()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
+            // Sync flip Ready=false so concurrent renders see the in-flight state immediately
+            // (Pass-3 form-emitter pattern; mirror in renderer).
+            _ = sb.AppendLine("        _authorizationPresentationReady = false;");
+            _ = sb.AppendLine("        _authorizationPresentationAllowed = false;");
+            _ = sb.AppendLine("        long sequence = global::System.Threading.Interlocked.Increment(ref _authorizationRefreshSequence);");
+            _ = sb.AppendLine("        var cts = _authorizationCts;");
+            _ = sb.AppendLine("        global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecision? decision;");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            decision = await CommandAuthorizationEvaluator.EvaluateAsync(new global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationRequest(");
+            _ = sb.AppendLine("                typeof(" + commandFqn + "),");
+            _ = sb.AppendLine("                AuthorizationPolicyName,");
+            // Pass-4 AA-15 / BH-37 — pass null (not _prefilledModel). Presentation-time auth must
+            // not include unvalidated user input as the resource. Submit-time gate sees the
+            // command via the form's own EvaluateAsync call.
+            _ = sb.AppendLine("                null,");
+            _ = sb.AppendLine("                \"" + EscapeString(model.BoundedContext) + "\",");
+            _ = sb.AppendLine("                \"" + displayLabelEscaped + "\",");
+            _ = sb.AppendLine("                ResolveAuthorizationSurface()),");
+            _ = sb.AppendLine("                cts?.Token ?? global::System.Threading.CancellationToken.None).ConfigureAwait(false);");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (global::System.OperationCanceledException)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            return;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (global::System.Exception ex)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            Logger?.LogWarning(ex, \"Renderer authorization evaluation failed; trigger remains disabled. CommandType={CommandType}\", \"" + commandFqn + "\");");
+            _ = sb.AppendLine("            decision = null;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
+            _ = sb.AppendLine("        if (global::System.Threading.Interlocked.Read(ref _authorizationRefreshSequence) != sequence) { return; }");
+            _ = sb.AppendLine("        if (decision is null)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _authorizationPresentationReady = true;");
+            _ = sb.AppendLine("            _authorizationPresentationAllowed = false;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        else");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _authorizationPresentationReady = decision.Kind != global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationDecisionKind.Pending;");
+            _ = sb.AppendLine("            _authorizationPresentationAllowed = decision.IsAllowed;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        StateHasChanged();");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private void OnAuthenticationStateChanged(global::System.Threading.Tasks.Task<global::Microsoft.AspNetCore.Components.Authorization.AuthenticationState> task)");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
+            _ = sb.AppendLine("        try");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            _ = InvokeAsync(async () =>");
+            _ = sb.AppendLine("            {");
+            _ = sb.AppendLine("                if (_authorizationDisposed) { return; }");
+            _ = sb.AppendLine("                _ = await task.ConfigureAwait(false);");
+            _ = sb.AppendLine("                await RefreshPresentationAuthorizationAsync().ConfigureAwait(false);");
+            _ = sb.AppendLine("            });");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        catch (global::System.ObjectDisposedException) { /* circuit torn down */ }");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    public void Dispose()");
+            _ = sb.AppendLine("    {");
+            _ = sb.AppendLine("        if (_authorizationDisposed) { return; }");
+            _ = sb.AppendLine("        _authorizationDisposed = true;");
+            _ = sb.AppendLine("        if (_authorizationStateSubscribed)");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            AuthenticationStateProvider.AuthenticationStateChanged -= OnAuthenticationStateChanged;");
+            _ = sb.AppendLine("            _authorizationStateSubscribed = false;");
+            _ = sb.AppendLine("        }");
+            _ = sb.AppendLine("        try { _authorizationCts?.Cancel(); }");
+            _ = sb.AppendLine("        catch (global::System.ObjectDisposedException) { }");
+            _ = sb.AppendLine("        _authorizationCts?.Dispose();");
+            _ = sb.AppendLine("        _authorizationCts = null;");
+            _ = sb.AppendLine("    }");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationSurface ResolveAuthorizationSurface()");
+            _ = sb.AppendLine("        => _effectiveMode switch");
+            _ = sb.AppendLine("        {");
+            _ = sb.AppendLine("            CommandRenderMode.Inline => global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationSurface.InlineAction,");
+            _ = sb.AppendLine("            CommandRenderMode.CompactInline => global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationSurface.CompactInlineAction,");
+            _ = sb.AppendLine("            CommandRenderMode.FullPage => global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationSurface.FullPage,");
+            _ = sb.AppendLine("            _ => global::Hexalith.FrontComposer.Shell.Services.Authorization.CommandAuthorizationSurface.FullPage,");
+            _ = sb.AppendLine("        };");
+            _ = sb.AppendLine();
+            _ = sb.AppendLine("    private bool AuthorizationTriggerDisabled()");
+            _ = sb.AppendLine("        => !_authorizationPresentationReady || !_authorizationPresentationAllowed;");
+            _ = sb.AppendLine();
+        }
         _ = sb.AppendLine("    private static bool IsCompatibleOverride(CommandRenderMode mode)");
         _ = sb.AppendLine("        => mode != CommandRenderMode.Inline || " + (model.NonDerivablePropertyNames.Count <= 1 ? "true" : "false") + ";");
         _ = sb.AppendLine();
@@ -447,6 +572,7 @@ public static class CommandRendererEmitter {
         string beforeSubmitFunc = model.IsDestructive
             ? "(Func<Task>)DestructiveBeforeSubmitAsync"
             : "(Func<Task>)RefreshDerivedValuesBeforeSubmitAsync";
+        bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(model.AuthorizationPolicyName);
 
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
         _ = sb.AppendLine("    {");
@@ -461,7 +587,7 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Id\", _triggerButtonId);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Type\", ButtonType.Button);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Appearance\", ButtonAppearance.Outline);");
-            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Disabled\", _externalSubmit is null);");
+            _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Disabled\", " + (hasAuthorizationPolicy ? "(_externalSubmit is null) || AuthorizationTriggerDisabled()" : "_externalSubmit is null") + ");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"IconStart\", ResolveIcon());");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Label\", \"" + displayLabelEscaped + "\");");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnClick\", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OnZeroFieldClickAsync()));");
@@ -485,6 +611,9 @@ public static class CommandRendererEmitter {
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Appearance\", ButtonAppearance.Outline);");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"IconStart\", ResolveIcon());");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Label\", \"" + displayLabelEscaped + "\");");
+            if (hasAuthorizationPolicy) {
+                _ = sb.AppendLine("                builder.AddAttribute(seq++, \"Disabled\", AuthorizationTriggerDisabled());");
+            }
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"OnClick\", EventCallback.Factory.Create<MouseEventArgs>(this, _ => OpenPopoverAsync()));");
             _ = sb.AppendLine("                builder.AddAttribute(seq++, \"aria-expanded\", _popoverOpen);");
             _ = sb.AppendLine("                builder.CloseComponent();");
@@ -522,6 +651,22 @@ public static class CommandRendererEmitter {
 
         _ = sb.AppendLine("            case CommandRenderMode.CompactInline:");
         _ = sb.AppendLine("            {");
+        if (hasAuthorizationPolicy) {
+            // Pass-4 DN-7-3-4-6 (b) — render a localized "Action unavailable" placeholder when
+            // presentation auth disallows the trigger. Form-level submit gate still authoritative
+            // but the user sees a coherent "no permission" surface instead of an interactive form
+            // that always rejects on submit.
+            _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageIntent.Warning);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", \"" + displayLabelEscaped + "\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
+            _ = sb.AppendLine("                    builder.CloseComponent();");
+            _ = sb.AppendLine("                    break;");
+            _ = sb.AppendLine("                }");
+        }
+
         _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
         _ = sb.AppendLine("                builder.AddAttribute(seq++, \"class\", \"fc-expand-in-row\");");
         _ = sb.AppendLine("                builder.AddAttribute(seq++, \"onkeydown\", EventCallback.Factory.Create<KeyboardEventArgs>(this, HandleCompactEscapeAsync));");
@@ -550,6 +695,24 @@ public static class CommandRendererEmitter {
         _ = sb.AppendLine("            default:");
         _ = sb.AppendLine("            {");
         _ = sb.AppendLine("                var opts = ShellOptions.Value;");
+        if (hasAuthorizationPolicy) {
+            // Pass-4 DN-7-3-4-6 (b) — same presentation gate as CompactInline. Form's submit-time
+            // auth check is authoritative; this guard prevents users from interacting with form
+            // fields they will never be able to submit.
+            _ = sb.AppendLine("                if (AuthorizationTriggerDisabled())");
+            _ = sb.AppendLine("                {");
+            _ = sb.AppendLine("                    builder.OpenElement(seq++, \"div\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"style\", $\"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;\");");
+            _ = sb.AppendLine("                    builder.OpenComponent<FluentMessageBar>(seq++);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Intent\", MessageIntent.Warning);");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"Title\", \"" + displayLabelEscaped + "\");");
+            _ = sb.AppendLine("                    builder.AddAttribute(seq++, \"AllowDismiss\", false);");
+            _ = sb.AppendLine("                    builder.CloseComponent();");
+            _ = sb.AppendLine("                    builder.CloseElement();");
+            _ = sb.AppendLine("                    break;");
+            _ = sb.AppendLine("                }");
+        }
+
         _ = sb.AppendLine("                builder.OpenElement(seq++, \"div\");");
         _ = sb.AppendLine("                builder.AddAttribute(seq++, \"style\", $\"max-width: {opts.FullPageFormMaxWidth}; margin: 0 auto;\");");
         _ = sb.AppendLine("                if (opts.EmbeddedBreadcrumb)");

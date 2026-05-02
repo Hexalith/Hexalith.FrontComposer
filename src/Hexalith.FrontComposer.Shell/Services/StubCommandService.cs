@@ -16,6 +16,9 @@ namespace Hexalith.FrontComposer.Shell.Services;
 /// <see cref="CommandLifecycleState.Confirmed"/> callbacks are raised from a fire-and-forget task that observes
 /// the provided <see cref="CancellationToken"/> so the form can cancel in-flight callbacks on dispose
 /// (Decisions D5, D6, D8, ADR-010).
+/// Story 7-3 Pass 4 DN-7-3-4-2: authorization is wired via <c>AuthorizingCommandServiceDecorator</c>
+/// at the DI seam; this concrete impl no longer takes a gate parameter so test factories cannot
+/// silently bypass authorization by constructing the impl without the gate.
 /// </remarks>
 public sealed class StubCommandService : ICommandServiceWithLifecycle {
     private readonly IOptionsSnapshot<StubCommandServiceOptions> _options;

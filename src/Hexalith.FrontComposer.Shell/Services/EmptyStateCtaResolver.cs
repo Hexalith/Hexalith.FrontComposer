@@ -3,6 +3,7 @@ using System.Text;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Routing;
+using Hexalith.FrontComposer.Shell.Registration;
 
 using Microsoft.Extensions.Logging;
 
@@ -226,27 +227,30 @@ public sealed class EmptyStateCtaResolver : IEmptyStateCtaResolver {
             return null;
         }
 
+        (string? policy, string? policyBoundedContext) = ResolveCommandPolicy(commandFqn);
         return new(
             commandFqn,
             HumanizeCommandName(TypeName(commandFqn)),
             route,
-            AuthorizationPolicy: ResolveCommandPolicy(commandFqn, manifests));
+            AuthorizationPolicy: policy,
+            BoundedContext: policyBoundedContext ?? boundedContext);
     }
 
-    private static string? ResolveCommandPolicy(string commandFqn, IReadOnlyList<DomainManifest> manifests) {
-        // Mirror FrontComposerRegistry.MergeCommandPolicies last-write-wins semantics so a CTA cannot
-        // disagree with a runtime policy lookup. Trim values so a registry that stored ` OrderApprover `
-        // matches a host catalog entry of `OrderApprover` (Pass-2 NP8). Linear scan is fine — manifest
-        // count is small (one per registered domain).
-        string? winning = null;
-        foreach (DomainManifest manifest in manifests) {
-            if (manifest.CommandPolicies.TryGetValue(commandFqn, out string? policy)
-                && !string.IsNullOrWhiteSpace(policy)) {
-                winning = policy.Trim();
-            }
+    /// <summary>
+    /// Resolves the effective policy and owning bounded context through the canonical registry.
+    /// Pass-4 DN-7-3-4-4 (b): replaces the prior <c>manifests</c>-snapshot scan with a single
+    /// registry lookup so dispatch, palette, CTA, and home surfaces cannot disagree on the
+    /// effective policy. Adopters with a custom <see cref="IFrontComposerRegistry"/> that does
+    /// not implement <see cref="IFrontComposerCommandPolicyRegistry"/> get a <c>null</c> result
+    /// here (no policy gating); they should implement the companion to enable CTA gating.
+    /// </summary>
+    private (string? Policy, string? BoundedContext) ResolveCommandPolicy(string commandFqn) {
+        if (_registry is IFrontComposerCommandPolicyRegistry policyRegistry
+            && policyRegistry.TryGetCommandPolicy(commandFqn, out string policyName, out string? policyBoundedContext)) {
+            return (policyName.Trim(), policyBoundedContext);
         }
 
-        return winning;
+        return (null, null);
     }
 
     private static string? NormalizeCommandName(string? commandName)

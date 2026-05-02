@@ -28,7 +28,15 @@ public sealed class EventStoreRegistrationTests {
 
         await using ServiceProvider provider = services.BuildServiceProvider();
 
-        provider.GetRequiredService<ICommandService>().ShouldBeOfType<EventStoreCommandClient>();
+        // Story 7-3 Pass 4 DN-7-3-4-2: ICommandService now resolves through
+        // AuthorizingCommandServiceDecorator wrapping the inner concrete (EventStoreCommandClient
+        // here). The decorator type is internal; assert the inner concrete is still resolvable
+        // separately and that the decorated service round-trips the inner type through the
+        // ICommandServiceWithLifecycle interface contract.
+        provider.GetRequiredService<EventStoreCommandClient>().ShouldNotBeNull();
+        provider.GetRequiredService<ICommandService>().ShouldNotBeOfType<EventStoreCommandClient>(
+            "ICommandService is wrapped by AuthorizingCommandServiceDecorator (Pass 4 DN-7-3-4-2)");
+        provider.GetRequiredService<ICommandServiceWithLifecycle>().ShouldNotBeOfType<EventStoreCommandClient>();
         provider.GetRequiredService<IQueryService>().ShouldBeOfType<EventStoreQueryClient>();
         provider.GetRequiredService<IProjectionSubscription>().ShouldBeAssignableTo<IProjectionSubscription>();
         provider.GetRequiredService<IProjectionChangeNotifier>().ShouldNotBeNull();

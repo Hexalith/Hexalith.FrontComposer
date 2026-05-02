@@ -1,5 +1,6 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Rendering
 @using Hexalith.FrontComposer.Shell.Components.Icons
+@using Hexalith.FrontComposer.Contracts.Rendering
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.FluentUI.AspNetCore.Components
 
@@ -12,11 +13,18 @@
     {
         @if (cta.AuthorizationPolicy is { Length: > 0 } policy)
         {
-            <AuthorizeView Policy="@policy">
-                <Authorized>
-                    @RenderCta(cta)
-                </Authorized>
-            </AuthorizeView>
+            Type? ctaCommandType = ResolveCommandType(cta.CommandFqn);
+            if (ctaCommandType is not null)
+            {
+                <FcAuthorizedCommandRegion CommandType="ctaCommandType"
+                                           PolicyName="@policy"
+                                           BoundedContext="@cta.BoundedContext"
+                                           DisplayLabel="@cta.CommandDisplayName">
+                    <Authorized>
+                        @RenderCta(cta)
+                    </Authorized>
+                </FcAuthorizedCommandRegion>
+            }
         }
         else
         {

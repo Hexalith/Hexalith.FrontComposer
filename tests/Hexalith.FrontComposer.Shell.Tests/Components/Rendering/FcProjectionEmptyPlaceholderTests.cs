@@ -7,9 +7,11 @@ using Bunit.TestDoubles;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Rendering;
+using Hexalith.FrontComposer.Shell.Services.Authorization;
 using Hexalith.FrontComposer.Shell.Tests.Components.Layout;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Shouldly;
 
@@ -29,11 +31,13 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
 
     private sealed class ReadOnlyProjection { }
 
+    // Pass-4 BH-30 — keep test command types private (no need to widen visibility for bUnit).
     private sealed class CreateOrderCommand { }
 
     private sealed class NewShipmentCommand { }
 
     private readonly BunitAuthorizationContext _auth;
+    private readonly TestCommandAuthorizationEvaluator _authorizationEvaluator = new();
 
     public FcProjectionEmptyPlaceholderTests() {
         CultureInfo.CurrentUICulture = new CultureInfo("en");
@@ -42,6 +46,9 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
         // must run BEFORE EnsureStoreInitialized triggers the first service resolution. The
         // returned context is mutable across tests via SetAuthorized / SetNotAuthorized.
         _auth = AddAuthorization();
+        _ = Services.AddAuthorizationCore(options =>
+            options.AddPolicy("OrderApprover", policy => policy.RequireAuthenticatedUser()));
+        Services.Replace(ServiceDescriptor.Scoped<ICommandAuthorizationEvaluator>(_ => _authorizationEvaluator));
         EnsureStoreInitialized();
     }
 
@@ -141,6 +148,57 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
     }
 
     [Fact]
+    public void PolicyProtectedCtaUsesEvaluatorBackedResourceAuthorization() {
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Orders",
+            BoundedContext: "Orders",
+            Projections: [typeof(OrderProjection).FullName!],
+            Commands: [typeof(ProtectedCreateOrderCommand).FullName!],
+            CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) {
+                [typeof(ProtectedCreateOrderCommand).FullName!] = "OrderApprover",
+            }));
+        _auth.SetAuthorized("test-user");
+        Services.GetRequiredService<Hexalith.FrontComposer.Shell.Services.IEmptyStateCtaResolver>()
+            .ResolveExplicit(typeof(OrderProjection), typeof(ProtectedCreateOrderCommand).FullName!)
+            .ShouldNotBeNull()
+            .AuthorizationPolicy.ShouldBe("OrderApprover");
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, typeof(ProtectedCreateOrderCommand).FullName!));
+
+        cut.WaitForAssertion(() => cut.Markup.ShouldContain("Send your first Protected Create Order"));
+        cut.Markup.ShouldContain("fc-projection-empty-placeholder-cta");
+        cut.WaitForAssertion(() => _authorizationEvaluator.LastRequest.ShouldNotBeNull());
+        _authorizationEvaluator.LastRequest!.SourceSurface.ShouldBe(CommandAuthorizationSurface.EmptyStateCta);
+    }
+
+    [Fact]
+    public void PolicyProtectedCtaIsHiddenForUnauthorizedUser() {
+        Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
+            Name: "Orders",
+            BoundedContext: "Orders",
+            Projections: [typeof(OrderProjection).FullName!],
+            Commands: [typeof(ProtectedCreateOrderCommand).FullName!],
+            CommandPolicies: new Dictionary<string, string>(StringComparer.Ordinal) {
+                [typeof(ProtectedCreateOrderCommand).FullName!] = "OrderApprover",
+            }));
+        _authorizationEvaluator.Decision = CommandAuthorizationDecision.Denied("corr-denied");
+        _auth.SetNotAuthorized();
+
+        IRenderedComponent<FcProjectionEmptyPlaceholder> cut = Render<FcProjectionEmptyPlaceholder>(parameters => parameters
+            .Add(p => p.ProjectionType, typeof(OrderProjection))
+            .Add(p => p.CtaCommandName, typeof(ProtectedCreateOrderCommand).FullName!));
+
+        // Pass-4 BH-28 — assert the evaluator was actually consulted, not that the CTA is missing
+        // for the wrong reason (e.g., still in Pending state, or the gate was bypassed).
+        cut.WaitForAssertion(() => _authorizationEvaluator.LastRequest.ShouldNotBeNull());
+        _authorizationEvaluator.LastRequest!.SourceSurface.ShouldBe(CommandAuthorizationSurface.EmptyStateCta);
+        _authorizationEvaluator.LastRequest!.BoundedContext.ShouldBe("Orders");
+        cut.Markup.ShouldNotContain("fc-projection-empty-placeholder-cta");
+    }
+
+    [Fact]
     public void NoCtaWhenProjectionHasNoRegisteredCommands() {
         // Bounded context exists but registers no commands → resolver returns null → no CTA.
         Services.GetRequiredService<IFrontComposerRegistry>().RegisterDomain(new DomainManifest(
@@ -196,4 +254,22 @@ public sealed class FcProjectionEmptyPlaceholderTests : LayoutComponentTestBase 
         ctaCommandName!.PropertyType.ShouldBe(typeof(string));
         secondaryText!.PropertyType.ShouldBe(typeof(string));
     }
+
+    private sealed class TestCommandAuthorizationEvaluator : ICommandAuthorizationEvaluator {
+        public CommandAuthorizationDecision Decision { get; set; } = CommandAuthorizationDecision.Allowed("corr-allowed");
+
+        public CommandAuthorizationRequest? LastRequest { get; private set; }
+
+        public Task<CommandAuthorizationDecision> EvaluateAsync(
+            CommandAuthorizationRequest request,
+            CancellationToken cancellationToken = default) {
+            LastRequest = request;
+            return Task.FromResult(Decision);
+        }
+    }
 }
+
+// Pass-4 BH-29 — test command type is internal at namespace scope (was public at file scope which
+// polluted the test assembly's public API). Stays top-level so its FullName matches a real
+// production command shape (CommandRouteBuilder.IsInternalRoute rejects nested-type `+` separators).
+internal sealed class ProtectedCreateOrderCommand { }

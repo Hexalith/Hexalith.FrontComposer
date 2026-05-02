@@ -1,0 +1,15 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Rendering
+@using Hexalith.FrontComposer.Shell.Services.Authorization
+
+@if (_decision is null || _decision.Kind == CommandAuthorizationDecisionKind.Pending)
+{
+    @Pending
+}
+else if (_decision.IsAllowed)
+{
+    @Authorized
+}
+else
+{
+    @NotAuthorized
+}

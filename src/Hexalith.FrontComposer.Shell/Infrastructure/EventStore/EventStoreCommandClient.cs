@@ -21,6 +21,10 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 /// exception (<see cref="CommandValidationException"/>, <see cref="CommandWarningException"/>,
 /// <see cref="AuthRedirectRequiredException"/>, <see cref="CommandRejectedException"/>) instead
 /// of a stringly-typed <see cref="HttpRequestException"/>.
+/// Story 7-3 Pass 4 DN-7-3-4-2: authorization is enforced via
+/// <c>AuthorizingCommandServiceDecorator</c> at the DI seam; this concrete impl no longer takes a
+/// gate parameter so test factories cannot silently bypass authorization by constructing the impl
+/// without the gate.
 /// </summary>
 public sealed class EventStoreCommandClient(
     IHttpClientFactory httpClientFactory,

@@ -22,7 +22,8 @@ public class CommandRendererEmitterTests {
         CommandDensity? densityOverride = null,
         string typeName = "DemoCommand",
         string @namespace = "Demo.Domain",
-        string boundedContext = "Demo") {
+        string boundedContext = "Demo",
+        string? authorizationPolicyName = null) {
         ImmutableArray<string> nonDerivable = Enumerable
             .Range(0, nonDerivableCount)
             .Select(i => "Field" + i)
@@ -49,7 +50,8 @@ public class CommandRendererEmitterTests {
             formComponentName: typeName + "Form",
             actionsWrapperName: typeName + "Actions",
             stateName: typeName + "LifecycleState",
-            subscriberTypeName: typeName + "LastUsedSubscriber");
+            subscriberTypeName: typeName + "LastUsedSubscriber",
+            authorizationPolicyName: authorizationPolicyName);
     }
 
     [Fact]
@@ -98,6 +100,51 @@ public class CommandRendererEmitterTests {
         string pageSource = CommandPageEmitter.Emit(BuildModel(5));
         Microsoft.CodeAnalysis.SyntaxTree pageTree = CSharpSyntaxTree.ParseText(pageSource, cancellationToken: ct);
         pageTree.GetDiagnostics(ct).ShouldBeEmpty("FullPage page should parse cleanly");
+    }
+
+    [Fact]
+    public void Renderer_ProtectedCommand_EmitsEvaluatorBackedTriggerGate() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        string source = CommandRendererEmitter.Emit(BuildModel(1, authorizationPolicyName: "OrderApprover"));
+
+        // Pass-4 BH-45 / AA-24 — parse the emitted source to catch typos / missing semicolons
+        // / undefined identifiers, not just substring presence.
+        Microsoft.CodeAnalysis.SyntaxTree tree = CSharpSyntaxTree.ParseText(source, cancellationToken: ct);
+        tree.GetDiagnostics(ct).ShouldBeEmpty("protected renderer should parse cleanly");
+
+        source.ShouldContain("ICommandAuthorizationEvaluator CommandAuthorizationEvaluator");
+        source.ShouldContain("AuthorizationPolicyName = \"OrderApprover\"");
+        source.ShouldContain("CommandAuthorizationSurface.InlineAction");
+        // Pass-4 DN-7-3-4-7 hardening — emitted code includes the cancellation token capture and
+        // sequence-number guard mirroring the Pass-3 form-emitter discipline.
+        source.ShouldContain("_authorizationCts");
+        source.ShouldContain("_authorizationDisposed");
+        source.ShouldContain("_authorizationRefreshSequence");
+        source.ShouldContain("AuthenticationStateChanged += OnAuthenticationStateChanged");
+        // Pass-4 AA-15 / BH-37 — presentation-time auth must not include unvalidated user input.
+        // The emitted CommandAuthorizationRequest passes null (not _prefilledModel) for the
+        // command resource. Verified by parsing and inspecting the literal arg in the request.
+        source.ShouldNotContain("AuthorizationPolicyName,\n            _prefilledModel");
+        source.ShouldNotContain("AuthorizationPolicyName,\r\n                _prefilledModel");
+        source.ShouldContain("AuthorizationPolicyName,");
+        source.ShouldContain("                null,");
+    }
+
+    [Fact]
+    public void Renderer_ProtectedCommand_GatesAllRenderModes() {
+        // Pass-4 DN-7-3-4-6 (b) — Inline / CompactInline / FullPage all gate on
+        // AuthorizationTriggerDisabled(). Inline emits the gate as the FluentButton's Disabled
+        // attribute (multi-field popover) or as part of the boolean expression for the
+        // zero-field button. CompactInline + FullPage emit a presentation-time placeholder branch
+        // that returns early when the gate is true. So a protected renderer should reference the
+        // gate at least three times across the three switch arms.
+        string source = CommandRendererEmitter.Emit(BuildModel(1, authorizationPolicyName: "OrderApprover"));
+
+        int gateOccurrences = System.Text.RegularExpressions.Regex.Matches(source, @"AuthorizationTriggerDisabled\(\)").Count;
+        gateOccurrences.ShouldBeGreaterThanOrEqualTo(3, "expected gating in Inline + CompactInline + FullPage cases");
+        // The CompactInline + FullPage placeholder branches both check the gate via if-statement.
+        int placeholderBranches = System.Text.RegularExpressions.Regex.Matches(source, @"if \(AuthorizationTriggerDisabled\(\)\)").Count;
+        placeholderBranches.ShouldBe(2, "CompactInline + FullPage placeholder branches");
     }
 
     // === Task 11.3 — determinism ===

@@ -11,8 +11,15 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Services;
 
 // Public so NSubstitute (Castle DynamicProxy) can generate a proxy. Lives at namespace scope
-// because nested-private interfaces can't be proxied even with InternalsVisibleTo.
-public interface IWriteAwareRegistry : IFrontComposerRegistry, IFrontComposerCommandWriteAccessRegistry { }
+// because nested-private interfaces can't be proxied even with InternalsVisibleTo. The composite
+// includes IFrontComposerCommandPolicyRegistry so tests get the default-implemented manifest-walk
+// for free (Pass 4 DN-7-3-4-4 made the policy lookup canonical via this interface).
+public interface IWriteAwareRegistry
+    : IFrontComposerRegistry,
+        IFrontComposerCommandWriteAccessRegistry,
+        Hexalith.FrontComposer.Shell.Registration.IFrontComposerCommandPolicyRegistry { }
+
+public interface IWriteAwarePolicyRegistry : IWriteAwareRegistry { }
 
 public sealed class EmptyStateCtaResolverTests {
     [BoundedContext("Orders")]
@@ -72,6 +79,52 @@ public sealed class EmptyStateCtaResolverTests {
 
         cta.ShouldNotBeNull();
         cta.AuthorizationPolicy.ShouldBe("OrderApprover");
+    }
+
+    [Fact]
+    public void Resolve_CommandWithPolicy_UsesCanonicalRegistryPolicyLookup() {
+        // Pass 4 DN-7-3-4-4 (b) — tuple lookup returns BOTH policy and bounded context. CTA flows
+        // BC into the empty-state record so FcAuthorizedCommandRegion can pass it to the
+        // evaluator's resource shape (resolves AA-08 — eliminates the resource-shape divergence
+        // that DN5 was supposed to fix).
+        IWriteAwarePolicyRegistry registry = Substitute.For<IWriteAwarePolicyRegistry>();
+        registry.GetManifests().Returns([Manifest("Orders", typeof(OrderProjection), "Orders.CreateOrderCommand")]);
+        registry.IsCommandWritable(Arg.Any<string>()).Returns(true);
+        registry.TryGetCommandPolicy("Orders.CreateOrderCommand", out Arg.Any<string>(), out Arg.Any<string?>())
+            .Returns(call => {
+                call[1] = "CanonicalPolicy";
+                call[2] = "Orders";
+                return true;
+            });
+        EmptyStateCtaResolver resolver = new(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
+
+        EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
+
+        cta.ShouldNotBeNull();
+        cta.AuthorizationPolicy.ShouldBe("CanonicalPolicy");
+        cta.BoundedContext.ShouldBe("Orders");
+    }
+
+    [Fact]
+    public void Resolve_CommandWithPolicy_BC_ManifestFallback() {
+        // When the registry doesn't implement the policy companion, the manifest-walk default
+        // interface method still returns BC alongside the policy. Custom registries get this for
+        // free without overriding TryGetCommandPolicy.
+        EmptyStateCtaResolver resolver = CreateResolver(
+            new DomainManifest(
+                "Orders",
+                "Orders",
+                [typeof(OrderProjection).FullName!],
+                ["Orders.CreateOrderCommand"],
+                new Dictionary<string, string>(StringComparer.Ordinal) {
+                    ["Orders.CreateOrderCommand"] = "OrderApprover",
+                }));
+
+        EmptyStateCta? cta = resolver.Resolve(typeof(OrderProjection));
+
+        cta.ShouldNotBeNull();
+        cta.AuthorizationPolicy.ShouldBe("OrderApprover");
+        cta.BoundedContext.ShouldBe("Orders");
     }
 
     [Fact]
@@ -192,9 +245,38 @@ public sealed class EmptyStateCtaResolverTests {
         // Default to writable=true so existing tests focusing on the discovery chain (not the
         // write-filter) keep their behavior; tests that exercise the read-only filter override
         // .IsCommandWritable explicitly per-command.
+        // Pass 4 DN-7-3-4-4: registry must also implement IFrontComposerCommandPolicyRegistry so
+        // ResolveCommandPolicy can use the canonical lookup. NSubstitute does not auto-invoke
+        // default interface methods, so we wire TryGetCommandPolicy explicitly to walk the
+        // manifests with the same last-write-wins / trim semantics the production registry uses.
         IWriteAwareRegistry registry = Substitute.For<IWriteAwareRegistry>();
         registry.GetManifests().Returns(manifests);
         registry.IsCommandWritable(Arg.Any<string>()).Returns(true);
+        registry
+            .TryGetCommandPolicy(Arg.Any<string>(), out Arg.Any<string>(), out Arg.Any<string?>())
+            .Returns(call => {
+                string commandTypeName = (string)call[0]!;
+                if (string.IsNullOrWhiteSpace(commandTypeName)) {
+                    call[1] = string.Empty;
+                    call[2] = null;
+                    return false;
+                }
+
+                string trimmedKey = commandTypeName.Trim();
+                string policy = string.Empty;
+                string? boundedContext = null;
+                foreach (DomainManifest manifest in manifests) {
+                    if (manifest.CommandPolicies.TryGetValue(trimmedKey, out string? candidate)
+                        && !string.IsNullOrWhiteSpace(candidate)) {
+                        policy = candidate.Trim();
+                        boundedContext = manifest.BoundedContext;
+                    }
+                }
+
+                call[1] = policy;
+                call[2] = boundedContext;
+                return policy.Length > 0;
+            });
         return new EmptyStateCtaResolver(registry, Substitute.For<ILogger<EmptyStateCtaResolver>>());
     }
 

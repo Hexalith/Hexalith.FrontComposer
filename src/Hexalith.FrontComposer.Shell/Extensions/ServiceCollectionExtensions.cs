@@ -166,6 +166,14 @@ public static class ServiceCollectionExtensions
         Action<FluxorOptions>? configureFluxor = null)
     {
         _ = services.AddLogging();
+        // Story 7-3 Pass 4 — the dispatch decorator and the empty-state CTA region both depend on
+        // ASP.NET Core authorization services (IAuthorizationService is needed by the
+        // CommandAuthorizationEvaluator that the decorator wraps). AddAuthorizationCore is
+        // idempotent (TryAdd under the hood), so chaining it here never collides with an adopter's
+        // own call. Spec D4: "Missing/invalid auth services fail closed for protected commands" —
+        // we make the framework hard-require authorization services so the fail-closed behaviour
+        // is structural rather than dependent on adopter wiring discipline.
+        _ = services.AddAuthorizationCore();
         _ = services.AddFluxor(o =>
         {
             _ = o.ScanAssemblies(typeof(FrontComposerThemeState).Assembly);
@@ -190,7 +198,20 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IEmptyStateCtaResolver, EmptyStateCtaResolver>();
 
         // Default stub command service (ADR-010). Adopters replace it via Story 5.1's AddHexalithEventStore().
-        services.TryAddScoped<ICommandService, StubCommandService>();
+        // Story 7-3 Pass 4 DN-7-3-4-2: ICommandService and ICommandServiceWithLifecycle resolve
+        // through AuthorizingCommandServiceDecorator so direct callers (palette, MCP bridge,
+        // adopter custom code) hit the authorization gate before any side effect runs. The inner
+        // concrete is registered separately so the decorator factory can wrap it. TryAddScoped
+        // keeps composition with AddHexalithEventStore which calls RemoveStubCommandService and
+        // then registers the EventStore concrete — same decorator factory transparently wraps
+        // whichever inner is registered.
+        services.TryAddScoped<StubCommandService>();
+        services.TryAddScoped<ICommandServiceWithLifecycle>(sp =>
+            new AuthorizingCommandServiceDecorator(
+                sp.GetRequiredService<StubCommandService>(),
+                sp.GetRequiredService<ICommandDispatchAuthorizationGate>()));
+        services.TryAddScoped<ICommandService>(sp =>
+            sp.GetRequiredService<ICommandServiceWithLifecycle>());
         _ = services.Configure<StubCommandServiceOptions>(_ => { });
 
         // Story 2-2 Decision D33 — DataGridNav LRU cap is seeded from FcShellOptions.DataGridNavCap
@@ -215,6 +236,7 @@ public static class ServiceCollectionExtensions
         services.TryAddScoped<IFrontComposerTenantContextAccessor, FrontComposerTenantContextAccessor>();
         services.TryAddScoped<ITenantScopedManifestGate, TenantScopedManifestGate>();
         services.TryAddScoped<ICommandAuthorizationEvaluator, CommandAuthorizationEvaluator>();
+        services.TryAddScoped<ICommandDispatchAuthorizationGate, CommandDispatchAuthorizationGate>();
         // Story 7-2 DN1 — production guardrail. See EventStoreServiceExtensions for context.
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IValidateOptions<FcShellOptions>, FcShellTenantOptionsValidator>());
 

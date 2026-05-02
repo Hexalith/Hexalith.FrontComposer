@@ -34,7 +34,8 @@ public sealed record EmptyStateCta {
         string CommandFqn,
         string CommandDisplayName,
         string CommandRoute,
-        string? AuthorizationPolicy = null) {
+        string? AuthorizationPolicy = null,
+        string? BoundedContext = null) {
         // P-18: reject whitespace-only AuthorizationPolicy. The component branches on
         // `policy is { Length: > 0 }` and would otherwise pass "   " into <AuthorizeView Policy=>
         // which throws InvalidOperationException at runtime.
@@ -48,10 +49,20 @@ public sealed record EmptyStateCta {
         this.CommandDisplayName = CommandDisplayName;
         this.CommandRoute = CommandRoute;
         this.AuthorizationPolicy = AuthorizationPolicy;
+        this.BoundedContext = BoundedContext;
     }
 
     public string CommandFqn { get; init; }
     public string CommandDisplayName { get; init; }
     public string CommandRoute { get; init; }
     public string? AuthorizationPolicy { get; init; }
+
+    /// <summary>
+    /// Bounded context of the manifest that owns the resolved command. Threaded through to
+    /// <c>FcAuthorizedCommandRegion</c> so the evaluator's <c>CommandAuthorizationResource</c>
+    /// shape stays symmetric across CTA, palette, dispatch, and form surfaces (Story 7-3 Pass 4
+    /// resolves AA-08: DN5 was supposed to eliminate resource-shape divergence but had dropped
+    /// this field).
+    /// </summary>
+    public string? BoundedContext { get; init; }
 }
