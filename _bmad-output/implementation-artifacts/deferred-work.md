@@ -655,3 +655,14 @@ These two defects sit in the Counter-sample lifecycle wiring — the generated e
 - DN3 (bUnit / Counter sample bUnit) — bUnit overlay/annotation tests, ClipboardJSModule tests, Counter sample smoke tests covering overlay activation / annotation appearance / red-dashed class / starter copy / stale message / clipboard recovery. Coupled to DN1 + Story 10-2 a11y CI gate. [`tests/Hexalith.FrontComposer.Shell.Tests/Components/DevMode/`]
 - DN4 — MSBuild symbol gate (`#if HEXALITH_FRONTCOMPOSER_SHELL` defined via Shell-package `.targets`) so headless adopters consuming Contracts + SourceTools without Shell can still compile the generated Razor. Important for Epic 8 MCP path. [`src/Hexalith.FrontComposer.SourceTools/`, `src/Hexalith.FrontComposer.Shell/build/`]
 - DN5 — Either split `Hexalith.FrontComposer.Contracts.DevMode` into a dedicated assembly OR mark dev-mode contract types `[EditorBrowsable(Never)]` + ship a Roslyn analyzer that flags production references. Story 6-6 / Story 9-4. [`src/Hexalith.FrontComposer.Contracts/DevMode/`]
+
+## Deferred from: code review of 8-1-mcp-server-and-typed-tool-exposure (2026-05-02)
+
+- AppDomain.GetAssemblies plugin/AssemblyLoadContext blind spot — pre-existing pattern; collectible/plugin ALC support is broader than this story. **Owner:** Epic 9 plugin-host story. [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs:732-737`]
+- `ValueTask<QueryResult<T>>` future-compat — `IQueryService.QueryAsync` returns `Task<>`; current cast is correct. **Owner:** Fix when contract changes. [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:828-831`]
+- Markdown rich rendering features (role-specific tables, status cards, timelines, empty-state suggestions). **Owner:** Story 8-4. [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs`]
+- Schema fingerprints / version negotiation — `McpManifest.SchemaVersion` is a static constant string. **Owner:** Story 8-6. [`src/Hexalith.FrontComposer.Contracts/Mcp/McpManifest.cs`]
+- Two-call lifecycle subscription tool — out of scope per spec D7. **Owner:** Story 8-3. [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs`]
+- Tenant-scoped tool listing / closest-match suggestions — out of scope per spec D6. **Owner:** Story 8-2. [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs:264-268`]
+- `ApiKeys` plaintext storage in options — current `IOptions`-bound config is the standard ASP.NET Core pattern; rotation/secret-store integration is a security follow-up. **Owner:** Epic 7 security follow-up. [`src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs:375`]
+- Skill corpus and build-time agent support resources. **Owner:** Story 8-5. [`src/Hexalith.FrontComposer.Mcp/`]

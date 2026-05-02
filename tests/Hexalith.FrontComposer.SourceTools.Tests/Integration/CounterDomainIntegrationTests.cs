@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Integration;
 
 public class CounterDomainIntegrationTests {
     [Fact]
-    public void RunGenerators_CounterProjection_Produces5Files() {
+    public void RunGenerators_CounterProjection_Produces6Files() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(TestSources.CounterProjectionSource);
         FrontComposerGenerator generator = new();
@@ -19,7 +19,7 @@ public class CounterDomainIntegrationTests {
         GeneratorDriverRunResult result = driver.GetRunResult();
 
         result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty();
-        result.GeneratedTrees.Length.ShouldBe(6, "Counter projection should produce 5 generated files plus the shared Level 2 template manifest");
+        result.GeneratedTrees.Length.ShouldBe(7, "Counter projection should produce 5 generated files plus shared Level 2 and MCP manifests");
 
         string[] fileNames = result.GeneratedTrees.Select(t => System.IO.Path.GetFileName(t.FilePath)).ToArray();
         fileNames.ShouldContain("Counter.Domain.CounterProjection.g.razor.cs");
@@ -28,6 +28,7 @@ public class CounterDomainIntegrationTests {
         fileNames.ShouldContain("Counter.Domain.CounterProjectionReducers.g.cs");
         fileNames.ShouldContain("Counter.Domain.CounterProjectionRegistration.g.cs");
         fileNames.ShouldContain("__FrontComposerProjectionTemplatesRegistration.g.cs");
+        fileNames.ShouldContain("FrontComposerMcpManifest.g.cs");
 
         CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(
             result.GeneratedTrees.ToArray());

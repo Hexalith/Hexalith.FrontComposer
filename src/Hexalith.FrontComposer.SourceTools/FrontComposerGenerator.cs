@@ -66,6 +66,32 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 }
             });
 
+        context.RegisterSourceOutput(
+            collectedProjections.Combine(collectedCommands),
+            static (spc, source) => {
+                ImmutableArray<DomainModel>.Builder projectionBuilder = ImmutableArray.CreateBuilder<DomainModel>();
+                foreach (ParseResult projection in source.Left) {
+                    if (projection.Model is not null) {
+                        projectionBuilder.Add(projection.Model);
+                    }
+                }
+
+                ImmutableArray<CommandModel>.Builder commandBuilder = ImmutableArray.CreateBuilder<CommandModel>();
+                foreach (CommandParseResult command in source.Right) {
+                    if (command.Model is not null) {
+                        commandBuilder.Add(command.Model);
+                    }
+                }
+
+                if (projectionBuilder.Count == 0 && commandBuilder.Count == 0) {
+                    return;
+                }
+
+                spc.AddSource(
+                    McpManifestEmitter.GeneratedHintName,
+                    McpManifestEmitter.Emit(commandBuilder.ToImmutable(), projectionBuilder.ToImmutable()));
+            });
+
         context.RegisterSourceOutput(projectionResults, static (spc, result) => {
             foreach (DiagnosticInfo diagInfo in result.Diagnostics) {
                 spc.ReportDiagnostic(Diagnostic.Create(

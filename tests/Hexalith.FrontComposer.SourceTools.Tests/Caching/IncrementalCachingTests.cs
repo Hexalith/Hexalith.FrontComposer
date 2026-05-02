@@ -127,9 +127,9 @@ public partial class NewProjection
                 trackIncrementalGeneratorSteps: true));
         driver1 = driver1.RunGenerators(compilation1, ct);
 
-        // Verify initial run produces 5 generated files
+        // Verify initial run produces projection files plus shared manifests.
         GeneratorDriverRunResult result1 = driver1.GetRunResult();
-        result1.GeneratedTrees.Length.ShouldBe(6, "Initial run should produce 5 files for one projection plus the shared Level 2 template manifest");
+        result1.GeneratedTrees.Length.ShouldBe(7, "Initial run should produce 5 files for one projection plus shared Level 2 and MCP manifests");
 
         // Add new projection class
         CSharpCompilation compilation2 = compilation1.AddSyntaxTrees(
@@ -138,8 +138,8 @@ public partial class NewProjection
 
         GeneratorRunResult result2 = driver2.GetRunResult().Results[0];
 
-        // Should now produce 10 total files
-        driver2.GetRunResult().GeneratedTrees.Length.ShouldBe(11, "Two projections should produce 10 files plus the shared Level 2 template manifest");
+        // Should now produce 10 projection files plus shared manifests.
+        driver2.GetRunResult().GeneratedTrees.Length.ShouldBe(12, "Two projections should produce 10 files plus shared Level 2 and MCP manifests");
 
         result2.TrackedSteps.ContainsKey("Parse").ShouldBeTrue("The parse stage should be tracked explicitly.");
 
