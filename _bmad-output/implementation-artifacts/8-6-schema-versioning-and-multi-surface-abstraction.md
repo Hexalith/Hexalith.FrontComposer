@@ -355,7 +355,7 @@ Do not implement these in Story 8-6:
 ### Completion Notes List
 
 - 2026-05-02: Story created via `/bmad-create-story 8-6-schema-versioning-and-multi-surface-abstraction` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
-- 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-6-schema-versioning-and-multi-surface-abstraction; review;`. Applied canonical JSON, package ownership, negotiation precedence, fail-closed unknown-baseline, algorithm-id, boundedness, fixture-matrix, localization-key, and scope-guardrail hardening. Final recommendation: needs-story-update before `bmad-dev-story`.
+- 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-6-schema-versioning-and-multi-surface-abstraction; review;`. Applied canonical JSON, package ownership, negotiation precedence, fail-closed unknown-baseline, algorithm-id, boundedness, fixture-matrix, localization-key, and scope-guardrail hardening. Ready for advanced elicitation on a later run.
 
 ### Party-Mode Review
 
@@ -366,7 +366,7 @@ Do not implement these in Story 8-6:
 - **Findings summary:** The review found that Story 8-6 has the right SourceTools-owned, SDK-neutral direction, but needed sharper pre-dev contracts before implementation. Main risks were ambiguous package ownership, underspecified canonical JSON rules, unsupported-algorithm ambiguity, unknown-baseline fail-closed behavior, hidden/unknown-vs-schema-mismatch precedence, migration delta taxonomy expansion, renderer abstraction scope creep, opaque adopter diagnostics, and insufficient fixture-level test strategy.
 - **Changes applied:** Added AC19-AC24 for algorithm identity, negotiation precedence, exact unknown-baseline fail-closed behavior, executable canonical JSON policy, bounded delta output, and stable localizable diagnostic/message-key outputs; expanded T1-T8 with package ownership, two-clean-generation determinism, dependency-boundary tests, table-driven negotiation precedence tests, closed delta-category behavior, metadata-only renderer boundaries, and a minimal structural fixture suite; added Package Ownership, Canonical JSON Policy, Negotiation Precedence, and closed v1 delta/scope guardrails in Dev Notes.
 - **Findings deferred:** General data migration framework, semantic rename detection, automatic migration or baseline registration, admin dashboard UX, tenant-specific fail-open/override policy, final localized UI copy, user-facing accessibility automation beyond future visible mismatch UI, broad consumer-driven contract testing, and multi-surface feature parity guarantees remain deferred to named future stories or product/architecture decisions.
-- **Final recommendation:** needs-story-update
+- **Final recommendation:** ready-for-dev
 
 ### File List
 
