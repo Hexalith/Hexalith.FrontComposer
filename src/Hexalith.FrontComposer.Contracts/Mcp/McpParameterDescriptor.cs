@@ -12,5 +12,6 @@ public sealed record McpParameterDescriptor(
     string Title,
     string? Description,
     IReadOnlyList<string> EnumValues,
-    bool IsUnsupported);
-
+    bool IsUnsupported,
+    IReadOnlyDictionary<string, string>? BadgeMappings = null,
+    string DisplayFormat = "Default");

@@ -1,11 +1,11 @@
 using System.Collections;
 using System.Globalization;
 using System.Reflection;
-using System.Text;
 using System.Text.Json.Nodes;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.Mcp.Rendering;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -49,8 +49,18 @@ public sealed class FrontComposerMcpProjectionReader(
             }
 
             object queryResult = await AwaitDynamic(resultTask!).ConfigureAwait(false);
-            string text = RenderResult(descriptor, queryResult, options.Value);
-            return FrontComposerMcpResult.Success(text, new JsonObject { ["contentType"] = "text/markdown" });
+            McpProjectionRenderRequest renderRequest = await BuildRenderRequestAsync(
+                descriptor,
+                queryResult,
+                cancellationToken).ConfigureAwait(false);
+            McpProjectionRenderResult render = McpMarkdownProjectionRenderer.Render(
+                renderRequest,
+                options.Value,
+                cancellationToken);
+
+            return render.IsSuccess
+                ? FrontComposerMcpResult.Success(render.Document!.Text, new JsonObject { ["contentType"] = render.ContentType })
+                : FrontComposerMcpResult.Failure(render.Category);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Canceled);
@@ -73,7 +83,10 @@ public sealed class FrontComposerMcpProjectionReader(
             ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.DownstreamFailed);
     }
 
-    private static string RenderResult(McpResourceDescriptor descriptor, object queryResult, FrontComposerMcpOptions options) {
+    private async Task<McpProjectionRenderRequest> BuildRenderRequestAsync(
+        McpResourceDescriptor descriptor,
+        object queryResult,
+        CancellationToken cancellationToken) {
         Type resultType = queryResult.GetType();
         object? itemsValue = resultType.GetProperty("Items")?.GetValue(queryResult);
         long totalCount = ReadTotalCount(resultType, queryResult);
@@ -89,111 +102,49 @@ public sealed class FrontComposerMcpProjectionReader(
             }
         }
 
-        int maxFields = Math.Max(1, options.MaxFieldsPerResource);
-        int maxRows = Math.Max(1, options.MaxRowsPerResource);
-        List<McpParameterDescriptor> allFields = [.. descriptor.Fields.Where(f => !f.IsUnsupported)];
-        List<McpParameterDescriptor> fields = [.. allFields.Take(maxFields)];
+        IReadOnlyList<string>? suggestions = items.Count == 0
+            ? await BuildSafeSuggestionsAsync(descriptor, cancellationToken).ConfigureAwait(false)
+            : null;
 
-        var sb = new StringBuilder();
-        sb.AppendLine("# " + descriptor.Title);
-        sb.AppendLine();
-        sb.AppendLine("Total: " + totalCount.ToString(CultureInfo.InvariantCulture));
-        if (fields.Count == 0) {
-            return sb.ToString();
-        }
-
-        sb.AppendLine();
-        sb.AppendLine("| " + string.Join(" | ", fields.Select(f => f.Title)) + " |");
-        sb.AppendLine("| " + string.Join(" | ", fields.Select(_ => "---")) + " |");
-        int rendered = 0;
-        foreach (object item in items) {
-            if (rendered >= maxRows) {
-                break;
-            }
-
-            sb.Append("| ");
-            sb.Append(string.Join(" | ", fields.Select(f => SanitizeCell(item.GetType().GetProperty(f.Name)?.GetValue(item)))));
-            sb.AppendLine(" |");
-            rendered++;
-        }
-
-        // Sanitized truncation hints — do not reveal hidden tenant data or actual omitted-row count
-        // beyond what items.Count already exposes; the marker simply tells the agent the response
-        // was capped.
-        if (allFields.Count > fields.Count) {
-            sb.AppendLine();
-            sb.AppendLine("_Additional fields omitted; raise MaxFieldsPerResource to expose them._");
-        }
-
-        if (items.Count > rendered) {
-            sb.AppendLine();
-            sb.AppendLine("_Result truncated; raise MaxRowsPerResource or refine query to expose more rows._");
-        }
-
-        return sb.ToString();
+        return new McpProjectionRenderRequest(
+            descriptor,
+            items,
+            totalCount,
+            SafeCommandSuggestions: suggestions);
     }
+
+    private async ValueTask<IReadOnlyList<string>?> BuildSafeSuggestionsAsync(
+        McpResourceDescriptor descriptor,
+        CancellationToken cancellationToken) {
+        if (string.IsNullOrWhiteSpace(descriptor.EmptyStateCtaCommandName)) {
+            return null;
+        }
+
+        var admission = services.GetService<FrontComposerMcpToolAdmissionService>();
+        if (admission is null) {
+            return null;
+        }
+
+        McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
+        string cta = descriptor.EmptyStateCtaCommandName!;
+        string[] suggestions = [.. catalog.Tools
+            .Where(t => MatchesEmptyStateCta(t.Descriptor, cta))
+            .OrderBy(t => t.Name, StringComparer.Ordinal)
+            .Select(t => t.Title)
+            .Where(t => !string.IsNullOrWhiteSpace(t))
+            .Take(Math.Max(1, options.Value.MaxProjectionSuggestions))];
+        return suggestions.Length == 0 ? null : suggestions;
+    }
+
+    private static bool MatchesEmptyStateCta(McpCommandDescriptor descriptor, string cta)
+        => string.Equals(descriptor.CommandTypeName, cta, StringComparison.Ordinal)
+            || descriptor.CommandTypeName.EndsWith("." + cta, StringComparison.Ordinal)
+            || string.Equals(descriptor.ProtocolName, cta, StringComparison.Ordinal)
+            || descriptor.ProtocolName.Contains("." + cta + ".", StringComparison.Ordinal);
 
     private static long ReadTotalCount(Type resultType, object queryResult) {
         object? raw = resultType.GetProperty("TotalCount")?.GetValue(queryResult);
         return raw is null ? 0L : Convert.ToInt64(raw, CultureInfo.InvariantCulture);
-    }
-
-    private static string SanitizeCell(object? value) {
-        string text = value switch {
-            null => string.Empty,
-            DateTime dt => dt.ToString("o", CultureInfo.InvariantCulture),
-            DateTimeOffset dto => dto.ToString("o", CultureInfo.InvariantCulture),
-            DateOnly d => d.ToString("o", CultureInfo.InvariantCulture),
-            TimeOnly t => t.ToString("o", CultureInfo.InvariantCulture),
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture),
-            _ => value.ToString() ?? string.Empty,
-        };
-
-        // Order matters: pre-escape backslash before introducing escape sequences for pipe so
-        // a literal "\|" in source data survives round-trip without collapsing into "\\|" being
-        // re-parsed as escaped-pipe by markdown clients. Backticks/asterisks/brackets are escaped
-        // so cell content cannot inject formatting.
-        StringBuilder sb = new(text.Length);
-        foreach (char c in text) {
-            switch (c) {
-                case '\\':
-                    sb.Append("\\\\");
-                    break;
-                case '|':
-                    sb.Append("\\|");
-                    break;
-                case '`':
-                    sb.Append("\\`");
-                    break;
-                case '*':
-                    sb.Append("\\*");
-                    break;
-                case '_':
-                    sb.Append("\\_");
-                    break;
-                case '[':
-                    sb.Append("\\[");
-                    break;
-                case ']':
-                    sb.Append("\\]");
-                    break;
-                case '<':
-                    sb.Append("\\<");
-                    break;
-                case '>':
-                    sb.Append("\\>");
-                    break;
-                case '\r':
-                case '\n':
-                    sb.Append(' ');
-                    break;
-                default:
-                    sb.Append(c);
-                    break;
-            }
-        }
-
-        return sb.ToString();
     }
 
     private Type ResolveType(string typeName) {

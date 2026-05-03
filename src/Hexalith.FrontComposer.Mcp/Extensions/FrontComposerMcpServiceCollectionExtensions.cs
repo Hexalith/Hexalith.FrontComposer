@@ -175,6 +175,15 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
             errors.Add("Per-resource render limits must be positive.");
         }
 
+        if (options.MaxProjectionCellCharacters <= 0
+            || options.MaxProjectionMarkdownCharacters <= 0
+            || options.MaxProjectionTimelineEntries <= 0
+            || options.MaxProjectionStatusGroups <= 0
+            || options.MaxProjectionSuggestions < 0
+            || string.IsNullOrWhiteSpace(options.ProjectionTruncationMarker)) {
+            errors.Add("Projection Markdown render limits must be positive and the truncation marker must be non-empty.");
+        }
+
         if (options.MaxVisibleToolListItems <= 0) {
             errors.Add($"{nameof(FrontComposerMcpOptions.MaxVisibleToolListItems)} must be positive.");
         }

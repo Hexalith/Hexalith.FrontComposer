@@ -114,6 +114,10 @@ public static class McpManifestEmitter {
             sb.AppendLine("                \"" + Escape(resource.Title) + "\",");
             sb.AppendLine("                " + Literal(resource.Description) + ",");
             EmitParameters(sb, resource.Fields, 16);
+            sb.AppendLine(",");
+            sb.AppendLine("                \"" + Escape(resource.RenderStrategy) + "\",");
+            sb.AppendLine("                " + Literal(resource.EntityPluralLabel) + ",");
+            sb.AppendLine("                " + Literal(resource.EmptyStateCtaCommandName));
             sb.AppendLine("),");
         }
 
@@ -136,7 +140,11 @@ public static class McpManifestEmitter {
             sb.Append(pad + "        ");
             EmitStrings(sb, parameter.EnumValues, indent + 8);
             sb.AppendLine(",");
-            sb.AppendLine(pad + "        " + Bool(parameter.IsUnsupported) + "),");
+            sb.AppendLine(pad + "        " + Bool(parameter.IsUnsupported) + ",");
+            sb.Append(pad + "        ");
+            EmitStringDictionary(sb, parameter.BadgeMappings, indent + 8);
+            sb.AppendLine(",");
+            sb.AppendLine(pad + "        \"" + Escape(parameter.DisplayFormat) + "\"),");
         }
 
         sb.Append(pad + "}");
@@ -154,6 +162,23 @@ public static class McpManifestEmitter {
         sb.AppendLine(pad + "{");
         foreach (string value in values) {
             sb.AppendLine(pad + "    \"" + Escape(value) + "\",");
+        }
+
+        sb.Append(pad + "}");
+    }
+
+    private static void EmitStringDictionary(StringBuilder sb, IReadOnlyDictionary<string, string> values, int indent) {
+        string pad = new(' ', indent);
+        sb.Append("new Dictionary<string, string>");
+        if (values.Count == 0) {
+            sb.Append("()");
+            return;
+        }
+
+        sb.AppendLine();
+        sb.AppendLine(pad + "{");
+        foreach (KeyValuePair<string, string> pair in values.OrderBy(p => p.Key, StringComparer.Ordinal)) {
+            sb.AppendLine(pad + "    [\"" + Escape(pair.Key) + "\"] = \"" + Escape(pair.Value) + "\",");
         }
 
         sb.Append(pad + "}");

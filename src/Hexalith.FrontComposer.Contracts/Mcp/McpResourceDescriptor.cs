@@ -10,5 +10,7 @@ public sealed record McpResourceDescriptor(
     string BoundedContext,
     string Title,
     string? Description,
-    IReadOnlyList<McpParameterDescriptor> Fields);
-
+    IReadOnlyList<McpParameterDescriptor> Fields,
+    string RenderStrategy = "Default",
+    string? EntityPluralLabel = null,
+    string? EmptyStateCtaCommandName = null);

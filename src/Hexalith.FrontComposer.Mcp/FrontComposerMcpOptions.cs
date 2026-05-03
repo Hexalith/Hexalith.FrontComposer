@@ -25,9 +25,21 @@ public sealed class FrontComposerMcpOptions {
 
     public int MaxResourceTake { get; set; } = 200;
 
-    public int MaxRowsPerResource { get; set; } = 50;
+    public int MaxRowsPerResource { get; set; } = 100;
 
-    public int MaxFieldsPerResource { get; set; } = 8;
+    public int MaxFieldsPerResource { get; set; } = 20;
+
+    public int MaxProjectionCellCharacters { get; set; } = 256;
+
+    public int MaxProjectionMarkdownCharacters { get; set; } = 32 * 1024;
+
+    public int MaxProjectionTimelineEntries { get; set; } = 100;
+
+    public int MaxProjectionStatusGroups { get; set; } = 12;
+
+    public int MaxProjectionSuggestions { get; set; } = 5;
+
+    public string ProjectionTruncationMarker { get; set; } = "Output truncated by FrontComposer agent rendering limits.";
 
     public int MaxVisibleToolListItems { get; set; } = 50;
 

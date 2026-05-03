@@ -52,7 +52,9 @@ public static class McpManifestTransform {
                 column.Header,
                 column.Description,
                 column.EnumMemberNames.ToImmutableArray(),
-                column.TypeCategory == TypeCategory.Unsupported));
+                column.TypeCategory == TypeCategory.Unsupported,
+                column.BadgeMappings.ToImmutableArray().ToDictionary(m => m.EnumMemberName, m => m.Slot, StringComparer.Ordinal),
+                column.DisplayFormat.ToString()));
         }
 
         // Same Known Gap KG-8-1-1 applies — projection [Description] propagation is deferred.
@@ -63,7 +65,10 @@ public static class McpManifestTransform {
             boundedContext,
             razor.EntityLabel ?? model.TypeName,
             description: null,
-            fields.ToImmutable());
+            fields.ToImmutable(),
+            razor.Strategy.ToString(),
+            razor.EntityPluralLabel,
+            razor.EmptyStateCtaCommandName);
     }
 
     public static string BuildCommandProtocolName(string boundedContext, string @namespace, string typeName, bool disambiguate)
@@ -175,7 +180,10 @@ public sealed class McpResourceDescriptorModel {
         string boundedContext,
         string title,
         string? description,
-        IReadOnlyList<McpParameterDescriptorModel> fields) {
+        IReadOnlyList<McpParameterDescriptorModel> fields,
+        string renderStrategy = "Default",
+        string? entityPluralLabel = null,
+        string? emptyStateCtaCommandName = null) {
         ProtocolUri = protocolUri;
         Name = name;
         ProjectionTypeName = projectionTypeName;
@@ -183,6 +191,9 @@ public sealed class McpResourceDescriptorModel {
         Title = title;
         Description = description;
         Fields = fields;
+        RenderStrategy = renderStrategy;
+        EntityPluralLabel = entityPluralLabel;
+        EmptyStateCtaCommandName = emptyStateCtaCommandName;
     }
 
     public string ProtocolUri { get; }
@@ -198,6 +209,12 @@ public sealed class McpResourceDescriptorModel {
     public string? Description { get; }
 
     public IReadOnlyList<McpParameterDescriptorModel> Fields { get; }
+
+    public string RenderStrategy { get; }
+
+    public string? EntityPluralLabel { get; }
+
+    public string? EmptyStateCtaCommandName { get; }
 }
 
 public sealed class McpParameterDescriptorModel {
@@ -210,7 +227,9 @@ public sealed class McpParameterDescriptorModel {
         string title,
         string? description,
         IReadOnlyList<string> enumValues,
-        bool isUnsupported) {
+        bool isUnsupported,
+        IReadOnlyDictionary<string, string>? badgeMappings = null,
+        string displayFormat = "Default") {
         Name = name;
         TypeName = typeName;
         JsonType = jsonType;
@@ -220,6 +239,8 @@ public sealed class McpParameterDescriptorModel {
         Description = description;
         EnumValues = enumValues;
         IsUnsupported = isUnsupported;
+        BadgeMappings = badgeMappings ?? new Dictionary<string, string>(StringComparer.Ordinal);
+        DisplayFormat = displayFormat;
     }
 
     public string Name { get; }
@@ -239,4 +260,8 @@ public sealed class McpParameterDescriptorModel {
     public IReadOnlyList<string> EnumValues { get; }
 
     public bool IsUnsupported { get; }
+
+    public IReadOnlyDictionary<string, string> BadgeMappings { get; }
+
+    public string DisplayFormat { get; }
 }

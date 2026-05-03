@@ -2,6 +2,7 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Extensions;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 using Shouldly;
 
@@ -42,6 +43,28 @@ public sealed class HostingTests {
 
         Should.Throw<InvalidOperationException>(() => services.AddFrontComposerMcp(options =>
             options.Manifests.Add(CreateManifest("billing.invoice.create"))));
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_ValidatesProjectionMarkdownBounds() {
+        var services = new ServiceCollection();
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        OptionsValidationException ex = Should.Throw<OptionsValidationException>(() => services.AddFrontComposerMcp(options => {
+            options.Manifests.Add(CreateManifest("billing.invoice.create"));
+            options.MaxProjectionCellCharacters = 0;
+        }));
+        ex.Failures.ShouldContain(f => f.Contains("Projection Markdown render limits", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void DescriptorRegistry_DoesNotReflectPostConstructionManifestMutation() {
+        FrontComposerMcpOptions options = new();
+        options.Manifests.Add(CreateManifest("billing.invoice.create"));
+        var registry = new FrontComposerMcpDescriptorRegistry(Options.Create(options));
+
+        options.Manifests.Add(CreateManifest("billing.invoice.update"));
+
+        registry.Commands.Select(c => c.ProtocolName).ShouldBe(["billing.invoice.create"]);
     }
 
     private static McpManifest CreateManifest(string protocolName)
