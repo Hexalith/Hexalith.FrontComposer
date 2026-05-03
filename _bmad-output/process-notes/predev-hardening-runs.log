@@ -100,3 +100,4 @@
 2026-05-03T11:05:28+02:00	create-story	9-3-ide-parity-and-developer-experience	ok	created IDE parity and developer experience story and marked ready-for-dev
 2026-05-03T11:36:53+02:00	party-mode-review	9-3-ide-parity-and-developer-experience	ok	applied IDE evidence model, gate semantics, fixture, sanitization, and Story 9-2 contract hardening
 2026-05-03T11:42:46+02:00	advanced-elicitation	9-3-ide-parity-and-developer-experience	ok	applied evidence manifests, fail-closed validation, report injection safety, and revalidation fallback hardening
+2026-05-03T12:02:30+02:00	none	-	none	ready buffer satisfied and all ready stories have completed party-mode and advanced-elicitation traces
