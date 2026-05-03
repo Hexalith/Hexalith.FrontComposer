@@ -16,6 +16,7 @@ Story 9-3 makes "IDE parity" a testable contract instead of a vendor claim:
 - Add conformance fixtures that verify generated-source navigation, diagnostics, XML docs, symbol search, and NFR8 generator performance for Must-tier rows.
 - Treat generated output paths from Story 9-2 as a public contract consumed by IDEs, CLI inspection, and adopter scripts.
 - Document IDE-specific limits honestly, including VS Code Dev Kit licensing and Rider generated-code debugging behavior, rather than hiding them behind vague parity language.
+- Require evidence manifests and fail-closed matrix validation so manual IDE evidence cannot silently go stale, drift from the fixture commit, or inject unsafe log/table content.
 
 ---
 
@@ -53,6 +54,11 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
 | AC16 | Conformance output is logged in CI | A row fails or is skipped | Reports use deterministic row IDs, project-relative paths, bounded messages, redacted local paths, and no telemetry, account identifiers, machine names, tokens, package feed credentials, repository secrets, temp paths containing usernames, control characters, or raw exception dumps. |
 | AC17 | The story implementation considers IDE extension work | Scope is planned | Story 9-3 ships matrix, docs, conformance harness, and source/docs metadata. It does not create custom Visual Studio, Rider, or VS Code extensions unless party-mode review explicitly re-scopes the story. |
 | AC18 | IDE behavior evidence is collected | A matrix row cannot be validated by stable automation | The row records whether evidence is CI-automated, scheduled, or manual release evidence. Manual evidence includes pinned IDE/version, OS, fixture, reproduction steps, expected result, observed result, sanitized artifact location, owner, last verified date, and revalidation trigger. |
+| AC19 | Manual or scheduled evidence is accepted for a release gate | The conformance report evaluates the matrix | Each evidence artifact has a manifest that records row ID, fixture name, repository commit SHA, generated-output path contract version, IDE/extension/.NET SDK versions, OS/container image, validation command or manual steps, artifact hash, owner, last verified date, and expiration/revalidation trigger. Missing, stale, mismatched, or tampered manifests fail the release gate instead of degrading to a warning. |
+| AC20 | The matrix or evidence manifests are parsed | A row is malformed, duplicated, unsupported, or references evidence outside the repo artifact root | Validation fails closed for duplicate row IDs, unknown tiers/gates/evidence types, missing owner or last verified date, absolute/local-user paths, path traversal, unsupported URI schemes, and evidence references that cannot be resolved to sanitized project-relative artifacts. |
+| AC21 | Matrix rows, issue bodies, Markdown reports, CSV exports, or JSON evidence include values from IDE output or local tooling | The conformance harness writes artifacts | Output is encoded or escaped to prevent Markdown/HTML/script injection, spreadsheet formula injection, terminal control sequences, and clickable links to local absolute paths or secrets. Sanitization is tested with adversarial IDE names, diagnostic messages, file paths, and exception text. |
+| AC22 | Version revalidation wants to file a GitHub issue | Authentication, labels, or network access are unavailable | The job produces a deterministic dry-run issue artifact with the same required fields and marks the release checklist item blocking. It must not drop the detected version drift silently or mutate repository content beyond the explicit report artifact. |
+| AC23 | The conformance fixture runs on case-sensitive, case-insensitive, symlinked, or container-mounted workspaces | Generated-output paths and evidence paths are compared | Paths are normalized to project-relative forward-slash form for reports, but comparisons preserve case-sensitivity rules for the current filesystem. Evidence cannot escape the repository through symlinks, junctions, or container mount aliases. |
 
 ---
 
@@ -67,6 +73,8 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
   - [ ] State C# Dev Kit licensing/prerequisite assumptions and unsupported OmniSharp-only behavior.
   - [ ] Define gate semantics: repo-owned generated-output failures block CI/release; vendor IDE limitations become pinned evidence rows plus revalidation issues unless they prove a FrontComposer output defect.
   - [ ] Include a machine-readable fenced block or generated JSON companion if implementation chooses to gate rows from structured data.
+  - [ ] Define the evidence-manifest schema required by AC19, including commit SHA, fixture hash or artifact hash, generated-output path contract version, owner, expiration/revalidation trigger, and sanitized artifact location.
+  - [ ] Validate matrix and manifest data fail-closed for duplicate row IDs, unsupported tiers/gates/evidence types, stale evidence, path traversal, absolute local paths, and unresolved evidence references.
 
 - [ ] T2. Build the conformance fixture shape (AC2, AC6, AC12, AC16)
   - [ ] Add a small conformance sample under `samples/Counter` or a dedicated temporary fixture builder that includes `[Command]`, `[Projection]`, `[BoundedContext]`, customization metadata, XML docs, HFC diagnostics, and generated output.
@@ -76,6 +84,8 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
   - [ ] Generate output under `obj/{Config}/{TFM}/generated/HexalithFrontComposer` through the package-owned path, not an IDE-specific virtual path.
   - [ ] Add matrix-row IDs to tests so CI failures point directly to matrix rows.
   - [ ] Keep path constants or templates referenced by tests and docs from one source where practical; do not introduce a second hardcoded generated-layout contract.
+  - [ ] Record the fixture commit, generated-output path contract version, and deterministic fixture identity in each automated or manual evidence manifest.
+  - [ ] Test generated/evidence path normalization on Debug/Release, multi-targeted fixtures, case-sensitive and case-insensitive path comparisons where available, and symlink/junction escape attempts.
 
 - [ ] T3. Verify Must-tier language-service capabilities (AC6, AC11, AC12)
   - [ ] Add tests or scripted conformance probes for generated type completion visibility where automation is feasible.
@@ -103,12 +113,14 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
   - [ ] If C# Dev Kit licensing, authentication, or headless limitations prevent reproducible CI, record a manual or scheduled evidence row instead of silently skipping validation.
   - [ ] Record known limitations for Remote-SSH, GitHub Codespaces, and Dev Containers.
   - [ ] Keep OmniSharp unsupported in v1; do not add a second VS Code support path inside this story.
+  - [ ] Do not install, update, or accept licenses for IDEs/extensions inside CI. CI may read configured versions and validate repo-owned outputs; vendor UI evidence remains scheduled/manual unless the environment is already legal and reproducible.
 
 - [ ] T7. Add version revalidation automation (AC3, AC14)
   - [ ] Store the supported IDE/extension range in a structured file or matrix block that CI can compare.
   - [ ] Add a scheduled or release-gate script that detects unsupported vendor major/minor changes from configured inputs and files a GitHub issue.
   - [ ] The issue must include matrix row IDs, current pin, detected version, IDE/SDK/OS, fixture used, expected behavior, observed behavior, required evidence, whether the Visual Studio calibration row passes, and release owner.
   - [ ] The job must be non-destructive and must not install/update IDEs, extensions, or git submodules recursively.
+  - [ ] If GitHub issue creation cannot run because tokens, labels, or network access are unavailable, emit a deterministic dry-run issue artifact and mark the release checklist item blocking.
 
 - [ ] T8. Scope CS1591 and public XML-doc requirements (AC11, AC15)
   - [ ] Add XML docs to public FrontComposer attributes and any public generated-facing contracts used by the conformance sample.
@@ -121,7 +133,10 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
   - [ ] Generated-output path contract tests for Debug/Release, multi-TFM, and stable forward-slash project-relative paths.
   - [ ] Diagnostic surface tests proving HFC IDs, severity, docs links, and XML docs are available to IDEs.
   - [ ] Sanitization tests for conformance logs containing local paths, usernames, machine names, account-like strings, control characters, temp paths with usernames, access tokens, package feed credentials, repository secrets, and raw exception text.
+  - [ ] Injection-safety tests for Markdown tables, HTML snippets, JSON evidence, CSV exports, terminal logs, and generated issue bodies using adversarial IDE names, diagnostics, file paths, and exception messages.
+  - [ ] Evidence manifest tests for missing commit SHA, fixture mismatch, stale last-verified date, tampered artifact hash, unresolved evidence path, duplicate row ID, unknown evidence type, and path traversal or symlink escape.
   - [ ] Version revalidation tests for in-range, lower-than-min, higher-minor, higher-major, unknown product, and missing version cases.
+  - [ ] Version revalidation fallback tests proving unavailable GitHub auth/network produces a blocking dry-run issue artifact instead of a silent pass.
   - [ ] Container smoke test for the VS Code + C# Dev Kit path if CI credentials/prerequisites allow it; otherwise require documented manual evidence and a release-blocking checklist item.
   - [ ] Full regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
 
@@ -144,6 +159,16 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
 - VS Code navigation docs describe Go To Definition support, but generated-source parity must still be proven by the conformance sample because source generators and generated paths are the hard case.
 - JetBrains Rider 2026.1 docs state Rider can inspect and navigate generated source and use generated symbols, but generated-code breakpoint behavior has limitations. Treat direct generated-file breakpoints and step-into debugging as separate matrix rows.
 - The matrix should prefer exact evidence over assumptions. If a vendor behavior is not automatable in CI, record the manual evidence owner and make the release gate explicit.
+
+### Advanced Elicitation Hardening
+
+These hardening points were applied by `/bmad-advanced-elicitation 9-3-ide-parity-and-developer-experience` on 2026-05-03 and refine the party-mode evidence model without expanding product scope.
+
+- Evidence freshness is part of the contract. Manual and scheduled IDE evidence must carry a manifest tied to the repository commit, fixture identity, generated-output path contract version, artifact hash, owner, last verified date, and revalidation trigger.
+- Matrix validation fails closed. Duplicate row IDs, unknown support tiers, unknown gates, unresolved evidence, stale manifests, absolute local paths, path traversal, unsupported URI schemes, and symlink/junction escapes are release-gate failures.
+- Sanitization covers generated reports as well as logs. Markdown tables, JSON evidence, CSV exports, terminal output, and generated issue bodies must be encoded against formula injection, Markdown/HTML/script injection, terminal control sequences, local absolute links, and secret-looking values.
+- Version revalidation has a deterministic no-network fallback. If GitHub issue creation is unavailable, the job writes a dry-run issue artifact with the same fields and marks the release checklist item blocking.
+- CI must not install or update vendor IDEs/extensions or accept licenses. Repo-owned checks stay automated; vendor UI evidence stays manual/scheduled unless the environment is already legal and reproducible.
 
 ### Matrix Row Shape
 
@@ -275,6 +300,7 @@ Do not implement these in Story 9-3:
 
 - 2026-05-03: Story created via `/bmad-create-story 9-3-ide-parity-and-developer-experience` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-03: Party-mode review applied evidence-model, gate-semantics, fixture-contract, sanitization, and Story 9-2 ownership hardening. Ready for advanced elicitation on a later run.
+- 2026-05-03: Advanced elicitation applied evidence-manifest freshness, fail-closed matrix validation, injection-safe report output, dry-run version revalidation fallback, and vendor tooling license/installation guardrails. Ready for development.
 
 ### File List
 
@@ -289,4 +315,16 @@ Do not implement these in Story 9-3:
 - Findings summary: The round found that the story's direction is valuable, but the original wording risked turning IDE parity into subjective vendor certification. The agents asked for sharper repo-owned contract ownership, explicit matrix/evidence schema, deterministic fixtures, clear CI/release/manual gate semantics, C# Dev Kit/container fallback behavior, flakiness controls, and stronger sanitization requirements.
 - Changes applied: Added repo-owned vs vendor-evidence framing; expanded AC1, AC2, AC12, AC13, AC14, AC16, and AC18; hardened T1-T9 with matrix schema, deterministic fixture expectations, Visual Studio calibration evidence, single-source generated-path contract guidance, container fallback, issue-template fields, CS1591 globs, and sanitization vectors; added validation gate semantics and minimum fixture sections; clarified Story 9-3 consumes rather than changes Story 9-2 generated-output layout.
 - Findings deferred: Exact pinned IDE/extension versions, whether Rider/VS Code evidence is automated or manual for each row, screenshot/video vs structured checklist evidence format, and vendor-update issue cadence remain implementation-time matrix decisions.
+- Final recommendation: `ready-for-dev`
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-03T11:42:46+02:00
+- Selected story key: `9-3-ide-parity-and-developer-experience`
+- Command/skill invocation used: `/bmad-advanced-elicitation 9-3-ide-parity-and-developer-experience`
+- Batch 1 method names: Security Audit Personas; Pre-mortem Analysis; Failure Mode Analysis; First Principles Analysis; Occam's Razor Application.
+- Reshuffled Batch 2 method names: Red Team vs Blue Team; Chaos Monkey Scenarios; Self-Consistency Validation; Comparative Analysis Matrix; Hindsight Reflection.
+- Findings summary: The elicitation found that the party-mode evidence model was directionally sound, but still needed stronger freshness, tamper-resistance, path-boundary, report-injection, and no-network fallback rules. It also confirmed that the story should keep vendor IDE automation modest and avoid turning CI into an IDE installer or license-acceptance surface.
+- Changes applied: Added AC19-AC23; hardened T1, T2, T6, T7, and T9; added Advanced Elicitation Hardening notes; updated completion notes and trace. The accepted changes stay within the existing matrix, evidence, conformance, and release-gate scope.
+- Findings deferred: Exact evidence expiration windows, exact artifact hash algorithm, final evidence artifact directory layout, exact issue-file naming convention, and which vendor IDE rows can graduate from manual to scheduled/automated evidence remain implementation-time decisions.
 - Final recommendation: `ready-for-dev`
