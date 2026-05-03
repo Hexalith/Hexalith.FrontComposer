@@ -62,6 +62,10 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
 | AC26 | A baseline snapshot is resolved for negotiation or migration diagnostics | The resolver receives a client-supplied path, path traversal segment, absolute local path, package-external file, or untrusted generated output | Resolution is rejected before comparison; trusted baselines come only from checked-in/package-owned structural snapshots or test fixtures. |
 | AC27 | Aggregate manifest fingerprints and nested command/resource/renderer/corpus fingerprints are emitted together | The aggregate and nested fingerprint metadata disagree, are missing required algorithm ids, or were produced from different canonical schema versions | The result fails closed as an internal schema-integrity mismatch and does not expose partial schema details to agents. |
 | AC28 | Negotiation, baseline comparison, or migration diagnostics emit telemetry or logs | The event is recorded | Events use bounded category/message-key fields and coarse counts only; they never include hidden resource names, exact hidden counts, raw client envelopes, local paths, runtime values, or exception text. |
+| AC29 | Canonical schema material contains collections | The collection is serialized for hashing or migration comparison | Each collection declares whether order is structural or non-structural; non-structural collections are sorted by stable public identifiers, while structural order changes are reported as explicit deltas. |
+| AC30 | A trusted baseline snapshot is loaded after canonicalization code changes | The baseline canonicalizer metadata differs from the current supported canonicalizer metadata | The baseline is rejected as unsupported/unknown rather than silently compared with a different canonicalization rule set. |
+| AC31 | Additive-compatible drift is detected for a command, resource, lifecycle, renderer, or corpus contract | The current request is admitted | The server validates the request against the current server schema and defaults before any side effect; additive compatibility never weakens required-field, bounds, authorization, or sanitization checks. |
+| AC32 | Hidden/unknown, stale descriptor, unsupported algorithm, unknown baseline, malformed envelope, and schema mismatch can all apply to one request | Negotiation classifies the response | The earliest precedence category wins deterministically, with identical agent-visible category/message-key shape across repeated attempts and no lower-priority schema details leaked through diagnostics, logs, or telemetry. |
 
 ---
 
@@ -74,6 +78,7 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Define one canonical JSON serialization policy: ordinal property order, invariant culture, normalized newlines, normalized protocol identifiers, no indentation-sensitive meaning, and versioned root discriminator.
   - [ ] Add a `SchemaFingerprintAlgorithm` identifier so future hashing changes are detectable without pretending hashes are comparable.
   - [ ] Reject duplicate JSON keys, case-variant duplicate keys, malformed contract-family roots, and unknown root discriminators before producing or comparing canonical material.
+  - [ ] Define per-collection canonicalization metadata: stable sort key for non-structural collections, explicit order-significant marker for structural collections, and deterministic duplicate-id rejection before hashing.
   - [ ] Owner package: shared SDK-neutral models live in `Hexalith.FrontComposer.Contracts`; SourceTools-only canonicalization helpers may live in `Hexalith.FrontComposer.SourceTools` only when they are not public runtime contracts.
 
 - [ ] T2. Implement deterministic fingerprint generation in SourceTools (AC1-AC4, AC11, AC12, AC22, AC23)
@@ -84,6 +89,7 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Ensure any protocol-name/URI disambiguation from Stories 8-1/8-2 is reflected before hashing.
   - [ ] Add a two-clean-generation test proving identical canonical JSON and hash from the same domain source despite generated-source ordering, line endings, culture, timezone, path separator, and build machine differences.
   - [ ] Recompute aggregate manifest fingerprints from emitted nested fingerprints and fail generation/tests when aggregate and nested metadata disagree.
+  - [ ] Emit canonicalizer metadata/test-vector identifiers with baseline snapshots so future canonicalization changes cannot compare old snapshots as if they used the same rules.
 
 - [ ] T3. Extend SDK-neutral descriptor contracts without breaking package boundaries (AC1, AC5, AC10-AC15)
   - [ ] Add optional fingerprint metadata to `McpManifest`, `McpCommandDescriptor`, `McpResourceDescriptor`, and equivalent lifecycle/renderer/corpus descriptors only where those records are already stable public contracts.
@@ -99,12 +105,14 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Reuse Story 8-2 admission order: visibility, tenant, policy, descriptor/catalog epoch, and request bounds are validated before side effects; hidden/unknown equivalence overrides schema mismatch reporting.
   - [ ] Resolve trusted baselines through server/package-owned identifiers only; reject client-supplied file paths, path traversal, absolute paths, and package-external baseline locations.
   - [ ] Return sanitized agent-visible categories such as `schema-compatible-warning`, `schema-mismatch`, or `projection temporarily unavailable`; no hidden names, tenant identifiers, policy names, exact hidden counts, raw baseline paths, or exception text.
+  - [ ] For `CompatibleAdditive`, re-run current server-side validation and defaulting before dispatch/query/render; never treat an old compatible fingerprint as a waiver for current required fields, bounds, authorization, or sanitization.
   - [ ] Add zero-side-effect tests proving incompatible/unknown/stale negotiation does not invoke command dispatch, query execution, lifecycle mutation, cache writes, or renderer buffers.
   - [ ] Add a table-driven precedence matrix for hidden, unknown, unauthorized, cross-tenant, stale descriptor, unsupported algorithm, unknown baseline, compatible drift, and incompatible drift.
 
 - [ ] T5. Build migration delta diagnostics and baselines (AC6-AC8, AC16, AC17, AC21, AC23, AC24)
   - [ ] Define a checked-in baseline snapshot format for shipped public schema shapes. Store only canonical structural data and fingerprint metadata, not generated code blobs or runtime payloads.
   - [ ] Include baseline provenance fields: contract family, schema version, fingerprint algorithm, package/source owner, fixture id, and migration-guide requirement flag; exclude filesystem paths and build machine metadata.
+  - [ ] Include canonicalizer version/test-vector metadata and reject snapshots whose canonicalizer contract is unsupported by the running generator/runtime.
   - [ ] Compare old/new snapshots and classify deltas into additive-compatible, compatible-warning, breaking, unknown, or unsupported-algorithm.
   - [ ] Emit HFC diagnostics with the existing Expected/Got/Fix/DocsLink style: changed field/path, old value category, new value category, impact, and remediation.
   - [ ] Map migration-guide requirements for breaking public descriptor, skill corpus example, renderer contract, lifecycle result, and projection resource deltas.
@@ -125,13 +133,17 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
   - [ ] Do not merge team-specific external skill overlays into framework fingerprints unless a future story defines an adopter-owned overlay baseline.
   - [ ] Emit diagnostics against corpus resource ids and source sections, not local absolute paths or raw prompt/provider output.
 
-- [ ] T8. Tests and verification (AC1-AC24)
+- [ ] T8. Tests and verification (AC1-AC32)
   - [ ] SourceTools unit tests for canonical serialization, stable SHA-256 output, ordering independence, changed-field sensitivity, algorithm-id changes, and no runtime field inclusion.
   - [ ] Manifest snapshot tests for command descriptor, projection resource descriptor, aggregate MCP manifest, lifecycle schema, renderer contract, and skill corpus fingerprints.
   - [ ] Negotiation tests for exact, additive, breaking, unsupported algorithm, unknown baseline, stale descriptor, hidden/unknown, unauthorized, cross-tenant, and malformed fingerprint hints.
   - [ ] Migration delta tests for added optional field, added required field, removed field, type/category change, enum change, validation constraint change, URI/name change, lifecycle result change, renderer capability change, and corpus resource change.
   - [ ] Security tests proving tenant IDs, user IDs, claims, tokens, payload values, query rows, local paths, ETags, timestamps, exception text, and provider internals never appear in fingerprints, deltas, logs, telemetry, or agent-visible responses.
   - [ ] Parser/security tests for duplicate keys, case-variant duplicates, malformed discriminators, client-supplied baseline paths, path traversal, aggregate/nested fingerprint mismatch, and telemetry redaction/cardinality bounds.
+  - [ ] Collection canonicalization tests proving order-insensitive collections sort by stable ids, order-sensitive collections report explicit order deltas, and duplicate stable ids fail before hashing.
+  - [ ] Canonicalizer compatibility tests proving stale baseline canonicalizer metadata, missing test-vector ids, and mismatched algorithm/canonicalizer pairs fail closed.
+  - [ ] Additive-compatibility tests proving old compatible fingerprints still run current server validation/defaulting and cannot bypass required fields, bounds, authorization, or sanitization.
+  - [ ] Precedence determinism tests proving identical requests with multiple mismatch causes produce the same earliest category/message key and never leak lower-priority schema details into diagnostics, logs, or telemetry.
   - [ ] API/package-boundary tests proving Contracts stays SDK-free, SourceTools computes canonical fingerprints, and `.Mcp` performs only adapter mapping.
   - [ ] Minimal fixture suite: `baseline-known-v1`, `baseline-known-v2-compatible`, `baseline-known-v2-structural-delta`, `baseline-unknown`, `schema-same-different-order`, `schema-same-different-runtime-data`, `schema-hidden-precedence`, `schema-unknown-precedence`, and `surface-metadata-only-renderer`.
   - [ ] Each fixture states expected fingerprint material, algorithm id, negotiation result, delta category, bounded/truncation behavior where relevant, and renderer abstraction metadata where relevant.
@@ -195,8 +207,10 @@ Exclude:
 
 - Encode canonical payloads as UTF-8 bytes with ordinal property ordering and invariant-culture scalar formatting.
 - Use stable string and enum casing, explicit null handling, explicit empty collection handling, normalized newlines, and normalized protocol identifiers before hashing.
+- For collections, encode the collection semantics before entries are serialized. Non-structural collections sort by stable public identifiers; structural collections preserve order and make order changes visible as migration deltas.
 - Do not include comments, whitespace-sensitive indentation, absolute paths, timestamps, generator banner text, build machine data, assembly load order, runtime service state, or SDK DTO serialization artifacts.
 - Include the contract family, contract schema version, and `SchemaFingerprintAlgorithm` in fingerprint metadata. Unsupported or missing algorithms are negotiation failures, not hash mismatches.
+- Include canonicalizer metadata/test-vector identifiers in package-owned baselines so a baseline produced by older canonical JSON rules cannot be compared as if it were current.
 - Reject duplicate keys, case-variant duplicate keys, malformed root discriminators, and unknown contract families before hashing or comparing canonical material.
 - Hash the canonical payload, not generated C# source, rendered Markdown, runtime DTO JSON, telemetry envelopes, or exception payloads.
 
@@ -212,7 +226,7 @@ Exclude:
 | Internal result | Agent-visible behavior | Side-effect rule |
 | --- | --- | --- |
 | `Exact` | Proceed normally. | Normal command/query/render path after admission. |
-| `CompatibleAdditive` | Proceed with sanitized compatibility warning metadata where the protocol supports it. | No extra side effects beyond normal admitted operation. |
+| `CompatibleAdditive` | Proceed with sanitized compatibility warning metadata where the protocol supports it. | Re-run current server validation/defaulting first; no extra side effects beyond normal admitted operation. |
 | `Incompatible` | Return sanitized schema mismatch with docs code/remediation category. | No command dispatch, query, lifecycle mutation, cache write, or renderer allocation. |
 | `UnknownClientVersion` | Return sanitized unknown-version category and remediation guidance. | No side effects unless product later explicitly allows read-only compatibility fallback. |
 | `UnknownServerBaseline` | Return maintainer-facing diagnostic; agent sees unavailable/schema category. | No side effects. |
@@ -231,7 +245,7 @@ Evaluate in this order before any command/query/render side effects:
 4. Fingerprint algorithm support.
 5. Trusted baseline availability and provenance.
 6. Aggregate/nested fingerprint integrity.
-7. Exact/compatible/incompatible schema comparison and migration delta classification.
+7. Exact/compatible/incompatible schema comparison, current-server validation/defaulting for compatible requests, and migration delta classification.
 
 When earlier checks fail, later schema details must not be reported to the agent. This is especially important for hidden, unauthorized, cross-tenant, and stale resources, where schema mismatch metadata would become an existence oracle.
 
@@ -293,6 +307,9 @@ public sealed record FrontComposerRenderContract(
 | D15. Baseline resolution is package-owned and path-safe. | Prevents clients, agents, or generated-output folders from steering comparison toward untrusted snapshots. |
 | D16. Duplicate-key canonical material is invalid. | Prevents parser-dependent last-writer-wins behavior from producing inconsistent fingerprints or deltas. |
 | D17. Aggregate and nested fingerprints must be self-consistent. | Detects partial generation, stale nested metadata, or mixed schema-version artifacts before runtime negotiation. |
+| D18. Collection semantics are part of the canonical schema contract. | Prevents meaningless order churn from changing hashes while still detecting order when order affects agent or renderer behavior. |
+| D19. Baselines carry canonicalizer compatibility metadata. | Prevents a future canonicalization change from silently comparing old snapshots with new rules. |
+| D20. Additive compatibility never bypasses current validation. | Keeps old compatible clients from weakening current required-field, bounds, authorization, or sanitization checks. |
 
 ### Latest MCP Notes
 
@@ -380,6 +397,7 @@ Do not implement these in Story 8-6:
 
 - 2026-05-02: Story created via `/bmad-create-story 8-6-schema-versioning-and-multi-surface-abstraction` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-6-schema-versioning-and-multi-surface-abstraction; review;`. Applied canonical JSON, package ownership, negotiation precedence, fail-closed unknown-baseline, algorithm-id, boundedness, fixture-matrix, localization-key, and scope-guardrail hardening. Ready for advanced elicitation on a later run.
+- 2026-05-03: Advanced elicitation completed via `/bmad-advanced-elicitation 8-6-schema-versioning-and-multi-surface-abstraction`. Applied collection canonicalization, canonicalizer/baseline compatibility, additive-compatibility validation, and deterministic multi-cause precedence hardening.
 
 ### Party-Mode Review
 
@@ -390,6 +408,18 @@ Do not implement these in Story 8-6:
 - **Findings summary:** The review found that Story 8-6 has the right SourceTools-owned, SDK-neutral direction, but needed sharper pre-dev contracts before implementation. Main risks were ambiguous package ownership, underspecified canonical JSON rules, unsupported-algorithm ambiguity, unknown-baseline fail-closed behavior, hidden/unknown-vs-schema-mismatch precedence, migration delta taxonomy expansion, renderer abstraction scope creep, opaque adopter diagnostics, and insufficient fixture-level test strategy.
 - **Changes applied:** Added AC19-AC24 for algorithm identity, negotiation precedence, exact unknown-baseline fail-closed behavior, executable canonical JSON policy, bounded delta output, and stable localizable diagnostic/message-key outputs; expanded T1-T8 with package ownership, two-clean-generation determinism, dependency-boundary tests, table-driven negotiation precedence tests, closed delta-category behavior, metadata-only renderer boundaries, and a minimal structural fixture suite; added Package Ownership, Canonical JSON Policy, Negotiation Precedence, and closed v1 delta/scope guardrails in Dev Notes.
 - **Findings deferred:** General data migration framework, semantic rename detection, automatic migration or baseline registration, admin dashboard UX, tenant-specific fail-open/override policy, final localized UI copy, user-facing accessibility automation beyond future visible mismatch UI, broad consumer-driven contract testing, and multi-surface feature parity guarantees remain deferred to named future stories or product/architecture decisions.
+- **Final recommendation:** ready-for-dev
+
+### Advanced Elicitation
+
+- **Date/time:** 2026-05-03T08:10:34+02:00
+- **Selected story key:** `8-6-schema-versioning-and-multi-surface-abstraction`
+- **Command/skill invocation used:** `/bmad-advanced-elicitation 8-6-schema-versioning-and-multi-surface-abstraction`
+- **Batch 1 method names:** Stakeholder Round Table; Expert Panel Review; Debate Club Showdown; User Persona Focus Group; Time Traveler Council
+- **Reshuffled Batch 2 method names:** Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; First Principles Analysis; Occam's Razor Application
+- **Findings summary:** Elicitation confirmed the story was correctly scoped, but still had four pre-dev ambiguity risks: collection ordering could create noisy or missing fingerprints, baseline snapshots could outlive canonicalizer rule changes, additive-compatible drift could be misread as permission to skip current server validation, and multi-cause mismatch requests needed deterministic evidence that lower-priority schema details never leak.
+- **Changes applied:** Added AC29-AC32; expanded T1/T2/T4/T5/T8; refined Canonical JSON Policy, Negotiation Contract, and Negotiation Precedence; added Binding Decisions D18-D20; documented collection canonicalization, canonicalizer compatibility metadata, current-validation requirements for compatible drift, and deterministic multi-cause precedence tests.
+- **Findings deferred:** Semantic rename detection, automatic baseline registration, tenant-specific schema policy overrides, final localized UI/admin copy, broad external-client E2E matrix, and new renderer/client surfaces remain deferred to existing named follow-up stories or product/architecture decisions.
 - **Final recommendation:** ready-for-dev
 
 ### File List
