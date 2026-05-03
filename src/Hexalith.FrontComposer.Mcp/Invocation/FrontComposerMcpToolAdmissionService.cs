@@ -101,13 +101,10 @@ public sealed class FrontComposerMcpToolAdmissionService(
             });
         }
 
-        JsonObject result = new() {
-            ["category"] = "unknown_tool",
-            ["requestedToolName"] = resolution.RequestedName,
-            ["suggestion"] = resolution.Suggestion?.Name,
-            ["visibleTools"] = visibleTools,
-            ["docsCode"] = "HFC-MCP-UNKNOWN-TOOL",
-        };
+        JsonObject result = BuildHiddenUnknownStructuredContent();
+        result["requestedToolName"] = resolution.RequestedName;
+        result["suggestion"] = resolution.Suggestion?.Name;
+        result["visibleTools"] = visibleTools;
 
         if (resolution.IsVisibleListTruncated) {
             result["continuation"] = "visible-list-truncated";
@@ -115,6 +112,19 @@ public sealed class FrontComposerMcpToolAdmissionService(
 
         return result;
     }
+
+    /// <summary>
+    /// Shared hidden-unknown shape used by the unknown-tool admission path and the lifecycle
+    /// hidden-unknown path. Centralises the AC9 response contract so both surfaces stay aligned
+    /// when the shape evolves. Lifecycle callers must NOT add `requestedToolName` (P20: avoids
+    /// fingerprinting the lifecycle handle in masked failures).
+    /// </summary>
+    public static JsonObject BuildHiddenUnknownStructuredContent() => new() {
+        ["category"] = "unknown_tool",
+        ["suggestion"] = null,
+        ["visibleTools"] = new JsonArray(),
+        ["docsCode"] = "HFC-MCP-UNKNOWN-TOOL",
+    };
 
     /// <summary>
     /// Normalizes a tool name for matching. Public so the registry can precompute normalized

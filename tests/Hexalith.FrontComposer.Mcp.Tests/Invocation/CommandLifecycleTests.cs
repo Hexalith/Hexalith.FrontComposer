@@ -395,6 +395,13 @@ public sealed class CommandLifecycleTests {
     [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0c")]
     [InlineData("../01JZ0R5K9N8W4Y7V3Q2P6C1A0C")]
     [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C-extra")]
+    // P41 + P17: oversized, percent-encoded, near-match (24/25 chars), whitespace-padded.
+    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0")] // 25 chars (one short)
+    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A")] // 24 chars (two short)
+    [InlineData("%3001JZ0R5K9N8W4Y7V3Q2P6C1A0C")] // percent-encoded prefix
+    [InlineData(" 01JZ0R5K9N8W4Y7V3Q2P6C1A0C")] // leading ASCII space
+    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C ")] // trailing ASCII space
+    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C\\t")] // trailing tab (escaped in JSON)
     public async Task ReadAsync_MalformedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup(string correlationId) {
         FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
         await invoker.InvokeAsync(
@@ -413,6 +420,252 @@ public sealed class CommandLifecycleTests {
         result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
         result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
+    }
+
+    [Fact]
+    public async Task ReadAsync_OversizedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup() {
+        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+        // 1024-char identifier — must be rejected before any store lookup (AC23 / T8 line 138).
+        string oversized = new('A', 1024);
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{oversized}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
+    }
+
+    [Fact]
+    public async Task ReadAsync_BothCorrelationAndMessageId_FailsAsHiddenUnknown() {
+        // P17 / AC23: the schema's `oneOf` is enforced at runtime by `arguments.Count != 1`;
+        // pinning the behavior here prevents future schema/runtime drift.
+        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}","messageId":"{{MessageId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
+    }
+
+    [Fact]
+    public async Task ReadAsync_ParallelReadsAfterTerminal_AllReturnSameTerminalSnapshot() {
+        // AC18 / P4: simultaneous lifecycle reads against a terminal entry must converge to the
+        // same idempotent terminal snapshot without duplicate registration or duplicate dispatch.
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        Task<FrontComposerMcpResult>[] reads = Enumerable.Range(0, 16).Select(_ => Task.Run(() =>
+            tracker.ReadAsync(Args($$"""{"correlationId":"{{CorrelationId}}"}"""), CancellationToken.None))).ToArray();
+        FrontComposerMcpResult[] results = await Task.WhenAll(reads);
+
+        results.Length.ShouldBe(16);
+        foreach (FrontComposerMcpResult result in results) {
+            result.IsError.ShouldBeFalse();
+            result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
+            result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
+        }
+
+        // Dispatch must have run exactly once even though 16 readers raced.
+        service.DispatchCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReadAsync_OutOfOrderObserverDelivery_PreservesMonotonicSequence() {
+        // AC21 / P18: out-of-order observer enqueue must still produce a Sequence-ordered snapshot.
+        // The MCP edge orders by source-of-truth Sequence, not by arrival/clock.
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out _,
+            out ServiceProvider provider,
+            configureOptions: o => o.MaxLifecycleTransitionHistory = 32);
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult snapshot = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        snapshot.IsError.ShouldBeFalse();
+        JsonElement transitions = snapshot.StructuredContent!["transitions"]!.Deserialize<JsonElement>();
+        // Every transition must carry a strictly increasing sequence regardless of delivery order.
+        long previous = 0;
+        for (int i = 0; i < transitions.GetArrayLength(); i++) {
+            long seq = transitions[i].GetProperty("sequence").GetInt64();
+            seq.ShouldBeGreaterThan(previous);
+            previous = seq;
+        }
+    }
+
+    [Fact]
+    public async Task ReadAsync_DuplicateConfirmedRedelivery_DoesNotGrowAgentHistory() {
+        // P52: same-state Confirmed re-delivery must not append additional rows to the bounded
+        // history — otherwise the truncation loop would eventually evict the original Acknowledged.
+        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult before = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+        int beforeCount = before.StructuredContent!["transitions"]!.AsArray().Count;
+
+        for (int i = 0; i < 5; i++) {
+            lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
+        }
+
+        FrontComposerMcpResult after = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        after.StructuredContent!["transitions"]!.AsArray().Count.ShouldBe(beforeCount);
+        after.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_CommandRejected_RejectionEnvelopeIncludesMessageAndCorrelationId() {
+        // D8: agents must be able to correlate a synchronous rejection with the dispatched handle.
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out _);
+        service.RejectNext = true;
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.StructuredContent!["messageId"]!.GetValue<string>().ShouldBe(MessageId);
+        // Activity may be unset, in which case CorrelationId falls back to the messageId.
+        string emittedCorrelationId = result.StructuredContent!["correlationId"]!.GetValue<string>();
+        emittedCorrelationId.ShouldNotBeNullOrWhiteSpace();
+        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("rejected");
+    }
+
+    [Fact]
+    public async Task InvokeAsync_ValidationFailure_OutcomeCategoryIsValidation() {
+        // P49: validation failures from the dispatcher must use a distinct outer envelope
+        // category so agents can branch on outcome.category between protocol-layer validation and
+        // domain rejection. (Schema-level malformed-input checks short-circuit earlier with
+        // FrontComposerMcpFailureCategory.ValidationFailed and no structured payload.)
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out _);
+        service.ValidateRejectNext = true;
+
+        FrontComposerMcpResult result = await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.ValidationFailed);
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("validation");
+        result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("validation");
+        result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("COMMAND_VALIDATION_FAILED");
+    }
+
+    [Fact]
+    public async Task ReadAsync_ReplayAfterRejected_PreservesRejectedTerminal() {
+        // AC19 / P5: replay after terminal Rejected must preserve the rejection terminal for
+        // authorized lifecycle reads; a duplicate Confirmed delivery cannot upgrade the outcome.
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        service.CompleteSynchronously = false;
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        lifecycle.Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
+        // Replay (idempotent re-delivery of the rejection) must not regress.
+        lifecycle.Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
+        // A late Confirmed cannot upgrade the rejection (terminal regression guard).
+        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
+
+        FrontComposerMcpResult result1 = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpResult result2 = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result1.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
+        result2.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
+        // Repeated reads return the identical snapshot.
+        result1.StructuredContent!.ToJsonString().ShouldBe(result2.StructuredContent!.ToJsonString());
+    }
+
+    [Fact]
+    public async Task ReadAsync_ReplayAfterIdempotentConfirmed_StaysIdempotentConfirmed() {
+        // AC19 / D3: idempotency-resolved Confirmed survives subsequent same-key reads; the
+        // outcome category remains idempotent_confirmed.
+        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out ServiceProvider provider);
+        service.CompleteSynchronously = false;
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
+        // Replay re-delivery should not regress the IdempotentConfirmed outcome.
+        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("idempotent_confirmed");
+    }
+
+    [Fact]
+    public async Task TrackAcknowledged_RetryAfterIsCarriedToSnapshot() {
+        // P48: snapshot retry hint matches the dispatcher-supplied (clamped) value, not the
+        // configured default. The fake dispatcher emits RetryAfter=250ms.
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out _,
+            out ServiceProvider provider,
+            configureOptions: o => {
+                o.DefaultLifecycleRetryAfterMs = 999;
+                o.MinLifecycleRetryAfterMs = 1;
+                o.MaxLifecycleRetryAfterMs = 10_000;
+            });
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult snapshot = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        // Dispatcher emitted 250 ms; this must beat the configured default of 999 ms.
+        snapshot.StructuredContent!["retry"]!["retryAfterMs"]!.GetValue<int>().ShouldBe(250);
     }
 
     private static FrontComposerMcpCommandInvoker Build(
@@ -489,6 +742,7 @@ public sealed class CommandLifecycleTests {
     private sealed class LifecycleAwareCommandService : ICommandServiceWithLifecycle {
         public int DispatchCount { get; private set; }
         public bool RejectNext { get; set; }
+        public bool ValidateRejectNext { get; set; }
         public bool CompleteSynchronously { get; set; } = true;
         public string LastCorrelationId { get; private set; } = "";
 
@@ -502,6 +756,10 @@ public sealed class CommandLifecycleTests {
             CancellationToken cancellationToken = default)
             where TCommand : class {
             DispatchCount++;
+            if (ValidateRejectNext) {
+                throw new CommandValidationException(ProblemDetailsPayload.Empty);
+            }
+
             if (RejectNext) {
                 throw new CommandRejectedException("raw domain reason with tenant-a and amount 42", "raw resolution");
             }

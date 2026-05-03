@@ -104,12 +104,50 @@ internal sealed record McpTerminalOutcome(
                 "The change has been applied."));
 
     public static McpTerminalOutcome IdempotentSuccess(string? entityLabel) {
-        string label = string.IsNullOrWhiteSpace(entityLabel) ? "item" : entityLabel.Trim();
+        // P44: bound and sanitize the descriptor-supplied label before interpolating it into
+        // the agent-visible message. A malformed/oversized title flows directly into the
+        // snapshot JSON; we cap to 60 chars and strip control characters.
+        string label = SanitizeEntityLabel(entityLabel);
         return new McpTerminalOutcome(
             McpTerminalOutcomeKind.IdempotentConfirmed,
             SuccessPayload: new McpSuccessPayload(
                 $"This {label} was already updated (by another caller). No action needed.",
                 "No further changes are required."));
+    }
+
+    private const int MaxEntityLabelLength = 60;
+
+    private static string SanitizeEntityLabel(string? entityLabel) {
+        if (string.IsNullOrWhiteSpace(entityLabel)) {
+            return "item";
+        }
+
+        ReadOnlySpan<char> trimmed = entityLabel.AsSpan().Trim();
+        Span<char> buffer = stackalloc char[MaxEntityLabelLength];
+        int written = 0;
+        foreach (char c in trimmed) {
+            if (written == MaxEntityLabelLength) {
+                break;
+            }
+
+            // Strip control characters and DEL; collapse whitespace runs to single spaces.
+            if (char.IsControl(c)) {
+                continue;
+            }
+
+            if (char.IsWhiteSpace(c)) {
+                if (written > 0 && buffer[written - 1] == ' ') {
+                    continue;
+                }
+
+                buffer[written++] = ' ';
+                continue;
+            }
+
+            buffer[written++] = c;
+        }
+
+        return written == 0 ? "item" : new string(buffer[..written]).TrimEnd();
     }
 
     public static McpTerminalOutcome GenericRejection()

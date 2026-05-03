@@ -110,6 +110,13 @@ public static class FrontComposerMcpServiceCollectionExtensions {
             catch (FrontComposerMcpException ex) {
                 return FrontComposerMcpProtocolMapper.ToCallToolResult(FrontComposerMcpResult.Failure(ex.Category));
             }
+            catch (Exception) {
+                // P42: any non-FrontComposerMcpException from GetContext() (e.g., ArgumentException
+                // or InvalidOperationException from the host accessor) collapses to a sanitized
+                // AuthFailed category so stack traces don't leak through the MCP transport.
+                return FrontComposerMcpProtocolMapper.ToCallToolResult(
+                    FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.AuthFailed));
+            }
 
             FrontComposerMcpLifecycleTracker tracker = request.Services.GetRequiredService<FrontComposerMcpLifecycleTracker>();
             FrontComposerMcpResult lifecycle = await tracker.ReadAsync(
@@ -188,8 +195,11 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
             || !options.LifecycleUriPrefix.EndsWith("/", StringComparison.Ordinal)
             || !Uri.TryCreate(options.LifecycleUriPrefix, UriKind.Absolute, out Uri? prefixUri)
             || !string.IsNullOrEmpty(prefixUri.Query)
-            || !string.IsNullOrEmpty(prefixUri.Fragment)) {
-            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleUriPrefix)} must be a non-empty absolute URI ending with '/' and free of query/fragment.");
+            || !string.IsNullOrEmpty(prefixUri.Fragment)
+            // P47: reject embedded credentials (https://user:pass@host/) so they cannot leak
+            // into emitted lifecycle.uri response strings.
+            || !string.IsNullOrEmpty(prefixUri.UserInfo)) {
+            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleUriPrefix)} must be a non-empty absolute URI ending with '/' and free of query/fragment/userinfo.");
         }
 
         if (options.DefaultLifecycleRetryAfterMs <= 0

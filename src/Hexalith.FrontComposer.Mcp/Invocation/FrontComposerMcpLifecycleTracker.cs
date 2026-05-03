@@ -9,6 +9,7 @@ using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Mcp.Invocation;
@@ -24,6 +25,10 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
     private readonly ConcurrentQueue<string> _terminalOrder = new();
     private readonly object _capacityGate = new();
     private readonly TimeProvider _time = services.GetService<TimeProvider>() ?? TimeProvider.System;
+    // P46: optional logger so the bare `catch` in ReadCoreAsync surfaces sanitized failure
+    // categories instead of disappearing. Resolved laxly so test hosts without logging still work.
+    private readonly ILogger<FrontComposerMcpLifecycleTracker>? _logger
+        = services.GetService<ILogger<FrontComposerMcpLifecycleTracker>>();
     private int _disposed;
     // P36: O(1) counters mutated under _capacityGate; replace per-iteration dictionary scans.
     private int _activeCount;
@@ -45,6 +50,11 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
 
         LifecycleEntry entry = GetOrCreateEntry(descriptor, correlationId, messageId, lifecycle);
+        // P48: persist the dispatcher-supplied retry hint on the entry so subsequent snapshots
+        // return the same value as the acknowledgement. Without this, ack and any later snapshot
+        // for the same command disagree on retry guidance.
+        int clampedRetryAfter = ClampRetryAfter(result.RetryAfter);
+        entry.SetRetryAfterMs(clampedRetryAfter);
         if (!entry.AcknowledgmentEmitted) {
             lifecycle.Transition(correlationId, CommandLifecycleState.Submitting);
             lifecycle.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
@@ -65,7 +75,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             new McpLifecycleSubscription(
                 options.Value.LifecycleToolName,
                 options.Value.LifecycleUriPrefix + correlationId,
-                ClampRetryAfter(result.RetryAfter)));
+                clampedRetryAfter));
     }
 
     public Task<FrontComposerMcpResult> ReadAsync(
@@ -111,10 +121,26 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         catch (FrontComposerMcpException ex) {
             return FrontComposerMcpResult.Failure(ex.Category);
         }
-        catch {
+        catch (Exception ex) {
+            // P46: surface a sanitized failure category so the operator can correlate the
+            // negative outcome to a code path. We never log the exception's stack/message — only
+            // the type name — to preserve the AC13 redaction contract for hidden-unknown reads.
+            LogReadFailure(ex);
             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed);
         }
     }
+
+    private void LogReadFailure(Exception ex) {
+        if (_logger is null || !_logger.IsEnabled(LogLevel.Warning)) {
+            return;
+        }
+
+        LogReadFailureMessage(_logger, ex.GetType().FullName ?? "Exception");
+    }
+
+    [LoggerMessage(EventId = 8300, Level = LogLevel.Warning,
+        Message = "MCP lifecycle read failed with sanitized category. ExceptionType={ExceptionType}.")]
+    private static partial void LogReadFailureMessage(ILogger logger, string exceptionType);
 
     public void Dispose() {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) {
@@ -147,7 +173,14 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             }
         }
 
-        string normalized = value.Trim().Normalize(NormalizationForm.FormC);
+        // P41: reject leading/trailing ASCII whitespace before normalization. Otherwise two
+        // distinct caller inputs (`" 01J..."` and `"01J..."`) collapse onto the same canonical
+        // handle, opening a small canonicalization-mismatch surface in audit/logs.
+        if (value.Length != value.AsSpan().Trim().Length) {
+            return null;
+        }
+
+        string normalized = value.Normalize(NormalizationForm.FormC);
         if (!CanonicalUlidRegex().IsMatch(normalized)) {
             return null;
         }
@@ -190,8 +223,15 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             throw;
         }
 
-        // _byMessage uses TryAdd so a message-id collision does not silently overwrite.
-        _byMessage.TryAdd(messageId, created);
+        // P50: fail-closed on _byMessage collision so a second registration cannot become
+        // unreachable by messageId lookup. Roll back the correlation registration and surface
+        // UnsupportedSchema; the framework-issued ULID factory makes this case configuration-only.
+        if (!_byMessage.TryAdd(messageId, created)) {
+            _byCorrelation.TryRemove(correlationId, out _);
+            created.Dispose();
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+        }
+
         _insertionOrder.Enqueue(correlationId);
         Interlocked.Increment(ref _activeCount);
         created.Start();
@@ -257,14 +297,11 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
     }
 
     private static FrontComposerMcpResult HiddenUnknown()
+        // P45: route through the shared admission helper so the lifecycle hidden-unknown shape
+        // tracks any future change to the AC9 unknown-tool response contract automatically.
         => FrontComposerMcpResult.Failure(
             FrontComposerMcpFailureCategory.UnknownTool,
-            new JsonObject {
-                ["category"] = "unknown_tool",
-                ["suggestion"] = null,
-                ["visibleTools"] = new JsonArray(),
-                ["docsCode"] = "HFC-MCP-UNKNOWN-TOOL",
-            });
+            FrontComposerMcpToolAdmissionService.BuildHiddenUnknownStructuredContent());
 
     private int ClampRetryAfter(TimeSpan? retryAfter) {
         FrontComposerMcpOptions o = options.Value;
@@ -313,6 +350,7 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         private bool _terminalRecorded;
         private int _isTerminal; // P35: lock-free terminal flag for capacity counters and IsTerminal.
         private int _entryDisposed; // P33: short-circuit timer callbacks racing Dispose().
+        private int _retryAfterMs; // P48: dispatcher-supplied retry hint, surfaced from snapshots.
         private CommandLifecycleState _state = CommandLifecycleState.Acknowledged;
         private McpTerminalOutcome? _outcome;
 
@@ -359,6 +397,10 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             }
         }
 
+        // P48: persist the dispatcher-supplied retry hint so subsequent snapshots return the
+        // same value as the acknowledgement. The tracker calls SetRetryAfterMs after Clamp.
+        public void SetRetryAfterMs(int retryAfterMs) => Volatile.Write(ref _retryAfterMs, retryAfterMs);
+
         // P34: arm the timeout timer once the tracker has fully registered the entry.
         public void Start() {
             if (Volatile.Read(ref _entryDisposed) != 0) {
@@ -384,6 +426,13 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
                     return;
                 }
 
+                // P52: same-state idempotent re-delivery (Confirmed → Confirmed, Rejected → Rejected)
+                // must not append a duplicate row to the bounded history; the truncation loop would
+                // eventually evict the original Acknowledged frame. We still allow the
+                // IdempotencyResolved upgrade in `_outcome` so agents see the duplicate-detection
+                // signal when it arrives after the initial Confirmed observation.
+                bool sameStateRedelivery = currentTerminal && transition.NewState == _state;
+
                 _state = transition.NewState;
                 if (transition.NewState == CommandLifecycleState.Confirmed) {
                     // Outcome is set once. An incoming Confirmed flagged IdempotencyResolved is a
@@ -404,7 +453,10 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
                     _outcome = McpTerminalOutcome.GenericRejection();
                 }
 
-                AppendHistory(transition.NewState, NormalizeIdentifier(transition.MessageId), transition.TimestampUtc, transition.IdempotencyResolved);
+                if (!sameStateRedelivery) {
+                    AppendHistory(transition.NewState, NormalizeIdentifier(transition.MessageId), transition.TimestampUtc, transition.IdempotencyResolved);
+                }
+
                 if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected && !_terminalRecorded) {
                     _terminalRecorded = true;
                     Volatile.Write(ref _isTerminal, 1);
@@ -485,9 +537,14 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
                     .. _history.Where(t => t.State is not CommandLifecycleState.Idle
                         and not CommandLifecycleState.Submitting),
                 ];
+                // P48: prefer the dispatcher-supplied (clamped) retry hint persisted on this
+                // entry; fall back to the configured default for entries that never carried one.
                 int min = Math.Max(1, opts.MinLifecycleRetryAfterMs);
                 int max = Math.Max(min, opts.MaxLifecycleRetryAfterMs);
-                int retryAfter = Math.Clamp(Math.Max(1, opts.DefaultLifecycleRetryAfterMs), min, max);
+                int persisted = Volatile.Read(ref _retryAfterMs);
+                int retryAfter = persisted > 0
+                    ? Math.Clamp(persisted, min, max)
+                    : Math.Clamp(Math.Max(1, opts.DefaultLifecycleRetryAfterMs), min, max);
                 return new McpLifecycleSnapshot(
                     MessageId,
                     CorrelationId,

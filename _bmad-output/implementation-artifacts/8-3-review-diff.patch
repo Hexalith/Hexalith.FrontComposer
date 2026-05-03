@@ -1,0 +1,1906 @@
+diff --git a/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
+index 3116550..1d0af09 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
+@@ -1,6 +1,7 @@
+ using System.Text.Json;
+ 
+ using Hexalith.FrontComposer.Mcp.Invocation;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
+ 
+ using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.Extensions.DependencyInjection.Extensions;
+@@ -32,6 +33,8 @@ public static class FrontComposerMcpServiceCollectionExtensions {
+         services.TryAddScoped<IFrontComposerMcpAgentContextAccessor, HttpFrontComposerMcpAgentContextAccessor>();
+         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
+         services.TryAddScoped<FrontComposerMcpProjectionReader>();
++        services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
++        services.TryAddSingleton<IUlidFactory, FrontComposerMcpUlidFactory>();
+ 
+         // The MCP SDK's WithTools/WithResources takes a static enumerable, so the descriptor list
+         // is materialized once at AddFrontComposerMcp time. Adopters MUST call AddFrontComposerMcp
+@@ -70,8 +73,12 @@ public static class FrontComposerMcpServiceCollectionExtensions {
+         FrontComposerMcpToolAdmissionService admission = request.Services.GetRequiredService<FrontComposerMcpToolAdmissionService>();
+         try {
+             McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
++            FrontComposerMcpOptions options = request.Services.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value;
+             return new ListToolsResult {
+-                Tools = [.. catalog.Tools.Select(FrontComposerMcpProtocolMapper.ToProtocolTool)],
++                Tools = [
++                    .. catalog.Tools.Select(FrontComposerMcpProtocolMapper.ToProtocolTool),
++                    FrontComposerMcpProtocolMapper.ToLifecycleTool(options),
++                ],
+             };
+         }
+         catch (FrontComposerMcpException) {
+@@ -91,6 +98,26 @@ public static class FrontComposerMcpServiceCollectionExtensions {
+                 FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.UnsupportedSchema));
+         }
+ 
++        FrontComposerMcpOptions options = request.Services.GetRequiredService<IOptions<FrontComposerMcpOptions>>().Value;
++        if (string.Equals(request.Params?.Name, options.LifecycleToolName, StringComparison.Ordinal)) {
++            // D6 / AC10: the lifecycle tool requires a resolvable agent context (auth + tenant
++            // claims) before any handle lookup. Per-handle revalidation runs again inside ReadAsync;
++            // the entry-point check fails closed for callers without context so the lifecycle tool
++            // cannot be probed anonymously.
++            try {
++                _ = request.Services.GetRequiredService<IFrontComposerMcpAgentContextAccessor>().GetContext();
++            }
++            catch (FrontComposerMcpException ex) {
++                return FrontComposerMcpProtocolMapper.ToCallToolResult(FrontComposerMcpResult.Failure(ex.Category));
++            }
++
++            FrontComposerMcpLifecycleTracker tracker = request.Services.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++            FrontComposerMcpResult lifecycle = await tracker.ReadAsync(
++                BuildArguments(request.Params?.Arguments),
++                cancellationToken).ConfigureAwait(false);
++            return FrontComposerMcpProtocolMapper.ToCallToolResult(lifecycle);
++        }
++
+         FrontComposerMcpCommandInvoker invoker = request.Services.GetRequiredService<FrontComposerMcpCommandInvoker>();
+         FrontComposerMcpResult result = await invoker.InvokeAsync(
+             request.Params?.Name!,
+@@ -153,6 +180,31 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
+             errors.Add("Tool response bounds must be positive.");
+         }
+ 
++        if (string.IsNullOrWhiteSpace(options.LifecycleToolName)) {
++            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleToolName)} must be non-empty.");
++        }
++
++        if (string.IsNullOrWhiteSpace(options.LifecycleUriPrefix)
++            || !options.LifecycleUriPrefix.EndsWith("/", StringComparison.Ordinal)
++            || !Uri.TryCreate(options.LifecycleUriPrefix, UriKind.Absolute, out Uri? prefixUri)
++            || !string.IsNullOrEmpty(prefixUri.Query)
++            || !string.IsNullOrEmpty(prefixUri.Fragment)) {
++            errors.Add($"{nameof(FrontComposerMcpOptions.LifecycleUriPrefix)} must be a non-empty absolute URI ending with '/' and free of query/fragment.");
++        }
++
++        if (options.DefaultLifecycleRetryAfterMs <= 0
++            || options.MinLifecycleRetryAfterMs <= 0
++            || options.MaxLifecycleRetryAfterMs < options.MinLifecycleRetryAfterMs
++            || options.DefaultLifecycleRetryAfterMs < options.MinLifecycleRetryAfterMs
++            || options.DefaultLifecycleRetryAfterMs > options.MaxLifecycleRetryAfterMs
++            || options.MaxLifecycleLongPollMs < 0
++            || options.MaxLifecycleTransitionHistory <= 0
++            || options.MaxActiveLifecycleEntries <= 0
++            || options.MaxRetainedTerminalLifecycleEntries <= 0
++            || options.MaxLifecycleInProgressMs <= 0) {
++            errors.Add("Lifecycle bounds must be positive and internally consistent (Default within [Min, Max]).");
++        }
++
+         foreach (KeyValuePair<string, FrontComposerMcpApiKeyIdentity> entry in options.ApiKeys) {
+             if (string.IsNullOrWhiteSpace(entry.Key)) {
+                 errors.Add("API key entries must not have empty/whitespace keys.");
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs
+index 69658d3..3816d41 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpOptions.cs
+@@ -37,6 +37,26 @@ public sealed class FrontComposerMcpOptions {
+ 
+     public int MaxToolDisplayTextLength { get; set; } = 240;
+ 
++    public string LifecycleToolName { get; set; } = "frontcomposer.lifecycle.subscribe";
++
++    public string LifecycleUriPrefix { get; set; } = "frontcomposer://lifecycle/";
++
++    public int DefaultLifecycleRetryAfterMs { get; set; } = 250;
++
++    public int MinLifecycleRetryAfterMs { get; set; } = 100;
++
++    public int MaxLifecycleRetryAfterMs { get; set; } = 5_000;
++
++    public int MaxLifecycleLongPollMs { get; set; } = 1_000;
++
++    public int MaxLifecycleTransitionHistory { get; set; } = 32;
++
++    public int MaxActiveLifecycleEntries { get; set; } = 1_000;
++
++    public int MaxRetainedTerminalLifecycleEntries { get; set; } = 1_000;
++
++    public int MaxLifecycleInProgressMs { get; set; } = 30_000;
++
+     public IList<string> TenantClaimTypes { get; } = [
+         "TenantId",
+         "tenant_id",
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs
+index 1d3e060..465d197 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpProtocolMapper.cs
+@@ -14,6 +14,14 @@ internal static class FrontComposerMcpProtocolMapper {
+             InputSchema = McpJsonSchemaBuilder.BuildInputSchema(entry.Descriptor.Parameters),
+         };
+ 
++    public static Tool ToLifecycleTool(FrontComposerMcpOptions options)
++        => new() {
++            Name = options.LifecycleToolName,
++            Title = "FrontComposer lifecycle subscribe",
++            Description = "Read a bounded command lifecycle snapshot by framework-issued correlationId or messageId.",
++            InputSchema = McpJsonSchemaBuilder.BuildLifecycleInputSchema(),
++        };
++
+     public static CallToolResult ToCallToolResult(FrontComposerMcpResult result)
+         => new() {
+             IsError = result.IsError,
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpUlidFactory.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpUlidFactory.cs
+new file mode 100644
+index 0000000..0382ed0
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpUlidFactory.cs
+@@ -0,0 +1,88 @@
++using System.Buffers.Binary;
++using System.Security.Cryptography;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++
++namespace Hexalith.FrontComposer.Mcp;
++
++internal sealed class FrontComposerMcpUlidFactory : IUlidFactory {
++    private const string Alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
++    private readonly object _gate = new();
++    private long _lastTimestampMs;
++    private ulong _lastRandomHi;
++    private ulong _lastRandomLo;
++
++    public string NewUlid() {
++        Span<byte> bytes = stackalloc byte[16];
++        long milliseconds = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
++        ulong hi;
++        ulong lo;
++        lock (_gate) {
++            // Monotonicity per the canonical ULID spec section 4: when two IDs share the same
++            // timestamp segment, increment the random component instead of regenerating, so the
++            // sequence remains lexicographically sortable.
++            if (milliseconds == _lastTimestampMs) {
++                ulong newLo = _lastRandomLo + 1;
++                ulong newHi = newLo == 0 ? _lastRandomHi + 1 : _lastRandomHi;
++                _lastRandomHi = newHi & 0xFFFFUL;
++                _lastRandomLo = newLo;
++            }
++            else {
++                _lastTimestampMs = milliseconds;
++                Span<byte> rand = stackalloc byte[10];
++                RandomNumberGenerator.Fill(rand);
++                _lastRandomHi = (ulong)((rand[0] << 8) | rand[1]);
++                _lastRandomLo = BinaryPrimitives.ReadUInt64BigEndian(rand[2..]);
++            }
++
++            hi = _lastRandomHi;
++            lo = _lastRandomLo;
++        }
++
++        bytes[0] = (byte)(milliseconds >> 40);
++        bytes[1] = (byte)(milliseconds >> 32);
++        bytes[2] = (byte)(milliseconds >> 24);
++        bytes[3] = (byte)(milliseconds >> 16);
++        bytes[4] = (byte)(milliseconds >> 8);
++        bytes[5] = (byte)milliseconds;
++        bytes[6] = (byte)(hi >> 8);
++        bytes[7] = (byte)hi;
++        BinaryPrimitives.WriteUInt64BigEndian(bytes[8..], lo);
++
++        Span<char> chars = stackalloc char[26];
++        WriteCrockford(bytes, chars);
++        return new string(chars);
++    }
++
++    private static void WriteCrockford(ReadOnlySpan<byte> bytes, Span<char> chars) {
++        ulong hi = BinaryPrimitives.ReadUInt64BigEndian(bytes[..8]);
++        ulong lo = BinaryPrimitives.ReadUInt64BigEndian(bytes[8..]);
++
++        chars[0] = Alphabet[(int)((hi >> 61) & 0x1F)];
++        chars[1] = Alphabet[(int)((hi >> 56) & 0x1F)];
++        chars[2] = Alphabet[(int)((hi >> 51) & 0x1F)];
++        chars[3] = Alphabet[(int)((hi >> 46) & 0x1F)];
++        chars[4] = Alphabet[(int)((hi >> 41) & 0x1F)];
++        chars[5] = Alphabet[(int)((hi >> 36) & 0x1F)];
++        chars[6] = Alphabet[(int)((hi >> 31) & 0x1F)];
++        chars[7] = Alphabet[(int)((hi >> 26) & 0x1F)];
++        chars[8] = Alphabet[(int)((hi >> 21) & 0x1F)];
++        chars[9] = Alphabet[(int)((hi >> 16) & 0x1F)];
++        chars[10] = Alphabet[(int)((hi >> 11) & 0x1F)];
++        chars[11] = Alphabet[(int)((hi >> 6) & 0x1F)];
++        chars[12] = Alphabet[(int)((hi >> 1) & 0x1F)];
++        chars[13] = Alphabet[(int)(((hi & 0x1UL) << 4) | ((lo >> 60) & 0xFUL))];
++        chars[14] = Alphabet[(int)((lo >> 55) & 0x1F)];
++        chars[15] = Alphabet[(int)((lo >> 50) & 0x1F)];
++        chars[16] = Alphabet[(int)((lo >> 45) & 0x1F)];
++        chars[17] = Alphabet[(int)((lo >> 40) & 0x1F)];
++        chars[18] = Alphabet[(int)((lo >> 35) & 0x1F)];
++        chars[19] = Alphabet[(int)((lo >> 30) & 0x1F)];
++        chars[20] = Alphabet[(int)((lo >> 25) & 0x1F)];
++        chars[21] = Alphabet[(int)((lo >> 20) & 0x1F)];
++        chars[22] = Alphabet[(int)((lo >> 15) & 0x1F)];
++        chars[23] = Alphabet[(int)((lo >> 10) & 0x1F)];
++        chars[24] = Alphabet[(int)((lo >> 5) & 0x1F)];
++        chars[25] = Alphabet[(int)(lo & 0x1F)];
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs
+index 3cf820e..b274bd2 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs
+@@ -1,9 +1,11 @@
++using System.Collections.Concurrent;
+ using System.Diagnostics;
+ using System.Reflection;
+ using System.Text.Json;
+ using System.Text.Json.Nodes;
+ 
+ using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
+ using Hexalith.FrontComposer.Contracts.Mcp;
+ 
+ using Microsoft.Extensions.DependencyInjection;
+@@ -45,38 +47,63 @@ public sealed class FrontComposerMcpCommandInvoker(
+             ApplyDerivableValues(command, context);
+ 
+             ICommandService commandService = services.GetRequiredService<ICommandService>();
+-            MethodInfo? method = typeof(ICommandService).GetMethod(nameof(ICommandService.DispatchAsync));
+-            if (method is null) {
+-                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+-            }
+-
+-            object? resultTask;
+-            try {
+-                resultTask = method.MakeGenericMethod(commandType).Invoke(commandService, [command, cancellationToken]);
+-            }
+-            catch (TargetInvocationException ex) when (ex.InnerException is not null) {
+-                throw ex.InnerException;
++            FrontComposerMcpLifecycleTracker? lifecycleTracker = services.GetService<FrontComposerMcpLifecycleTracker>();
++            ConcurrentQueue<(CommandLifecycleState State, string? MessageId)> lifecycleTransitions = new();
++            Action<CommandLifecycleState, string?>? onLifecycleChange = lifecycleTracker is null
++                ? null
++                : (state, messageId) => lifecycleTransitions.Enqueue((state, messageId));
++
++            CommandResult result = await DispatchAsync(commandService, command, commandType, onLifecycleChange, cancellationToken)
++                .ConfigureAwait(false);
++            if (lifecycleTracker is not null) {
++                McpCommandAcknowledgement acknowledgement = lifecycleTracker.TrackAcknowledged(
++                    descriptor,
++                    result,
++                    [.. lifecycleTransitions],
++                    cancellationToken);
++                return FrontComposerMcpResult.Success("Command acknowledged.", acknowledgement.ToJson());
+             }
+ 
+-            CommandResult result = await ((Task<CommandResult>)resultTask!).ConfigureAwait(false);
+-            JsonObject structured = new() {
++            JsonObject fallback = new() {
+                 ["status"] = result.Status,
+             };
+             if (!string.IsNullOrWhiteSpace(result.MessageId)) {
+-                structured["messageId"] = result.MessageId;
++                fallback["messageId"] = result.MessageId;
+             }
+ 
+             if (!string.IsNullOrWhiteSpace(result.CorrelationId)) {
+-                structured["correlationId"] = result.CorrelationId;
++                fallback["correlationId"] = result.CorrelationId;
+             }
+ 
+-            return FrontComposerMcpResult.Success("Command acknowledged.", structured);
++            return FrontComposerMcpResult.Success("Command acknowledged.", fallback);
+         }
+         catch (CommandRejectedException) {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.CommandRejected);
++            return FrontComposerMcpResult.Failure(
++                FrontComposerMcpFailureCategory.CommandRejected,
++                BuildRejectionPayload(
++                    errorCode: "COMMAND_REJECTED",
++                    reasonCategory: "domain_conflict",
++                    message: "Command failed: the command was rejected by domain rules. No changes were applied.",
++                    suggestedAction: "abort",
++                    retryAppropriate: false,
++                    docsCode: "HFC-MCP-COMMAND-REJECTED"));
+         }
+-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Canceled);
++        catch (CommandValidationException) {
++            return FrontComposerMcpResult.Failure(
++                FrontComposerMcpFailureCategory.ValidationFailed,
++                BuildRejectionPayload(
++                    errorCode: "COMMAND_VALIDATION_FAILED",
++                    reasonCategory: "validation",
++                    message: "Validation failed: the command arguments did not satisfy the contract. The command was not dispatched.",
++                    suggestedAction: "correct-input",
++                    retryAppropriate: true,
++                    docsCode: "HFC-MCP-COMMAND-VALIDATION"));
++        }
++        catch (OperationCanceledException) {
++            return FrontComposerMcpResult.Failure(
++                cancellationToken.IsCancellationRequested
++                    ? FrontComposerMcpFailureCategory.Canceled
++                    : FrontComposerMcpFailureCategory.Timeout);
+         }
+         catch (TimeoutException) {
+             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Timeout);
+@@ -89,10 +116,46 @@ public sealed class FrontComposerMcpCommandInvoker(
+         }
+     }
+ 
++    private static Task<CommandResult> DispatchAsync(
++        ICommandService commandService,
++        object command,
++        Type commandType,
++        Action<CommandLifecycleState, string?>? onLifecycleChange,
++        CancellationToken cancellationToken) {
++        // CommandServiceExtensions.DispatchAsync<TCommand> is a generic static extension; binding it
++        // by full parameter signature avoids the FirstOrDefault collision risk that a future 4-arg
++        // overload would create. The cached delegate-style reflection is unavoidable here because
++        // commandType is only known at runtime, but the signature filter pins us to the right method.
++        MethodInfo method = LifecycleDispatchMethod.Value
++            ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
++        try {
++            return (Task<CommandResult>)method.MakeGenericMethod(commandType).Invoke(
++                null,
++                [commandService, command, onLifecycleChange, cancellationToken])!;
++        }
++        catch (TargetInvocationException ex) when (ex.InnerException is not null) {
++            throw ex.InnerException;
++        }
++    }
++
++    private static readonly Lazy<MethodInfo?> LifecycleDispatchMethod = new(() =>
++        typeof(CommandServiceExtensions)
++            .GetMethods(BindingFlags.Public | BindingFlags.Static)
++            .FirstOrDefault(m => m.Name == nameof(CommandServiceExtensions.DispatchAsync)
++                && m.IsGenericMethodDefinition
++                && MatchesLifecycleSignature(m.GetParameters())));
++
++    private static bool MatchesLifecycleSignature(ParameterInfo[] parameters) {
++        if (parameters.Length != 4) {
++            return false;
++        }
++
++        return parameters[0].ParameterType == typeof(ICommandService)
++            && parameters[2].ParameterType == typeof(Action<CommandLifecycleState, string?>)
++            && parameters[3].ParameterType == typeof(CancellationToken);
++    }
++
+     private static object CreateInstanceOrThrow(Type commandType) {
+-        // Records and types with positional / parameterized primary constructors do not have a public
+-        // parameterless ctor — surface that deterministically as UnsupportedSchema rather than letting
+-        // Activator's MissingMethodException collapse into the generic catch.
+         ConstructorInfo? ctor = commandType.GetConstructor(Type.EmptyTypes);
+         if (ctor is null) {
+             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
+@@ -108,8 +171,6 @@ public sealed class FrontComposerMcpCommandInvoker(
+             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
+         }
+ 
+-        // Allowed names use Ordinal to match descriptor casing exactly; spoofed-derivable names use
+-        // OrdinalIgnoreCase so case-variant TenantId / tenantid / TENANTID all fail-closed.
+         HashSet<string> seen = new(StringComparer.OrdinalIgnoreCase);
+         HashSet<string> allowed = descriptor.Parameters
+             .Where(p => !p.IsUnsupported)
+@@ -164,11 +225,6 @@ public sealed class FrontComposerMcpCommandInvoker(
+     }
+ 
+     private Type ResolveType(string typeName) {
+-        // Resolution preference: assembly-qualified Type.GetType, then explicitly registered
+-        // ManifestAssemblies, then a load-context scan as a last-resort fallback for hosts that
+-        // registered manifests through Options.Manifests without listing their assemblies. The
+-        // bounded preference reduces type-confusion risk from arbitrary plugin assemblies that
+-        // happen to share an FQN; the fallback preserves the minimal-config developer flow.
+         Type? direct = Type.GetType(typeName);
+         if (direct is not null) {
+             return direct;
+@@ -216,9 +272,6 @@ public sealed class FrontComposerMcpCommandInvoker(
+                 typed = value.Deserialize(property.PropertyType);
+             }
+             catch (JsonException) {
+-                // Range/format failure on a primitive (e.g., Int64 supplied for an Int32 property,
+-                // fractional value for an integer target) is a client-input error, not a downstream
+-                // failure — surface as ValidationFailed so the agent can self-correct.
+                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ValidationFailed);
+             }
+ 
+@@ -226,15 +279,17 @@ public sealed class FrontComposerMcpCommandInvoker(
+         }
+     }
+ 
+-    private static void ApplyDerivableValues(object command, FrontComposerMcpAgentContext context) {
++    private void ApplyDerivableValues(object command, FrontComposerMcpAgentContext context) {
+         Type commandType = command.GetType();
+         SetIfWritable(command, commandType, "TenantId", context.TenantId);
+         SetIfWritable(command, commandType, "UserId", context.UserId);
+ 
+-        // MessageId and CommandId share a single value so EventStore idempotency stays consistent
+-        // with a single MCP invocation. CorrelationId honors the ambient OpenTelemetry trace when
+-        // present so agent → EventStore traces can be joined.
+-        string messageId = Guid.NewGuid().ToString("N");
++        // AC17 / D11: when an IUlidFactory is registered the message identity is allocated up front
++        // via that factory so the lifecycle tracker can key off the same canonical ULID before
++        // dispatch. When no factory is configured (legacy hosts without the MCP lifecycle tracker)
++        // we fall back to a Guid to preserve the historical contract.
++        IUlidFactory? ulidFactory = services.GetService<IUlidFactory>();
++        string messageId = ulidFactory?.NewUlid() ?? Guid.NewGuid().ToString("N");
+         SetIfWritable(command, commandType, "MessageId", messageId);
+         SetIfWritable(command, commandType, "CommandId", messageId);
+         SetIfWritable(command, commandType, "CorrelationId", Activity.Current?.TraceId.ToString() ?? messageId);
+@@ -246,4 +301,29 @@ public sealed class FrontComposerMcpCommandInvoker(
+             property.SetValue(target, value);
+         }
+     }
++
++    private static JsonObject BuildRejectionPayload(
++        string errorCode,
++        string reasonCategory,
++        string message,
++        string suggestedAction,
++        bool retryAppropriate,
++        string docsCode)
++        => new() {
++            ["state"] = "Rejected",
++            ["terminal"] = true,
++            ["outcome"] = new JsonObject {
++                ["category"] = "rejected",
++                ["retryAppropriate"] = retryAppropriate,
++                ["rejection"] = new JsonObject {
++                    ["errorCode"] = errorCode,
++                    ["message"] = message,
++                    ["dataImpact"] = "No changes were applied.",
++                    ["suggestedAction"] = suggestedAction,
++                    ["retryAppropriate"] = retryAppropriate,
++                    ["reasonCategory"] = reasonCategory,
++                    ["docsCode"] = docsCode,
++                },
++            },
++        };
+ }
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleTracker.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleTracker.cs
+new file mode 100644
+index 0000000..8675849
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpLifecycleTracker.cs
+@@ -0,0 +1,513 @@
++using System.Collections.Concurrent;
++using System.Text;
++using System.Text.Json;
++using System.Text.Json.Nodes;
++using System.Text.RegularExpressions;
++
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Contracts.Mcp;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Options;
++
++namespace Hexalith.FrontComposer.Mcp.Invocation;
++
++public sealed partial class FrontComposerMcpLifecycleTracker(
++    FrontComposerMcpToolAdmissionService admissionService,
++    IServiceProvider services,
++    IOptions<FrontComposerMcpOptions> options) : IDisposable {
++    private const int MaxIdentifierLength = 64;
++    private readonly ConcurrentDictionary<string, LifecycleEntry> _byCorrelation = new(StringComparer.Ordinal);
++    private readonly ConcurrentDictionary<string, LifecycleEntry> _byMessage = new(StringComparer.Ordinal);
++    private readonly ConcurrentQueue<string> _insertionOrder = new();
++    private readonly ConcurrentQueue<string> _terminalOrder = new();
++    private readonly object _capacityGate = new();
++    private readonly TimeProvider _time = services.GetService<TimeProvider>() ?? TimeProvider.System;
++    private int _disposed;
++    // P36: O(1) counters mutated under _capacityGate; replace per-iteration dictionary scans.
++    private int _activeCount;
++    private int _terminalCount;
++
++    internal McpCommandAcknowledgement TrackAcknowledged(
++        McpCommandDescriptor descriptor,
++        CommandResult result,
++        IReadOnlyList<(CommandLifecycleState State, string? MessageId)> pendingTransitions,
++        CancellationToken cancellationToken) {
++        ThrowIfDisposed();
++        ArgumentNullException.ThrowIfNull(descriptor);
++        ArgumentNullException.ThrowIfNull(result);
++
++        string messageId = NormalizeIdentifier(result.MessageId)
++            ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
++        string correlationId = NormalizeIdentifier(result.CorrelationId) ?? messageId;
++        ILifecycleStateService lifecycle = services.GetService<ILifecycleStateService>()
++            ?? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedSchema);
++
++        LifecycleEntry entry = GetOrCreateEntry(descriptor, correlationId, messageId, lifecycle);
++        if (!entry.AcknowledgmentEmitted) {
++            lifecycle.Transition(correlationId, CommandLifecycleState.Submitting);
++            lifecycle.Transition(correlationId, CommandLifecycleState.Acknowledged, messageId);
++            entry.AcknowledgmentEmitted = true;
++        }
++
++        foreach ((CommandLifecycleState state, string? transitionMessageId) in pendingTransitions) {
++            cancellationToken.ThrowIfCancellationRequested();
++            lifecycle.Transition(correlationId, state, NormalizeIdentifier(transitionMessageId) ?? messageId);
++        }
++
++        // AC2 — the first call always reports Acknowledged. The agent uses the lifecycle subscribe
++        // surface to learn the current state, even if dispatch progressed synchronously.
++        return new McpCommandAcknowledgement(
++            messageId,
++            correlationId,
++            CommandLifecycleState.Acknowledged,
++            new McpLifecycleSubscription(
++                options.Value.LifecycleToolName,
++                options.Value.LifecycleUriPrefix + correlationId,
++                ClampRetryAfter(result.RetryAfter)));
++    }
++
++    public Task<FrontComposerMcpResult> ReadAsync(
++        IReadOnlyDictionary<string, JsonElement>? arguments,
++        CancellationToken cancellationToken = default) => ReadCoreAsync(arguments, cancellationToken);
++
++    private async Task<FrontComposerMcpResult> ReadCoreAsync(
++        IReadOnlyDictionary<string, JsonElement>? arguments,
++        CancellationToken cancellationToken) {
++        try {
++            ThrowIfDisposed();
++            if (!TryReadHandle(arguments, out string? handle)) {
++                return HiddenUnknown();
++            }
++
++            string handleValue = handle!;
++            if (!_byCorrelation.TryGetValue(handleValue, out LifecycleEntry? entry)) {
++                _byMessage.TryGetValue(handleValue, out entry);
++            }
++
++            if (entry is null) {
++                return HiddenUnknown();
++            }
++
++            McpToolResolutionResult current = await admissionService
++                .ResolveAsync(entry.Descriptor.ProtocolName, cancellationToken)
++                .ConfigureAwait(false);
++            if (!current.Accepted
++                || current.Tool is null
++                || !string.Equals(current.Tool.Descriptor.ProtocolName, entry.Descriptor.ProtocolName, StringComparison.Ordinal)) {
++                return HiddenUnknown();
++            }
++
++            McpLifecycleSnapshot snapshot = entry.ToSnapshot(options.Value);
++            return FrontComposerMcpResult.Success("Lifecycle snapshot.", snapshot.ToJson());
++        }
++        catch (OperationCanceledException) {
++            return FrontComposerMcpResult.Failure(
++                cancellationToken.IsCancellationRequested
++                    ? FrontComposerMcpFailureCategory.Canceled
++                    : FrontComposerMcpFailureCategory.DownstreamFailed);
++        }
++        catch (FrontComposerMcpException ex) {
++            return FrontComposerMcpResult.Failure(ex.Category);
++        }
++        catch {
++            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed);
++        }
++    }
++
++    public void Dispose() {
++        if (Interlocked.Exchange(ref _disposed, 1) != 0) {
++            return;
++        }
++
++        LifecycleEntry[] snapshot = [.. _byCorrelation.Values];
++        _byCorrelation.Clear();
++        _byMessage.Clear();
++        while (_insertionOrder.TryDequeue(out _)) { }
++        while (_terminalOrder.TryDequeue(out _)) { }
++        Volatile.Write(ref _activeCount, 0);
++        Volatile.Write(ref _terminalCount, 0);
++
++        foreach (LifecycleEntry entry in snapshot) {
++            entry.Dispose();
++        }
++    }
++
++    internal static string? NormalizeIdentifier(string? value) {
++        if (string.IsNullOrWhiteSpace(value) || value.Length > MaxIdentifierLength) {
++            return null;
++        }
++
++        // Reject non-ASCII before NFKC so fullwidth / Unicode-confusable digits/letters cannot
++        // fold into the canonical alphabet (AC23 / D13).
++        for (int i = 0; i < value.Length; i++) {
++            if (value[i] > 0x7F) {
++                return null;
++            }
++        }
++
++        string normalized = value.Trim().Normalize(NormalizationForm.FormC);
++        if (!CanonicalUlidRegex().IsMatch(normalized)) {
++            return null;
++        }
++
++        return normalized;
++    }
++
++    private LifecycleEntry GetOrCreateEntry(
++        McpCommandDescriptor descriptor,
++        string correlationId,
++        string messageId,
++        ILifecycleStateService lifecycle) {
++        if (_byCorrelation.TryGetValue(correlationId, out LifecycleEntry? existing)) {
++            return existing;
++        }
++
++        FrontComposerMcpOptions opts = options.Value;
++        // P34: timer is constructed in a quiescent state (Timeout.InfiniteTimeSpan) and armed via
++        // Start() only after the entry is fully wired; loser path disposes before timer can fire.
++        LifecycleEntry created = new(
++            descriptor,
++            correlationId,
++            messageId,
++            opts.MaxLifecycleTransitionHistory,
++            TimeSpan.FromMilliseconds(Math.Max(1, opts.MaxLifecycleInProgressMs)),
++            _time,
++            OnEntryTerminalized);
++        if (!_byCorrelation.TryAdd(correlationId, created)) {
++            created.Dispose();
++            return _byCorrelation[correlationId];
++        }
++
++        // Subscribe AFTER TryAdd succeeds so the loser path never wires a live callback.
++        try {
++            created.Subscription = lifecycle.Subscribe(correlationId, created.Observe);
++        }
++        catch {
++            _byCorrelation.TryRemove(correlationId, out _);
++            created.Dispose();
++            throw;
++        }
++
++        // _byMessage uses TryAdd so a message-id collision does not silently overwrite.
++        _byMessage.TryAdd(messageId, created);
++        _insertionOrder.Enqueue(correlationId);
++        Interlocked.Increment(ref _activeCount);
++        created.Start();
++        EnforceCapacity();
++        return created;
++    }
++
++    private void EnforceCapacity() {
++        int max = Math.Max(1, options.Value.MaxActiveLifecycleEntries);
++        lock (_capacityGate) {
++            while (Volatile.Read(ref _activeCount) > max && _insertionOrder.TryDequeue(out string? oldest)) {
++                if (_byCorrelation.TryGetValue(oldest, out LifecycleEntry? entry)) {
++                    entry.MarkNeedsReview(_time.GetUtcNow());
++                }
++            }
++
++            EnforceTerminalRetention();
++        }
++    }
++
++    private void OnEntryTerminalized(string correlationId) {
++        lock (_capacityGate) {
++            Interlocked.Decrement(ref _activeCount);
++            Interlocked.Increment(ref _terminalCount);
++            _terminalOrder.Enqueue(correlationId);
++            EnforceTerminalRetention();
++        }
++    }
++
++    private void EnforceTerminalRetention() {
++        int maxRetained = Math.Max(1, options.Value.MaxRetainedTerminalLifecycleEntries);
++        while (Volatile.Read(ref _terminalCount) > maxRetained && _terminalOrder.TryDequeue(out string? oldest)) {
++            if (!_byCorrelation.TryGetValue(oldest, out LifecycleEntry? entry) || !entry.IsTerminal) {
++                continue;
++            }
++
++            if (_byCorrelation.TryRemove(oldest, out LifecycleEntry? removed)) {
++                if (_byMessage.TryGetValue(removed.MessageId, out LifecycleEntry? mapped)
++                    && ReferenceEquals(mapped, removed)) {
++                    _byMessage.TryRemove(removed.MessageId, out _);
++                }
++
++                Interlocked.Decrement(ref _terminalCount);
++                removed.Dispose();
++            }
++        }
++    }
++
++    private static bool TryReadHandle(IReadOnlyDictionary<string, JsonElement>? arguments, out string? handle) {
++        handle = null;
++        if (arguments is null || arguments.Count != 1) {
++            return false;
++        }
++
++        KeyValuePair<string, JsonElement> pair = arguments.Single();
++        if (pair.Key is not "correlationId" and not "messageId"
++            || pair.Value.ValueKind != JsonValueKind.String) {
++            return false;
++        }
++
++        handle = NormalizeIdentifier(pair.Value.GetString());
++        return handle is not null;
++    }
++
++    private static FrontComposerMcpResult HiddenUnknown()
++        => FrontComposerMcpResult.Failure(
++            FrontComposerMcpFailureCategory.UnknownTool,
++            new JsonObject {
++                ["category"] = "unknown_tool",
++                ["suggestion"] = null,
++                ["visibleTools"] = new JsonArray(),
++                ["docsCode"] = "HFC-MCP-UNKNOWN-TOOL",
++            });
++
++    private int ClampRetryAfter(TimeSpan? retryAfter) {
++        FrontComposerMcpOptions o = options.Value;
++        int min = Math.Max(1, o.MinLifecycleRetryAfterMs);
++        int max = Math.Max(min, o.MaxLifecycleRetryAfterMs);
++        int fallback = Math.Clamp(Math.Max(1, o.DefaultLifecycleRetryAfterMs), min, max);
++        if (retryAfter is null) {
++            return fallback;
++        }
++
++        double ms = retryAfter.Value.TotalMilliseconds;
++        if (double.IsNaN(ms) || double.IsInfinity(ms) || ms <= 0) {
++            return fallback;
++        }
++
++        if (ms >= max) {
++            return max;
++        }
++
++        if (ms <= min) {
++            return min;
++        }
++
++        return Math.Clamp((int)Math.Ceiling(ms), min, max);
++    }
++
++    private void ThrowIfDisposed() {
++        if (Volatile.Read(ref _disposed) != 0) {
++            throw new ObjectDisposedException(nameof(FrontComposerMcpLifecycleTracker));
++        }
++    }
++
++    [GeneratedRegex("^[0-9A-HJKMNP-TV-Z]{26}$", RegexOptions.CultureInvariant)]
++    private static partial Regex CanonicalUlidRegex();
++
++    private sealed class LifecycleEntry : IDisposable {
++        private readonly object _gate = new();
++        private readonly Queue<McpLifecycleTransitionDto> _history = new();
++        private readonly int _maxHistory;
++        private readonly TimeSpan _timeout;
++        private readonly TimeProvider _time;
++        private readonly Action<string> _onTerminalized;
++        private readonly ITimer _timeoutTimer;
++        private long _nextSequence;
++        private bool _historyTruncated;
++        private bool _terminalRecorded;
++        private int _isTerminal; // P35: lock-free terminal flag for capacity counters and IsTerminal.
++        private int _entryDisposed; // P33: short-circuit timer callbacks racing Dispose().
++        private CommandLifecycleState _state = CommandLifecycleState.Acknowledged;
++        private McpTerminalOutcome? _outcome;
++
++        public LifecycleEntry(
++            McpCommandDescriptor descriptor,
++            string correlationId,
++            string messageId,
++            int maxHistory,
++            TimeSpan timeout,
++            TimeProvider time,
++            Action<string> onTerminalized) {
++            Descriptor = descriptor;
++            CorrelationId = correlationId;
++            MessageId = messageId;
++            _maxHistory = Math.Max(1, maxHistory);
++            _timeout = timeout;
++            _time = time;
++            _onTerminalized = onTerminalized;
++            // P34: construct timer in quiescent state. Tracker calls Start() after wiring.
++            _timeoutTimer = time.CreateTimer(
++                static state => ((LifecycleEntry)state!).MarkTimedOut(),
++                this,
++                Timeout.InfiniteTimeSpan,
++                Timeout.InfiniteTimeSpan);
++        }
++
++        public McpCommandDescriptor Descriptor { get; }
++
++        public string CorrelationId { get; }
++
++        public string MessageId { get; }
++
++        public IDisposable? Subscription { get; set; }
++
++        public bool AcknowledgmentEmitted { get; set; }
++
++        public bool IsTerminal => Volatile.Read(ref _isTerminal) != 0;
++
++        public CommandLifecycleState CurrentState {
++            get {
++                lock (_gate) {
++                    return _state;
++                }
++            }
++        }
++
++        // P34: arm the timeout timer once the tracker has fully registered the entry.
++        public void Start() {
++            if (Volatile.Read(ref _entryDisposed) != 0) {
++                return;
++            }
++
++            try {
++                _timeoutTimer.Change(_timeout, Timeout.InfiniteTimeSpan);
++            }
++            catch (ObjectDisposedException) {
++                // P33: Start lost a race with Dispose; nothing to arm.
++            }
++        }
++
++        public void Observe(CommandLifecycleTransition transition) {
++            bool becameTerminal = false;
++            lock (_gate) {
++                // Defense in depth: terminal regression is impossible at the MCP edge regardless of
++                // upstream behaviour. Once a terminal outcome is recorded, drop further observations
++                // unless they are the same terminal kind (idempotent re-delivery).
++                bool currentTerminal = _state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected;
++                if (currentTerminal && transition.NewState != _state) {
++                    return;
++                }
++
++                _state = transition.NewState;
++                if (transition.NewState == CommandLifecycleState.Confirmed) {
++                    // Outcome is set once. An incoming Confirmed flagged IdempotencyResolved is a
++                    // clarification of the same terminal — upgrade Success → IdempotentSuccess so
++                    // agents see the duplicate-detection signal even when it arrives after the
++                    // initial Confirmed observation.
++                    if (_outcome is null) {
++                        _outcome = transition.IdempotencyResolved
++                            ? McpTerminalOutcome.IdempotentSuccess(Descriptor.Title)
++                            : McpTerminalOutcome.Success();
++                    }
++                    else if (transition.IdempotencyResolved
++                        && _outcome.Kind == McpTerminalOutcomeKind.Confirmed) {
++                        _outcome = McpTerminalOutcome.IdempotentSuccess(Descriptor.Title);
++                    }
++                }
++                else if (transition.NewState == CommandLifecycleState.Rejected && _outcome is null) {
++                    _outcome = McpTerminalOutcome.GenericRejection();
++                }
++
++                AppendHistory(transition.NewState, NormalizeIdentifier(transition.MessageId), transition.TimestampUtc, transition.IdempotencyResolved);
++                if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected && !_terminalRecorded) {
++                    _terminalRecorded = true;
++                    Volatile.Write(ref _isTerminal, 1);
++                    becameTerminal = true;
++                }
++            }
++
++            if (becameTerminal) {
++                try {
++                    _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
++                }
++                catch (ObjectDisposedException) {
++                    // P33: timer disposed concurrently; nothing to cancel.
++                }
++
++                _onTerminalized(CorrelationId);
++            }
++        }
++
++        public bool MarkTimedOut() => MarkSyntheticTerminal(McpTerminalOutcome.TimedOut());
++
++        public bool MarkNeedsReview(DateTimeOffset observedAtUtc) => MarkSyntheticTerminal(McpTerminalOutcome.NeedsReview(), observedAtUtc);
++
++        private bool MarkSyntheticTerminal(McpTerminalOutcome outcome, DateTimeOffset? observedAtUtc = null) {
++            // P33: refuse terminalization if the entry has been disposed; the timer callback can fire
++            // after Dispose() because ITimer.Dispose() is non-blocking on in-flight callbacks.
++            if (Volatile.Read(ref _entryDisposed) != 0) {
++                return false;
++            }
++
++            lock (_gate) {
++                if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected) {
++                    return false;
++                }
++
++                _state = CommandLifecycleState.Rejected;
++                _outcome = outcome;
++                _terminalRecorded = true;
++                Volatile.Write(ref _isTerminal, 1);
++                AppendHistory(CommandLifecycleState.Rejected, MessageId, observedAtUtc ?? _time.GetUtcNow(), idempotencyResolved: false);
++            }
++
++            try {
++                _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
++            }
++            catch (ObjectDisposedException) {
++                // P33: timer disposed between flag check and Change call; benign.
++            }
++
++            _onTerminalized(CorrelationId);
++            return true;
++        }
++
++        private void AppendHistory(
++            CommandLifecycleState state,
++            string? transitionMessageId,
++            DateTimeOffset observedAtUtc,
++            bool idempotencyResolved) {
++            _history.Enqueue(new McpLifecycleTransitionDto(
++                ++_nextSequence,
++                state,
++                transitionMessageId,
++                observedAtUtc,
++                idempotencyResolved));
++
++            while (_history.Count > _maxHistory) {
++                _ = _history.Dequeue();
++                _historyTruncated = true;
++            }
++        }
++
++        public McpLifecycleSnapshot ToSnapshot(FrontComposerMcpOptions opts) {
++            lock (_gate) {
++                bool terminal = _state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected;
++                // AC3: agent-visible history starts at Acknowledged. Pre-Acknowledged web-only
++                // intermediate states (Idle / Submitting) are filtered from the snapshot.
++                IReadOnlyList<McpLifecycleTransitionDto> agentHistory = [
++                    .. _history.Where(t => t.State is not CommandLifecycleState.Idle
++                        and not CommandLifecycleState.Submitting),
++                ];
++                int min = Math.Max(1, opts.MinLifecycleRetryAfterMs);
++                int max = Math.Max(min, opts.MaxLifecycleRetryAfterMs);
++                int retryAfter = Math.Clamp(Math.Max(1, opts.DefaultLifecycleRetryAfterMs), min, max);
++                return new McpLifecycleSnapshot(
++                    MessageId,
++                    CorrelationId,
++                    _state,
++                    terminal,
++                    _outcome,
++                    agentHistory,
++                    retryAfter,
++                    Math.Max(0, opts.MaxLifecycleLongPollMs),
++                    _historyTruncated);
++            }
++        }
++
++        public void Dispose() {
++            if (Interlocked.Exchange(ref _entryDisposed, 1) != 0) {
++                return;
++            }
++
++            _timeoutTimer.Dispose();
++            Subscription?.Dispose();
++        }
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/McpLifecycleModels.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/McpLifecycleModels.cs
+new file mode 100644
+index 0000000..319630f
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/McpLifecycleModels.cs
+@@ -0,0 +1,223 @@
++using System.Text.Json.Nodes;
++
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++
++namespace Hexalith.FrontComposer.Mcp.Invocation;
++
++internal enum McpTerminalOutcomeKind {
++    None,
++    Confirmed,
++    Rejected,
++    IdempotentConfirmed,
++    TimedOut,
++    NeedsReview,
++}
++
++internal sealed record McpLifecycleSubscription(string Tool, string Uri, int RetryAfterMs) {
++    public JsonObject ToJson() => new() {
++        ["tool"] = Tool,
++        ["uri"] = Uri,
++        ["retryAfterMs"] = RetryAfterMs,
++    };
++}
++
++internal sealed record McpCommandAcknowledgement(
++    string MessageId,
++    string CorrelationId,
++    CommandLifecycleState State,
++    McpLifecycleSubscription Lifecycle) {
++    public JsonObject ToJson() => new() {
++        ["state"] = State.ToString(),
++        ["messageId"] = MessageId,
++        ["correlationId"] = CorrelationId,
++        ["lifecycle"] = Lifecycle.ToJson(),
++    };
++}
++
++internal sealed record McpLifecycleTransitionDto(
++    long Sequence,
++    CommandLifecycleState State,
++    string? MessageId,
++    DateTimeOffset ObservedAtUtc,
++    bool IdempotencyResolved) {
++    public JsonObject ToJson() {
++        JsonObject json = new() {
++            ["sequence"] = Sequence,
++            ["state"] = State.ToString(),
++            ["observedAtUtc"] = ObservedAtUtc.ToString("O"),
++            ["idempotencyResolved"] = IdempotencyResolved,
++        };
++        if (!string.IsNullOrWhiteSpace(MessageId)) {
++            json["messageId"] = MessageId;
++        }
++
++        return json;
++    }
++}
++
++internal sealed record McpRejectionPayload(
++    string ErrorCode,
++    string? EntityId,
++    string Message,
++    string DataImpact,
++    string SuggestedAction,
++    bool RetryAppropriate,
++    string ReasonCategory,
++    string? DocsCode = null) {
++    public JsonObject ToJson() {
++        JsonObject json = new() {
++            ["errorCode"] = ErrorCode,
++            ["message"] = Message,
++            ["dataImpact"] = DataImpact,
++            ["suggestedAction"] = SuggestedAction,
++            ["retryAppropriate"] = RetryAppropriate,
++            ["reasonCategory"] = ReasonCategory,
++        };
++        if (!string.IsNullOrWhiteSpace(EntityId)) {
++            json["entityId"] = EntityId;
++        }
++
++        if (!string.IsNullOrWhiteSpace(DocsCode)) {
++            json["docsCode"] = DocsCode;
++        }
++
++        return json;
++    }
++}
++
++internal sealed record McpSuccessPayload(string Message, string DataImpact) {
++    public JsonObject ToJson() => new() {
++        ["message"] = Message,
++        ["dataImpact"] = DataImpact,
++    };
++}
++
++internal sealed record McpTerminalOutcome(
++    McpTerminalOutcomeKind Kind,
++    McpRejectionPayload? Rejection = null,
++    McpSuccessPayload? SuccessPayload = null) {
++    public static McpTerminalOutcome Success()
++        => new(
++            McpTerminalOutcomeKind.Confirmed,
++            SuccessPayload: new McpSuccessPayload(
++                "Command completed: the requested change was applied.",
++                "The change has been applied."));
++
++    public static McpTerminalOutcome IdempotentSuccess(string? entityLabel) {
++        string label = string.IsNullOrWhiteSpace(entityLabel) ? "item" : entityLabel.Trim();
++        return new McpTerminalOutcome(
++            McpTerminalOutcomeKind.IdempotentConfirmed,
++            SuccessPayload: new McpSuccessPayload(
++                $"This {label} was already updated (by another caller). No action needed.",
++                "No further changes are required."));
++    }
++
++    public static McpTerminalOutcome GenericRejection()
++        => new(
++            McpTerminalOutcomeKind.Rejected,
++            Rejection: new McpRejectionPayload(
++                "COMMAND_REJECTED",
++                EntityId: null,
++                Message: "Command failed: the command was rejected by domain rules. No changes were applied.",
++                DataImpact: "No changes were applied.",
++                SuggestedAction: "abort",
++                RetryAppropriate: false,
++                ReasonCategory: "domain_conflict",
++                DocsCode: "HFC-MCP-COMMAND-REJECTED"));
++
++    // D2.1 (option a): synthetic terminals carry a structured remediation payload so the
++    // agent-visible envelope satisfies AC6's structured-rejection contract. state="Rejected"
++    // is preserved (no cross-package CommandLifecycleState change); outcome.category remains the
++    // authoritative disambiguator between domain rejection and bounded failure category.
++    public static McpTerminalOutcome TimedOut()
++        => new(
++            McpTerminalOutcomeKind.TimedOut,
++            Rejection: new McpRejectionPayload(
++                "LIFECYCLE_TIMED_OUT",
++                EntityId: null,
++                Message: "Command outcome unconfirmed: the lifecycle timed out before the framework observed a terminal state. Data impact is unknown.",
++                DataImpact: "Outcome is unconfirmed at the framework boundary.",
++                SuggestedAction: "retry",
++                RetryAppropriate: true,
++                ReasonCategory: "timed_out",
++                DocsCode: "HFC-MCP-LIFECYCLE-TIMED-OUT"));
++
++    public static McpTerminalOutcome NeedsReview()
++        => new(
++            McpTerminalOutcomeKind.NeedsReview,
++            Rejection: new McpRejectionPayload(
++                "LIFECYCLE_NEEDS_REVIEW",
++                EntityId: null,
++                Message: "Command outcome unconfirmed: the lifecycle handle was retained for review after eviction. Data impact is unknown.",
++                DataImpact: "Outcome is unconfirmed at the framework boundary.",
++                SuggestedAction: "poll",
++                RetryAppropriate: true,
++                ReasonCategory: "needs_review",
++                DocsCode: "HFC-MCP-LIFECYCLE-NEEDS-REVIEW"));
++
++    public JsonObject ToJson() {
++        JsonObject json = new() {
++            ["category"] = ToCategory(Kind),
++            ["retryAppropriate"] = Kind is not McpTerminalOutcomeKind.Confirmed and not McpTerminalOutcomeKind.IdempotentConfirmed,
++        };
++        if (Rejection is not null) {
++            json["rejection"] = Rejection.ToJson();
++        }
++
++        if (SuccessPayload is not null) {
++            json["success"] = SuccessPayload.ToJson();
++        }
++
++        return json;
++    }
++
++    private static string ToCategory(McpTerminalOutcomeKind kind)
++        => kind switch {
++            McpTerminalOutcomeKind.Confirmed => "confirmed",
++            McpTerminalOutcomeKind.Rejected => "rejected",
++            McpTerminalOutcomeKind.IdempotentConfirmed => "idempotent_confirmed",
++            McpTerminalOutcomeKind.TimedOut => "timed_out",
++            McpTerminalOutcomeKind.NeedsReview => "needs_review",
++            _ => "none",
++        };
++}
++
++internal sealed record McpLifecycleSnapshot(
++    string MessageId,
++    string CorrelationId,
++    CommandLifecycleState State,
++    bool Terminal,
++    McpTerminalOutcome? Outcome,
++    IReadOnlyList<McpLifecycleTransitionDto> Transitions,
++    int RetryAfterMs,
++    int MaxLongPollMs,
++    bool HistoryTruncated) {
++    public JsonObject ToJson() {
++        // Sequence is monotonically assigned under the entry's _gate, so insertion order already
++        // reflects sort order; the explicit OrderBy is a defensive guarantee for AC21.
++        JsonArray transitions = [];
++        foreach (McpLifecycleTransitionDto transition in Transitions.OrderBy(t => t.Sequence)) {
++            transitions.Add(transition.ToJson());
++        }
++
++        JsonObject retry = new() {
++            ["retryAfterMs"] = RetryAfterMs,
++            ["maxLongPollMs"] = MaxLongPollMs,
++        };
++
++        JsonObject json = new() {
++            ["state"] = State.ToString(),
++            ["terminal"] = Terminal,
++            ["messageId"] = MessageId,
++            ["correlationId"] = CorrelationId,
++            ["retry"] = retry,
++            ["transitions"] = transitions,
++            ["historyTruncated"] = HistoryTruncated,
++        };
++        if (Outcome is not null) {
++            json["outcome"] = Outcome.ToJson();
++        }
++
++        return json;
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/McpJsonSchemaBuilder.cs b/src/Hexalith.FrontComposer.Mcp/McpJsonSchemaBuilder.cs
+index fcc4da4..30c8765 100644
+--- a/src/Hexalith.FrontComposer.Mcp/McpJsonSchemaBuilder.cs
++++ b/src/Hexalith.FrontComposer.Mcp/McpJsonSchemaBuilder.cs
+@@ -46,4 +46,32 @@ internal static class McpJsonSchemaBuilder {
+ 
+         return schema.Deserialize<JsonElement>();
+     }
++
++    public static JsonElement BuildLifecycleInputSchema() => LifecycleSchema.Value;
++
++    private static readonly Lazy<JsonElement> LifecycleSchema = new(BuildLifecycleSchemaCore);
++
++    private static JsonElement BuildLifecycleSchemaCore() {
++        JsonObject properties = new() {
++            ["correlationId"] = new JsonObject {
++                ["type"] = "string",
++                ["title"] = "Correlation ID",
++            },
++            ["messageId"] = new JsonObject {
++                ["type"] = "string",
++                ["title"] = "Message ID",
++            },
++        };
++        JsonArray oneOf = [
++            new JsonObject { ["required"] = new JsonArray("correlationId") },
++            new JsonObject { ["required"] = new JsonArray("messageId") },
++        ];
++        JsonObject schema = new() {
++            ["type"] = "object",
++            ["additionalProperties"] = false,
++            ["properties"] = properties,
++            ["oneOf"] = oneOf,
++        };
++        return schema.Deserialize<JsonElement>();
++    }
+ }
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj b/tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj
+index d0e3a27..e1f93b8 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj
+@@ -14,6 +14,7 @@
+     <PackageReference Include="Shouldly" />
+     <PackageReference Include="NSubstitute" />
+     <PackageReference Include="Microsoft.NET.Test.Sdk" />
++    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+     <PackageReference Include="coverlet.collector" />
+   </ItemGroup>
+ </Project>
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs
+new file mode 100644
+index 0000000..41e9ada
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs
+@@ -0,0 +1,632 @@
++using System.Diagnostics;
++using System.Security.Claims;
++using System.Text.Json;
++
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Lifecycle;
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Mcp.Invocation;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Logging.Abstractions;
++using Microsoft.Extensions.Time.Testing;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
++
++public sealed class CommandLifecycleTests {
++    private const string MessageId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0B";
++    private const string CorrelationId = "01JZ0R5K9N8W4Y7V3Q2P6C1A0C";
++
++    [Fact]
++    public async Task InvokeAsync_ValidCommand_ReturnsAcknowledgementWithLifecycleReference() {
++        var invoker = Build(out LifecycleAwareCommandService service, out _);
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeFalse();
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Acknowledged");
++        result.StructuredContent!["messageId"]!.GetValue<string>().ShouldBe(MessageId);
++        result.StructuredContent!["correlationId"]!.GetValue<string>().ShouldBe(CorrelationId);
++        result.StructuredContent!["lifecycle"]!["tool"]!.GetValue<string>().ShouldBe("frontcomposer.lifecycle.subscribe");
++        result.StructuredContent!["lifecycle"]!["uri"]!.GetValue<string>().ShouldBe($"frontcomposer://lifecycle/{CorrelationId}");
++        result.StructuredContent!.ToJsonString().ShouldNotContain("42");
++        result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
++        result.StructuredContent!.ToJsonString().ShouldNotContain("agent-a");
++        service.DispatchCount.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task ReadAsync_KnownLifecycleHandle_ReturnsOrderedTerminalSnapshot() {
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        FrontComposerMcpResult snapshot = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        snapshot.IsError.ShouldBeFalse();
++        snapshot.StructuredContent.ShouldNotBeNull();
++        snapshot.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
++        snapshot.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
++        snapshot.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("confirmed");
++        snapshot.StructuredContent!["outcome"]!["success"]!["message"]!.GetValue<string>()
++            .ShouldStartWith("Command completed");
++        // AC3: agent-visible history starts at Acknowledged. Submitting and earlier intermediate
++        // states are filtered out at the MCP edge so the agent surface starts where the spec says.
++        JsonElement transitions = snapshot.StructuredContent!["transitions"]!.Deserialize<JsonElement>();
++        transitions.GetArrayLength().ShouldBe(3);
++        transitions[0].GetProperty("state").GetString().ShouldBe("Acknowledged");
++        transitions[1].GetProperty("state").GetString().ShouldBe("Syncing");
++        transitions[2].GetProperty("state").GetString().ShouldBe("Confirmed");
++        // Sequence is monotonic regardless of which states are surfaced.
++        transitions[0].GetProperty("sequence").GetInt64()
++            .ShouldBeLessThan(transitions[2].GetProperty("sequence").GetInt64());
++        snapshot.StructuredContent!.ToJsonString().ShouldNotContain("42");
++        snapshot.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
++    }
++
++    [Fact]
++    public async Task ReadAsync_TerminalStateIsMonotonic_LateNonTerminalObservationIsIgnored() {
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        // The fake dispatcher already drove the entry to Confirmed via captured callbacks. A later
++        // non-terminal observation must not regress the surfaced state (AC18).
++        lifecycle.Transition(CorrelationId, CommandLifecycleState.Syncing, MessageId);
++
++        FrontComposerMcpResult snapshot = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        snapshot.IsError.ShouldBeFalse();
++        snapshot.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
++        snapshot.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
++    }
++
++    [Fact]
++    public async Task ReadAsync_DuplicateTerminalObservation_DoesNotProduceTerminalRegression() {
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        // Two extra Confirmed observations must not duplicate the success outcome.
++        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
++        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
++
++        FrontComposerMcpResult snapshot = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        snapshot.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
++        snapshot.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("confirmed");
++    }
++
++    [Fact]
++    public async Task ReadAsync_LifecycleHandle_RejectsUnicodeConfusableAsHiddenUnknown() {
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        // Fullwidth-zero variant of the canonical correlationId — NFKC would fold it back into the
++        // canonical alphabet. The MCP layer must reject any non-ASCII before normalization (AC23).
++        FrontComposerMcpResult result = await tracker.ReadAsync(
++            Args("""{"correlationId":"０01JZ0R5K9N8W4Y7V3Q2P6C1A0C"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++    }
++
++    [Fact]
++    public async Task InvokeAsync_CommandRejected_ReturnsStructuredAgentPayloadWithoutRawExceptionText() {
++        FrontComposerMcpCommandInvoker invoker = Build(out LifecycleAwareCommandService service, out _);
++        service.RejectNext = true;
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.CommandRejected);
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
++        result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("COMMAND_REJECTED");
++        result.StructuredContent!["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
++        result.StructuredContent!.ToJsonString().ShouldNotContain("raw domain reason");
++        result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
++        service.DispatchCount.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task ReadAsync_AfterPolicyLoss_ReturnsHiddenUnknownShape() {
++        MutablePolicyGate policyGate = new() { Allow = true };
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider, policyGate);
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        policyGate.Allow = false;
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        FrontComposerMcpResult result = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
++        result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
++        result.StructuredContent!.ToJsonString().ShouldNotContain(MessageId);
++    }
++
++    [Fact]
++    public async Task ReadAsync_IdempotencyResolvedTerminal_MapsToIdempotentConfirmedSuccess() {
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        provider.GetRequiredService<ILifecycleStateService>()
++            .Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, idempotencyResolved: true);
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        FrontComposerMcpResult result = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeFalse();
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("idempotent_confirmed");
++        result.StructuredContent!["outcome"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeFalse();
++    }
++
++    [Fact]
++    public async Task ReadAsync_InProgressPastConfiguredTimeout_ReturnsTimedOutTerminalSnapshot() {
++        // P37: deterministic timer firing via FakeTimeProvider — no wall-clock dependency.
++        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
++        FrontComposerMcpCommandInvoker invoker = Build(
++            out LifecycleAwareCommandService service,
++            out ServiceProvider provider,
++            configureOptions: o => o.MaxLifecycleInProgressMs = 10,
++            timeProvider: fakeTime);
++        service.CompleteSynchronously = false;
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        fakeTime.Advance(TimeSpan.FromMilliseconds(50));
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        FrontComposerMcpResult result = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeFalse();
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
++        result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
++        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("timed_out");
++        // D2.1 (option a): synthetic terminal carries a structured remediation payload so AC6 is met.
++        result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_TIMED_OUT");
++        result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("timed_out");
++        result.StructuredContent!["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("retry");
++        result.StructuredContent!["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeTrue();
++        result.StructuredContent!["outcome"]!["rejection"]!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-LIFECYCLE-TIMED-OUT");
++        result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
++    }
++
++    [Fact]
++    public async Task ReadAsync_RealConfirmedAfterSyntheticTimedOut_TerminalStaysTimedOut() {
++        // P38: synthetic-vs-real terminal monotonicity (AC18). Once a synthetic timeout seals the
++        // entry, a late real Confirmed observation must not regress or duplicate the terminal.
++        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
++        FrontComposerMcpCommandInvoker invoker = Build(
++            out LifecycleAwareCommandService service,
++            out ServiceProvider provider,
++            configureOptions: o => o.MaxLifecycleInProgressMs = 10,
++            timeProvider: fakeTime);
++        service.CompleteSynchronously = false;
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        fakeTime.Advance(TimeSpan.FromMilliseconds(50));
++
++        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        // Real Confirmed arrives after the synthetic timeout has already terminalized the entry.
++        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
++
++        FrontComposerMcpResult result = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeFalse();
++        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
++        result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
++        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("timed_out");
++        // History must not contain a second terminal row for the late Confirmed.
++        JsonElement transitions = result.StructuredContent!["transitions"]!.Deserialize<JsonElement>();
++        int terminals = 0;
++        for (int i = 0; i < transitions.GetArrayLength(); i++) {
++            string? state = transitions[i].GetProperty("state").GetString();
++            if (state is "Confirmed" or "Rejected") {
++                terminals++;
++            }
++        }
++
++        terminals.ShouldBe(1);
++    }
++
++    [Fact]
++    public async Task ReadAsync_RepeatedReadsOfSyntheticTerminal_ReturnIdenticalSnapshots() {
++        // P39: AC5/AC18 — repeated lifecycle reads after a synthetic terminal must return the same
++        // terminal outcome idempotently with no transition history growth or duplicate registration.
++        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
++        FrontComposerMcpCommandInvoker invoker = Build(
++            out LifecycleAwareCommandService service,
++            out ServiceProvider provider,
++            configureOptions: o => o.MaxLifecycleInProgressMs = 10,
++            timeProvider: fakeTime);
++        service.CompleteSynchronously = false;
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        fakeTime.Advance(TimeSpan.FromMilliseconds(50));
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        FrontComposerMcpResult first = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++        FrontComposerMcpResult second = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        first.IsError.ShouldBeFalse();
++        second.IsError.ShouldBeFalse();
++        first.StructuredContent!.ToJsonString().ShouldBe(second.StructuredContent!.ToJsonString());
++    }
++
++    [Fact]
++    public async Task ReadAsync_ActiveCapacityEviction_ReturnsNeedsReviewTerminalForOldestHandle() {
++        CounterUlidFactory ulids = new();
++        FrontComposerMcpCommandInvoker invoker = Build(
++            out LifecycleAwareCommandService service,
++            out ServiceProvider provider,
++            ulidFactory: ulids,
++            configureOptions: o => {
++                o.MaxActiveLifecycleEntries = 1;
++                o.MaxRetainedTerminalLifecycleEntries = 1;
++                o.MaxLifecycleInProgressMs = 60_000;
++            });
++        service.CompleteSynchronously = false;
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        string firstCorrelationId = service.LastCorrelationId;
++
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":43}"""),
++            TestContext.Current.CancellationToken);
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        FrontComposerMcpResult result = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{firstCorrelationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeFalse();
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
++        result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
++        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("needs_review");
++        // D2.1 (option a): synthetic terminal carries a structured remediation payload so AC6 is met.
++        result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_NEEDS_REVIEW");
++        result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("needs_review");
++        result.StructuredContent!["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("poll");
++        result.StructuredContent!["outcome"]!["rejection"]!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-LIFECYCLE-NEEDS-REVIEW");
++        service.DispatchCount.ShouldBe(2);
++    }
++
++    [Fact]
++    public async Task ReadYourWritesBenchmark_CommandLifecycleProjectionP95_IsUnder1500Milliseconds() {
++        const int samples = 20;
++        List<double> elapsedMs = [];
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++        FrontComposerMcpProjectionReader reader = provider.GetRequiredService<FrontComposerMcpProjectionReader>();
++
++        for (int i = 0; i < samples; i++) {
++            long started = Stopwatch.GetTimestamp();
++            FrontComposerMcpResult ack = await invoker.InvokeAsync(
++                "Billing.PayInvoiceCommand.Execute",
++                Args("""{"Amount":42}"""),
++                TestContext.Current.CancellationToken);
++            ack.IsError.ShouldBeFalse();
++
++            FrontComposerMcpResult lifecycle = await tracker.ReadAsync(
++                Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
++                TestContext.Current.CancellationToken);
++            lifecycle.IsError.ShouldBeFalse();
++            lifecycle.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Confirmed");
++
++            FrontComposerMcpResult projection = await reader.ReadAsync(
++                "frontcomposer://projection/counter",
++                TestContext.Current.CancellationToken);
++            projection.IsError.ShouldBeFalse();
++            projection.Text.ShouldContain("42");
++            elapsedMs.Add(Stopwatch.GetElapsedTime(started).TotalMilliseconds);
++        }
++
++        double p95 = elapsedMs.Order().ElementAt((int)Math.Ceiling(samples * 0.95) - 1);
++        p95.ShouldBeLessThan(1_500.0);
++    }
++
++    [Theory]
++    [InlineData("")]
++    [InlineData("01jz0r5k9n8w4y7v3q2p6c1a0c")]
++    [InlineData("../01JZ0R5K9N8W4Y7V3Q2P6C1A0C")]
++    [InlineData("01JZ0R5K9N8W4Y7V3Q2P6C1A0C-extra")]
++    public async Task ReadAsync_MalformedLifecycleHandle_FailsAsHiddenUnknownWithoutStoreLookup(string correlationId) {
++        FrontComposerMcpCommandInvoker invoker = Build(out _, out ServiceProvider provider);
++        await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":42}"""),
++            TestContext.Current.CancellationToken);
++        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
++
++        FrontComposerMcpResult result = await tracker.ReadAsync(
++            Args($$"""{"correlationId":"{{correlationId}}"}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownTool);
++        result.Text.ShouldBe("Request failed.");
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_tool");
++        result.StructuredContent!.ToJsonString().ShouldNotContain(CorrelationId);
++    }
++
++    private static FrontComposerMcpCommandInvoker Build(
++        out LifecycleAwareCommandService commandService,
++        out ServiceProvider provider,
++        IFrontComposerMcpCommandPolicyGate? policyGate = null,
++        IUlidFactory? ulidFactory = null,
++        Action<FrontComposerMcpOptions>? configureOptions = null,
++        TimeProvider? timeProvider = null) {
++        commandService = new LifecycleAwareCommandService();
++        ServiceCollection services = new();
++        services.AddSingleton<ICommandService>(commandService);
++        services.AddSingleton<IQueryService, FastQueryService>();
++        services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
++        services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
++        if (timeProvider is not null) {
++            services.AddSingleton(timeProvider);
++        }
++
++        services.Configure<FrontComposerMcpOptions>(o => {
++            o.Manifests.Add(Manifest(policyGate is null ? null : "LifecyclePolicy"));
++            configureOptions?.Invoke(o);
++        });
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
++        services.AddSingleton<FrontComposerMcpLifecycleTracker>();
++        services.AddSingleton<FrontComposerMcpProjectionReader>();
++        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        if (policyGate is not null) {
++            services.AddSingleton(policyGate);
++        }
++
++        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
++        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
++        provider = services.BuildServiceProvider();
++        return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
++    }
++
++    private static McpManifest Manifest(string? policyName)
++        => new("frontcomposer.mcp.v1", [
++            new McpCommandDescriptor(
++                "Billing.PayInvoiceCommand.Execute",
++                typeof(PayInvoiceCommand).FullName!,
++                "Billing",
++                "Pay invoice",
++                null,
++                policyName,
++                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
++                ["TenantId", "UserId", "MessageId", "CorrelationId"]),
++        ], [
++            new McpResourceDescriptor(
++                "frontcomposer://projection/counter",
++                "counter-status",
++                typeof(CounterProjection).FullName!,
++                "Billing",
++                "Counter status",
++                "Synthetic read-your-writes benchmark projection.",
++                [new McpParameterDescriptor("Count", "Int32", "integer", false, false, "Count", null, [], false)]),
++        ]);
++
++    private static Dictionary<string, JsonElement> Args(string json)
++        => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
++
++    public sealed class PayInvoiceCommand {
++        public string MessageId { get; set; } = "";
++        public string CorrelationId { get; set; } = "";
++        public string TenantId { get; set; } = "";
++        public string UserId { get; set; } = "";
++        public int Amount { get; set; }
++    }
++
++    public sealed record CounterProjection(int Count);
++
++    private sealed class LifecycleAwareCommandService : ICommandServiceWithLifecycle {
++        public int DispatchCount { get; private set; }
++        public bool RejectNext { get; set; }
++        public bool CompleteSynchronously { get; set; } = true;
++        public string LastCorrelationId { get; private set; } = "";
++
++        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
++            where TCommand : class
++            => DispatchAsync(command, null, cancellationToken);
++
++        public Task<CommandResult> DispatchAsync<TCommand>(
++            TCommand command,
++            Action<CommandLifecycleState, string?>? onLifecycleChange,
++            CancellationToken cancellationToken = default)
++            where TCommand : class {
++            DispatchCount++;
++            if (RejectNext) {
++                throw new CommandRejectedException("raw domain reason with tenant-a and amount 42", "raw resolution");
++            }
++
++            string messageId = ReadString(command, nameof(PayInvoiceCommand.MessageId)) ?? MessageId;
++            string correlationId = ReadString(command, nameof(PayInvoiceCommand.CorrelationId)) ?? CorrelationId;
++            if (string.Equals(messageId, MessageId, StringComparison.Ordinal)
++                && string.Equals(correlationId, MessageId, StringComparison.Ordinal)) {
++                correlationId = CorrelationId;
++            }
++
++            LastCorrelationId = correlationId;
++            onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, messageId);
++            if (CompleteSynchronously) {
++                onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, messageId);
++            }
++
++            return Task.FromResult(new CommandResult(messageId, "Accepted", correlationId, RetryAfter: TimeSpan.FromMilliseconds(250)));
++        }
++
++        private static string? ReadString<TCommand>(TCommand command, string propertyName)
++            where TCommand : class
++            => command.GetType().GetProperty(propertyName)?.GetValue(command) as string;
++    }
++
++    private sealed class RecordingLifecycleStateService : ILifecycleStateService {
++        private readonly Dictionary<string, List<Action<CommandLifecycleTransition>>> _subscribers = new(StringComparer.Ordinal);
++        private readonly Dictionary<string, CommandLifecycleState> _states = new(StringComparer.Ordinal);
++        private readonly Dictionary<string, string?> _messages = new(StringComparer.Ordinal);
++
++        public IDisposable Subscribe(string correlationId, Action<CommandLifecycleTransition> onTransition) {
++            if (!_subscribers.TryGetValue(correlationId, out List<Action<CommandLifecycleTransition>>? callbacks)) {
++                callbacks = [];
++                _subscribers[correlationId] = callbacks;
++            }
++
++            callbacks.Add(onTransition);
++            return new DisposableAction(() => callbacks.Remove(onTransition));
++        }
++
++        public CommandLifecycleState GetState(string correlationId)
++            => _states.GetValueOrDefault(correlationId, CommandLifecycleState.Idle);
++
++        public string? GetMessageId(string correlationId)
++            => _messages.GetValueOrDefault(correlationId);
++
++        public IEnumerable<string> GetActiveCorrelationIds() => _states.Keys.ToArray();
++
++        public void Transition(string correlationId, CommandLifecycleState newState, string? messageId = null)
++            => Transition(correlationId, newState, messageId, false);
++
++        public void Transition(string correlationId, CommandLifecycleState newState, string? messageId, bool idempotencyResolved) {
++            CommandLifecycleState previous = GetState(correlationId);
++            _states[correlationId] = newState;
++            if (!string.IsNullOrWhiteSpace(messageId)) {
++                _messages[correlationId] = messageId;
++            }
++
++            if (!_subscribers.TryGetValue(correlationId, out List<Action<CommandLifecycleTransition>>? callbacks)) {
++                return;
++            }
++
++            CommandLifecycleTransition transition = new(
++                correlationId,
++                previous,
++                newState,
++                messageId,
++                DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
++                DateTimeOffset.Parse("2026-05-02T00:00:00Z"),
++                idempotencyResolved);
++            foreach (Action<CommandLifecycleTransition> callback in callbacks.ToArray()) {
++                callback(transition);
++            }
++        }
++
++        public void Dispose() {
++            _subscribers.Clear();
++            _states.Clear();
++            _messages.Clear();
++        }
++    }
++
++    private sealed class FixedUlidFactory : IUlidFactory {
++        public string NewUlid() => MessageId;
++    }
++
++    private sealed class CounterUlidFactory : IUlidFactory {
++        private int _next;
++
++        // P40: the prior fallback formatted `value % 10` as a 1-character suffix, producing 25-char
++        // strings that fail the canonical 26-char ULID regex. Throw instead of silently emitting
++        // invalid IDs so any future test that exceeds the table size fails loudly.
++        public string NewUlid() {
++            int value = Interlocked.Increment(ref _next);
++            return value switch {
++                1 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0C",
++                2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
++                _ => throw new InvalidOperationException(
++                    "CounterUlidFactory only supports value <= 2; extend the table for additional handles."),
++            };
++        }
++    }
++
++    private sealed class FastQueryService : IQueryService {
++        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
++            object[] items = typeof(T) == typeof(CounterProjection)
++                ? [new CounterProjection(42)]
++                : [];
++            return Task.FromResult(new QueryResult<T>(items.Cast<T>().ToArray(), items.Length, "etag-a"));
++        }
++    }
++
++    private sealed class StaticAccessor : IFrontComposerMcpAgentContextAccessor {
++        public FrontComposerMcpAgentContext GetContext()
++            => new("tenant-a", "agent-a", new ClaimsPrincipal(new ClaimsIdentity("test")));
++    }
++
++    private sealed class MutablePolicyGate : IFrontComposerMcpCommandPolicyGate {
++        public bool Allow { get; set; }
++
++        public ValueTask<bool> EvaluateAsync(string policyName, FrontComposerMcpAgentContext context, CancellationToken cancellationToken)
++            => ValueTask.FromResult(Allow);
++    }
++
++    private sealed class DisposableAction(Action action) : IDisposable {
++        public void Dispose() => action();
++    }
++}

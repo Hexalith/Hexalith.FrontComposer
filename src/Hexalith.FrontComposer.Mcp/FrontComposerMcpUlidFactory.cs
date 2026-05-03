@@ -18,13 +18,31 @@ internal sealed class FrontComposerMcpUlidFactory : IUlidFactory {
         ulong hi;
         ulong lo;
         lock (_gate) {
+            // P51: defend against backwards clock movement (NTP step / VM migration / container
+            // skew). Lexicographic monotonicity must be preserved across the issued sequence; we
+            // hold the timestamp at its prior maximum until wall-clock catches up.
+            if (milliseconds < _lastTimestampMs) {
+                milliseconds = _lastTimestampMs;
+            }
+
             // Monotonicity per the canonical ULID spec section 4: when two IDs share the same
             // timestamp segment, increment the random component instead of regenerating, so the
             // sequence remains lexicographically sortable.
             if (milliseconds == _lastTimestampMs) {
                 ulong newLo = _lastRandomLo + 1;
-                ulong newHi = newLo == 0 ? _lastRandomHi + 1 : _lastRandomHi;
-                _lastRandomHi = newHi & 0xFFFFUL;
+                ulong nextHi = _lastRandomHi;
+                if (newLo == 0) {
+                    // D9 / ULID spec section 4: reject monotonic overflow within the same
+                    // millisecond instead of silently wrapping the masked 16-bit hi field.
+                    if (_lastRandomHi == 0xFFFFUL) {
+                        throw new InvalidOperationException(
+                            "ULID monotonic overflow within the same millisecond.");
+                    }
+
+                    nextHi = _lastRandomHi + 1;
+                }
+
+                _lastRandomHi = nextHi;
                 _lastRandomLo = newLo;
             }
             else {

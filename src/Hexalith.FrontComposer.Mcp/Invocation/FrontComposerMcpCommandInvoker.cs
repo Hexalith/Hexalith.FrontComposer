@@ -30,6 +30,12 @@ public sealed class FrontComposerMcpCommandInvoker(
         string toolName,
         IReadOnlyDictionary<string, JsonElement>? arguments,
         CancellationToken cancellationToken = default) {
+        // D8: capture messageId/correlationId on the outer scope so the catch blocks can emit
+        // them in the rejection envelope. They are populated by ApplyDerivableValues and remain
+        // null until then; admission/validation failures that fire before allocation legitimately
+        // have no correlation handle.
+        string? capturedMessageId = null;
+        string? capturedCorrelationId = null;
         try {
             McpToolResolutionResult resolution = await admissionService.ResolveAsync(toolName, cancellationToken).ConfigureAwait(false);
             if (!resolution.Accepted || resolution.Tool is null) {
@@ -44,7 +50,7 @@ public sealed class FrontComposerMcpCommandInvoker(
             Type commandType = ResolveType(descriptor.CommandTypeName);
             object command = CreateInstanceOrThrow(commandType);
             ApplyArguments(command, descriptor, arguments);
-            ApplyDerivableValues(command, context);
+            (capturedMessageId, capturedCorrelationId) = ApplyDerivableValues(command, context);
 
             ICommandService commandService = services.GetRequiredService<ICommandService>();
             FrontComposerMcpLifecycleTracker? lifecycleTracker = services.GetService<FrontComposerMcpLifecycleTracker>();
@@ -81,23 +87,31 @@ public sealed class FrontComposerMcpCommandInvoker(
             return FrontComposerMcpResult.Failure(
                 FrontComposerMcpFailureCategory.CommandRejected,
                 BuildRejectionPayload(
+                    category: "rejected",
                     errorCode: "COMMAND_REJECTED",
                     reasonCategory: "domain_conflict",
                     message: "Command failed: the command was rejected by domain rules. No changes were applied.",
                     suggestedAction: "abort",
                     retryAppropriate: false,
-                    docsCode: "HFC-MCP-COMMAND-REJECTED"));
+                    docsCode: "HFC-MCP-COMMAND-REJECTED",
+                    messageId: capturedMessageId,
+                    correlationId: capturedCorrelationId));
         }
         catch (CommandValidationException) {
+            // P49: validation failures use a distinct outer envelope category so agents can
+            // branch on outcome.category between protocol-layer validation and domain rejection.
             return FrontComposerMcpResult.Failure(
                 FrontComposerMcpFailureCategory.ValidationFailed,
                 BuildRejectionPayload(
+                    category: "validation",
                     errorCode: "COMMAND_VALIDATION_FAILED",
                     reasonCategory: "validation",
                     message: "Validation failed: the command arguments did not satisfy the contract. The command was not dispatched.",
                     suggestedAction: "correct-input",
                     retryAppropriate: true,
-                    docsCode: "HFC-MCP-COMMAND-VALIDATION"));
+                    docsCode: "HFC-MCP-COMMAND-VALIDATION",
+                    messageId: capturedMessageId,
+                    correlationId: capturedCorrelationId));
         }
         catch (OperationCanceledException) {
             return FrontComposerMcpResult.Failure(
@@ -150,7 +164,11 @@ public sealed class FrontComposerMcpCommandInvoker(
             return false;
         }
 
+        // P43: pin parameters[1] as the open generic command parameter so a future 4-arg
+        // overload whose second slot carries something else (logger, context, options) cannot
+        // silently match this signature filter.
         return parameters[0].ParameterType == typeof(ICommandService)
+            && parameters[1].ParameterType.IsGenericMethodParameter
             && parameters[2].ParameterType == typeof(Action<CommandLifecycleState, string?>)
             && parameters[3].ParameterType == typeof(CancellationToken);
     }
@@ -279,7 +297,7 @@ public sealed class FrontComposerMcpCommandInvoker(
         }
     }
 
-    private void ApplyDerivableValues(object command, FrontComposerMcpAgentContext context) {
+    private (string MessageId, string CorrelationId) ApplyDerivableValues(object command, FrontComposerMcpAgentContext context) {
         Type commandType = command.GetType();
         SetIfWritable(command, commandType, "TenantId", context.TenantId);
         SetIfWritable(command, commandType, "UserId", context.UserId);
@@ -290,9 +308,11 @@ public sealed class FrontComposerMcpCommandInvoker(
         // we fall back to a Guid to preserve the historical contract.
         IUlidFactory? ulidFactory = services.GetService<IUlidFactory>();
         string messageId = ulidFactory?.NewUlid() ?? Guid.NewGuid().ToString("N");
+        string correlationId = Activity.Current?.TraceId.ToString() ?? messageId;
         SetIfWritable(command, commandType, "MessageId", messageId);
         SetIfWritable(command, commandType, "CommandId", messageId);
-        SetIfWritable(command, commandType, "CorrelationId", Activity.Current?.TraceId.ToString() ?? messageId);
+        SetIfWritable(command, commandType, "CorrelationId", correlationId);
+        return (messageId, correlationId);
     }
 
     private static void SetIfWritable(object target, Type type, string propertyName, string value) {
@@ -303,17 +323,22 @@ public sealed class FrontComposerMcpCommandInvoker(
     }
 
     private static JsonObject BuildRejectionPayload(
+        string category,
         string errorCode,
         string reasonCategory,
         string message,
         string suggestedAction,
         bool retryAppropriate,
-        string docsCode)
-        => new() {
+        string docsCode,
+        string? messageId,
+        string? correlationId) {
+        JsonObject envelope = new() {
             ["state"] = "Rejected",
             ["terminal"] = true,
             ["outcome"] = new JsonObject {
-                ["category"] = "rejected",
+                // P49: outer envelope category disambiguates protocol-layer validation from
+                // domain-layer rejection at the field agents typically branch on.
+                ["category"] = category,
                 ["retryAppropriate"] = retryAppropriate,
                 ["rejection"] = new JsonObject {
                     ["errorCode"] = errorCode,
@@ -326,4 +351,18 @@ public sealed class FrontComposerMcpCommandInvoker(
                 },
             },
         };
+
+        // D8: surface framework-issued correlation/message IDs on the rejection envelope so the
+        // agent can pair the synchronous rejection with the dispatched handle for telemetry and
+        // audit. IDs are framework-controlled, non-enumerable, and safe per the AC2/AC6 contract.
+        if (!string.IsNullOrWhiteSpace(messageId)) {
+            envelope["messageId"] = messageId;
+        }
+
+        if (!string.IsNullOrWhiteSpace(correlationId)) {
+            envelope["correlationId"] = correlationId;
+        }
+
+        return envelope;
+    }
 }
