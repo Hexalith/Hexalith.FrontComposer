@@ -59,6 +59,10 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
 | AC23 | Migration apply encounters generated output, `bin/`, `obj/`, package caches, root-level submodules, nested submodule paths if present, linked files outside the project root, or unrelated repositories | Migration plans or applies fixes | The tool refuses those targets before writing, reports sanitized skipped/failed counts, does not initialize or update submodules, and never recursively scans nested submodule metadata. |
 | AC24 | Migration has multiple safe fixes, manual-only entries, conflicts, or write failures | Migration completes or fails | Safe fixes for one file are composed through a single Roslyn solution/document operation where possible; manual-only entries are reported and never applied; conflicts are skipped with deterministic diagnostics; failures report changed/unchanged/skipped/failed counts and leave no partially corrupted target. |
 | AC25 | CLI integration tests exercise inspect and migrate | The suite runs in CI | Tests use synthetic temporary workspaces from a shared fixture builder, not the repository's real generated output; fixtures cover single project, multi-TFM, Debug/Release, stale output, missing output, HFC diagnostics, root-level submodule exclusion, generated/bin/obj exclusion, outside-project paths, dry-run no-write, apply idempotency, conflict handling, manual-only migrations, write failures, and packaging/tool smoke commands. |
+| AC26 | Migration apply resolves candidate write paths through symlinks, junctions, linked files, case variants, or paths that change between planning and write | The operation plan is validated | The tool canonicalizes paths before planning and immediately before writing, refuses targets outside the selected project/solution root or inside excluded directories/submodules after resolution, detects plan-vs-write path/hash drift, and aborts affected files without following attacker-controlled links. |
+| AC27 | Generated type names, diagnostics, source snippets, file names, or migration guidance contain control characters, ANSI escape sequences, excessive length, JSON-looking text, or log-line delimiters | Text or JSON output is rendered | Output encodes or replaces unsafe characters, bounds every user-controlled field, preserves valid JSON shape, prevents terminal/control-sequence injection, and reports truncation deterministically without leaking the omitted raw value. |
+| AC28 | A Roslyn code fix returns operations beyond ordinary solution/document edits, tries to add files outside the selected project, or exposes a Fix All action whose edits are not deterministic | Migration plans or applies the fix | The CLI inspects every `CodeActionOperation`, allows only FrontComposer-owned solution/document changes within the approved write set, rejects custom/external-process/unsupported operations, and treats unsafe Fix All providers as manual-only entries. |
+| AC29 | A requested migration uses an unknown version, unsupported version order, ambiguous package train, or a multi-hop upgrade with no explicit migration edge | Migration runs | The tool fails closed before planning edits, reports the supported migration edges and docs link, emits no source changes, and uses manual guidance rather than guessing across versions. |
 
 ---
 
@@ -97,6 +101,7 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
   - [ ] Type matching accepts full metadata name first, then unambiguous simple type name; ambiguous simple names require the full name.
   - [ ] Include HFC diagnostic docs links when `DiagnosticDescriptor.HelpLinkUri` is available.
   - [ ] Non-zero exit codes follow AC19 and distinguish invalid arguments, ambiguous target/type, missing or stale generated output, build/generation failure, requested type not found, and explicit fail-on-findings behavior.
+  - [ ] Sanitize text output and JSON string fields for control characters, ANSI escapes, line-delimiter injection, and overlong generated names/diagnostics; deterministic truncation must be visible without printing the raw omitted value.
 
 - [ ] T5. Introduce migration/code-fix architecture (AC9-AC12)
   - [ ] Add a migration abstraction that maps `(fromVersion, toVersion, diagnosticId)` to a Roslyn code-fix provider or a manual migration note.
@@ -104,8 +109,10 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
   - [ ] SourceTools may expose SDK-neutral inspection/migration primitives, but CLI orchestration, file walking, tool packaging, console UX, MSBuild Workspace usage, and `CodeFixProvider` execution stay in CLI or CLI-owned projects.
   - [ ] Execute only allowlisted FrontComposer-owned migration code-fix providers pinned to the repo's Roslyn `4.12.0` package family unless a documented build failure forces a narrow exception.
   - [ ] Use Roslyn `CodeFixProvider` patterns: declare `FixableDiagnosticIds`, register fixes through `RegisterCodeFixesAsync`, and provide Fix All only where edits are deterministic and conflict-free.
+  - [ ] Inspect returned `CodeActionOperation` instances and allow only FrontComposer-owned solution/document edit operations within the computed write set; reject custom operations, process launches, unsupported file operations, and non-deterministic Fix All actions.
   - [ ] Support manual-only migration entries for changes that require product or architecture judgment.
   - [ ] Reserve migration-specific HFC IDs only after checking `AnalyzerReleases.Unshipped.md`; Story 9-4 owns final public diagnostic governance.
+  - [ ] Model migration edges explicitly by package/version train; unknown, reversed, skipped, or ambiguous version requests fail closed before any edit planning.
 
 - [ ] T6. Implement migration dry-run and apply modes (AC9-AC13, AC15)
   - [ ] Make `--dry-run` the default and documented migration mode; writing source files requires explicit `--apply`.
@@ -114,6 +121,8 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
   - [ ] Compose Roslyn document changes first, detect overlapping edits, then write files in a deterministic order while preserving encoding and line endings where practical.
   - [ ] Never modify generated files, `obj/`, `bin/`, package caches, root-level submodules, nested submodule paths if present, vendored repositories, linked files outside the project root, or files outside the selected project/solution.
   - [ ] Do not initialize, update, or recurse into submodules; read root-level submodule boundaries only to exclude them from scan/write targets.
+  - [ ] Canonicalize candidate paths before planning and immediately before write, including symlinks, junctions, case variants, and linked documents; refuse if the resolved target moves outside the approved write set or enters an excluded path.
+  - [ ] Capture a pre-write content hash or equivalent stable snapshot for each planned source file and revalidate it immediately before writing; plan-vs-write drift aborts that file with exit code 4 and no partial overwrite.
   - [ ] Exit non-zero when any target file cannot be safely fixed, and report changed, unchanged, skipped, failed, manual-only, and conflict counts without hiding successfully planned fixes.
 
 - [ ] T7. Add migration guide handoff (AC8, AC9, AC11, AC16)
@@ -131,6 +140,10 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
   - [ ] Code-fix tests using Microsoft.CodeAnalysis.Testing-style analyzer/code-fix verification for every automated migration.
   - [ ] Migration dry-run tests proving exit code, diagnostics, proposed file changes, no filesystem mutation, deterministic diffs, stable ordering, redacted paths, manual-only reporting, and non-zero failure behavior.
   - [ ] Migration apply tests proving exact file diffs, source edits compose correctly, second-run idempotency, conflict handling, manual-only cases, write failure behavior, and no writes to generated/bin/obj/package-cache/submodule/outside-project paths.
+  - [ ] Add output-injection tests for generated names, diagnostics, snippets, and migration guidance containing ANSI escapes, control characters, JSON-like payloads, very long strings, and line delimiters.
+  - [ ] Add code-action safety tests where providers return custom operations, unsupported file operations, outside-project additions, and unsafe Fix All results; all must be rejected or reported manual-only without file writes.
+  - [ ] Add migration catalog tests for unknown versions, reversed versions, ambiguous package trains, missing edges, and explicit multi-hop refusal.
+  - [ ] Add TOCTOU path tests that change a symlink/junction/linked-file target or file content between planning and write; apply must detect drift and abort the affected file.
   - [ ] Add negative write-protection fixtures for root-level submodules, nested submodule paths if present, linked outside-project files where supported by the OS, generated output, `bin/`, and `obj/`; refusal messages must not leak absolute user paths.
   - [ ] Add a bounded large-fixture or benchmark-style integration test proving inspect/migrate avoid unnecessary repeated full-tree work and complete within an agreed CI threshold.
   - [ ] Tool packaging test: `dotnet pack`, local tool install or `dotnet tool run`, and optional .NET 10 `dnx` smoke path when available in CI image.
@@ -206,6 +219,18 @@ The CLI should consume the canonical SourceTools/generator output metadata or pa
 - `--apply` may write only files listed in the immediately computed operation plan. It must refuse generated output, `bin/`, `obj/`, package caches, root-level submodules, nested submodule paths if encountered, linked files resolving outside the project root, and unrelated repository paths.
 - Submodule handling is exclusion-only. The CLI must not initialize, update, or recursively inspect submodule metadata; it may read root-level submodule boundaries only to keep scan/write targets outside them.
 - Manual-only entries are never applied. Conflicting safe fixes are skipped with deterministic diagnostics rather than applied partially.
+
+### Advanced Elicitation Hardening
+
+These hardening points were applied by `/bmad-advanced-elicitation 9-2-cli-inspection-and-migration-tools` on 2026-05-03 and refine the party-mode contract without expanding product scope.
+
+| Area | Hardening |
+| --- | --- |
+| Path safety | Migration apply validates canonical resolved paths during planning and again immediately before writing, including symlinks, junctions, linked files, case variants, and excluded submodule/bin/obj/generated locations. |
+| TOCTOU protection | Apply captures a stable source snapshot or hash for every planned file and aborts that file if content or resolved target changes before write. |
+| Output injection | Text and JSON renderers sanitize control characters, ANSI escapes, line delimiters, JSON-looking payloads, and overlong generated names/diagnostics before display or persistence. |
+| Code action execution | Migration inspects Roslyn `CodeActionOperation` outputs and allows only approved solution/document edits from FrontComposer-owned providers inside the computed write set. |
+| Version catalog | Migration edges are explicit and fail closed for unknown, reversed, ambiguous, skipped, or unsupported version paths. |
 
 ### Party-Mode Review Clarifications
 
@@ -296,6 +321,7 @@ Do not implement these in Story 9-2:
 
 - 2026-05-02: Story created via `/bmad-create-story 9-2-cli-inspection-and-migration-tools` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-03: Party-mode review completed via `/bmad-party-mode 9-2-cli-inspection-and-migration-tools; review;`. Applied CLI/SourceTools boundary, exit-code, JSON schema, deterministic ordering, dry-run/apply, submodule exclusion, write-protection, fixture-oracle, packaging smoke, and scope-guardrail hardening. Ready for advanced elicitation on a later run.
+- 2026-05-03: Advanced elicitation completed via `/bmad-advanced-elicitation 9-2-cli-inspection-and-migration-tools`. Applied path canonicalization and TOCTOU write checks, output-injection sanitization, Roslyn code-action operation allowlisting, explicit migration-edge validation, and matching test coverage. Ready for development.
 
 ### Party-Mode Review
 
@@ -306,6 +332,18 @@ Do not implement these in Story 9-2:
 - **Findings summary:** The review found the adopter workflow valuable and correctly scoped, but implementation needed sharper contracts before development: CLI/SourceTools dependency direction, stable exit codes, machine-readable JSON schema, deterministic ordering, default dry-run semantics, safe apply planning, submodule/write exclusion, allowlisted code-fix execution, synthetic fixture architecture, and explicit CI evidence.
 - **Changes applied:** Added AC19-AC25; hardened T1-T8; added CLI Contract and Party-Mode Review Clarifications; tightened Package and Dependency Boundaries, Generated Output Path Contract, Migration Boundaries, Scope Guardrails, completion notes, and review trace.
 - **Findings deferred:** Advanced security/robustness edge-case probing remains for a later advanced elicitation run; drift comparison remains Story 9-1; IDE conformance remains Story 9-3; diagnostic governance and public docs remain Stories 9-4/9-5; visual/specimen validation remains Story 10-2; broad mutation testing remains Story 10-4; optional .NET 10 `dnx` is non-blocking unless CI already has the SDK.
+- **Final recommendation:** ready-for-dev
+
+### Advanced Elicitation
+
+- **Date/time:** 2026-05-03T09:42:13+02:00
+- **Selected story key:** `9-2-cli-inspection-and-migration-tools`
+- **Command/skill invocation used:** `/bmad-advanced-elicitation 9-2-cli-inspection-and-migration-tools`
+- **Batch 1 method names:** Pre-mortem Analysis; Red Team vs Blue Team; Security Audit Personas; Failure Mode Analysis; Occam's Razor Application.
+- **Reshuffled Batch 2 method names:** First Principles Analysis; Comparative Analysis Matrix; Chaos Monkey Scenarios; Architecture Decision Records; Hindsight Reflection.
+- **Findings summary:** The elicitation found the party-mode version strong on scope and boundaries, but still under-specified several failure-prone implementation details: path canonicalization across symlinks/junctions/linked files, plan-vs-write drift, terminal/control-sequence injection in CLI output, unsafe Roslyn `CodeActionOperation` execution, and ambiguous version-edge planning.
+- **Changes applied:** Added AC26-AC29; hardened T4-T8; added Advanced Elicitation Hardening; updated completion notes and trace. The accepted changes stay within the existing inspect/migrate scope and clarify safety oracles for development.
+- **Findings deferred:** No product-scope or architecture-policy changes were applied. Broader IDE parity remains Story 9-3; final diagnostic governance and public migration docs remain Stories 9-4/9-5; visual/specimen validation remains Story 10-2; broad mutation testing remains Story 10-4.
 - **Final recommendation:** ready-for-dev
 
 ### File List

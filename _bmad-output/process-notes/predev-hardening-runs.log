@@ -95,3 +95,4 @@
 2026-05-03T09:10:15+02:00	party-mode-review	9-1-build-time-drift-detection	ok	applied baseline trust, diagnostic precedence, comparison seam, perf, redaction, and fixture hardening
 2026-05-03T09:20:34+02:00	advanced-elicitation	9-1-build-time-drift-detection	ok	applied multi-baseline, option validation, partial-order, path normalization, and seam hardening
 2026-05-03T09:27:12+02:00	party-mode-review	9-2-cli-inspection-and-migration-tools	ok	applied CLI contract, JSON, dry-run/apply, submodule exclusion, and fixture hardening
+2026-05-03T09:42:13+02:00	advanced-elicitation	9-2-cli-inspection-and-migration-tools	ok	applied path TOCTOU, output injection, code-action allowlist, and migration-edge hardening
