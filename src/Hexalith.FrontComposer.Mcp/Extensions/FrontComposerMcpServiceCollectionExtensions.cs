@@ -199,7 +199,9 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
             || options.DefaultLifecycleRetryAfterMs > options.MaxLifecycleRetryAfterMs
             || options.MaxLifecycleLongPollMs < 0
             || options.MaxLifecycleTransitionHistory <= 0
-            || options.MaxActiveLifecycleEntries <= 0) {
+            || options.MaxActiveLifecycleEntries <= 0
+            || options.MaxRetainedTerminalLifecycleEntries <= 0
+            || options.MaxLifecycleInProgressMs <= 0) {
             errors.Add("Lifecycle bounds must be positive and internally consistent (Default within [Min, Max]).");
         }
 

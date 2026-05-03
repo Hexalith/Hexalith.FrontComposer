@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Mcp.Invocation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Time.Testing;
 
 using Shouldly;
 
@@ -205,6 +206,157 @@ public sealed class CommandLifecycleTests {
     }
 
     [Fact]
+    public async Task ReadAsync_InProgressPastConfiguredTimeout_ReturnsTimedOutTerminalSnapshot() {
+        // P37: deterministic timer firing via FakeTimeProvider — no wall-clock dependency.
+        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service,
+            out ServiceProvider provider,
+            configureOptions: o => o.MaxLifecycleInProgressMs = 10,
+            timeProvider: fakeTime);
+        service.CompleteSynchronously = false;
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        fakeTime.Advance(TimeSpan.FromMilliseconds(50));
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeFalse();
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
+        result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
+        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("timed_out");
+        // D2.1 (option a): synthetic terminal carries a structured remediation payload so AC6 is met.
+        result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_TIMED_OUT");
+        result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("timed_out");
+        result.StructuredContent!["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("retry");
+        result.StructuredContent!["outcome"]!["rejection"]!["retryAppropriate"]!.GetValue<bool>().ShouldBeTrue();
+        result.StructuredContent!["outcome"]!["rejection"]!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-LIFECYCLE-TIMED-OUT");
+        result.StructuredContent!.ToJsonString().ShouldNotContain("tenant-a");
+    }
+
+    [Fact]
+    public async Task ReadAsync_RealConfirmedAfterSyntheticTimedOut_TerminalStaysTimedOut() {
+        // P38: synthetic-vs-real terminal monotonicity (AC18). Once a synthetic timeout seals the
+        // entry, a late real Confirmed observation must not regress or duplicate the terminal.
+        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service,
+            out ServiceProvider provider,
+            configureOptions: o => o.MaxLifecycleInProgressMs = 10,
+            timeProvider: fakeTime);
+        service.CompleteSynchronously = false;
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        fakeTime.Advance(TimeSpan.FromMilliseconds(50));
+
+        ILifecycleStateService lifecycle = provider.GetRequiredService<ILifecycleStateService>();
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        // Real Confirmed arrives after the synthetic timeout has already terminalized the entry.
+        lifecycle.Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId);
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeFalse();
+        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
+        result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
+        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("timed_out");
+        // History must not contain a second terminal row for the late Confirmed.
+        JsonElement transitions = result.StructuredContent!["transitions"]!.Deserialize<JsonElement>();
+        int terminals = 0;
+        for (int i = 0; i < transitions.GetArrayLength(); i++) {
+            string? state = transitions[i].GetProperty("state").GetString();
+            if (state is "Confirmed" or "Rejected") {
+                terminals++;
+            }
+        }
+
+        terminals.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task ReadAsync_RepeatedReadsOfSyntheticTerminal_ReturnIdenticalSnapshots() {
+        // P39: AC5/AC18 — repeated lifecycle reads after a synthetic terminal must return the same
+        // terminal outcome idempotently with no transition history growth or duplicate registration.
+        FakeTimeProvider fakeTime = new(DateTimeOffset.Parse("2026-05-03T00:00:00Z"));
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service,
+            out ServiceProvider provider,
+            configureOptions: o => o.MaxLifecycleInProgressMs = 10,
+            timeProvider: fakeTime);
+        service.CompleteSynchronously = false;
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        fakeTime.Advance(TimeSpan.FromMilliseconds(50));
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult first = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpResult second = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{CorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        first.IsError.ShouldBeFalse();
+        second.IsError.ShouldBeFalse();
+        first.StructuredContent!.ToJsonString().ShouldBe(second.StructuredContent!.ToJsonString());
+    }
+
+    [Fact]
+    public async Task ReadAsync_ActiveCapacityEviction_ReturnsNeedsReviewTerminalForOldestHandle() {
+        CounterUlidFactory ulids = new();
+        FrontComposerMcpCommandInvoker invoker = Build(
+            out LifecycleAwareCommandService service,
+            out ServiceProvider provider,
+            ulidFactory: ulids,
+            configureOptions: o => {
+                o.MaxActiveLifecycleEntries = 1;
+                o.MaxRetainedTerminalLifecycleEntries = 1;
+                o.MaxLifecycleInProgressMs = 60_000;
+            });
+        service.CompleteSynchronously = false;
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":42}"""),
+            TestContext.Current.CancellationToken);
+        string firstCorrelationId = service.LastCorrelationId;
+
+        await invoker.InvokeAsync(
+            "Billing.PayInvoiceCommand.Execute",
+            Args("""{"Amount":43}"""),
+            TestContext.Current.CancellationToken);
+        FrontComposerMcpLifecycleTracker tracker = provider.GetRequiredService<FrontComposerMcpLifecycleTracker>();
+
+        FrontComposerMcpResult result = await tracker.ReadAsync(
+            Args($$"""{"correlationId":"{{firstCorrelationId}}"}"""),
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeFalse();
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["state"]!.GetValue<string>().ShouldBe("Rejected");
+        result.StructuredContent!["terminal"]!.GetValue<bool>().ShouldBeTrue();
+        result.StructuredContent!["outcome"]!["category"]!.GetValue<string>().ShouldBe("needs_review");
+        // D2.1 (option a): synthetic terminal carries a structured remediation payload so AC6 is met.
+        result.StructuredContent!["outcome"]!["rejection"]!["errorCode"]!.GetValue<string>().ShouldBe("LIFECYCLE_NEEDS_REVIEW");
+        result.StructuredContent!["outcome"]!["rejection"]!["reasonCategory"]!.GetValue<string>().ShouldBe("needs_review");
+        result.StructuredContent!["outcome"]!["rejection"]!["suggestedAction"]!.GetValue<string>().ShouldBe("poll");
+        result.StructuredContent!["outcome"]!["rejection"]!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-LIFECYCLE-NEEDS-REVIEW");
+        service.DispatchCount.ShouldBe(2);
+    }
+
+    [Fact]
     public async Task ReadYourWritesBenchmark_CommandLifecycleProjectionP95_IsUnder1500Milliseconds() {
         const int samples = 20;
         List<double> elapsedMs = [];
@@ -266,14 +418,24 @@ public sealed class CommandLifecycleTests {
     private static FrontComposerMcpCommandInvoker Build(
         out LifecycleAwareCommandService commandService,
         out ServiceProvider provider,
-        IFrontComposerMcpCommandPolicyGate? policyGate = null) {
+        IFrontComposerMcpCommandPolicyGate? policyGate = null,
+        IUlidFactory? ulidFactory = null,
+        Action<FrontComposerMcpOptions>? configureOptions = null,
+        TimeProvider? timeProvider = null) {
         commandService = new LifecycleAwareCommandService();
         ServiceCollection services = new();
         services.AddSingleton<ICommandService>(commandService);
         services.AddSingleton<IQueryService, FastQueryService>();
         services.AddSingleton<ILifecycleStateService, RecordingLifecycleStateService>();
-        services.AddSingleton<IUlidFactory>(new FixedUlidFactory());
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(policyGate is null ? null : "LifecyclePolicy")));
+        services.AddSingleton(ulidFactory ?? new FixedUlidFactory());
+        if (timeProvider is not null) {
+            services.AddSingleton(timeProvider);
+        }
+
+        services.Configure<FrontComposerMcpOptions>(o => {
+            o.Manifests.Add(Manifest(policyGate is null ? null : "LifecyclePolicy"));
+            configureOptions?.Invoke(o);
+        });
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddSingleton<FrontComposerMcpToolAdmissionService>();
         services.AddSingleton<FrontComposerMcpLifecycleTracker>();
@@ -327,6 +489,8 @@ public sealed class CommandLifecycleTests {
     private sealed class LifecycleAwareCommandService : ICommandServiceWithLifecycle {
         public int DispatchCount { get; private set; }
         public bool RejectNext { get; set; }
+        public bool CompleteSynchronously { get; set; } = true;
+        public string LastCorrelationId { get; private set; } = "";
 
         public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
             where TCommand : class
@@ -342,10 +506,25 @@ public sealed class CommandLifecycleTests {
                 throw new CommandRejectedException("raw domain reason with tenant-a and amount 42", "raw resolution");
             }
 
-            onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, MessageId);
-            onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, MessageId);
-            return Task.FromResult(new CommandResult(MessageId, "Accepted", CorrelationId, RetryAfter: TimeSpan.FromMilliseconds(250)));
+            string messageId = ReadString(command, nameof(PayInvoiceCommand.MessageId)) ?? MessageId;
+            string correlationId = ReadString(command, nameof(PayInvoiceCommand.CorrelationId)) ?? CorrelationId;
+            if (string.Equals(messageId, MessageId, StringComparison.Ordinal)
+                && string.Equals(correlationId, MessageId, StringComparison.Ordinal)) {
+                correlationId = CorrelationId;
+            }
+
+            LastCorrelationId = correlationId;
+            onLifecycleChange?.Invoke(CommandLifecycleState.Syncing, messageId);
+            if (CompleteSynchronously) {
+                onLifecycleChange?.Invoke(CommandLifecycleState.Confirmed, messageId);
+            }
+
+            return Task.FromResult(new CommandResult(messageId, "Accepted", correlationId, RetryAfter: TimeSpan.FromMilliseconds(250)));
         }
+
+        private static string? ReadString<TCommand>(TCommand command, string propertyName)
+            where TCommand : class
+            => command.GetType().GetProperty(propertyName)?.GetValue(command) as string;
     }
 
     private sealed class RecordingLifecycleStateService : ILifecycleStateService {
@@ -407,6 +586,23 @@ public sealed class CommandLifecycleTests {
 
     private sealed class FixedUlidFactory : IUlidFactory {
         public string NewUlid() => MessageId;
+    }
+
+    private sealed class CounterUlidFactory : IUlidFactory {
+        private int _next;
+
+        // P40: the prior fallback formatted `value % 10` as a 1-character suffix, producing 25-char
+        // strings that fail the canonical 26-char ULID regex. Throw instead of silently emitting
+        // invalid IDs so any future test that exceeds the table size fails loudly.
+        public string NewUlid() {
+            int value = Interlocked.Increment(ref _next);
+            return value switch {
+                1 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0C",
+                2 => "01JZ0R5K9N8W4Y7V3Q2P6C1A0D",
+                _ => throw new InvalidOperationException(
+                    "CounterUlidFactory only supports value <= 2; extend the table for additional handles."),
+            };
+        }
     }
 
     private sealed class FastQueryService : IQueryService {

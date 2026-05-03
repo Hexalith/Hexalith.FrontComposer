@@ -125,6 +125,36 @@ internal sealed record McpTerminalOutcome(
                 ReasonCategory: "domain_conflict",
                 DocsCode: "HFC-MCP-COMMAND-REJECTED"));
 
+    // D2.1 (option a): synthetic terminals carry a structured remediation payload so the
+    // agent-visible envelope satisfies AC6's structured-rejection contract. state="Rejected"
+    // is preserved (no cross-package CommandLifecycleState change); outcome.category remains the
+    // authoritative disambiguator between domain rejection and bounded failure category.
+    public static McpTerminalOutcome TimedOut()
+        => new(
+            McpTerminalOutcomeKind.TimedOut,
+            Rejection: new McpRejectionPayload(
+                "LIFECYCLE_TIMED_OUT",
+                EntityId: null,
+                Message: "Command outcome unconfirmed: the lifecycle timed out before the framework observed a terminal state. Data impact is unknown.",
+                DataImpact: "Outcome is unconfirmed at the framework boundary.",
+                SuggestedAction: "retry",
+                RetryAppropriate: true,
+                ReasonCategory: "timed_out",
+                DocsCode: "HFC-MCP-LIFECYCLE-TIMED-OUT"));
+
+    public static McpTerminalOutcome NeedsReview()
+        => new(
+            McpTerminalOutcomeKind.NeedsReview,
+            Rejection: new McpRejectionPayload(
+                "LIFECYCLE_NEEDS_REVIEW",
+                EntityId: null,
+                Message: "Command outcome unconfirmed: the lifecycle handle was retained for review after eviction. Data impact is unknown.",
+                DataImpact: "Outcome is unconfirmed at the framework boundary.",
+                SuggestedAction: "poll",
+                RetryAppropriate: true,
+                ReasonCategory: "needs_review",
+                DocsCode: "HFC-MCP-LIFECYCLE-NEEDS-REVIEW"));
+
     public JsonObject ToJson() {
         JsonObject json = new() {
             ["category"] = ToCategory(Kind),

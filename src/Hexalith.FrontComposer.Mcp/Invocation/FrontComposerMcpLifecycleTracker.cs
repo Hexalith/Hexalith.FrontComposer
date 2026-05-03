@@ -21,8 +21,13 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
     private readonly ConcurrentDictionary<string, LifecycleEntry> _byCorrelation = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, LifecycleEntry> _byMessage = new(StringComparer.Ordinal);
     private readonly ConcurrentQueue<string> _insertionOrder = new();
+    private readonly ConcurrentQueue<string> _terminalOrder = new();
     private readonly object _capacityGate = new();
+    private readonly TimeProvider _time = services.GetService<TimeProvider>() ?? TimeProvider.System;
     private int _disposed;
+    // P36: O(1) counters mutated under _capacityGate; replace per-iteration dictionary scans.
+    private int _activeCount;
+    private int _terminalCount;
 
     internal McpCommandAcknowledgement TrackAcknowledged(
         McpCommandDescriptor descriptor,
@@ -120,6 +125,9 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         _byCorrelation.Clear();
         _byMessage.Clear();
         while (_insertionOrder.TryDequeue(out _)) { }
+        while (_terminalOrder.TryDequeue(out _)) { }
+        Volatile.Write(ref _activeCount, 0);
+        Volatile.Write(ref _terminalCount, 0);
 
         foreach (LifecycleEntry entry in snapshot) {
             entry.Dispose();
@@ -156,8 +164,19 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             return existing;
         }
 
-        LifecycleEntry created = new(descriptor, correlationId, messageId, options.Value.MaxLifecycleTransitionHistory);
+        FrontComposerMcpOptions opts = options.Value;
+        // P34: timer is constructed in a quiescent state (Timeout.InfiniteTimeSpan) and armed via
+        // Start() only after the entry is fully wired; loser path disposes before timer can fire.
+        LifecycleEntry created = new(
+            descriptor,
+            correlationId,
+            messageId,
+            opts.MaxLifecycleTransitionHistory,
+            TimeSpan.FromMilliseconds(Math.Max(1, opts.MaxLifecycleInProgressMs)),
+            _time,
+            OnEntryTerminalized);
         if (!_byCorrelation.TryAdd(correlationId, created)) {
+            created.Dispose();
             return _byCorrelation[correlationId];
         }
 
@@ -174,6 +193,8 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
         // _byMessage uses TryAdd so a message-id collision does not silently overwrite.
         _byMessage.TryAdd(messageId, created);
         _insertionOrder.Enqueue(correlationId);
+        Interlocked.Increment(ref _activeCount);
+        created.Start();
         EnforceCapacity();
         return created;
     }
@@ -181,15 +202,40 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
     private void EnforceCapacity() {
         int max = Math.Max(1, options.Value.MaxActiveLifecycleEntries);
         lock (_capacityGate) {
-            while (_byCorrelation.Count > max && _insertionOrder.TryDequeue(out string? oldest)) {
-                if (_byCorrelation.TryRemove(oldest, out LifecycleEntry? removed)) {
-                    if (_byMessage.TryGetValue(removed.MessageId, out LifecycleEntry? mapped)
-                        && ReferenceEquals(mapped, removed)) {
-                        _byMessage.TryRemove(removed.MessageId, out _);
-                    }
-
-                    removed.Dispose();
+            while (Volatile.Read(ref _activeCount) > max && _insertionOrder.TryDequeue(out string? oldest)) {
+                if (_byCorrelation.TryGetValue(oldest, out LifecycleEntry? entry)) {
+                    entry.MarkNeedsReview(_time.GetUtcNow());
                 }
+            }
+
+            EnforceTerminalRetention();
+        }
+    }
+
+    private void OnEntryTerminalized(string correlationId) {
+        lock (_capacityGate) {
+            Interlocked.Decrement(ref _activeCount);
+            Interlocked.Increment(ref _terminalCount);
+            _terminalOrder.Enqueue(correlationId);
+            EnforceTerminalRetention();
+        }
+    }
+
+    private void EnforceTerminalRetention() {
+        int maxRetained = Math.Max(1, options.Value.MaxRetainedTerminalLifecycleEntries);
+        while (Volatile.Read(ref _terminalCount) > maxRetained && _terminalOrder.TryDequeue(out string? oldest)) {
+            if (!_byCorrelation.TryGetValue(oldest, out LifecycleEntry? entry) || !entry.IsTerminal) {
+                continue;
+            }
+
+            if (_byCorrelation.TryRemove(oldest, out LifecycleEntry? removed)) {
+                if (_byMessage.TryGetValue(removed.MessageId, out LifecycleEntry? mapped)
+                    && ReferenceEquals(mapped, removed)) {
+                    _byMessage.TryRemove(removed.MessageId, out _);
+                }
+
+                Interlocked.Decrement(ref _terminalCount);
+                removed.Dispose();
             }
         }
     }
@@ -254,27 +300,56 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
     [GeneratedRegex("^[0-9A-HJKMNP-TV-Z]{26}$", RegexOptions.CultureInvariant)]
     private static partial Regex CanonicalUlidRegex();
 
-    private sealed class LifecycleEntry(
-        McpCommandDescriptor descriptor,
-        string correlationId,
-        string messageId,
-        int maxHistory) : IDisposable {
+    private sealed class LifecycleEntry : IDisposable {
         private readonly object _gate = new();
         private readonly Queue<McpLifecycleTransitionDto> _history = new();
+        private readonly int _maxHistory;
+        private readonly TimeSpan _timeout;
+        private readonly TimeProvider _time;
+        private readonly Action<string> _onTerminalized;
+        private readonly ITimer _timeoutTimer;
         private long _nextSequence;
         private bool _historyTruncated;
+        private bool _terminalRecorded;
+        private int _isTerminal; // P35: lock-free terminal flag for capacity counters and IsTerminal.
+        private int _entryDisposed; // P33: short-circuit timer callbacks racing Dispose().
         private CommandLifecycleState _state = CommandLifecycleState.Acknowledged;
         private McpTerminalOutcome? _outcome;
 
-        public McpCommandDescriptor Descriptor { get; } = descriptor;
+        public LifecycleEntry(
+            McpCommandDescriptor descriptor,
+            string correlationId,
+            string messageId,
+            int maxHistory,
+            TimeSpan timeout,
+            TimeProvider time,
+            Action<string> onTerminalized) {
+            Descriptor = descriptor;
+            CorrelationId = correlationId;
+            MessageId = messageId;
+            _maxHistory = Math.Max(1, maxHistory);
+            _timeout = timeout;
+            _time = time;
+            _onTerminalized = onTerminalized;
+            // P34: construct timer in quiescent state. Tracker calls Start() after wiring.
+            _timeoutTimer = time.CreateTimer(
+                static state => ((LifecycleEntry)state!).MarkTimedOut(),
+                this,
+                Timeout.InfiniteTimeSpan,
+                Timeout.InfiniteTimeSpan);
+        }
 
-        public string CorrelationId { get; } = correlationId;
+        public McpCommandDescriptor Descriptor { get; }
 
-        public string MessageId { get; } = messageId;
+        public string CorrelationId { get; }
+
+        public string MessageId { get; }
 
         public IDisposable? Subscription { get; set; }
 
         public bool AcknowledgmentEmitted { get; set; }
+
+        public bool IsTerminal => Volatile.Read(ref _isTerminal) != 0;
 
         public CommandLifecycleState CurrentState {
             get {
@@ -284,7 +359,22 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             }
         }
 
+        // P34: arm the timeout timer once the tracker has fully registered the entry.
+        public void Start() {
+            if (Volatile.Read(ref _entryDisposed) != 0) {
+                return;
+            }
+
+            try {
+                _timeoutTimer.Change(_timeout, Timeout.InfiniteTimeSpan);
+            }
+            catch (ObjectDisposedException) {
+                // P33: Start lost a race with Dispose; nothing to arm.
+            }
+        }
+
         public void Observe(CommandLifecycleTransition transition) {
+            bool becameTerminal = false;
             lock (_gate) {
                 // Defense in depth: terminal regression is impossible at the MCP edge regardless of
                 // upstream behaviour. Once a terminal outcome is recorded, drop further observations
@@ -314,18 +404,75 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
                     _outcome = McpTerminalOutcome.GenericRejection();
                 }
 
-                _history.Enqueue(new McpLifecycleTransitionDto(
-                    ++_nextSequence,
-                    transition.NewState,
-                    NormalizeIdentifier(transition.MessageId),
-                    transition.TimestampUtc,
-                    transition.IdempotencyResolved));
-
-                int cap = Math.Max(1, maxHistory);
-                while (_history.Count > cap) {
-                    _ = _history.Dequeue();
-                    _historyTruncated = true;
+                AppendHistory(transition.NewState, NormalizeIdentifier(transition.MessageId), transition.TimestampUtc, transition.IdempotencyResolved);
+                if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected && !_terminalRecorded) {
+                    _terminalRecorded = true;
+                    Volatile.Write(ref _isTerminal, 1);
+                    becameTerminal = true;
                 }
+            }
+
+            if (becameTerminal) {
+                try {
+                    _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                }
+                catch (ObjectDisposedException) {
+                    // P33: timer disposed concurrently; nothing to cancel.
+                }
+
+                _onTerminalized(CorrelationId);
+            }
+        }
+
+        public bool MarkTimedOut() => MarkSyntheticTerminal(McpTerminalOutcome.TimedOut());
+
+        public bool MarkNeedsReview(DateTimeOffset observedAtUtc) => MarkSyntheticTerminal(McpTerminalOutcome.NeedsReview(), observedAtUtc);
+
+        private bool MarkSyntheticTerminal(McpTerminalOutcome outcome, DateTimeOffset? observedAtUtc = null) {
+            // P33: refuse terminalization if the entry has been disposed; the timer callback can fire
+            // after Dispose() because ITimer.Dispose() is non-blocking on in-flight callbacks.
+            if (Volatile.Read(ref _entryDisposed) != 0) {
+                return false;
+            }
+
+            lock (_gate) {
+                if (_state is CommandLifecycleState.Confirmed or CommandLifecycleState.Rejected) {
+                    return false;
+                }
+
+                _state = CommandLifecycleState.Rejected;
+                _outcome = outcome;
+                _terminalRecorded = true;
+                Volatile.Write(ref _isTerminal, 1);
+                AppendHistory(CommandLifecycleState.Rejected, MessageId, observedAtUtc ?? _time.GetUtcNow(), idempotencyResolved: false);
+            }
+
+            try {
+                _timeoutTimer.Change(Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+            }
+            catch (ObjectDisposedException) {
+                // P33: timer disposed between flag check and Change call; benign.
+            }
+
+            _onTerminalized(CorrelationId);
+            return true;
+        }
+
+        private void AppendHistory(
+            CommandLifecycleState state,
+            string? transitionMessageId,
+            DateTimeOffset observedAtUtc,
+            bool idempotencyResolved) {
+            _history.Enqueue(new McpLifecycleTransitionDto(
+                ++_nextSequence,
+                state,
+                transitionMessageId,
+                observedAtUtc,
+                idempotencyResolved));
+
+            while (_history.Count > _maxHistory) {
+                _ = _history.Dequeue();
+                _historyTruncated = true;
             }
         }
 
@@ -354,6 +501,13 @@ public sealed partial class FrontComposerMcpLifecycleTracker(
             }
         }
 
-        public void Dispose() => Subscription?.Dispose();
+        public void Dispose() {
+            if (Interlocked.Exchange(ref _entryDisposed, 1) != 0) {
+                return;
+            }
+
+            _timeoutTimer.Dispose();
+            Subscription?.Dispose();
+        }
     }
 }

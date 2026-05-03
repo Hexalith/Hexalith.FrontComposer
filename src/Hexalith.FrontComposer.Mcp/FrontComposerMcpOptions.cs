@@ -53,6 +53,10 @@ public sealed class FrontComposerMcpOptions {
 
     public int MaxActiveLifecycleEntries { get; set; } = 1_000;
 
+    public int MaxRetainedTerminalLifecycleEntries { get; set; } = 1_000;
+
+    public int MaxLifecycleInProgressMs { get; set; } = 30_000;
+
     public IList<string> TenantClaimTypes { get; } = [
         "TenantId",
         "tenant_id",
