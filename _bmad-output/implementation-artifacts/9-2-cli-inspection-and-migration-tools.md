@@ -52,6 +52,13 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
 | AC16 | The CLI package is distributed | A developer installs it | It is available as a `dotnet` global/local tool with a stable command name and version aligned to the FrontComposer package train. |
 | AC17 | A developer wants to run the tool without permanent installation on .NET 10 SDK | The package is available from a feed | The story documents the `dnx` path as optional convenience while keeping `dotnet tool install` and local tool manifests first-class. |
 | AC18 | CLI tests run in CI | The suite executes | It validates inspect, migration dry-run, migration apply, diagnostics, redaction, path stability, and package/tool invocation without relying on a developer IDE. |
+| AC19 | A developer or CI script consumes CLI output | Commands complete | Exit codes are stable: `0` success, `1` actionable HFC findings when the caller enables fail-on-findings behavior, `2` invalid arguments or ambiguous project/type/configuration, `3` missing/stale/unsupported generated output, and `4` apply/write/interruption failure. Plain HFC warnings do not make `inspect` fail unless `--fail-on-warning` or an equivalent explicit option is provided. |
+| AC20 | A developer requests machine-readable output with `--format json` | Inspect or migrate renders output | JSON includes `schemaVersion`, deterministic sorted arrays, normalized project-relative paths, stable enum/string values, and redacted placeholders; it excludes timestamps, durations, ANSI color, localized prose, raw exceptions, and absolute paths unless an explicit diagnostic option is used. |
+| AC21 | A command enumerates projects, TFMs, configurations, generated files, diagnostics, migration entries, or code-fix results | Output is rendered or fixes are planned | Ordering is deterministic by stable ordinal keys, path separators are normalized in machine output, and text output preserves the same logical order as JSON. |
+| AC22 | The developer runs `frontcomposer migrate` without `--apply` | Migration planning executes | Dry-run is the default and writes no files; `--apply` is the only source-writing mode, and apply may write only files listed in the immediately computed operation plan. |
+| AC23 | Migration apply encounters generated output, `bin/`, `obj/`, package caches, root-level submodules, nested submodule paths if present, linked files outside the project root, or unrelated repositories | Migration plans or applies fixes | The tool refuses those targets before writing, reports sanitized skipped/failed counts, does not initialize or update submodules, and never recursively scans nested submodule metadata. |
+| AC24 | Migration has multiple safe fixes, manual-only entries, conflicts, or write failures | Migration completes or fails | Safe fixes for one file are composed through a single Roslyn solution/document operation where possible; manual-only entries are reported and never applied; conflicts are skipped with deterministic diagnostics; failures report changed/unchanged/skipped/failed counts and leave no partially corrupted target. |
+| AC25 | CLI integration tests exercise inspect and migrate | The suite runs in CI | Tests use synthetic temporary workspaces from a shared fixture builder, not the repository's real generated output; fixtures cover single project, multi-TFM, Debug/Release, stale output, missing output, HFC diagnostics, root-level submodule exclusion, generated/bin/obj exclusion, outside-project paths, dry-run no-write, apply idempotency, conflict handling, manual-only migrations, write failures, and packaging/tool smoke commands. |
 
 ---
 
@@ -63,13 +70,17 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
   - [ ] Target the current shipping runtime TFM used by the repo; do not force SourceTools off `netstandard2.0`.
   - [ ] Keep CLI-only dependencies, MSBuild workspace dependencies, and console formatting dependencies out of `Hexalith.FrontComposer.SourceTools`.
   - [ ] Add package metadata so global and local tool installation share the lockstep FrontComposer version.
+  - [ ] CI must pack the tool, install it from the local package output into a temporary local tool manifest, and smoke-test `frontcomposer --help`, `frontcomposer inspect --format json`, `frontcomposer migrate --dry-run`, and `frontcomposer migrate --apply` against fixtures.
+  - [ ] Keep the .NET 10 `dnx` path optional and non-blocking unless the CI image already provides the required SDK.
 
 - [ ] T2. Establish generated-output path contract (AC1, AC2, AC5, AC6, AC7)
   - [ ] Use the public path contract `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs` and sibling `.g.cs` files.
   - [ ] Wire the path through package-owned MSBuild props/targets or a documented generator-output option; avoid ad hoc path guesses in the CLI.
+  - [ ] `inspect` must read the generated-output location from the canonical SourceTools/generator contract first; file-name parsing is a documented fallback for legacy output only.
   - [ ] Preserve existing generator hint-name semantics: namespace-qualified projection hints and `.Command` command hint prefixes.
   - [ ] Add a contract test proving generated output lands under the documented path for Debug/Release and at least one multi-targeted fixture.
   - [ ] When output is absent, distinguish "project has no FrontComposer types", "build not run", "generation failed", and "unsupported target framework".
+  - [ ] Report resolved generated-output paths as normalized project-relative paths when inside the project and as redacted diagnostic-safe text when unavailable or unsafe.
 
 - [ ] T3. Implement inspect model loading (AC1-AC8, AC15)
   - [ ] Build a small SDK-neutral inspect model: project identity, configuration, TFM, generated files, source family, related domain type, MCP entries, and diagnostics.
@@ -77,27 +88,33 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
   - [ ] Prefer generated metadata produced by SourceTools when available; fall back to deterministic file-name parsing only when metadata is absent.
   - [ ] Sort output by bounded context, type FQN, source family, then path using ordinal comparison.
   - [ ] Redact machine-local path prefixes in default output; provide absolute paths only behind an explicit `--absolute-paths` diagnostic option.
+  - [ ] Limit displayed diagnostics to FrontComposer-generated output and HFC-relevant project context; do not turn `inspect` into a general analyzer report.
 
 - [ ] T4. Implement inspect command UX (AC1-AC8)
-  - [ ] Support `frontcomposer inspect`, `frontcomposer inspect --type <metadata-name>`, `--project`, `--solution`, `--configuration`, `--framework`, `--build`, `--format text|json`, and `--severity`.
+  - [ ] Support `frontcomposer inspect`, `frontcomposer inspect --summary`, `frontcomposer inspect --type <metadata-name>`, `--project`, `--solution`, `--configuration`, `--framework`, `--build`, `--format text|json`, `--severity`, and explicit fail-on-diagnostic options.
   - [ ] Keep text output concise and operator-readable; JSON output must be deterministic for CI snapshots.
+  - [ ] JSON output must include `schemaVersion`, stable field names, sorted arrays, normalized project-relative paths, and redacted placeholders; do not emit timestamps, durations, colors, localized prose, raw exceptions, or machine-specific absolute paths by default.
   - [ ] Type matching accepts full metadata name first, then unambiguous simple type name; ambiguous simple names require the full name.
   - [ ] Include HFC diagnostic docs links when `DiagnosticDescriptor.HelpLinkUri` is available.
-  - [ ] Non-zero exit codes: invalid arguments, ambiguous target, build failure, generation failure, or requested type not found.
+  - [ ] Non-zero exit codes follow AC19 and distinguish invalid arguments, ambiguous target/type, missing or stale generated output, build/generation failure, requested type not found, and explicit fail-on-findings behavior.
 
 - [ ] T5. Introduce migration/code-fix architecture (AC9-AC12)
   - [ ] Add a migration abstraction that maps `(fromVersion, toVersion, diagnosticId)` to a Roslyn code-fix provider or a manual migration note.
   - [ ] Keep analyzer/code-fix providers in a separate assembly if Workspaces packages are required; do not add Workspaces dependencies to the generator assembly unless party review explicitly approves it.
+  - [ ] SourceTools may expose SDK-neutral inspection/migration primitives, but CLI orchestration, file walking, tool packaging, console UX, MSBuild Workspace usage, and `CodeFixProvider` execution stay in CLI or CLI-owned projects.
+  - [ ] Execute only allowlisted FrontComposer-owned migration code-fix providers pinned to the repo's Roslyn `4.12.0` package family unless a documented build failure forces a narrow exception.
   - [ ] Use Roslyn `CodeFixProvider` patterns: declare `FixableDiagnosticIds`, register fixes through `RegisterCodeFixesAsync`, and provide Fix All only where edits are deterministic and conflict-free.
   - [ ] Support manual-only migration entries for changes that require product or architecture judgment.
   - [ ] Reserve migration-specific HFC IDs only after checking `AnalyzerReleases.Unshipped.md`; Story 9-4 owns final public diagnostic governance.
 
 - [ ] T6. Implement migration dry-run and apply modes (AC9-AC13, AC15)
-  - [ ] Make `--dry-run` available and documented; consider it the recommended command in docs and CI examples.
+  - [ ] Make `--dry-run` the default and documented migration mode; writing source files requires explicit `--apply`.
   - [ ] In dry-run, compute proposed changes and render unified diff or structured JSON without writing files.
-  - [ ] In apply mode, compose Roslyn document changes first, detect overlapping edits, then write files in a deterministic order.
-  - [ ] Never modify generated files, `obj/`, `bin/`, vendored submodules, or files outside the selected project/solution.
-  - [ ] Exit non-zero when any target file cannot be safely fixed, and report the manual follow-up without hiding successfully planned fixes.
+  - [ ] In apply mode, compute the same operation plan immediately before writing; only files in that plan may be modified.
+  - [ ] Compose Roslyn document changes first, detect overlapping edits, then write files in a deterministic order while preserving encoding and line endings where practical.
+  - [ ] Never modify generated files, `obj/`, `bin/`, package caches, root-level submodules, nested submodule paths if present, vendored repositories, linked files outside the project root, or files outside the selected project/solution.
+  - [ ] Do not initialize, update, or recurse into submodules; read root-level submodule boundaries only to exclude them from scan/write targets.
+  - [ ] Exit non-zero when any target file cannot be safely fixed, and report changed, unchanged, skipped, failed, manual-only, and conflict counts without hiding successfully planned fixes.
 
 - [ ] T7. Add migration guide handoff (AC8, AC9, AC11, AC16)
   - [ ] Link each migration diagnostic to a future diagnostic/migration page path owned by Story 9-4 or Story 9-5.
@@ -105,15 +122,20 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
   - [ ] Do not publish the full DocFX documentation site in this story; provide docs stubs or links that future docs stories can fill.
   - [ ] Keep deprecation-window policy references aligned with NFR77: minimum one minor version before removal.
 
-- [ ] T8. Tests and verification (AC1-AC18)
-  - [ ] Unit tests for inspect model classification, type matching, ambiguity, sorting, redaction, and JSON stability.
-  - [ ] Integration tests with temporary projects proving generated files appear at the documented `obj/{Config}/{TFM}/generated/HexalithFrontComposer` path.
+- [ ] T8. Tests and verification (AC1-AC25)
+  - [ ] Unit tests for inspect model classification, type matching, ambiguity, sorting, redaction, exit-code mapping, and JSON stability.
+  - [ ] CLI integration tests must use synthetic temporary workspaces from a shared fixture builder, not the repository's real generated output.
+  - [ ] Fixtures normalize path separators, sort output deterministically, and assert repo-relative or redacted paths only.
+  - [ ] Integration tests with temporary projects proving generated files appear at the documented `obj/{Config}/{TFM}/generated/HexalithFrontComposer` path for single-project, multi-TFM, Debug, Release, stale-output, missing-output, and HFC-diagnostic cases.
   - [ ] CLI tests for `inspect`, `inspect --type`, missing output, ambiguous TFM, build failure, warning/error filtering, and JSON output.
   - [ ] Code-fix tests using Microsoft.CodeAnalysis.Testing-style analyzer/code-fix verification for every automated migration.
-  - [ ] Migration dry-run tests proving no file writes, deterministic diffs, manual-only reporting, and non-zero failure behavior.
-  - [ ] Migration apply tests proving source edits compose correctly and generated/bin/obj/submodule paths are ignored.
+  - [ ] Migration dry-run tests proving exit code, diagnostics, proposed file changes, no filesystem mutation, deterministic diffs, stable ordering, redacted paths, manual-only reporting, and non-zero failure behavior.
+  - [ ] Migration apply tests proving exact file diffs, source edits compose correctly, second-run idempotency, conflict handling, manual-only cases, write failure behavior, and no writes to generated/bin/obj/package-cache/submodule/outside-project paths.
+  - [ ] Add negative write-protection fixtures for root-level submodules, nested submodule paths if present, linked outside-project files where supported by the OS, generated output, `bin/`, and `obj/`; refusal messages must not leak absolute user paths.
+  - [ ] Add a bounded large-fixture or benchmark-style integration test proving inspect/migrate avoid unnecessary repeated full-tree work and complete within an agreed CI threshold.
   - [ ] Tool packaging test: `dotnet pack`, local tool install or `dotnet tool run`, and optional .NET 10 `dnx` smoke path when available in CI image.
   - [ ] Full regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
+  - [ ] Capture exact verification commands in the Dev Agent Record: test command(s), packaging smoke, CLI smoke commands, and full regression build.
 
 ---
 
@@ -134,6 +156,34 @@ An adopter should be able to run a local or global `frontcomposer` tool in a sol
 - `Directory.Packages.props` pins `Microsoft.CodeAnalysis.CSharp` to `4.12.0` because higher versions can break IDE analyzer load context. Do not upgrade Roslyn broadly inside this story.
 - If CLI or code-fix implementation needs `Microsoft.CodeAnalysis.Workspaces` or `Microsoft.CodeAnalysis.CSharp.Workspaces`, add them only to CLI/code-fix projects and pin them to the same Roslyn minor as SourceTools unless a documented build failure forces otherwise.
 - Keep `System.CommandLine` or other CLI parser dependencies out unless they are stable and pinned. A small internal parser is acceptable for the initial two-command surface if it reduces dependency risk.
+- `Hexalith.FrontComposer.SourceTools` must remain free of CLI entry points, MSBuild Workspace dependencies, console rendering, file-system scanning, dotnet tool packaging, and source-writing migration orchestration.
+- Migration execution must load only allowlisted FrontComposer-owned code-fix providers; do not dynamically execute arbitrary analyzer/code-fix assemblies from the target solution.
+
+### CLI Contract
+
+Required command forms for this story:
+
+```text
+frontcomposer inspect
+frontcomposer inspect --summary
+frontcomposer inspect --type <fully-qualified-type-name>
+frontcomposer migrate --from <version> --to <version> --dry-run
+frontcomposer migrate --from <version> --to <version> --apply
+```
+
+Type matching resolves exact metadata names first, then unambiguous simple names. Ambiguous simple names exit non-zero and list bounded project-relative candidates. `migrate` defaults to dry-run when neither `--dry-run` nor `--apply` is supplied.
+
+Exit codes:
+
+| Code | Meaning |
+| --- | --- |
+| 0 | Success; no requested failure condition. |
+| 1 | Actionable HFC findings when the caller explicitly enables fail-on-findings behavior. |
+| 2 | Invalid arguments, ambiguous target, ambiguous type, or ambiguous configuration/framework. |
+| 3 | Missing, stale, unsupported, or failed generated-output discovery. |
+| 4 | Apply/write/interruption failure. |
+
+Machine-readable JSON is a versioned contract with `schemaVersion`, stable field names, sorted arrays, normalized project-relative paths, and redacted placeholders. JSON must not contain ANSI color, timestamps, durations, localized prose, raw exception text, or machine-specific absolute paths by default.
 
 ### Generated Output Path Contract
 
@@ -145,12 +195,30 @@ obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs
 
 The implementation may use MSBuild properties such as `EmitCompilerGeneratedFiles` and `CompilerGeneratedFilesOutputPath`, or package-owned targets, but the resulting path must be tested as a public contract. Do not rely on current compiler temp paths or IDE-specific generated-source virtual paths.
 
+The CLI should consume the canonical SourceTools/generator output metadata or package-owned path property first. Deterministic file-name parsing is a fallback only when metadata is absent, and fallback behavior must be documented in test names and user-facing diagnostics.
+
 ### Migration Boundaries
 
 - Automated migrations must be narrow, diagnostic-ID-driven, and reversible by normal source control review.
 - Do not run broad source formatting, namespace cleanup, nullable sweeps, or semantic refactors unrelated to the selected migration diagnostics.
 - Do not auto-edit API changes where adopter intent matters, such as policy naming, tenant model choices, custom renderer semantics, or cross-story architecture contracts. Emit manual guidance instead.
 - Story 9-4 owns final diagnostic ID system and deprecation documentation policy. Story 9-2 can add the execution machinery and provisional migration entries needed for tests.
+- `--apply` may write only files listed in the immediately computed operation plan. It must refuse generated output, `bin/`, `obj/`, package caches, root-level submodules, nested submodule paths if encountered, linked files resolving outside the project root, and unrelated repository paths.
+- Submodule handling is exclusion-only. The CLI must not initialize, update, or recursively inspect submodule metadata; it may read root-level submodule boundaries only to keep scan/write targets outside them.
+- Manual-only entries are never applied. Conflicting safe fixes are skipped with deterministic diagnostics rather than applied partially.
+
+### Party-Mode Review Clarifications
+
+These clarifications were applied by `/bmad-party-mode 9-2-cli-inspection-and-migration-tools; review;` on 2026-05-03 and are part of the pre-dev contract.
+
+| Area | Clarification |
+| --- | --- |
+| CLI/SourceTools boundary | `SourceTools` can expose SDK-neutral generated-output facts, but CLI orchestration, MSBuild Workspace usage, console rendering, packaging, file walking, and source-writing migration execution stay outside the generator assembly. |
+| CLI contract | `inspect`, `inspect --summary`, `inspect --type`, `migrate --dry-run`, and `migrate --apply` need stable exit codes, deterministic ordering, and explicit type/configuration ambiguity behavior before implementation. |
+| JSON contract | Machine output is versioned with `schemaVersion`, sorted arrays, normalized project-relative paths, and redacted placeholders; no timestamps, durations, colors, localized prose, raw exceptions, or absolute user paths by default. |
+| Migration safety | Dry-run is the default; apply requires `--apply`, recomputes the operation plan immediately before writing, modifies only planned source files, composes Roslyn document changes, and reports changed/unchanged/skipped/failed/manual/conflict counts. |
+| Write exclusions | Migration refuses generated output, `bin/`, `obj/`, package caches, root-level submodules, nested submodule paths if present, linked outside-project files, and unrelated repositories without initializing or updating submodules. |
+| Fixture strategy | CLI tests use synthetic temporary workspaces from a shared fixture builder, not current repo artifacts, with normalized paths, filesystem mutation oracles, apply idempotency, and packaging smoke coverage. |
 
 ### Cross-Story Contract Table
 
@@ -178,6 +246,8 @@ Do not implement these in Story 9-2:
 - DocFX site generation. Owner: Story 9-5.
 - MCP schema negotiation or lifecycle behavior changes. Owner: Stories 8-3 / 8-6.
 - Recursive repository or nested submodule migration scanning.
+- Dynamic execution of arbitrary target-solution analyzer/code-fix assemblies.
+- Broad source formatting, nullable sweeps, namespace cleanup, or semantic refactors outside allowlisted migration diagnostics.
 
 ### Known Gaps / Follow-Ups
 
@@ -225,6 +295,18 @@ Do not implement these in Story 9-2:
 ### Completion Notes List
 
 - 2026-05-02: Story created via `/bmad-create-story 9-2-cli-inspection-and-migration-tools` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-03: Party-mode review completed via `/bmad-party-mode 9-2-cli-inspection-and-migration-tools; review;`. Applied CLI/SourceTools boundary, exit-code, JSON schema, deterministic ordering, dry-run/apply, submodule exclusion, write-protection, fixture-oracle, packaging smoke, and scope-guardrail hardening. Ready for advanced elicitation on a later run.
+
+### Party-Mode Review
+
+- **Date/time:** 2026-05-03T09:27:12+02:00
+- **Selected story key:** `9-2-cli-inspection-and-migration-tools`
+- **Command/skill invocation used:** `/bmad-party-mode 9-2-cli-inspection-and-migration-tools; review;`
+- **Participating BMAD agents:** Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- **Findings summary:** The review found the adopter workflow valuable and correctly scoped, but implementation needed sharper contracts before development: CLI/SourceTools dependency direction, stable exit codes, machine-readable JSON schema, deterministic ordering, default dry-run semantics, safe apply planning, submodule/write exclusion, allowlisted code-fix execution, synthetic fixture architecture, and explicit CI evidence.
+- **Changes applied:** Added AC19-AC25; hardened T1-T8; added CLI Contract and Party-Mode Review Clarifications; tightened Package and Dependency Boundaries, Generated Output Path Contract, Migration Boundaries, Scope Guardrails, completion notes, and review trace.
+- **Findings deferred:** Advanced security/robustness edge-case probing remains for a later advanced elicitation run; drift comparison remains Story 9-1; IDE conformance remains Story 9-3; diagnostic governance and public docs remain Stories 9-4/9-5; visual/specimen validation remains Story 10-2; broad mutation testing remains Story 10-4; optional .NET 10 `dnx` is non-blocking unless CI already has the SDK.
+- **Final recommendation:** ready-for-dev
 
 ### File List
 
