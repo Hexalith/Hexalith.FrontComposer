@@ -92,3 +92,4 @@
 2026-05-02T18:28:47+02:00	create-story	9-1-build-time-drift-detection	ok	created build-time drift detection story and marked ready-for-dev
 2026-05-02T18:52:00+02:00	create-story	9-2-cli-inspection-and-migration-tools	ok	created CLI inspection and migration tooling story and marked ready-for-dev
 2026-05-03T08:10:34+02:00	advanced-elicitation	8-6-schema-versioning-and-multi-surface-abstraction	ok	applied collection canonicalization, canonicalizer baseline compatibility, additive validation, and multi-cause precedence hardening
+2026-05-03T09:10:15+02:00	party-mode-review	9-1-build-time-drift-detection	ok	applied baseline trust, diagnostic precedence, comparison seam, perf, redaction, and fixture hardening
