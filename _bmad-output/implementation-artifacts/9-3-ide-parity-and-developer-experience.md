@@ -12,6 +12,7 @@ Story 9-3 makes "IDE parity" a testable contract instead of a vendor claim:
 
 - Publish `docs/ide-parity-matrix.md` as the authoritative capability-by-IDE matrix.
 - Define Must/Should/Out-of-scope tiers for Visual Studio, JetBrains Rider, and VS Code with C# Dev Kit.
+- Separate repo-owned generated-output guarantees from vendor IDE behavior evidence so parity does not become a vague certification claim.
 - Add conformance fixtures that verify generated-source navigation, diagnostics, XML docs, symbol search, and NFR8 generator performance for Must-tier rows.
 - Treat generated output paths from Story 9-2 as a public contract consumed by IDEs, CLI inspection, and adopter scripts.
 - Document IDE-specific limits honestly, including VS Code Dev Kit licensing and Rider generated-code debugging behavior, rather than hiding them behind vague parity language.
@@ -34,8 +35,8 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
 
 | AC | Given | When | Then |
 | --- | --- | --- | --- |
-| AC1 | The IDE Parity Conformance Matrix exists | Story 9-3 is considered complete | `docs/ide-parity-matrix.md` is published, lists every capability by IDE and support tier, and is the authoritative definition of parity. No prose claim overrides the matrix. |
-| AC2 | A capability is marked Must in the matrix | CI conformance runs | A regression in that row fails the affected IDE conformance suite or marks the row as blocked with a linked issue before release. |
+| AC1 | The IDE Parity Conformance Matrix exists | Story 9-3 is considered complete | `docs/ide-parity-matrix.md` is published, lists every capability by IDE and support tier, and is the authoritative definition of parity. No prose claim overrides the matrix. The matrix schema includes row ID, capability, tier, IDE/version, OS or container image where applicable, fixture name, validation method, expected result, evidence artifact, owner, last verified date, known limitation, and release gate. |
+| AC2 | A capability is marked Must in the matrix | CI conformance or release validation runs | Repo-owned Must failures in generated paths, XML docs, diagnostics, symbol output, or NFR8 performance block CI or release. Vendor IDE UI/indexing differences block release only when evidence shows a FrontComposer generated-output defect; otherwise the row records a pinned-version limitation and linked revalidation issue before release. |
 | AC3 | IDE versions are pinned for a release | The matrix is generated or updated | It records exact product names, versions, platforms, extension versions, .NET SDK, C# extension/C# Dev Kit versions, and support windows. Do not invent a product name such as "Visual Studio 2026" unless official release evidence exists at v1 freeze; use the exact installed product name such as Visual Studio 2022 17.13+ when that is the supported baseline. |
 | AC4 | Visual Studio parity is communicated externally | The matrix describes the calibration IDE | Visual Studio is named as the calibration IDE used to baseline the suite, not "the reference IDE"; the matrix remains authoritative and macOS/Linux adopters have first-class Rider or VS Code + Dev Kit paths. |
 | AC5 | VS Code parity is claimed | The onboarding docs and matrix are published | C# Dev Kit is a stated prerequisite; Microsoft account/proprietary license implications are acknowledged; OmniSharp-only VS Code is explicitly unsupported in v1. |
@@ -45,37 +46,43 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
 | AC9 | Generated code debugging is documented | The audience is an adopter | The matrix distinguishes setting breakpoints directly in generated files from stepping into generated code at runtime. If an IDE cannot set breakpoints in generated source, the limitation is a matrix row, not a hidden failure. |
 | AC10 | Generator-host debugging is documented | The audience is a framework contributor | Contributor-only guidance for `Debugger.Launch()`, JIT attach, Roslyn/compiler server behavior, and IDE-specific generator-host limitations lives in `CONTRIBUTING.md`, not adopter onboarding prose. |
 | AC11 | A framework attribute such as `[Projection]` or `[BoundedContext]` is hovered | Any supported IDE displays quick info | XML doc comments explain what the attribute does, what it generates, and link to the relevant diagnostic/documentation page. |
-| AC12 | Consumers rely on generated output locations | IDE navigation, CLI inspect, or scripts execute | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs` and sibling `.g.cs` files are treated as public path contracts guarded by tests across Debug/Release and multi-targeted fixtures. |
-| AC13 | Remote or containerized development is supported | The v1 release candidate is validated | At least one end-to-end conformance run executes in a containerized VS Code + C# Dev Kit environment; Remote-SSH, GitHub Codespaces, and Dev Containers limitations are enumerated in the matrix. |
-| AC14 | A vendor IDE, extension, or .NET SDK version moves outside the pinned range | CI or a scheduled job detects the change | A GitHub issue is filed with the `ide-parity` and `conformance-revalidation` labels, the affected matrix rows, and the evidence needed before widening the range. |
+| AC12 | Consumers rely on generated output locations | IDE navigation, CLI inspect, or scripts execute | `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs` and sibling `.g.cs` files are treated as public path contracts guarded by tests across Debug/Release and multi-targeted fixtures. Story 9-3 verifies and documents this Story 9-2 contract; it must not change generator output layout except for test/documentation fixes. |
+| AC13 | Remote or containerized development is supported | The v1 release candidate is validated | At least one documented validation scenario covers containerized VS Code + C# Dev Kit prerequisites; automated CI is used only when licensing, authentication, and headless behavior are legal and reproducible. Remote-SSH, GitHub Codespaces, and Dev Containers limitations are enumerated in the matrix. |
+| AC14 | A vendor IDE, extension, or .NET SDK version moves outside the pinned range | CI, a scheduled job, or a release checklist detects the change from configured inputs | A GitHub issue is filed with the `ide-parity` and `conformance-revalidation` labels, the affected matrix rows, current pin, detected version, fixture used, expected behavior, observed behavior, evidence needed, and release owner before widening the range. |
 | AC15 | CS1591 XML-doc enforcement changes near API freeze | The project approaches v1.0-rc1 | Before v1.0-rc1, CS1591 remains a warning for all public types. At or after API freeze, CS1591 is scoped via `.editorconfig` file globs to files backing `PublicAPI.Shipped.txt`, and adopter templates receive the same scoped behavior. |
-| AC16 | Conformance output is logged in CI | A row fails or is skipped | Reports use deterministic row IDs, project-relative paths, bounded messages, redacted local paths, and no telemetry, account identifiers, machine names, tokens, or raw exception dumps. |
+| AC16 | Conformance output is logged in CI | A row fails or is skipped | Reports use deterministic row IDs, project-relative paths, bounded messages, redacted local paths, and no telemetry, account identifiers, machine names, tokens, package feed credentials, repository secrets, temp paths containing usernames, control characters, or raw exception dumps. |
 | AC17 | The story implementation considers IDE extension work | Scope is planned | Story 9-3 ships matrix, docs, conformance harness, and source/docs metadata. It does not create custom Visual Studio, Rider, or VS Code extensions unless party-mode review explicitly re-scopes the story. |
+| AC18 | IDE behavior evidence is collected | A matrix row cannot be validated by stable automation | The row records whether evidence is CI-automated, scheduled, or manual release evidence. Manual evidence includes pinned IDE/version, OS, fixture, reproduction steps, expected result, observed result, sanitized artifact location, owner, last verified date, and revalidation trigger. |
 
 ---
 
 ## Tasks / Subtasks
 
-- [ ] T1. Publish the matrix contract (AC1-AC5, AC13-AC17)
+- [ ] T1. Publish the matrix contract (AC1-AC5, AC13-AC18)
   - [ ] Add `docs/ide-parity-matrix.md` with a stable table schema: row ID, capability, support tier, Visual Studio evidence, Rider evidence, VS Code + C# Dev Kit evidence, known limitation, test owner, and release gate.
+  - [ ] Require each row to include IDE/version, OS or container image where applicable, fixture name, validation method, expected result, evidence artifact, owner, last verified date, known limitation, and revalidation trigger.
   - [ ] Use Must / Should / Out-of-scope exactly; avoid vague labels such as "partial" without a concrete limitation.
   - [ ] Include exact IDE/extension version pins, platform coverage, .NET SDK version, SourceTools package version, generated-output path version, and date last validated.
   - [ ] Add a note that Visual Studio is the calibration IDE only. The matrix, not Visual Studio, is the authoritative parity reference.
   - [ ] State C# Dev Kit licensing/prerequisite assumptions and unsupported OmniSharp-only behavior.
+  - [ ] Define gate semantics: repo-owned generated-output failures block CI/release; vendor IDE limitations become pinned evidence rows plus revalidation issues unless they prove a FrontComposer output defect.
   - [ ] Include a machine-readable fenced block or generated JSON companion if implementation chooses to gate rows from structured data.
 
 - [ ] T2. Build the conformance fixture shape (AC2, AC6, AC12, AC16)
   - [ ] Add a small conformance sample under `samples/Counter` or a dedicated temporary fixture builder that includes `[Command]`, `[Projection]`, `[BoundedContext]`, customization metadata, XML docs, HFC diagnostics, and generated output.
+  - [ ] Define deterministic fixture names, generated component/type names, expected HFC diagnostic IDs, expected XML doc targets, expected symbol-search terms, and expected generated output files.
   - [ ] Keep fixtures synthetic and deterministic; do not depend on the developer's local `obj/` output or uncommitted generated files.
   - [ ] Reuse Story 9-1 comparison and diagnostic seams plus Story 9-2 generated-output path contract.
   - [ ] Generate output under `obj/{Config}/{TFM}/generated/HexalithFrontComposer` through the package-owned path, not an IDE-specific virtual path.
   - [ ] Add matrix-row IDs to tests so CI failures point directly to matrix rows.
+  - [ ] Keep path constants or templates referenced by tests and docs from one source where practical; do not introduce a second hardcoded generated-layout contract.
 
 - [ ] T3. Verify Must-tier language-service capabilities (AC6, AC11, AC12)
   - [ ] Add tests or scripted conformance probes for generated type completion visibility where automation is feasible.
   - [ ] Verify XML documentation exists on public attributes and generated symbols used by the sample.
   - [ ] Verify `DiagnosticDescriptor.HelpLinkUri` is present for HFC diagnostics that the IDE surfaces in this story's sample.
   - [ ] Verify generated output can be resolved to the public path contract for Debug/Release and a multi-targeted fixture.
+  - [ ] Capture Visual Studio calibration evidence first: generated file path, symbol names, diagnostic IDs, navigation targets, and symbol-search terms.
   - [ ] Verify solution-wide symbol index evidence by scripted IDE automation where available, or by documented manual evidence rows when no vendor automation is reliable.
 
 - [ ] T4. Document refactoring and source-generation workflows (AC7, AC8)
@@ -93,26 +100,27 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
 - [ ] T6. Add VS Code remote/container conformance (AC5, AC13, AC16)
   - [ ] Add a Dev Container or CI job path that opens/builds the conformance sample with VS Code + C# Dev Kit prerequisites documented.
   - [ ] Ensure the run can execute in CI without leaking Microsoft account identifiers, local paths, machine names, or extension telemetry.
+  - [ ] If C# Dev Kit licensing, authentication, or headless limitations prevent reproducible CI, record a manual or scheduled evidence row instead of silently skipping validation.
   - [ ] Record known limitations for Remote-SSH, GitHub Codespaces, and Dev Containers.
   - [ ] Keep OmniSharp unsupported in v1; do not add a second VS Code support path inside this story.
 
 - [ ] T7. Add version revalidation automation (AC3, AC14)
   - [ ] Store the supported IDE/extension range in a structured file or matrix block that CI can compare.
   - [ ] Add a scheduled or release-gate script that detects unsupported vendor major/minor changes from configured inputs and files a GitHub issue.
-  - [ ] The issue must include matrix row IDs, current pin, detected version, required evidence, and release owner.
+  - [ ] The issue must include matrix row IDs, current pin, detected version, IDE/SDK/OS, fixture used, expected behavior, observed behavior, required evidence, whether the Visual Studio calibration row passes, and release owner.
   - [ ] The job must be non-destructive and must not install/update IDEs, extensions, or git submodules recursively.
 
 - [ ] T8. Scope CS1591 and public XML-doc requirements (AC11, AC15)
   - [ ] Add XML docs to public FrontComposer attributes and any public generated-facing contracts used by the conformance sample.
   - [ ] Keep CS1591 as warning before v1.0-rc1.
-  - [ ] Add the planned `.editorconfig` glob-scoped behavior for API freeze and document how `PublicAPI.Shipped.txt` controls the stricter set.
+  - [ ] Add the planned `.editorconfig` glob-scoped behavior for API freeze, including exact public API/generated-facing globs, warning-only exclusions, and how `PublicAPI.Shipped.txt` controls the stricter set.
   - [ ] Ensure adopter templates receive scoped warning/error behavior without a flag-day project-wide break.
 
-- [ ] T9. Tests and verification (AC1-AC17)
+- [ ] T9. Tests and verification (AC1-AC18)
   - [ ] Matrix schema tests proving every Must row has a test owner, evidence type, version pin, and release gate.
   - [ ] Generated-output path contract tests for Debug/Release, multi-TFM, and stable forward-slash project-relative paths.
   - [ ] Diagnostic surface tests proving HFC IDs, severity, docs links, and XML docs are available to IDEs.
-  - [ ] Sanitization tests for conformance logs containing local paths, usernames, machine names, account-like strings, control characters, and raw exception text.
+  - [ ] Sanitization tests for conformance logs containing local paths, usernames, machine names, account-like strings, control characters, temp paths with usernames, access tokens, package feed credentials, repository secrets, and raw exception text.
   - [ ] Version revalidation tests for in-range, lower-than-min, higher-minor, higher-major, unknown product, and missing version cases.
   - [ ] Container smoke test for the VS Code + C# Dev Kit path if CI credentials/prerequisites allow it; otherwise require documented manual evidence and a release-blocking checklist item.
   - [ ] Full regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
@@ -142,12 +150,28 @@ An adopter should be able to open a FrontComposer solution on Windows, macOS, Li
 Recommended row shape:
 
 ```markdown
-| Row ID | Capability | Tier | Visual Studio | Rider | VS Code + C# Dev Kit | Evidence | Gate |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| IDE-MUST-001 | Generated type completion | Must | Pass: VS 2022 17.13+ | Pass: Rider 2026.1.x | Pass: VS Code + C# Dev Kit pinned minor | `IdeParityGeneratedCompletionTests` + manual IDE capture | CI + release checklist |
+| Row ID | Capability | Tier | Visual Studio | Rider | VS Code + C# Dev Kit | Fixture | Validation | Evidence | Owner | Last Verified | Limitation | Gate |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| IDE-MUST-001 | Generated type completion | Must | Pass: VS 2022 17.13+ on Windows | Pass: Rider 2026.1.x on macOS/Linux | Pass: VS Code + C# Dev Kit pinned minor in Dev Container evidence | `IdeParityCounterFixture` | CI path contract + manual IDE capture | `artifacts/ide-parity/IDE-MUST-001.json` | SourceTools | 2026-05-03 | C# Dev Kit requires licensed prerequisite | CI for repo-owned output; release checklist for vendor UI |
 ```
 
 Each row must be actionable: a developer should know what capability is expected, where evidence lives, and what to do when it fails.
+
+### Validation Evidence and Gate Semantics
+
+- Repo-owned checks are CI-blocking when deterministic: fixture generation, generated-output path resolution, diagnostics and help links, XML docs, symbol output, NFR8 timing budget, matrix schema, and log sanitization.
+- Vendor IDE behavior is release evidence unless a stable automation harness exists. A vendor UI/indexing difference blocks release only when the evidence points to a FrontComposer generated-output defect; otherwise record the pinned limitation and file a revalidation issue.
+- Manual evidence rows must include pinned IDE/version, OS or container image, fixture, reproduction steps, expected result, observed result, sanitized artifact path, owner, last verified date, and revalidation trigger.
+- Retries are allowed for environment setup only. Assertion failures, missing generated output, missing XML docs, missing diagnostics, or unsanitized logs are product/test failures, not flaky infrastructure.
+
+### Minimum Conformance Fixture Set
+
+- Generated-source go-to-definition from Razor/component usage.
+- XML docs surfaced from public attributes and generated-facing symbols.
+- HFC diagnostics visible on source inputs with `DiagnosticDescriptor.HelpLinkUri`.
+- Symbol search finds generated type/member names from the deterministic sample.
+- Rename workflow proves domain source edit -> rebuild/regenerate -> inspect generated output; direct generated-code rename is unsupported.
+- NFR8 generator performance records cold and warm expectations separately using the existing benchmark boundary.
 
 ### Conformance Harness Boundaries
 
@@ -168,6 +192,7 @@ obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs
 - Sibling `.g.cs` files for Fluxor actions, reducers, registration, MCP manifest, baseline metadata, and command lifecycle support are part of the generated-source family.
 - IDE Go To Definition may resolve to virtual generated files, on-disk generated files, metadata views, or no source depending on vendor support. Story 9-3's job is to capture and gate the supported result, not force every IDE into the same implementation.
 - Generated files remain read-only by design. Rename/refactor workflows operate on domain source and regenerate outputs.
+- Story 9-3 verifies the generated-output layout as a consumer of Story 9-2. It must not change generator output layout except for tests or documentation that prove the existing contract.
 
 ### CS1591 and XML Docs
 
@@ -249,7 +274,19 @@ Do not implement these in Story 9-3:
 ### Completion Notes List
 
 - 2026-05-03: Story created via `/bmad-create-story 9-3-ide-parity-and-developer-experience` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-03: Party-mode review applied evidence-model, gate-semantics, fixture-contract, sanitization, and Story 9-2 ownership hardening. Ready for advanced elicitation on a later run.
 
 ### File List
 
 (to be filled in by dev agent)
+
+## Party-Mode Review
+
+- Date/time: 2026-05-03T11:36:53+02:00
+- Selected story key: `9-3-ide-parity-and-developer-experience`
+- Command/skill invocation used: `/bmad-party-mode 9-3-ide-parity-and-developer-experience; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- Findings summary: The round found that the story's direction is valuable, but the original wording risked turning IDE parity into subjective vendor certification. The agents asked for sharper repo-owned contract ownership, explicit matrix/evidence schema, deterministic fixtures, clear CI/release/manual gate semantics, C# Dev Kit/container fallback behavior, flakiness controls, and stronger sanitization requirements.
+- Changes applied: Added repo-owned vs vendor-evidence framing; expanded AC1, AC2, AC12, AC13, AC14, AC16, and AC18; hardened T1-T9 with matrix schema, deterministic fixture expectations, Visual Studio calibration evidence, single-source generated-path contract guidance, container fallback, issue-template fields, CS1591 globs, and sanitization vectors; added validation gate semantics and minimum fixture sections; clarified Story 9-3 consumes rather than changes Story 9-2 generated-output layout.
+- Findings deferred: Exact pinned IDE/extension versions, whether Rider/VS Code evidence is automated or manual for each row, screenshot/video vs structured checklist evidence format, and vendor-update issue cadence remain implementation-time matrix decisions.
+- Final recommendation: `ready-for-dev`
