@@ -41,10 +41,10 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
 | AC3 | Any analyzer `DiagnosticDescriptor` is declared | Build/test validation runs | The descriptor has a matching `FcDiagnosticIds` constant or approved generator-only exception, a registry row, a `HelpLinkUri` using the canonical diagnostics URL, a non-empty title, category `HexalithFrontComposer`, stable severity, and message text shaped as What / Expected / Got / Fix / DocsLink or equivalent structured parameters. |
 | AC4 | Any runtime diagnostic ID is logged, rendered, thrown, or included in MCP/CLI output | Diagnostic validation runs | The ID has a registry row, package owner, docs slug, severity semantics, redaction classification, and a canonical docs link. Runtime-only diagnostics must not require Roslyn analyzer release rows unless the registry says they are analyzer-emitted. |
 | AC5 | A diagnostic docs page is required | Registry validation runs | A lookup-addressable stub exists at the canonical slug and includes at least: ID, title, owner package, severity, problem, common causes, resolution steps, code/config example placeholder, related diagnostics, migration/deprecation section if applicable, and generated metadata markers for Story 9-5. |
-| AC6 | A diagnostic includes user-controlled values, local paths, source snippets, tenant/user/policy names, CLI output, IDE output, or runtime exception data | Messages, properties, logs, docs examples, JSON, Markdown, or generated issue bodies are rendered | Values are bounded, normalized, and sanitized. Diagnostics never leak tokens, tenant IDs, user IDs, claims, raw command payloads, ETags, absolute user paths, machine names, package feed credentials, raw exception dumps, terminal control sequences, or Markdown/HTML/script injection. |
-| AC7 | SourceTools diagnostics are validated | The current catalog is scanned | Existing `DiagnosticDescriptors`, `FcDiagnosticIds`, and `AnalyzerReleases.Unshipped.md` are reconciled. The HFC1010/RS2002 gap is converted into an explicit allowed exception or fixed by targeted catalog tests so future descriptor/release-note drift fails. |
-| AC8 | Shell, EventStore, Mcp, Aspire, or Contracts diagnostics are validated | The registry scan runs | Runtime constants, logger templates, exception messages, diagnostic panels, MCP error payloads, and CLI findings are checked against package range ownership without recursively initializing or scanning nested submodules. Root-level submodule boundaries are read only to exclude external ownership from in-repo HFC validation. |
-| AC9 | A framework API is deprecated | The deprecation is applied | `[Obsolete]` uses a message shaped as `<old> replaced by <new> in v<target>. See HFC<id>. Removed in v<removal>.`, carries a FrontComposer HFC diagnostic ID where target frameworks support custom IDs, and carries a URL format or docs link to the diagnostic/migration page where supported. |
+| AC6 | A diagnostic includes user-controlled values, local paths, source snippets, tenant/user/policy names, CLI output, IDE output, or runtime exception data | Messages, properties, logs, docs examples, JSON, Markdown, or generated issue bodies are rendered | Values are bounded, normalized, and sanitized with deterministic culture-invariant formatting, stable key ordering, a documented maximum length, and a visible truncation marker. Diagnostics never leak tokens, tenant IDs, user IDs, claims, raw command payloads, ETags, absolute user paths, machine names, package feed credentials, raw exception dumps, terminal control sequences, or Markdown/HTML/script injection. |
+| AC7 | SourceTools diagnostics are validated | The current catalog is scanned | Existing `DiagnosticDescriptors`, `FcDiagnosticIds`, and `AnalyzerReleases.Unshipped.md` are reconciled through a deterministic table covering each known gap. The HFC1010/RS2002 gap is converted into an explicit allowed exception or fixed by targeted catalog tests so future descriptor/release-note drift fails with a named failure category. |
+| AC8 | Shell, EventStore, Mcp, Aspire, or Contracts diagnostics are validated | The registry scan runs | Runtime constants, logger templates, exception messages, diagnostic panels, MCP error payloads, and CLI findings are checked against package range ownership without recursively initializing or scanning nested submodules. Root-level submodule boundaries are read only to exclude external ownership from in-repo HFC validation, and tests fail if excluded submodule content is scanned as FrontComposer-owned diagnostics. |
+| AC9 | A framework API is deprecated | The deprecation is applied | `[Obsolete]` uses a message shaped as `<old> replaced by <new> in v<target>. See HFC<id>. Removed in v<removal>.`, carries a FrontComposer HFC diagnostic ID where target frameworks support custom IDs, and carries a URL format or docs link to the diagnostic/migration page where supported. The precedence is custom diagnostic ID first, then message HFC ID, then URL-derived ID only as an older-TFM fallback with a recorded fallback reason. |
 | AC10 | A deprecation has no direct replacement | The deprecation is applied | The message says `No direct replacement` and links to a migration page explaining manual action, risk, and supported removal version. It still must satisfy the minimum window and registry rules. |
 | AC11 | A deprecated API is scheduled for removal | Release validation runs | The removal version is at least one minor version after the first released deprecation unless the current version is a major bump with an explicit compatibility suppression and release note. |
 | AC12 | A public API is removed, signature-changed, moved, made less visible, or behaviorally broken inside a minor train | Package/API compatibility validation runs | CI fails by default. Intentional breaks require a major version, checked-in compatibility suppression evidence, registry migration entry, and release-note approval. |
@@ -55,12 +55,12 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
 | AC17 | Story 9-1 or 9-2 introduced provisional diagnostic/migration IDs | Story 9-4 executes | Provisional IDs are either finalized in the registry or marked reserved/deferred with owner, reason, and future story. No provisional migration ID may remain without a docs slug and migration policy owner. |
 | AC18 | Story 9-3 matrix rows require diagnostic docs links | Story 9-4 completes | Matrix-facing HFC diagnostics have final docs slugs or registry-backed placeholders so IDE parity evidence can point to stable links. |
 | AC19 | Story 9-5 builds the DocFX site later | Story 9-4 completes | Story 9-4 emits metadata and stub content that DocFX can consume, but it does not build the full Diataxis site, navigation IA, tutorial content, or full public docs publication. |
-| AC20 | Registry, docs stubs, release rows, or compatibility reports are parsed | Malformed, duplicate, missing, path-traversing, absolute-path, unsupported URI, stale, or out-of-range values appear | Validation fails closed with deterministic HFC diagnostics or test failures. It must not silently drop invalid rows or rewrite docs outside the approved docs root. |
+| AC20 | Registry, docs stubs, release rows, or compatibility reports are parsed | Malformed, duplicate, missing, path-traversing, absolute-path, unsupported URI, stale, or out-of-range values appear | Validation fails closed with deterministic HFC diagnostics or test failures. It must distinguish duplicate ID, out-of-range ID, reserved/retired misuse, missing owner, missing release row, invalid slug, invalid lifecycle transition, and docs-root escape instead of collapsing them into one generic failure. It must not silently drop invalid rows or rewrite docs outside the approved docs root. |
 | AC21 | A developer suppresses an HFC diagnostic | Suppression guidance is documented | The docs page explains whether suppression is allowed, the preferred `.editorconfig` or pragma shape, the risk of suppressing, and whether the diagnostic is Error/Warning/Info by default. Error suppressions require explicit migration or architecture rationale. |
-| AC22 | Analyzer and runtime diagnostics have different severity channels | Registry validation runs | The registry distinguishes compiler severity, runtime log level, user-visible panel severity, CLI exit behavior, and MCP error category. The same HFC ID cannot silently mean Warning in one channel and Error in another unless the registry declares the mapping and tests cover it. |
+| AC22 | Analyzer and runtime diagnostics have different severity channels | Registry validation runs | The registry distinguishes compiler severity, runtime log level, user-visible panel severity, CLI exit behavior, and MCP error category. The same HFC ID cannot silently mean Warning in one channel and Error in another unless the registry declares the mapping and tests cover it. Changes to severity, category, default enablement, HelpLinkUri, docs slug, or message shape must be treated as analyzer-compatibility changes with registry lifecycle notes and release evidence. |
 | AC23 | Diagnostic catalog tests enumerate packages | The suite runs on Windows, Linux, or case-sensitive filesystems | Path normalization uses project-relative forward-slash paths, compares IDs ordinally, and avoids culture-sensitive sorting. Tests do not depend on file enumeration order or local path casing. |
 | AC24 | The deprecation analyzer scans `[Obsolete]` attributes | The target framework does not expose newer `ObsoleteAttribute.DiagnosticId` / `UrlFormat` properties | The analyzer falls back to validating message text and registry/docs linkage without forcing a TFM upgrade. Where the project target supports custom diagnostic IDs and URL format, validation requires them. |
-| AC25 | Diagnostic registry and compatibility gates run in CI | The package feed, baseline package, or network is unavailable | The job fails or emits a deterministic blocking report. It must not pass by silently skipping compatibility, docs-link, or registry checks. |
+| AC25 | Diagnostic registry and compatibility gates run in CI | The package feed, baseline package, or network is unavailable | The job fails or emits a deterministic blocking report with stable wording, stable exit code, and committed sample evidence for registry drift, docs-stub drift, release-row drift, and compatibility drift. It must not pass by silently skipping compatibility, docs-link, or registry checks. Normal CI must use checked-in baselines/fixtures, not live package, GitHub, or docs availability checks. |
 
 ---
 
@@ -69,9 +69,11 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
 - [ ] T1. Create the authoritative diagnostic registry (AC1-AC5, AC15-AC17, AC20, AC22)
   - [ ] Add a source-controlled registry under a package-owned docs/diagnostics path, recommended `docs/diagnostics/diagnostic-registry.json` plus generated Markdown stubs under `docs/diagnostics/HFCxxxx.md`.
   - [ ] Model fields: `id`, `ownerPackage`, `range`, `title`, `lifecycle`, `introducedIn`, `deprecatedIn`, `removedIn`, `compilerSeverity`, `runtimeLogLevel`, `panelSeverity`, `cliExitBehavior`, `mcpCategory`, `messageTemplate`, `docsSlug`, `helpLinkUri`, `redactionClass`, `suppressionPolicy`, `releaseRow`, `migrationId`, `relatedIds`, and `ownerStory`.
+  - [ ] Treat the registry as the single source of truth for package ownership, API surface, ID range, lifecycle, docs slug, `HelpLinkUri`, severity/channel metadata, release row, and owner story. Every HFC ID must declare exactly one owning package and one owning API surface or be listed as an approved external/reserved exception.
   - [ ] Enforce lifecycle values `reserved`, `active`, `deprecated`, `retired`, and `removed-in-major`.
   - [ ] Add deterministic ordinal sorting and uniqueness validation for IDs, slugs, titles where required, and release rows.
   - [ ] Preserve existing HFC IDs and explicitly document any approved exceptions such as generator-only legacy IDs or reserved placeholders.
+  - [ ] Document the validation entry point and deterministic failure categories before implementing docs stubs or compatibility gates.
   - [ ] Do not rewrite existing generated code or runtime behavior while introducing the registry.
 
 - [ ] T2. Reconcile current diagnostic sources (AC2-AC8, AC15, AC17, AC22)
@@ -82,6 +84,7 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
   - [ ] Scan runtime templates for `{DiagnosticId}` and hardcoded `HFC` values in Shell, Contracts, SourceTools, Mcp, Aspire, and in-repo EventStore integration points.
   - [ ] Treat `Hexalith.EventStore` and `Hexalith.Tenants` as root-level submodule/external boundaries unless their HFC ownership is explicitly mirrored in this repo. Do not initialize or update nested submodules.
   - [ ] Map every found ID to the registry. Unknown IDs fail validation unless listed as approved external references with owner and reason.
+  - [ ] Add a deterministic reconciliation table for `HFC1010`, RS2002 suppression/fix rationale, release-tracking file location, descriptor output, docs stub, and expected failure category when those sources disagree.
   - [ ] Reconcile the current docs-link mismatch between `https://hexalith.github.io/FrontComposer/diagnostics/HFCxxxx` and any newer `hexalith.io`/`hexalith.dev` references by choosing one canonical URL shape and adding tests.
 
 - [ ] T3. Harden analyzer descriptor validation (AC3, AC5, AC7, AC15, AC20, AC23)
@@ -95,8 +98,9 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
 - [ ] T4. Harden runtime diagnostic validation (AC4, AC6, AC8, AC15, AC20, AC22, AC23)
   - [ ] Add tests that reflect over `FcDiagnosticIds` constants and compare them to the registry.
   - [ ] Add targeted text/parser tests for runtime log templates, exception messages, diagnostic panel models, MCP error payloads, and CLI output contracts that include HFC IDs.
-  - [ ] Require runtime entries to declare log level, user-visible severity, redaction class, docs link, and suppression policy.
+  - [ ] Require runtime entries to declare log level, user-visible severity, redaction class, docs link, suppression policy, and deterministic package/ID-range queryability.
   - [ ] Prove diagnostics carrying tenant/user/path/policy/type-name/example values use sanitized placeholders or bounded project-relative forms.
+  - [ ] Cover null, empty, long, multiline, path-like, PII-like, control-character, high-cardinality, URL-with-query-string, culture-specific, Windows-path, POSIX-path, and submodule-path values. Assert max length, truncation marker, culture-invariant formatting, sanitized output, and stable ordering.
   - [ ] Preserve existing runtime behavior except for docs-link/catalog metadata needed to make IDs resolvable.
 
 - [ ] T5. Generate diagnostic docs stubs (AC5, AC15, AC18, AC19, AC21)
@@ -106,12 +110,13 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
   - [ ] Mark narrative/reference boundaries so Story 9-5 can publish DocFX human docs while MCP/agent projections can strip narrative sections later.
   - [ ] Keep stubs short and factual. Full tutorials, how-to guides, navigation IA, and DocFX build remain Story 9-5.
   - [ ] Add docs-link validation that every registry slug resolves to a file and no docs file has an orphan or duplicate ID.
+  - [ ] Validate stub presence, slug stability, front matter, and docs-root containment only. Do not require rendered website availability, DocFX navigation, final examples, or public prose completeness.
 
 - [ ] T6. Define and enforce deprecation policy (AC9-AC11, AC16, AC21, AC24)
   - [ ] Add a small SourceTools analyzer or build validation test for FrontComposer-owned `[Obsolete]` attributes.
   - [ ] Validate message shape: `<old> replaced by <new> in v<target>. See HFC<id>. Removed in v<removal>.`
   - [ ] Support `No direct replacement` wording when needed, but still require HFC ID, migration page, target/removal version, and owner.
-  - [ ] Validate `ObsoleteAttribute.DiagnosticId` and `UrlFormat` where the target framework/API surface supports them; fall back to message validation on older TFMs without forcing package TFM changes.
+  - [ ] Validate `ObsoleteAttribute.DiagnosticId` and `UrlFormat` where the target framework/API surface supports them; fall back to message validation on older TFMs without forcing package TFM changes. Test the precedence matrix: custom diagnostic ID plus URL, message ID with no URL, URL with no custom ID, neither ID nor URL, malformed URL, and deprecated API moved between packages.
   - [ ] Enforce at least one minor version between first deprecation release and removal unless the current change is a major version with approved compatibility evidence.
   - [ ] Add tests for valid replacement, no-direct-replacement, missing ID, malformed version, removal too soon, missing docs page, unsupported TFM fallback, and custom diagnostic ID suppression behavior.
 
@@ -121,14 +126,15 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
   - [ ] If PublicAPI files are used, create package-scoped `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` files and tests that prevent accidental public surface changes.
   - [ ] Add compatibility suppression review rules and fail stale/broad suppressions.
   - [ ] Distinguish source-compatible additions from binary-breaking changes such as removed members, changed signatures, optional parameter additions to existing public methods, narrowed visibility, TFM drops, or dependency removals.
-  - [ ] Add deterministic no-network/baseline-unavailable behavior: fail or emit a blocking report instead of silently passing.
+  - [ ] Add deterministic no-network/baseline-unavailable behavior for missing baseline artifact, malformed baseline, version mismatch, Roslyn analyzer package drift, and network/feed unavailability. Normal CI uses checked-in fixture-backed baselines and fails or emits a blocking report instead of silently passing.
+  - [ ] Commit normalized sample reports or golden snapshots for registry drift, compatibility drift, docs-stub drift, and release-row drift. Avoid whole-registry snapshots that include timestamps, absolute paths, SDK banners, or machine-specific ordering.
 
 - [ ] T8. Finalize provisional Story 9 handoffs (AC17-AC19)
   - [ ] Review Story 9-1 drift diagnostics and reserve/finalize any new SourceTools HFC IDs after HFC1057.
   - [ ] Review Story 9-2 migration diagnostics and reserve/finalize migration-specific HFC IDs, docs slugs, and migration page placeholders.
   - [ ] Review Story 9-3 matrix docs-link needs and reserve/finalize any IDE parity diagnostic docs pages.
   - [ ] Add cross-links from docs stubs to Story 9-5 follow-up sections for final publication.
-  - [ ] Update Known Gaps / deferred work only with story-specific owners, not vague epic-level deferrals.
+  - [ ] Update Known Gaps / deferred work only with story-specific owners, target story, concrete artifact, and validation trigger, not vague epic-level deferrals.
 
 - [ ] T9. Tests and verification (AC1-AC25)
   - [ ] Registry schema tests for required fields, duplicate IDs/slugs, unsupported lifecycle, out-of-range owner package, invalid severity/log mappings, and missing docs files.
@@ -138,11 +144,25 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
   - [ ] Deprecation analyzer/tests for message shape, `DiagnosticId`, `UrlFormat`, replacement/no-replacement variants, minimum one-minor removal window, and older-TFM fallback.
   - [ ] Compatibility gate tests or CI smoke proving accidental binary breaks fail and intentional major-version breaks require checked-in suppression evidence.
   - [ ] Culture/path tests under `fr-FR` or `tr-TR`, case-sensitive/case-insensitive paths where feasible, and symlink/junction docs-path escape attempts.
+  - [ ] Submodule boundary tests using path fixtures or shallow root-level submodule fixtures only. Tests must not require `git submodule update --init --recursive`.
   - [ ] Full regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
 
 ---
 
 ## Dev Notes
+
+### Party-Mode Clarifications
+
+The 2026-05-04 party-mode review (Winston, Amelia, John, Murat) tightened Story 9-4 before development. Apply these decisions when implementing:
+
+| Decision | Resolution |
+| --- | --- |
+| Registry contract first | Implement the versioned registry schema and validator before docs stubs, runtime metadata projection, deprecation analyzers, or compatibility gates. The registry is the single source of truth for HFC ownership and lifecycle. |
+| Deterministic failure contract | Validation must emit stable categories for duplicate ID, out-of-range ID, reserved/retired misuse, missing owner, missing release row, invalid slug, invalid lifecycle transition, docs-root escape, unsanitized value, and compatibility drift. |
+| Story 9-5 boundary | Story 9-4 owns slug reservation, metadata, stub presence, and docs-link validation. Story 9-5 owns DocFX navigation, rendered site, tutorials, how-to prose, final examples, and public documentation publication. |
+| Deprecation fallback precedence | Prefer `ObsoleteAttribute.DiagnosticId` where supported, then parse the HFC ID from the required message, then derive from URL only as an older-TFM fallback with a recorded fallback reason. |
+| Compatibility scope | Compatibility gates protect public API/deprecation/diagnostic behavior and package baselines. They must not become a general release-engine redesign or depend on live package/feed availability in normal CI. |
+| Test evidence discipline | Prefer normalized fixture-backed assertions and sample blocking reports. Avoid overbroad snapshots that capture timestamps, absolute paths, SDK banners, local culture, or machine-specific ordering. |
 
 ### Current Diagnostic State
 
@@ -255,6 +275,8 @@ Do not implement these in Story 9-4:
 - Recursive submodule initialization or nested submodule scans.
 - Broad Roslyn package upgrades.
 - New product-scope diagnostics unrelated to catalog/deprecation governance unless they are required to validate the governance itself.
+- Registry browsing UI, full analyzer UX polish, historical diagnostic cleanup beyond named reconciliation gaps, or non-diagnostic package governance.
+- Live package/feed/docs availability checks in normal CI.
 
 ### Known Gaps / Follow-Ups
 
@@ -306,6 +328,12 @@ Do not implement these in Story 9-4:
 ### Completion Notes List
 
 - 2026-05-04: Story created via `/bmad-create-story 9-4-diagnostic-id-system-and-deprecation-policy` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-04T18:05:56+02:00: Party-mode review completed via `/bmad-party-mode 9-4-diagnostic-id-system-and-deprecation-policy; review;`.
+  - Participating BMAD agents: Winston (Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Test Architect).
+  - Findings summary: registry ownership/versioning was too implicit; HFC1010/RS2002 reconciliation needed deterministic outcomes; diagnostic metadata sanitization needed hard bounds; deprecation fallback precedence needed a matrix; compatibility gates needed fixture-backed unavailable-baseline evidence; Story 9-5 documentation scope needed a sharper boundary; submodule boundary tests needed an explicit no-recursive guardrail.
+  - Changes applied: tightened AC6-AC9, AC20, AC22, and AC25; added registry-first ownership, deterministic failure categories, HFC1010/RS2002 reconciliation, redaction/bounding matrix, docs-stub-only scope, deprecation fallback matrix, fixture-backed compatibility reports, story-specific handoff ownership, submodule boundary tests, Party-Mode Clarifications, and extra scope guardrails.
+  - Findings deferred: full DocFX site/navigation/public prose remains Story 9-5; broad analyzer UX polish and historical cleanup beyond named gaps are out of scope; registry browsing UI and non-diagnostic package governance are out of scope; live package/feed/docs availability checks remain outside normal CI.
+  - Final recommendation: ready-for-dev.
 
 ### File List
 

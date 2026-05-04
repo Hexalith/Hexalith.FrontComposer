@@ -112,3 +112,4 @@
 2026-05-04T13:07:45+02:00	create-story	8-4a-projection-rendering-sanitized-taxonomy-and-snapshot	ok	created sanitized taxonomy and immutable snapshot follow-up story
 2026-05-04T14:30:47+02:00	create-story	9-4-diagnostic-id-system-and-deprecation-policy	ok	created diagnostic ID governance and deprecation policy story
 2026-05-04T15:05:00+02:00	create-story	9-5-diataxis-documentation-site	ok	created DocFX Diataxis documentation site story
+2026-05-04T18:05:56+02:00	party-mode-review	9-4-diagnostic-id-system-and-deprecation-policy	ok	recorded party-mode trace and tightened registry/deprecation/test gate scope
