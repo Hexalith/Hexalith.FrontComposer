@@ -104,6 +104,40 @@ API documentation generation is limited to intended FrontComposer public package
 | P1 | Snippet compilation, diagnostics/API coverage, marker extraction, and producer-artifact drift checks. |
 | P2 | Diataxis placement checks, cookbook completeness, migration-guide trigger quality, and external-link policy. |
 
+## Advanced Elicitation Hardening Contract
+
+The 2026-05-04 advanced elicitation pass found that Story 9-5 needs explicit reproducibility and freshness checks because documentation is a derived publication surface. Apply these additional binding clarifications during development:
+
+### Source and Derivative Evidence
+
+- Treat checked-in Markdown, DocFX configuration, public XML comments, and named producer artifacts as inputs. Treat DocFX output, extracted MCP/agent reference slices, xref maps, metadata YAML, and validation reports as derived outputs.
+- Validation must produce a deterministic docs evidence manifest that records the validation command, tool versions, allowed input roots, producer artifact paths, producer story keys, content hashes or stable fingerprints, generated output roots, and deferred placeholder owners.
+- Derived outputs must be reproducible from checked-in inputs. If a generated slice, API metadata file, diagnostic page, or migration page is stale relative to its recorded input fingerprint, validation must fail with a project-relative path and owning producer story.
+
+### Canonical Identity and Collision Rules
+
+- Canonicalize slugs, UIDs, diagnostic page paths, API UID references, marker names, and generated MCP resource identifiers before comparison.
+- Detect case-only, path-separator-only, URL-encoding, Unicode-normalization, trailing-slash, and reserved-name collisions before DocFX build output is accepted.
+- A human-facing title may be localized later, but canonical IDs and slugs are invariant in v1 unless a migration/redirect entry is explicitly added and validated.
+
+### Offline and Network Boundaries
+
+- CI and local validation must have deterministic offline behavior after `dotnet tool restore` and package restore. External-link checking may be scheduled or allowlisted, but internal docs validation cannot silently downgrade when the network is unavailable.
+- Any warning baseline must be explicit, versioned, project-relative, and fail when an unknown warning appears or a known warning disappears without updating the baseline.
+- The docs job must fail closed when DocFX, metadata generation, package restore, snippet compilation, or reference extraction cannot run; it must not publish a partial site as success.
+
+### Snippet and Build Containment
+
+- Compile-required snippets must run in a disposable project-relative workspace that is cleaned or overwritten deterministically and never imports arbitrary local machine paths.
+- Snippet validation must block package source overrides, project references outside approved repo roots, generated `bin`/`obj` publication, environment-variable secret echoes, terminal control sequences, and analyzer/source-generator side effects not required for the snippet under test.
+- Non-compilable snippets must carry a reason and must still pass sanitization, bounds, and link checks.
+
+### Placeholder and Deferred Owner Semantics
+
+- Placeholders are allowed only when this story explicitly permits them and the page front matter names `placeholderReason`, `deferredOwner`, and `expiresAfterStory` or an equivalent review trigger.
+- Placeholders cannot satisfy required diagnostic, migration, CLI, IDE, API, or cookbook completeness gates unless the relevant acceptance criterion explicitly allows a placeholder.
+- Validation reports must separate blocking failures from accepted placeholders so adopters and release automation do not treat missing reference content as published guidance.
+
 ---
 
 ## Acceptance Criteria
@@ -135,6 +169,12 @@ API documentation generation is limited to intended FrontComposer public package
 | AC23 | The docs build runs in CI | Network, NuGet, DocFX metadata, or package restore fails | The docs job fails or emits a blocking report. It must not silently skip DocFX, API metadata, link validation, or snippet checks. |
 | AC24 | Docs validation scans repository paths | It encounters symlinks, junctions, case-sensitive paths, or root-level submodule folders | It stays inside approved docs/source roots, uses project-relative forward-slash paths in reports, and does not initialize or update nested submodules. |
 | AC25 | The story implementation touches docs IA or tooling scope | Review checks scope | It does not create custom docs UI components, a Blazor docs shell, a separate docs product backlog, or broad content for features not yet owned by v1 stories. |
+| AC26 | Docs validation consumes producer artifacts from Stories 8-5 and 9-1 through 9-4 | Any producer artifact is missing, stale, hash-mismatched, or internally inconsistent | Validation fails with the producer story key, project-relative source path, expected fingerprint, actual fingerprint, and whether a placeholder is allowed. |
+| AC27 | Documentation identifiers are validated | Slugs, UIDs, diagnostic URLs, API UIDs, marker names, or MCP resource IDs differ only by case, separator, encoding, normalization, trailing slash, or reserved name | Validation fails before publishing generated output and names both colliding sources. |
+| AC28 | Derived docs artifacts are produced | DocFX output, API metadata, MCP/agent slices, xref maps, or validation reports are generated | A deterministic evidence manifest records tool versions, input roots, content fingerprints, output roots, and accepted placeholders; stale generated outputs fail validation. |
+| AC29 | CI runs docs validation without network access after restore | External-link checking, package restore, DocFX metadata, or optional publish steps cannot reach the network | Internal validation remains deterministic and fail-closed; only explicitly allowlisted external-link checks may be deferred. |
+| AC30 | Snippet validation compiles or inspects examples | A snippet attempts path escape, package-source override, project reference outside approved roots, terminal-control output, secret echoing, or unsupported analyzer/source-generator side effects | Validation rejects the snippet with a deterministic category and project-relative location. |
+| AC31 | A page uses placeholder docs content | The site builds or MCP reference extraction runs | The placeholder is allowed only with reason, deferred owner, expiry/review trigger, and clear exclusion from completeness gates that require real content. |
 
 ---
 
@@ -149,62 +189,69 @@ API documentation generation is limited to intended FrontComposer public package
   - [ ] Add a local command documented in the repo: `dotnet tool restore`, `dotnet docfx docs/docfx.json`, and optional local serve.
   - [ ] Ensure build output goes to a disposable docs site folder such as `docs/_site` and is ignored by git.
 
-- [ ] T2. Define documentation taxonomy, front matter, and navigation contract (AC4, AC5, AC17, AC21)
+- [ ] T2. Define documentation taxonomy, front matter, and navigation contract (AC4, AC5, AC17, AC21, AC27, AC31)
   - [ ] Define allowed `genre` values: `tutorial`, `how-to`, `reference`, `concept`.
   - [ ] Define allowed `audience` values such as `adopter`, `framework-contributor`, `agent`, and `operator`.
-  - [ ] Add validation for required front matter fields, duplicate slugs, duplicate UIDs, orphan pages, missing TOC entries, and invalid owner stories.
+  - [ ] Add validation for required front matter fields, duplicate slugs, duplicate UIDs, orphan pages, missing TOC entries, invalid owner stories, canonical ID collisions, and placeholder metadata.
   - [ ] Publish starter index pages for Tutorials, How-to, Reference, and Concepts that explain scope through links and page titles, not marketing copy.
   - [ ] Keep documentation text concise and domain-specific; do not add broad landing-page prose that does not unblock adopter tasks.
+  - [ ] Add redirect/migration validation for any canonical slug or UID changed during implementation; otherwise treat canonical IDs as immutable for v1.
 
-- [ ] T3. Implement single-source narrative/reference markers (AC6, AC7, AC19, AC24)
+- [ ] T3. Implement single-source narrative/reference markers (AC6, AC7, AC19, AC24, AC27, AC28, AC31)
   - [ ] Define marker syntax in front matter or HTML comments, e.g. `<!-- hfc:narrative:start -->` / `<!-- hfc:narrative:end -->` and `<!-- hfc:reference:start -->`.
   - [ ] Add a validator/extractor that produces MCP-safe reference slices from marked pages.
   - [ ] Validate marker pairing, nesting, duplicate sections, unknown marker names, missing required reference sections, and path traversal in generated reference outputs.
   - [ ] Ensure generated MCP/agent reference slices are derived artifacts only; do not make them canonical docs inputs.
+  - [ ] Record reference-slice input fingerprints and output paths in the docs evidence manifest; fail when generated slices are stale relative to source Markdown.
   - [ ] Ensure MCP extraction preserves code fences and tables needed by agents while stripping tutorial narrative, conceptual backstory, and human onboarding prose.
   - [ ] Add regression tests for Markdown/HTML/script injection, terminal escapes, and absolute local-path links inside extracted reference material.
 
-- [ ] T4. Publish diagnostic, API, IDE, CLI, and generated-output reference (AC3, AC11-AC14, AC18, AC20)
+- [ ] T4. Publish diagnostic, API, IDE, CLI, and generated-output reference (AC3, AC11-AC14, AC18, AC20, AC26-AC28, AC31)
   - [ ] Consume Story 9-4 diagnostic registry/stubs and publish diagnostics under `docs/reference/diagnostics/` or an equivalent canonical path.
   - [ ] Validate every active registry slug resolves and every generated diagnostic page has required sections.
-  - [ ] Treat Story 8-5 and 9-1 through 9-4 inputs as read-only producer artifacts; fail validation or record a placeholder gap instead of inventing missing contracts.
+  - [ ] Treat Story 8-5 and 9-1 through 9-4 inputs as read-only producer artifacts; record producer story keys and fingerprints, then fail validation or record an allowed placeholder gap instead of inventing missing contracts.
   - [ ] Publish API reference from XML docs and DocFX metadata without exposing internal generated implementation noise.
+  - [ ] Validate API UID, diagnostic URL, migration ID, CLI schema, IDE evidence, and generated-output path collisions after canonicalization.
   - [ ] Link Story 9-3 IDE parity matrix and generated-output path guidance from reference and troubleshooting pages.
   - [ ] Link Story 9-2 CLI inspect/migrate docs, including JSON/report schemas, exit codes, dry-run/apply behavior, and package/tool distribution.
   - [ ] Keep Story 9-4 as owner of diagnostic registry schema; Story 9-5 transforms it into navigable public docs.
 
-- [ ] T5. Ship the customization gradient cookbook (AC8-AC10, AC17, AC19)
+- [ ] T5. Ship the customization gradient cookbook (AC8-AC10, AC17, AC19, AC30)
   - [ ] Create `docs/how-to/customization-gradient-cookbook.md` or equivalent.
   - [ ] Use one concrete example across all four levels: relative-time rendering for a `DateTimeOffset` projection field.
   - [ ] Include compile-checked snippets for annotation, typed Razor template, typed slot, and full replacement paths.
+  - [ ] Compile snippets in a disposable project-relative workspace that blocks package-source overrides, project references outside approved roots, local machine paths, terminal escapes, and secret-like environment echoes.
   - [ ] Explain what each level preserves: lifecycle wrapper, accessibility contract, generated metadata, hot reload limits, diagnostics, and test expectations.
   - [ ] Include a short decision table for choosing the lowest viable gradient level.
   - [ ] Add snippet tests that fail if customization contract names, package namespaces, or required usings drift.
 
-- [ ] T6. Enforce migration-guide and skill-corpus break triggers (AC15, AC16, AC23)
+- [ ] T6. Enforce migration-guide and skill-corpus break triggers (AC15, AC16, AC23, AC26, AC28)
   - [ ] Add validation that any changed shipped skill corpus example requires either a linked migration guide or explicit non-breaking evidence.
   - [ ] Require migration guide front matter to include `fromVersion`, `toVersion`, `diagnosticId`, `ownerStory`, `skillCorpusImpact`, and `codeFixAvailable`.
   - [ ] Validate old/new code examples, affected package list, analyzer/code-fix status, and related docs links.
+  - [ ] Compare skill-corpus examples against the recorded producer fingerprint/evidence manifest so stale migration decisions cannot pass on regenerated current-only content.
   - [ ] Ensure migration pages link from relevant diagnostics, CLI migration docs, release notes, and skill corpus references.
   - [ ] Do not make semver bucket the only migration trigger; skill-corpus compile break is sufficient.
 
-- [ ] T7. Add docs quality gates and CI integration (AC8, AC19-AC24)
+- [ ] T7. Add docs quality gates and CI integration (AC8, AC19-AC24, AC26-AC31)
   - [ ] Add one repo-owned docs validation entrypoint and call it from CI unchanged after `dotnet tool restore`.
+  - [ ] Emit a deterministic docs evidence manifest from the validation entrypoint with tool versions, input roots, producer fingerprints, generated output roots, and accepted placeholders.
   - [ ] Add unit tests for front matter schema, marker extraction, TOC integrity, duplicate slugs/UIDs, diagnostics docs coverage, and migration trigger rules.
   - [ ] Add snippet compile tests or a deterministic docs snippet harness for C# examples.
   - [ ] Add link validation for internal links, API UID links, diagnostics, migration guides, images/resources, and generated-output path references.
   - [ ] Add sanitization tests for Markdown, HTML, JSON, CSV, terminal output, CLI reports, IDE logs, and MCP examples.
-  - [ ] Add negative tests for `../` traversal, absolute paths outside the repository, symlink/junction escape, nested submodule directories, broken DocFX xrefs, invalid front matter, duplicate/overlapping markers, and secret-like values in generated docs or deployment output.
+  - [ ] Add negative tests for `../` traversal, absolute paths outside the repository, symlink/junction escape, nested submodule directories, broken DocFX xrefs, invalid front matter, canonical identity collisions, duplicate/overlapping markers, stale producer fingerprints, and secret-like values in generated docs or deployment output.
+  - [ ] Define external-link and warning-baseline behavior explicitly: offline internal validation must stay deterministic, unknown warnings must fail, and resolved warnings must require baseline update.
   - [ ] Add deployment artifact allowlist validation so published artifacts include only required static site assets and validation logs.
   - [ ] Add a CI docs job that runs restore, build, metadata, validation, and artifact publishing checks.
   - [ ] Ensure CI reports are deterministic, project-relative, and fail closed when DocFX, restore, metadata, or validation cannot run.
 
-- [ ] T8. Final verification and handoff (AC1-AC25)
+- [ ] T8. Final verification and handoff (AC1-AC31)
   - [ ] Run `dotnet tool restore`.
   - [ ] Run the docs validation tests.
   - [ ] Run `dotnet docfx docs/docfx.json` or the checked-in equivalent command.
   - [ ] Run `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
-  - [ ] Update completion notes with docs build output path, validation command results, and any deferred docs owners.
+  - [ ] Update completion notes with docs build output path, evidence manifest path, validation command results, accepted placeholders, and any deferred docs owners.
 
 ---
 
@@ -250,6 +297,13 @@ Do not collapse concepts into reference or how-to. Developers need both "what ex
 | Story 10-x | Story 9-5 | Later visual/specimen/accessibility docs screenshots and docs quality expansion. |
 
 All producer contracts are read-only for Story 9-5. When an upstream artifact is missing, stale, or internally inconsistent, implementation must either fail docs validation with a project-relative report or create a clearly marked placeholder only when this story explicitly allows a placeholder and names a follow-up owner.
+
+### Advanced Elicitation Findings
+
+- Pre-mortem and failure-mode analysis identified stale derived docs as the most likely silent failure: validation must compare generated DocFX/API/MCP outputs against producer fingerprints rather than trusting current files by path alone.
+- Red-team and security audit analysis identified snippet compilation and reference extraction as untrusted input boundaries. Treat docs Markdown, snippets, terminal output, CLI reports, and MCP examples as publishable attack surfaces that need the same redaction and path-containment discipline as runtime payloads.
+- Chaos and hindsight analysis identified warning-baseline drift, offline link-check downgrades, case-only UID collisions, and accepted placeholders as release risks. The story now requires deterministic evidence, canonical collision checks, and explicit placeholder expiry/review triggers.
+- Occam and comparative analysis kept the implementation to one docs validation entrypoint and one evidence manifest instead of separate DocFX, MCP, snippet, and CI-only validation policies.
 
 ### Scope Guardrails
 
@@ -345,10 +399,43 @@ Findings deferred:
 
 Final recommendation: ready-for-dev
 
+### Advanced Elicitation
+
+Date/time: 2026-05-04T21:03:12+02:00
+
+Selected story key: `9-5-diataxis-documentation-site`
+
+Command/skill invocation used: `/bmad-advanced-elicitation 9-5-diataxis-documentation-site`
+
+Batch 1 method names: Pre-mortem Analysis, Failure Mode Analysis, Red Team vs Blue Team, Security Audit Personas, Self-Consistency Validation
+
+Reshuffled Batch 2 method names: Chaos Monkey Scenarios, Hindsight Reflection, Occam's Razor Application, Comparative Analysis Matrix, Architecture Decision Records
+
+Findings summary:
+
+- Story 9-5 had strong scope boundaries after party-mode review, but still needed explicit reproducibility, canonical identity, offline determinism, and placeholder semantics before development starts.
+- The main failure mode is a site that builds successfully while publishing stale producer-derived content, colliding IDs/URLs, unsafe snippets, partial offline validation, or placeholders that look complete.
+- The elicitation found no blocker requiring status change; the story remains ready-for-dev with tighter docs evidence and validation contracts.
+
+Changes applied:
+
+- Added an Advanced Elicitation Hardening Contract for source/derivative evidence, canonical identity collisions, offline/network boundaries, snippet containment, and placeholder/deferred-owner semantics.
+- Added AC26-AC31 for producer fingerprint validation, canonical collision detection, evidence manifest generation, deterministic offline validation, snippet containment failures, and placeholder gating.
+- Tightened T2-T8 tasks to require producer fingerprints, stale-output detection, canonicalization checks, disposable snippet workspaces, evidence manifest output, warning-baseline behavior, and placeholder reporting.
+- Added Dev Notes summarizing the elicitation findings for implementers.
+
+Findings deferred:
+
+- External-link validation cadence and warning-baseline policy details remain a CI/docs product decision, but this story now requires explicit deterministic behavior.
+- Public hosting base URL and full localization remain deferred decisions as recorded by the party-mode review.
+
+Final recommendation: ready-for-dev
+
 ### Completion Notes List
 
 - 2026-05-04: Story created via `/bmad-create-story 9-5-diataxis-documentation-site` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-04: Party-mode review applied via `/bmad-party-mode 9-5-diataxis-documentation-site; review;`. Story remains ready-for-dev with clarified read-only producer contracts, validation entrypoint, minimum Diataxis surface, marker/snippet rules, API/artifact boundaries, submodule/path tests, and deployment hygiene gates.
+- 2026-05-04: Advanced elicitation applied via `/bmad-advanced-elicitation 9-5-diataxis-documentation-site`. Story remains ready-for-dev with producer fingerprint evidence, canonical identity collision checks, deterministic offline validation, snippet containment, evidence manifest, warning-baseline, and placeholder-expiry guardrails.
 
 ### File List
 
