@@ -42,9 +42,67 @@ An adopter should be able to start from a blank FrontComposer project, learn the
 | Reference source | Consume Story 9-4 diagnostic registry/stubs, Story 9-3 IDE matrix, Story 9-2 CLI/path docs, Story 8-5 skill corpus, and public XML docs. |
 | Single source | Require explicit front matter / markers for `audience`, `genre`, `mcpReference`, and narrative/reference boundaries. |
 | Cookbook | Day-1 customization gradient cookbook solves one problem at annotation, template, slot, and full-replacement levels with compile-checked snippets. |
-| Tests | Add docs build/link/schema/snippet/MCP-extraction/migration-trigger tests; include `docfx metadata`/`docfx build` in validation. |
+| Validation entrypoint | Add one local docs validation entrypoint, such as `pwsh ./eng/validate-docs.ps1` or an equivalent repo target. CI must call the same entrypoint after `dotnet tool restore`. |
+| Tests | Add docs build/link/schema/snippet/MCP-extraction/migration-trigger tests; include `docfx metadata`/`docfx build` in validation and fail non-zero on validation errors. |
 
 Start here: T1 tool/site skeleton -> T2 taxonomy/front matter -> T3 single-source marker extraction -> T4 diagnostic/API/reference publication -> T5 cookbook -> T6 migration guide trigger -> T7 CI/docs validation.
+
+---
+
+## Party-Mode Hardening Contract
+
+The 2026-05-04 party-mode review found that Story 9-5 is implementable only if it stays a documentation publication and validation story. Apply these binding clarifications during development:
+
+### V1 Product Outcome
+
+A new adopter can build the documentation locally and find a getting-started tutorial, customization how-to, diagnostics reference, API reference, CLI/IDE/generated-output reference, migration guidance, and concepts overview through a Diataxis TOC.
+
+### Minimum Diataxis Surface
+
+| Genre | Minimum v1 pages |
+| --- | --- |
+| Tutorials | `docs/tutorials/index.md` plus one getting-started tutorial. |
+| How-to | `docs/how-to/index.md` plus the customization gradient cookbook. |
+| Reference | `docs/reference/index.md` plus diagnostics, API, CLI, IDE parity, and generated-output landing pages. |
+| Concepts | `docs/concepts/index.md` plus one architecture or source-generation/MCP split overview. |
+
+### Read-Only Producer Contract
+
+Story 9-5 consumes published artifacts from Stories 8-5 and 9-1 through 9-4. It must not redefine diagnostic IDs, migration schemas, CLI behavior, IDE behavior, MCP contracts, generated-output semantics, or deprecation governance. Missing or inconsistent upstream artifacts must either fail validation when explicitly required by this story or produce clearly marked placeholders with a story-specific deferred owner.
+
+### Validation Entrypoint Contract
+
+Add exactly one repo-owned docs validation command that developers can run locally and CI can run unchanged. It must fail closed on DocFX build errors, broken internal links/anchors/images/API xrefs, invalid front matter, invalid Diataxis genre placement, malformed or empty narrative/reference marker regions, missing required diagnostic docs, missing migration-guide trigger evidence, compile-required snippet failures, unsafe path traversal, symlink/junction escape, nested submodule traversal, and unexpected deployment artifacts.
+
+### Ownership Boundaries
+
+| Area | Owner in this story |
+| --- | --- |
+| `docs/` | DocFX config, TOC, Markdown content, front matter examples, Diataxis indexes, marker conventions, and generated-reference output roots. |
+| FrontComposer source packages | Public XML comments and API source metadata only; do not add docs validators to runtime packages. |
+| Tests/tooling | Docs validators, snippet harness, link checks, marker extraction, and artifact hygiene checks. |
+| CI | Orchestrates the same local validation command; it must not implement separate docs logic. |
+
+### Snippet and Marker Rules
+
+- Use explicit marker syntax for mixed human/agent pages, for example `<!-- hfc:narrative:start -->`, `<!-- hfc:narrative:end -->`, `<!-- hfc:reference:start -->`, and `<!-- hfc:reference:end -->`.
+- Reject unmatched, duplicated, overlapping, nested, unknown, or empty required marker regions.
+- Treat source Markdown as canonical; generated MCP/agent slices are derived artifacts, not the source of truth.
+- Compile-check C# snippets marked as compile-required, such as ````csharp compile```` fences or an equivalent documented convention.
+- Require non-compilable illustrative snippets to use an explicit marker such as ````csharp no-compile```` plus a reason.
+- Snippet validation must use the pinned SDK/tool chain and must not depend on local machine paths or unpublished packages outside the restored solution.
+
+### API and Artifact Boundaries
+
+API documentation generation is limited to intended FrontComposer public packages, initially `src/Hexalith.FrontComposer.Contracts`, `src/Hexalith.FrontComposer.Shell`, `src/Hexalith.FrontComposer.SourceTools`, and `src/Hexalith.FrontComposer.Mcp` unless implementation documents a narrower supported-public-surface list. Exclude tests, samples, internal generated implementation noise, tool caches, `bin`, `obj`, nested repositories, and raw intermediate metadata from published artifacts unless explicitly justified in completion notes.
+
+### Risk-Based Quality Gates
+
+| Priority | Gate |
+| --- | --- |
+| P0 | Fail-closed local/CI validation, path/submodule/symlink safety, and deployment artifact allowlist. |
+| P1 | Snippet compilation, diagnostics/API coverage, marker extraction, and producer-artifact drift checks. |
+| P2 | Diataxis placement checks, cookbook completeness, migration-guide trigger quality, and external-link policy. |
 
 ---
 
@@ -85,6 +143,7 @@ Start here: T1 tool/site skeleton -> T2 taxonomy/front matter -> T3 single-sourc
 - [ ] T1. Add DocFX toolchain and site skeleton (AC1-AC4, AC21-AC23)
   - [ ] Create a local .NET tool manifest if missing and pin `docfx` to a verified stable version.
   - [ ] Add `docs/docfx.json`, `docs/index.md`, `docs/toc.yml`, and top-level genre folders.
+  - [ ] Add the minimum v1 Diataxis pages from the Party-Mode Hardening Contract; do not count empty folders as IA completion.
   - [ ] Configure DocFX build content for Markdown, generated API YAML, resources, and static assets.
   - [ ] Configure metadata generation for FrontComposer packages only; exclude root-level submodule source trees unless intentionally referenced as external links.
   - [ ] Add a local command documented in the repo: `dotnet tool restore`, `dotnet docfx docs/docfx.json`, and optional local serve.
@@ -101,12 +160,14 @@ Start here: T1 tool/site skeleton -> T2 taxonomy/front matter -> T3 single-sourc
   - [ ] Define marker syntax in front matter or HTML comments, e.g. `<!-- hfc:narrative:start -->` / `<!-- hfc:narrative:end -->` and `<!-- hfc:reference:start -->`.
   - [ ] Add a validator/extractor that produces MCP-safe reference slices from marked pages.
   - [ ] Validate marker pairing, nesting, duplicate sections, unknown marker names, missing required reference sections, and path traversal in generated reference outputs.
+  - [ ] Ensure generated MCP/agent reference slices are derived artifacts only; do not make them canonical docs inputs.
   - [ ] Ensure MCP extraction preserves code fences and tables needed by agents while stripping tutorial narrative, conceptual backstory, and human onboarding prose.
   - [ ] Add regression tests for Markdown/HTML/script injection, terminal escapes, and absolute local-path links inside extracted reference material.
 
 - [ ] T4. Publish diagnostic, API, IDE, CLI, and generated-output reference (AC3, AC11-AC14, AC18, AC20)
   - [ ] Consume Story 9-4 diagnostic registry/stubs and publish diagnostics under `docs/reference/diagnostics/` or an equivalent canonical path.
   - [ ] Validate every active registry slug resolves and every generated diagnostic page has required sections.
+  - [ ] Treat Story 8-5 and 9-1 through 9-4 inputs as read-only producer artifacts; fail validation or record a placeholder gap instead of inventing missing contracts.
   - [ ] Publish API reference from XML docs and DocFX metadata without exposing internal generated implementation noise.
   - [ ] Link Story 9-3 IDE parity matrix and generated-output path guidance from reference and troubleshooting pages.
   - [ ] Link Story 9-2 CLI inspect/migrate docs, including JSON/report schemas, exit codes, dry-run/apply behavior, and package/tool distribution.
@@ -128,10 +189,13 @@ Start here: T1 tool/site skeleton -> T2 taxonomy/front matter -> T3 single-sourc
   - [ ] Do not make semver bucket the only migration trigger; skill-corpus compile break is sufficient.
 
 - [ ] T7. Add docs quality gates and CI integration (AC8, AC19-AC24)
+  - [ ] Add one repo-owned docs validation entrypoint and call it from CI unchanged after `dotnet tool restore`.
   - [ ] Add unit tests for front matter schema, marker extraction, TOC integrity, duplicate slugs/UIDs, diagnostics docs coverage, and migration trigger rules.
   - [ ] Add snippet compile tests or a deterministic docs snippet harness for C# examples.
   - [ ] Add link validation for internal links, API UID links, diagnostics, migration guides, images/resources, and generated-output path references.
   - [ ] Add sanitization tests for Markdown, HTML, JSON, CSV, terminal output, CLI reports, IDE logs, and MCP examples.
+  - [ ] Add negative tests for `../` traversal, absolute paths outside the repository, symlink/junction escape, nested submodule directories, broken DocFX xrefs, invalid front matter, duplicate/overlapping markers, and secret-like values in generated docs or deployment output.
+  - [ ] Add deployment artifact allowlist validation so published artifacts include only required static site assets and validation logs.
   - [ ] Add a CI docs job that runs restore, build, metadata, validation, and artifact publishing checks.
   - [ ] Ensure CI reports are deterministic, project-relative, and fail closed when DocFX, restore, metadata, or validation cannot run.
 
@@ -185,6 +249,8 @@ Do not collapse concepts into reference or how-to. Developers need both "what ex
 | Story 9-4 | Story 9-5 | Diagnostic registry, docs stubs, HelpLinkUri policy, deprecation messages, migration IDs, and API compatibility governance. |
 | Story 10-x | Story 9-5 | Later visual/specimen/accessibility docs screenshots and docs quality expansion. |
 
+All producer contracts are read-only for Story 9-5. When an upstream artifact is missing, stale, or internally inconsistent, implementation must either fail docs validation with a project-relative report or create a clearly marked placeholder only when this story explicitly allows a placeholder and names a follow-up owner.
+
 ### Scope Guardrails
 
 Do not implement these in Story 9-5:
@@ -198,6 +264,8 @@ Do not implement these in Story 9-5:
 - Recursive submodule initialization, nested submodule scans, or docs generation from external submodule internals.
 - Broad Roslyn, Fluent UI, .NET SDK, or package train upgrades.
 - A complete docs corpus for every future v1.x feature. Add story-specific deferrals instead.
+- Separate CI-only docs logic that diverges from the local validation entrypoint.
+- Publishing raw DocFX metadata, source project files, local settings, tool caches, `bin`, `obj`, `.git`, nested repository data, or generated temp files in deployment artifacts.
 
 ### Known Gaps / Follow-Ups
 
@@ -208,6 +276,8 @@ Do not implement these in Story 9-5:
 | Public release-hosting domain and canonical base URL finalization. | Release automation story / product decision |
 | Full localization of documentation site. | Deferred v1.x product decision |
 | Custom DocFX theme or search customization beyond default usability. | Deferred v1.x docs design decision |
+| External-link validation policy and warning-baseline policy for first DocFX adoption. | CI/docs product decision |
+| Public API reference breadth if maintainers choose a narrower supported API surface than the four current FrontComposer source packages. | Architecture/product decision before implementation narrows scope |
 
 ---
 
@@ -243,9 +313,42 @@ Do not implement these in Story 9-5:
 
 (to be filled in by dev agent)
 
+### Party-Mode Review
+
+Date/time: 2026-05-04T19:04:48+02:00
+
+Selected story key: `9-5-diataxis-documentation-site`
+
+Command/skill invocation used: `/bmad-party-mode 9-5-diataxis-documentation-site; review;`
+
+Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Test Architect)
+
+Findings summary:
+
+- Story 9-5 is valuable and implementable, but the initial draft mixed documentation infrastructure, IA, validation tooling, API extraction, migration governance, snippet compilation, and CI behavior without enough execution boundaries.
+- The primary pre-dev risks were cross-story contract drift, accidental redefinition of producer artifacts from Stories 8-5 and 9-1 through 9-4, unclear validation command ownership, broad API documentation scope, underspecified marker/snippet rules, recursive submodule/path traversal risk, and deployment artifact leakage.
+- The review found no blocker requiring a status change, provided the story records stricter v1 boundaries before development starts.
+
+Changes applied:
+
+- Added a Party-Mode Hardening Contract covering v1 product outcome, minimum Diataxis pages, read-only producer contracts, one local/CI validation entrypoint, ownership boundaries, marker/snippet conventions, API/artifact scope, and risk-based quality gates.
+- Tightened tasks for minimum IA completion, derived MCP/agent slices, read-only upstream inputs, shared local/CI validation, negative filesystem/submodule tests, and deployment artifact allowlist validation.
+- Added scope guardrails for CI/local command parity and deployment artifact hygiene.
+- Added known gaps for external-link/warning-baseline policy and optional narrowing of public API reference breadth.
+
+Findings deferred:
+
+- Final hosting target and canonical public base URL remain a release/product decision.
+- External-link validation policy and any temporary DocFX warning baseline remain a CI/docs product decision.
+- A narrower public API reference list than the four current FrontComposer source packages requires architecture/product approval before implementation narrows the scope.
+- Full localization, custom DocFX theme/search customization, visual docs examples, and mutation testing remain deferred to existing follow-up owners.
+
+Final recommendation: ready-for-dev
+
 ### Completion Notes List
 
 - 2026-05-04: Story created via `/bmad-create-story 9-5-diataxis-documentation-site` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-04: Party-mode review applied via `/bmad-party-mode 9-5-diataxis-documentation-site; review;`. Story remains ready-for-dev with clarified read-only producer contracts, validation entrypoint, minimum Diataxis surface, marker/snippet rules, API/artifact boundaries, submodule/path tests, and deployment hygiene gates.
 
 ### File List
 
