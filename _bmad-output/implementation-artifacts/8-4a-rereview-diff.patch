@@ -1,0 +1,2466 @@
+diff --git a/src/Hexalith.FrontComposer.Contracts/Mcp/McpProjectionRenderStrategy.cs b/src/Hexalith.FrontComposer.Contracts/Mcp/McpProjectionRenderStrategy.cs
+new file mode 100644
+index 0000000..afd8abb
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Mcp/McpProjectionRenderStrategy.cs
+@@ -0,0 +1,24 @@
++namespace Hexalith.FrontComposer.Contracts.Mcp;
++
++/// <summary>
++/// SDK-neutral render strategy for an agent-readable projection resource.
++/// </summary>
++public enum McpProjectionRenderStrategy {
++    /// <summary>Standard tabular projection rendering.</summary>
++    Default,
++
++    /// <summary>Pending-action tabular projection rendering.</summary>
++    ActionQueue,
++
++    /// <summary>Grouped status summary rendering.</summary>
++    StatusOverview,
++
++    /// <summary>Single-record detail rendering.</summary>
++    DetailRecord,
++
++    /// <summary>Chronological timeline rendering.</summary>
++    Timeline,
++
++    /// <summary>Reserved dashboard rendering strategy.</summary>
++    Dashboard,
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs b/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
+index a67f5f4..75f499e 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
+@@ -1,3 +1,5 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++
+ namespace Hexalith.FrontComposer.Contracts.Mcp;
+ 
+ /// <summary>
+@@ -11,6 +13,7 @@ public sealed record McpResourceDescriptor(
+     string Title,
+     string? Description,
+     IReadOnlyList<McpParameterDescriptor> Fields,
+-    string RenderStrategy = "Default",
++    McpProjectionRenderStrategy RenderStrategy = McpProjectionRenderStrategy.Default,
+     string? EntityPluralLabel = null,
+-    string? EmptyStateCtaCommandName = null);
++    string? EmptyStateCtaCommandName = null,
++    SchemaFingerprint? Fingerprint = null);
+diff --git a/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs b/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
+index b5bc0f0..d191ee2 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs
+@@ -1,6 +1,8 @@
+ using System.Text.Json;
+ 
+ using Hexalith.FrontComposer.Mcp.Invocation;
++using Hexalith.FrontComposer.Mcp.Rendering;
++using Hexalith.FrontComposer.Mcp.Skills;
+ using Hexalith.FrontComposer.Contracts.Lifecycle;
+ 
+ using Microsoft.Extensions.DependencyInjection;
+@@ -27,14 +29,23 @@ public static class FrontComposerMcpServiceCollectionExtensions {
+         services.AddHttpContextAccessor();
+         services.TryAddSingleton<FrontComposerMcpDescriptorRegistry>();
+         services.TryAddScoped<FrontComposerMcpToolAdmissionService>();
++        services.TryAddScoped<IFrontComposerMcpVisibleToolCatalogProvider>(sp => sp.GetRequiredService<FrontComposerMcpToolAdmissionService>());
+         // No default IFrontComposerMcpTenantToolGate registration: tenant isolation is fail-closed
+         // by contract, so the host MUST register a real gate (or AllowAllMcpTenantToolGate explicitly
+         // for samples). The probe step below confirms this so misconfiguration fails at startup.
+         services.TryAddScoped<IFrontComposerMcpAgentContextAccessor, HttpFrontComposerMcpAgentContextAccessor>();
+         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
+         services.TryAddScoped<FrontComposerMcpProjectionReader>();
++        services.TryAddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
+         services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
++        // P-3: resource visibility revalidation is mandatory. Hosts MUST register a real gate
++        // that re-checks tenant/policy visibility before query and before render. The probe
++        // below fails registration if no gate is present, so an operator cannot accidentally
++        // ship unrestricted projection reads. Sample/dev hosts that legitimately want unbounded
++        // visibility must register AllowAllResourceVisibilityGate explicitly.
++
+         services.TryAddSingleton<IUlidFactory, FrontComposerMcpUlidFactory>();
++        services.TryAddSingleton(_ => new FrontComposerSkillResourceProvider(SkillCorpusLoader.LoadEmbedded()));
+ 
+         // The MCP SDK's WithTools/WithResources takes a static enumerable, so the descriptor list
+         // is materialized once at AddFrontComposerMcp time. Adopters MUST call AddFrontComposerMcp
+@@ -49,9 +60,17 @@ public static class FrontComposerMcpServiceCollectionExtensions {
+                 "explicitly for sample/dev hosts.");
+         }
+ 
++        if (probe.GetService<IFrontComposerMcpResourceVisibilityGate>() is null) {
++            throw new InvalidOperationException(
++                "AddFrontComposerMcp requires an IFrontComposerMcpResourceVisibilityGate registration. " +
++                "Register a host-supplied gate before AddFrontComposerMcp, or use AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>() " +
++                "explicitly for sample/dev hosts.");
++        }
++
+         FrontComposerMcpDescriptorRegistry registry = probe.GetRequiredService<FrontComposerMcpDescriptorRegistry>();
+         IEnumerable<ModelContextProtocol.Server.McpServerResource> resources = registry.Resources
+-            .Select(r => new FrontComposerMcpResource(r))
++            .Select(r => (ModelContextProtocol.Server.McpServerResource)new FrontComposerMcpResource(r))
++            .Concat(probe.GetRequiredService<FrontComposerSkillResourceProvider>().CreateMcpResources())
+             .ToArray();
+ 
+         services.AddMcpServer()
+@@ -175,13 +194,15 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
+             errors.Add("Per-resource render limits must be positive.");
+         }
+ 
+-        if (options.MaxProjectionCellCharacters <= 0
++        // MaxProjectionCellCharacters has a floor of 4 because TrimCell appends "..." (3 chars)
++        // and would otherwise return only the ellipsis when the budget is too small.
++        if (options.MaxProjectionCellCharacters < 4
+             || options.MaxProjectionMarkdownCharacters <= 0
+             || options.MaxProjectionTimelineEntries <= 0
+             || options.MaxProjectionStatusGroups <= 0
+             || options.MaxProjectionSuggestions < 0
+             || string.IsNullOrWhiteSpace(options.ProjectionTruncationMarker)) {
+-            errors.Add("Projection Markdown render limits must be positive and the truncation marker must be non-empty.");
++            errors.Add("Projection Markdown render limits must be positive (cell characters >= 4) and the truncation marker must be non-empty.");
+         }
+ 
+         if (options.MaxVisibleToolListItems <= 0) {
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs
+index babe400..ca273b3 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs
+@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
+ 
+ namespace Hexalith.FrontComposer.Mcp;
+ 
+-public sealed class FrontComposerMcpDescriptorRegistry {
++public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescriptorEpochProvider {
+     private readonly IReadOnlyDictionary<string, McpCommandDescriptor> _commands;
+     private readonly IReadOnlyDictionary<string, McpResourceDescriptor> _resources;
+     private readonly IReadOnlyList<McpCommandDescriptor> _orderedCommands;
+@@ -29,6 +29,15 @@ public sealed class FrontComposerMcpDescriptorRegistry {
+         _normalizedNames = BuildNormalizedNameMap(_orderedCommands);
+     }
+ 
++    // DN-3: the in-memory manifest registry is immutable for the lifetime of the host (manifests
++    // are loaded once at AddFrontComposerMcp time and never mutated). Static (1, 1) epochs are
++    // therefore the correct baseline. Hosts adding hot-reload semantics must register a custom
++    // IFrontComposerMcpDescriptorEpochProvider that increments on every catalog/descriptor
++    // mutation; the snapshot/revalidation contract in FrontComposerMcpProjectionReader will
++    // detect drift via the provider and surface StaleDescriptor without rendering partial output.
++    public McpDescriptorEpochs GetEpochs()
++        => new(DescriptorEpoch: 1, CatalogEpoch: 1);
++
+     public IReadOnlyList<McpCommandDescriptor> Commands => _orderedCommands;
+ 
+     public IReadOnlyList<McpResourceDescriptor> Resources => _orderedResources;
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs
+index d0f6bdf..9480f2f 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs
+@@ -17,4 +17,13 @@ public enum FrontComposerMcpFailureCategory {
+     DuplicateDescriptor,
+     MissingManifest,
+     PolicyGateMissing,
++    ResponseTooLarge,
++    UnsupportedRender,
++    StaleDescriptor,
++    DegradedResult,
++    PolicyFiltered,
++    SchemaMismatch,
++    UnknownSchemaBaseline,
++    UnsupportedSchemaAlgorithm,
++    SchemaIntegrityMismatch,
+ }
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs
+index 5524923..7a3a828 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs
+@@ -17,4 +17,10 @@ public sealed record FrontComposerMcpResult(
+ 
+     public static FrontComposerMcpResult Failure(FrontComposerMcpFailureCategory category, JsonObject structuredContent)
+         => new(true, category, GenericFailureText, structuredContent);
++
++    public static FrontComposerMcpResult Failure(
++        FrontComposerMcpFailureCategory category,
++        string text,
++        JsonObject structuredContent)
++        => new(true, category, text, structuredContent);
+ }
+diff --git a/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpDescriptorEpochProvider.cs b/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpDescriptorEpochProvider.cs
+new file mode 100644
+index 0000000..d1d6a16
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpDescriptorEpochProvider.cs
+@@ -0,0 +1,7 @@
++namespace Hexalith.FrontComposer.Mcp;
++
++public readonly record struct McpDescriptorEpochs(long DescriptorEpoch, long CatalogEpoch);
++
++public interface IFrontComposerMcpDescriptorEpochProvider {
++    McpDescriptorEpochs GetEpochs();
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpResourceVisibilityGate.cs b/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpResourceVisibilityGate.cs
+new file mode 100644
+index 0000000..d5a92e5
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpResourceVisibilityGate.cs
+@@ -0,0 +1,28 @@
++using Hexalith.FrontComposer.Contracts.Mcp;
++
++namespace Hexalith.FrontComposer.Mcp;
++
++public interface IFrontComposerMcpResourceVisibilityGate {
++    ValueTask<bool> IsVisibleAsync(
++        McpResourceDescriptor descriptor,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken);
++}
++
++/// <summary>
++/// Sample/dev visibility gate that returns true for any tenant-scoped context. Hosts that need
++/// real per-tenant or per-policy visibility revalidation must implement
++/// <see cref="IFrontComposerMcpResourceVisibilityGate"/> directly. Registered explicitly by the
++/// host so a misconfiguration cannot accidentally ship unrestricted projection reads.
++/// </summary>
++public sealed class AllowAllResourceVisibilityGate : IFrontComposerMcpResourceVisibilityGate {
++    public ValueTask<bool> IsVisibleAsync(
++        McpResourceDescriptor descriptor,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken) {
++        ArgumentNullException.ThrowIfNull(descriptor);
++        ArgumentNullException.ThrowIfNull(context);
++
++        return ValueTask.FromResult(!string.IsNullOrWhiteSpace(context.TenantId));
++    }
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionDescriptorSnapshot.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionDescriptorSnapshot.cs
+new file mode 100644
+index 0000000..16087ac
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionDescriptorSnapshot.cs
+@@ -0,0 +1,54 @@
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Contracts.Schema;
++
++namespace Hexalith.FrontComposer.Mcp.Invocation;
++
++internal sealed record FrontComposerMcpProjectionDescriptorSnapshot(
++    string ProtocolUri,
++    string Name,
++    string ProjectionTypeName,
++    string BoundedContext,
++    string Title,
++    string? Description,
++    IReadOnlyList<McpParameterDescriptor> Fields,
++    McpProjectionRenderStrategy RenderStrategy,
++    string? EntityPluralLabel,
++    string? EmptyStateCtaCommandName,
++    SchemaFingerprint? Fingerprint) {
++    public static FrontComposerMcpProjectionDescriptorSnapshot FromDescriptor(McpResourceDescriptor descriptor)
++        => new(
++            descriptor.ProtocolUri,
++            descriptor.Name,
++            descriptor.ProjectionTypeName,
++            descriptor.BoundedContext,
++            descriptor.Title,
++            descriptor.Description,
++            [.. descriptor.Fields.Select(CopyParameter)],
++            descriptor.RenderStrategy,
++            descriptor.EntityPluralLabel,
++            descriptor.EmptyStateCtaCommandName,
++            descriptor.Fingerprint);
++
++    public McpResourceDescriptor ToDescriptor()
++        => new(
++            ProtocolUri,
++            Name,
++            ProjectionTypeName,
++            BoundedContext,
++            Title,
++            Description,
++            Fields,
++            RenderStrategy,
++            EntityPluralLabel,
++            EmptyStateCtaCommandName,
++            Fingerprint);
++
++    private static McpParameterDescriptor CopyParameter(McpParameterDescriptor parameter)
++        => parameter with {
++            EnumValues = parameter.EnumValues.ToArray(),
++            BadgeMappings = parameter.BadgeMappings is null
++                ? null
++                : new Dictionary<string, string>(parameter.BadgeMappings, StringComparer.Ordinal),
++        };
++}
++
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionFailureMapper.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionFailureMapper.cs
+new file mode 100644
+index 0000000..4b4957f
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionFailureMapper.cs
+@@ -0,0 +1,143 @@
++using System.Text.Json.Nodes;
++
++namespace Hexalith.FrontComposer.Mcp.Invocation;
++
++internal static class FrontComposerMcpProjectionFailureMapper {
++    // DN-2: hidden-equivalent categories share the public payload of UnknownResource so an
++    // adversary cannot branch on category/docsCode/message to learn whether a resource exists,
++    // is policy-blocked, or is auth/tenant-blocked. The internal `Category` enum is preserved
++    // for telemetry and host-side decisions; only the agent-visible structured content collapses.
++    private static readonly ProjectionFailureContract HiddenEquivalentPublic = new(
++        "unknown_resource",
++        "Projection resource is not available.",
++        "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE",
++        Retryable: false,
++        RefreshResources: true,
++        IsHiddenEquivalent: true);
++
++    public static FrontComposerMcpResult ToResult(FrontComposerMcpFailureCategory category) {
++        ProjectionFailureContract internalContract = Map(category);
++        ProjectionFailureContract publicContract = internalContract.IsHiddenEquivalent
++            ? HiddenEquivalentPublic
++            : internalContract;
++        JsonObject structured = new() {
++            ["category"] = publicContract.TaxonomyCategory,
++            ["message"] = publicContract.SafeText,
++            ["docsCode"] = publicContract.DocsCode,
++            ["retryable"] = publicContract.Retryable,
++            ["refreshResources"] = publicContract.RefreshResources,
++            ["isHiddenEquivalent"] = publicContract.IsHiddenEquivalent,
++        };
++        return FrontComposerMcpResult.Failure(category, publicContract.SafeText, structured);
++    }
++
++    private static ProjectionFailureContract Map(FrontComposerMcpFailureCategory category)
++        => category switch {
++            FrontComposerMcpFailureCategory.UnknownResource => new(
++                "unknown_resource",
++                "Projection resource is not available.",
++                "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE",
++                Retryable: false,
++                RefreshResources: true,
++                IsHiddenEquivalent: true),
++            FrontComposerMcpFailureCategory.MalformedRequest or FrontComposerMcpFailureCategory.ValidationFailed => new(
++                "malformed_resource",
++                "Projection resource request is invalid.",
++                "HFC-MCP-PROJECTION-MALFORMED-RESOURCE",
++                Retryable: false,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.AuthFailed => new(
++                "auth_failed",
++                "Projection resource is not available for the current agent context.",
++                "HFC-MCP-PROJECTION-AUTH-FAILED",
++                Retryable: false,
++                RefreshResources: true,
++                IsHiddenEquivalent: true),
++            FrontComposerMcpFailureCategory.TenantMissing => new(
++                "tenant_missing",
++                "Projection resource is not available for the current tenant context.",
++                "HFC-MCP-PROJECTION-TENANT-MISSING",
++                Retryable: false,
++                RefreshResources: true,
++                IsHiddenEquivalent: true),
++            FrontComposerMcpFailureCategory.PolicyFiltered => new(
++                "policy_filtered",
++                "Projection resource is not available for the current agent context.",
++                "HFC-MCP-PROJECTION-POLICY-FILTERED",
++                Retryable: false,
++                RefreshResources: true,
++                IsHiddenEquivalent: true),
++            FrontComposerMcpFailureCategory.StaleDescriptor => new(
++                "stale_descriptor",
++                "Projection descriptor is stale. Refresh available resources and retry.",
++                "HFC-MCP-PROJECTION-STALE-DESCRIPTOR",
++                Retryable: true,
++                RefreshResources: true,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.ResponseTooLarge => new(
++                "response_too_large",
++                "Projection output exceeded FrontComposer agent rendering limits.",
++                "HFC-MCP-PROJECTION-RESPONSE-TOO-LARGE",
++                Retryable: false,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.UnsupportedRender or FrontComposerMcpFailureCategory.UnsupportedSchema => new(
++                "unsupported_render",
++                "Projection rendering strategy is not supported for the agent surface.",
++                "HFC-MCP-PROJECTION-UNSUPPORTED-RENDER",
++                Retryable: false,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.QueryRejected => new(
++                "query_failed",
++                "Projection data is temporarily unavailable.",
++                "HFC-MCP-PROJECTION-QUERY-FAILED",
++                Retryable: true,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.Timeout => new(
++                "timeout",
++                "Projection read timed out before a safe response was produced.",
++                "HFC-MCP-PROJECTION-TIMEOUT",
++                Retryable: true,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.Canceled => new(
++                "canceled",
++                "Projection read was canceled before a safe response was produced.",
++                "HFC-MCP-PROJECTION-CANCELED",
++                Retryable: true,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.DegradedResult => new(
++                "degraded_result",
++                "Projection data is available with degraded freshness.",
++                "HFC-MCP-PROJECTION-DEGRADED-RESULT",
++                Retryable: true,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            FrontComposerMcpFailureCategory.DownstreamFailed or FrontComposerMcpFailureCategory.PolicyGateMissing => new(
++                "downstream_failed",
++                "Projection data is temporarily unavailable.",
++                "HFC-MCP-PROJECTION-DOWNSTREAM-FAILED",
++                Retryable: true,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++            _ => new(
++                "downstream_failed",
++                "Projection data is temporarily unavailable.",
++                "HFC-MCP-PROJECTION-DOWNSTREAM-FAILED",
++                Retryable: true,
++                RefreshResources: false,
++                IsHiddenEquivalent: false),
++        };
++
++    private sealed record ProjectionFailureContract(
++        string TaxonomyCategory,
++        string SafeText,
++        string DocsCode,
++        bool Retryable,
++        bool RefreshResources,
++        bool IsHiddenEquivalent);
++}
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReadSnapshot.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReadSnapshot.cs
+new file mode 100644
+index 0000000..2fdd924
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReadSnapshot.cs
+@@ -0,0 +1,15 @@
++using Hexalith.FrontComposer.Contracts.Mcp;
++
++namespace Hexalith.FrontComposer.Mcp.Invocation;
++
++internal sealed record FrontComposerMcpProjectionReadSnapshot(
++    string ProjectionKey,
++    string ProtocolUriCategory,
++    McpProjectionRenderStrategy RenderStrategy,
++    string BoundedContext,
++    long DescriptorEpoch,
++    long CatalogEpoch,
++    string QueryShapeCategory,
++    string RequestId,
++    CancellationToken CancellationToken,
++    FrontComposerMcpProjectionDescriptorSnapshot Descriptor);
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs
+index 95d90df..0d0825c 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs
+@@ -16,23 +16,49 @@ public sealed class FrontComposerMcpProjectionReader(
+     FrontComposerMcpDescriptorRegistry registry,
+     IFrontComposerMcpAgentContextAccessor agentContextAccessor,
+     IServiceProvider services,
+-    IOptions<FrontComposerMcpOptions> options) {
+-    public async Task<FrontComposerMcpResult> ReadAsync(string uri, CancellationToken cancellationToken = default) {
+-        if (string.IsNullOrWhiteSpace(uri)) {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.MalformedRequest);
+-        }
++    IOptions<FrontComposerMcpOptions> options,
++    IFrontComposerMcpProjectionRenderer? renderer = null) {
++    private static readonly IFrontComposerMcpProjectionRenderer DefaultRenderer = new DefaultFrontComposerMcpProjectionRenderer();
+ 
+-        if (!registry.TryGetResource(uri, out McpResourceDescriptor? descriptor)) {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.UnknownResource);
++    public async Task<FrontComposerMcpResult> ReadAsync(string uri, CancellationToken cancellationToken = default) {
++        if (IsMalformedResourceUri(uri)) {
++            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.MalformedRequest);
+         }
+ 
+         try {
++            // P-1: sample the descriptor epoch BEFORE the descriptor lookup and verify it has not
++            // advanced after the lookup; otherwise the snapshot would stamp a fresh epoch onto a
++            // stale descriptor, defeating the revalidation contract. P-4: keep registry access
++            // inside the try so a non-trivial registry implementation cannot leak raw exceptions.
++            McpDescriptorEpochs preLookupEpochs = CurrentEpochs();
++            if (!registry.TryGetResource(uri, out McpResourceDescriptor? descriptor)) {
++                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
++            }
++
++            McpDescriptorEpochs postLookupEpochs = CurrentEpochs();
++            if (preLookupEpochs.DescriptorEpoch != postLookupEpochs.DescriptorEpoch
++                || preLookupEpochs.CatalogEpoch != postLookupEpochs.CatalogEpoch) {
++                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.StaleDescriptor);
++            }
++
+             FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
+-            Type projectionType = ResolveType(descriptor.ProjectionTypeName);
++            ValidateContext(context);
++
++            if (!await IsResourceVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false)) {
++                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
++            }
++
++            FrontComposerMcpProjectionReadSnapshot snapshot = CreateSnapshot(descriptor, postLookupEpochs, cancellationToken);
++            FrontComposerMcpFailureCategory? preQueryFailure = await ValidateSnapshotAsync(snapshot, context, cancellationToken).ConfigureAwait(false);
++            if (preQueryFailure is not null) {
++                return FrontComposerMcpProjectionFailureMapper.ToResult(preQueryFailure.Value);
++            }
++
++            Type projectionType = ResolveType(snapshot.Descriptor.ProjectionTypeName);
+             IQueryService queryService = services.GetRequiredService<IQueryService>();
+             int take = Math.Max(1, Math.Min(options.Value.DefaultResourceTake, options.Value.MaxResourceTake));
+             QueryRequest request = new(
+-                ProjectionType: descriptor.ProjectionTypeName,
++                ProjectionType: snapshot.Descriptor.ProjectionTypeName,
+                 TenantId: context.TenantId,
+                 Take: take);
+             MethodInfo? method = typeof(IQueryService).GetMethod(nameof(IQueryService.QueryAsync));
+@@ -49,31 +75,120 @@ public sealed class FrontComposerMcpProjectionReader(
+             }
+ 
+             object queryResult = await AwaitDynamic(resultTask!).ConfigureAwait(false);
++            FrontComposerMcpFailureCategory? preRenderFailure = await ValidateSnapshotAsync(snapshot, context, cancellationToken).ConfigureAwait(false);
++            if (preRenderFailure is not null) {
++                return FrontComposerMcpProjectionFailureMapper.ToResult(preRenderFailure.Value);
++            }
++
+             McpProjectionRenderRequest renderRequest = await BuildRenderRequestAsync(
+-                descriptor,
++                snapshot,
+                 queryResult,
+                 cancellationToken).ConfigureAwait(false);
+-            McpProjectionRenderResult render = McpMarkdownProjectionRenderer.Render(
++            McpProjectionRenderResult render = (renderer ?? DefaultRenderer).Render(
+                 renderRequest,
+                 options.Value,
+                 cancellationToken);
+ 
+             return render.IsSuccess
+                 ? FrontComposerMcpResult.Success(render.Document!.Text, new JsonObject { ["contentType"] = render.ContentType })
+-                : FrontComposerMcpResult.Failure(render.Category);
++                : FrontComposerMcpProjectionFailureMapper.ToResult(render.Category);
+         }
+-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Canceled);
++        catch (OperationCanceledException) {
++            // DN-5: collapse to a single Canceled handler. Linked-CTS timeouts surface here too;
++            // explicit timeouts must throw TimeoutException to differentiate.
++            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.Canceled);
+         }
+         catch (TimeoutException) {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Timeout);
++            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.Timeout);
+         }
+         catch (FrontComposerMcpException ex) {
+-            return FrontComposerMcpResult.Failure(ex.Category);
++            return FrontComposerMcpProjectionFailureMapper.ToResult(ex.Category);
+         }
+         catch {
+-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed);
++            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.DownstreamFailed);
++        }
++    }
++
++    private static bool IsMalformedResourceUri(string uri) {
++        if (string.IsNullOrWhiteSpace(uri)) {
++            return true;
++        }
++
++        if (!Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsed)) {
++            return true;
+         }
++
++        return !string.Equals(parsed.Scheme, "frontcomposer", StringComparison.Ordinal)
++            || string.IsNullOrWhiteSpace(parsed.Host);
++    }
++
++    private static void ValidateContext(FrontComposerMcpAgentContext context) {
++        if (string.IsNullOrWhiteSpace(context.TenantId)) {
++            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.TenantMissing);
++        }
++
++        // P-2: null-check Principal before dereferencing Identity. A null Principal indicates
++        // a misconfigured accessor; classify as AuthFailed rather than letting NullReferenceException
++        // collapse to DownstreamFailed and lose the auth signal.
++        if (string.IsNullOrWhiteSpace(context.UserId)
++            || context.Principal is null
++            || context.Principal.Identity is null
++            || !context.Principal.Identity.IsAuthenticated) {
++            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
++        }
++    }
++
++    private static FrontComposerMcpProjectionReadSnapshot CreateSnapshot(
++        McpResourceDescriptor descriptor,
++        McpDescriptorEpochs epochs,
++        CancellationToken cancellationToken) {
++        // P-20: keep the snapshot to the safe immutable subset needed for query/render
++        // handoff. Mutable registry handles and service instances never cross the admission
++        // boundary; field metadata is copied with collection values detached below.
++        FrontComposerMcpProjectionDescriptorSnapshot descriptorSnapshot =
++            FrontComposerMcpProjectionDescriptorSnapshot.FromDescriptor(descriptor);
++        return new FrontComposerMcpProjectionReadSnapshot(
++            ProjectionKey: descriptorSnapshot.Name,
++            ProtocolUriCategory: "frontcomposer_projection",
++            RenderStrategy: descriptorSnapshot.RenderStrategy,
++            BoundedContext: descriptorSnapshot.BoundedContext,
++            DescriptorEpoch: epochs.DescriptorEpoch,
++            CatalogEpoch: epochs.CatalogEpoch,
++            QueryShapeCategory: "take",
++            RequestId: Guid.NewGuid().ToString("n"),
++            CancellationToken: cancellationToken,
++            Descriptor: descriptorSnapshot);
++    }
++
++    private McpDescriptorEpochs CurrentEpochs()
++        => services.GetService<IFrontComposerMcpDescriptorEpochProvider>()?.GetEpochs()
++            ?? registry.GetEpochs();
++
++    private async ValueTask<FrontComposerMcpFailureCategory?> ValidateSnapshotAsync(
++        FrontComposerMcpProjectionReadSnapshot snapshot,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken) {
++        McpDescriptorEpochs current = CurrentEpochs();
++        if (current.DescriptorEpoch != snapshot.DescriptorEpoch
++            || current.CatalogEpoch != snapshot.CatalogEpoch) {
++            return FrontComposerMcpFailureCategory.StaleDescriptor;
++        }
++
++        return await IsResourceVisibleAsync(snapshot.Descriptor.ToDescriptor(), context, cancellationToken).ConfigureAwait(false)
++            ? null
++            : FrontComposerMcpFailureCategory.UnknownResource;
++    }
++
++    private async ValueTask<bool> IsResourceVisibleAsync(
++        McpResourceDescriptor descriptor,
++        FrontComposerMcpAgentContext context,
++        CancellationToken cancellationToken) {
++        // P-3: GetRequiredService — visibility revalidation is a security contract, not an
++        // optional concern. Hosts must register a real gate (or AllowAllVisibilityGate explicitly
++        // for sample/dev). The startup probe in AddFrontComposerMcp enforces this so misconfigured
++        // hosts fail at registration time rather than silently shipping unrestricted reads.
++        IFrontComposerMcpResourceVisibilityGate gate = services.GetRequiredService<IFrontComposerMcpResourceVisibilityGate>();
++        return await gate.IsVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false);
+     }
+ 
+     private static async Task<object> AwaitDynamic(object taskObject) {
+@@ -84,18 +199,24 @@ public sealed class FrontComposerMcpProjectionReader(
+     }
+ 
+     private async Task<McpProjectionRenderRequest> BuildRenderRequestAsync(
+-        McpResourceDescriptor descriptor,
++        FrontComposerMcpProjectionReadSnapshot snapshot,
+         object queryResult,
+         CancellationToken cancellationToken) {
++        McpResourceDescriptor descriptor = snapshot.Descriptor.ToDescriptor();
+         Type resultType = queryResult.GetType();
+         object? itemsValue = resultType.GetProperty("Items")?.GetValue(queryResult);
+         long totalCount = ReadTotalCount(resultType, queryResult);
+ 
+         // Use non-generic IEnumerable so value-type projections (e.g. struct records) are not
+         // silently rendered as zero rows by an IEnumerable<object> covariance miss.
++        // P-10: count raw entries (including nulls) so IsTruncated reflects the underlying query
++        // page rather than the post-null-filter count, otherwise a complete page with one null
++        // entry would mark IsTruncated=true.
+         List<object> items = [];
++        long rawCount = 0;
+         if (itemsValue is IEnumerable raw) {
+             foreach (object? item in raw) {
++                rawCount++;
+                 if (item is not null) {
+                     items.Add(item);
+                 }
+@@ -110,6 +231,8 @@ public sealed class FrontComposerMcpProjectionReader(
+             descriptor,
+             items,
+             totalCount,
++            IsTruncated: totalCount > rawCount,
++            RequestId: snapshot.RequestId,
+             SafeCommandSuggestions: suggestions);
+     }
+ 
+@@ -120,7 +243,14 @@ public sealed class FrontComposerMcpProjectionReader(
+             return null;
+         }
+ 
+-        var admission = services.GetService<FrontComposerMcpToolAdmissionService>();
++        int max = options.Value.MaxProjectionSuggestions;
++        if (max <= 0) {
++            return null;
++        }
++
++        IFrontComposerMcpVisibleToolCatalogProvider? admission =
++            services.GetService<IFrontComposerMcpVisibleToolCatalogProvider>()
++            ?? services.GetService<FrontComposerMcpToolAdmissionService>();
+         if (admission is null) {
+             return null;
+         }
+@@ -128,19 +258,42 @@ public sealed class FrontComposerMcpProjectionReader(
+         McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
+         string cta = descriptor.EmptyStateCtaCommandName!;
+         string[] suggestions = [.. catalog.Tools
+-            .Where(t => MatchesEmptyStateCta(t.Descriptor, cta))
++            .Where(t => MatchesEmptyStateCta(t.Descriptor, descriptor.BoundedContext, cta))
+             .OrderBy(t => t.Name, StringComparer.Ordinal)
+             .Select(t => t.Title)
+             .Where(t => !string.IsNullOrWhiteSpace(t))
+-            .Take(Math.Max(1, options.Value.MaxProjectionSuggestions))];
++            .Take(max)];
+         return suggestions.Length == 0 ? null : suggestions;
+     }
+ 
+-    private static bool MatchesEmptyStateCta(McpCommandDescriptor descriptor, string cta)
+-        => string.Equals(descriptor.CommandTypeName, cta, StringComparison.Ordinal)
+-            || descriptor.CommandTypeName.EndsWith("." + cta, StringComparison.Ordinal)
+-            || string.Equals(descriptor.ProtocolName, cta, StringComparison.Ordinal)
+-            || descriptor.ProtocolName.Contains("." + cta + ".", StringComparison.Ordinal);
++    private static bool MatchesEmptyStateCta(McpCommandDescriptor descriptor, string boundedContext, string cta) {
++        // Anchor on full namespace-segment equality so "Create" cannot match
++        // "Other.Foo.CreateInvoiceCommand". Cross-bounded-context bleed is rejected unless
++        // the descriptor advertises the same bounded context as the projection.
++        // P-5: fail-closed when the projection has no bounded context — without an anchor we
++        // cannot verify cross-context isolation, so suggestions are suppressed entirely.
++        if (string.IsNullOrWhiteSpace(boundedContext)
++            || !string.Equals(descriptor.BoundedContext, boundedContext, StringComparison.Ordinal)) {
++            return false;
++        }
++
++        return SegmentMatches(descriptor.CommandTypeName, cta)
++            || SegmentMatches(descriptor.ProtocolName, cta);
++    }
++
++    private static bool SegmentMatches(string fullName, string cta) {
++        if (string.Equals(fullName, cta, StringComparison.Ordinal)) {
++            return true;
++        }
++
++        foreach (string segment in fullName.Split('.', StringSplitOptions.RemoveEmptyEntries)) {
++            if (string.Equals(segment, cta, StringComparison.Ordinal)) {
++                return true;
++            }
++        }
++
++        return false;
++    }
+ 
+     private static long ReadTotalCount(Type resultType, object queryResult) {
+         object? raw = resultType.GetProperty("TotalCount")?.GetValue(queryResult);
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs
+index e443287..58f6bcd 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs
+@@ -16,7 +16,7 @@ public sealed class FrontComposerMcpToolAdmissionService(
+     IFrontComposerMcpTenantToolGate tenantGate,
+     IServiceProvider services,
+     IOptions<FrontComposerMcpOptions> options,
+-    ILogger<FrontComposerMcpToolAdmissionService> logger) {
++    ILogger<FrontComposerMcpToolAdmissionService> logger) : IFrontComposerMcpVisibleToolCatalogProvider {
+     private const int SuggestionThreshold = 75;
+     private const int ContextMarkerMinLength = 4;
+     private const int PrefixBonusFloor = 90;
+diff --git a/src/Hexalith.FrontComposer.Mcp/Invocation/IFrontComposerMcpVisibleToolCatalogProvider.cs b/src/Hexalith.FrontComposer.Mcp/Invocation/IFrontComposerMcpVisibleToolCatalogProvider.cs
+new file mode 100644
+index 0000000..22ea8c0
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Invocation/IFrontComposerMcpVisibleToolCatalogProvider.cs
+@@ -0,0 +1,6 @@
++namespace Hexalith.FrontComposer.Mcp.Invocation;
++
++public interface IFrontComposerMcpVisibleToolCatalogProvider {
++    ValueTask<McpVisibleToolCatalog> BuildVisibleCatalogAsync(CancellationToken cancellationToken = default);
++}
++
+diff --git a/src/Hexalith.FrontComposer.Mcp/Rendering/DefaultFrontComposerMcpProjectionRenderer.cs b/src/Hexalith.FrontComposer.Mcp/Rendering/DefaultFrontComposerMcpProjectionRenderer.cs
+new file mode 100644
+index 0000000..7cbe1a8
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Rendering/DefaultFrontComposerMcpProjectionRenderer.cs
+@@ -0,0 +1,10 @@
++namespace Hexalith.FrontComposer.Mcp.Rendering;
++
++public sealed class DefaultFrontComposerMcpProjectionRenderer : IFrontComposerMcpProjectionRenderer {
++    public McpProjectionRenderResult Render(
++        McpProjectionRenderRequest request,
++        FrontComposerMcpOptions options,
++        CancellationToken cancellationToken = default)
++        => McpMarkdownProjectionRenderer.Render(request, options, cancellationToken);
++}
++
+diff --git a/src/Hexalith.FrontComposer.Mcp/Rendering/IFrontComposerMcpProjectionRenderer.cs b/src/Hexalith.FrontComposer.Mcp/Rendering/IFrontComposerMcpProjectionRenderer.cs
+new file mode 100644
+index 0000000..03afa23
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Rendering/IFrontComposerMcpProjectionRenderer.cs
+@@ -0,0 +1,9 @@
++namespace Hexalith.FrontComposer.Mcp.Rendering;
++
++public interface IFrontComposerMcpProjectionRenderer {
++    McpProjectionRenderResult Render(
++        McpProjectionRenderRequest request,
++        FrontComposerMcpOptions options,
++        CancellationToken cancellationToken = default);
++}
++
+diff --git a/src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs b/src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs
+index 2497059..de87f92 100644
+--- a/src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs
++++ b/src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs
+@@ -20,26 +20,35 @@ public static class McpMarkdownProjectionRenderer {
+             cancellationToken.ThrowIfCancellationRequested();
+ 
+             McpResourceDescriptor descriptor = request.Descriptor;
+-            string role = string.IsNullOrWhiteSpace(descriptor.RenderStrategy) ? "Default" : descriptor.RenderStrategy;
++            McpProjectionRenderStrategy role = descriptor.RenderStrategy;
++            string roleText = role.ToString();
+             IReadOnlyList<McpParameterDescriptor> fields = descriptor.Fields
+-                .Where(f => !f.IsUnsupported)
+                 .Take(Math.Max(1, options.MaxFieldsPerResource))
+                 .ToArray();
+-
+-            string text = role switch {
+-                "StatusOverview" => RenderStatusOverviewDocument(descriptor, fields, request.Items, request.TotalCount, request.SafeCommandSuggestions, options, cancellationToken),
+-                "Timeline" => RenderTimelineDocument(descriptor, fields, request.Items, request.TotalCount, request.SafeCommandSuggestions, options, cancellationToken),
+-                _ => RenderTableDocument(descriptor, fields, request.Items, request.TotalCount, role, request.SafeCommandSuggestions, options, cancellationToken),
++            bool fieldsTruncated = descriptor.Fields.Count > fields.Count;
++
++            // Dashboard and unknown strategies must not silently fall through to a Default
++            // table render — per the canonical contract they return the sanitized
++            // unsupported-render category. DetailRecord falls back to a table only because
++            // its descriptor exposes tabular fields safely.
++            RenderedMarkdown rendered = role switch {
++                McpProjectionRenderStrategy.Default or McpProjectionRenderStrategy.ActionQueue or McpProjectionRenderStrategy.DetailRecord
++                    => RenderTableDocument(descriptor, fields, request.Items, request.TotalCount, roleText, request.IsTruncated || fieldsTruncated, request.SafeCommandSuggestions, options, cancellationToken),
++                McpProjectionRenderStrategy.StatusOverview
++                    => RenderStatusOverviewDocument(descriptor, fields, request.Items, request.TotalCount, request.IsTruncated || fieldsTruncated, request.SafeCommandSuggestions, options, cancellationToken),
++                McpProjectionRenderStrategy.Timeline
++                    => RenderTimelineDocument(descriptor, fields, request.Items, request.TotalCount, request.IsTruncated || fieldsTruncated, request.SafeCommandSuggestions, options, cancellationToken),
++                _ => throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedRender),
+             };
+             var document = new McpMarkdownProjectionDocument(
+                 descriptor.Name,
+-                role,
++                roleText,
+                 descriptor.BoundedContext,
+                 request.RowCountCategory,
+-                request.IsTruncated || descriptor.Fields.Count(f => !f.IsUnsupported) > fields.Count,
++                rendered.IsTruncated,
+                 request.RequestId,
+                 request.CorrelationId,
+-                text);
++                rendered.Text);
+             return McpProjectionRenderResult.Success(document);
+         }
+         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
+@@ -53,22 +62,26 @@ public static class McpMarkdownProjectionRenderer {
+         }
+     }
+ 
+-    private static string RenderTableDocument(
++    private static RenderedMarkdown RenderTableDocument(
+         McpResourceDescriptor descriptor,
+         IReadOnlyList<McpParameterDescriptor> fields,
+         IReadOnlyList<object> items,
+         long totalCount,
+         string role,
++        bool requestIsTruncated,
+         IReadOnlyList<string>? suggestions,
+         FrontComposerMcpOptions options,
+         CancellationToken cancellationToken) {
+         var sb = new StringBuilder(capacity: Math.Min(4096, Math.Max(256, options.MaxProjectionMarkdownCharacters)));
+-        sb.Append("## ").AppendLine(EscapeMarkdownText(descriptor.Title));
++        // P-17: redact title — descriptor titles flow into agent-visible Markdown and may carry
++        // operator-supplied text that has not been scrubbed elsewhere.
++        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
+         sb.AppendLine();
+ 
+         if (items.Count == 0) {
+             AppendEmptyState(sb, descriptor, suggestions, options);
+-            return BoundDocument(sb, options);
++            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
++            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
+         }
+ 
+         sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
+@@ -76,7 +89,8 @@ public static class McpMarkdownProjectionRenderer {
+         sb.AppendLine();
+ 
+         if (fields.Count == 0) {
+-            return BoundDocument(sb, options);
++            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
++            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
+         }
+ 
+         sb.Append("| ").Append(string.Join(" | ", fields.Select(f => EscapeMarkdownText(f.Title)))).AppendLine(" |");
+@@ -96,38 +110,51 @@ public static class McpMarkdownProjectionRenderer {
+             rendered++;
+         }
+ 
+-        if (descriptor.Fields.Count(f => !f.IsUnsupported) > fields.Count || items.Count > rendered) {
++        bool isTruncated = requestIsTruncated || items.Count > rendered;
++        if (isTruncated) {
+             sb.AppendLine();
+             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+         }
+ 
+-        return BoundDocument(sb, options);
++        // P-13: tell BoundDocument the marker was already emitted to avoid double-emit when the
++        // document also exceeds the character cap.
++        return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
+     }
+ 
+-    private static string RenderStatusOverviewDocument(
++    private static RenderedMarkdown RenderStatusOverviewDocument(
+         McpResourceDescriptor descriptor,
+         IReadOnlyList<McpParameterDescriptor> fields,
+         IReadOnlyList<object> items,
+         long totalCount,
++        bool requestIsTruncated,
+         IReadOnlyList<string>? suggestions,
+         FrontComposerMcpOptions options,
+         CancellationToken cancellationToken) {
+         var sb = new StringBuilder(capacity: 1024);
+-        sb.Append("## ").AppendLine(EscapeMarkdownText(descriptor.Title));
++        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
+         sb.AppendLine();
+         sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
+ 
+         if (items.Count == 0) {
+             AppendEmptyState(sb, descriptor, suggestions, options);
+-            return BoundDocument(sb, options);
++            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
++            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
+         }
+ 
+-        McpParameterDescriptor? statusField = fields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
+-            ?? fields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
++        // Search across all non-unsupported fields, not just the column-truncated subset, so a
++        // status field at index >= MaxFieldsPerResource still drives the grouping.
++        IReadOnlyList<McpParameterDescriptor> renderableFields = descriptor.Fields
++            .Where(f => !f.IsUnsupported)
++            .ToArray();
++        McpParameterDescriptor? statusField = renderableFields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
++            ?? renderableFields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
+         if (statusField is null) {
+-            return BoundDocument(sb, options);
++            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
++            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
+         }
+ 
++        // Aggregate by slot first, with a stable label per slot derived from the first member
++        // observed. Two enum members mapped to the same slot collapse into a single group.
+         Dictionary<string, StatusGroup> groups = new(StringComparer.Ordinal);
+         foreach (object item in items) {
+             cancellationToken.ThrowIfCancellationRequested();
+@@ -142,15 +169,24 @@ public static class McpMarkdownProjectionRenderer {
+                 && IsSemanticBadgeSlot(mapped)
+                     ? mapped
+                     : "Neutral";
+-            if (!groups.TryGetValue(member, out StatusGroup? group)) {
++            string key = slot + "" + member;
++            if (!groups.TryGetValue(key, out StatusGroup? group)) {
+                 group = new StatusGroup(slot, Humanize(member));
+-                groups.Add(member, group);
++                groups.Add(key, group);
+             }
+ 
+             group.Count++;
+         }
+ 
+-        foreach (StatusGroup group in groups.Values.Take(Math.Max(1, options.MaxProjectionStatusGroups))) {
++        // Severity order: Total has already been rendered. Then Danger, Warning, Success,
++        // Info, Accent, Neutral, then unknown labels sorted ordinally by sanitized label.
++        StatusGroup[] ordered = [.. groups.Values
++            .OrderBy(g => SlotSeverityIndex(g.Slot))
++            .ThenBy(g => g.Slot, StringComparer.Ordinal)
++            .ThenBy(g => g.Label, StringComparer.Ordinal)];
++
++        int cap = Math.Max(1, options.MaxProjectionStatusGroups);
++        foreach (StatusGroup group in ordered.Take(cap)) {
+             sb.Append("- ")
+                 .Append(EscapeMarkdownText(group.Slot))
+                 .Append(": ")
+@@ -159,18 +195,31 @@ public static class McpMarkdownProjectionRenderer {
+                 .AppendLine(EscapeMarkdownText(group.Label));
+         }
+ 
+-        if (groups.Count > Math.Max(1, options.MaxProjectionStatusGroups)) {
++        bool isTruncated = requestIsTruncated || ordered.Length > cap;
++        if (isTruncated) {
+             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+         }
+ 
+-        return BoundDocument(sb, options);
++        return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
+     }
+ 
+-    private static string RenderTimelineDocument(
++    private static int SlotSeverityIndex(string slot)
++        => slot switch {
++            "Danger" => 0,
++            "Warning" => 1,
++            "Success" => 2,
++            "Info" => 3,
++            "Accent" => 4,
++            "Neutral" => 5,
++            _ => 6,
++        };
++
++    private static RenderedMarkdown RenderTimelineDocument(
+         McpResourceDescriptor descriptor,
+         IReadOnlyList<McpParameterDescriptor> fields,
+         IReadOnlyList<object> items,
+         long totalCount,
++        bool requestIsTruncated,
+         IReadOnlyList<string>? suggestions,
+         FrontComposerMcpOptions options,
+         CancellationToken cancellationToken) {
+@@ -180,28 +229,38 @@ public static class McpMarkdownProjectionRenderer {
+ 
+         if (items.Count == 0) {
+             AppendEmptyState(sb, descriptor, suggestions, options);
+-            return BoundDocument(sb, options);
++            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
++            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
+         }
+ 
+-        McpParameterDescriptor? timestampField = fields.FirstOrDefault(IsDateTimeField);
+-        McpParameterDescriptor? statusField = fields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
+-            ?? fields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
+-        McpParameterDescriptor? titleField = fields.FirstOrDefault(f => f != timestampField && f != statusField);
++        // Search across all non-unsupported fields so a timestamp/status at index >=
++        // MaxFieldsPerResource still drives timeline rendering.
++        IReadOnlyList<McpParameterDescriptor> renderableFields = descriptor.Fields
++            .Where(f => !f.IsUnsupported)
++            .ToArray();
++        McpParameterDescriptor? timestampField = renderableFields.FirstOrDefault(IsDateTimeField);
++        McpParameterDescriptor? statusField = renderableFields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
++            ?? renderableFields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
++        McpParameterDescriptor? titleField = renderableFields.FirstOrDefault(f => f != timestampField && f != statusField);
+         int maxEntries = Math.Max(1, Math.Min(options.MaxRowsPerResource, options.MaxProjectionTimelineEntries));
+ 
+-        var entries = items.Select((item, index) => new TimelineEntry(
++        TimelineEntry[] entries = [.. items.Select((item, index) => new TimelineEntry(
+                 item,
+                 index,
+-                timestampField is null ? null : ReadDateTimeOffset(ReadPropertyValue(item, timestampField.Name))))
++                timestampField is null ? null : ReadDateTimeOffset(ReadPropertyValue(item, timestampField.Name)),
++                ReadStableItemKey(item)))
+             .OrderBy(e => e.Timestamp is null ? 1 : 0)
+             .ThenByDescending(e => e.Timestamp)
++            .ThenBy(e => e.ItemKey, StringComparer.Ordinal)
+             .ThenBy(e => e.Ordinal)
+-            .Take(maxEntries)
+-            .ToArray();
++            .Take(maxEntries)];
+ 
+         foreach (TimelineEntry entry in entries) {
+             cancellationToken.ThrowIfCancellationRequested();
+-            string timestamp = entry.Timestamp?.ToString("o", CultureInfo.InvariantCulture) ?? "No timestamp";
++            // DN-1: timeline timestamp uses ISO 8601 round-trip ('o') matching the cell format;
++            // do not change agent-visible grammar without a binding decision.
++            string timestamp = entry.Timestamp?.ToString("o", CultureInfo.InvariantCulture)
++                ?? "No timestamp";
+             string status = statusField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, statusField.Name), statusField, options);
+             string title = titleField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, titleField.Name), titleField, options);
+ 
+@@ -213,12 +272,22 @@ public static class McpMarkdownProjectionRenderer {
+             sb.AppendLine(title);
+         }
+ 
+-        if (items.Count > entries.Length) {
++        bool isTruncated = requestIsTruncated || items.Count > entries.Length;
++        if (isTruncated) {
+             sb.AppendLine();
+             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+         }
+ 
+-        return BoundDocument(sb, options);
++        return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
++    }
++
++    private static void AppendTruncationMarkerIfNeeded(StringBuilder sb, FrontComposerMcpOptions options, bool isTruncated) {
++        if (!isTruncated) {
++            return;
++        }
++
++        sb.AppendLine();
++        sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
+     }
+ 
+     private static object? ReadPropertyValue(object item, string name) {
+@@ -242,31 +311,93 @@ public static class McpMarkdownProjectionRenderer {
+             return;
+         }
+ 
++        // Drop link-shaped suggestions before emit per the Inert Untrusted Text Contract:
++        // "Empty-state suggestions use visible descriptor labels only, max 5, no links".
+         sb.AppendLine();
+-        sb.AppendLine("Suggestions:");
+-        foreach (string suggestion in safeSuggestions.Take(max)) {
++        int emitted = 0;
++        foreach (string suggestion in safeSuggestions) {
++            if (emitted >= max) {
++                break;
++            }
++
++            if (LooksLikeLinkOrCommand(suggestion)) {
++                continue;
++            }
++
+             sb.Append("- ").AppendLine(EscapeMarkdownText(RedactSensitiveText(suggestion)));
++            emitted++;
+         }
+     }
+ 
++    private static bool LooksLikeLinkOrCommand(string value) {
++        if (string.IsNullOrWhiteSpace(value)) {
++            return true;
++        }
++
++        // Reject Markdown link/image/reference syntax, autolinks, schemes, and slash-style
++        // command payloads (anywhere in the suggestion text). Visible descriptor labels
++        // never contain these constructs.
++        ReadOnlySpan<char> trimmed = value.AsSpan().Trim();
++        if (trimmed.IndexOfAny(LinkOrCommandChars) >= 0) {
++            return true;
++        }
++
++        if (trimmed.IndexOf("://", StringComparison.Ordinal) >= 0) {
++            return true;
++        }
++
++        if (trimmed[0] == '/') {
++            return true;
++        }
++
++        // Whitespace followed by '/' followed by a non-whitespace char looks like an inline
++        // slash command ("run /danger", "please /approve").
++        for (int i = 1; i < trimmed.Length - 1; i++) {
++            if (trimmed[i] == '/' && char.IsWhiteSpace(trimmed[i - 1]) && !char.IsWhiteSpace(trimmed[i + 1])) {
++                return true;
++            }
++        }
++
++        return false;
++    }
++
+     private static bool IsDateTimeField(McpParameterDescriptor field)
+-        => field.TypeName is "DateTime" or "DateTimeOffset" or "DateOnly" or "TimeOnly"
+-            || string.Equals(field.DisplayFormat, "RelativeTime", StringComparison.Ordinal);
+-
+-    private static DateTimeOffset? ReadDateTimeOffset(object? value)
+-        => value switch {
+-            null => null,
+-            DateTimeOffset dto => dto,
+-            DateTime dt => new DateTimeOffset(dt),
+-            DateOnly d => new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue)),
+-            _ => null,
+-        };
++        => field.TypeName is "DateTime" or "DateTimeOffset" or "DateOnly";
++
++    private static DateTimeOffset? ReadDateTimeOffset(object? value) {
++        // Wrap conversions: new DateTimeOffset(DateTime.MinValue) throws on positive-offset
++        // hosts; we degrade per-row to "No timestamp" rather than failing the whole render.
++        // P-16: DateTimeKind.Unspecified is not silently treated as UTC (which would shift
++        // local-time-stored values backwards by the host offset). We degrade the row to
++        // "No timestamp" so timeline ordering is not poisoned by an arbitrary kind assumption.
++        try {
++            return value switch {
++                null => null,
++                DateTimeOffset dto => dto,
++                DateTime { Kind: DateTimeKind.Unspecified } => null,
++                DateTime dt => new DateTimeOffset(dt.ToUniversalTime(), TimeSpan.Zero),
++                DateOnly d => new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)),
++                _ => null,
++            };
++        }
++        catch (ArgumentOutOfRangeException) {
++            return null;
++        }
++    }
+ 
+     private static string FormatCell(object? value, McpParameterDescriptor field, FrontComposerMcpOptions options) {
++        if (field.IsUnsupported) {
++            return UnsupportedPlaceholder;
++        }
++
+         if (value is null) {
+             return "-";
+         }
+ 
++        // DN-1: Story 8-4 happy-path Markdown grammar — bool true/false, ISO 8601 dates with
++        // round-trip 'o' format, no empty-string substitution. Story 8-5 corpus depends on this
++        // baseline; do not change agent-visible grammar without a P0 security justification and
++        // a binding decision.
+         string text = value switch {
+             DateTime dt => dt.ToString("o", CultureInfo.InvariantCulture),
+             DateTimeOffset dto => dto.ToString("o", CultureInfo.InvariantCulture),
+@@ -276,11 +407,18 @@ public static class McpMarkdownProjectionRenderer {
+             Enum e => FormatEnum(e, field),
+             string s => s,
+             IEnumerable enumerable and not string => FormatEnumerable(enumerable),
+-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture) ?? string.Empty,
++            IFormattable formattable => FormatFormattable(formattable, field),
+             _ => value.ToString() ?? string.Empty,
+         };
+ 
+-        return EscapeMarkdownText(TrimCell(RedactSensitiveText(text), Math.Max(1, options.MaxProjectionCellCharacters)));
++        return EscapeMarkdownText(TrimCell(RedactSensitiveText(text), Math.Max(4, options.MaxProjectionCellCharacters)));
++    }
++
++    private static string FormatFormattable(IFormattable value, McpParameterDescriptor field) {
++        string? format = string.Equals(field.DisplayFormat, "Currency", StringComparison.Ordinal)
++            ? "C"
++            : null;
++        return value.ToString(format, CultureInfo.InvariantCulture) ?? string.Empty;
+     }
+ 
+     private static string RedactSensitiveText(string text) {
+@@ -290,11 +428,14 @@ public static class McpMarkdownProjectionRenderer {
+ 
+         string redacted = Regex.Replace(
+             text,
+-            @"(?i)\b(api[_-]?key|client[_-]?secret|authorization)\s*[:=]\s*\S+",
++            @"(?i)\b(api[_-]?key|client[_-]?secret|authorization|password|pwd|secret|token|connection[_-]?string)\s*[:=]\s*\S+",
+             "$1=[redacted]");
++        // P-15: anchor on `\s` (not eaten by the token char class) so "Bearer auth. Then..." does
++        // not consume the trailing period or following identifiers; previous regex included `.`
++        // in the token class and over-redacted dotted prose.
+         redacted = Regex.Replace(
+             redacted,
+-            @"(?i)\bbearer\s+[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)?",
++            @"(?i)\bbearer\s+[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)*",
+             "Bearer [redacted]");
+         redacted = Regex.Replace(
+             redacted,
+@@ -314,31 +455,57 @@ public static class McpMarkdownProjectionRenderer {
+     }
+ 
+     private static string FormatEnumerable(IEnumerable enumerable) {
+-        List<string> values = [];
+-        foreach (object? value in enumerable) {
+-            values.Add(value?.ToString() ?? "-");
+-            if (values.Count >= 5) {
+-                values.Add("...");
+-                break;
+-            }
+-        }
+-
+-        return string.Join(", ", values);
++        // Per the canonical formatting matrix, arrays/objects render as the unsupported
++        // placeholder unless SourceTools provides a scalar safe value. We do not serialize
++        // raw collection content into Markdown cells.
++        _ = enumerable;
++        return UnsupportedPlaceholder;
+     }
+ 
++    private const string UnsupportedPlaceholder = "(unsupported)";
++
++    // P-27: only block characters that survive escaping as link/code constructs after
++    // EscapeMarkdownText neutralizes `[`, `]`, `(`, `)`, `<`, `>`. Backticks remain in the
++    // shape filter because consecutive backticks form code fences even with per-char escape.
++    // The caller still drops `://` URLs and slash-style commands explicitly below.
++    private static readonly System.Buffers.SearchValues<char> LinkOrCommandChars =
++        System.Buffers.SearchValues.Create("`");
++
+     private static string Humanize(string value) {
+         if (string.IsNullOrWhiteSpace(value)) {
+             return value;
+         }
+ 
+         var sb = new StringBuilder(value.Length + 8);
+-        for (int i = 0; i < value.Length; i++) {
+-            char c = value[i];
+-            if (i > 0 && char.IsUpper(c) && !char.IsWhiteSpace(value[i - 1])) {
++        bool prevIsLetterOrDigit = false;
++        int i = 0;
++        while (i < value.Length) {
++            int codePoint;
++            int width;
++            if (char.IsHighSurrogate(value[i]) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])) {
++                codePoint = char.ConvertToUtf32(value[i], value[i + 1]);
++                width = 2;
++            }
++            else {
++                codePoint = value[i];
++                width = 1;
++            }
++
++            // P-7: Rune.TryCreate so an unpaired surrogate or invalid code point degrades to
++            // non-letter rather than throwing ArgumentOutOfRangeException out of the renderer
++            // and collapsing the whole document to DownstreamFailed.
++            bool isValidRune = Rune.TryCreate(codePoint, out Rune rune);
++
++            // Insert space before a new uppercase word only when the previous code point was
++            // a letter/digit; this preserves "OnHold" → "On Hold" while leaving surrogate pairs
++            // intact and avoiding spurious spaces after whitespace/punctuation.
++            if (i > 0 && prevIsLetterOrDigit && isValidRune && Rune.IsUpper(rune)) {
+                 sb.Append(' ');
+             }
+ 
+-            sb.Append(c);
++            sb.Append(value, i, width);
++            prevIsLetterOrDigit = isValidRune && Rune.IsLetterOrDigit(rune);
++            i += width;
+         }
+ 
+         return sb.ToString();
+@@ -355,20 +522,115 @@ public static class McpMarkdownProjectionRenderer {
+         public int Count { get; set; }
+     }
+ 
+-    private sealed record TimelineEntry(object Item, int Ordinal, DateTimeOffset? Timestamp);
++    private sealed record TimelineEntry(object Item, int Ordinal, DateTimeOffset? Timestamp, string ItemKey);
++
++    private static readonly string[] StableKeyPropertyNames = ["Id", "Key", "Name"];
++
++    private static string ReadStableItemKey(object item) {
++        Type type = item.GetType();
++        foreach (string property in StableKeyPropertyNames) {
++            // P-6: ORM proxies and lazy properties can throw from a getter; treat any throw as
++            // "no stable key" rather than collapsing the whole timeline render to DownstreamFailed.
++            object? value;
++            try {
++                value = type.GetProperty(property, BindingFlags.Instance | BindingFlags.Public)?.GetValue(item);
++            }
++            catch (TargetInvocationException) {
++                continue;
++            }
++            catch (Exception) {
++                continue;
++            }
++
++            if (value is null) {
++                continue;
++            }
++
++            string? text = value.ToString();
++            if (!string.IsNullOrWhiteSpace(text)) {
++                return text;
++            }
++        }
++
++        return string.Empty;
++    }
++
++    private static string TrimCell(string text, int maxLength) {
++        if (text.Length <= maxLength) {
++            return text;
++        }
+ 
+-    private static string TrimCell(string text, int maxLength)
+-        => text.Length <= maxLength ? text : text[..Math.Max(0, maxLength - 3)] + "...";
++        // Cut on a Rune boundary so a non-BMP code point (astral-plane emoji, surrogate pair)
++        // is never split, which would otherwise produce invalid UTF-16 / malformed UTF-8.
++        int budget = Math.Max(0, maxLength - 3);
++        if (budget == 0) {
++            return "...";
++        }
+ 
+-    private static string BoundDocument(StringBuilder sb, FrontComposerMcpOptions options) {
++        if (budget < text.Length
++            && char.IsHighSurrogate(text[budget - 1])
++            && char.IsLowSurrogate(text[budget])) {
++            budget--;
++        }
++
++        return text[..budget] + "...";
++    }
++
++    private static RenderedMarkdown BoundDocument(StringBuilder sb, FrontComposerMcpOptions options, bool markerAlreadyEmitted) {
+         int max = Math.Max(1, options.MaxProjectionMarkdownCharacters);
+         if (sb.Length <= max) {
+-            return sb.ToString();
++            return new RenderedMarkdown(sb.ToString(), markerAlreadyEmitted);
++        }
++
++        string marker = EscapeMarkdownText(options.ProjectionTruncationMarker);
++        int newlineLength = Environment.NewLine.Length;
++        int budget = max - marker.Length - newlineLength;
++        if (budget <= 0) {
++            // Marker alone would exceed the bound; surface this as a sanitized failure rather than
++            // returning a string longer than the configured cap.
++            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ResponseTooLarge);
+         }
+ 
+-        string marker = options.ProjectionTruncationMarker;
+-        int keep = Math.Max(0, max - marker.Length - Environment.NewLine.Length);
+-        return sb.ToString(0, keep) + Environment.NewLine + marker;
++        // Cut on the last newline before `budget` so the truncation never lands mid-row of a table.
++        string buffered = sb.ToString();
++        int cut = buffered.LastIndexOf('\n', Math.Min(budget, buffered.Length) - 1);
++        // P-13: when an outer renderer already appended the truncation marker, replicating it
++        // here would produce two consecutive marker lines. Skip the appended marker and keep
++        // the cut prefix only.
++        string suffix = markerAlreadyEmitted ? string.Empty : marker + Environment.NewLine;
++        // P-8: when no newline exists in the budget window, fall back to a Rune-boundary cut and
++        // append the marker rather than discarding the entire document. This preserves the
++        // common "single very long heading" case where the previous code surfaced ResponseTooLarge.
++        string prefix;
++        if (cut < 0) {
++            int safeBudget = Math.Min(budget, buffered.Length);
++            if (safeBudget > 0
++                && safeBudget < buffered.Length
++                && char.IsHighSurrogate(buffered[safeBudget - 1])
++                && char.IsLowSurrogate(buffered[safeBudget])) {
++                safeBudget--;
++            }
++
++            prefix = buffered[..safeBudget];
++            // No trailing newline in the kept prefix; ensure the marker (when emitted) starts on
++            // its own line.
++            if (!markerAlreadyEmitted && safeBudget > 0 && buffered[safeBudget - 1] != '\n') {
++                suffix = Environment.NewLine + suffix;
++            }
++        }
++        else {
++            prefix = buffered[..(cut + 1)];
++        }
++
++        string result = prefix + suffix;
++        // P-9: defensive clamp — Environment.NewLine prepending can push the total past `max` by
++        // newlineLength bytes. Trim the trailing whitespace/newline rather than ship a string
++        // longer than the configured cap.
++        if (result.Length > max) {
++            result = result[..max];
++        }
++
++        return new RenderedMarkdown(result, true);
+     }
+ 
+     internal static string EscapeMarkdownText(string value) {
+@@ -435,6 +697,10 @@ public static class McpMarkdownProjectionRenderer {
+             }
+         }
+ 
+-        return sb.ToString().Replace("- [ ]", "\\- \\[ \\]", StringComparison.Ordinal);
++        // The per-character escape above already neutralizes GFM task-list markers (`[` → `\[`,
++        // `]` → `\]`), Markdown links/images, autolinks, fenced code, and HTML.
++        return sb.ToString();
+     }
++
++    private sealed record RenderedMarkdown(string Text, bool IsTruncated);
+ }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs
+index 79afd76..ead757b 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs
+@@ -34,6 +34,23 @@ public static class McpManifestEmitter {
+ 
+         commandDescriptors.Sort((left, right) => string.CompareOrdinal(left.ProtocolName, right.ProtocolName));
+         resourceDescriptors.Sort((left, right) => string.CompareOrdinal(left.ProtocolUri, right.ProtocolUri));
++        GeneratedSchemaFingerprint[] commandFingerprints = [.. commandDescriptors
++            .Select(d => SchemaFingerprintTransform.CreateCommandPayload(d).Fingerprint)];
++        GeneratedSchemaFingerprint[] resourceFingerprints = [.. resourceDescriptors
++            .Select(d => SchemaFingerprintTransform.CreateResourcePayload(d).Fingerprint)];
++        GeneratedSchemaFingerprint lifecycleFingerprint = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint;
++        GeneratedSchemaFingerprint[] rendererFingerprints = [.. resourceDescriptors
++            .Select(d => SchemaFingerprintTransform.CreateMarkdownRendererPayload(
++                d.ProtocolUri + "#markdown-renderer",
++                d.RenderStrategy,
++                maxCharacters: 64_000,
++                maxFieldCharacters: 4_096).Fingerprint)];
++        GeneratedSchemaFingerprint aggregateFingerprint = SchemaFingerprintTransform.CreateAggregateManifestPayload(
++            commandFingerprints,
++            resourceFingerprints,
++            lifecycleFingerprint,
++            rendererFingerprints,
++            []).Fingerprint;
+ 
+         var sb = new StringBuilder(4096);
+         sb.AppendLine("// Generated by FrontComposer source generator");
+@@ -41,8 +58,10 @@ public static class McpManifestEmitter {
+         sb.AppendLine();
+         sb.AppendLine("#nullable enable");
+         sb.AppendLine();
++        sb.AppendLine("using System;");
+         sb.AppendLine("using System.Collections.Generic;");
+         sb.AppendLine("using Hexalith.FrontComposer.Contracts.Mcp;");
++        sb.AppendLine("using Hexalith.FrontComposer.Contracts.Schema;");
+         sb.AppendLine();
+         sb.AppendLine("namespace Hexalith.FrontComposer.Generated;");
+         sb.AppendLine();
+@@ -54,6 +73,9 @@ public static class McpManifestEmitter {
+         EmitCommands(sb, commandDescriptors);
+         sb.AppendLine(",");
+         EmitResources(sb, resourceDescriptors);
++        sb.AppendLine(",");
++        sb.Append("        ");
++        EmitFingerprint(sb, aggregateFingerprint);
+         sb.AppendLine(");");
+         sb.AppendLine("}");
+         return sb.ToString();
+@@ -96,6 +118,9 @@ public static class McpManifestEmitter {
+             sb.AppendLine(",");
+             sb.Append("                ");
+             EmitStrings(sb, command.DerivablePropertyNames, 16);
++            sb.AppendLine(",");
++            sb.Append("                ");
++            EmitFingerprint(sb, SchemaFingerprintTransform.CreateCommandPayload(command).Fingerprint);
+             sb.AppendLine("),");
+         }
+ 
+@@ -115,9 +140,17 @@ public static class McpManifestEmitter {
+             sb.AppendLine("                " + Literal(resource.Description) + ",");
+             EmitParameters(sb, resource.Fields, 16);
+             sb.AppendLine(",");
+-            sb.AppendLine("                \"" + Escape(resource.RenderStrategy) + "\",");
++            // P-18: validate the strategy identifier matches a defined McpProjectionRenderStrategy
++            // member before interpolating it into generated source. Anything else falls back to
++            // Default rather than producing a non-compiling (or worse, attacker-influenced)
++            // generated file. Today the upstream transform already passes enum.ToString(), but
++            // the constructor accepts any string, so the constraint is enforced at the emit edge.
++            string strategy = SanitizeRenderStrategy(resource.RenderStrategy);
++            sb.AppendLine("                McpProjectionRenderStrategy." + strategy + ",");
+             sb.AppendLine("                " + Literal(resource.EntityPluralLabel) + ",");
+-            sb.AppendLine("                " + Literal(resource.EmptyStateCtaCommandName));
++            sb.AppendLine("                " + Literal(resource.EmptyStateCtaCommandName) + ",");
++            sb.Append("                ");
++            EmitFingerprint(sb, SchemaFingerprintTransform.CreateResourcePayload(resource).Fingerprint);
+             sb.AppendLine("),");
+         }
+ 
+@@ -169,9 +202,8 @@ public static class McpManifestEmitter {
+ 
+     private static void EmitStringDictionary(StringBuilder sb, IReadOnlyDictionary<string, string> values, int indent) {
+         string pad = new(' ', indent);
+-        sb.Append("new Dictionary<string, string>");
++        sb.Append("new Dictionary<string, string>(StringComparer.Ordinal)");
+         if (values.Count == 0) {
+-            sb.Append("()");
+             return;
+         }
+ 
+@@ -184,11 +216,34 @@ public static class McpManifestEmitter {
+         sb.Append(pad + "}");
+     }
+ 
++    private static void EmitFingerprint(StringBuilder sb, GeneratedSchemaFingerprint fingerprint)
++        => sb.Append("new SchemaFingerprint(\"")
++            .Append(Escape(fingerprint.AlgorithmId))
++            .Append("\", \"")
++            .Append(Escape(fingerprint.Value))
++            .Append("\", \"")
++            .Append(Escape(fingerprint.CanonicalizerVersion))
++            .Append("\", \"")
++            .Append(Escape(fingerprint.TestVectorId))
++            .Append("\")");
++
+     private static string Literal(string? value)
+         => value is null ? "null" : "\"" + Escape(value) + "\"";
+ 
+     private static string Bool(bool value) => value ? "true" : "false";
+ 
++    private static readonly HashSet<string> KnownRenderStrategies = new(StringComparer.Ordinal) {
++        "Default",
++        "ActionQueue",
++        "StatusOverview",
++        "DetailRecord",
++        "Timeline",
++        "Dashboard",
++    };
++
++    private static string SanitizeRenderStrategy(string value)
++        => KnownRenderStrategies.Contains(value) ? value : "Default";
++
+     private static string Escape(string value) {
+         var sb = new StringBuilder(value.Length);
+         foreach (char c in value) {
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/HostingTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/HostingTests.cs
+index b74fe26..894b0da 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/HostingTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/HostingTests.cs
+@@ -14,6 +14,7 @@ public sealed class HostingTests {
+         McpManifest manifest = CreateManifest("billing.invoice.create");
+         var services = new ServiceCollection();
+         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+ 
+         services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
+ 
+@@ -27,6 +28,7 @@ public sealed class HostingTests {
+     public void AddFrontComposerMcp_RejectsDuplicateCommandNames() {
+         var services = new ServiceCollection();
+         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+ 
+         Should.Throw<FrontComposerMcpException>(() => services.AddFrontComposerMcp(options => {
+             options.Manifests.Add(CreateManifest("billing.invoice.create"));
+@@ -49,6 +51,7 @@ public sealed class HostingTests {
+     public void AddFrontComposerMcp_ValidatesProjectionMarkdownBounds() {
+         var services = new ServiceCollection();
+         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         OptionsValidationException ex = Should.Throw<OptionsValidationException>(() => services.AddFrontComposerMcp(options => {
+             options.Manifests.Add(CreateManifest("billing.invoice.create"));
+             options.MaxProjectionCellCharacters = 0;
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs
+index 1e9f636..4b514c9 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs
+@@ -165,6 +165,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+@@ -191,6 +192,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingGate());
+@@ -216,6 +218,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new AllowingGate());
+@@ -241,6 +244,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+@@ -269,6 +273,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+@@ -294,6 +299,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+@@ -342,6 +348,7 @@ public sealed class CommandInvokerCoverageTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         ServiceProvider provider = sc.BuildServiceProvider();
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs
+index be0954b..c69e715 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs
+@@ -57,6 +57,7 @@ public sealed class CommandInvokerTests {
+         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         services.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
+         return services;
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs
+index f05d15f..f8251fc 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs
+@@ -694,6 +694,7 @@ public sealed class CommandLifecycleTests {
+         services.AddSingleton<FrontComposerMcpLifecycleTracker>();
+         services.AddSingleton<FrontComposerMcpProjectionReader>();
+         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         if (policyGate is not null) {
+             services.AddSingleton(policyGate);
+         }
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderCoverageTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderCoverageTests.cs
+index 678a85f..b192107 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderCoverageTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderCoverageTests.cs
+@@ -17,7 +17,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
+ /// </summary>
+ public sealed class ProjectionReaderCoverageTests {
+     [Fact]
+-    public async Task UnknownResource_IsRejectedWithGenericFailureText() {
++    public async Task UnknownResource_IsRejectedWithProjectionTaxonomyText() {
+         FrontComposerMcpProjectionReader reader = BuildReader<EmptyQueryService>(out _);
+         FrontComposerMcpResult result = await reader.ReadAsync(
+             "frontcomposer://Billing/projections/NoSuchProjection",
+@@ -25,7 +25,10 @@ public sealed class ProjectionReaderCoverageTests {
+ 
+         result.IsError.ShouldBeTrue();
+         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
+-        result.Text.ShouldBe("Request failed.");
++        result.Text.ShouldBe("Projection resource is not available.");
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
++        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-PROJECTION-UNKNOWN-RESOURCE");
+     }
+ 
+     [Fact]
+@@ -47,6 +50,7 @@ public sealed class ProjectionReaderCoverageTests {
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         ServiceProvider provider = sc.BuildServiceProvider();
+         var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
+ 
+@@ -58,7 +62,8 @@ public sealed class ProjectionReaderCoverageTests {
+         result.Text.ShouldContain("# Audit events");
+         result.Text.ShouldContain("Total: 1");
+ 
+-        // ISO 8601 date format ('o' specifier) emits ten leading digits then 'T'.
++        // Canonical Markdown formatting matrix: dates render via ISO 8601 round-trip ('o') format.
++        // Test fixture uses 2026-05-02T10:30:45Z.
+         result.Text.ShouldContain("2026-05-02T", customMessage: $"Body was: {result.Text}");
+ 
+         // SanitizeCell preserves data through markdown-cell escape; pipe in source becomes \|.
+@@ -91,6 +96,7 @@ public sealed class ProjectionReaderCoverageTests {
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(MetricManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         ServiceProvider provider = sc.BuildServiceProvider();
+         var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
+ 
+@@ -112,6 +118,7 @@ public sealed class ProjectionReaderCoverageTests {
+         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         ServiceProvider provider = sc.BuildServiceProvider();
+         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
+     }
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTaxonomyTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTaxonomyTests.cs
+new file mode 100644
+index 0000000..930ce11
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTaxonomyTests.cs
+@@ -0,0 +1,315 @@
++using System.Security.Claims;
++using System.Text.Json.Nodes;
++
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Mcp.Invocation;
++using Hexalith.FrontComposer.Mcp.Rendering;
++
++using Microsoft.Extensions.DependencyInjection;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
++
++public sealed class ProjectionReaderTaxonomyTests {
++    [Theory]
++    [InlineData("", FrontComposerMcpFailureCategory.MalformedRequest, "malformed_resource", "HFC-MCP-PROJECTION-MALFORMED-RESOURCE", false, false)]
++    [InlineData("frontcomposer://Billing/projections/MissingProjection", FrontComposerMcpFailureCategory.UnknownResource, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE", false, true)]
++    public async Task AdmissionFailures_ReturnDeterministicTaxonomy_AndDoNotQuery(
++        string uri,
++        FrontComposerMcpFailureCategory expectedCategory,
++        string expectedTaxonomy,
++        string expectedDocsCode,
++        bool expectedRetryable,
++        bool expectedRefreshResources) {
++        CountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(query);
++
++        FrontComposerMcpResult result = await reader.ReadAsync(uri, TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(expectedCategory);
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
++        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
++        result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
++        result.StructuredContent!["refreshResources"]!.GetValue<bool>().ShouldBe(expectedRefreshResources);
++        result.StructuredContent!.ContainsKey("contentType").ShouldBeFalse();
++        result.Text.ShouldBe(result.StructuredContent!["message"]!.GetValue<string>());
++        query.CallCount.ShouldBe(0);
++    }
++
++    [Theory]
++    [InlineData(FrontComposerMcpFailureCategory.ResponseTooLarge, "response_too_large", "HFC-MCP-PROJECTION-RESPONSE-TOO-LARGE", false, false)]
++    [InlineData(FrontComposerMcpFailureCategory.UnsupportedRender, "unsupported_render", "HFC-MCP-PROJECTION-UNSUPPORTED-RENDER", false, false)]
++    [InlineData(FrontComposerMcpFailureCategory.QueryRejected, "query_failed", "HFC-MCP-PROJECTION-QUERY-FAILED", true, false)]
++    [InlineData(FrontComposerMcpFailureCategory.Timeout, "timeout", "HFC-MCP-PROJECTION-TIMEOUT", true, false)]
++    [InlineData(FrontComposerMcpFailureCategory.Canceled, "canceled", "HFC-MCP-PROJECTION-CANCELED", true, false)]
++    [InlineData(FrontComposerMcpFailureCategory.DegradedResult, "degraded_result", "HFC-MCP-PROJECTION-DEGRADED-RESULT", true, false)]
++    // DN-2: PolicyFiltered is hidden-equivalent — its public payload collapses to unknown_resource
++    // so an adversary cannot distinguish "policy-blocked" from "does-not-exist".
++    [InlineData(FrontComposerMcpFailureCategory.PolicyFiltered, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE", false, true)]
++    [InlineData(FrontComposerMcpFailureCategory.DownstreamFailed, "downstream_failed", "HFC-MCP-PROJECTION-DOWNSTREAM-FAILED", true, false)]
++    [InlineData(FrontComposerMcpFailureCategory.StaleDescriptor, "stale_descriptor", "HFC-MCP-PROJECTION-STALE-DESCRIPTOR", true, true)]
++    public async Task QueryAndRenderFailures_ReturnSanitizedTaxonomy(
++        FrontComposerMcpFailureCategory category,
++        string expectedTaxonomy,
++        string expectedDocsCode,
++        bool expectedRetryable,
++        bool expectedRefreshResources) {
++        FrontComposerMcpProjectionReader reader = category switch {
++            FrontComposerMcpFailureCategory.ResponseTooLarge => BuildReader(new CountingQueryService(), configureOptions: o => o.MaxProjectionMarkdownCharacters = 8),
++            FrontComposerMcpFailureCategory.UnsupportedRender => BuildReader(new CountingQueryService(), manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard)),
++            FrontComposerMcpFailureCategory.Timeout => BuildReader(new ThrowingQueryService(new TimeoutException("raw tenant-a timeout"))),
++            FrontComposerMcpFailureCategory.Canceled => BuildReader(new ThrowingQueryService(new OperationCanceledException("raw cancel"))),
++            FrontComposerMcpFailureCategory.StaleDescriptor => BuildReader(
++                new CountingQueryService(),
++                configureServices: services => services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
++                    new SequenceEpochProvider(
++                        new McpDescriptorEpochs(1, 1),
++                        new McpDescriptorEpochs(1, 1),
++                        new McpDescriptorEpochs(2, 1)))),
++            _ => BuildReader(new ThrowingQueryService(new FrontComposerMcpException(category, "raw tenant-a jwt eyJabc.def"))),
++        };
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
++        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
++        result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
++        result.StructuredContent!["refreshResources"]!.GetValue<bool>().ShouldBe(expectedRefreshResources);
++        result.Text.ShouldBe(result.StructuredContent!["message"]!.GetValue<string>());
++        JsonSerializerText(result.StructuredContent!).ShouldNotContain("tenant-a");
++        JsonSerializerText(result.StructuredContent!).ShouldNotContain("eyJabc");
++    }
++
++    [Theory]
++    // DN-2: TenantMissing and AuthFailed are hidden-equivalent — their public payload collapses
++    // to unknown_resource so an adversary cannot distinguish "wrong tenant" from "wrong auth"
++    // from "does-not-exist". The internal Category is still distinct for telemetry.
++    [InlineData("", "agent-a", true, FrontComposerMcpFailureCategory.TenantMissing, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE")]
++    [InlineData("tenant-a", "", true, FrontComposerMcpFailureCategory.AuthFailed, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE")]
++    [InlineData("tenant-a", "agent-a", false, FrontComposerMcpFailureCategory.AuthFailed, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE")]
++    public async Task InvalidAgentContext_ReturnsContextTaxonomy_AndDoesNotQuery(
++        string tenantId,
++        string userId,
++        bool authenticated,
++        FrontComposerMcpFailureCategory expectedCategory,
++        string expectedTaxonomy,
++        string expectedDocsCode) {
++        CountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            accessor: new StaticAccessor(tenantId, userId, authenticated));
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(expectedCategory);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
++        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
++        result.StructuredContent!["isHiddenEquivalent"]!.GetValue<bool>().ShouldBeTrue();
++        query.CallCount.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task ResourceVisibilityDenied_IsHiddenEquivalent_AndDoesNotQueryOrEnumerateSuggestions() {
++        CountingQueryService query = new();
++        CountingVisibleToolCatalogProvider catalog = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            configureServices: services => {
++                services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
++                    new ToggleResourceVisibilityGate(visible: false));
++                services.AddSingleton<IFrontComposerMcpVisibleToolCatalogProvider>(catalog);
++            });
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
++        result.StructuredContent!["isHiddenEquivalent"]!.GetValue<bool>().ShouldBeTrue();
++        query.CallCount.ShouldBe(0);
++        catalog.CallCount.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task EpochChangeBeforeQuery_ReturnsStaleWithoutQuery() {
++        CountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            configureServices: services => services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
++                new SequenceEpochProvider(
++                    new McpDescriptorEpochs(10, 20),
++                    new McpDescriptorEpochs(11, 20))));
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.StaleDescriptor);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("stale_descriptor");
++        query.CallCount.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task EpochChangeAfterQuery_ReturnsStaleWithoutRenderingPartialOutput() {
++        CountingQueryService query = new();
++        CountingProjectionRenderer renderer = new(McpProjectionRenderResult.Failure(FrontComposerMcpFailureCategory.UnsupportedRender));
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard),
++            configureServices: services => {
++                services.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer);
++                services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
++                    // P-1 sampled epochs at preLookup + postLookup, so this sequence covers
++                    // four reads: preLookup, postLookup, preQuery-validate (query runs), preRender-validate (advance).
++                    new SequenceEpochProvider(
++                        new McpDescriptorEpochs(10, 20),
++                        new McpDescriptorEpochs(10, 20),
++                        new McpDescriptorEpochs(10, 20),
++                        new McpDescriptorEpochs(10, 21)));
++            });
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.StaleDescriptor);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("stale_descriptor");
++        result.Text.ShouldNotContain("INV-1");
++        query.CallCount.ShouldBe(1);
++        renderer.CallCount.ShouldBe(0);
++    }
++
++    private static FrontComposerMcpProjectionReader BuildReader(
++        IQueryService queryService,
++        McpManifest? manifest = null,
++        IFrontComposerMcpAgentContextAccessor? accessor = null,
++        Action<FrontComposerMcpOptions>? configureOptions = null,
++        Action<IServiceCollection>? configureServices = null) {
++        ServiceCollection services = [];
++        services.AddSingleton(queryService);
++        services.Configure<FrontComposerMcpOptions>(o => {
++            o.Manifests.Add(manifest ?? Manifest());
++            configureOptions?.Invoke(o);
++        });
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
++        services.AddScoped<FrontComposerMcpProjectionReader>();
++        services.AddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
++        // P-3: visibility gate is required by the reader. Tests register a permissive default
++        // so every reader build resolves a gate; tests that need restrictive visibility can
++        // still override via configureServices.
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
++        configureServices?.Invoke(services);
++        ServiceProvider provider = services.BuildServiceProvider();
++        return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
++    }
++
++    private static McpManifest Manifest(McpProjectionRenderStrategy renderStrategy = McpProjectionRenderStrategy.Default)
++        => new("frontcomposer.mcp.v1", [], [
++            new McpResourceDescriptor(
++                "frontcomposer://Billing/projections/InvoiceProjection",
++                "InvoiceProjection",
++                typeof(InvoiceProjection).FullName!,
++                "Billing",
++                "Invoices",
++                null,
++                [
++                    new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
++                    new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false),
++                ],
++                RenderStrategy: renderStrategy),
++        ]);
++
++    private static string JsonSerializerText(JsonObject value)
++        => value.ToJsonString();
++
++    public sealed record InvoiceProjection(string Number, int Amount);
++
++    private sealed class CountingQueryService : IQueryService {
++        public int CallCount { get; private set; }
++
++        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
++            CallCount++;
++            object[] items = [new InvoiceProjection("INV-1", 42)];
++            return Task.FromResult(new QueryResult<T>(items.Cast<T>().ToArray(), 1, null));
++        }
++    }
++
++    private sealed class ThrowingQueryService(Exception exception) : IQueryService {
++        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default)
++            => exception is OperationCanceledException
++                ? Task.FromCanceled<QueryResult<T>>(new CancellationToken(canceled: true))
++                : Task.FromException<QueryResult<T>>(exception);
++    }
++
++    private sealed class StaticAccessor(
++        string tenantId = "tenant-a",
++        string userId = "agent-a",
++        bool authenticated = true) : IFrontComposerMcpAgentContextAccessor {
++        public FrontComposerMcpAgentContext GetContext()
++            => new(
++                tenantId,
++                userId,
++                new ClaimsPrincipal(new ClaimsIdentity(
++                    authenticationType: authenticated ? "test" : null,
++                    nameType: "name",
++                    roleType: "role")));
++    }
++
++    private sealed class SequenceEpochProvider(params McpDescriptorEpochs[] epochs) : IFrontComposerMcpDescriptorEpochProvider {
++        private int _index;
++
++        public McpDescriptorEpochs GetEpochs() {
++            int index = Math.Min(_index, epochs.Length - 1);
++            _index++;
++            return epochs[index];
++        }
++    }
++
++    private sealed class ToggleResourceVisibilityGate(bool visible) : IFrontComposerMcpResourceVisibilityGate {
++        public ValueTask<bool> IsVisibleAsync(
++            McpResourceDescriptor descriptor,
++            FrontComposerMcpAgentContext context,
++            CancellationToken cancellationToken)
++            => ValueTask.FromResult(visible);
++    }
++
++    private sealed class CountingVisibleToolCatalogProvider : IFrontComposerMcpVisibleToolCatalogProvider {
++        public int CallCount { get; private set; }
++
++        public ValueTask<McpVisibleToolCatalog> BuildVisibleCatalogAsync(CancellationToken cancellationToken = default) {
++            CallCount++;
++            return ValueTask.FromResult(new McpVisibleToolCatalog(
++                new McpToolVisibilityContext("tenant-a", "agent-a", new ClaimsPrincipal()),
++                [],
++                IsTruncated: false));
++        }
++    }
++
++    private sealed class CountingProjectionRenderer(McpProjectionRenderResult result) : IFrontComposerMcpProjectionRenderer {
++        public int CallCount { get; private set; }
++
++        public McpProjectionRenderResult Render(
++            McpProjectionRenderRequest request,
++            FrontComposerMcpOptions options,
++            CancellationToken cancellationToken = default) {
++            CallCount++;
++            return result;
++        }
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs
+index 760324a..1fa478b 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs
+@@ -32,6 +32,7 @@ public sealed class ProjectionReaderTests {
+         services.AddLogging();
+         services.AddSingleton<IQueryService>(new EmptyQueryService());
+         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(ManifestWithCreateCommand()));
+         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
+@@ -44,8 +45,10 @@ public sealed class ProjectionReaderTests {
+ 
+         result.IsError.ShouldBeFalse();
+         result.Text.ShouldContain("No invoices found.");
+-        result.Text.ShouldContain("Suggestions:");
+         result.Text.ShouldContain("- Create invoice");
++        // The empty-state suggestion list emits bullets directly under the empty-state line;
++        // the previous "Suggestions:" inline label was not part of the canonical document grammar.
++        result.Text.ShouldNotContain("Suggestions:");
+     }
+ 
+     private static IServiceCollection Services(IQueryService queryService) {
+@@ -55,6 +58,7 @@ public sealed class ProjectionReaderTests {
+         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
+         services.AddScoped<FrontComposerMcpProjectionReader>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         return services;
+     }
+ 
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSpecGapTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSpecGapTests.cs
+index 9162293..9cf3777 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSpecGapTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSpecGapTests.cs
+@@ -257,6 +257,7 @@ public sealed class ToolAdmissionSpecGapTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         configureServices?.Invoke(sc);
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs
+index 948b19d..0d40401 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs
+@@ -232,6 +232,7 @@ public sealed class ToolAdmissionTests {
+         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
+         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+         sc.AddSingleton(typeof(Microsoft.Extensions.Logging.ILogger<>), typeof(NullLogger<>));
+         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+         configureServices?.Invoke(sc);
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/McpMarkdownProjectionRendererTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/McpMarkdownProjectionRendererTests.cs
+index 900c119..4e0657d 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/McpMarkdownProjectionRendererTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/McpMarkdownProjectionRendererTests.cs
+@@ -1,3 +1,5 @@
++using System.Globalization;
++
+ using Hexalith.FrontComposer.Contracts.Mcp;
+ using Hexalith.FrontComposer.Mcp;
+ using Hexalith.FrontComposer.Mcp.Rendering;
+@@ -21,7 +23,7 @@ public sealed class McpMarkdownProjectionRendererTests {
+         result.IsSuccess.ShouldBeTrue();
+         result.ContentType.ShouldBe("text/markdown");
+         result.Document!.ProjectionIdentifier.ShouldBe("InvoiceProjection");
+-        result.Document.Role.ShouldBe("Default");
++        result.Document.Role.ShouldBe(McpProjectionRenderStrategy.Default.ToString());
+         result.Document.BoundedContext.ShouldBe("Billing");
+         result.Document.RowCountCategory.ShouldBe("visible");
+         result.Document.RequestId.ShouldBe("req-1");
+@@ -49,7 +51,7 @@ public sealed class McpMarkdownProjectionRendererTests {
+ 
+     [Fact]
+     public void Render_ActionQueueProjection_UsesTableAndBoundsMarker() {
+-        McpResourceDescriptor descriptor = Descriptor(renderStrategy: "ActionQueue", entityPluralLabel: "Invoices");
++        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.ActionQueue, entityPluralLabel: "Invoices");
+         FrontComposerMcpOptions options = new() {
+             MaxRowsPerResource = 1,
+             ProjectionTruncationMarker = "Output truncated by FrontComposer agent rendering limits.",
+@@ -64,16 +66,47 @@ public sealed class McpMarkdownProjectionRendererTests {
+             TotalCount: 2), options, TestContext.Current.CancellationToken);
+ 
+         result.IsSuccess.ShouldBeTrue();
+-        result.Document!.Role.ShouldBe("ActionQueue");
++        result.Document!.Role.ShouldBe(McpProjectionRenderStrategy.ActionQueue.ToString());
+         result.Document.Text.ShouldContain("- Role: ActionQueue");
+         result.Document.Text.ShouldContain("| INV-1 | 42 | - | Warning: Pending |");
+         result.Document.Text.ShouldNotContain("INV-2");
+         result.Document.Text.ShouldContain("Output truncated by FrontComposer agent rendering limits.");
++        result.Document.IsTruncated.ShouldBeTrue();
++    }
++
++    [Fact]
++    public void Render_QueryTruncatedByCaller_AlignsMarkerAndMetadata() {
++        McpResourceDescriptor descriptor = Descriptor(entityPluralLabel: "Invoices");
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending)],
++            TotalCount: 2,
++            IsTruncated: true), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeTrue();
++        result.Document!.IsTruncated.ShouldBeTrue();
++        result.Document.Text.ShouldContain("Output truncated by FrontComposer agent rendering limits.");
++    }
++
++    [Fact]
++    public void Render_CurrencyDisplayFormat_UsesSourceToolsNumericFormat() {
++        McpResourceDescriptor descriptor = Descriptor(amountDisplayFormat: "Currency");
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [new InvoiceProjection("INV-1", 1234.5m, null, BillingStatus.Pending)],
++            TotalCount: 1), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeTrue();
++        result.Document!.Text.ShouldContain("| INV-1 | "
++            + CultureInfo.InvariantCulture.NumberFormat.CurrencySymbol
++            + "1,234.50 | - | Warning: Pending |");
+     }
+ 
+     [Fact]
+     public void Render_StatusOverviewProjection_GroupsBySemanticBadgeSlot() {
+-        McpResourceDescriptor descriptor = Descriptor(renderStrategy: "StatusOverview", title: "Invoice status");
++        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.StatusOverview, title: "Invoice status");
+ 
+         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+             descriptor,
+@@ -85,20 +118,20 @@ public sealed class McpMarkdownProjectionRendererTests {
+             TotalCount: 3), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
+ 
+         result.IsSuccess.ShouldBeTrue();
+-        result.Document!.Role.ShouldBe("StatusOverview");
++        result.Document!.Role.ShouldBe(McpProjectionRenderStrategy.StatusOverview.ToString());
+         result.Document.Text.ShouldBe("""
+             ## Invoice status
+ 
+             - Total: 3
+-            - Warning: 2 Pending
+             - Danger: 1 Blocked
++            - Warning: 2 Pending
+ 
+             """, StringCompareShould.IgnoreLineEndings);
+     }
+ 
+     [Fact]
+     public void Render_TimelineProjection_SortsNewestFirstWithStableNullTail() {
+-        McpResourceDescriptor descriptor = Descriptor(renderStrategy: "Timeline", title: "Invoice timeline");
++        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.Timeline, title: "Invoice timeline");
+ 
+         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+             descriptor,
+@@ -110,7 +143,7 @@ public sealed class McpMarkdownProjectionRendererTests {
+             TotalCount: 3), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
+ 
+         result.IsSuccess.ShouldBeTrue();
+-        result.Document!.Role.ShouldBe("Timeline");
++        result.Document!.Role.ShouldBe(McpProjectionRenderStrategy.Timeline.ToString());
+         result.Document.Text.ShouldContain("## Invoice timeline");
+         result.Document.Text.ShouldContain("- 2026-05-03T08:00:00.0000000+00:00 - Danger: Blocked. New");
+         result.Document.Text.IndexOf("New", StringComparison.Ordinal).ShouldBeLessThan(
+@@ -127,17 +160,19 @@ public sealed class McpMarkdownProjectionRendererTests {
+             descriptor,
+             [],
+             TotalCount: 0,
+-            SafeCommandSuggestions: ["Create invoice", "[hidden](frontcomposer://x)", "run /danger"]),
++            SafeCommandSuggestions: ["Create invoice", "[hidden](frontcomposer://x)", "run /danger", "Approve invoice"]),
+             new FrontComposerMcpOptions { MaxProjectionSuggestions = 2 },
+             TestContext.Current.CancellationToken);
+ 
+         result.IsSuccess.ShouldBeTrue();
+         result.Document!.Text.ShouldContain("No invoices found.");
+-        result.Document.Text.ShouldContain("Suggestions:");
+         result.Document.Text.ShouldContain("- Create invoice");
+-        result.Document.Text.ShouldContain("- \\[hidden\\]\\(frontcomposer://x\\)");
+-        result.Document.Text.ShouldNotContain("run /danger");
+-        result.Document.Text.ShouldNotContain("[hidden](frontcomposer://x)");
++        result.Document.Text.ShouldContain("- Approve invoice");
++        // Link-shaped and slash-command-looking suggestions are dropped, not escaped, per the
++        // Inert Untrusted Text Contract.
++        result.Document.Text.ShouldNotContain("hidden");
++        result.Document.Text.ShouldNotContain("danger");
++        result.Document.Text.ShouldNotContain("Suggestions:");
+     }
+ 
+     [Fact]
+@@ -192,10 +227,155 @@ public sealed class McpMarkdownProjectionRendererTests {
+         result.Document.ShouldBeNull();
+     }
+ 
++    [Fact]
++    public void Render_EveryInputProjectionFieldAppearsInAgentOutput_WithUnsupportedPlaceholder() {
++        McpResourceDescriptor descriptor = new(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            "InvoiceProjection",
++            typeof(InvoiceProjection).FullName!,
++            "Billing",
++            "Invoices",
++            null,
++            [
++                new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
++                new McpParameterDescriptor("OpaquePayload", "Object", "object", false, false, "Opaque payload", null, [], true),
++            ]);
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [new InvoiceWithUnsupported("INV-1", new { Secret = "tenant-a" })],
++            TotalCount: 1), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeTrue();
++        result.Document!.Text.ShouldContain("| Number | Opaque payload |");
++        result.Document.Text.ShouldContain("| INV-1 | (unsupported) |");
++        result.Document.Text.ShouldNotContain("tenant-a");
++    }
++
++    [Fact]
++    public void Render_DocumentBudgetTooSmallForMarker_ReturnsResponseTooLargeWithoutPartialDocument() {
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            Descriptor(),
++            [new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending)],
++            TotalCount: 10,
++            IsTruncated: true), new FrontComposerMcpOptions { MaxProjectionMarkdownCharacters = 8 }, TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeFalse();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.ResponseTooLarge);
++        result.Document.ShouldBeNull();
++    }
++
++    [Fact]
++    public void Render_NoNewlineBeforeBudget_TruncatesAtRuneBoundaryWithMarker() {
++        // P-8: when the budget contains no newline (e.g. a very long single-line heading),
++        // the renderer falls back to a Rune-boundary cut and emits the truncation marker
++        // rather than discarding the entire document.
++        McpResourceDescriptor descriptor = Descriptor(title: new string('A', 80));
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending)],
++            TotalCount: 1), new FrontComposerMcpOptions { MaxProjectionMarkdownCharacters = 64 }, TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeTrue();
++        result.Document.ShouldNotBeNull();
++        result.Document!.IsTruncated.ShouldBeTrue();
++        result.Document.Text.Length.ShouldBeLessThanOrEqualTo(64);
++    }
++
++    [Fact]
++    public void Render_FormatterFailureAfterCommittedRow_ReturnsNoPartialDocument() {
++        McpResourceDescriptor descriptor = new(
++            "frontcomposer://Billing/projections/BrokenProjection",
++            "BrokenProjection",
++            typeof(BrokenProjection).FullName!,
++            "Billing",
++            "Broken",
++            null,
++            [new McpParameterDescriptor("Explodes", "String", "string", true, false, "Explodes", null, [], false)]);
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [new SafeProjection("INV-1"), new BrokenProjection()],
++            TotalCount: 2), new FrontComposerMcpOptions(), TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeFalse();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.DownstreamFailed);
++        result.Document.ShouldBeNull();
++    }
++
++    [Fact]
++    public void Render_CancellationDuringRowFormatting_ReturnsNoPartialDocument() {
++        using var cts = new CancellationTokenSource();
++        McpResourceDescriptor descriptor = new(
++            "frontcomposer://Billing/projections/CancellableProjection",
++            "CancellableProjection",
++            typeof(CancellableProjection).FullName!,
++            "Billing",
++            "Cancellable",
++            null,
++            [
++                new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
++                new McpParameterDescriptor("Cancels", "String", "string", true, false, "Cancels", null, [], false),
++            ]);
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [new CancellableProjection("INV-1", new CancelingCell(cts))],
++            TotalCount: 1), new FrontComposerMcpOptions(), cts.Token);
++
++        result.IsSuccess.ShouldBeFalse();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.Canceled);
++        result.Document.ShouldBeNull();
++    }
++
++    [Fact]
++    public void Render_StatusOverviewGroupCap_EmitsSingleBoundedTruncationMarker() {
++        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.StatusOverview, title: "Invoice status");
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [
++                new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending),
++                new InvoiceProjection("INV-2", 100, null, BillingStatus.Blocked),
++            ],
++            TotalCount: 2),
++            new FrontComposerMcpOptions { MaxProjectionStatusGroups = 1 },
++            TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeTrue();
++        result.Document!.IsTruncated.ShouldBeTrue();
++        result.Document.Text.ShouldContain("- Danger: 1 Blocked");
++        result.Document.Text.ShouldNotContain("- Warning: 1 Pending");
++        CountOccurrences(result.Document.Text, "Output truncated by FrontComposer agent rendering limits.").ShouldBe(1);
++    }
++
++    [Fact]
++    public void Render_TimelineEntryCap_EmitsSingleBoundedTruncationMarker() {
++        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.Timeline, title: "Invoice timeline");
++
++        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
++            descriptor,
++            [
++                new InvoiceProjection("Old", 10, DateTimeOffset.Parse("2026-05-01T08:00:00Z"), BillingStatus.Pending),
++                new InvoiceProjection("New", 20, DateTimeOffset.Parse("2026-05-03T08:00:00Z"), BillingStatus.Blocked),
++            ],
++            TotalCount: 2),
++            new FrontComposerMcpOptions { MaxProjectionTimelineEntries = 1 },
++            TestContext.Current.CancellationToken);
++
++        result.IsSuccess.ShouldBeTrue();
++        result.Document!.IsTruncated.ShouldBeTrue();
++        result.Document.Text.ShouldContain("New");
++        result.Document.Text.ShouldNotContain("Old");
++        CountOccurrences(result.Document.Text, "Output truncated by FrontComposer agent rendering limits.").ShouldBe(1);
++    }
++
+     private static McpResourceDescriptor Descriptor(
+         string title = "Invoices",
+-        string renderStrategy = "Default",
+-        string? entityPluralLabel = "Invoices")
++        McpProjectionRenderStrategy renderStrategy = McpProjectionRenderStrategy.Default,
++        string? entityPluralLabel = "Invoices",
++        string amountDisplayFormat = "Default")
+         => new(
+             "frontcomposer://Billing/projections/InvoiceProjection",
+             "InvoiceProjection",
+@@ -205,7 +385,7 @@ public sealed class McpMarkdownProjectionRendererTests {
+             null,
+             [
+                 new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
+-                new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false),
++                new McpParameterDescriptor("Amount", "Decimal", "number", true, false, "Amount", null, [], false, DisplayFormat: amountDisplayFormat),
+                 new McpParameterDescriptor("LastPaid", "DateTimeOffset", "string", false, true, "Last paid", null, [], false),
+                 new McpParameterDescriptor(
+                     "Status",
+@@ -225,7 +405,13 @@ public sealed class McpMarkdownProjectionRendererTests {
+             RenderStrategy: renderStrategy,
+             EntityPluralLabel: entityPluralLabel);
+ 
+-    public sealed record InvoiceProjection(string Number, int Amount, DateTimeOffset? LastPaid, BillingStatus Status);
++    public sealed record InvoiceProjection(string Number, decimal Amount, DateTimeOffset? LastPaid, BillingStatus Status);
++
++    public sealed record InvoiceWithUnsupported(string Number, object OpaquePayload);
++
++    public sealed record SafeProjection(string Explodes);
++
++    public sealed record CancellableProjection(string Number, object Cancels);
+ 
+     public enum BillingStatus {
+         Pending,
+@@ -237,4 +423,22 @@ public sealed class McpMarkdownProjectionRendererTests {
+ 
+         public string Explodes => throw new InvalidOperationException(_message);
+     }
++
++    public sealed class CancelingCell(CancellationTokenSource source) {
++        public override string ToString() {
++            source.Cancel();
++            throw new OperationCanceledException(source.Token);
++        }
++    }
++
++    private static int CountOccurrences(string value, string needle) {
++        int count = 0;
++        int index = 0;
++        while ((index = value.IndexOf(needle, index, StringComparison.Ordinal)) >= 0) {
++            count++;
++            index += needle.Length;
++        }
++
++        return count;
++    }
+ }

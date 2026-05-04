@@ -143,6 +143,12 @@ public static class McpMarkdownProjectionRenderer {
 
         // Search across all non-unsupported fields, not just the column-truncated subset, so a
         // status field at index >= MaxFieldsPerResource still drives the grouping.
+        // R2-P11 / CD-Strategy-Filter: StatusOverview and Timeline filter unsupported fields out
+        // of the field selection used to drive grouping/timestamp/title. Tables intentionally
+        // surface unsupported columns as `(unsupported)` placeholders (CD-DN-1) so agents see
+        // every input field; Status/Timeline pick fields by *purpose* (badge slot, datetime,
+        // remaining-title), and an unsupported field cannot serve any of those purposes by
+        // definition. The divergence is deliberate, not a silent drop.
         IReadOnlyList<McpParameterDescriptor> renderableFields = descriptor.Fields
             .Where(f => !f.IsUnsupported)
             .ToArray();
@@ -224,7 +230,10 @@ public static class McpMarkdownProjectionRenderer {
         FrontComposerMcpOptions options,
         CancellationToken cancellationToken) {
         var sb = new StringBuilder(capacity: 2048);
-        sb.Append("## ").AppendLine(EscapeMarkdownText(descriptor.Title));
+        // R2-P1: Timeline title flows the same operator-supplied descriptor text as Table /
+        // StatusOverview; redact before escaping so secrets pasted into Title cannot leak via
+        // the timeline strategy.
+        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
         sb.AppendLine();
 
         if (items.Count == 0) {
@@ -300,10 +309,13 @@ public static class McpMarkdownProjectionRenderer {
         McpResourceDescriptor descriptor,
         IReadOnlyList<string>? suggestions,
         FrontComposerMcpOptions options) {
+        // R2-P2: redact plural label / title fallback before lower-casing and escaping; both
+        // are operator-supplied descriptor text and must follow the same sanitization path as
+        // the heading title (P-17).
         string plural = string.IsNullOrWhiteSpace(descriptor.EntityPluralLabel)
             ? descriptor.Title
             : descriptor.EntityPluralLabel!;
-        sb.Append("No ").Append(EscapeMarkdownText(plural.ToLowerInvariant())).AppendLine(" found.");
+        sb.Append("No ").Append(EscapeMarkdownText(RedactSensitiveText(plural).ToLowerInvariant())).AppendLine(" found.");
 
         IReadOnlyList<string> safeSuggestions = suggestions ?? [];
         int max = Math.Max(0, options.MaxProjectionSuggestions);
@@ -421,26 +433,31 @@ public static class McpMarkdownProjectionRenderer {
         return value.ToString(format, CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
+    // R2-P8: precompiled non-backtracking regexes for redaction. NonBacktracking guarantees
+    // linear-time matching against adversary-supplied descriptor titles, suggestions, and cell
+    // content; the previous instance-per-call Regex.Replace had no MatchTimeout and used the
+    // default backtracking engine, which is theoretically wedge-able with crafted dotted input.
+    private static readonly Regex SecretAssignmentRegex = new(
+        @"\b(api[_-]?key|client[_-]?secret|authorization|password|pwd|secret|token|connection[_-]?string)\s*[:=]\s*\S+",
+        RegexOptions.IgnoreCase | RegexOptions.NonBacktracking | RegexOptions.CultureInvariant);
+    // P-15: anchor on `\s` (not eaten by the token char class) so "Bearer auth. Then..." does
+    // not consume the trailing period or following identifiers; previous regex included `.`
+    // in the token class and over-redacted dotted prose.
+    private static readonly Regex BearerTokenRegex = new(
+        @"\bbearer\s+[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)*",
+        RegexOptions.IgnoreCase | RegexOptions.NonBacktracking | RegexOptions.CultureInvariant);
+    private static readonly Regex JwtFragmentRegex = new(
+        @"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)?",
+        RegexOptions.NonBacktracking | RegexOptions.CultureInvariant);
+
     private static string RedactSensitiveText(string text) {
         if (string.IsNullOrEmpty(text)) {
             return string.Empty;
         }
 
-        string redacted = Regex.Replace(
-            text,
-            @"(?i)\b(api[_-]?key|client[_-]?secret|authorization|password|pwd|secret|token|connection[_-]?string)\s*[:=]\s*\S+",
-            "$1=[redacted]");
-        // P-15: anchor on `\s` (not eaten by the token char class) so "Bearer auth. Then..." does
-        // not consume the trailing period or following identifiers; previous regex included `.`
-        // in the token class and over-redacted dotted prose.
-        redacted = Regex.Replace(
-            redacted,
-            @"(?i)\bbearer\s+[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)*",
-            "Bearer [redacted]");
-        redacted = Regex.Replace(
-            redacted,
-            @"\beyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)?",
-            "[redacted]");
+        string redacted = SecretAssignmentRegex.Replace(text, "$1=[redacted]");
+        redacted = BearerTokenRegex.Replace(redacted, "Bearer [redacted]");
+        redacted = JwtFragmentRegex.Replace(redacted, "[redacted]");
         return redacted;
     }
 
@@ -531,12 +548,21 @@ public static class McpMarkdownProjectionRenderer {
         foreach (string property in StableKeyPropertyNames) {
             // P-6: ORM proxies and lazy properties can throw from a getter; treat any throw as
             // "no stable key" rather than collapsing the whole timeline render to DownstreamFailed.
+            // R2-P7: do NOT swallow OperationCanceledException — it must propagate to the outer
+            // cancellation handler so a cancelled render returns Canceled instead of silently
+            // continuing to the next property and then mis-classifying as DownstreamFailed.
             object? value;
             try {
                 value = type.GetProperty(property, BindingFlags.Instance | BindingFlags.Public)?.GetValue(item);
             }
+            catch (TargetInvocationException tie) when (tie.InnerException is OperationCanceledException) {
+                throw tie.InnerException;
+            }
             catch (TargetInvocationException) {
                 continue;
+            }
+            catch (OperationCanceledException) {
+                throw;
             }
             catch (Exception) {
                 continue;

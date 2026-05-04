@@ -25,17 +25,26 @@ public sealed class FrontComposerMcpProjectionReader(
             return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.MalformedRequest);
         }
 
+        // R2-P5: resolve the epoch provider and visibility gate once at entry. Per-call DI
+        // resolution would yield up to four different instances under scoped/transient
+        // registrations, defeating monotonic counters and gate-side per-read caches. The
+        // captured references are passed to all downstream sampling/validation calls.
+        IFrontComposerMcpDescriptorEpochProvider? epochProvider =
+            services.GetService<IFrontComposerMcpDescriptorEpochProvider>();
+        IFrontComposerMcpResourceVisibilityGate visibilityGate =
+            services.GetRequiredService<IFrontComposerMcpResourceVisibilityGate>();
+
         try {
             // P-1: sample the descriptor epoch BEFORE the descriptor lookup and verify it has not
             // advanced after the lookup; otherwise the snapshot would stamp a fresh epoch onto a
             // stale descriptor, defeating the revalidation contract. P-4: keep registry access
             // inside the try so a non-trivial registry implementation cannot leak raw exceptions.
-            McpDescriptorEpochs preLookupEpochs = CurrentEpochs();
+            McpDescriptorEpochs preLookupEpochs = CurrentEpochs(epochProvider);
             if (!registry.TryGetResource(uri, out McpResourceDescriptor? descriptor)) {
                 return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
             }
 
-            McpDescriptorEpochs postLookupEpochs = CurrentEpochs();
+            McpDescriptorEpochs postLookupEpochs = CurrentEpochs(epochProvider);
             if (preLookupEpochs.DescriptorEpoch != postLookupEpochs.DescriptorEpoch
                 || preLookupEpochs.CatalogEpoch != postLookupEpochs.CatalogEpoch) {
                 return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.StaleDescriptor);
@@ -44,12 +53,12 @@ public sealed class FrontComposerMcpProjectionReader(
             FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
             ValidateContext(context);
 
-            if (!await IsResourceVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false)) {
+            if (!await IsResourceVisibleAsync(visibilityGate, descriptor, context, cancellationToken).ConfigureAwait(false)) {
                 return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
             }
 
             FrontComposerMcpProjectionReadSnapshot snapshot = CreateSnapshot(descriptor, postLookupEpochs, cancellationToken);
-            FrontComposerMcpFailureCategory? preQueryFailure = await ValidateSnapshotAsync(snapshot, context, cancellationToken).ConfigureAwait(false);
+            FrontComposerMcpFailureCategory? preQueryFailure = await ValidateSnapshotAsync(snapshot, context, epochProvider, visibilityGate, cancellationToken).ConfigureAwait(false);
             if (preQueryFailure is not null) {
                 return FrontComposerMcpProjectionFailureMapper.ToResult(preQueryFailure.Value);
             }
@@ -75,7 +84,7 @@ public sealed class FrontComposerMcpProjectionReader(
             }
 
             object queryResult = await AwaitDynamic(resultTask!).ConfigureAwait(false);
-            FrontComposerMcpFailureCategory? preRenderFailure = await ValidateSnapshotAsync(snapshot, context, cancellationToken).ConfigureAwait(false);
+            FrontComposerMcpFailureCategory? preRenderFailure = await ValidateSnapshotAsync(snapshot, context, epochProvider, visibilityGate, cancellationToken).ConfigureAwait(false);
             if (preRenderFailure is not null) {
                 return FrontComposerMcpProjectionFailureMapper.ToResult(preRenderFailure.Value);
             }
@@ -160,36 +169,38 @@ public sealed class FrontComposerMcpProjectionReader(
             Descriptor: descriptorSnapshot);
     }
 
-    private McpDescriptorEpochs CurrentEpochs()
-        => services.GetService<IFrontComposerMcpDescriptorEpochProvider>()?.GetEpochs()
-            ?? registry.GetEpochs();
+    private McpDescriptorEpochs CurrentEpochs(IFrontComposerMcpDescriptorEpochProvider? provider)
+        => provider?.GetEpochs() ?? registry.GetEpochs();
 
     private async ValueTask<FrontComposerMcpFailureCategory?> ValidateSnapshotAsync(
         FrontComposerMcpProjectionReadSnapshot snapshot,
         FrontComposerMcpAgentContext context,
+        IFrontComposerMcpDescriptorEpochProvider? epochProvider,
+        IFrontComposerMcpResourceVisibilityGate visibilityGate,
         CancellationToken cancellationToken) {
-        McpDescriptorEpochs current = CurrentEpochs();
+        McpDescriptorEpochs current = CurrentEpochs(epochProvider);
         if (current.DescriptorEpoch != snapshot.DescriptorEpoch
             || current.CatalogEpoch != snapshot.CatalogEpoch) {
             return FrontComposerMcpFailureCategory.StaleDescriptor;
         }
 
-        return await IsResourceVisibleAsync(snapshot.Descriptor.ToDescriptor(), context, cancellationToken).ConfigureAwait(false)
+        return await IsResourceVisibleAsync(visibilityGate, snapshot.Descriptor.ToDescriptor(), context, cancellationToken).ConfigureAwait(false)
             ? null
             : FrontComposerMcpFailureCategory.UnknownResource;
     }
 
-    private async ValueTask<bool> IsResourceVisibleAsync(
+    private static ValueTask<bool> IsResourceVisibleAsync(
+        IFrontComposerMcpResourceVisibilityGate gate,
         McpResourceDescriptor descriptor,
         FrontComposerMcpAgentContext context,
-        CancellationToken cancellationToken) {
-        // P-3: GetRequiredService — visibility revalidation is a security contract, not an
-        // optional concern. Hosts must register a real gate (or AllowAllVisibilityGate explicitly
-        // for sample/dev). The startup probe in AddFrontComposerMcp enforces this so misconfigured
-        // hosts fail at registration time rather than silently shipping unrestricted reads.
-        IFrontComposerMcpResourceVisibilityGate gate = services.GetRequiredService<IFrontComposerMcpResourceVisibilityGate>();
-        return await gate.IsVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false);
-    }
+        CancellationToken cancellationToken)
+        // P-3 / R2-P5: visibility revalidation is a security contract; the gate is resolved once
+        // per ReadAsync via GetRequiredService at the entry point so all three call sites (admission,
+        // pre-query, pre-render) target the same instance. Hosts must register a real gate (or
+        // AllowAllResourceVisibilityGate explicitly for sample/dev). The startup probe in
+        // AddFrontComposerMcp enforces registration so misconfigured hosts fail at registration time
+        // rather than silently shipping unrestricted reads.
+        => gate.IsVisibleAsync(descriptor, context, cancellationToken);
 
     private static async Task<object> AwaitDynamic(object taskObject) {
         await ((Task)taskObject).ConfigureAwait(false);
@@ -282,17 +293,21 @@ public sealed class FrontComposerMcpProjectionReader(
     }
 
     private static bool SegmentMatches(string fullName, string cta) {
+        // R2-P3: anchor on the last dotted segment (the type / protocol name) instead of any
+        // segment. A CTA like "Create" must not match `Other.Create.IrrelevantCommand` simply
+        // because `Create` happens to be a namespace-internal segment. The full-string equality
+        // check below preserves the case where `fullName` is itself the unqualified name.
         if (string.Equals(fullName, cta, StringComparison.Ordinal)) {
             return true;
         }
 
-        foreach (string segment in fullName.Split('.', StringSplitOptions.RemoveEmptyEntries)) {
-            if (string.Equals(segment, cta, StringComparison.Ordinal)) {
-                return true;
-            }
+        int lastDot = fullName.LastIndexOf('.');
+        if (lastDot < 0 || lastDot == fullName.Length - 1) {
+            return false;
         }
 
-        return false;
+        ReadOnlySpan<char> lastSegment = fullName.AsSpan(lastDot + 1);
+        return lastSegment.Equals(cta.AsSpan(), StringComparison.Ordinal);
     }
 
     private static long ReadTotalCount(Type resultType, object queryResult) {

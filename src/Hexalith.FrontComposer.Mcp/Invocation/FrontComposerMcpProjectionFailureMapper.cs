@@ -117,11 +117,22 @@ internal static class FrontComposerMcpProjectionFailureMapper {
                 Retryable: true,
                 RefreshResources: false,
                 IsHiddenEquivalent: false),
-            FrontComposerMcpFailureCategory.DownstreamFailed or FrontComposerMcpFailureCategory.PolicyGateMissing => new(
+            FrontComposerMcpFailureCategory.DownstreamFailed => new(
                 "downstream_failed",
                 "Projection data is temporarily unavailable.",
                 "HFC-MCP-PROJECTION-DOWNSTREAM-FAILED",
                 Retryable: true,
+                RefreshResources: false,
+                IsHiddenEquivalent: false),
+            // R2-P4: PolicyGateMissing is a host configuration error (no security gate
+            // registered), not a transient downstream failure. Telling agents to retry
+            // indefinitely against a misconfigured host is wasteful and noisy. Surface as
+            // non-retryable so the agent stops and the operator notices.
+            FrontComposerMcpFailureCategory.PolicyGateMissing => new(
+                "downstream_failed",
+                "Projection data is temporarily unavailable.",
+                "HFC-MCP-PROJECTION-DOWNSTREAM-FAILED",
+                Retryable: false,
                 RefreshResources: false,
                 IsHiddenEquivalent: false),
             _ => new(

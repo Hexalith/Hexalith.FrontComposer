@@ -7,6 +7,7 @@ using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Rendering;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using Shouldly;
 
@@ -194,6 +195,39 @@ public sealed class ProjectionReaderTaxonomyTests {
         renderer.CallCount.ShouldBe(0);
     }
 
+    [Fact]
+    public async Task VisibilityFlipAfterQuery_ReturnsHiddenEquivalentWithoutRenderingPartialOutput() {
+        // R2-P6: AC2 requires visibility revalidation before render. Story 8-4a's prior pass added
+        // a renderer-call counter for *epoch* advance (P-22); this is the equivalent for a
+        // visibility flip. The gate returns visible=true at admission (call #1) and pre-query
+        // (call #2), then visible=false at pre-render (call #3). The reader must collapse to the
+        // hidden-equivalent UnknownResource public payload and never invoke the renderer.
+        CountingQueryService query = new();
+        CountingProjectionRenderer renderer = new(McpProjectionRenderResult.Failure(FrontComposerMcpFailureCategory.UnsupportedRender));
+        SequenceResourceVisibilityGate gate = new(true, true, false);
+        FrontComposerMcpProjectionReader reader = BuildReader(
+            query,
+            manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard),
+            configureServices: services => {
+                services.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer);
+                services.RemoveAll<IFrontComposerMcpResourceVisibilityGate>();
+                services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(gate);
+            });
+
+        FrontComposerMcpResult result = await reader.ReadAsync(
+            "frontcomposer://Billing/projections/InvoiceProjection",
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
+        result.StructuredContent["isHiddenEquivalent"]!.GetValue<bool>().ShouldBeTrue();
+        result.Text.ShouldNotContain("INV-1");
+        query.CallCount.ShouldBe(1);
+        renderer.CallCount.ShouldBe(0);
+        gate.CallCount.ShouldBe(3);
+    }
+
     private static FrontComposerMcpProjectionReader BuildReader(
         IQueryService queryService,
         McpManifest? manifest = null,
@@ -275,9 +309,17 @@ public sealed class ProjectionReaderTaxonomyTests {
         private int _index;
 
         public McpDescriptorEpochs GetEpochs() {
-            int index = Math.Min(_index, epochs.Length - 1);
-            _index++;
-            return epochs[index];
+            // R2-P12: throw on overrun rather than silently returning the last epoch forever.
+            // Each test must declare exactly the number of provider calls its scenario triggers
+            // (preLookup, postLookup, plus one ValidateSnapshot per query/render gate). An overrun
+            // usually indicates a regression that introduces an extra resolution path; failing fast
+            // surfaces it immediately.
+            if (_index >= epochs.Length) {
+                throw new InvalidOperationException(
+                    $"SequenceEpochProvider exhausted: requested call #{_index + 1} but only {epochs.Length} epoch(s) declared.");
+            }
+
+            return epochs[_index++];
         }
     }
 
@@ -287,6 +329,28 @@ public sealed class ProjectionReaderTaxonomyTests {
             FrontComposerMcpAgentContext context,
             CancellationToken cancellationToken)
             => ValueTask.FromResult(visible);
+    }
+
+    private sealed class SequenceResourceVisibilityGate(params bool[] decisions) : IFrontComposerMcpResourceVisibilityGate {
+        private int _index;
+
+        public int CallCount { get; private set; }
+
+        public ValueTask<bool> IsVisibleAsync(
+            McpResourceDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken) {
+            // R2-P12 / R2-P6: throw on overrun so a regression that introduces a fourth
+            // visibility check (or removes one) surfaces immediately rather than silently
+            // returning the last decision forever.
+            if (_index >= decisions.Length) {
+                throw new InvalidOperationException(
+                    $"SequenceResourceVisibilityGate exhausted: requested call #{_index + 1} but only {decisions.Length} decision(s) declared.");
+            }
+
+            CallCount++;
+            return ValueTask.FromResult(decisions[_index++]);
+        }
     }
 
     private sealed class CountingVisibleToolCatalogProvider : IFrontComposerMcpVisibleToolCatalogProvider {
