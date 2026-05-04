@@ -11,6 +11,6 @@ public sealed record McpResourceDescriptor(
     string Title,
     string? Description,
     IReadOnlyList<McpParameterDescriptor> Fields,
-    string RenderStrategy = "Default",
+    McpProjectionRenderStrategy RenderStrategy = McpProjectionRenderStrategy.Default,
     string? EntityPluralLabel = null,
     string? EmptyStateCtaCommandName = null);

@@ -20,26 +20,35 @@ public static class McpMarkdownProjectionRenderer {
             cancellationToken.ThrowIfCancellationRequested();
 
             McpResourceDescriptor descriptor = request.Descriptor;
-            string role = string.IsNullOrWhiteSpace(descriptor.RenderStrategy) ? "Default" : descriptor.RenderStrategy;
+            McpProjectionRenderStrategy role = descriptor.RenderStrategy;
+            string roleText = role.ToString();
             IReadOnlyList<McpParameterDescriptor> fields = descriptor.Fields
-                .Where(f => !f.IsUnsupported)
                 .Take(Math.Max(1, options.MaxFieldsPerResource))
                 .ToArray();
+            bool fieldsTruncated = descriptor.Fields.Count > fields.Count;
 
-            string text = role switch {
-                "StatusOverview" => RenderStatusOverviewDocument(descriptor, fields, request.Items, request.TotalCount, request.SafeCommandSuggestions, options, cancellationToken),
-                "Timeline" => RenderTimelineDocument(descriptor, fields, request.Items, request.TotalCount, request.SafeCommandSuggestions, options, cancellationToken),
-                _ => RenderTableDocument(descriptor, fields, request.Items, request.TotalCount, role, request.SafeCommandSuggestions, options, cancellationToken),
+            // Dashboard and unknown strategies must not silently fall through to a Default
+            // table render — per the canonical contract they return the sanitized
+            // unsupported-render category. DetailRecord falls back to a table only because
+            // its descriptor exposes tabular fields safely.
+            RenderedMarkdown rendered = role switch {
+                McpProjectionRenderStrategy.Default or McpProjectionRenderStrategy.ActionQueue or McpProjectionRenderStrategy.DetailRecord
+                    => RenderTableDocument(descriptor, fields, request.Items, request.TotalCount, roleText, request.IsTruncated || fieldsTruncated, request.SafeCommandSuggestions, options, cancellationToken),
+                McpProjectionRenderStrategy.StatusOverview
+                    => RenderStatusOverviewDocument(descriptor, fields, request.Items, request.TotalCount, request.IsTruncated || fieldsTruncated, request.SafeCommandSuggestions, options, cancellationToken),
+                McpProjectionRenderStrategy.Timeline
+                    => RenderTimelineDocument(descriptor, fields, request.Items, request.TotalCount, request.IsTruncated || fieldsTruncated, request.SafeCommandSuggestions, options, cancellationToken),
+                _ => throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.UnsupportedRender),
             };
             var document = new McpMarkdownProjectionDocument(
                 descriptor.Name,
-                role,
+                roleText,
                 descriptor.BoundedContext,
                 request.RowCountCategory,
-                request.IsTruncated || descriptor.Fields.Count(f => !f.IsUnsupported) > fields.Count,
+                rendered.IsTruncated,
                 request.RequestId,
                 request.CorrelationId,
-                text);
+                rendered.Text);
             return McpProjectionRenderResult.Success(document);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
@@ -53,12 +62,13 @@ public static class McpMarkdownProjectionRenderer {
         }
     }
 
-    private static string RenderTableDocument(
+    private static RenderedMarkdown RenderTableDocument(
         McpResourceDescriptor descriptor,
         IReadOnlyList<McpParameterDescriptor> fields,
         IReadOnlyList<object> items,
         long totalCount,
         string role,
+        bool requestIsTruncated,
         IReadOnlyList<string>? suggestions,
         FrontComposerMcpOptions options,
         CancellationToken cancellationToken) {
@@ -68,7 +78,8 @@ public static class McpMarkdownProjectionRenderer {
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
-            return BoundDocument(sb, options);
+            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, requestIsTruncated);
         }
 
         sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
@@ -76,7 +87,8 @@ public static class McpMarkdownProjectionRenderer {
         sb.AppendLine();
 
         if (fields.Count == 0) {
-            return BoundDocument(sb, options);
+            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, requestIsTruncated);
         }
 
         sb.Append("| ").Append(string.Join(" | ", fields.Select(f => EscapeMarkdownText(f.Title)))).AppendLine(" |");
@@ -96,19 +108,21 @@ public static class McpMarkdownProjectionRenderer {
             rendered++;
         }
 
-        if (descriptor.Fields.Count(f => !f.IsUnsupported) > fields.Count || items.Count > rendered) {
+        bool isTruncated = requestIsTruncated || items.Count > rendered;
+        if (isTruncated) {
             sb.AppendLine();
             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
-        return BoundDocument(sb, options);
+        return BoundDocument(sb, options, isTruncated);
     }
 
-    private static string RenderStatusOverviewDocument(
+    private static RenderedMarkdown RenderStatusOverviewDocument(
         McpResourceDescriptor descriptor,
         IReadOnlyList<McpParameterDescriptor> fields,
         IReadOnlyList<object> items,
         long totalCount,
+        bool requestIsTruncated,
         IReadOnlyList<string>? suggestions,
         FrontComposerMcpOptions options,
         CancellationToken cancellationToken) {
@@ -119,15 +133,24 @@ public static class McpMarkdownProjectionRenderer {
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
-            return BoundDocument(sb, options);
+            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, requestIsTruncated);
         }
 
-        McpParameterDescriptor? statusField = fields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
-            ?? fields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
+        // Search across all non-unsupported fields, not just the column-truncated subset, so a
+        // status field at index >= MaxFieldsPerResource still drives the grouping.
+        IReadOnlyList<McpParameterDescriptor> renderableFields = descriptor.Fields
+            .Where(f => !f.IsUnsupported)
+            .ToArray();
+        McpParameterDescriptor? statusField = renderableFields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
+            ?? renderableFields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
         if (statusField is null) {
-            return BoundDocument(sb, options);
+            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, requestIsTruncated);
         }
 
+        // Aggregate by slot first, with a stable label per slot derived from the first member
+        // observed. Two enum members mapped to the same slot collapse into a single group.
         Dictionary<string, StatusGroup> groups = new(StringComparer.Ordinal);
         foreach (object item in items) {
             cancellationToken.ThrowIfCancellationRequested();
@@ -142,15 +165,24 @@ public static class McpMarkdownProjectionRenderer {
                 && IsSemanticBadgeSlot(mapped)
                     ? mapped
                     : "Neutral";
-            if (!groups.TryGetValue(member, out StatusGroup? group)) {
+            string key = slot + "" + member;
+            if (!groups.TryGetValue(key, out StatusGroup? group)) {
                 group = new StatusGroup(slot, Humanize(member));
-                groups.Add(member, group);
+                groups.Add(key, group);
             }
 
             group.Count++;
         }
 
-        foreach (StatusGroup group in groups.Values.Take(Math.Max(1, options.MaxProjectionStatusGroups))) {
+        // Severity order: Total has already been rendered. Then Danger, Warning, Success,
+        // Info, Accent, Neutral, then unknown labels sorted ordinally by sanitized label.
+        StatusGroup[] ordered = [.. groups.Values
+            .OrderBy(g => SlotSeverityIndex(g.Slot))
+            .ThenBy(g => g.Slot, StringComparer.Ordinal)
+            .ThenBy(g => g.Label, StringComparer.Ordinal)];
+
+        int cap = Math.Max(1, options.MaxProjectionStatusGroups);
+        foreach (StatusGroup group in ordered.Take(cap)) {
             sb.Append("- ")
                 .Append(EscapeMarkdownText(group.Slot))
                 .Append(": ")
@@ -159,18 +191,31 @@ public static class McpMarkdownProjectionRenderer {
                 .AppendLine(EscapeMarkdownText(group.Label));
         }
 
-        if (groups.Count > Math.Max(1, options.MaxProjectionStatusGroups)) {
+        bool isTruncated = requestIsTruncated || ordered.Length > cap;
+        if (isTruncated) {
             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
-        return BoundDocument(sb, options);
+        return BoundDocument(sb, options, isTruncated);
     }
 
-    private static string RenderTimelineDocument(
+    private static int SlotSeverityIndex(string slot)
+        => slot switch {
+            "Danger" => 0,
+            "Warning" => 1,
+            "Success" => 2,
+            "Info" => 3,
+            "Accent" => 4,
+            "Neutral" => 5,
+            _ => 6,
+        };
+
+    private static RenderedMarkdown RenderTimelineDocument(
         McpResourceDescriptor descriptor,
         IReadOnlyList<McpParameterDescriptor> fields,
         IReadOnlyList<object> items,
         long totalCount,
+        bool requestIsTruncated,
         IReadOnlyList<string>? suggestions,
         FrontComposerMcpOptions options,
         CancellationToken cancellationToken) {
@@ -180,28 +225,37 @@ public static class McpMarkdownProjectionRenderer {
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
-            return BoundDocument(sb, options);
+            AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, requestIsTruncated);
         }
 
-        McpParameterDescriptor? timestampField = fields.FirstOrDefault(IsDateTimeField);
-        McpParameterDescriptor? statusField = fields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
-            ?? fields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
-        McpParameterDescriptor? titleField = fields.FirstOrDefault(f => f != timestampField && f != statusField);
+        // Search across all non-unsupported fields so a timestamp/status at index >=
+        // MaxFieldsPerResource still drives timeline rendering.
+        IReadOnlyList<McpParameterDescriptor> renderableFields = descriptor.Fields
+            .Where(f => !f.IsUnsupported)
+            .ToArray();
+        McpParameterDescriptor? timestampField = renderableFields.FirstOrDefault(IsDateTimeField);
+        McpParameterDescriptor? statusField = renderableFields.FirstOrDefault(f => f.BadgeMappings is { Count: > 0 })
+            ?? renderableFields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
+        McpParameterDescriptor? titleField = renderableFields.FirstOrDefault(f => f != timestampField && f != statusField);
         int maxEntries = Math.Max(1, Math.Min(options.MaxRowsPerResource, options.MaxProjectionTimelineEntries));
 
-        var entries = items.Select((item, index) => new TimelineEntry(
+        TimelineEntry[] entries = [.. items.Select((item, index) => new TimelineEntry(
                 item,
                 index,
-                timestampField is null ? null : ReadDateTimeOffset(ReadPropertyValue(item, timestampField.Name))))
+                timestampField is null ? null : ReadDateTimeOffset(ReadPropertyValue(item, timestampField.Name)),
+                ReadStableItemKey(item)))
             .OrderBy(e => e.Timestamp is null ? 1 : 0)
             .ThenByDescending(e => e.Timestamp)
+            .ThenBy(e => e.ItemKey, StringComparer.Ordinal)
             .ThenBy(e => e.Ordinal)
-            .Take(maxEntries)
-            .ToArray();
+            .Take(maxEntries)];
 
         foreach (TimelineEntry entry in entries) {
             cancellationToken.ThrowIfCancellationRequested();
-            string timestamp = entry.Timestamp?.ToString("o", CultureInfo.InvariantCulture) ?? "No timestamp";
+            string timestamp = entry.Timestamp?.ToUniversalTime()
+                .ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)
+                ?? "No timestamp";
             string status = statusField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, statusField.Name), statusField, options);
             string title = titleField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, titleField.Name), titleField, options);
 
@@ -213,12 +267,22 @@ public static class McpMarkdownProjectionRenderer {
             sb.AppendLine(title);
         }
 
-        if (items.Count > entries.Length) {
+        bool isTruncated = requestIsTruncated || items.Count > entries.Length;
+        if (isTruncated) {
             sb.AppendLine();
             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
-        return BoundDocument(sb, options);
+        return BoundDocument(sb, options, isTruncated);
+    }
+
+    private static void AppendTruncationMarkerIfNeeded(StringBuilder sb, FrontComposerMcpOptions options, bool isTruncated) {
+        if (!isTruncated) {
+            return;
+        }
+
+        sb.AppendLine();
+        sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
     }
 
     private static object? ReadPropertyValue(object item, string name) {
@@ -242,45 +306,120 @@ public static class McpMarkdownProjectionRenderer {
             return;
         }
 
+        // Drop link-shaped suggestions before emit per the Inert Untrusted Text Contract:
+        // "Empty-state suggestions use visible descriptor labels only, max 5, no links".
         sb.AppendLine();
-        sb.AppendLine("Suggestions:");
-        foreach (string suggestion in safeSuggestions.Take(max)) {
+        int emitted = 0;
+        foreach (string suggestion in safeSuggestions) {
+            if (emitted >= max) {
+                break;
+            }
+
+            if (LooksLikeLinkOrCommand(suggestion)) {
+                continue;
+            }
+
             sb.Append("- ").AppendLine(EscapeMarkdownText(RedactSensitiveText(suggestion)));
+            emitted++;
         }
     }
 
-    private static bool IsDateTimeField(McpParameterDescriptor field)
-        => field.TypeName is "DateTime" or "DateTimeOffset" or "DateOnly" or "TimeOnly"
-            || string.Equals(field.DisplayFormat, "RelativeTime", StringComparison.Ordinal);
+    private static bool LooksLikeLinkOrCommand(string value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return true;
+        }
 
-    private static DateTimeOffset? ReadDateTimeOffset(object? value)
-        => value switch {
-            null => null,
-            DateTimeOffset dto => dto,
-            DateTime dt => new DateTimeOffset(dt),
-            DateOnly d => new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue)),
-            _ => null,
-        };
+        // Reject Markdown link/image/reference syntax, autolinks, schemes, and slash-style
+        // command payloads (anywhere in the suggestion text). Visible descriptor labels
+        // never contain these constructs.
+        ReadOnlySpan<char> trimmed = value.AsSpan().Trim();
+        if (trimmed.IndexOfAny(LinkOrCommandChars) >= 0) {
+            return true;
+        }
+
+        if (trimmed.IndexOf("://", StringComparison.Ordinal) >= 0) {
+            return true;
+        }
+
+        if (trimmed[0] == '/') {
+            return true;
+        }
+
+        // Whitespace followed by '/' followed by a non-whitespace char looks like an inline
+        // slash command ("run /danger", "please /approve").
+        for (int i = 1; i < trimmed.Length - 1; i++) {
+            if (trimmed[i] == '/' && char.IsWhiteSpace(trimmed[i - 1]) && !char.IsWhiteSpace(trimmed[i + 1])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsDateTimeField(McpParameterDescriptor field)
+        => field.TypeName is "DateTime" or "DateTimeOffset" or "DateOnly";
+
+    private static DateTimeOffset? ReadDateTimeOffset(object? value) {
+        // Wrap conversions: new DateTimeOffset(DateTime.MinValue) throws on positive-offset
+        // hosts; we degrade per-row to "No timestamp" rather than failing the whole render.
+        try {
+            return value switch {
+                null => null,
+                DateTimeOffset dto => dto,
+                DateTime { Kind: DateTimeKind.Unspecified } dt => new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc)),
+                DateTime dt => new DateTimeOffset(dt.ToUniversalTime(), TimeSpan.Zero),
+                DateOnly d => new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)),
+                _ => null,
+            };
+        }
+        catch (ArgumentOutOfRangeException) {
+            return null;
+        }
+    }
 
     private static string FormatCell(object? value, McpParameterDescriptor field, FrontComposerMcpOptions options) {
+        if (field.IsUnsupported) {
+            return UnsupportedPlaceholder;
+        }
+
         if (value is null) {
             return "-";
         }
 
+        if (value is string emptyCheck && emptyCheck.Length == 0) {
+            return "-";
+        }
+
         string text = value switch {
-            DateTime dt => dt.ToString("o", CultureInfo.InvariantCulture),
-            DateTimeOffset dto => dto.ToString("o", CultureInfo.InvariantCulture),
+            DateTime dt => FormatDateTime(dt),
+            DateTimeOffset dto => dto.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture),
             DateOnly d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             TimeOnly t => t.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
-            bool b => b ? "true" : "false",
+            bool b => b ? "Yes" : "No",
             Enum e => FormatEnum(e, field),
             string s => s,
             IEnumerable enumerable and not string => FormatEnumerable(enumerable),
-            IFormattable formattable => formattable.ToString(null, CultureInfo.InvariantCulture) ?? string.Empty,
+            IFormattable formattable => FormatFormattable(formattable, field),
             _ => value.ToString() ?? string.Empty,
         };
 
-        return EscapeMarkdownText(TrimCell(RedactSensitiveText(text), Math.Max(1, options.MaxProjectionCellCharacters)));
+        return EscapeMarkdownText(TrimCell(RedactSensitiveText(text), Math.Max(4, options.MaxProjectionCellCharacters)));
+    }
+
+    private static string FormatDateTime(DateTime dt) {
+        DateTime utc = dt.Kind switch {
+            DateTimeKind.Utc => dt,
+            DateTimeKind.Local => dt.ToUniversalTime(),
+            _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
+        };
+        return utc.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture);
+    }
+
+    private static string FormatFormattable(IFormattable value, McpParameterDescriptor field) {
+        string? format = string.Equals(field.DisplayFormat, "Currency", StringComparison.Ordinal)
+            ? "C"
+            : null;
+        return value.ToString(format, CultureInfo.InvariantCulture) ?? string.Empty;
     }
 
     private static string RedactSensitiveText(string text) {
@@ -292,9 +431,10 @@ public static class McpMarkdownProjectionRenderer {
             text,
             @"(?i)\b(api[_-]?key|client[_-]?secret|authorization)\s*[:=]\s*\S+",
             "$1=[redacted]");
+        // Broadened to catch opaque bearer tokens (no JWT-shaped dots required).
         redacted = Regex.Replace(
             redacted,
-            @"(?i)\bbearer\s+[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)?",
+            @"(?i)\bbearer\s+[A-Za-z0-9_\-\.]+",
             "Bearer [redacted]");
         redacted = Regex.Replace(
             redacted,
@@ -314,17 +454,17 @@ public static class McpMarkdownProjectionRenderer {
     }
 
     private static string FormatEnumerable(IEnumerable enumerable) {
-        List<string> values = [];
-        foreach (object? value in enumerable) {
-            values.Add(value?.ToString() ?? "-");
-            if (values.Count >= 5) {
-                values.Add("...");
-                break;
-            }
-        }
-
-        return string.Join(", ", values);
+        // Per the canonical formatting matrix, arrays/objects render as the unsupported
+        // placeholder unless SourceTools provides a scalar safe value. We do not serialize
+        // raw collection content into Markdown cells.
+        _ = enumerable;
+        return UnsupportedPlaceholder;
     }
+
+    private const string UnsupportedPlaceholder = "(unsupported)";
+
+    private static readonly System.Buffers.SearchValues<char> LinkOrCommandChars =
+        System.Buffers.SearchValues.Create("[]()<>`");
 
     private static string Humanize(string value) {
         if (string.IsNullOrWhiteSpace(value)) {
@@ -332,13 +472,30 @@ public static class McpMarkdownProjectionRenderer {
         }
 
         var sb = new StringBuilder(value.Length + 8);
-        for (int i = 0; i < value.Length; i++) {
-            char c = value[i];
-            if (i > 0 && char.IsUpper(c) && !char.IsWhiteSpace(value[i - 1])) {
+        bool prevIsLetterOrDigit = false;
+        int i = 0;
+        while (i < value.Length) {
+            int codePoint;
+            int width;
+            if (char.IsHighSurrogate(value[i]) && i + 1 < value.Length && char.IsLowSurrogate(value[i + 1])) {
+                codePoint = char.ConvertToUtf32(value[i], value[i + 1]);
+                width = 2;
+            }
+            else {
+                codePoint = value[i];
+                width = 1;
+            }
+
+            // Insert space before a new uppercase word only when the previous code point was
+            // a letter/digit; this preserves "OnHold" → "On Hold" while leaving surrogate pairs
+            // intact and avoiding spurious spaces after whitespace/punctuation.
+            if (i > 0 && prevIsLetterOrDigit && Rune.IsUpper(new Rune(codePoint))) {
                 sb.Append(' ');
             }
 
-            sb.Append(c);
+            sb.Append(value, i, width);
+            prevIsLetterOrDigit = Rune.IsLetterOrDigit(new Rune(codePoint));
+            i += width;
         }
 
         return sb.ToString();
@@ -355,20 +512,53 @@ public static class McpMarkdownProjectionRenderer {
         public int Count { get; set; }
     }
 
-    private sealed record TimelineEntry(object Item, int Ordinal, DateTimeOffset? Timestamp);
+    private sealed record TimelineEntry(object Item, int Ordinal, DateTimeOffset? Timestamp, string ItemKey);
+
+    private static readonly string[] StableKeyPropertyNames = ["Id", "Key", "Name"];
+
+    private static string ReadStableItemKey(object item) {
+        Type type = item.GetType();
+        foreach (string property in StableKeyPropertyNames) {
+            object? value = type.GetProperty(property, BindingFlags.Instance | BindingFlags.Public)?.GetValue(item);
+            if (value is null) {
+                continue;
+            }
+
+            string? text = value.ToString();
+            if (!string.IsNullOrWhiteSpace(text)) {
+                return text;
+            }
+        }
+
+        return string.Empty;
+    }
 
     private static string TrimCell(string text, int maxLength)
         => text.Length <= maxLength ? text : text[..Math.Max(0, maxLength - 3)] + "...";
 
-    private static string BoundDocument(StringBuilder sb, FrontComposerMcpOptions options) {
+    private static RenderedMarkdown BoundDocument(StringBuilder sb, FrontComposerMcpOptions options, bool isTruncated) {
         int max = Math.Max(1, options.MaxProjectionMarkdownCharacters);
         if (sb.Length <= max) {
-            return sb.ToString();
+            return new RenderedMarkdown(sb.ToString(), isTruncated);
         }
 
-        string marker = options.ProjectionTruncationMarker;
-        int keep = Math.Max(0, max - marker.Length - Environment.NewLine.Length);
-        return sb.ToString(0, keep) + Environment.NewLine + marker;
+        string marker = EscapeMarkdownText(options.ProjectionTruncationMarker);
+        int budget = max - marker.Length - Environment.NewLine.Length;
+        if (budget <= 0) {
+            // Marker alone would exceed the bound; surface this as a sanitized failure rather than
+            // returning a string longer than the configured cap.
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ResponseTooLarge);
+        }
+
+        // Cut on the last newline before `budget` so the truncation never lands mid-row of a table.
+        string buffered = sb.ToString();
+        int cut = buffered.LastIndexOf('\n', Math.Min(budget, buffered.Length) - 1);
+        if (cut < 0) {
+            // No newline within the budget — discard rather than emit an unterminated table row.
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ResponseTooLarge);
+        }
+
+        return new RenderedMarkdown(buffered[..(cut + 1)] + marker + Environment.NewLine, true);
     }
 
     internal static string EscapeMarkdownText(string value) {
@@ -435,6 +625,10 @@ public static class McpMarkdownProjectionRenderer {
             }
         }
 
-        return sb.ToString().Replace("- [ ]", "\\- \\[ \\]", StringComparison.Ordinal);
+        // The per-character escape above already neutralizes GFM task-list markers (`[` → `\[`,
+        // `]` → `\]`), Markdown links/images, autolinks, fenced code, and HTML.
+        return sb.ToString();
     }
+
+    private sealed record RenderedMarkdown(string Text, bool IsTruncated);
 }

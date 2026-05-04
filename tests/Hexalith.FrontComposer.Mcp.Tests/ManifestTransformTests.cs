@@ -1,3 +1,4 @@
+using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
@@ -98,5 +99,14 @@ public sealed class ManifestTransformTests {
         descriptor.Fields[1].BadgeMappings!["Pending"].ShouldBe("Warning");
         descriptor.Fields[1].BadgeMappings!["Approved"].ShouldBe("Success");
         descriptor.Fields[2].DisplayFormat.ShouldBe("RelativeTime");
+    }
+
+    [Fact]
+    public void PublicResourceDescriptor_UsesTypedRenderStrategy() {
+        Type propertyType = typeof(McpResourceDescriptor)
+            .GetProperty(nameof(McpResourceDescriptor.RenderStrategy))!
+            .PropertyType;
+
+        propertyType.ShouldBe(typeof(McpProjectionRenderStrategy));
     }
 }

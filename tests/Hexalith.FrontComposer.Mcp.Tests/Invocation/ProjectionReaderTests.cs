@@ -44,8 +44,10 @@ public sealed class ProjectionReaderTests {
 
         result.IsError.ShouldBeFalse();
         result.Text.ShouldContain("No invoices found.");
-        result.Text.ShouldContain("Suggestions:");
         result.Text.ShouldContain("- Create invoice");
+        // The empty-state suggestion list emits bullets directly under the empty-state line;
+        // the previous "Suggestions:" inline label was not part of the canonical document grammar.
+        result.Text.ShouldNotContain("Suggestions:");
     }
 
     private static IServiceCollection Services(IQueryService queryService) {

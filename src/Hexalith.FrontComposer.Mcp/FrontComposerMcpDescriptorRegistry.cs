@@ -7,7 +7,7 @@ using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Mcp;
 
-public sealed class FrontComposerMcpDescriptorRegistry {
+public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescriptorEpochProvider {
     private readonly IReadOnlyDictionary<string, McpCommandDescriptor> _commands;
     private readonly IReadOnlyDictionary<string, McpResourceDescriptor> _resources;
     private readonly IReadOnlyList<McpCommandDescriptor> _orderedCommands;
@@ -28,6 +28,9 @@ public sealed class FrontComposerMcpDescriptorRegistry {
         _orderedResources = [.. _resources.Values.OrderBy(r => r.ProtocolUri, StringComparer.Ordinal)];
         _normalizedNames = BuildNormalizedNameMap(_orderedCommands);
     }
+
+    public McpDescriptorEpochs GetEpochs()
+        => new(DescriptorEpoch: 1, CatalogEpoch: 1);
 
     public IReadOnlyList<McpCommandDescriptor> Commands => _orderedCommands;
 

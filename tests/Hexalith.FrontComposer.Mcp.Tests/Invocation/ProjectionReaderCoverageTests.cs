@@ -17,7 +17,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// </summary>
 public sealed class ProjectionReaderCoverageTests {
     [Fact]
-    public async Task UnknownResource_IsRejectedWithGenericFailureText() {
+    public async Task UnknownResource_IsRejectedWithProjectionTaxonomyText() {
         FrontComposerMcpProjectionReader reader = BuildReader<EmptyQueryService>(out _);
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/NoSuchProjection",
@@ -25,7 +25,10 @@ public sealed class ProjectionReaderCoverageTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
-        result.Text.ShouldBe("Request failed.");
+        result.Text.ShouldBe("Projection resource is not available.");
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
+        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-PROJECTION-UNKNOWN-RESOURCE");
     }
 
     [Fact]
@@ -58,8 +61,9 @@ public sealed class ProjectionReaderCoverageTests {
         result.Text.ShouldContain("# Audit events");
         result.Text.ShouldContain("Total: 1");
 
-        // ISO 8601 date format ('o' specifier) emits ten leading digits then 'T'.
-        result.Text.ShouldContain("2026-05-02T", customMessage: $"Body was: {result.Text}");
+        // Canonical Markdown formatting matrix: dates render as `yyyy-MM-dd HH:mm:ss UTC`
+        // after UTC conversion. Test fixture uses 2026-05-02T10:30:45Z.
+        result.Text.ShouldContain("2026-05-02 10:30:45 UTC", customMessage: $"Body was: {result.Text}");
 
         // SanitizeCell preserves data through markdown-cell escape; pipe in source becomes \|.
         result.Text.ShouldContain("\\|");

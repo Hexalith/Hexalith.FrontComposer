@@ -1,0 +1,267 @@
+using System.Security.Claims;
+using System.Text.Json.Nodes;
+
+using Hexalith.FrontComposer.Contracts.Communication;
+using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.Mcp.Invocation;
+
+using Microsoft.Extensions.DependencyInjection;
+
+using Shouldly;
+
+namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
+
+public sealed class ProjectionReaderTaxonomyTests {
+    [Theory]
+    [InlineData("", FrontComposerMcpFailureCategory.MalformedRequest, "malformed_resource", "HFC-MCP-PROJECTION-MALFORMED-RESOURCE", false, false)]
+    [InlineData("frontcomposer://Billing/projections/MissingProjection", FrontComposerMcpFailureCategory.UnknownResource, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE", false, true)]
+    public async Task AdmissionFailures_ReturnDeterministicTaxonomy_AndDoNotQuery(
+        string uri,
+        FrontComposerMcpFailureCategory expectedCategory,
+        string expectedTaxonomy,
+        string expectedDocsCode,
+        bool expectedRetryable,
+        bool expectedRefreshResources) {
+        CountingQueryService query = new();
+        FrontComposerMcpProjectionReader reader = BuildReader(query);
+
+        FrontComposerMcpResult result = await reader.ReadAsync(uri, TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(expectedCategory);
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
+        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
+        result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
+        result.StructuredContent!["refreshResources"]!.GetValue<bool>().ShouldBe(expectedRefreshResources);
+        result.StructuredContent!.ContainsKey("contentType").ShouldBeFalse();
+        result.Text.ShouldBe(result.StructuredContent!["message"]!.GetValue<string>());
+        query.CallCount.ShouldBe(0);
+    }
+
+    [Theory]
+    [InlineData(FrontComposerMcpFailureCategory.ResponseTooLarge, "response_too_large", "HFC-MCP-PROJECTION-RESPONSE-TOO-LARGE", false, false)]
+    [InlineData(FrontComposerMcpFailureCategory.UnsupportedRender, "unsupported_render", "HFC-MCP-PROJECTION-UNSUPPORTED-RENDER", false, false)]
+    [InlineData(FrontComposerMcpFailureCategory.QueryRejected, "query_failed", "HFC-MCP-PROJECTION-QUERY-FAILED", true, false)]
+    [InlineData(FrontComposerMcpFailureCategory.Timeout, "timeout", "HFC-MCP-PROJECTION-TIMEOUT", true, false)]
+    [InlineData(FrontComposerMcpFailureCategory.Canceled, "canceled", "HFC-MCP-PROJECTION-CANCELED", true, false)]
+    [InlineData(FrontComposerMcpFailureCategory.DegradedResult, "degraded_result", "HFC-MCP-PROJECTION-DEGRADED-RESULT", true, false)]
+    [InlineData(FrontComposerMcpFailureCategory.PolicyFiltered, "policy_filtered", "HFC-MCP-PROJECTION-POLICY-FILTERED", false, true)]
+    [InlineData(FrontComposerMcpFailureCategory.DownstreamFailed, "downstream_failed", "HFC-MCP-PROJECTION-DOWNSTREAM-FAILED", true, false)]
+    [InlineData(FrontComposerMcpFailureCategory.StaleDescriptor, "stale_descriptor", "HFC-MCP-PROJECTION-STALE-DESCRIPTOR", true, true)]
+    public async Task QueryAndRenderFailures_ReturnSanitizedTaxonomy(
+        FrontComposerMcpFailureCategory category,
+        string expectedTaxonomy,
+        string expectedDocsCode,
+        bool expectedRetryable,
+        bool expectedRefreshResources) {
+        FrontComposerMcpProjectionReader reader = category switch {
+            FrontComposerMcpFailureCategory.ResponseTooLarge => BuildReader(new CountingQueryService(), configureOptions: o => o.MaxProjectionMarkdownCharacters = 8),
+            FrontComposerMcpFailureCategory.UnsupportedRender => BuildReader(new CountingQueryService(), manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard)),
+            FrontComposerMcpFailureCategory.Timeout => BuildReader(new ThrowingQueryService(new TimeoutException("raw tenant-a timeout"))),
+            FrontComposerMcpFailureCategory.Canceled => BuildReader(new ThrowingQueryService(new OperationCanceledException("raw cancel"))),
+            FrontComposerMcpFailureCategory.StaleDescriptor => BuildReader(
+                new CountingQueryService(),
+                configureServices: services => services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
+                    new SequenceEpochProvider(
+                        new McpDescriptorEpochs(1, 1),
+                        new McpDescriptorEpochs(1, 1),
+                        new McpDescriptorEpochs(2, 1)))),
+            _ => BuildReader(new ThrowingQueryService(new FrontComposerMcpException(category, "raw tenant-a jwt eyJabc.def"))),
+        };
+
+        FrontComposerMcpResult result = await reader.ReadAsync(
+            "frontcomposer://Billing/projections/InvoiceProjection",
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
+        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
+        result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
+        result.StructuredContent!["refreshResources"]!.GetValue<bool>().ShouldBe(expectedRefreshResources);
+        result.Text.ShouldBe(result.StructuredContent!["message"]!.GetValue<string>());
+        JsonSerializerText(result.StructuredContent!).ShouldNotContain("tenant-a");
+        JsonSerializerText(result.StructuredContent!).ShouldNotContain("eyJabc");
+    }
+
+    [Theory]
+    [InlineData("", "agent-a", true, FrontComposerMcpFailureCategory.TenantMissing, "tenant_missing", "HFC-MCP-PROJECTION-TENANT-MISSING")]
+    [InlineData("tenant-a", "", true, FrontComposerMcpFailureCategory.AuthFailed, "auth_failed", "HFC-MCP-PROJECTION-AUTH-FAILED")]
+    [InlineData("tenant-a", "agent-a", false, FrontComposerMcpFailureCategory.AuthFailed, "auth_failed", "HFC-MCP-PROJECTION-AUTH-FAILED")]
+    public async Task InvalidAgentContext_ReturnsContextTaxonomy_AndDoesNotQuery(
+        string tenantId,
+        string userId,
+        bool authenticated,
+        FrontComposerMcpFailureCategory expectedCategory,
+        string expectedTaxonomy,
+        string expectedDocsCode) {
+        CountingQueryService query = new();
+        FrontComposerMcpProjectionReader reader = BuildReader(
+            query,
+            accessor: new StaticAccessor(tenantId, userId, authenticated));
+
+        FrontComposerMcpResult result = await reader.ReadAsync(
+            "frontcomposer://Billing/projections/InvoiceProjection",
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(expectedCategory);
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedTaxonomy);
+        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
+        result.StructuredContent!["isHiddenEquivalent"]!.GetValue<bool>().ShouldBeTrue();
+        query.CallCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task ResourceVisibilityDenied_IsHiddenEquivalent_AndDoesNotQueryOrEnumerateSuggestions() {
+        CountingQueryService query = new();
+        FrontComposerMcpProjectionReader reader = BuildReader(
+            query,
+            configureServices: services => services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
+                new ToggleResourceVisibilityGate(visible: false)));
+
+        FrontComposerMcpResult result = await reader.ReadAsync(
+            "frontcomposer://Billing/projections/InvoiceProjection",
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
+        result.StructuredContent!["isHiddenEquivalent"]!.GetValue<bool>().ShouldBeTrue();
+        query.CallCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task EpochChangeBeforeQuery_ReturnsStaleWithoutQuery() {
+        CountingQueryService query = new();
+        FrontComposerMcpProjectionReader reader = BuildReader(
+            query,
+            configureServices: services => services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
+                new SequenceEpochProvider(
+                    new McpDescriptorEpochs(10, 20),
+                    new McpDescriptorEpochs(11, 20))));
+
+        FrontComposerMcpResult result = await reader.ReadAsync(
+            "frontcomposer://Billing/projections/InvoiceProjection",
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.StaleDescriptor);
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("stale_descriptor");
+        query.CallCount.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task EpochChangeAfterQuery_ReturnsStaleWithoutRenderingPartialOutput() {
+        CountingQueryService query = new();
+        FrontComposerMcpProjectionReader reader = BuildReader(
+            query,
+            manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard),
+            configureServices: services => services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
+                new SequenceEpochProvider(
+                    new McpDescriptorEpochs(10, 20),
+                    new McpDescriptorEpochs(10, 20),
+                    new McpDescriptorEpochs(10, 21))));
+
+        FrontComposerMcpResult result = await reader.ReadAsync(
+            "frontcomposer://Billing/projections/InvoiceProjection",
+            TestContext.Current.CancellationToken);
+
+        result.IsError.ShouldBeTrue();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.StaleDescriptor);
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("stale_descriptor");
+        result.Text.ShouldNotContain("INV-1");
+        query.CallCount.ShouldBe(1);
+    }
+
+    private static FrontComposerMcpProjectionReader BuildReader(
+        IQueryService queryService,
+        McpManifest? manifest = null,
+        IFrontComposerMcpAgentContextAccessor? accessor = null,
+        Action<FrontComposerMcpOptions>? configureOptions = null,
+        Action<IServiceCollection>? configureServices = null) {
+        ServiceCollection services = [];
+        services.AddSingleton(queryService);
+        services.Configure<FrontComposerMcpOptions>(o => {
+            o.Manifests.Add(manifest ?? Manifest());
+            configureOptions?.Invoke(o);
+        });
+        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
+        services.AddScoped<FrontComposerMcpProjectionReader>();
+        configureServices?.Invoke(services);
+        ServiceProvider provider = services.BuildServiceProvider();
+        return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
+    }
+
+    private static McpManifest Manifest(McpProjectionRenderStrategy renderStrategy = McpProjectionRenderStrategy.Default)
+        => new("frontcomposer.mcp.v1", [], [
+            new McpResourceDescriptor(
+                "frontcomposer://Billing/projections/InvoiceProjection",
+                "InvoiceProjection",
+                typeof(InvoiceProjection).FullName!,
+                "Billing",
+                "Invoices",
+                null,
+                [
+                    new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
+                    new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false),
+                ],
+                RenderStrategy: renderStrategy),
+        ]);
+
+    private static string JsonSerializerText(JsonObject value)
+        => value.ToJsonString();
+
+    public sealed record InvoiceProjection(string Number, int Amount);
+
+    private sealed class CountingQueryService : IQueryService {
+        public int CallCount { get; private set; }
+
+        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
+            CallCount++;
+            object[] items = [new InvoiceProjection("INV-1", 42)];
+            return Task.FromResult(new QueryResult<T>(items.Cast<T>().ToArray(), 1, null));
+        }
+    }
+
+    private sealed class ThrowingQueryService(Exception exception) : IQueryService {
+        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default)
+            => exception is OperationCanceledException
+                ? Task.FromCanceled<QueryResult<T>>(new CancellationToken(canceled: true))
+                : Task.FromException<QueryResult<T>>(exception);
+    }
+
+    private sealed class StaticAccessor(
+        string tenantId = "tenant-a",
+        string userId = "agent-a",
+        bool authenticated = true) : IFrontComposerMcpAgentContextAccessor {
+        public FrontComposerMcpAgentContext GetContext()
+            => new(
+                tenantId,
+                userId,
+                new ClaimsPrincipal(new ClaimsIdentity(
+                    authenticationType: authenticated ? "test" : null,
+                    nameType: "name",
+                    roleType: "role")));
+    }
+
+    private sealed class SequenceEpochProvider(params McpDescriptorEpochs[] epochs) : IFrontComposerMcpDescriptorEpochProvider {
+        private int _index;
+
+        public McpDescriptorEpochs GetEpochs() {
+            int index = Math.Min(_index, epochs.Length - 1);
+            _index++;
+            return epochs[index];
+        }
+    }
+
+    private sealed class ToggleResourceVisibilityGate(bool visible) : IFrontComposerMcpResourceVisibilityGate {
+        public ValueTask<bool> IsVisibleAsync(
+            McpResourceDescriptor descriptor,
+            FrontComposerMcpAgentContext context,
+            CancellationToken cancellationToken)
+            => ValueTask.FromResult(visible);
+    }
+}

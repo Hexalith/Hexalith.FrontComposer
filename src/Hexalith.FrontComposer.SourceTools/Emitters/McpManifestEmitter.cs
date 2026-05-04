@@ -115,7 +115,7 @@ public static class McpManifestEmitter {
             sb.AppendLine("                " + Literal(resource.Description) + ",");
             EmitParameters(sb, resource.Fields, 16);
             sb.AppendLine(",");
-            sb.AppendLine("                \"" + Escape(resource.RenderStrategy) + "\",");
+            sb.AppendLine("                McpProjectionRenderStrategy." + resource.RenderStrategy + ",");
             sb.AppendLine("                " + Literal(resource.EntityPluralLabel) + ",");
             sb.AppendLine("                " + Literal(resource.EmptyStateCtaCommandName));
             sb.AppendLine("),");
