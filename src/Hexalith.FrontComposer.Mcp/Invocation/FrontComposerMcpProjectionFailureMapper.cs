@@ -3,17 +3,32 @@ using System.Text.Json.Nodes;
 namespace Hexalith.FrontComposer.Mcp.Invocation;
 
 internal static class FrontComposerMcpProjectionFailureMapper {
+    // DN-2: hidden-equivalent categories share the public payload of UnknownResource so an
+    // adversary cannot branch on category/docsCode/message to learn whether a resource exists,
+    // is policy-blocked, or is auth/tenant-blocked. The internal `Category` enum is preserved
+    // for telemetry and host-side decisions; only the agent-visible structured content collapses.
+    private static readonly ProjectionFailureContract HiddenEquivalentPublic = new(
+        "unknown_resource",
+        "Projection resource is not available.",
+        "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE",
+        Retryable: false,
+        RefreshResources: true,
+        IsHiddenEquivalent: true);
+
     public static FrontComposerMcpResult ToResult(FrontComposerMcpFailureCategory category) {
-        ProjectionFailureContract contract = Map(category);
+        ProjectionFailureContract internalContract = Map(category);
+        ProjectionFailureContract publicContract = internalContract.IsHiddenEquivalent
+            ? HiddenEquivalentPublic
+            : internalContract;
         JsonObject structured = new() {
-            ["category"] = contract.TaxonomyCategory,
-            ["message"] = contract.SafeText,
-            ["docsCode"] = contract.DocsCode,
-            ["retryable"] = contract.Retryable,
-            ["refreshResources"] = contract.RefreshResources,
-            ["isHiddenEquivalent"] = contract.IsHiddenEquivalent,
+            ["category"] = publicContract.TaxonomyCategory,
+            ["message"] = publicContract.SafeText,
+            ["docsCode"] = publicContract.DocsCode,
+            ["retryable"] = publicContract.Retryable,
+            ["refreshResources"] = publicContract.RefreshResources,
+            ["isHiddenEquivalent"] = publicContract.IsHiddenEquivalent,
         };
-        return FrontComposerMcpResult.Failure(category, contract.SafeText, structured);
+        return FrontComposerMcpResult.Failure(category, publicContract.SafeText, structured);
     }
 
     private static ProjectionFailureContract Map(FrontComposerMcpFailureCategory category)

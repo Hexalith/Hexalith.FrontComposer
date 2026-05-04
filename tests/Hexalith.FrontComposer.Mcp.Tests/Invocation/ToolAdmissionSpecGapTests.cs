@@ -257,6 +257,7 @@ public sealed class ToolAdmissionSpecGapTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         configureServices?.Invoke(sc);

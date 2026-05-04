@@ -145,7 +145,7 @@ public sealed class McpMarkdownProjectionRendererTests {
         result.IsSuccess.ShouldBeTrue();
         result.Document!.Role.ShouldBe(McpProjectionRenderStrategy.Timeline.ToString());
         result.Document.Text.ShouldContain("## Invoice timeline");
-        result.Document.Text.ShouldContain("- 2026-05-03 08:00:00 UTC - Danger: Blocked. New");
+        result.Document.Text.ShouldContain("- 2026-05-03T08:00:00.0000000+00:00 - Danger: Blocked. New");
         result.Document.Text.IndexOf("New", StringComparison.Ordinal).ShouldBeLessThan(
             result.Document.Text.IndexOf("Old", StringComparison.Ordinal));
         result.Document.Text.IndexOf("Old", StringComparison.Ordinal).ShouldBeLessThan(
@@ -266,7 +266,10 @@ public sealed class McpMarkdownProjectionRendererTests {
     }
 
     [Fact]
-    public void Render_NoNewlineBeforeBudget_ReturnsResponseTooLargeWithoutPartialDocument() {
+    public void Render_NoNewlineBeforeBudget_TruncatesAtRuneBoundaryWithMarker() {
+        // P-8: when the budget contains no newline (e.g. a very long single-line heading),
+        // the renderer falls back to a Rune-boundary cut and emits the truncation marker
+        // rather than discarding the entire document.
         McpResourceDescriptor descriptor = Descriptor(title: new string('A', 80));
 
         McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
@@ -274,9 +277,10 @@ public sealed class McpMarkdownProjectionRendererTests {
             [new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending)],
             TotalCount: 1), new FrontComposerMcpOptions { MaxProjectionMarkdownCharacters = 64 }, TestContext.Current.CancellationToken);
 
-        result.IsSuccess.ShouldBeFalse();
-        result.Category.ShouldBe(FrontComposerMcpFailureCategory.ResponseTooLarge);
-        result.Document.ShouldBeNull();
+        result.IsSuccess.ShouldBeTrue();
+        result.Document.ShouldNotBeNull();
+        result.Document!.IsTruncated.ShouldBeTrue();
+        result.Document.Text.Length.ShouldBeLessThanOrEqualTo(64);
     }
 
     [Fact]

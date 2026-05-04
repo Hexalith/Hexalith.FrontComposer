@@ -140,7 +140,13 @@ public static class McpManifestEmitter {
             sb.AppendLine("                " + Literal(resource.Description) + ",");
             EmitParameters(sb, resource.Fields, 16);
             sb.AppendLine(",");
-            sb.AppendLine("                McpProjectionRenderStrategy." + resource.RenderStrategy + ",");
+            // P-18: validate the strategy identifier matches a defined McpProjectionRenderStrategy
+            // member before interpolating it into generated source. Anything else falls back to
+            // Default rather than producing a non-compiling (or worse, attacker-influenced)
+            // generated file. Today the upstream transform already passes enum.ToString(), but
+            // the constructor accepts any string, so the constraint is enforced at the emit edge.
+            string strategy = SanitizeRenderStrategy(resource.RenderStrategy);
+            sb.AppendLine("                McpProjectionRenderStrategy." + strategy + ",");
             sb.AppendLine("                " + Literal(resource.EntityPluralLabel) + ",");
             sb.AppendLine("                " + Literal(resource.EmptyStateCtaCommandName) + ",");
             sb.Append("                ");
@@ -225,6 +231,18 @@ public static class McpManifestEmitter {
         => value is null ? "null" : "\"" + Escape(value) + "\"";
 
     private static string Bool(bool value) => value ? "true" : "false";
+
+    private static readonly HashSet<string> KnownRenderStrategies = new(StringComparer.Ordinal) {
+        "Default",
+        "ActionQueue",
+        "StatusOverview",
+        "DetailRecord",
+        "Timeline",
+        "Dashboard",
+    };
+
+    private static string SanitizeRenderStrategy(string value)
+        => KnownRenderStrategies.Contains(value) ? value : "Default";
 
     private static string Escape(string value) {
         var sb = new StringBuilder(value.Length);

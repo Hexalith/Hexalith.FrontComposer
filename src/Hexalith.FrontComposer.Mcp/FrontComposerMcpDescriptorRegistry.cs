@@ -29,6 +29,12 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
         _normalizedNames = BuildNormalizedNameMap(_orderedCommands);
     }
 
+    // DN-3: the in-memory manifest registry is immutable for the lifetime of the host (manifests
+    // are loaded once at AddFrontComposerMcp time and never mutated). Static (1, 1) epochs are
+    // therefore the correct baseline. Hosts adding hot-reload semantics must register a custom
+    // IFrontComposerMcpDescriptorEpochProvider that increments on every catalog/descriptor
+    // mutation; the snapshot/revalidation contract in FrontComposerMcpProjectionReader will
+    // detect drift via the provider and surface StaleDescriptor without rendering partial output.
     public McpDescriptorEpochs GetEpochs()
         => new(DescriptorEpoch: 1, CatalogEpoch: 1);
 

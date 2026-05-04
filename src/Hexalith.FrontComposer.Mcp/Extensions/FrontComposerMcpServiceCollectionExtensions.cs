@@ -35,6 +35,12 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
         services.TryAddScoped<FrontComposerMcpProjectionReader>();
         services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
+        // P-3: resource visibility revalidation is mandatory. Hosts MUST register a real gate
+        // that re-checks tenant/policy visibility before query and before render. The probe
+        // below fails registration if no gate is present, so an operator cannot accidentally
+        // ship unrestricted projection reads. Sample/dev hosts that legitimately want unbounded
+        // visibility must register AllowAllResourceVisibilityGate explicitly.
+
         services.TryAddSingleton<IUlidFactory, FrontComposerMcpUlidFactory>();
         services.TryAddSingleton(_ => new FrontComposerSkillResourceProvider(SkillCorpusLoader.LoadEmbedded()));
 
@@ -48,6 +54,13 @@ public static class FrontComposerMcpServiceCollectionExtensions {
             throw new InvalidOperationException(
                 "AddFrontComposerMcp requires an IFrontComposerMcpTenantToolGate registration. " +
                 "Register a host-supplied gate before AddFrontComposerMcp, or use AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>() " +
+                "explicitly for sample/dev hosts.");
+        }
+
+        if (probe.GetService<IFrontComposerMcpResourceVisibilityGate>() is null) {
+            throw new InvalidOperationException(
+                "AddFrontComposerMcp requires an IFrontComposerMcpResourceVisibilityGate registration. " +
+                "Register a host-supplied gate before AddFrontComposerMcp, or use AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>() " +
                 "explicitly for sample/dev hosts.");
         }
 

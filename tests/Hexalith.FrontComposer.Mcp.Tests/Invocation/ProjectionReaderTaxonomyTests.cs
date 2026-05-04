@@ -46,7 +46,9 @@ public sealed class ProjectionReaderTaxonomyTests {
     [InlineData(FrontComposerMcpFailureCategory.Timeout, "timeout", "HFC-MCP-PROJECTION-TIMEOUT", true, false)]
     [InlineData(FrontComposerMcpFailureCategory.Canceled, "canceled", "HFC-MCP-PROJECTION-CANCELED", true, false)]
     [InlineData(FrontComposerMcpFailureCategory.DegradedResult, "degraded_result", "HFC-MCP-PROJECTION-DEGRADED-RESULT", true, false)]
-    [InlineData(FrontComposerMcpFailureCategory.PolicyFiltered, "policy_filtered", "HFC-MCP-PROJECTION-POLICY-FILTERED", false, true)]
+    // DN-2: PolicyFiltered is hidden-equivalent — its public payload collapses to unknown_resource
+    // so an adversary cannot distinguish "policy-blocked" from "does-not-exist".
+    [InlineData(FrontComposerMcpFailureCategory.PolicyFiltered, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE", false, true)]
     [InlineData(FrontComposerMcpFailureCategory.DownstreamFailed, "downstream_failed", "HFC-MCP-PROJECTION-DOWNSTREAM-FAILED", true, false)]
     [InlineData(FrontComposerMcpFailureCategory.StaleDescriptor, "stale_descriptor", "HFC-MCP-PROJECTION-STALE-DESCRIPTOR", true, true)]
     public async Task QueryAndRenderFailures_ReturnSanitizedTaxonomy(
@@ -86,9 +88,12 @@ public sealed class ProjectionReaderTaxonomyTests {
     }
 
     [Theory]
-    [InlineData("", "agent-a", true, FrontComposerMcpFailureCategory.TenantMissing, "tenant_missing", "HFC-MCP-PROJECTION-TENANT-MISSING")]
-    [InlineData("tenant-a", "", true, FrontComposerMcpFailureCategory.AuthFailed, "auth_failed", "HFC-MCP-PROJECTION-AUTH-FAILED")]
-    [InlineData("tenant-a", "agent-a", false, FrontComposerMcpFailureCategory.AuthFailed, "auth_failed", "HFC-MCP-PROJECTION-AUTH-FAILED")]
+    // DN-2: TenantMissing and AuthFailed are hidden-equivalent — their public payload collapses
+    // to unknown_resource so an adversary cannot distinguish "wrong tenant" from "wrong auth"
+    // from "does-not-exist". The internal Category is still distinct for telemetry.
+    [InlineData("", "agent-a", true, FrontComposerMcpFailureCategory.TenantMissing, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE")]
+    [InlineData("tenant-a", "", true, FrontComposerMcpFailureCategory.AuthFailed, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE")]
+    [InlineData("tenant-a", "agent-a", false, FrontComposerMcpFailureCategory.AuthFailed, "unknown_resource", "HFC-MCP-PROJECTION-UNKNOWN-RESOURCE")]
     public async Task InvalidAgentContext_ReturnsContextTaxonomy_AndDoesNotQuery(
         string tenantId,
         string userId,
@@ -159,7 +164,10 @@ public sealed class ProjectionReaderTaxonomyTests {
             query,
             manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard),
             configureServices: services => services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
+                // P-1 sampled epochs at preLookup + postLookup, so this sequence covers
+                // four reads: preLookup, postLookup, preQuery-validate (query runs), preRender-validate (advance).
                 new SequenceEpochProvider(
+                    new McpDescriptorEpochs(10, 20),
                     new McpDescriptorEpochs(10, 20),
                     new McpDescriptorEpochs(10, 20),
                     new McpDescriptorEpochs(10, 21))));
@@ -190,6 +198,10 @@ public sealed class ProjectionReaderTaxonomyTests {
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
         services.AddScoped<FrontComposerMcpProjectionReader>();
+        // P-3: visibility gate is required by the reader. Tests register a permissive default
+        // so every reader build resolves a gate; tests that need restrictive visibility can
+        // still override via configureServices.
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         configureServices?.Invoke(services);
         ServiceProvider provider = services.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);

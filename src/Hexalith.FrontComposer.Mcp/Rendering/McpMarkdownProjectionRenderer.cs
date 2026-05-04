@@ -73,13 +73,15 @@ public static class McpMarkdownProjectionRenderer {
         FrontComposerMcpOptions options,
         CancellationToken cancellationToken) {
         var sb = new StringBuilder(capacity: Math.Min(4096, Math.Max(256, options.MaxProjectionMarkdownCharacters)));
-        sb.Append("## ").AppendLine(EscapeMarkdownText(descriptor.Title));
+        // P-17: redact title — descriptor titles flow into agent-visible Markdown and may carry
+        // operator-supplied text that has not been scrubbed elsewhere.
+        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
         sb.AppendLine();
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
             AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
-            return BoundDocument(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }
 
         sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
@@ -88,7 +90,7 @@ public static class McpMarkdownProjectionRenderer {
 
         if (fields.Count == 0) {
             AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
-            return BoundDocument(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }
 
         sb.Append("| ").Append(string.Join(" | ", fields.Select(f => EscapeMarkdownText(f.Title)))).AppendLine(" |");
@@ -114,7 +116,9 @@ public static class McpMarkdownProjectionRenderer {
             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
-        return BoundDocument(sb, options, isTruncated);
+        // P-13: tell BoundDocument the marker was already emitted to avoid double-emit when the
+        // document also exceeds the character cap.
+        return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
     }
 
     private static RenderedMarkdown RenderStatusOverviewDocument(
@@ -127,14 +131,14 @@ public static class McpMarkdownProjectionRenderer {
         FrontComposerMcpOptions options,
         CancellationToken cancellationToken) {
         var sb = new StringBuilder(capacity: 1024);
-        sb.Append("## ").AppendLine(EscapeMarkdownText(descriptor.Title));
+        sb.Append("## ").AppendLine(EscapeMarkdownText(RedactSensitiveText(descriptor.Title)));
         sb.AppendLine();
         sb.Append("- Total: ").AppendLine(totalCount.ToString(CultureInfo.InvariantCulture));
 
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
             AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
-            return BoundDocument(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }
 
         // Search across all non-unsupported fields, not just the column-truncated subset, so a
@@ -146,7 +150,7 @@ public static class McpMarkdownProjectionRenderer {
             ?? renderableFields.FirstOrDefault(f => string.Equals(f.TypeName, "Enum", StringComparison.Ordinal));
         if (statusField is null) {
             AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
-            return BoundDocument(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }
 
         // Aggregate by slot first, with a stable label per slot derived from the first member
@@ -196,7 +200,7 @@ public static class McpMarkdownProjectionRenderer {
             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
-        return BoundDocument(sb, options, isTruncated);
+        return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
     }
 
     private static int SlotSeverityIndex(string slot)
@@ -226,7 +230,7 @@ public static class McpMarkdownProjectionRenderer {
         if (items.Count == 0) {
             AppendEmptyState(sb, descriptor, suggestions, options);
             AppendTruncationMarkerIfNeeded(sb, options, requestIsTruncated);
-            return BoundDocument(sb, options, requestIsTruncated);
+            return BoundDocument(sb, options, markerAlreadyEmitted: requestIsTruncated);
         }
 
         // Search across all non-unsupported fields so a timestamp/status at index >=
@@ -253,8 +257,9 @@ public static class McpMarkdownProjectionRenderer {
 
         foreach (TimelineEntry entry in entries) {
             cancellationToken.ThrowIfCancellationRequested();
-            string timestamp = entry.Timestamp?.ToUniversalTime()
-                .ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture)
+            // DN-1: timeline timestamp uses ISO 8601 round-trip ('o') matching the cell format;
+            // do not change agent-visible grammar without a binding decision.
+            string timestamp = entry.Timestamp?.ToString("o", CultureInfo.InvariantCulture)
                 ?? "No timestamp";
             string status = statusField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, statusField.Name), statusField, options);
             string title = titleField is null ? string.Empty : FormatCell(ReadPropertyValue(entry.Item, titleField.Name), titleField, options);
@@ -273,7 +278,7 @@ public static class McpMarkdownProjectionRenderer {
             sb.AppendLine(EscapeMarkdownText(options.ProjectionTruncationMarker));
         }
 
-        return BoundDocument(sb, options, isTruncated);
+        return BoundDocument(sb, options, markerAlreadyEmitted: isTruncated);
     }
 
     private static void AppendTruncationMarkerIfNeeded(StringBuilder sb, FrontComposerMcpOptions options, bool isTruncated) {
@@ -362,11 +367,14 @@ public static class McpMarkdownProjectionRenderer {
     private static DateTimeOffset? ReadDateTimeOffset(object? value) {
         // Wrap conversions: new DateTimeOffset(DateTime.MinValue) throws on positive-offset
         // hosts; we degrade per-row to "No timestamp" rather than failing the whole render.
+        // P-16: DateTimeKind.Unspecified is not silently treated as UTC (which would shift
+        // local-time-stored values backwards by the host offset). We degrade the row to
+        // "No timestamp" so timeline ordering is not poisoned by an arbitrary kind assumption.
         try {
             return value switch {
                 null => null,
                 DateTimeOffset dto => dto,
-                DateTime { Kind: DateTimeKind.Unspecified } dt => new DateTimeOffset(DateTime.SpecifyKind(dt, DateTimeKind.Utc)),
+                DateTime { Kind: DateTimeKind.Unspecified } => null,
                 DateTime dt => new DateTimeOffset(dt.ToUniversalTime(), TimeSpan.Zero),
                 DateOnly d => new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc)),
                 _ => null,
@@ -386,16 +394,16 @@ public static class McpMarkdownProjectionRenderer {
             return "-";
         }
 
-        if (value is string emptyCheck && emptyCheck.Length == 0) {
-            return "-";
-        }
-
+        // DN-1: Story 8-4 happy-path Markdown grammar — bool true/false, ISO 8601 dates with
+        // round-trip 'o' format, no empty-string substitution. Story 8-5 corpus depends on this
+        // baseline; do not change agent-visible grammar without a P0 security justification and
+        // a binding decision.
         string text = value switch {
-            DateTime dt => FormatDateTime(dt),
-            DateTimeOffset dto => dto.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture),
+            DateTime dt => dt.ToString("o", CultureInfo.InvariantCulture),
+            DateTimeOffset dto => dto.ToString("o", CultureInfo.InvariantCulture),
             DateOnly d => d.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
             TimeOnly t => t.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
-            bool b => b ? "Yes" : "No",
+            bool b => b ? "true" : "false",
             Enum e => FormatEnum(e, field),
             string s => s,
             IEnumerable enumerable and not string => FormatEnumerable(enumerable),
@@ -404,15 +412,6 @@ public static class McpMarkdownProjectionRenderer {
         };
 
         return EscapeMarkdownText(TrimCell(RedactSensitiveText(text), Math.Max(4, options.MaxProjectionCellCharacters)));
-    }
-
-    private static string FormatDateTime(DateTime dt) {
-        DateTime utc = dt.Kind switch {
-            DateTimeKind.Utc => dt,
-            DateTimeKind.Local => dt.ToUniversalTime(),
-            _ => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
-        };
-        return utc.ToString("yyyy-MM-dd HH:mm:ss 'UTC'", CultureInfo.InvariantCulture);
     }
 
     private static string FormatFormattable(IFormattable value, McpParameterDescriptor field) {
@@ -431,10 +430,12 @@ public static class McpMarkdownProjectionRenderer {
             text,
             @"(?i)\b(api[_-]?key|client[_-]?secret|authorization|password|pwd|secret|token|connection[_-]?string)\s*[:=]\s*\S+",
             "$1=[redacted]");
-        // Broadened to catch opaque bearer tokens (no JWT-shaped dots required).
+        // P-15: anchor on `\s` (not eaten by the token char class) so "Bearer auth. Then..." does
+        // not consume the trailing period or following identifiers; previous regex included `.`
+        // in the token class and over-redacted dotted prose.
         redacted = Regex.Replace(
             redacted,
-            @"(?i)\bbearer\s+[A-Za-z0-9_\-\.]+",
+            @"(?i)\bbearer\s+[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)*",
             "Bearer [redacted]");
         redacted = Regex.Replace(
             redacted,
@@ -463,8 +464,12 @@ public static class McpMarkdownProjectionRenderer {
 
     private const string UnsupportedPlaceholder = "(unsupported)";
 
+    // P-27: only block characters that survive escaping as link/code constructs after
+    // EscapeMarkdownText neutralizes `[`, `]`, `(`, `)`, `<`, `>`. Backticks remain in the
+    // shape filter because consecutive backticks form code fences even with per-char escape.
+    // The caller still drops `://` URLs and slash-style commands explicitly below.
     private static readonly System.Buffers.SearchValues<char> LinkOrCommandChars =
-        System.Buffers.SearchValues.Create("[]()<>`");
+        System.Buffers.SearchValues.Create("`");
 
     private static string Humanize(string value) {
         if (string.IsNullOrWhiteSpace(value)) {
@@ -486,15 +491,20 @@ public static class McpMarkdownProjectionRenderer {
                 width = 1;
             }
 
+            // P-7: Rune.TryCreate so an unpaired surrogate or invalid code point degrades to
+            // non-letter rather than throwing ArgumentOutOfRangeException out of the renderer
+            // and collapsing the whole document to DownstreamFailed.
+            bool isValidRune = Rune.TryCreate(codePoint, out Rune rune);
+
             // Insert space before a new uppercase word only when the previous code point was
             // a letter/digit; this preserves "OnHold" → "On Hold" while leaving surrogate pairs
             // intact and avoiding spurious spaces after whitespace/punctuation.
-            if (i > 0 && prevIsLetterOrDigit && Rune.IsUpper(new Rune(codePoint))) {
+            if (i > 0 && prevIsLetterOrDigit && isValidRune && Rune.IsUpper(rune)) {
                 sb.Append(' ');
             }
 
             sb.Append(value, i, width);
-            prevIsLetterOrDigit = Rune.IsLetterOrDigit(new Rune(codePoint));
+            prevIsLetterOrDigit = isValidRune && Rune.IsLetterOrDigit(rune);
             i += width;
         }
 
@@ -519,7 +529,19 @@ public static class McpMarkdownProjectionRenderer {
     private static string ReadStableItemKey(object item) {
         Type type = item.GetType();
         foreach (string property in StableKeyPropertyNames) {
-            object? value = type.GetProperty(property, BindingFlags.Instance | BindingFlags.Public)?.GetValue(item);
+            // P-6: ORM proxies and lazy properties can throw from a getter; treat any throw as
+            // "no stable key" rather than collapsing the whole timeline render to DownstreamFailed.
+            object? value;
+            try {
+                value = type.GetProperty(property, BindingFlags.Instance | BindingFlags.Public)?.GetValue(item);
+            }
+            catch (TargetInvocationException) {
+                continue;
+            }
+            catch (Exception) {
+                continue;
+            }
+
             if (value is null) {
                 continue;
             }
@@ -554,14 +576,15 @@ public static class McpMarkdownProjectionRenderer {
         return text[..budget] + "...";
     }
 
-    private static RenderedMarkdown BoundDocument(StringBuilder sb, FrontComposerMcpOptions options, bool isTruncated) {
+    private static RenderedMarkdown BoundDocument(StringBuilder sb, FrontComposerMcpOptions options, bool markerAlreadyEmitted) {
         int max = Math.Max(1, options.MaxProjectionMarkdownCharacters);
         if (sb.Length <= max) {
-            return new RenderedMarkdown(sb.ToString(), isTruncated);
+            return new RenderedMarkdown(sb.ToString(), markerAlreadyEmitted);
         }
 
         string marker = EscapeMarkdownText(options.ProjectionTruncationMarker);
-        int budget = max - marker.Length - Environment.NewLine.Length;
+        int newlineLength = Environment.NewLine.Length;
+        int budget = max - marker.Length - newlineLength;
         if (budget <= 0) {
             // Marker alone would exceed the bound; surface this as a sanitized failure rather than
             // returning a string longer than the configured cap.
@@ -571,12 +594,43 @@ public static class McpMarkdownProjectionRenderer {
         // Cut on the last newline before `budget` so the truncation never lands mid-row of a table.
         string buffered = sb.ToString();
         int cut = buffered.LastIndexOf('\n', Math.Min(budget, buffered.Length) - 1);
+        // P-13: when an outer renderer already appended the truncation marker, replicating it
+        // here would produce two consecutive marker lines. Skip the appended marker and keep
+        // the cut prefix only.
+        string suffix = markerAlreadyEmitted ? string.Empty : marker + Environment.NewLine;
+        // P-8: when no newline exists in the budget window, fall back to a Rune-boundary cut and
+        // append the marker rather than discarding the entire document. This preserves the
+        // common "single very long heading" case where the previous code surfaced ResponseTooLarge.
+        string prefix;
         if (cut < 0) {
-            // No newline within the budget — discard rather than emit an unterminated table row.
-            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.ResponseTooLarge);
+            int safeBudget = Math.Min(budget, buffered.Length);
+            if (safeBudget > 0
+                && safeBudget < buffered.Length
+                && char.IsHighSurrogate(buffered[safeBudget - 1])
+                && char.IsLowSurrogate(buffered[safeBudget])) {
+                safeBudget--;
+            }
+
+            prefix = buffered[..safeBudget];
+            // No trailing newline in the kept prefix; ensure the marker (when emitted) starts on
+            // its own line.
+            if (!markerAlreadyEmitted && safeBudget > 0 && buffered[safeBudget - 1] != '\n') {
+                suffix = Environment.NewLine + suffix;
+            }
+        }
+        else {
+            prefix = buffered[..(cut + 1)];
         }
 
-        return new RenderedMarkdown(buffered[..(cut + 1)] + marker + Environment.NewLine, true);
+        string result = prefix + suffix;
+        // P-9: defensive clamp — Environment.NewLine prepending can push the total past `max` by
+        // newlineLength bytes. Trim the trailing whitespace/newline rather than ship a string
+        // longer than the configured cap.
+        if (result.Length > max) {
+            result = result[..max];
+        }
+
+        return new RenderedMarkdown(result, true);
     }
 
     internal static string EscapeMarkdownText(string value) {

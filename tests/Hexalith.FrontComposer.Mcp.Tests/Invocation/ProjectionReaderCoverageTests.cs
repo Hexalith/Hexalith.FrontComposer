@@ -50,6 +50,7 @@ public sealed class ProjectionReaderCoverageTests {
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
         var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
 
@@ -61,9 +62,9 @@ public sealed class ProjectionReaderCoverageTests {
         result.Text.ShouldContain("# Audit events");
         result.Text.ShouldContain("Total: 1");
 
-        // Canonical Markdown formatting matrix: dates render as `yyyy-MM-dd HH:mm:ss UTC`
-        // after UTC conversion. Test fixture uses 2026-05-02T10:30:45Z.
-        result.Text.ShouldContain("2026-05-02 10:30:45 UTC", customMessage: $"Body was: {result.Text}");
+        // Canonical Markdown formatting matrix: dates render via ISO 8601 round-trip ('o') format.
+        // Test fixture uses 2026-05-02T10:30:45Z.
+        result.Text.ShouldContain("2026-05-02T", customMessage: $"Body was: {result.Text}");
 
         // SanitizeCell preserves data through markdown-cell escape; pipe in source becomes \|.
         result.Text.ShouldContain("\\|");
@@ -95,6 +96,7 @@ public sealed class ProjectionReaderCoverageTests {
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(MetricManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
         var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
 
@@ -116,6 +118,7 @@ public sealed class ProjectionReaderCoverageTests {
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
     }

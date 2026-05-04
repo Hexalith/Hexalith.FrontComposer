@@ -165,6 +165,7 @@ public sealed class CommandInvokerCoverageTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
@@ -191,6 +192,7 @@ public sealed class CommandInvokerCoverageTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new DenyingGate());
@@ -216,6 +218,7 @@ public sealed class CommandInvokerCoverageTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         sc.AddSingleton<IFrontComposerMcpCommandPolicyGate>(new AllowingGate());
@@ -241,6 +244,7 @@ public sealed class CommandInvokerCoverageTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
@@ -269,6 +273,7 @@ public sealed class CommandInvokerCoverageTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
@@ -294,6 +299,7 @@ public sealed class CommandInvokerCoverageTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();
@@ -342,6 +348,7 @@ public sealed class CommandInvokerCoverageTests {
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddSingleton<FrontComposerMcpToolAdmissionService>();
         sc.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         sc.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
         ServiceProvider provider = sc.BuildServiceProvider();

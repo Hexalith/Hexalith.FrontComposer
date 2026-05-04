@@ -32,6 +32,7 @@ public sealed class ProjectionReaderTests {
         services.AddLogging();
         services.AddSingleton<IQueryService>(new EmptyQueryService());
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(ManifestWithCreateCommand()));
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
@@ -57,6 +58,7 @@ public sealed class ProjectionReaderTests {
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
         services.AddScoped<FrontComposerMcpProjectionReader>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         return services;
     }
 

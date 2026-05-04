@@ -22,11 +22,22 @@ public sealed class FrontComposerMcpProjectionReader(
             return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.MalformedRequest);
         }
 
-        if (!registry.TryGetResource(uri, out McpResourceDescriptor? descriptor)) {
-            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
-        }
-
         try {
+            // P-1: sample the descriptor epoch BEFORE the descriptor lookup and verify it has not
+            // advanced after the lookup; otherwise the snapshot would stamp a fresh epoch onto a
+            // stale descriptor, defeating the revalidation contract. P-4: keep registry access
+            // inside the try so a non-trivial registry implementation cannot leak raw exceptions.
+            McpDescriptorEpochs preLookupEpochs = CurrentEpochs();
+            if (!registry.TryGetResource(uri, out McpResourceDescriptor? descriptor)) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
+            }
+
+            McpDescriptorEpochs postLookupEpochs = CurrentEpochs();
+            if (preLookupEpochs.DescriptorEpoch != postLookupEpochs.DescriptorEpoch
+                || preLookupEpochs.CatalogEpoch != postLookupEpochs.CatalogEpoch) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.StaleDescriptor);
+            }
+
             FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
             ValidateContext(context);
 
@@ -34,7 +45,7 @@ public sealed class FrontComposerMcpProjectionReader(
                 return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
             }
 
-            FrontComposerMcpProjectionReadSnapshot snapshot = CreateSnapshot(descriptor, cancellationToken);
+            FrontComposerMcpProjectionReadSnapshot snapshot = CreateSnapshot(descriptor, postLookupEpochs, cancellationToken);
             FrontComposerMcpFailureCategory? preQueryFailure = await ValidateSnapshotAsync(snapshot, context, cancellationToken).ConfigureAwait(false);
             if (preQueryFailure is not null) {
                 return FrontComposerMcpProjectionFailureMapper.ToResult(preQueryFailure.Value);
@@ -79,10 +90,9 @@ public sealed class FrontComposerMcpProjectionReader(
                 ? FrontComposerMcpResult.Success(render.Document!.Text, new JsonObject { ["contentType"] = render.ContentType })
                 : FrontComposerMcpProjectionFailureMapper.ToResult(render.Category);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.Canceled);
-        }
         catch (OperationCanceledException) {
+            // DN-5: collapse to a single Canceled handler. Linked-CTS timeouts surface here too;
+            // explicit timeouts must throw TimeoutException to differentiate.
             return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.Canceled);
         }
         catch (TimeoutException) {
@@ -114,17 +124,25 @@ public sealed class FrontComposerMcpProjectionReader(
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.TenantMissing);
         }
 
+        // P-2: null-check Principal before dereferencing Identity. A null Principal indicates
+        // a misconfigured accessor; classify as AuthFailed rather than letting NullReferenceException
+        // collapse to DownstreamFailed and lose the auth signal.
         if (string.IsNullOrWhiteSpace(context.UserId)
+            || context.Principal is null
             || context.Principal.Identity is null
             || !context.Principal.Identity.IsAuthenticated) {
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
         }
     }
 
-    private FrontComposerMcpProjectionReadSnapshot CreateSnapshot(
+    private static FrontComposerMcpProjectionReadSnapshot CreateSnapshot(
         McpResourceDescriptor descriptor,
+        McpDescriptorEpochs epochs,
         CancellationToken cancellationToken) {
-        McpDescriptorEpochs epochs = CurrentEpochs();
+        // P-19 invariant: McpResourceDescriptor and McpParameterDescriptor are immutable records;
+        // their inner BadgeMappings collection is exposed as IReadOnlyDictionary on the descriptor
+        // contract, so a shallow Fields.ToArray() snapshot is safe — registry mutations never
+        // mutate the captured graph in place.
         McpResourceDescriptor descriptorCopy = CopyDescriptor(descriptor);
         return new FrontComposerMcpProjectionReadSnapshot(
             ProjectionKey: descriptorCopy.Name,
@@ -167,11 +185,11 @@ public sealed class FrontComposerMcpProjectionReader(
         McpResourceDescriptor descriptor,
         FrontComposerMcpAgentContext context,
         CancellationToken cancellationToken) {
-        IFrontComposerMcpResourceVisibilityGate? gate = services.GetService<IFrontComposerMcpResourceVisibilityGate>();
-        if (gate is null) {
-            return true;
-        }
-
+        // P-3: GetRequiredService — visibility revalidation is a security contract, not an
+        // optional concern. Hosts must register a real gate (or AllowAllVisibilityGate explicitly
+        // for sample/dev). The startup probe in AddFrontComposerMcp enforces this so misconfigured
+        // hosts fail at registration time rather than silently shipping unrestricted reads.
+        IFrontComposerMcpResourceVisibilityGate gate = services.GetRequiredService<IFrontComposerMcpResourceVisibilityGate>();
         return await gate.IsVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false);
     }
 
@@ -192,9 +210,14 @@ public sealed class FrontComposerMcpProjectionReader(
 
         // Use non-generic IEnumerable so value-type projections (e.g. struct records) are not
         // silently rendered as zero rows by an IEnumerable<object> covariance miss.
+        // P-10: count raw entries (including nulls) so IsTruncated reflects the underlying query
+        // page rather than the post-null-filter count, otherwise a complete page with one null
+        // entry would mark IsTruncated=true.
         List<object> items = [];
+        long rawCount = 0;
         if (itemsValue is IEnumerable raw) {
             foreach (object? item in raw) {
+                rawCount++;
                 if (item is not null) {
                     items.Add(item);
                 }
@@ -209,7 +232,7 @@ public sealed class FrontComposerMcpProjectionReader(
             snapshot.Descriptor,
             items,
             totalCount,
-            IsTruncated: totalCount > items.Count,
+            IsTruncated: totalCount > rawCount,
             RequestId: snapshot.RequestId,
             SafeCommandSuggestions: suggestions);
     }
@@ -246,8 +269,10 @@ public sealed class FrontComposerMcpProjectionReader(
         // Anchor on full namespace-segment equality so "Create" cannot match
         // "Other.Foo.CreateInvoiceCommand". Cross-bounded-context bleed is rejected unless
         // the descriptor advertises the same bounded context as the projection.
-        if (!string.IsNullOrWhiteSpace(boundedContext)
-            && !string.Equals(descriptor.BoundedContext, boundedContext, StringComparison.Ordinal)) {
+        // P-5: fail-closed when the projection has no bounded context — without an anchor we
+        // cannot verify cross-context isolation, so suggestions are suppressed entirely.
+        if (string.IsNullOrWhiteSpace(boundedContext)
+            || !string.Equals(descriptor.BoundedContext, boundedContext, StringComparison.Ordinal)) {
             return false;
         }
 
