@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Contracts.Schema;
+
 namespace Hexalith.FrontComposer.Contracts.Mcp;
 
 /// <summary>
@@ -13,4 +15,5 @@ public sealed record McpResourceDescriptor(
     IReadOnlyList<McpParameterDescriptor> Fields,
     McpProjectionRenderStrategy RenderStrategy = McpProjectionRenderStrategy.Default,
     string? EntityPluralLabel = null,
-    string? EmptyStateCtaCommandName = null);
+    string? EmptyStateCtaCommandName = null,
+    SchemaFingerprint? Fingerprint = null);

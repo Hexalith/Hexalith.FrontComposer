@@ -26,5 +26,7 @@ public sealed class McpManifestEmitterTests {
 
         source.ShouldContain("McpProjectionRenderStrategy.Timeline");
         source.ShouldNotContain("\"Timeline\",");
+        source.ShouldContain("new SchemaFingerprint(\"frontcomposer.schema.sha256.canonical-json.v1\"");
+        source.ShouldContain("using Hexalith.FrontComposer.Contracts.Schema;");
     }
 }

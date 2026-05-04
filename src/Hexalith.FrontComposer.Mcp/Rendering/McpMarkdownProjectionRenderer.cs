@@ -429,7 +429,7 @@ public static class McpMarkdownProjectionRenderer {
 
         string redacted = Regex.Replace(
             text,
-            @"(?i)\b(api[_-]?key|client[_-]?secret|authorization)\s*[:=]\s*\S+",
+            @"(?i)\b(api[_-]?key|client[_-]?secret|authorization|password|pwd|secret|token|connection[_-]?string)\s*[:=]\s*\S+",
             "$1=[redacted]");
         // Broadened to catch opaque bearer tokens (no JWT-shaped dots required).
         redacted = Regex.Replace(
@@ -533,8 +533,26 @@ public static class McpMarkdownProjectionRenderer {
         return string.Empty;
     }
 
-    private static string TrimCell(string text, int maxLength)
-        => text.Length <= maxLength ? text : text[..Math.Max(0, maxLength - 3)] + "...";
+    private static string TrimCell(string text, int maxLength) {
+        if (text.Length <= maxLength) {
+            return text;
+        }
+
+        // Cut on a Rune boundary so a non-BMP code point (astral-plane emoji, surrogate pair)
+        // is never split, which would otherwise produce invalid UTF-16 / malformed UTF-8.
+        int budget = Math.Max(0, maxLength - 3);
+        if (budget == 0) {
+            return "...";
+        }
+
+        if (budget < text.Length
+            && char.IsHighSurrogate(text[budget - 1])
+            && char.IsLowSurrogate(text[budget])) {
+            budget--;
+        }
+
+        return text[..budget] + "...";
+    }
 
     private static RenderedMarkdown BoundDocument(StringBuilder sb, FrontComposerMcpOptions options, bool isTruncated) {
         int max = Math.Max(1, options.MaxProjectionMarkdownCharacters);

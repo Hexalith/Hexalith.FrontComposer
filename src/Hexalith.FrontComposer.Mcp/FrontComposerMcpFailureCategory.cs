@@ -22,4 +22,8 @@ public enum FrontComposerMcpFailureCategory {
     StaleDescriptor,
     DegradedResult,
     PolicyFiltered,
+    SchemaMismatch,
+    UnknownSchemaBaseline,
+    UnsupportedSchemaAlgorithm,
+    SchemaIntegrityMismatch,
 }
