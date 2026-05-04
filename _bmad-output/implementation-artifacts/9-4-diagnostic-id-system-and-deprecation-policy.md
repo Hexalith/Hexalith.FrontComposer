@@ -55,12 +55,12 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
 | AC17 | Story 9-1 or 9-2 introduced provisional diagnostic/migration IDs | Story 9-4 executes | Provisional IDs are either finalized in the registry or marked reserved/deferred with owner, reason, and future story. No provisional migration ID may remain without a docs slug and migration policy owner. |
 | AC18 | Story 9-3 matrix rows require diagnostic docs links | Story 9-4 completes | Matrix-facing HFC diagnostics have final docs slugs or registry-backed placeholders so IDE parity evidence can point to stable links. |
 | AC19 | Story 9-5 builds the DocFX site later | Story 9-4 completes | Story 9-4 emits metadata and stub content that DocFX can consume, but it does not build the full Diataxis site, navigation IA, tutorial content, or full public docs publication. |
-| AC20 | Registry, docs stubs, release rows, or compatibility reports are parsed | Malformed, duplicate, missing, path-traversing, absolute-path, unsupported URI, stale, or out-of-range values appear | Validation fails closed with deterministic HFC diagnostics or test failures. It must distinguish duplicate ID, out-of-range ID, reserved/retired misuse, missing owner, missing release row, invalid slug, invalid lifecycle transition, and docs-root escape instead of collapsing them into one generic failure. It must not silently drop invalid rows or rewrite docs outside the approved docs root. |
+| AC20 | Registry, docs stubs, release rows, or compatibility reports are parsed | Malformed, duplicate, missing, path-traversing, absolute-path, unsupported URI, stale, schema-version-mismatched, confusable, encoded traversal, or out-of-range values appear | Validation fails closed with deterministic HFC diagnostics or test failures. It must distinguish duplicate ID, out-of-range ID, reserved/retired misuse, missing owner, missing release row, invalid slug, invalid lifecycle transition, unsupported schema version, docs-root escape, encoded docs-root escape, and unsafe generated front matter instead of collapsing them into one generic failure. It must not silently drop invalid rows, accept unknown future registry schema versions, or rewrite docs outside the approved docs root. |
 | AC21 | A developer suppresses an HFC diagnostic | Suppression guidance is documented | The docs page explains whether suppression is allowed, the preferred `.editorconfig` or pragma shape, the risk of suppressing, and whether the diagnostic is Error/Warning/Info by default. Error suppressions require explicit migration or architecture rationale. |
 | AC22 | Analyzer and runtime diagnostics have different severity channels | Registry validation runs | The registry distinguishes compiler severity, runtime log level, user-visible panel severity, CLI exit behavior, and MCP error category. The same HFC ID cannot silently mean Warning in one channel and Error in another unless the registry declares the mapping and tests cover it. Changes to severity, category, default enablement, HelpLinkUri, docs slug, or message shape must be treated as analyzer-compatibility changes with registry lifecycle notes and release evidence. |
-| AC23 | Diagnostic catalog tests enumerate packages | The suite runs on Windows, Linux, or case-sensitive filesystems | Path normalization uses project-relative forward-slash paths, compares IDs ordinally, and avoids culture-sensitive sorting. Tests do not depend on file enumeration order or local path casing. |
+| AC23 | Diagnostic catalog tests enumerate packages | The suite runs on Windows, Linux, or case-sensitive filesystems | Path normalization uses project-relative forward-slash paths, compares IDs ordinally, and avoids culture-sensitive sorting. IDs must canonicalize to uppercase ASCII `HFC` plus four digits; docs slugs must canonicalize to the approved lowercase/uppercase path shape without whitespace, zero-width characters, Unicode confusables, backslashes, encoded separators, or duplicate case variants. Tests do not depend on file enumeration order or local path casing. |
 | AC24 | The deprecation analyzer scans `[Obsolete]` attributes | The target framework does not expose newer `ObsoleteAttribute.DiagnosticId` / `UrlFormat` properties | The analyzer falls back to validating message text and registry/docs linkage without forcing a TFM upgrade. Where the project target supports custom diagnostic IDs and URL format, validation requires them. |
-| AC25 | Diagnostic registry and compatibility gates run in CI | The package feed, baseline package, or network is unavailable | The job fails or emits a deterministic blocking report with stable wording, stable exit code, and committed sample evidence for registry drift, docs-stub drift, release-row drift, and compatibility drift. It must not pass by silently skipping compatibility, docs-link, or registry checks. Normal CI must use checked-in baselines/fixtures, not live package, GitHub, or docs availability checks. |
+| AC25 | Diagnostic registry and compatibility gates run in CI | The package feed, baseline package, cache, or network is unavailable or stale | The job fails or emits a deterministic blocking report with stable wording, stable exit code, explicit package/TFM/baseline inputs, and committed sample evidence for registry drift, docs-stub drift, release-row drift, and compatibility drift. It must not pass by silently skipping compatibility, docs-link, registry checks, or by reusing stale cached reports. Normal CI must use checked-in baselines/fixtures, not live package, GitHub, or docs availability checks. |
 
 ---
 
@@ -68,9 +68,11 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
 
 - [ ] T1. Create the authoritative diagnostic registry (AC1-AC5, AC15-AC17, AC20, AC22)
   - [ ] Add a source-controlled registry under a package-owned docs/diagnostics path, recommended `docs/diagnostics/diagnostic-registry.json` plus generated Markdown stubs under `docs/diagnostics/HFCxxxx.md`.
-  - [ ] Model fields: `id`, `ownerPackage`, `range`, `title`, `lifecycle`, `introducedIn`, `deprecatedIn`, `removedIn`, `compilerSeverity`, `runtimeLogLevel`, `panelSeverity`, `cliExitBehavior`, `mcpCategory`, `messageTemplate`, `docsSlug`, `helpLinkUri`, `redactionClass`, `suppressionPolicy`, `releaseRow`, `migrationId`, `relatedIds`, and `ownerStory`.
+  - [ ] Model top-level fields: `schemaVersion`, `ranges`, `canonicalHelpLinkFormat`, and `diagnostics`. Model diagnostic fields: `id`, `ownerPackage`, `range`, `title`, `lifecycle`, `introducedIn`, `deprecatedIn`, `removedIn`, `compilerSeverity`, `runtimeLogLevel`, `panelSeverity`, `cliExitBehavior`, `mcpCategory`, `messageTemplate`, `docsSlug`, `helpLinkUri`, `redactionClass`, `suppressionPolicy`, `releaseRow`, `migrationId`, `relatedIds`, and `ownerStory`.
   - [ ] Treat the registry as the single source of truth for package ownership, API surface, ID range, lifecycle, docs slug, `HelpLinkUri`, severity/channel metadata, release row, and owner story. Every HFC ID must declare exactly one owning package and one owning API surface or be listed as an approved external/reserved exception.
   - [ ] Enforce lifecycle values `reserved`, `active`, `deprecated`, `retired`, and `removed-in-major`.
+  - [ ] Validate `schemaVersion` exactly for the implementation-supported registry schema. Unknown newer versions must fail with an explicit unsupported-schema diagnostic instead of being partially parsed.
+  - [ ] Keep the package range ownership table in one source-controlled registry section and validate any duplicated constants/tests against that section so range drift cannot hide in copied tables.
   - [ ] Add deterministic ordinal sorting and uniqueness validation for IDs, slugs, titles where required, and release rows.
   - [ ] Preserve existing HFC IDs and explicitly document any approved exceptions such as generator-only legacy IDs or reserved placeholders.
   - [ ] Document the validation entry point and deterministic failure categories before implementing docs stubs or compatibility gates.
@@ -110,7 +112,7 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
   - [ ] Mark narrative/reference boundaries so Story 9-5 can publish DocFX human docs while MCP/agent projections can strip narrative sections later.
   - [ ] Keep stubs short and factual. Full tutorials, how-to guides, navigation IA, and DocFX build remain Story 9-5.
   - [ ] Add docs-link validation that every registry slug resolves to a file and no docs file has an orphan or duplicate ID.
-  - [ ] Validate stub presence, slug stability, front matter, and docs-root containment only. Do not require rendered website availability, DocFX navigation, final examples, or public prose completeness.
+  - [ ] Validate stub presence, slug stability, front matter, and docs-root containment only. Generated front matter must escape YAML/Markdown-sensitive values, reject control characters and formula-like values where applicable, and preserve deterministic key ordering. Do not require rendered website availability, DocFX navigation, final examples, or public prose completeness.
 
 - [ ] T6. Define and enforce deprecation policy (AC9-AC11, AC16, AC21, AC24)
   - [ ] Add a small SourceTools analyzer or build validation test for FrontComposer-owned `[Obsolete]` attributes.
@@ -126,7 +128,8 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
   - [ ] If PublicAPI files are used, create package-scoped `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` files and tests that prevent accidental public surface changes.
   - [ ] Add compatibility suppression review rules and fail stale/broad suppressions.
   - [ ] Distinguish source-compatible additions from binary-breaking changes such as removed members, changed signatures, optional parameter additions to existing public methods, narrowed visibility, TFM drops, or dependency removals.
-  - [ ] Add deterministic no-network/baseline-unavailable behavior for missing baseline artifact, malformed baseline, version mismatch, Roslyn analyzer package drift, and network/feed unavailability. Normal CI uses checked-in fixture-backed baselines and fails or emits a blocking report instead of silently passing.
+  - [ ] Add deterministic no-network/baseline-unavailable behavior for missing baseline artifact, malformed baseline, version mismatch, Roslyn analyzer package drift, stale cache, and network/feed unavailability. Normal CI uses checked-in fixture-backed baselines and fails or emits a blocking report instead of silently passing.
+  - [ ] Record normalized ApiCompat/package validation inputs in reports: package ID, TFM, current assembly path as repo-relative path, baseline source, baseline version, suppression file, and validator version where available. Reports must exclude timestamps, absolute paths, machine names, SDK banners, and live feed URLs.
   - [ ] Commit normalized sample reports or golden snapshots for registry drift, compatibility drift, docs-stub drift, and release-row drift. Avoid whole-registry snapshots that include timestamps, absolute paths, SDK banners, or machine-specific ordering.
 
 - [ ] T8. Finalize provisional Story 9 handoffs (AC17-AC19)
@@ -137,14 +140,16 @@ An adopter should be able to see any `HFCxxxx` analyzer diagnostic, runtime diag
   - [ ] Update Known Gaps / deferred work only with story-specific owners, target story, concrete artifact, and validation trigger, not vague epic-level deferrals.
 
 - [ ] T9. Tests and verification (AC1-AC25)
-  - [ ] Registry schema tests for required fields, duplicate IDs/slugs, unsupported lifecycle, out-of-range owner package, invalid severity/log mappings, and missing docs files.
+  - [ ] Registry schema tests for required fields, duplicate IDs/slugs, unsupported schema version, unsupported lifecycle, out-of-range owner package, invalid severity/log mappings, and missing docs files.
   - [ ] Descriptor/constant/release-row reconciliation tests for SourceTools and runtime package IDs.
   - [ ] Docs-link tests for `HelpLinkUri`, runtime docs links, CLI JSON docs fields, and Markdown stubs.
+  - [ ] Canonicalization tests for lower/upper-case variants, zero-width characters, Unicode confusables, percent-encoded traversal, backslash traversal, URL query fragments, symlink/junction docs-root escapes, and duplicate slugs on case-insensitive filesystems.
   - [ ] Redaction/injection tests for diagnostics containing tenant/user/policy names, file paths, command payload-like values, exception text, Markdown/HTML/script payloads, terminal escapes, JSON-looking strings, and CSV formula payloads.
   - [ ] Deprecation analyzer/tests for message shape, `DiagnosticId`, `UrlFormat`, replacement/no-replacement variants, minimum one-minor removal window, and older-TFM fallback.
   - [ ] Compatibility gate tests or CI smoke proving accidental binary breaks fail and intentional major-version breaks require checked-in suppression evidence.
   - [ ] Culture/path tests under `fr-FR` or `tr-TR`, case-sensitive/case-insensitive paths where feasible, and symlink/junction docs-path escape attempts.
   - [ ] Submodule boundary tests using path fixtures or shallow root-level submodule fixtures only. Tests must not require `git submodule update --init --recursive`.
+  - [ ] Staleness tests proving validators do not reuse a previous registry/docs/compatibility report after the source registry, docs stub, release row, suppression file, or baseline fixture changes.
   - [ ] Full regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
 
 ---
@@ -163,6 +168,19 @@ The 2026-05-04 party-mode review (Winston, Amelia, John, Murat) tightened Story 
 | Deprecation fallback precedence | Prefer `ObsoleteAttribute.DiagnosticId` where supported, then parse the HFC ID from the required message, then derive from URL only as an older-TFM fallback with a recorded fallback reason. |
 | Compatibility scope | Compatibility gates protect public API/deprecation/diagnostic behavior and package baselines. They must not become a general release-engine redesign or depend on live package/feed availability in normal CI. |
 | Test evidence discipline | Prefer normalized fixture-backed assertions and sample blocking reports. Avoid overbroad snapshots that capture timestamps, absolute paths, SDK banners, local culture, or machine-specific ordering. |
+
+### Advanced Elicitation Clarifications
+
+The 2026-05-04 advanced elicitation pass focused on failure, abuse, staleness, and simplification risks after the party-mode review. Apply these additional guardrails:
+
+| Area | Resolution |
+| --- | --- |
+| Registry schema versioning | The registry must declare a supported `schemaVersion`; validators fail closed on unknown newer versions instead of best-effort parsing. |
+| Range-table drift | Treat package ID ranges as registry-owned metadata and validate copied constants/tests against that source so duplicated tables cannot diverge silently. |
+| ID and slug canonicalization | Accept only canonical HFC IDs and approved docs slugs. Reject whitespace, zero-width characters, Unicode confusables, encoded separators, backslashes, duplicate case variants, URL fragments, and query-string tricks. |
+| Generated docs safety | Generated front matter and Markdown stubs must escape or reject values that can alter YAML, Markdown, HTML, terminals, JSON, CSV, or future DocFX processing. |
+| Compatibility evidence | ApiCompat/package validation reports must name normalized package, TFM, baseline, suppression, and validator inputs while excluding volatile machine-specific fields. |
+| Cache and staleness | Registry, docs-stub, release-row, suppression, and compatibility validators must prove they rerun from current checked-in inputs and do not reuse stale reports. |
 
 ### Current Diagnostic State
 
@@ -333,6 +351,13 @@ Do not implement these in Story 9-4:
   - Findings summary: registry ownership/versioning was too implicit; HFC1010/RS2002 reconciliation needed deterministic outcomes; diagnostic metadata sanitization needed hard bounds; deprecation fallback precedence needed a matrix; compatibility gates needed fixture-backed unavailable-baseline evidence; Story 9-5 documentation scope needed a sharper boundary; submodule boundary tests needed an explicit no-recursive guardrail.
   - Changes applied: tightened AC6-AC9, AC20, AC22, and AC25; added registry-first ownership, deterministic failure categories, HFC1010/RS2002 reconciliation, redaction/bounding matrix, docs-stub-only scope, deprecation fallback matrix, fixture-backed compatibility reports, story-specific handoff ownership, submodule boundary tests, Party-Mode Clarifications, and extra scope guardrails.
   - Findings deferred: full DocFX site/navigation/public prose remains Story 9-5; broad analyzer UX polish and historical cleanup beyond named gaps are out of scope; registry browsing UI and non-diagnostic package governance are out of scope; live package/feed/docs availability checks remain outside normal CI.
+  - Final recommendation: ready-for-dev.
+- 2026-05-04T20:03:18+02:00: Advanced elicitation completed via `/bmad-advanced-elicitation 9-4-diagnostic-id-system-and-deprecation-policy`.
+  - Batch 1 methods: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+  - Batch 2 methods: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+  - Findings summary: registry schema versioning could fail open; duplicated range tables could drift; IDs/slugs needed stronger canonicalization against encoded and confusable inputs; generated front matter could become an injection channel; compatibility reports needed exact normalized inputs; validators needed stale-cache regression coverage.
+  - Changes applied: tightened AC20, AC23, and AC25; added top-level registry `schemaVersion`, `ranges`, and `canonicalHelpLinkFormat`; added unsupported-schema and range-drift validation tasks; hardened docs-stub front matter requirements; added normalized ApiCompat/package-validation report inputs; expanded tests for canonicalization, docs-root escape, and stale validator output.
+  - Findings deferred: future registry migration tooling and historical public docs redirects beyond current stub/link validation remain outside Story 9-4 unless implementation discovers they are required for the current acceptance criteria.
   - Final recommendation: ready-for-dev.
 
 ### File List

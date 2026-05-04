@@ -114,3 +114,4 @@
 2026-05-04T15:05:00+02:00	create-story	9-5-diataxis-documentation-site	ok	created DocFX Diataxis documentation site story
 2026-05-04T18:05:56+02:00	party-mode-review	9-4-diagnostic-id-system-and-deprecation-policy	ok	recorded party-mode trace and tightened registry/deprecation/test gate scope
 2026-05-04T19:04:48+02:00	party-mode-review	9-5-diataxis-documentation-site	ok	recorded party-mode trace and tightened docs scope, validation, marker, snippet, submodule, and artifact gates
+2026-05-04T20:03:18+02:00	advanced-elicitation	9-4-diagnostic-id-system-and-deprecation-policy	ok	recorded advanced elicitation trace and hardened schema, canonicalization, docs safety, and stale evidence gates
