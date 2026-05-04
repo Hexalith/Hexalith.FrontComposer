@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Contracts.Schema;
+
 namespace Hexalith.FrontComposer.Contracts.Mcp;
 
 /// <summary>
@@ -11,5 +13,5 @@ public sealed record McpCommandDescriptor(
     string? Description,
     string? AuthorizationPolicyName,
     IReadOnlyList<McpParameterDescriptor> Parameters,
-    IReadOnlyList<string> DerivablePropertyNames);
-
+    IReadOnlyList<string> DerivablePropertyNames,
+    SchemaFingerprint? Fingerprint = null);

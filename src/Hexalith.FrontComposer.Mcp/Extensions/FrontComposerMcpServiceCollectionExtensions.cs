@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Mcp.Invocation;
+using Hexalith.FrontComposer.Mcp.Skills;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,14 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
         services.TryAddScoped<FrontComposerMcpProjectionReader>();
         services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
+        // P-3: resource visibility revalidation is mandatory. Hosts MUST register a real gate
+        // that re-checks tenant/policy visibility before query and before render. The probe
+        // below fails registration if no gate is present, so an operator cannot accidentally
+        // ship unrestricted projection reads. Sample/dev hosts that legitimately want unbounded
+        // visibility must register AllowAllResourceVisibilityGate explicitly.
+
         services.TryAddSingleton<IUlidFactory, FrontComposerMcpUlidFactory>();
+        services.TryAddSingleton(_ => new FrontComposerSkillResourceProvider(SkillCorpusLoader.LoadEmbedded()));
 
         // The MCP SDK's WithTools/WithResources takes a static enumerable, so the descriptor list
         // is materialized once at AddFrontComposerMcp time. Adopters MUST call AddFrontComposerMcp
@@ -49,9 +57,17 @@ public static class FrontComposerMcpServiceCollectionExtensions {
                 "explicitly for sample/dev hosts.");
         }
 
+        if (probe.GetService<IFrontComposerMcpResourceVisibilityGate>() is null) {
+            throw new InvalidOperationException(
+                "AddFrontComposerMcp requires an IFrontComposerMcpResourceVisibilityGate registration. " +
+                "Register a host-supplied gate before AddFrontComposerMcp, or use AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>() " +
+                "explicitly for sample/dev hosts.");
+        }
+
         FrontComposerMcpDescriptorRegistry registry = probe.GetRequiredService<FrontComposerMcpDescriptorRegistry>();
         IEnumerable<ModelContextProtocol.Server.McpServerResource> resources = registry.Resources
-            .Select(r => new FrontComposerMcpResource(r))
+            .Select(r => (ModelContextProtocol.Server.McpServerResource)new FrontComposerMcpResource(r))
+            .Concat(probe.GetRequiredService<FrontComposerSkillResourceProvider>().CreateMcpResources())
             .ToArray();
 
         services.AddMcpServer()
@@ -175,13 +191,15 @@ internal sealed class FrontComposerMcpOptionsValidator : IValidateOptions<FrontC
             errors.Add("Per-resource render limits must be positive.");
         }
 
-        if (options.MaxProjectionCellCharacters <= 0
+        // MaxProjectionCellCharacters has a floor of 4 because TrimCell appends "..." (3 chars)
+        // and would otherwise return only the ellipsis when the budget is too small.
+        if (options.MaxProjectionCellCharacters < 4
             || options.MaxProjectionMarkdownCharacters <= 0
             || options.MaxProjectionTimelineEntries <= 0
             || options.MaxProjectionStatusGroups <= 0
             || options.MaxProjectionSuggestions < 0
             || string.IsNullOrWhiteSpace(options.ProjectionTruncationMarker)) {
-            errors.Add("Projection Markdown render limits must be positive and the truncation marker must be non-empty.");
+            errors.Add("Projection Markdown render limits must be positive (cell characters >= 4) and the truncation marker must be non-empty.");
         }
 
         if (options.MaxVisibleToolListItems <= 0) {

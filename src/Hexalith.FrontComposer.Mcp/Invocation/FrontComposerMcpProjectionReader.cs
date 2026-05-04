@@ -18,21 +18,44 @@ public sealed class FrontComposerMcpProjectionReader(
     IServiceProvider services,
     IOptions<FrontComposerMcpOptions> options) {
     public async Task<FrontComposerMcpResult> ReadAsync(string uri, CancellationToken cancellationToken = default) {
-        if (string.IsNullOrWhiteSpace(uri)) {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.MalformedRequest);
-        }
-
-        if (!registry.TryGetResource(uri, out McpResourceDescriptor? descriptor)) {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.UnknownResource);
+        if (IsMalformedResourceUri(uri)) {
+            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.MalformedRequest);
         }
 
         try {
+            // P-1: sample the descriptor epoch BEFORE the descriptor lookup and verify it has not
+            // advanced after the lookup; otherwise the snapshot would stamp a fresh epoch onto a
+            // stale descriptor, defeating the revalidation contract. P-4: keep registry access
+            // inside the try so a non-trivial registry implementation cannot leak raw exceptions.
+            McpDescriptorEpochs preLookupEpochs = CurrentEpochs();
+            if (!registry.TryGetResource(uri, out McpResourceDescriptor? descriptor)) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
+            }
+
+            McpDescriptorEpochs postLookupEpochs = CurrentEpochs();
+            if (preLookupEpochs.DescriptorEpoch != postLookupEpochs.DescriptorEpoch
+                || preLookupEpochs.CatalogEpoch != postLookupEpochs.CatalogEpoch) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.StaleDescriptor);
+            }
+
             FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
-            Type projectionType = ResolveType(descriptor.ProjectionTypeName);
+            ValidateContext(context);
+
+            if (!await IsResourceVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false)) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
+            }
+
+            FrontComposerMcpProjectionReadSnapshot snapshot = CreateSnapshot(descriptor, postLookupEpochs, cancellationToken);
+            FrontComposerMcpFailureCategory? preQueryFailure = await ValidateSnapshotAsync(snapshot, context, cancellationToken).ConfigureAwait(false);
+            if (preQueryFailure is not null) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(preQueryFailure.Value);
+            }
+
+            Type projectionType = ResolveType(snapshot.Descriptor.ProjectionTypeName);
             IQueryService queryService = services.GetRequiredService<IQueryService>();
             int take = Math.Max(1, Math.Min(options.Value.DefaultResourceTake, options.Value.MaxResourceTake));
             QueryRequest request = new(
-                ProjectionType: descriptor.ProjectionTypeName,
+                ProjectionType: snapshot.Descriptor.ProjectionTypeName,
                 TenantId: context.TenantId,
                 Take: take);
             MethodInfo? method = typeof(IQueryService).GetMethod(nameof(IQueryService.QueryAsync));
@@ -49,8 +72,13 @@ public sealed class FrontComposerMcpProjectionReader(
             }
 
             object queryResult = await AwaitDynamic(resultTask!).ConfigureAwait(false);
+            FrontComposerMcpFailureCategory? preRenderFailure = await ValidateSnapshotAsync(snapshot, context, cancellationToken).ConfigureAwait(false);
+            if (preRenderFailure is not null) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(preRenderFailure.Value);
+            }
+
             McpProjectionRenderRequest renderRequest = await BuildRenderRequestAsync(
-                descriptor,
+                snapshot,
                 queryResult,
                 cancellationToken).ConfigureAwait(false);
             McpProjectionRenderResult render = McpMarkdownProjectionRenderer.Render(
@@ -60,20 +88,109 @@ public sealed class FrontComposerMcpProjectionReader(
 
             return render.IsSuccess
                 ? FrontComposerMcpResult.Success(render.Document!.Text, new JsonObject { ["contentType"] = render.ContentType })
-                : FrontComposerMcpResult.Failure(render.Category);
+                : FrontComposerMcpProjectionFailureMapper.ToResult(render.Category);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Canceled);
+        catch (OperationCanceledException) {
+            // DN-5: collapse to a single Canceled handler. Linked-CTS timeouts surface here too;
+            // explicit timeouts must throw TimeoutException to differentiate.
+            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.Canceled);
         }
         catch (TimeoutException) {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Timeout);
+            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.Timeout);
         }
         catch (FrontComposerMcpException ex) {
-            return FrontComposerMcpResult.Failure(ex.Category);
+            return FrontComposerMcpProjectionFailureMapper.ToResult(ex.Category);
         }
         catch {
-            return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed);
+            return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.DownstreamFailed);
         }
+    }
+
+    private static bool IsMalformedResourceUri(string uri) {
+        if (string.IsNullOrWhiteSpace(uri)) {
+            return true;
+        }
+
+        if (!Uri.TryCreate(uri, UriKind.Absolute, out Uri? parsed)) {
+            return true;
+        }
+
+        return !string.Equals(parsed.Scheme, "frontcomposer", StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(parsed.Host);
+    }
+
+    private static void ValidateContext(FrontComposerMcpAgentContext context) {
+        if (string.IsNullOrWhiteSpace(context.TenantId)) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.TenantMissing);
+        }
+
+        // P-2: null-check Principal before dereferencing Identity. A null Principal indicates
+        // a misconfigured accessor; classify as AuthFailed rather than letting NullReferenceException
+        // collapse to DownstreamFailed and lose the auth signal.
+        if (string.IsNullOrWhiteSpace(context.UserId)
+            || context.Principal is null
+            || context.Principal.Identity is null
+            || !context.Principal.Identity.IsAuthenticated) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.AuthFailed);
+        }
+    }
+
+    private static FrontComposerMcpProjectionReadSnapshot CreateSnapshot(
+        McpResourceDescriptor descriptor,
+        McpDescriptorEpochs epochs,
+        CancellationToken cancellationToken) {
+        // P-19 invariant: McpResourceDescriptor and McpParameterDescriptor are immutable records;
+        // their inner BadgeMappings collection is exposed as IReadOnlyDictionary on the descriptor
+        // contract, so a shallow Fields.ToArray() snapshot is safe — registry mutations never
+        // mutate the captured graph in place.
+        McpResourceDescriptor descriptorCopy = CopyDescriptor(descriptor);
+        return new FrontComposerMcpProjectionReadSnapshot(
+            ProjectionKey: descriptorCopy.Name,
+            ProtocolUriCategory: "frontcomposer_projection",
+            RenderStrategy: descriptorCopy.RenderStrategy,
+            BoundedContext: descriptorCopy.BoundedContext,
+            DescriptorEpoch: epochs.DescriptorEpoch,
+            CatalogEpoch: epochs.CatalogEpoch,
+            QueryShapeCategory: "take",
+            RequestId: Guid.NewGuid().ToString("n"),
+            CancellationToken: cancellationToken,
+            Descriptor: descriptorCopy);
+    }
+
+    private static McpResourceDescriptor CopyDescriptor(McpResourceDescriptor descriptor)
+        => descriptor with {
+            Fields = descriptor.Fields.ToArray(),
+        };
+
+    private McpDescriptorEpochs CurrentEpochs()
+        => services.GetService<IFrontComposerMcpDescriptorEpochProvider>()?.GetEpochs()
+            ?? registry.GetEpochs();
+
+    private async ValueTask<FrontComposerMcpFailureCategory?> ValidateSnapshotAsync(
+        FrontComposerMcpProjectionReadSnapshot snapshot,
+        FrontComposerMcpAgentContext context,
+        CancellationToken cancellationToken) {
+        McpDescriptorEpochs current = CurrentEpochs();
+        if (current.DescriptorEpoch != snapshot.DescriptorEpoch
+            || current.CatalogEpoch != snapshot.CatalogEpoch) {
+            return FrontComposerMcpFailureCategory.StaleDescriptor;
+        }
+
+        return await IsResourceVisibleAsync(snapshot.Descriptor, context, cancellationToken).ConfigureAwait(false)
+            ? null
+            : FrontComposerMcpFailureCategory.UnknownResource;
+    }
+
+    private async ValueTask<bool> IsResourceVisibleAsync(
+        McpResourceDescriptor descriptor,
+        FrontComposerMcpAgentContext context,
+        CancellationToken cancellationToken) {
+        // P-3: GetRequiredService — visibility revalidation is a security contract, not an
+        // optional concern. Hosts must register a real gate (or AllowAllVisibilityGate explicitly
+        // for sample/dev). The startup probe in AddFrontComposerMcp enforces this so misconfigured
+        // hosts fail at registration time rather than silently shipping unrestricted reads.
+        IFrontComposerMcpResourceVisibilityGate gate = services.GetRequiredService<IFrontComposerMcpResourceVisibilityGate>();
+        return await gate.IsVisibleAsync(descriptor, context, cancellationToken).ConfigureAwait(false);
     }
 
     private static async Task<object> AwaitDynamic(object taskObject) {
@@ -84,7 +201,7 @@ public sealed class FrontComposerMcpProjectionReader(
     }
 
     private async Task<McpProjectionRenderRequest> BuildRenderRequestAsync(
-        McpResourceDescriptor descriptor,
+        FrontComposerMcpProjectionReadSnapshot snapshot,
         object queryResult,
         CancellationToken cancellationToken) {
         Type resultType = queryResult.GetType();
@@ -93,9 +210,14 @@ public sealed class FrontComposerMcpProjectionReader(
 
         // Use non-generic IEnumerable so value-type projections (e.g. struct records) are not
         // silently rendered as zero rows by an IEnumerable<object> covariance miss.
+        // P-10: count raw entries (including nulls) so IsTruncated reflects the underlying query
+        // page rather than the post-null-filter count, otherwise a complete page with one null
+        // entry would mark IsTruncated=true.
         List<object> items = [];
+        long rawCount = 0;
         if (itemsValue is IEnumerable raw) {
             foreach (object? item in raw) {
+                rawCount++;
                 if (item is not null) {
                     items.Add(item);
                 }
@@ -103,13 +225,15 @@ public sealed class FrontComposerMcpProjectionReader(
         }
 
         IReadOnlyList<string>? suggestions = items.Count == 0
-            ? await BuildSafeSuggestionsAsync(descriptor, cancellationToken).ConfigureAwait(false)
+            ? await BuildSafeSuggestionsAsync(snapshot.Descriptor, cancellationToken).ConfigureAwait(false)
             : null;
 
         return new McpProjectionRenderRequest(
-            descriptor,
+            snapshot.Descriptor,
             items,
             totalCount,
+            IsTruncated: totalCount > rawCount,
+            RequestId: snapshot.RequestId,
             SafeCommandSuggestions: suggestions);
     }
 
@@ -117,6 +241,11 @@ public sealed class FrontComposerMcpProjectionReader(
         McpResourceDescriptor descriptor,
         CancellationToken cancellationToken) {
         if (string.IsNullOrWhiteSpace(descriptor.EmptyStateCtaCommandName)) {
+            return null;
+        }
+
+        int max = options.Value.MaxProjectionSuggestions;
+        if (max <= 0) {
             return null;
         }
 
@@ -128,19 +257,42 @@ public sealed class FrontComposerMcpProjectionReader(
         McpVisibleToolCatalog catalog = await admission.BuildVisibleCatalogAsync(cancellationToken).ConfigureAwait(false);
         string cta = descriptor.EmptyStateCtaCommandName!;
         string[] suggestions = [.. catalog.Tools
-            .Where(t => MatchesEmptyStateCta(t.Descriptor, cta))
+            .Where(t => MatchesEmptyStateCta(t.Descriptor, descriptor.BoundedContext, cta))
             .OrderBy(t => t.Name, StringComparer.Ordinal)
             .Select(t => t.Title)
             .Where(t => !string.IsNullOrWhiteSpace(t))
-            .Take(Math.Max(1, options.Value.MaxProjectionSuggestions))];
+            .Take(max)];
         return suggestions.Length == 0 ? null : suggestions;
     }
 
-    private static bool MatchesEmptyStateCta(McpCommandDescriptor descriptor, string cta)
-        => string.Equals(descriptor.CommandTypeName, cta, StringComparison.Ordinal)
-            || descriptor.CommandTypeName.EndsWith("." + cta, StringComparison.Ordinal)
-            || string.Equals(descriptor.ProtocolName, cta, StringComparison.Ordinal)
-            || descriptor.ProtocolName.Contains("." + cta + ".", StringComparison.Ordinal);
+    private static bool MatchesEmptyStateCta(McpCommandDescriptor descriptor, string boundedContext, string cta) {
+        // Anchor on full namespace-segment equality so "Create" cannot match
+        // "Other.Foo.CreateInvoiceCommand". Cross-bounded-context bleed is rejected unless
+        // the descriptor advertises the same bounded context as the projection.
+        // P-5: fail-closed when the projection has no bounded context — without an anchor we
+        // cannot verify cross-context isolation, so suggestions are suppressed entirely.
+        if (string.IsNullOrWhiteSpace(boundedContext)
+            || !string.Equals(descriptor.BoundedContext, boundedContext, StringComparison.Ordinal)) {
+            return false;
+        }
+
+        return SegmentMatches(descriptor.CommandTypeName, cta)
+            || SegmentMatches(descriptor.ProtocolName, cta);
+    }
+
+    private static bool SegmentMatches(string fullName, string cta) {
+        if (string.Equals(fullName, cta, StringComparison.Ordinal)) {
+            return true;
+        }
+
+        foreach (string segment in fullName.Split('.', StringSplitOptions.RemoveEmptyEntries)) {
+            if (string.Equals(segment, cta, StringComparison.Ordinal)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     private static long ReadTotalCount(Type resultType, object queryResult) {
         object? raw = resultType.GetProperty("TotalCount")?.GetValue(queryResult);

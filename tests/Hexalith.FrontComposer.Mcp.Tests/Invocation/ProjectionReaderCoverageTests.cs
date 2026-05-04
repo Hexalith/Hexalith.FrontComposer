@@ -17,7 +17,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// </summary>
 public sealed class ProjectionReaderCoverageTests {
     [Fact]
-    public async Task UnknownResource_IsRejectedWithGenericFailureText() {
+    public async Task UnknownResource_IsRejectedWithProjectionTaxonomyText() {
         FrontComposerMcpProjectionReader reader = BuildReader<EmptyQueryService>(out _);
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/NoSuchProjection",
@@ -25,7 +25,10 @@ public sealed class ProjectionReaderCoverageTests {
 
         result.IsError.ShouldBeTrue();
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
-        result.Text.ShouldBe("Request failed.");
+        result.Text.ShouldBe("Projection resource is not available.");
+        result.StructuredContent.ShouldNotBeNull();
+        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
+        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe("HFC-MCP-PROJECTION-UNKNOWN-RESOURCE");
     }
 
     [Fact]
@@ -47,6 +50,7 @@ public sealed class ProjectionReaderCoverageTests {
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
         var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
 
@@ -58,7 +62,8 @@ public sealed class ProjectionReaderCoverageTests {
         result.Text.ShouldContain("# Audit events");
         result.Text.ShouldContain("Total: 1");
 
-        // ISO 8601 date format ('o' specifier) emits ten leading digits then 'T'.
+        // Canonical Markdown formatting matrix: dates render via ISO 8601 round-trip ('o') format.
+        // Test fixture uses 2026-05-02T10:30:45Z.
         result.Text.ShouldContain("2026-05-02T", customMessage: $"Body was: {result.Text}");
 
         // SanitizeCell preserves data through markdown-cell escape; pipe in source becomes \|.
@@ -91,6 +96,7 @@ public sealed class ProjectionReaderCoverageTests {
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(MetricManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
         var reader = ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
 
@@ -112,6 +118,7 @@ public sealed class ProjectionReaderCoverageTests {
         sc.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(EventManifest()));
         sc.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         sc.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor());
+        sc.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         ServiceProvider provider = sc.BuildServiceProvider();
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
     }

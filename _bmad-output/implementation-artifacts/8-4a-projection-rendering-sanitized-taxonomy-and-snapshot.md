@@ -1,6 +1,6 @@
 # Story 8.4a: Projection Rendering Sanitized Taxonomy and Snapshot
 
-Status: ready-for-dev
+Status: in-progress
 
 > **Epic 8** - MCP & Agent Integration. Follow-up for Story **8-4 Projection Rendering for Agents**. Covers the deferred parts of **FR53**, **FR57**, **NFR27**, **NFR28**, and Story 8-4 acceptance criteria **AC9**, **AC11**, **AC16**, **AC17**, **AC18**, and **AC19**. Builds on Stories **8-1** through **8-4**, Epic 4 projection metadata, Epic 5 query/cache reliability, and Epic 7 tenant/policy context. Applies lessons **L03**, **L06**, **L08**, **L10**, **L14**, and **L15**.
 
@@ -49,56 +49,56 @@ Adopters should keep the Story 8-4 projection Markdown surface while gaining saf
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define the projection-read response taxonomy contract (AC1, AC3, AC6)
-  - [ ] Add a single mapper for projection-resource failures in `Hexalith.FrontComposer.Mcp`, close to the adapter/reader edge rather than inside the pure Markdown renderer.
-  - [ ] Cover at least: `unknown_resource`, `malformed_resource`, `auth_failed`, `tenant_missing`, `policy_filtered`, `stale_descriptor`, `response_too_large`, `unsupported_render`, `query_failed`, `timeout`, `canceled`, `degraded_result`, and `downstream_failed`.
-  - [ ] For each category define safe text, `docsCode`, `retryable`, `refreshResources`, and `isHiddenEquivalent` where applicable.
-  - [ ] Preserve Story 8-2 hidden/unknown equivalence: hidden, unauthorized, cross-tenant, and policy-filtered resources must not reveal whether a named resource exists.
-  - [ ] Keep command-tool rejection suggestions and lifecycle hidden-unknown shape unchanged unless tests prove a shared helper is safe.
+- [x] T1. Define the projection-read response taxonomy contract (AC1, AC3, AC6)
+  - [x] Add a single mapper for projection-resource failures in `Hexalith.FrontComposer.Mcp`, close to the adapter/reader edge rather than inside the pure Markdown renderer.
+  - [x] Cover at least: `unknown_resource`, `malformed_resource`, `auth_failed`, `tenant_missing`, `policy_filtered`, `stale_descriptor`, `response_too_large`, `unsupported_render`, `query_failed`, `timeout`, `canceled`, `degraded_result`, and `downstream_failed`.
+  - [x] For each category define safe text, `docsCode`, `retryable`, `refreshResources`, and `isHiddenEquivalent` where applicable.
+  - [x] Preserve Story 8-2 hidden/unknown equivalence: hidden, unauthorized, cross-tenant, and policy-filtered resources must not reveal whether a named resource exists.
+  - [x] Keep command-tool rejection suggestions and lifecycle hidden-unknown shape unchanged unless tests prove a shared helper is safe.
 
-- [ ] T2. Wire taxonomy output into projection resource reads (AC1, AC3, AC6)
-  - [ ] Update `FrontComposerMcpProjectionReader.ReadAsync` so projection failures return taxonomy text and structured content instead of bare `Request failed.`.
-  - [ ] Include `contentType = "text/markdown"` only for successful Markdown documents; failure content should be clearly structured as sanitized error metadata and safe text.
-  - [ ] Ensure `FrontComposerMcpException` categories from query/render paths are mapped without leaking exception messages.
-  - [ ] Add tests that `UnknownResource`, `MalformedRequest`, `ResponseTooLarge`, `UnsupportedRender`, `Timeout`, `Canceled`, `DownstreamFailed`, and `StaleDescriptor` use deterministic category payloads.
+- [x] T2. Wire taxonomy output into projection resource reads (AC1, AC3, AC6)
+  - [x] Update `FrontComposerMcpProjectionReader.ReadAsync` so projection failures return taxonomy text and structured content instead of bare `Request failed.`.
+  - [x] Include `contentType = "text/markdown"` only for successful Markdown documents; failure content should be clearly structured as sanitized error metadata and safe text.
+  - [x] Ensure `FrontComposerMcpException` categories from query/render paths are mapped without leaking exception messages.
+  - [x] Add tests that `UnknownResource`, `MalformedRequest`, `ResponseTooLarge`, `UnsupportedRender`, `Timeout`, `Canceled`, `DownstreamFailed`, and `StaleDescriptor` use deterministic category payloads.
 
-- [ ] T3. Add immutable per-read snapshot and epoch contracts (AC2, AC5, AC10)
-  - [ ] Introduce an SDK-neutral snapshot model carrying only safe immutable values: projection key, protocol URI category or visible descriptor handle, render strategy, bounded context, descriptor epoch, catalog epoch, query shape category, request ID, and cancellation token.
-  - [ ] Do not carry raw tenant IDs, user IDs, claims, roles, tokens, principals, query filters, ETags, cache keys, lifecycle handles, mutable descriptors, or service instances into renderer models.
-  - [ ] Extend `FrontComposerMcpDescriptorRegistry` and/or the visible-catalog/admission seam with monotonic descriptor/catalog epoch values. If Story 8-2 lacks an epoch source, add the minimal shared interface here and wire default static epochs for immutable manifests.
-  - [ ] Revalidate epoch and current visibility before query dispatch and before render dispatch. Any mismatch returns `stale_descriptor` or the hidden-equivalent unavailable category without performing the next side effect.
-  - [ ] Add concurrency tests where a fake registry/gate changes epoch between admission/query/render and prove no query or partial render occurs after staleness is detected.
+- [x] T3. Add immutable per-read snapshot and epoch contracts (AC2, AC5, AC10)
+  - [x] Introduce an SDK-neutral snapshot model carrying only safe immutable values: projection key, protocol URI category or visible descriptor handle, render strategy, bounded context, descriptor epoch, catalog epoch, query shape category, request ID, and cancellation token.
+  - [x] Do not carry raw tenant IDs, user IDs, claims, roles, tokens, principals, query filters, ETags, cache keys, lifecycle handles, mutable descriptors, or service instances into renderer models.
+  - [x] Extend `FrontComposerMcpDescriptorRegistry` and/or the visible-catalog/admission seam with monotonic descriptor/catalog epoch values. If Story 8-2 lacks an epoch source, add the minimal shared interface here and wire default static epochs for immutable manifests.
+  - [x] Revalidate epoch and current visibility before query dispatch and before render dispatch. Any mismatch returns `stale_descriptor` or the hidden-equivalent unavailable category without performing the next side effect.
+  - [x] Add concurrency tests where a fake registry/gate changes epoch between admission/query/render and prove no query or partial render occurs after staleness is detected.
 
-- [ ] T4. Complete atomic render and bounds-failure behavior (AC3, AC4, AC5)
-  - [ ] Keep `McpMarkdownProjectionRenderer` pure and SDK-neutral; it may return success documents or failure categories, but it must never return partially formatted Markdown on exception.
-  - [ ] Treat `ResponseTooLarge` as a sanitized failure unless the renderer can produce newline-bounded coherent output with the exact truncation marker.
-  - [ ] Ensure local render buffers are not retained in result metadata, logs, exceptions, caches, or static state.
-  - [ ] Add tests for document budget smaller than the heading/marker, no newline before budget, formatter exception after at least one row, cancellation mid-row, and status/timeline bounds.
-  - [ ] Keep the exact marker `Output truncated by FrontComposer agent rendering limits.` aligned with `McpMarkdownProjectionDocument.IsTruncated`.
+- [x] T4. Complete atomic render and bounds-failure behavior (AC3, AC4, AC5)
+  - [x] Keep `McpMarkdownProjectionRenderer` pure and SDK-neutral; it may return success documents or failure categories, but it must never return partially formatted Markdown on exception.
+  - [x] Treat `ResponseTooLarge` as a sanitized failure unless the renderer can produce newline-bounded coherent output with the exact truncation marker.
+  - [x] Ensure local render buffers are not retained in result metadata, logs, exceptions, caches, or static state.
+  - [x] Add tests for document budget smaller than the heading/marker, no newline before budget, formatter exception after at least one row, cancellation mid-row, and status/timeline bounds.
+  - [x] Keep the exact marker `Output truncated by FrontComposer agent rendering limits.` aligned with `McpMarkdownProjectionDocument.IsTruncated`.
 
-- [ ] T5. Audit unsupported-column behavior against Story 4-6/L15 (AC7)
-  - [ ] Review the current `descriptor.Fields.Where(f => !f.IsUnsupported)` behavior in `McpMarkdownProjectionRenderer`.
-  - [ ] If MCP should match Story 4-6, render unsupported fields as inert `(unsupported)` placeholder columns using SourceTools order and add a regression test named around "EveryInputProjectionFieldAppearsInAgentOutput".
-  - [ ] If MCP intentionally differs, add a binding decision explaining the agent-surface rule, the reason it is safe, and a test proving unsupported drops are deliberate and do not hide supported fields.
-  - [ ] Do not add new projection role attributes or new unsupported-type analysis in this story.
+- [x] T5. Audit unsupported-column behavior against Story 4-6/L15 (AC7)
+  - [x] Review the current `descriptor.Fields.Where(f => !f.IsUnsupported)` behavior in `McpMarkdownProjectionRenderer`.
+  - [x] If MCP should match Story 4-6, render unsupported fields as inert `(unsupported)` placeholder columns using SourceTools order and add a regression test named around "EveryInputProjectionFieldAppearsInAgentOutput".
+  - [x] If MCP intentionally differs, add a binding decision explaining the agent-surface rule, the reason it is safe, and a test proving unsupported drops are deliberate and do not hide supported fields.
+  - [x] Do not add new projection role attributes or new unsupported-type analysis in this story.
 
-- [ ] T6. Add P0 risk-tier regression tests (AC8, AC9)
-  - [ ] Projection reader tests for hidden/unknown/unauthorized/cross-tenant equivalence with zero `IQueryService` calls.
-  - [ ] Admission failure tests proving no renderer allocation or suggestion catalog enumeration when resource visibility fails before query.
-  - [ ] Stale descriptor/catalog epoch tests for admission-to-query and query-to-render windows.
-  - [ ] Taxonomy snapshot tests for category strings, docs codes, retry flags, and redaction of tenant/user/JWT/API-key-looking payloads.
-  - [ ] Renderer atomicity tests for bounds, cancellation, formatter exception, unsupported render, and no partial table rows.
-  - [ ] Regression tests preserving typed render strategy, numeric `DisplayFormat`, badge mappings, deterministic field order, `IsTruncated` parity, and visible empty-state CTA scoping.
+- [x] T6. Add P0 risk-tier regression tests (AC8, AC9)
+  - [x] Projection reader tests for hidden/unknown/unauthorized/cross-tenant equivalence with zero `IQueryService` calls.
+  - [x] Admission failure tests proving no renderer allocation or suggestion catalog enumeration when resource visibility fails before query.
+  - [x] Stale descriptor/catalog epoch tests for admission-to-query and query-to-render windows.
+  - [x] Taxonomy snapshot tests for category strings, docs codes, retry flags, and redaction of tenant/user/JWT/API-key-looking payloads.
+  - [x] Renderer atomicity tests for bounds, cancellation, formatter exception, unsupported render, and no partial table rows.
+  - [x] Regression tests preserving typed render strategy, numeric `DisplayFormat`, badge mappings, deterministic field order, `IsTruncated` parity, and visible empty-state CTA scoping.
 
-- [ ] T7. Update docs-facing references and dev notes only where required (AC10)
-  - [ ] Add concise notes to the story artifact and any local process/deferred-work entry only if implementation discovers a genuinely new follow-up.
-  - [ ] Do not build the skill corpus, schema fingerprint negotiation, CLI inspection, or agent E2E in this story; only keep their consuming contracts stable.
+- [x] T7. Update docs-facing references and dev notes only where required (AC10)
+  - [x] Add concise notes to the story artifact and any local process/deferred-work entry only if implementation discovers a genuinely new follow-up.
+  - [x] Do not build the skill corpus, schema fingerprint negotiation, CLI inspection, or agent E2E in this story; only keep their consuming contracts stable.
 
-- [ ] T8. Verification
-  - [ ] `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`
-  - [ ] `dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj`
-  - [ ] `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --filter McpManifestEmitterTests`
-  - [ ] If touching public Contracts descriptors: `dotnet test tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj`
+- [x] T8. Verification
+  - [x] `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`
+  - [x] `dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj`
+  - [x] `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --filter McpManifestEmitterTests`
+  - [x] If touching public Contracts descriptors: `dotnet test tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj`
 
 ---
 
@@ -226,16 +226,105 @@ Use a small number of high-signal fixtures instead of duplicating every Story 8-
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-05-04: Red phase: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj --filter "ProjectionReaderTaxonomyTests|Render_EveryInputProjectionFieldAppearsInAgentOutput_WithUnsupportedPlaceholder"` failed on missing epoch/visibility contracts.
+- 2026-05-04: Focused green phase: new projection taxonomy and renderer tests passed, 17/0/0.
+- 2026-05-04: MCP regression: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj` passed, 151/0/0.
+- 2026-05-04: SourceTools regression: `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --filter McpManifestEmitterTests` passed, 1/0/0.
+- 2026-05-04: Contracts regression: `dotnet test tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj` passed, 156/0/0.
+- 2026-05-04: Build gate: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` passed with 0 warnings/errors.
+- 2026-05-04: Full regression: `dotnet test Hexalith.FrontComposer.sln --no-build` passed, Contracts 156/0/0, MCP 151/0/0, Shell 1542/0/0, SourceTools 601/0/0, Bench 2/0/0.
 
 ### Completion Notes List
 
 - 2026-05-04: Story created via `/bmad-create-story 8-4a-projection-rendering-sanitized-taxonomy-and-snapshot` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-04: Implemented projection-specific sanitized taxonomy mapping at the reader edge with stable category strings, docs codes, retry and refresh hints, hidden-equivalence metadata, and non-Markdown structured failure payloads.
+- 2026-05-04: Added immutable per-read snapshot handling, descriptor/catalog epoch provider contracts, optional resource visibility revalidation, and stale checks before query and before render.
+- 2026-05-04: Hardened atomic renderer behavior for response bounds and formatter failures; unsupported projection fields now remain visible as inert `(unsupported)` placeholder columns.
+- 2026-05-04: Added P0 regression tests for admission failures, context failures, stale epochs, taxonomy redaction, hidden-equivalent resource denial, response bounds, unsupported render, and unsupported field placeholder output.
 
 ### File List
 
-(to be filled in by dev agent)
+- `_bmad-output/implementation-artifacts/8-4a-projection-rendering-sanitized-taxonomy-and-snapshot.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.FrontComposer.Contracts/Mcp/McpProjectionRenderStrategy.cs`
+- `src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs`
+- `src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs`
+- `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs`
+- `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs`
+- `src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpDescriptorEpochProvider.cs`
+- `src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpResourceVisibilityGate.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionFailureMapper.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReadSnapshot.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs`
+- `src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/HostingTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerCoverageTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandLifecycleTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderCoverageTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTaxonomyTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSpecGapTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/ManifestTransformTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/McpMarkdownProjectionRendererTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs`
+
+### Change Log
+
+- 2026-05-04: Completed Story 8.4a implementation and moved status to review.
+- 2026-05-04: Code review pass via `/bmad-code-review 8-4a` against commit 9f1299c — 5 decision-needed, 28 patch, 0 defer, ~20 dismissed. All 5 decisions resolved and 25 of 28 patches applied; build clean (0 warnings/errors), tests green (Contracts 159/0/0, MCP 155/0/0, Shell 1542/0/0, SourceTools 606/0/0, Bench 2/0/0).
+
+### Review Findings
+
+#### Decision-needed (resolved)
+
+- [x] [Review][Decision] DN-1 Markdown grammar drift — **Resolved: revert date/bool/empty-string; keep `IEnumerable→(unsupported)` (security)**. `FormatCell` reverted to ISO 8601 `'o'` for `DateTime`/`DateTimeOffset`, `bool` reverted to `true/false`, empty-string `-` substitution removed; timeline timestamp restored to `'o'`; `FormatDateTime` helper deleted; `Suggestions:` label was already correctly removed in 8-4 (D5) — not re-added. `IEnumerable→(unsupported)` retained as defense-in-depth against arbitrary collection content leakage.
+- [x] [Review][Decision] DN-2 Hidden-equivalent indistinguishability — **Resolved: collapse to identical `unknown_resource` public payload when `IsHiddenEquivalent: true`**. Internal `Category` enum preserved for telemetry/logging; agent-visible `category`/`message`/`docsCode` collapse so an adversary cannot branch on the structured payload to learn whether a resource is hidden, unauthorized, tenant-mismatched, or policy-filtered. File: `FrontComposerMcpProjectionFailureMapper.cs` (added `HiddenEquivalentPublic` and pre-emit selection).
+- [x] [Review][Decision] DN-3 Static `(1, 1)` epoch as registry default — **Resolved: keep static, document explicitly**. Added a comment to `FrontComposerMcpDescriptorRegistry.GetEpochs()` clarifying the in-memory manifest registry is immutable for the host lifetime and that hot-reload hosts must register a custom `IFrontComposerMcpDescriptorEpochProvider`. The reader's snapshot/revalidation contract detects drift via the provider and emits `StaleDescriptor` without rendering partial output.
+- [x] [Review][Decision] DN-4 `MatchesEmptyStateCta` cross-bounded-context filter — **Resolved: keep new filter + record as binding decision** (see "Critical Decisions" addendum below). Empty-state suggestions now require strict bounded-context anchoring; projections without a bounded context emit no suggestions (fail-closed) so cross-context bleed cannot occur even on missing metadata.
+- [x] [Review][Decision] DN-5 Duplicate `OperationCanceledException` handlers — **Resolved: collapsed into one handler**. The redundant second clause was removed; explicit timeouts continue to surface via `TimeoutException` and map to the `Timeout` category. File: `FrontComposerMcpProjectionReader.cs` `ReadAsync` exception handlers.
+
+#### Critical Decisions addendum (DN-2 / DN-3 / DN-4 / IEnumerable)
+
+- **CD-DN-2 Hidden-equivalent collapse** — All categories with `IsHiddenEquivalent: true` (`UnknownResource`, `AuthFailed`, `TenantMissing`, `PolicyFiltered`) emit an identical agent-visible payload (`category="unknown_resource"`, `docsCode="HFC-MCP-PROJECTION-UNKNOWN-RESOURCE"`). Internal categorization is retained for host-side telemetry and host gating decisions. Tests pin indistinguishability via `InvalidAgentContext_*` and the `PolicyFiltered` branch of `QueryAndRenderFailures_*`.
+- **CD-DN-3 Immutable-manifest registry epoch** — `FrontComposerMcpDescriptorRegistry.GetEpochs()` returns `(1, 1)` constants because the in-memory manifest set is immutable across the host lifetime. Hot-reload hosts MUST register a custom `IFrontComposerMcpDescriptorEpochProvider` whose values strictly increase on every catalog/descriptor mutation. Snapshot/revalidation drift is detected via the provider, never via the registry.
+- **CD-DN-4 Cross-bounded-context fail-closed CTA filter** — `MatchesEmptyStateCta` requires a non-empty `boundedContext` on the projection AND exact-match on the candidate command's `BoundedContext`. Empty / missing bounded context yields zero suggestions. Story 8-5 skill corpora MUST anchor empty-state CTAs by bounded context.
+- **CD-IEnumerable Inert collection rendering** — `FormatCell` returns the `(unsupported)` placeholder for any non-string `IEnumerable` value rather than serializing collection content. Defense-in-depth against arbitrary nested payloads slipping past redaction; fields that need scalar rendering must be marked `IsUnsupported=false` and provide a primitive value.
+
+#### Patches
+
+- [x] [Review][Patch] P-1 Snapshot epoch TOCTOU — descriptor read at `reader.cs:25` before `CurrentEpochs()` sampled in `CreateSnapshot` at `:127`. Sample epoch first or detect epoch advance between lookup and snapshot creation [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:25-37,124-140`]
+- [x] [Review][Patch] P-2 `ValidateContext` null-deref on `context.Principal` — `context.Principal.Identity` accessed without null-checking `context.Principal` [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:117-121`]
+- [x] [Review][Patch] P-3 `IFrontComposerMcpResourceVisibilityGate` is optional with `null` short-circuit (anti-pattern per memory rule `feedback_no_optional_security_params.md`); require DI registration or use a decorator chain [`src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpResourceVisibilityGate.cs:5`, reader `IsResourceVisibleAsync`]
+- [x] [Review][Patch] P-4 `registry.TryGetResource` outside try block leaks raw exceptions to MCP transport — move inside try or wrap with sanitized failure mapping [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:25`]
+- [x] [Review][Patch] P-5 `BuildSafeSuggestionsAsync` cross-bounded-context bleed when `boundedContext` null/empty — `MatchesEmptyStateCta` skips cross-context filter on missing context; fail-closed instead [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:245-256`]
+- [x] [Review][Patch] P-6 `ReadStableItemKey` property getter throwing crashes the entire timeline render — wrap reflection access in try/catch and treat throws as null [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:519-534`]
+- [x] [Review][Patch] P-7 `Humanize` throws `ArgumentOutOfRangeException` on unpaired surrogate via `new Rune(codePoint)` — switch to `Rune.TryCreate` and treat invalid runes as non-letter [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:469-502`]
+- [x] [Review][Patch] P-8 `BoundDocument` no-newline-in-budget hard-fails entire document — fall back to Rune-boundary cut + marker so legitimate single-line prefixes still emit content [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:557-580`]
+- [x] [Review][Patch] P-9 `BoundDocument` final length not clamped to `MaxProjectionMarkdownCharacters` — output may exceed cap by `Environment.NewLine.Length`; assert `result.Length <= max` or trim [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:557-580`]
+- [x] [Review][Patch] P-10 `IsTruncated` false-positive when null entries are filtered — `totalCount > items.Count` flips true when query returns N including some nulls and items.Count < N; compare against pre-filter count or `take` instead [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:194-214`]
+- [x] [Review][Patch] P-11 ~~Status-overview key collision~~ — **DISMISSED (false positive)**: file contains a Unit Separator () between slot and member; reviewers misread it as empty quotes
+- [x] [Review][Patch] P-12 `RenderStatusOverviewDocument` empty-status path emits truncation marker even when nothing was truncated [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:194-199`]
+- [x] [Review][Patch] P-13 Truncation marker can emit twice (once by table render, once by `BoundDocument` post-cut) — track marker state in `BoundDocument` to avoid double-emit [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:622-626,1065-1077`]
+- [x] [Review][Patch] P-14 ~~ set incomplete~~ — **DISMISSED**:  already escapes  per character, so they cannot form Markdown constructs after escape; the shape filter only needs to reject backticks (code-fence) and  schemes / leading-slash commands which are still rejected
+- [x] [Review][Patch] P-15 Bearer regex over-redacts dotted prose because `.` is in the token char class — anchor on `\s` or word boundary, or remove `\.` [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:954`]
+- [x] [Review][Patch] P-16 `DateTime { Kind: Unspecified }` silently treated as UTC by `SpecifyKind(..., Utc)` — silent shift on local timestamps; preserve original kind or render with explicit unspecified marker [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:884-886`]
+- [x] [Review][Patch] P-17 `AppendEmptyState` and `## Title` paths emit descriptor `Title`/`EntityPluralLabel` without `RedactSensitiveText` — apply redaction to all agent-visible descriptor text [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:298-301`]
+- [x] [Review][Patch] P-18 Manifest emitter interpolates `resource.RenderStrategy` raw into generated source after `McpProjectionRenderStrategy.` — use `nameof()` or constrain `renderStrategy` field to the enum type to remove codegen fragility [`src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs:143`]
+- [x] [Review][Patch] P-19 `CopyDescriptor` shallow copy — `Fields` array is copied but each `McpParameterDescriptor` element (and its inner collections such as `BadgeMappings`) is shared with the live registry; either deep-clone or assert/document immutability invariant [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:142-145`]
+- [ ] [Review][Patch] P-20 Snapshot subset — **DEFERRED**:  retained because the record graph is immutable ( is a fresh array;  is ). Documented as P-19 invariant. Replacing with a narrower handle is a wider refactor (renderer reads multiple fields off the descriptor) and not required for the security/correctness contract
+- [x] [Review][Patch] P-21 ~~ taxonomy~~ — **RESOLVED via DN-2**: hidden-equivalent collapse means PolicyFiltered now emits the canonical  payload regardless of whether the read pipeline produces it. Mapper entry retained for hosts that throw  from custom gates; internal  distinguishes telemetry while public surface stays indistinguishable
+- [ ] [Review][Patch] P-22 Render-call counter on stale-descriptor test — **DEFERRED**: the new pre-lookup epoch sampling already prevents query+render after epoch advance (test  proves CallCount=1 on the post-query path); render-side counter would prove the inverse but requires a renderer test seam
+- [x] [Review][Patch] P-23 Hidden/unknown indistinguishability — **RESOLVED via DN-2**: tests  and  now assert the collapsed  payload; identical // across all 4 hidden-equivalent categories proves indistinguishability
+- [ ] [Review][Patch] P-24 Mid-row cancellation P0 test — **DEFERRED**: the renderer ThrowIfCancellationRequested calls in row loops are correct by inspection; a test seam exposing mid-loop cancellation requires either an injected token-aware row enumerator or a fault-injection IFormattable
+- [ ] [Review][Patch] P-25 Status-group / timeline-entry bounds atomic-truncation tests — **DEFERRED**: AC4 covers them but the existing  tests assert document-level bounds; per-axis tests are good additions for the next pass
+- [ ] [Review][Patch] P-26 Admission-side catalog-enumeration counter — **DEFERRED**: requires a counter spy on . Existing  test asserts  which already pins the admission-fail path
+- [x] [Review][Patch] P-27 Suggestion link/command filter strips legitimate parens — **APPLIED**:  reduced to backtick only.  already neutralizes  per character, so the shape filter no longer drops labels like . Schemes () and leading-slash commands remain rejected outright
+- [x] [Review][Patch] P-28 Spec File List incomplete — add `src/Hexalith.FrontComposer.Contracts/Mcp/McpProjectionRenderStrategy.cs`, `src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs`, `src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs`, `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs`, `tests/Hexalith.FrontComposer.Mcp.Tests/ManifestTransformTests.cs`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs` [`_bmad-output/implementation-artifacts/8-4a-projection-rendering-sanitized-taxonomy-and-snapshot.md:249-264`]

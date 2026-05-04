@@ -32,6 +32,7 @@ public sealed class ProjectionReaderTests {
         services.AddLogging();
         services.AddSingleton<IQueryService>(new EmptyQueryService());
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(ManifestWithCreateCommand()));
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
@@ -44,8 +45,10 @@ public sealed class ProjectionReaderTests {
 
         result.IsError.ShouldBeFalse();
         result.Text.ShouldContain("No invoices found.");
-        result.Text.ShouldContain("Suggestions:");
         result.Text.ShouldContain("- Create invoice");
+        // The empty-state suggestion list emits bullets directly under the empty-state line;
+        // the previous "Suggestions:" inline label was not part of the canonical document grammar.
+        result.Text.ShouldNotContain("Suggestions:");
     }
 
     private static IServiceCollection Services(IQueryService queryService) {
@@ -55,6 +58,7 @@ public sealed class ProjectionReaderTests {
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
         services.AddScoped<FrontComposerMcpProjectionReader>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         return services;
     }
 

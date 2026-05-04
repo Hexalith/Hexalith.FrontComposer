@@ -23,6 +23,8 @@ public sealed class BoundaryTests {
         referenced.ShouldNotContain("Microsoft.AspNetCore.Http");
         referenced.ShouldNotContain("Microsoft.AspNetCore.Http.Abstractions");
         referenced.ShouldNotContain("Microsoft.AspNetCore.Routing");
+        referenced.ShouldNotContain("Hexalith.FrontComposer.SourceTools");
+        referenced.ShouldNotContain("Hexalith.FrontComposer.Shell");
     }
 
     [Fact]

@@ -694,6 +694,7 @@ public sealed class CommandLifecycleTests {
         services.AddSingleton<FrontComposerMcpLifecycleTracker>();
         services.AddSingleton<FrontComposerMcpProjectionReader>();
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         if (policyGate is not null) {
             services.AddSingleton(policyGate);
         }

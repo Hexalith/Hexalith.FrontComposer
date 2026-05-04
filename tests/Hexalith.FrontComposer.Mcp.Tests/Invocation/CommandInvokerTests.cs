@@ -57,6 +57,7 @@ public sealed class CommandInvokerTests {
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddSingleton<FrontComposerMcpToolAdmissionService>();
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAgentContextAccessor());
         return services;

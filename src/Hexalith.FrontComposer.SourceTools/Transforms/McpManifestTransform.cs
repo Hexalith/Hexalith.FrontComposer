@@ -53,7 +53,9 @@ public static class McpManifestTransform {
                 column.Description,
                 column.EnumMemberNames.ToImmutableArray(),
                 column.TypeCategory == TypeCategory.Unsupported,
-                column.BadgeMappings.ToImmutableArray().ToDictionary(m => m.EnumMemberName, m => m.Slot, StringComparer.Ordinal),
+                column.BadgeMappings
+                    .GroupBy(m => m.EnumMemberName, StringComparer.Ordinal)
+                    .ToDictionary(g => g.Key, g => g.First().Slot, StringComparer.Ordinal),
                 column.DisplayFormat.ToString()));
         }
 

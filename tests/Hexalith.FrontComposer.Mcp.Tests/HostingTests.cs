@@ -14,6 +14,7 @@ public sealed class HostingTests {
         McpManifest manifest = CreateManifest("billing.invoice.create");
         var services = new ServiceCollection();
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
         services.AddFrontComposerMcp(options => options.Manifests.Add(manifest));
 
@@ -27,6 +28,7 @@ public sealed class HostingTests {
     public void AddFrontComposerMcp_RejectsDuplicateCommandNames() {
         var services = new ServiceCollection();
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
 
         Should.Throw<FrontComposerMcpException>(() => services.AddFrontComposerMcp(options => {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
@@ -49,6 +51,7 @@ public sealed class HostingTests {
     public void AddFrontComposerMcp_ValidatesProjectionMarkdownBounds() {
         var services = new ServiceCollection();
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
         OptionsValidationException ex = Should.Throw<OptionsValidationException>(() => services.AddFrontComposerMcp(options => {
             options.Manifests.Add(CreateManifest("billing.invoice.create"));
             options.MaxProjectionCellCharacters = 0;

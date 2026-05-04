@@ -17,4 +17,13 @@ public enum FrontComposerMcpFailureCategory {
     DuplicateDescriptor,
     MissingManifest,
     PolicyGateMissing,
+    ResponseTooLarge,
+    UnsupportedRender,
+    StaleDescriptor,
+    DegradedResult,
+    PolicyFiltered,
+    SchemaMismatch,
+    UnknownSchemaBaseline,
+    UnsupportedSchemaAlgorithm,
+    SchemaIntegrityMismatch,
 }

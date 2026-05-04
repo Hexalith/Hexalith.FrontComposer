@@ -1,6 +1,6 @@
 # Story 8.6: Schema Versioning & Multi-Surface Abstraction
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 8** - MCP & Agent Integration. Covers **FR59**, **FR60**, **FR61**, and the versioning handoff from Stories **8-1** through **8-5**. Builds on SDK-neutral MCP descriptors, Story 8-2 stale descriptor handling, Story 8-3 lifecycle schema stability, Story 8-4 Markdown projection contracts, Story 8-5 corpus/resource versioning, and existing customization contract-version patterns. Applies lessons **L01**, **L03**, **L04**, **L06**, **L07**, **L08**, **L10**, and **L14**.
 
@@ -71,85 +71,85 @@ An adopter should be able to upgrade a FrontComposer package, run the generator,
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define canonical schema fingerprint input models (AC1-AC4, AC10-AC12, AC15, AC19, AC22)
-  - [ ] Add SDK-neutral structural models for command tool schema, projection resource schema, lifecycle result schema, Markdown renderer contract, skill corpus manifest/resource schema, and aggregate MCP manifest schema.
-  - [ ] Keep models pure data: stable names, bounded context, FQN, schema version, protocol name/URI, parameters/fields, required/nullable flags, type category, validation constraints, enum values, role/capability, output content type, bounds, and compatibility policy.
-  - [ ] Exclude runtime state by type and by tests: no tenant/user/claim/token/payload/query row/cache/ETag/local path/timestamp/service object.
-  - [ ] Define one canonical JSON serialization policy: ordinal property order, invariant culture, normalized newlines, normalized protocol identifiers, no indentation-sensitive meaning, and versioned root discriminator.
-  - [ ] Add a `SchemaFingerprintAlgorithm` identifier so future hashing changes are detectable without pretending hashes are comparable.
-  - [ ] Reject duplicate JSON keys, case-variant duplicate keys, malformed contract-family roots, and unknown root discriminators before producing or comparing canonical material.
-  - [ ] Define per-collection canonicalization metadata: stable sort key for non-structural collections, explicit order-significant marker for structural collections, and deterministic duplicate-id rejection before hashing.
-  - [ ] Owner package: shared SDK-neutral models live in `Hexalith.FrontComposer.Contracts`; SourceTools-only canonicalization helpers may live in `Hexalith.FrontComposer.SourceTools` only when they are not public runtime contracts.
+- [x] T1. Define canonical schema fingerprint input models (AC1-AC4, AC10-AC12, AC15, AC19, AC22)
+  - [x] Add SDK-neutral structural models for command tool schema, projection resource schema, lifecycle result schema, Markdown renderer contract, skill corpus manifest/resource schema, and aggregate MCP manifest schema.
+  - [x] Keep models pure data: stable names, bounded context, FQN, schema version, protocol name/URI, parameters/fields, required/nullable flags, type category, validation constraints, enum values, role/capability, output content type, bounds, and compatibility policy.
+  - [x] Exclude runtime state by type and by tests: no tenant/user/claim/token/payload/query row/cache/ETag/local path/timestamp/service object.
+  - [x] Define one canonical JSON serialization policy: ordinal property order, invariant culture, normalized newlines, normalized protocol identifiers, no indentation-sensitive meaning, and versioned root discriminator.
+  - [x] Add a `SchemaFingerprintAlgorithm` identifier so future hashing changes are detectable without pretending hashes are comparable.
+  - [x] Reject duplicate JSON keys, case-variant duplicate keys, malformed contract-family roots, and unknown root discriminators before producing or comparing canonical material.
+  - [x] Define per-collection canonicalization metadata: stable sort key for non-structural collections, explicit order-significant marker for structural collections, and deterministic duplicate-id rejection before hashing.
+  - [x] Owner package: shared SDK-neutral models live in `Hexalith.FrontComposer.Contracts`; SourceTools-only canonicalization helpers may live in `Hexalith.FrontComposer.SourceTools` only when they are not public runtime contracts.
 
-- [ ] T2. Implement deterministic fingerprint generation in SourceTools (AC1-AC4, AC11, AC12, AC22, AC23)
-  - [ ] Extend `McpManifestTransform` or a companion transform to compute fingerprints from the generated descriptor models, not from runtime reflection or loaded SDK DTOs.
-  - [ ] Emit per-command, per-resource, lifecycle-result, renderer-contract, skill-corpus-manifest, and aggregate manifest fingerprints where the owning artifact exists.
-  - [ ] Use a stable cryptographic hash such as SHA-256 over the canonical payload; expose the fingerprint as a lower-case hex string plus algorithm id.
-  - [ ] Add collision and ordering tests for protocol names, projection URIs, fields, parameters, enum values, validation constraints, resource ordering, and renderer capability ordering.
-  - [ ] Ensure any protocol-name/URI disambiguation from Stories 8-1/8-2 is reflected before hashing.
-  - [ ] Add a two-clean-generation test proving identical canonical JSON and hash from the same domain source despite generated-source ordering, line endings, culture, timezone, path separator, and build machine differences.
-  - [ ] Recompute aggregate manifest fingerprints from emitted nested fingerprints and fail generation/tests when aggregate and nested metadata disagree.
-  - [ ] Emit canonicalizer metadata/test-vector identifiers with baseline snapshots so future canonicalization changes cannot compare old snapshots as if they used the same rules.
+- [x] T2. Implement deterministic fingerprint generation in SourceTools (AC1-AC4, AC11, AC12, AC22, AC23)
+  - [x] Extend `McpManifestTransform` or a companion transform to compute fingerprints from the generated descriptor models, not from runtime reflection or loaded SDK DTOs.
+  - [x] Emit per-command, per-resource, lifecycle-result, renderer-contract, skill-corpus-manifest, and aggregate manifest fingerprints where the owning artifact exists.
+  - [x] Use a stable cryptographic hash such as SHA-256 over the canonical payload; expose the fingerprint as a lower-case hex string plus algorithm id.
+  - [x] Add collision and ordering tests for protocol names, projection URIs, fields, parameters, enum values, validation constraints, resource ordering, and renderer capability ordering.
+  - [x] Ensure any protocol-name/URI disambiguation from Stories 8-1/8-2 is reflected before hashing.
+  - [x] Add a two-clean-generation test proving identical canonical JSON and hash from the same domain source despite generated-source ordering, line endings, culture, timezone, path separator, and build machine differences.
+  - [x] Recompute aggregate manifest fingerprints from emitted nested fingerprints and fail generation/tests when aggregate and nested metadata disagree.
+  - [x] Emit canonicalizer metadata/test-vector identifiers with baseline snapshots so future canonicalization changes cannot compare old snapshots as if they used the same rules.
 
-- [ ] T3. Extend SDK-neutral descriptor contracts without breaking package boundaries (AC1, AC5, AC10-AC15)
-  - [ ] Add optional fingerprint metadata to `McpManifest`, `McpCommandDescriptor`, `McpResourceDescriptor`, and equivalent lifecycle/renderer/corpus descriptors only where those records are already stable public contracts.
-  - [ ] Keep `Hexalith.FrontComposer.Contracts` dependency-free. Do not reference MCP SDK, Shell components, Fluent UI types, source-generator internals, EventStore clients, or docs infrastructure from Contracts.
-  - [ ] Add backwards-compatible constructors or companion records if existing consumers need source compatibility during the transition.
-  - [ ] Version descriptor schema constants deliberately; do not overload `McpManifestTransform.SchemaVersion = "frontcomposer.mcp.v1"` to mean every nested renderer/corpus schema version.
-  - [ ] Add API compatibility tests for public records and SourceTools compile tests for generated manifest output.
-  - [ ] Add package-boundary tests proving canonical fingerprinting and renderer abstraction contracts do not reference `ModelContextProtocol.*`, Shell, Fluent UI, EventStore, tenant/user runtime services, or source-generator implementation internals from `Hexalith.FrontComposer.Contracts`.
+- [x] T3. Extend SDK-neutral descriptor contracts without breaking package boundaries (AC1, AC5, AC10-AC15)
+  - [x] Add optional fingerprint metadata to `McpManifest`, `McpCommandDescriptor`, `McpResourceDescriptor`, and equivalent lifecycle/renderer/corpus descriptors only where those records are already stable public contracts.
+  - [x] Keep `Hexalith.FrontComposer.Contracts` dependency-free. Do not reference MCP SDK, Shell components, Fluent UI types, source-generator internals, EventStore clients, or docs infrastructure from Contracts.
+  - [x] Add backwards-compatible constructors or companion records if existing consumers need source compatibility during the transition.
+  - [x] Version descriptor schema constants deliberately; do not overload `McpManifestTransform.SchemaVersion = "frontcomposer.mcp.v1"` to mean every nested renderer/corpus schema version.
+  - [x] Add API compatibility tests for public records and SourceTools compile tests for generated manifest output.
+  - [x] Add package-boundary tests proving canonical fingerprinting and renderer abstraction contracts do not reference `ModelContextProtocol.*`, Shell, Fluent UI, EventStore, tenant/user runtime services, or source-generator implementation internals from `Hexalith.FrontComposer.Contracts`.
 
-- [ ] T4. Implement negotiation and stale-fingerprint handling in the MCP adapter (AC5, AC8, AC9, AC15, AC16, AC19-AC21, AC24)
-  - [ ] Define internal negotiation results: `Exact`, `CompatibleAdditive`, `Incompatible`, `UnknownClientVersion`, `UnknownServerBaseline`, `HiddenOrUnknown`, `StaleDescriptor`, `UnsupportedAlgorithm`, and `Unavailable`.
-  - [ ] Accept client fingerprint hints only as hints. Never trust them as proof of current visibility, authorization, tenant scope, or descriptor freshness.
-  - [ ] Reuse Story 8-2 admission order: visibility, tenant, policy, descriptor/catalog epoch, and request bounds are validated before side effects; hidden/unknown equivalence overrides schema mismatch reporting.
-  - [ ] Resolve trusted baselines through server/package-owned identifiers only; reject client-supplied file paths, path traversal, absolute paths, and package-external baseline locations.
-  - [ ] Return sanitized agent-visible categories such as `schema-compatible-warning`, `schema-mismatch`, or `projection temporarily unavailable`; no hidden names, tenant identifiers, policy names, exact hidden counts, raw baseline paths, or exception text.
-  - [ ] For `CompatibleAdditive`, re-run current server-side validation and defaulting before dispatch/query/render; never treat an old compatible fingerprint as a waiver for current required fields, bounds, authorization, or sanitization.
-  - [ ] Add zero-side-effect tests proving incompatible/unknown/stale negotiation does not invoke command dispatch, query execution, lifecycle mutation, cache writes, or renderer buffers.
-  - [ ] Add a table-driven precedence matrix for hidden, unknown, unauthorized, cross-tenant, stale descriptor, unsupported algorithm, unknown baseline, compatible drift, and incompatible drift.
+- [x] T4. Implement negotiation and stale-fingerprint handling in the MCP adapter (AC5, AC8, AC9, AC15, AC16, AC19-AC21, AC24)
+  - [x] Define internal negotiation results: `Exact`, `CompatibleAdditive`, `Incompatible`, `UnknownClientVersion`, `UnknownServerBaseline`, `HiddenOrUnknown`, `StaleDescriptor`, `UnsupportedAlgorithm`, and `Unavailable`.
+  - [x] Accept client fingerprint hints only as hints. Never trust them as proof of current visibility, authorization, tenant scope, or descriptor freshness.
+  - [x] Reuse Story 8-2 admission order: visibility, tenant, policy, descriptor/catalog epoch, and request bounds are validated before side effects; hidden/unknown equivalence overrides schema mismatch reporting.
+  - [x] Resolve trusted baselines through server/package-owned identifiers only; reject client-supplied file paths, path traversal, absolute paths, and package-external baseline locations.
+  - [x] Return sanitized agent-visible categories such as `schema-compatible-warning`, `schema-mismatch`, or `projection temporarily unavailable`; no hidden names, tenant identifiers, policy names, exact hidden counts, raw baseline paths, or exception text.
+  - [x] For `CompatibleAdditive`, re-run current server-side validation and defaulting before dispatch/query/render; never treat an old compatible fingerprint as a waiver for current required fields, bounds, authorization, or sanitization.
+  - [x] Add zero-side-effect tests proving incompatible/unknown/stale negotiation does not invoke command dispatch, query execution, lifecycle mutation, cache writes, or renderer buffers.
+  - [x] Add a table-driven precedence matrix for hidden, unknown, unauthorized, cross-tenant, stale descriptor, unsupported algorithm, unknown baseline, compatible drift, and incompatible drift.
 
-- [ ] T5. Build migration delta diagnostics and baselines (AC6-AC8, AC16, AC17, AC21, AC23, AC24)
-  - [ ] Define a checked-in baseline snapshot format for shipped public schema shapes. Store only canonical structural data and fingerprint metadata, not generated code blobs or runtime payloads.
-  - [ ] Include baseline provenance fields: contract family, schema version, fingerprint algorithm, package/source owner, fixture id, and migration-guide requirement flag; exclude filesystem paths and build machine metadata.
-  - [ ] Include canonicalizer version/test-vector metadata and reject snapshots whose canonicalizer contract is unsupported by the running generator/runtime.
-  - [ ] Compare old/new snapshots and classify deltas into additive-compatible, compatible-warning, breaking, unknown, or unsupported-algorithm.
-  - [ ] Emit HFC diagnostics with the existing Expected/Got/Fix/DocsLink style: changed field/path, old value category, new value category, impact, and remediation.
-  - [ ] Map migration-guide requirements for breaking public descriptor, skill corpus example, renderer contract, lifecycle result, and projection resource deltas.
-  - [ ] Keep CLI UX to Story 9-2 unless a minimal test-only runner is needed; Story 8-6 owns the library contract and build/test diagnostics.
-  - [ ] Treat the delta categories in this story as a closed v1 set. Rename detection, full compatibility reports, admin dashboards, and automatic migration are deferred unless already covered by a listed category.
+- [x] T5. Build migration delta diagnostics and baselines (AC6-AC8, AC16, AC17, AC21, AC23, AC24)
+  - [x] Define a checked-in baseline snapshot format for shipped public schema shapes. Store only canonical structural data and fingerprint metadata, not generated code blobs or runtime payloads.
+  - [x] Include baseline provenance fields: contract family, schema version, fingerprint algorithm, package/source owner, fixture id, and migration-guide requirement flag; exclude filesystem paths and build machine metadata.
+  - [x] Include canonicalizer version/test-vector metadata and reject snapshots whose canonicalizer contract is unsupported by the running generator/runtime.
+  - [x] Compare old/new snapshots and classify deltas into additive-compatible, compatible-warning, breaking, unknown, or unsupported-algorithm.
+  - [x] Emit HFC diagnostics with the existing Expected/Got/Fix/DocsLink style: changed field/path, old value category, new value category, impact, and remediation.
+  - [x] Map migration-guide requirements for breaking public descriptor, skill corpus example, renderer contract, lifecycle result, and projection resource deltas.
+  - [x] Keep CLI UX to Story 9-2 unless a minimal test-only runner is needed; Story 8-6 owns the library contract and build/test diagnostics.
+  - [x] Treat the delta categories in this story as a closed v1 set. Rename detection, full compatibility reports, admin dashboards, and automatic migration are deferred unless already covered by a listed category.
 
-- [ ] T6. Define the multi-surface rendering abstraction contract (AC11, AC13-AC15)
-  - [ ] Create or refine a narrow abstraction around `IRenderer<TModel,TOutput>` with a surface-neutral `FrontComposerRenderContract`, `RenderSurfaceKind`, `RenderCapability`, `RenderSchemaFingerprint`, `RenderOutputContentType`, and bounded metadata.
-  - [ ] Use SourceTools IR and generated descriptors as the model source of truth. Do not make Shell components, Fluent UI tokens, Razor component instances, or MCP SDK DTOs canonical renderer input.
-  - [ ] Represent current supported outputs honestly: web/Blazor render path and MCP Markdown projection output. Future chat/IDE/custom templates are capability placeholders, not implemented outputs.
-  - [ ] Define compatibility rules for renderer contract changes: additive capability, removed capability, changed output content type, changed bounds, changed role support, changed field metadata, and changed sanitization guarantees.
-  - [ ] Add tests proving renderer abstraction metadata can describe Story 8-4 Markdown contracts without hashing rendered projection rows.
-  - [ ] Owner package: metadata contracts belong in `Hexalith.FrontComposer.Contracts`; Shell and `.Mcp` adapters map to/from those contracts without making their renderer/runtime types canonical.
+- [x] T6. Define the multi-surface rendering abstraction contract (AC11, AC13-AC15)
+  - [x] Create or refine a narrow abstraction around `IRenderer<TModel,TOutput>` with a surface-neutral `FrontComposerRenderContract`, `RenderSurfaceKind`, `RenderCapability`, `RenderSchemaFingerprint`, `RenderOutputContentType`, and bounded metadata.
+  - [x] Use SourceTools IR and generated descriptors as the model source of truth. Do not make Shell components, Fluent UI tokens, Razor component instances, or MCP SDK DTOs canonical renderer input.
+  - [x] Represent current supported outputs honestly: web/Blazor render path and MCP Markdown projection output. Future chat/IDE/custom templates are capability placeholders, not implemented outputs.
+  - [x] Define compatibility rules for renderer contract changes: additive capability, removed capability, changed output content type, changed bounds, changed role support, changed field metadata, and changed sanitization guarantees.
+  - [x] Add tests proving renderer abstraction metadata can describe Story 8-4 Markdown contracts without hashing rendered projection rows.
+  - [x] Owner package: metadata contracts belong in `Hexalith.FrontComposer.Contracts`; Shell and `.Mcp` adapters map to/from those contracts without making their renderer/runtime types canonical.
 
-- [ ] T7. Integrate skill corpus and docs migration hooks (AC12, AC17)
-  - [ ] Consume Story 8-5 corpus manifest metadata when present and compute corpus/resource fingerprints from source/manifest structure.
-  - [ ] Require migration-guide metadata when public skill examples or corpus resource schemas break, aligned with FR69.
-  - [ ] Do not merge team-specific external skill overlays into framework fingerprints unless a future story defines an adopter-owned overlay baseline.
-  - [ ] Emit diagnostics against corpus resource ids and source sections, not local absolute paths or raw prompt/provider output.
+- [x] T7. Integrate skill corpus and docs migration hooks (AC12, AC17)
+  - [x] Consume Story 8-5 corpus manifest metadata when present and compute corpus/resource fingerprints from source/manifest structure.
+  - [x] Require migration-guide metadata when public skill examples or corpus resource schemas break, aligned with FR69.
+  - [x] Do not merge team-specific external skill overlays into framework fingerprints unless a future story defines an adopter-owned overlay baseline.
+  - [x] Emit diagnostics against corpus resource ids and source sections, not local absolute paths or raw prompt/provider output.
 
-- [ ] T8. Tests and verification (AC1-AC32)
-  - [ ] SourceTools unit tests for canonical serialization, stable SHA-256 output, ordering independence, changed-field sensitivity, algorithm-id changes, and no runtime field inclusion.
-  - [ ] Manifest snapshot tests for command descriptor, projection resource descriptor, aggregate MCP manifest, lifecycle schema, renderer contract, and skill corpus fingerprints.
-  - [ ] Negotiation tests for exact, additive, breaking, unsupported algorithm, unknown baseline, stale descriptor, hidden/unknown, unauthorized, cross-tenant, and malformed fingerprint hints.
-  - [ ] Migration delta tests for added optional field, added required field, removed field, type/category change, enum change, validation constraint change, URI/name change, lifecycle result change, renderer capability change, and corpus resource change.
-  - [ ] Security tests proving tenant IDs, user IDs, claims, tokens, payload values, query rows, local paths, ETags, timestamps, exception text, and provider internals never appear in fingerprints, deltas, logs, telemetry, or agent-visible responses.
-  - [ ] Parser/security tests for duplicate keys, case-variant duplicates, malformed discriminators, client-supplied baseline paths, path traversal, aggregate/nested fingerprint mismatch, and telemetry redaction/cardinality bounds.
-  - [ ] Collection canonicalization tests proving order-insensitive collections sort by stable ids, order-sensitive collections report explicit order deltas, and duplicate stable ids fail before hashing.
-  - [ ] Canonicalizer compatibility tests proving stale baseline canonicalizer metadata, missing test-vector ids, and mismatched algorithm/canonicalizer pairs fail closed.
-  - [ ] Additive-compatibility tests proving old compatible fingerprints still run current server validation/defaulting and cannot bypass required fields, bounds, authorization, or sanitization.
-  - [ ] Precedence determinism tests proving identical requests with multiple mismatch causes produce the same earliest category/message key and never leak lower-priority schema details into diagnostics, logs, or telemetry.
-  - [ ] API/package-boundary tests proving Contracts stays SDK-free, SourceTools computes canonical fingerprints, and `.Mcp` performs only adapter mapping.
-  - [ ] Minimal fixture suite: `baseline-known-v1`, `baseline-known-v2-compatible`, `baseline-known-v2-structural-delta`, `baseline-unknown`, `schema-same-different-order`, `schema-same-different-runtime-data`, `schema-hidden-precedence`, `schema-unknown-precedence`, and `surface-metadata-only-renderer`.
-  - [ ] Each fixture states expected fingerprint material, algorithm id, negotiation result, delta category, bounded/truncation behavior where relevant, and renderer abstraction metadata where relevant.
-  - [ ] Existing compatibility regression: `ProjectionSchemaCompatibilityFixtureTests` still deserialize supported projection fixtures and map incompatible payloads to the schema mismatch path.
-  - [ ] Build regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
-  - [ ] Targeted tests: `tests/Hexalith.FrontComposer.SourceTools.Tests`, `tests/Hexalith.FrontComposer.Contracts.Tests`, `tests/Hexalith.FrontComposer.Mcp.Tests`, and Shell schema compatibility tests.
+- [x] T8. Tests and verification (AC1-AC32)
+  - [x] SourceTools unit tests for canonical serialization, stable SHA-256 output, ordering independence, changed-field sensitivity, algorithm-id changes, and no runtime field inclusion.
+  - [x] Manifest snapshot tests for command descriptor, projection resource descriptor, aggregate MCP manifest, lifecycle schema, renderer contract, and skill corpus fingerprints.
+  - [x] Negotiation tests for exact, additive, breaking, unsupported algorithm, unknown baseline, stale descriptor, hidden/unknown, unauthorized, cross-tenant, and malformed fingerprint hints.
+  - [x] Migration delta tests for added optional field, added required field, removed field, type/category change, enum change, validation constraint change, URI/name change, lifecycle result change, renderer capability change, and corpus resource change.
+  - [x] Security tests proving tenant IDs, user IDs, claims, tokens, payload values, query rows, local paths, ETags, timestamps, exception text, and provider internals never appear in fingerprints, deltas, logs, telemetry, or agent-visible responses.
+  - [x] Parser/security tests for duplicate keys, case-variant duplicates, malformed discriminators, client-supplied baseline paths, path traversal, aggregate/nested fingerprint mismatch, and telemetry redaction/cardinality bounds.
+  - [x] Collection canonicalization tests proving order-insensitive collections sort by stable ids, order-sensitive collections report explicit order deltas, and duplicate stable ids fail before hashing.
+  - [x] Canonicalizer compatibility tests proving stale baseline canonicalizer metadata, missing test-vector ids, and mismatched algorithm/canonicalizer pairs fail closed.
+  - [x] Additive-compatibility tests proving old compatible fingerprints still run current server validation/defaulting and cannot bypass required fields, bounds, authorization, or sanitization.
+  - [x] Precedence determinism tests proving identical requests with multiple mismatch causes produce the same earliest category/message key and never leak lower-priority schema details into diagnostics, logs, or telemetry.
+  - [x] API/package-boundary tests proving Contracts stays SDK-free, SourceTools computes canonical fingerprints, and `.Mcp` performs only adapter mapping.
+  - [x] Minimal fixture suite: `baseline-known-v1`, `baseline-known-v2-compatible`, `baseline-known-v2-structural-delta`, `baseline-unknown`, `schema-same-different-order`, `schema-same-different-runtime-data`, `schema-hidden-precedence`, `schema-unknown-precedence`, and `surface-metadata-only-renderer`.
+  - [x] Each fixture states expected fingerprint material, algorithm id, negotiation result, delta category, bounded/truncation behavior where relevant, and renderer abstraction metadata where relevant.
+  - [x] Existing compatibility regression: `ProjectionSchemaCompatibilityFixtureTests` still deserialize supported projection fixtures and map incompatible payloads to the schema mismatch path.
+  - [x] Build regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
+  - [x] Targeted tests: `tests/Hexalith.FrontComposer.SourceTools.Tests`, `tests/Hexalith.FrontComposer.Contracts.Tests`, `tests/Hexalith.FrontComposer.Mcp.Tests`, and Shell schema compatibility tests.
 
 ---
 
@@ -387,17 +387,22 @@ Do not implement these in Story 8-6:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-05-04: `dotnet test tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj -p:TreatWarningsAsErrors=true` => 159 passed.
+- 2026-05-04: `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj -p:TreatWarningsAsErrors=true` => 606 passed.
+- 2026-05-04: `dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj -p:TreatWarningsAsErrors=true` => 155 passed.
+- 2026-05-04: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` => 0 warnings/errors.
+- 2026-05-04: `dotnet test Hexalith.FrontComposer.sln --no-build` => Contracts 159/0/0, MCP 155/0/0, Shell 1542/0/0, SourceTools 606/0/0, Bench 2/0/0.
 
 ### Completion Notes List
 
 - 2026-05-02: Story created via `/bmad-create-story 8-6-schema-versioning-and-multi-surface-abstraction` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-6-schema-versioning-and-multi-surface-abstraction; review;`. Applied canonical JSON, package ownership, negotiation precedence, fail-closed unknown-baseline, algorithm-id, boundedness, fixture-matrix, localization-key, and scope-guardrail hardening. Ready for advanced elicitation on a later run.
 - 2026-05-03: Advanced elicitation completed via `/bmad-advanced-elicitation 8-6-schema-versioning-and-multi-surface-abstraction`. Applied collection canonicalization, canonicalizer/baseline compatibility, additive-compatibility validation, and deterministic multi-cause precedence hardening.
+- 2026-05-04: Implemented schema fingerprint contracts, deterministic SourceTools fingerprint emission, MCP negotiation precedence, migration delta/baseline contracts, renderer surface metadata, and skill corpus resource fingerprints. Fixed generator analyzer-context loading by keeping generator-side fingerprint computation self-contained while emitting public `SchemaFingerprint` metadata into generated manifest code.
 
 ### Party-Mode Review
 
@@ -424,4 +429,28 @@ Do not implement these in Story 8-6:
 
 ### File List
 
-(to be filled in by dev agent)
+- Directory.Packages.props
+- src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
+- src/Hexalith.FrontComposer.Contracts/Mcp/McpCommandDescriptor.cs
+- src/Hexalith.FrontComposer.Contracts/Mcp/McpManifest.cs
+- src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
+- src/Hexalith.FrontComposer.Contracts/Rendering/FrontComposerRenderContract.cs
+- src/Hexalith.FrontComposer.Contracts/Schema/SchemaBaselineContracts.cs
+- src/Hexalith.FrontComposer.Contracts/Schema/SchemaFingerprintContracts.cs
+- src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs
+- src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs
+- src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs
+- src/Hexalith.FrontComposer.SourceTools/Diagnostics/SchemaMigrationDeltaAnalyzer.cs
+- src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs
+- src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs
+- tests/Hexalith.FrontComposer.Contracts.Tests/Schema/SchemaFingerprintContractsTests.cs
+- tests/Hexalith.FrontComposer.Mcp.Tests/BoundaryTests.cs
+- tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs
+- tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillCorpusTests.cs
+- tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs
+- tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs
+- tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintTransformTests.cs
+
+### Change Log
+
+- 2026-05-04: Completed Story 8.6 and moved status to review after build and full regression validation.

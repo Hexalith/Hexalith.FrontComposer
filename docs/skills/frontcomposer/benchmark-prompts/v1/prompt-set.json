@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "prompts": [
+    { "id": "p01-new-billing-context", "text": "Generate a Billing bounded context with one create command, one projection, validation, registration, and tests.", "expectedShape": ["command", "projection", "validator", "registration", "tests"] },
+    { "id": "p02-action-queue", "text": "Generate an action queue projection for pending approvals.", "expectedShape": ["projection", "role", "tests"] },
+    { "id": "p03-destructive-command", "text": "Generate a destructive archive command with confirmation-safe fields.", "expectedShape": ["command", "policy", "validation", "tests"] },
+    { "id": "p04-policy-command", "text": "Generate a command protected by a named policy.", "expectedShape": ["command", "policy", "tests"] },
+    { "id": "p05-tenant-safe-command", "text": "Generate a tenant-safe command without tenant/user input fields.", "expectedShape": ["command", "tenant-safe", "tests"] },
+    { "id": "p06-validation-rules", "text": "Generate command validation rules and tests.", "expectedShape": ["validator", "tests"] },
+    { "id": "p07-counter-like-sample", "text": "Generate a Counter-like bounded context following the sample structure.", "expectedShape": ["command", "projection", "registration", "tests"] },
+    { "id": "p08-markdown-projection", "text": "Generate a projection suitable for MCP Markdown rendering.", "expectedShape": ["projection", "manifest", "tests"] },
+    { "id": "p09-lifecycle-flow", "text": "Generate command code and tests that respect the two-call lifecycle.", "expectedShape": ["command", "lifecycle", "tests"] },
+    { "id": "p10-generated-boundary", "text": "Generate source files while avoiding edits to generated .g.cs output.", "expectedShape": ["no-generated-edits", "tests"] },
+    { "id": "p11-registration", "text": "Generate bounded-context registration for FrontComposer.", "expectedShape": ["registration", "manifest", "tests"] },
+    { "id": "p12-source-tools-manifest", "text": "Generate command/projection code that produces SourceTools manifest output.", "expectedShape": ["command", "projection", "manifest"] },
+    { "id": "p13-test-scaffold", "text": "Generate sample tests for command and projection metadata.", "expectedShape": ["tests"] },
+    { "id": "p14-package-boundary", "text": "Generate a bounded context using only approved FrontComposer packages.", "expectedShape": ["package-boundary"] },
+    { "id": "p15-validation-negative", "text": "Generate validation tests for invalid command payloads.", "expectedShape": ["validator", "tests"] },
+    { "id": "p16-projection-badges", "text": "Generate a projection with status badge mappings.", "expectedShape": ["projection", "badge", "tests"] },
+    { "id": "p17-empty-state", "text": "Generate a projection with an empty-state CTA linked to a command.", "expectedShape": ["projection", "empty-state", "command"] },
+    { "id": "p18-no-direct-eventstore", "text": "Generate bounded-context code without direct EventStore calls.", "expectedShape": ["no-direct-infrastructure", "tests"] },
+    { "id": "p19-team-overlay-aware", "text": "Generate code using framework defaults while leaving team overlays external.", "expectedShape": ["framework-defaults"] },
+    { "id": "p20-migration-aware", "text": "Generate code and notes that would require migration guidance if public examples break.", "expectedShape": ["migration-aware"] }
+  ]
+}
