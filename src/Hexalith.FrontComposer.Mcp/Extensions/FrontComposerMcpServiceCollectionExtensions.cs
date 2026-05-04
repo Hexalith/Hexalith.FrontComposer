@@ -1,6 +1,7 @@
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Mcp.Invocation;
+using Hexalith.FrontComposer.Mcp.Rendering;
 using Hexalith.FrontComposer.Mcp.Skills;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
@@ -28,12 +29,14 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         services.AddHttpContextAccessor();
         services.TryAddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.TryAddScoped<FrontComposerMcpToolAdmissionService>();
+        services.TryAddScoped<IFrontComposerMcpVisibleToolCatalogProvider>(sp => sp.GetRequiredService<FrontComposerMcpToolAdmissionService>());
         // No default IFrontComposerMcpTenantToolGate registration: tenant isolation is fail-closed
         // by contract, so the host MUST register a real gate (or AllowAllMcpTenantToolGate explicitly
         // for samples). The probe step below confirms this so misconfiguration fails at startup.
         services.TryAddScoped<IFrontComposerMcpAgentContextAccessor, HttpFrontComposerMcpAgentContextAccessor>();
         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
         services.TryAddScoped<FrontComposerMcpProjectionReader>();
+        services.TryAddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
         services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
         // P-3: resource visibility revalidation is mandatory. Hosts MUST register a real gate
         // that re-checks tenant/policy visibility before query and before render. The probe

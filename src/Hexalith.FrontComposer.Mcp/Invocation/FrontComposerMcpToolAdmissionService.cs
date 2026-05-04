@@ -16,7 +16,7 @@ public sealed class FrontComposerMcpToolAdmissionService(
     IFrontComposerMcpTenantToolGate tenantGate,
     IServiceProvider services,
     IOptions<FrontComposerMcpOptions> options,
-    ILogger<FrontComposerMcpToolAdmissionService> logger) {
+    ILogger<FrontComposerMcpToolAdmissionService> logger) : IFrontComposerMcpVisibleToolCatalogProvider {
     private const int SuggestionThreshold = 75;
     private const int ContextMarkerMinLength = 4;
     private const int PrefixBonusFloor = 90;

@@ -4,6 +4,7 @@ using System.Text.Json.Nodes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Invocation;
+using Hexalith.FrontComposer.Mcp.Rendering;
 
 using Microsoft.Extensions.DependencyInjection;
 
@@ -121,10 +122,14 @@ public sealed class ProjectionReaderTaxonomyTests {
     [Fact]
     public async Task ResourceVisibilityDenied_IsHiddenEquivalent_AndDoesNotQueryOrEnumerateSuggestions() {
         CountingQueryService query = new();
+        CountingVisibleToolCatalogProvider catalog = new();
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
-            configureServices: services => services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
-                new ToggleResourceVisibilityGate(visible: false)));
+            configureServices: services => {
+                services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
+                    new ToggleResourceVisibilityGate(visible: false));
+                services.AddSingleton<IFrontComposerMcpVisibleToolCatalogProvider>(catalog);
+            });
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/InvoiceProjection",
@@ -135,6 +140,7 @@ public sealed class ProjectionReaderTaxonomyTests {
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
         result.StructuredContent!["isHiddenEquivalent"]!.GetValue<bool>().ShouldBeTrue();
         query.CallCount.ShouldBe(0);
+        catalog.CallCount.ShouldBe(0);
     }
 
     [Fact]
@@ -160,17 +166,21 @@ public sealed class ProjectionReaderTaxonomyTests {
     [Fact]
     public async Task EpochChangeAfterQuery_ReturnsStaleWithoutRenderingPartialOutput() {
         CountingQueryService query = new();
+        CountingProjectionRenderer renderer = new(McpProjectionRenderResult.Failure(FrontComposerMcpFailureCategory.UnsupportedRender));
         FrontComposerMcpProjectionReader reader = BuildReader(
             query,
             manifest: Manifest(renderStrategy: McpProjectionRenderStrategy.Dashboard),
-            configureServices: services => services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
-                // P-1 sampled epochs at preLookup + postLookup, so this sequence covers
-                // four reads: preLookup, postLookup, preQuery-validate (query runs), preRender-validate (advance).
-                new SequenceEpochProvider(
-                    new McpDescriptorEpochs(10, 20),
-                    new McpDescriptorEpochs(10, 20),
-                    new McpDescriptorEpochs(10, 20),
-                    new McpDescriptorEpochs(10, 21))));
+            configureServices: services => {
+                services.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer);
+                services.AddSingleton<IFrontComposerMcpDescriptorEpochProvider>(
+                    // P-1 sampled epochs at preLookup + postLookup, so this sequence covers
+                    // four reads: preLookup, postLookup, preQuery-validate (query runs), preRender-validate (advance).
+                    new SequenceEpochProvider(
+                        new McpDescriptorEpochs(10, 20),
+                        new McpDescriptorEpochs(10, 20),
+                        new McpDescriptorEpochs(10, 20),
+                        new McpDescriptorEpochs(10, 21)));
+            });
 
         FrontComposerMcpResult result = await reader.ReadAsync(
             "frontcomposer://Billing/projections/InvoiceProjection",
@@ -181,6 +191,7 @@ public sealed class ProjectionReaderTaxonomyTests {
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("stale_descriptor");
         result.Text.ShouldNotContain("INV-1");
         query.CallCount.ShouldBe(1);
+        renderer.CallCount.ShouldBe(0);
     }
 
     private static FrontComposerMcpProjectionReader BuildReader(
@@ -198,6 +209,7 @@ public sealed class ProjectionReaderTaxonomyTests {
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => accessor ?? new StaticAccessor());
         services.AddScoped<FrontComposerMcpProjectionReader>();
+        services.AddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
         // P-3: visibility gate is required by the reader. Tests register a permissive default
         // so every reader build resolves a gate; tests that need restrictive visibility can
         // still override via configureServices.
@@ -275,5 +287,29 @@ public sealed class ProjectionReaderTaxonomyTests {
             FrontComposerMcpAgentContext context,
             CancellationToken cancellationToken)
             => ValueTask.FromResult(visible);
+    }
+
+    private sealed class CountingVisibleToolCatalogProvider : IFrontComposerMcpVisibleToolCatalogProvider {
+        public int CallCount { get; private set; }
+
+        public ValueTask<McpVisibleToolCatalog> BuildVisibleCatalogAsync(CancellationToken cancellationToken = default) {
+            CallCount++;
+            return ValueTask.FromResult(new McpVisibleToolCatalog(
+                new McpToolVisibilityContext("tenant-a", "agent-a", new ClaimsPrincipal()),
+                [],
+                IsTruncated: false));
+        }
+    }
+
+    private sealed class CountingProjectionRenderer(McpProjectionRenderResult result) : IFrontComposerMcpProjectionRenderer {
+        public int CallCount { get; private set; }
+
+        public McpProjectionRenderResult Render(
+            McpProjectionRenderRequest request,
+            FrontComposerMcpOptions options,
+            CancellationToken cancellationToken = default) {
+            CallCount++;
+            return result;
+        }
     }
 }

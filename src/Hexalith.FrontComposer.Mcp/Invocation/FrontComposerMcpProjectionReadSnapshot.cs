@@ -12,4 +12,4 @@ internal sealed record FrontComposerMcpProjectionReadSnapshot(
     string QueryShapeCategory,
     string RequestId,
     CancellationToken CancellationToken,
-    McpResourceDescriptor Descriptor);
+    FrontComposerMcpProjectionDescriptorSnapshot Descriptor);

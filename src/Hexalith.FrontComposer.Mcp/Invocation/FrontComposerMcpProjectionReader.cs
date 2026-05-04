@@ -16,7 +16,10 @@ public sealed class FrontComposerMcpProjectionReader(
     FrontComposerMcpDescriptorRegistry registry,
     IFrontComposerMcpAgentContextAccessor agentContextAccessor,
     IServiceProvider services,
-    IOptions<FrontComposerMcpOptions> options) {
+    IOptions<FrontComposerMcpOptions> options,
+    IFrontComposerMcpProjectionRenderer? renderer = null) {
+    private static readonly IFrontComposerMcpProjectionRenderer DefaultRenderer = new DefaultFrontComposerMcpProjectionRenderer();
+
     public async Task<FrontComposerMcpResult> ReadAsync(string uri, CancellationToken cancellationToken = default) {
         if (IsMalformedResourceUri(uri)) {
             return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.MalformedRequest);
@@ -81,7 +84,7 @@ public sealed class FrontComposerMcpProjectionReader(
                 snapshot,
                 queryResult,
                 cancellationToken).ConfigureAwait(false);
-            McpProjectionRenderResult render = McpMarkdownProjectionRenderer.Render(
+            McpProjectionRenderResult render = (renderer ?? DefaultRenderer).Render(
                 renderRequest,
                 options.Value,
                 cancellationToken);
@@ -139,28 +142,23 @@ public sealed class FrontComposerMcpProjectionReader(
         McpResourceDescriptor descriptor,
         McpDescriptorEpochs epochs,
         CancellationToken cancellationToken) {
-        // P-19 invariant: McpResourceDescriptor and McpParameterDescriptor are immutable records;
-        // their inner BadgeMappings collection is exposed as IReadOnlyDictionary on the descriptor
-        // contract, so a shallow Fields.ToArray() snapshot is safe — registry mutations never
-        // mutate the captured graph in place.
-        McpResourceDescriptor descriptorCopy = CopyDescriptor(descriptor);
+        // P-20: keep the snapshot to the safe immutable subset needed for query/render
+        // handoff. Mutable registry handles and service instances never cross the admission
+        // boundary; field metadata is copied with collection values detached below.
+        FrontComposerMcpProjectionDescriptorSnapshot descriptorSnapshot =
+            FrontComposerMcpProjectionDescriptorSnapshot.FromDescriptor(descriptor);
         return new FrontComposerMcpProjectionReadSnapshot(
-            ProjectionKey: descriptorCopy.Name,
+            ProjectionKey: descriptorSnapshot.Name,
             ProtocolUriCategory: "frontcomposer_projection",
-            RenderStrategy: descriptorCopy.RenderStrategy,
-            BoundedContext: descriptorCopy.BoundedContext,
+            RenderStrategy: descriptorSnapshot.RenderStrategy,
+            BoundedContext: descriptorSnapshot.BoundedContext,
             DescriptorEpoch: epochs.DescriptorEpoch,
             CatalogEpoch: epochs.CatalogEpoch,
             QueryShapeCategory: "take",
             RequestId: Guid.NewGuid().ToString("n"),
             CancellationToken: cancellationToken,
-            Descriptor: descriptorCopy);
+            Descriptor: descriptorSnapshot);
     }
-
-    private static McpResourceDescriptor CopyDescriptor(McpResourceDescriptor descriptor)
-        => descriptor with {
-            Fields = descriptor.Fields.ToArray(),
-        };
 
     private McpDescriptorEpochs CurrentEpochs()
         => services.GetService<IFrontComposerMcpDescriptorEpochProvider>()?.GetEpochs()
@@ -176,7 +174,7 @@ public sealed class FrontComposerMcpProjectionReader(
             return FrontComposerMcpFailureCategory.StaleDescriptor;
         }
 
-        return await IsResourceVisibleAsync(snapshot.Descriptor, context, cancellationToken).ConfigureAwait(false)
+        return await IsResourceVisibleAsync(snapshot.Descriptor.ToDescriptor(), context, cancellationToken).ConfigureAwait(false)
             ? null
             : FrontComposerMcpFailureCategory.UnknownResource;
     }
@@ -204,6 +202,7 @@ public sealed class FrontComposerMcpProjectionReader(
         FrontComposerMcpProjectionReadSnapshot snapshot,
         object queryResult,
         CancellationToken cancellationToken) {
+        McpResourceDescriptor descriptor = snapshot.Descriptor.ToDescriptor();
         Type resultType = queryResult.GetType();
         object? itemsValue = resultType.GetProperty("Items")?.GetValue(queryResult);
         long totalCount = ReadTotalCount(resultType, queryResult);
@@ -225,11 +224,11 @@ public sealed class FrontComposerMcpProjectionReader(
         }
 
         IReadOnlyList<string>? suggestions = items.Count == 0
-            ? await BuildSafeSuggestionsAsync(snapshot.Descriptor, cancellationToken).ConfigureAwait(false)
+            ? await BuildSafeSuggestionsAsync(descriptor, cancellationToken).ConfigureAwait(false)
             : null;
 
         return new McpProjectionRenderRequest(
-            snapshot.Descriptor,
+            descriptor,
             items,
             totalCount,
             IsTruncated: totalCount > rawCount,
@@ -249,7 +248,9 @@ public sealed class FrontComposerMcpProjectionReader(
             return null;
         }
 
-        var admission = services.GetService<FrontComposerMcpToolAdmissionService>();
+        IFrontComposerMcpVisibleToolCatalogProvider? admission =
+            services.GetService<IFrontComposerMcpVisibleToolCatalogProvider>()
+            ?? services.GetService<FrontComposerMcpToolAdmissionService>();
         if (admission is null) {
             return null;
         }

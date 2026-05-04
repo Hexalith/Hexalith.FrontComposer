@@ -304,6 +304,73 @@ public sealed class McpMarkdownProjectionRendererTests {
         result.Document.ShouldBeNull();
     }
 
+    [Fact]
+    public void Render_CancellationDuringRowFormatting_ReturnsNoPartialDocument() {
+        using var cts = new CancellationTokenSource();
+        McpResourceDescriptor descriptor = new(
+            "frontcomposer://Billing/projections/CancellableProjection",
+            "CancellableProjection",
+            typeof(CancellableProjection).FullName!,
+            "Billing",
+            "Cancellable",
+            null,
+            [
+                new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
+                new McpParameterDescriptor("Cancels", "String", "string", true, false, "Cancels", null, [], false),
+            ]);
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            descriptor,
+            [new CancellableProjection("INV-1", new CancelingCell(cts))],
+            TotalCount: 1), new FrontComposerMcpOptions(), cts.Token);
+
+        result.IsSuccess.ShouldBeFalse();
+        result.Category.ShouldBe(FrontComposerMcpFailureCategory.Canceled);
+        result.Document.ShouldBeNull();
+    }
+
+    [Fact]
+    public void Render_StatusOverviewGroupCap_EmitsSingleBoundedTruncationMarker() {
+        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.StatusOverview, title: "Invoice status");
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            descriptor,
+            [
+                new InvoiceProjection("INV-1", 42, null, BillingStatus.Pending),
+                new InvoiceProjection("INV-2", 100, null, BillingStatus.Blocked),
+            ],
+            TotalCount: 2),
+            new FrontComposerMcpOptions { MaxProjectionStatusGroups = 1 },
+            TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Document!.IsTruncated.ShouldBeTrue();
+        result.Document.Text.ShouldContain("- Danger: 1 Blocked");
+        result.Document.Text.ShouldNotContain("- Warning: 1 Pending");
+        CountOccurrences(result.Document.Text, "Output truncated by FrontComposer agent rendering limits.").ShouldBe(1);
+    }
+
+    [Fact]
+    public void Render_TimelineEntryCap_EmitsSingleBoundedTruncationMarker() {
+        McpResourceDescriptor descriptor = Descriptor(renderStrategy: McpProjectionRenderStrategy.Timeline, title: "Invoice timeline");
+
+        McpProjectionRenderResult result = McpMarkdownProjectionRenderer.Render(new McpProjectionRenderRequest(
+            descriptor,
+            [
+                new InvoiceProjection("Old", 10, DateTimeOffset.Parse("2026-05-01T08:00:00Z"), BillingStatus.Pending),
+                new InvoiceProjection("New", 20, DateTimeOffset.Parse("2026-05-03T08:00:00Z"), BillingStatus.Blocked),
+            ],
+            TotalCount: 2),
+            new FrontComposerMcpOptions { MaxProjectionTimelineEntries = 1 },
+            TestContext.Current.CancellationToken);
+
+        result.IsSuccess.ShouldBeTrue();
+        result.Document!.IsTruncated.ShouldBeTrue();
+        result.Document.Text.ShouldContain("New");
+        result.Document.Text.ShouldNotContain("Old");
+        CountOccurrences(result.Document.Text, "Output truncated by FrontComposer agent rendering limits.").ShouldBe(1);
+    }
+
     private static McpResourceDescriptor Descriptor(
         string title = "Invoices",
         McpProjectionRenderStrategy renderStrategy = McpProjectionRenderStrategy.Default,
@@ -344,6 +411,8 @@ public sealed class McpMarkdownProjectionRendererTests {
 
     public sealed record SafeProjection(string Explodes);
 
+    public sealed record CancellableProjection(string Number, object Cancels);
+
     public enum BillingStatus {
         Pending,
         Blocked,
@@ -353,5 +422,23 @@ public sealed class McpMarkdownProjectionRendererTests {
         private readonly string _message = "raw tenant-a exception text";
 
         public string Explodes => throw new InvalidOperationException(_message);
+    }
+
+    public sealed class CancelingCell(CancellationTokenSource source) {
+        public override string ToString() {
+            source.Cancel();
+            throw new OperationCanceledException(source.Token);
+        }
+    }
+
+    private static int CountOccurrences(string value, string needle) {
+        int count = 0;
+        int index = 0;
+        while ((index = value.IndexOf(needle, index, StringComparison.Ordinal)) >= 0) {
+            count++;
+            index += needle.Length;
+        }
+
+        return count;
     }
 }

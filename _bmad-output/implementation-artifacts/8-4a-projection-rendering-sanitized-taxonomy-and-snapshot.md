@@ -1,6 +1,6 @@
 # Story 8.4a: Projection Rendering Sanitized Taxonomy and Snapshot
 
-Status: in-progress
+Status: review
 
 > **Epic 8** - MCP & Agent Integration. Follow-up for Story **8-4 Projection Rendering for Agents**. Covers the deferred parts of **FR53**, **FR57**, **NFR27**, **NFR28**, and Story 8-4 acceptance criteria **AC9**, **AC11**, **AC16**, **AC17**, **AC18**, and **AC19**. Builds on Stories **8-1** through **8-4**, Epic 4 projection metadata, Epic 5 query/cache reliability, and Epic 7 tenant/policy context. Applies lessons **L03**, **L06**, **L08**, **L10**, **L14**, and **L15**.
 
@@ -237,6 +237,11 @@ GPT-5 Codex
 - 2026-05-04: Contracts regression: `dotnet test tests\Hexalith.FrontComposer.Contracts.Tests\Hexalith.FrontComposer.Contracts.Tests.csproj` passed, 156/0/0.
 - 2026-05-04: Build gate: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` passed with 0 warnings/errors.
 - 2026-05-04: Full regression: `dotnet test Hexalith.FrontComposer.sln --no-build` passed, Contracts 156/0/0, MCP 151/0/0, Shell 1542/0/0, SourceTools 601/0/0, Bench 2/0/0.
+- 2026-05-04: Review follow-up red phase: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj --filter "ProjectionReaderTaxonomyTests|McpMarkdownProjectionRendererTests"` failed on missing renderer/catalog test seams.
+- 2026-05-04: Review follow-up focused green phase: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj --filter "ProjectionReaderTaxonomyTests|McpMarkdownProjectionRendererTests"` passed, 35/0/0.
+- 2026-05-04: Review follow-up MCP regression: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj` passed, 158/0/0.
+- 2026-05-04: Review follow-up build gate: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` passed with 0 warnings/errors.
+- 2026-05-04: Review follow-up full regression: `dotnet test Hexalith.FrontComposer.sln --no-build` passed, Contracts 159/0/0, MCP 158/0/0, Shell 1542/0/0, SourceTools 606/0/0, Bench 2/0/0.
 
 ### Completion Notes List
 
@@ -245,6 +250,7 @@ GPT-5 Codex
 - 2026-05-04: Added immutable per-read snapshot handling, descriptor/catalog epoch provider contracts, optional resource visibility revalidation, and stale checks before query and before render.
 - 2026-05-04: Hardened atomic renderer behavior for response bounds and formatter failures; unsupported projection fields now remain visible as inert `(unsupported)` placeholder columns.
 - 2026-05-04: Added P0 regression tests for admission failures, context failures, stale epochs, taxonomy redaction, hidden-equivalent resource denial, response bounds, unsupported render, and unsupported field placeholder output.
+- 2026-05-04: Resolved remaining review follow-ups P-20, P-22, P-24, P-25, and P-26. Snapshot state now uses a narrowed detached descriptor snapshot, stale-before-render tests count zero renderer calls, admission failure tests count zero visible-catalog enumeration, and renderer P0 tests cover mid-row cancellation plus status/timeline truncation caps.
 
 ### File List
 
@@ -258,9 +264,14 @@ GPT-5 Codex
 - `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpResult.cs`
 - `src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpDescriptorEpochProvider.cs`
 - `src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpResourceVisibilityGate.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionDescriptorSnapshot.cs`
 - `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionFailureMapper.cs`
 - `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReadSnapshot.cs`
 - `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/IFrontComposerMcpVisibleToolCatalogProvider.cs`
+- `src/Hexalith.FrontComposer.Mcp/Rendering/DefaultFrontComposerMcpProjectionRenderer.cs`
+- `src/Hexalith.FrontComposer.Mcp/Rendering/IFrontComposerMcpProjectionRenderer.cs`
 - `src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs`
 - `src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs`
 - `tests/Hexalith.FrontComposer.Mcp.Tests/HostingTests.cs`
@@ -280,6 +291,7 @@ GPT-5 Codex
 
 - 2026-05-04: Completed Story 8.4a implementation and moved status to review.
 - 2026-05-04: Code review pass via `/bmad-code-review 8-4a` against commit 9f1299c — 5 decision-needed, 28 patch, 0 defer, ~20 dismissed. All 5 decisions resolved and 25 of 28 patches applied; build clean (0 warnings/errors), tests green (Contracts 159/0/0, MCP 155/0/0, Shell 1542/0/0, SourceTools 606/0/0, Bench 2/0/0).
+- 2026-05-04: Resolved deferred review patches P-20/P-22/P-24/P-25/P-26 and moved status back to review; build clean and full solution tests green.
 
 ### Review Findings
 
@@ -319,12 +331,12 @@ GPT-5 Codex
 - [x] [Review][Patch] P-17 `AppendEmptyState` and `## Title` paths emit descriptor `Title`/`EntityPluralLabel` without `RedactSensitiveText` — apply redaction to all agent-visible descriptor text [`src/Hexalith.FrontComposer.Mcp/Rendering/McpMarkdownProjectionRenderer.cs:298-301`]
 - [x] [Review][Patch] P-18 Manifest emitter interpolates `resource.RenderStrategy` raw into generated source after `McpProjectionRenderStrategy.` — use `nameof()` or constrain `renderStrategy` field to the enum type to remove codegen fragility [`src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs:143`]
 - [x] [Review][Patch] P-19 `CopyDescriptor` shallow copy — `Fields` array is copied but each `McpParameterDescriptor` element (and its inner collections such as `BadgeMappings`) is shared with the live registry; either deep-clone or assert/document immutability invariant [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:142-145`]
-- [ ] [Review][Patch] P-20 Snapshot subset — **DEFERRED**:  retained because the record graph is immutable ( is a fresh array;  is ). Documented as P-19 invariant. Replacing with a narrower handle is a wider refactor (renderer reads multiple fields off the descriptor) and not required for the security/correctness contract
+- [x] [Review][Patch] P-20 Snapshot subset — **RESOLVED**: added `FrontComposerMcpProjectionDescriptorSnapshot` as the narrowed detached snapshot handle. The read snapshot no longer stores the registry descriptor object; it carries only safe immutable descriptor values needed for query/render handoff and copies field enum/badge collections.
 - [x] [Review][Patch] P-21 ~~ taxonomy~~ — **RESOLVED via DN-2**: hidden-equivalent collapse means PolicyFiltered now emits the canonical  payload regardless of whether the read pipeline produces it. Mapper entry retained for hosts that throw  from custom gates; internal  distinguishes telemetry while public surface stays indistinguishable
-- [ ] [Review][Patch] P-22 Render-call counter on stale-descriptor test — **DEFERRED**: the new pre-lookup epoch sampling already prevents query+render after epoch advance (test  proves CallCount=1 on the post-query path); render-side counter would prove the inverse but requires a renderer test seam
+- [x] [Review][Patch] P-22 Render-call counter on stale-descriptor test — **RESOLVED**: added `IFrontComposerMcpProjectionRenderer` with a default adapter and updated the post-query stale test to inject a counting renderer. The test now proves query CallCount=1 and renderer CallCount=0 when epoch advances before render.
 - [x] [Review][Patch] P-23 Hidden/unknown indistinguishability — **RESOLVED via DN-2**: tests  and  now assert the collapsed  payload; identical // across all 4 hidden-equivalent categories proves indistinguishability
-- [ ] [Review][Patch] P-24 Mid-row cancellation P0 test — **DEFERRED**: the renderer ThrowIfCancellationRequested calls in row loops are correct by inspection; a test seam exposing mid-loop cancellation requires either an injected token-aware row enumerator or a fault-injection IFormattable
-- [ ] [Review][Patch] P-25 Status-group / timeline-entry bounds atomic-truncation tests — **DEFERRED**: AC4 covers them but the existing  tests assert document-level bounds; per-axis tests are good additions for the next pass
-- [ ] [Review][Patch] P-26 Admission-side catalog-enumeration counter — **DEFERRED**: requires a counter spy on . Existing  test asserts  which already pins the admission-fail path
+- [x] [Review][Patch] P-24 Mid-row cancellation P0 test — **RESOLVED**: added a fault-injection cell that cancels during row formatting; renderer returns `Canceled` with no partial document.
+- [x] [Review][Patch] P-25 Status-group / timeline-entry bounds atomic-truncation tests — **RESOLVED**: added per-axis tests proving status-group and timeline-entry caps emit one bounded truncation marker, preserve coherent output, and set `IsTruncated=true`.
+- [x] [Review][Patch] P-26 Admission-side catalog-enumeration counter — **RESOLVED**: added `IFrontComposerMcpVisibleToolCatalogProvider` and a counting test provider; resource visibility denial now proves query CallCount=0 and visible-catalog enumeration CallCount=0.
 - [x] [Review][Patch] P-27 Suggestion link/command filter strips legitimate parens — **APPLIED**:  reduced to backtick only.  already neutralizes  per character, so the shape filter no longer drops labels like . Schemes () and leading-slash commands remain rejected outright
 - [x] [Review][Patch] P-28 Spec File List incomplete — add `src/Hexalith.FrontComposer.Contracts/Mcp/McpProjectionRenderStrategy.cs`, `src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs`, `src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs`, `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderTests.cs`, `tests/Hexalith.FrontComposer.Mcp.Tests/ManifestTransformTests.cs`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs` [`_bmad-output/implementation-artifacts/8-4a-projection-rendering-sanitized-taxonomy-and-snapshot.md:249-264`]
