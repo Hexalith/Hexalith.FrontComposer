@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+  "algorithm": "experimental-quantum-fingerprint-v0",
+  "contracts": [
+    {
+      "family": "projection",
+      "type": "Acme.Shipping.ShipmentProjection",
+      "boundedContext": "Shipping",
+      "displayName": "Shipments",
+      "role": "ActionQueue",
+      "properties": [
+        { "name": "Priority", "category": "Enum", "nullable": false, "displayName": "Priority", "columnPriority": 1 }
+      ]
+    }
+  ]
+}
