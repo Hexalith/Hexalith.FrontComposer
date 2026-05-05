@@ -1,7 +1,4 @@
-using System.Reflection;
-
 using Hexalith.FrontComposer.Contracts.Schema;
-using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
@@ -11,33 +8,13 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 /// <summary>
 /// AC9 / T6 — derive lifecycle and renderer fingerprint material from runtime model structure
-/// rather than literal field-list constants. After the 8-6a review pass the SourceTools side
-/// maintains a deterministic catalog (the AppDomain.GetAssemblies() scan was removed for AC11
-/// determinism), so these tests enforce the cross-package invariant by comparing the catalog's
-/// field set against the runtime <c>McpLifecycleResult</c> properties at test time. Drift in
-/// either direction surfaces here.
+/// rather than literal field-list constants. The cross-package check that compares the
+/// SourceTools-side lifecycle catalog against the Mcp-side <c>McpLifecycleResult</c> runtime
+/// type lives in <c>tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs</c>
+/// (8-6a Group B D10 resolution) so the cross-check rides Mcp's existing reference seam to
+/// SourceTools rather than piercing Mcp's internal boundary from this test project.
 /// </summary>
 public sealed class SchemaFingerprintReflectionTests {
-    [Fact]
-    public void LifecycleResultPayload_FieldsMatchRuntimeType() {
-        Type? lifecycleResult = TryLoadLifecycleResultType();
-        lifecycleResult.ShouldNotBeNull(
-            "AC9 / T6 require McpLifecycleResult to be reachable from SourceTools test host.");
-
-        IReadOnlyList<string> runtimeFieldNames = lifecycleResult!
-            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Select(p => p.Name)
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToArray();
-
-        GeneratedSchemaPayload payload = SchemaFingerprintTransform.CreateLifecycleResultPayload();
-        IReadOnlyList<string> payloadFieldNames = ExtractFieldNames(payload);
-
-        payloadFieldNames.ShouldBe(
-            runtimeFieldNames,
-            "AC9 cross-check: SourceTools lifecycle catalog must mirror McpLifecycleResult property set.");
-    }
-
     [Fact]
     public void RendererPayload_BoundsContributeToFingerprint() {
         // AC9 behavior test: replaces the prior source-walking test (M10 — source walks broke
@@ -63,18 +40,5 @@ public sealed class SchemaFingerprintReflectionTests {
         first.Fingerprint.AlgorithmId.ShouldBeOneOf(
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
             SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
-    }
-
-    private static IReadOnlyList<string> ExtractFieldNames(GeneratedSchemaPayload payload) {
-        string canonical = payload.Json ?? string.Empty;
-        return canonical.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Where(line => line.StartsWith("field=", StringComparison.Ordinal))
-            .Select(line => line.Substring("field=".Length).Split('|', 2)[0])
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .ToArray();
-    }
-
-    private static Type? TryLoadLifecycleResultType() {
-        return typeof(McpLifecycleResult);
     }
 }

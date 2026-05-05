@@ -112,19 +112,29 @@ public static class SchemaMigrationDeltaAnalyzer {
         // P-10: compute aggregate decision from the FULL pre-truncation set so a Breaking delta
         //       past index N is not silently downgraded to CompatibleWarning.
         // P-11: keep the truncation marker WITHIN the maxDeltaCount budget so callers can size
-        //       their telemetry exactly.
+        //       their telemetry exactly. Holds for the MissingMigrationGuide marker too — see P-43.
+        // P-43 (8-6a Group B): emit the MissingMigrationGuide delta BEFORE truncation so it
+        //   participates in worst-decision ordering and respects the maxDeltaCount budget rather
+        //   than silently overflowing it by one entry.
+        // P-44 (8-6a Group B): when fingerprints differ but the delta list is empty (the
+        //   canonicalizer-bug case — same canonicalizer version, same algorithm, structurally
+        //   identical documents, divergent hashes), classify as Unknown rather than Exact so the
+        //   negotiator fails closed instead of granting AllowsSideEffects.
+        SchemaCompatibilityDecision preliminaryAggregate = ComputeAggregate(deltas);
+
+        // P-18: a Breaking delta against shipped public material requires a migration guide
+        // declared on the baseline provenance; if absent, append a MissingMigrationGuide delta
+        // so the build fails closed on un-documented breakage.
+        if (preliminaryAggregate == SchemaCompatibilityDecision.Breaking && !baseline.Provenance.RequiresMigrationGuide) {
+            deltas.Add(Delta(
+                SchemaDeltaKind.MissingMigrationGuide,
+                SchemaCompatibilityDecision.Breaking,
+                "$.Provenance.RequiresMigrationGuide",
+                "schema.delta.missing-migration-guide"));
+        }
+
         bool truncated = deltas.Count > maxDeltaCount;
-        // 8-6a review: defensive Exact branch on empty deltas. The byte-equality short-circuit
-        // above should already cover this, but if a non-fingerprint comparison ever produces
-        // an empty delta list (e.g. canonicalizer divergence with structurally-equal documents),
-        // .All() returning vacuous-true would misclassify as AdditiveCompatible.
-        SchemaCompatibilityDecision aggregate = deltas.Count == 0
-            ? SchemaCompatibilityDecision.Exact
-            : deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
-                ? SchemaCompatibilityDecision.Breaking
-                : deltas.All(d => d.Decision == SchemaCompatibilityDecision.AdditiveCompatible)
-                    ? SchemaCompatibilityDecision.AdditiveCompatible
-                    : SchemaCompatibilityDecision.CompatibleWarning;
+        SchemaCompatibilityDecision aggregate = ComputeAggregate(deltas);
 
         if (truncated) {
             // Keep the worst-decision deltas to maximise signal in the bounded window:
@@ -135,7 +145,7 @@ public static class SchemaMigrationDeltaAnalyzer {
             deltas = [.. ordered.Take(maxDeltaCount - 1)];
             deltas.Add(Delta(
                 SchemaDeltaKind.Truncated,
-                aggregate,
+                aggregate, // marker reflects FULL aggregate, not the bounded subset
                 "$.Deltas",
                 "schema.delta.truncated"));
         }
@@ -145,19 +155,17 @@ public static class SchemaMigrationDeltaAnalyzer {
                 .ThenBy(d => d.Path, StringComparer.Ordinal)];
         }
 
-        // P-18: a Breaking delta against shipped public material requires a migration guide
-        // declared on the baseline provenance; if absent, append a MissingMigrationGuide delta
-        // so the build fails closed on un-documented breakage.
-        if (aggregate == SchemaCompatibilityDecision.Breaking && !baseline.Provenance.RequiresMigrationGuide) {
-            deltas.Add(Delta(
-                SchemaDeltaKind.MissingMigrationGuide,
-                SchemaCompatibilityDecision.Breaking,
-                "$.Provenance.RequiresMigrationGuide",
-                "schema.delta.missing-migration-guide"));
-        }
-
         return Result(aggregate, deltas, truncated);
     }
+
+    private static SchemaCompatibilityDecision ComputeAggregate(List<SchemaDelta> deltas)
+        => deltas.Count == 0
+            ? SchemaCompatibilityDecision.Unknown
+            : deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
+                ? SchemaCompatibilityDecision.Breaking
+                : deltas.All(d => d.Decision == SchemaCompatibilityDecision.AdditiveCompatible)
+                    ? SchemaCompatibilityDecision.AdditiveCompatible
+                    : SchemaCompatibilityDecision.CompatibleWarning;
 
     private static int DecisionRank(SchemaCompatibilityDecision decision)
         => decision switch {
@@ -232,7 +240,24 @@ public static class SchemaMigrationDeltaAnalyzer {
     /// balloon downstream telemetry/log payloads. Truncation is deterministic and marked.
     /// </summary>
     private static SchemaDelta Delta(SchemaDeltaKind kind, SchemaCompatibilityDecision decision, string path, string messageKey)
-        => new(kind, decision, path.Length > MaxPathLength ? path.Substring(0, MaxPathLength) + "..." : path, messageKey);
+        => new(kind, decision, TruncatePath(path), messageKey);
+
+    private static string TruncatePath(string path) {
+        if (path.Length <= MaxPathLength) {
+            return path;
+        }
+
+        // P-45 (8-6a Group B): UTF-16 Substring at code-unit MaxPathLength can split a surrogate
+        // pair and leave an unpaired high surrogate at the truncation boundary. Downstream JSON
+        // and structured-log encoders would then emit U+FFFD or non-deterministic escape
+        // sequences. Step back one code unit when the cut would land between paired surrogates.
+        int cut = MaxPathLength;
+        if (char.IsHighSurrogate(path[cut - 1])) {
+            cut--;
+        }
+
+        return path.Substring(0, cut) + "...";
+    }
 
     private static SchemaMigrationDeltaResult Result(SchemaCompatibilityDecision decision, IReadOnlyList<SchemaDelta> deltas, bool truncated)
         => new(

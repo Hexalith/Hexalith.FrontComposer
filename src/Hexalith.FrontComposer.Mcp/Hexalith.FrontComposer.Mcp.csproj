@@ -16,7 +16,6 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.FrontComposer.Mcp.Tests" />
-    <InternalsVisibleTo Include="Hexalith.FrontComposer.SourceTools.Tests" />
   </ItemGroup>
   <ItemGroup>
     <!-- Story 8-5 packaging contract: corpus markdown ships as embedded resources only.
