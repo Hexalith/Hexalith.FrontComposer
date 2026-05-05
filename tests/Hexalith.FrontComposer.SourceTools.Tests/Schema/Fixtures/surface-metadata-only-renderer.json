@@ -1,0 +1,25 @@
+{
+  "fixtureId": "surface-metadata-only-renderer",
+  "title": "Markdown renderer contract — metadata-only fingerprint material",
+  "contractFamily": "MarkdownRendererContract",
+  "expectedAlgorithm": "frontcomposer.schema.sha256.canonical-json.v1",
+  "expectedNegotiationKind": "Exact",
+  "expectedDeltaCategory": "Exact",
+  "expectedAgentCategory": "schema-exact",
+  "expectedRendererSurface": "McpMarkdown",
+  "rendererSeed": {
+    "rendererId": "frontcomposer.mcp.markdown",
+    "renderStrategy": "Default",
+    "outputContentType": "text/markdown",
+    "capabilities": ["BoundedMarkdown", "SanitizedInertText"],
+    "boundsSource": "FrontComposerMcpOptions",
+    "expectedMetadataKeys": [
+      "bounds.maxCharacters",
+      "bounds.maxFieldCharacters",
+      "capability",
+      "outputContentType",
+      "renderStrategy"
+    ]
+  },
+  "notes": "AC9 / AC14: renderer contract carries no field rows — fingerprint material lives in metadata pulled from FrontComposerMcpOptions."
+}

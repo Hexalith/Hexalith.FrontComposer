@@ -1,0 +1,27 @@
+{
+  "fixtureId": "schema-same-different-runtime-data",
+  "title": "Same structure, different runtime data — fingerprint must be data-independent",
+  "contractFamily": "ProjectionResource",
+  "expectedAlgorithm": "frontcomposer.schema.sha256.canonical-json.v1",
+  "expectedNegotiationKind": "Exact",
+  "expectedDeltaCategory": "Exact",
+  "expectedAgentCategory": "schema-exact",
+  "expectedRendererSurface": null,
+  "documentSeed": {
+    "rootDiscriminator": "frontcomposer.schema.contract.v1",
+    "family": "ProjectionResource",
+    "contractId": "frontcomposer://Billing/projections/Invoice",
+    "schemaVersion": "frontcomposer.projection-resource.v1",
+    "boundedContext": "Billing",
+    "fullyQualifiedName": "Billing.InvoiceProjection",
+    "protocolIdentifier": "frontcomposer://Billing/projections/Invoice",
+    "fields": [
+      { "name": "Number", "type": "String", "jsonType": "string", "required": true, "nullable": false }
+    ]
+  },
+  "runtimeData": [
+    { "Number": "INV-1" },
+    { "Number": "INV-2" }
+  ],
+  "notes": "P-19 / D17: fingerprint is structural — runtime row contents must not influence it."
+}

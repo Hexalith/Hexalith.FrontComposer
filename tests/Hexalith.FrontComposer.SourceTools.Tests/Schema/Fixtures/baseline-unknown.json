@@ -1,0 +1,12 @@
+{
+  "fixtureId": "baseline-unknown",
+  "title": "Server fingerprint missing — unknown baseline",
+  "contractFamily": "ProjectionResource",
+  "expectedAlgorithm": null,
+  "expectedNegotiationKind": "UnknownServerBaseline",
+  "expectedDeltaCategory": null,
+  "expectedAgentCategory": "schema-unavailable",
+  "expectedRendererSurface": null,
+  "documentSeed": null,
+  "notes": "AC4: resolver returns no snapshot. Negotiator must surface schema-unavailable, not downstream_failed."
+}

@@ -148,6 +148,34 @@ Do not implement these in Story 8-6a:
 | Agent E2E proving negotiation across Claude Code / Codex / Cursor / native chat. | Story 10-2 |
 | Signed LLM benchmark artifacts including schema/corpus/scorer fingerprints. | Story 10-6 |
 
+### ATDD Artifacts
+
+Generated 2026-05-05 by `bmad-testarch-atdd` (Tea — Master Test Architect). All scaffolds are
+xUnit `Skip = "RED-PHASE: …"` and assert expected behavior; activate per task as listed in §5 of
+the checklist.
+
+- **Checklist**: `_bmad-output/test-artifacts/atdd-checklist-8-6a-schema-negotiation-runtime-gate.md`
+- **Mcp.Tests scaffolds** (9 files, 35 skipped scaffolds):
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs` — AC3, AC15
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationSnapshotInputTests.cs` — AC6
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs` — AC4
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs` — AC7, AC8
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaGateTests.cs` — AC1, AC2, AC5
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerSchemaGateTests.cs` — AC1, AC5
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSchemaGateTests.cs` — AC1
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaTaxonomyTests.cs` — AC1, AC15
+  - `tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/RenderContractAdapterTests.cs` — AC14
+- **SourceTools.Tests scaffolds** (4 files, 11 skipped scaffolds):
+  - `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintReflectionTests.cs` — AC9
+  - `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintDeterminismTests.cs` — AC11
+  - `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaTruncationTests.cs` — AC12
+  - `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs` — AC10
+- **Fixture suite** (9 fixtures under `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/`): `baseline-known-v1`, `baseline-known-v2-compatible`, `baseline-known-v2-structural-delta`, `baseline-unknown`, `schema-same-different-order`, `schema-same-different-runtime-data`, `schema-hidden-precedence`, `schema-unknown-precedence`, `surface-metadata-only-renderer`.
+
+**Validation status (2026-05-05)**: solution builds clean with
+`dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`
+(0 warnings, 0 errors); the affected test suites pass with all 46 new scaffolds skipped.
+
 ---
 
 ## References

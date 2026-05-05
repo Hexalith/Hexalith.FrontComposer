@@ -1,0 +1,23 @@
+{
+  "fixtureId": "baseline-known-v1",
+  "title": "Known v1 baseline — exact match scenario",
+  "contractFamily": "ProjectionResource",
+  "expectedAlgorithm": "frontcomposer.schema.sha256.canonical-json.v1",
+  "expectedNegotiationKind": "Exact",
+  "expectedDeltaCategory": "Exact",
+  "expectedAgentCategory": "schema-exact",
+  "expectedRendererSurface": null,
+  "documentSeed": {
+    "rootDiscriminator": "frontcomposer.schema.contract.v1",
+    "family": "ProjectionResource",
+    "contractId": "frontcomposer://Billing/projections/Invoice",
+    "schemaVersion": "frontcomposer.projection-resource.v1",
+    "boundedContext": "Billing",
+    "fullyQualifiedName": "Billing.InvoiceProjection",
+    "protocolIdentifier": "frontcomposer://Billing/projections/Invoice",
+    "fields": [
+      { "name": "Number", "type": "String", "jsonType": "string", "required": true, "nullable": false }
+    ]
+  },
+  "notes": "Story 8-6a T8 anchor: identical baseline / current must yield Exact + schema-exact agent category."
+}

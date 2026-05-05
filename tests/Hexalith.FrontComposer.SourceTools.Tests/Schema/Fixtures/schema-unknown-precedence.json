@@ -1,0 +1,23 @@
+{
+  "fixtureId": "schema-unknown-precedence",
+  "title": "Stale descriptor + integrity mismatch — stale wins over schema integrity",
+  "contractFamily": "ProjectionResource",
+  "expectedAlgorithm": "frontcomposer.schema.sha256.canonical-json.v1",
+  "expectedNegotiationKind": "StaleDescriptor",
+  "expectedDeltaCategory": null,
+  "expectedAgentCategory": "projection temporarily unavailable",
+  "expectedRendererSurface": null,
+  "documentSeed": {
+    "rootDiscriminator": "frontcomposer.schema.contract.v1",
+    "family": "ProjectionResource",
+    "contractId": "frontcomposer://Billing/projections/Invoice",
+    "schemaVersion": "frontcomposer.projection-resource.v1",
+    "boundedContext": "Billing",
+    "fullyQualifiedName": "Billing.InvoiceProjection",
+    "protocolIdentifier": "frontcomposer://Billing/projections/Invoice",
+    "fields": [
+      { "name": "Number", "type": "String", "jsonType": "string", "required": true, "nullable": false }
+    ]
+  },
+  "notes": "AC3: stale descriptor wins over schema integrity per Story 8-6 P-42 ordering."
+}

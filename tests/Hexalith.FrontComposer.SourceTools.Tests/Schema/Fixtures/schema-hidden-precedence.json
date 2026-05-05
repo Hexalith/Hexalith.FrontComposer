@@ -1,0 +1,23 @@
+{
+  "fixtureId": "schema-hidden-precedence",
+  "title": "Hidden + stale schema mismatch — hidden wins (Story 8-2 precedence)",
+  "contractFamily": "ProjectionResource",
+  "expectedAlgorithm": "frontcomposer.schema.sha256.canonical-json.v1",
+  "expectedNegotiationKind": "HiddenOrUnknown",
+  "expectedDeltaCategory": null,
+  "expectedAgentCategory": "unknown_resource",
+  "expectedRendererSurface": null,
+  "documentSeed": {
+    "rootDiscriminator": "frontcomposer.schema.contract.v1",
+    "family": "ProjectionResource",
+    "contractId": "frontcomposer://Billing/projections/HiddenInvoice",
+    "schemaVersion": "frontcomposer.projection-resource.v1",
+    "boundedContext": "Billing",
+    "fullyQualifiedName": "Billing.HiddenInvoiceProjection",
+    "protocolIdentifier": "frontcomposer://Billing/projections/HiddenInvoice",
+    "fields": [
+      { "name": "Number", "type": "String", "jsonType": "string", "required": true, "nullable": false }
+    ]
+  },
+  "notes": "AC2: hidden/unauthorized/cross-tenant/policy-filtered visibility must collapse the public payload to unknown_resource. No schema details bleed."
+}
