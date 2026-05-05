@@ -1,11 +1,12 @@
 using Hexalith.FrontComposer.Contracts.Schema;
-using Hexalith.FrontComposer.SourceTools.Diagnostics;
+using Hexalith.FrontComposer.Schema.Diagnostics;
 
 namespace Hexalith.FrontComposer.Mcp.Schema;
 
 public enum McpSchemaNegotiationResultKind {
     Exact,
     CompatibleAdditive,
+    CompatibleWarning,
     Incompatible,
     UnknownClientVersion,
     UnknownServerBaseline,
@@ -142,7 +143,10 @@ public static class McpSchemaNegotiator {
 
         // P-40: byte-identical hashes can short-circuit the baseline-trust check. A redeploy
         // of identical schema after baseline-store wipe should not lock callers out of side
-        // effects — the structural truth is in the matching hash.
+        // effects — the structural truth is in the matching hash. When snapshots ARE present
+        // (Baseline + Server both non-null) the analyzer's structural decision is the more
+        // authoritative answer; the hash short-circuit fires below only when no snapshot
+        // decision is available.
         bool hashesMatch = string.Equals(input.ClientFingerprint.Value, input.ServerFingerprint.Value, StringComparison.Ordinal);
 
         if (!input.HasTrustedBaseline && !hashesMatch) {
@@ -167,12 +171,16 @@ public static class McpSchemaNegotiator {
         }
 
         if (snapshotDecision is SchemaCompatibilityDecision.Unknown) {
+            // 8-6a re-review: this branch is reached only when both Baseline and Server snapshots
+            // are non-null, so Unknown cannot mean "server baseline missing". It means the analyzer
+            // could not classify additive vs breaking. Treat as Incompatible (fail-closed) rather
+            // than mis-categorising as UnknownServerBaseline which implies operator-level fix.
             return Result(
-                McpSchemaNegotiationResultKind.UnknownServerBaseline,
-                FrontComposerMcpFailureCategory.UnknownSchemaBaseline,
-                "schema-unavailable",
-                "schema.baseline.unknown",
-                "HFC-SCHEMA-UNKNOWN-BASELINE",
+                McpSchemaNegotiationResultKind.Incompatible,
+                FrontComposerMcpFailureCategory.SchemaMismatch,
+                "schema-mismatch",
+                "schema.incompatible",
+                "HFC-SCHEMA-MISMATCH",
                 false);
         }
 
@@ -200,7 +208,17 @@ public static class McpSchemaNegotiator {
         // and ignored) and replaced by Baseline / Server snapshot inputs"): the legacy bool is
         // no longer consulted — when snapshots are absent the negotiator cannot prove additive
         // compatibility and falls through to Incompatible classification below.
-        if (snapshotDecision is SchemaCompatibilityDecision.CompatibleWarning or SchemaCompatibilityDecision.AdditiveCompatible) {
+        if (snapshotDecision is SchemaCompatibilityDecision.CompatibleWarning) {
+            return Result(
+                McpSchemaNegotiationResultKind.CompatibleWarning,
+                FrontComposerMcpFailureCategory.None,
+                "schema-compatible-warning",
+                "schema.compatible-warning",
+                "HFC-SCHEMA-COMPATIBLE-WARNING",
+                true);
+        }
+
+        if (snapshotDecision is SchemaCompatibilityDecision.AdditiveCompatible) {
             return Result(
                 McpSchemaNegotiationResultKind.CompatibleAdditive,
                 FrontComposerMcpFailureCategory.None,

@@ -82,12 +82,23 @@ public sealed class FrontComposerMcpToolAdmissionService(
         McpVisibleToolCatalogEntry? exact = catalog.Tools
             .FirstOrDefault(t => string.Equals(t.Name, requestedName, StringComparison.Ordinal));
         if (exact is not null) {
-            McpSchemaNegotiationResult? schema = SchemaNegotiationRuntimeGate.EvaluateCommand(exact.Descriptor, agentContextAccessor, services);
+            McpSchemaNegotiationResult? schema;
+            try {
+                schema = SchemaNegotiationRuntimeGate.EvaluateCommand(exact.Descriptor, agentContextAccessor, services);
+            }
+            catch (FrontComposerMcpException ex)
+                when (ex.Category is FrontComposerMcpFailureCategory.SchemaMismatch
+                    or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
+                    or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
+                    or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
+                return McpToolResolutionResult.Reject(sanitizedRequested, ex.Category, catalog);
+            }
+
             if (schema is not null && !schema.AllowsSideEffects) {
                 return McpToolResolutionResult.Reject(sanitizedRequested, schema.FailureCategory, catalog);
             }
 
-            return McpToolResolutionResult.Accept(exact, catalog);
+            return McpToolResolutionResult.Accept(exact, catalog, schema);
         }
 
         McpToolSuggestion? suggestion = FindSuggestion(requestedName!, catalog.Tools);

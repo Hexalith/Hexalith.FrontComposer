@@ -1,6 +1,6 @@
 using Hexalith.FrontComposer.Contracts.Schema;
 
-namespace Hexalith.FrontComposer.SourceTools.Diagnostics;
+namespace Hexalith.FrontComposer.Schema.Diagnostics;
 
 public static class SchemaMigrationDeltaAnalyzer {
     private const int MaxDeltaCount = 25;
@@ -115,7 +115,7 @@ public static class SchemaMigrationDeltaAnalyzer {
         //       their telemetry exactly.
         bool truncated = deltas.Count > maxDeltaCount;
         // 8-6a review: defensive Exact branch on empty deltas. The byte-equality short-circuit
-        // at line 53 should already cover this, but if a non-fingerprint comparison ever produces
+        // above should already cover this, but if a non-fingerprint comparison ever produces
         // an empty delta list (e.g. canonicalizer divergence with structurally-equal documents),
         // .All() returning vacuous-true would misclassify as AdditiveCompatible.
         SchemaCompatibilityDecision aggregate = deltas.Count == 0
@@ -135,7 +135,7 @@ public static class SchemaMigrationDeltaAnalyzer {
             deltas = [.. ordered.Take(maxDeltaCount - 1)];
             deltas.Add(Delta(
                 SchemaDeltaKind.Truncated,
-                aggregate, // marker reflects FULL aggregate, not the bounded subset
+                aggregate,
                 "$.Deltas",
                 "schema.delta.truncated"));
         }
@@ -232,7 +232,7 @@ public static class SchemaMigrationDeltaAnalyzer {
     /// balloon downstream telemetry/log payloads. Truncation is deterministic and marked.
     /// </summary>
     private static SchemaDelta Delta(SchemaDeltaKind kind, SchemaCompatibilityDecision decision, string path, string messageKey)
-        => new(kind, decision, path.Length > MaxPathLength ? path.Substring(0, MaxPathLength) + "…" : path, messageKey);
+        => new(kind, decision, path.Length > MaxPathLength ? path.Substring(0, MaxPathLength) + "..." : path, messageKey);
 
     private static SchemaMigrationDeltaResult Result(SchemaCompatibilityDecision decision, IReadOnlyList<SchemaDelta> deltas, bool truncated)
         => new(

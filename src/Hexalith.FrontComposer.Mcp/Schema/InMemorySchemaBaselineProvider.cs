@@ -1,11 +1,18 @@
 using Hexalith.FrontComposer.Contracts.Schema;
+using Hexalith.FrontComposer.Schema;
 
 namespace Hexalith.FrontComposer.Mcp.Schema;
 
 public sealed class InMemorySchemaBaselineProvider : ISchemaBaselineProvider {
     private const string PackageOwner = "Hexalith.FrontComposer";
-    private static readonly IReadOnlyDictionary<BaselineKey, SchemaBaselineSnapshot> Snapshots =
-        new Dictionary<BaselineKey, SchemaBaselineSnapshot> {
+    // 8-6a re-review: PublicationOnly mode lets transient validation failures retry on the next
+    // request rather than caching a TypeInitializationException for the AppDomain lifetime.
+    private static readonly Lazy<IReadOnlyDictionary<BaselineKey, SchemaBaselineSnapshot>> Snapshots = new(
+        BuildSnapshots,
+        LazyThreadSafetyMode.PublicationOnly);
+
+    private static IReadOnlyDictionary<BaselineKey, SchemaBaselineSnapshot> BuildSnapshots()
+        => new Dictionary<BaselineKey, SchemaBaselineSnapshot> {
             [new(SchemaContractFamily.ProjectionResource, PackageOwner, "baseline-known-v1")] =
                 CreateSnapshot(SchemaContractFamily.ProjectionResource, "baseline-known-v1"),
             [new(SchemaContractFamily.CommandTool, PackageOwner, "baseline-known-v1")] =
@@ -24,7 +31,7 @@ public sealed class InMemorySchemaBaselineProvider : ISchemaBaselineProvider {
             return false;
         }
 
-        return Snapshots.TryGetValue(new BaselineKey(family, packageOwner, fixtureId), out snapshot);
+        return Snapshots.Value.TryGetValue(new BaselineKey(family, packageOwner, fixtureId), out snapshot);
     }
 
     private static bool IsSafeIdentifier(string value) {
@@ -50,7 +57,7 @@ public sealed class InMemorySchemaBaselineProvider : ISchemaBaselineProvider {
             "frontcomposer.schema.contract.v1",
             family,
             "frontcomposer://baseline/" + fixtureId,
-            "frontcomposer." + family.ToString().ToLowerInvariant() + ".v1",
+            "frontcomposer." + SchemaContractFamilyNames.Canonical(family) + ".v1",
             "Hexalith",
             "Hexalith.FrontComposer." + fixtureId,
             "frontcomposer://baseline/" + fixtureId,

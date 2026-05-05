@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Schema;
+using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
@@ -74,26 +75,6 @@ public sealed class SchemaFingerprintReflectionTests {
     }
 
     private static Type? TryLoadLifecycleResultType() {
-        // SourceTools does not project-reference Mcp at build time; tests can probe Mcp via the
-        // already-loaded assembly set after Mcp.Tests has wired it transitively.
-        try {
-            _ = Assembly.Load("Hexalith.FrontComposer.Mcp");
-        }
-        catch {
-            // Probe loaded assemblies regardless; the cross-check assertion reports the contract miss.
-        }
-
-        return AppDomain.CurrentDomain.GetAssemblies()
-            .SelectMany(SafeGetTypes)
-            .FirstOrDefault(t => t.FullName == "Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult");
-    }
-
-    private static IEnumerable<Type> SafeGetTypes(Assembly assembly) {
-        try {
-            return assembly.GetTypes();
-        }
-        catch (ReflectionTypeLoadException ex) {
-            return ex.Types.Where(t => t is not null)!;
-        }
+        return typeof(McpLifecycleResult);
     }
 }

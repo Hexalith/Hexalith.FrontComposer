@@ -38,9 +38,11 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
         // corpus and stamps `[]` for the corpus list; the runtime layer in registers the loaded
         // corpus's fingerprints here and recomputes the aggregate. Hosts without a corpus
         // provider get an empty list (which is valid for hosts that ship no skill corpus).
+        // 8-6a re-review: defensive coalesce — a custom corpus provider that returns null
+        // crashed registry construction and brought the host startup down. Treat null as empty.
         IReadOnlyList<SchemaFingerprint> corpusFingerprints = corpusProviders is null
             ? []
-            : [.. corpusProviders.SelectMany(p => p.GetFingerprints())];
+            : [.. corpusProviders.SelectMany(p => p.GetFingerprints() ?? [])];
 
         ValidateAggregateIntegrity(manifests, corpusFingerprints);
         _commands = BuildCommandMap(manifests);
@@ -155,23 +157,32 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
     private static void ValidateAggregateIntegrity(
         IReadOnlyList<McpManifest> manifests,
         IReadOnlyList<SchemaFingerprint> corpusFingerprints) {
-        // 8-6a review H7: a manifest that ships a fingerprint but stamps a non-canonical-JSON
-        // algorithm is an inconsistent claim — the canonical aggregate algorithm is fixed at
-        // Sha256CanonicalJsonV1 by D17/AC7. Fail closed in that case. Manifests with no
-        // fingerprint at all (test/legacy scenarios where integrity isn't claimed) are skipped:
-        // build-time-emitted manifests always ship a fingerprint, so absence indicates the
-        // manifest was author-supplied via `FrontComposerMcpOptions.Manifests` for testing.
+        // 8-6a re-review D6: each manifest's claimed Fingerprint represents the aggregate of ITS
+        // OWN nested commands/resources (build-time emitter scope). The previous implementation
+        // computed a single cross-manifest aggregate across ALL manifests + corpus and compared
+        // every per-manifest fingerprint to it, which trips SchemaIntegrityMismatch in any
+        // multi-manifest deployment. Per-manifest scope ≠ cross-manifest scope.
+        //
+        // The corpus argument is intentionally unused inside this loop because the build-time
+        // emitter has no visibility into the runtime corpus (Story 8-6 P-5 / D22). The corpus
+        // contributes to a separate runtime aggregate fingerprint surfaced via
+        // FrontComposerMcpRuntimeManifestAggregator.Compute(...) when callers need the AC8
+        // runtime-aggregate-with-corpus invariant.
+        _ = corpusFingerprints;
         foreach (McpManifest manifest in manifests) {
             if (manifest.Fingerprint is null) {
                 continue;
             }
 
+            // 8-6a review H7: a manifest that ships a fingerprint but stamps a non-canonical-JSON
+            // algorithm is an inconsistent claim — the canonical aggregate algorithm is fixed at
+            // Sha256CanonicalJsonV1 by D17/AC7. Fail closed in that case.
             if (!string.Equals(manifest.Fingerprint.AlgorithmId, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)) {
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch);
             }
 
-            SchemaFingerprint computed = FrontComposerMcpRuntimeManifestAggregator.Compute([manifest], corpusFingerprints);
-            if (!string.Equals(manifest.Fingerprint.Value, computed.Value, StringComparison.Ordinal)) {
+            SchemaFingerprint perManifestComputed = FrontComposerMcpRuntimeManifestAggregator.Compute([manifest], []);
+            if (!string.Equals(manifest.Fingerprint.Value, perManifestComputed.Value, StringComparison.Ordinal)) {
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch);
             }
         }
@@ -193,7 +204,9 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
                 [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
                 new Dictionary<string, string> {
                     ["bounds.maxCharacters"] = options.MaxProjectionMarkdownCharacters.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                    ["bounds.maxFieldCharacters"] = options.MaxProjectionCellCharacters.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["bounds.maxRows"] = options.MaxRowsPerResource.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["bounds.maxColumns"] = options.MaxFieldsPerResource.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    ["bounds.maxCellCharacters"] = options.MaxProjectionCellCharacters.ToString(System.Globalization.CultureInfo.InvariantCulture),
                     ["outputContentType"] = "text/markdown",
                     ["renderStrategy"] = resource.RenderStrategy.ToString(),
                 });

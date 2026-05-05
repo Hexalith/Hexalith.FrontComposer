@@ -2,14 +2,64 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
+using Hexalith.FrontComposer.Contracts.Schema;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Primitives;
 
 namespace Hexalith.FrontComposer.Mcp;
 
 internal sealed class HttpFrontComposerMcpAgentContextAccessor(
     IHttpContextAccessor httpContextAccessor,
     IOptions<FrontComposerMcpOptions> options) : IFrontComposerMcpAgentContextAccessor {
+    private const string SchemaFingerprintHeaderName = "x-frontcomposer-schema-fingerprint";
+    private const int MaxSchemaFingerprintHeaderLength = 512;
+    private const int MaxSchemaFingerprintAlgorithmLength = 128;
+    private const int MaxSchemaFingerprintValueLength = 256;
+    private const int Sha256ByteLength = 32;
+    private const string ClientFingerprintCacheKey = "Hexalith.FrontComposer.Mcp.SchemaFingerprintHint";
+
+    /// <summary>
+    /// 8-6a re-review: pin the algorithms accepted at the trust boundary so a hostile client
+    /// cannot smuggle arbitrary algorithm strings into structured logs and the negotiator. This
+    /// matches <see cref="McpSchemaNegotiator"/>'s <c>SupportedAlgorithms</c> set; any expansion
+    /// must update both sides together.
+    /// </summary>
+    private static readonly HashSet<string> SupportedAlgorithms = new(StringComparer.Ordinal) {
+        SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
+        SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1,
+    };
+
+    public IServiceProvider? RequestServices => httpContextAccessor.HttpContext?.RequestServices;
+
+    public SchemaFingerprint? ClientFingerprintHint {
+        get {
+            HttpContext? http = httpContextAccessor.HttpContext;
+            if (http is null
+                || !http.Request.Headers.TryGetValue(SchemaFingerprintHeaderName, out StringValues values)) {
+                return null;
+            }
+
+            // 8-6a re-review: memoize the parsed fingerprint on HttpContext.Items so repeated
+            // accesses (admission + invoker, projection reader pre-query + pre-render) parse
+            // and validate the header exactly once. Also avoids re-throwing the malformed-request
+            // exception multiple times per request. The key includes the assembly identifier so
+            // hosts that compose multiple FrontComposer pipelines do not collide.
+            if (http.Items.TryGetValue(ClientFingerprintCacheKey, out object? cached)) {
+                return cached as SchemaFingerprint;
+            }
+
+            if (values.Count != 1) {
+                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+            }
+
+            SchemaFingerprint? parsed = ParseClientFingerprint(values[0]);
+            http.Items[ClientFingerprintCacheKey] = parsed;
+            return parsed;
+        }
+    }
+
     public FrontComposerMcpAgentContext GetContext() {
         HttpContext? http = httpContextAccessor.HttpContext;
 
@@ -46,6 +96,55 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
         }
 
         return Create(tenant, userId, claimsSource: user);
+    }
+
+    private static SchemaFingerprint? ParseClientFingerprint(string? value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return null;
+        }
+
+        string trimmed = value.Trim();
+        if (trimmed.Length > MaxSchemaFingerprintHeaderLength) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+        }
+
+        int separator = trimmed.IndexOf(':');
+        if (separator <= 0 || separator == trimmed.Length - 1 || trimmed.IndexOf(':', separator + 1) >= 0) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+        }
+
+        string algorithmId = trimmed[..separator];
+        string encodedFingerprint = trimmed[(separator + 1)..];
+        if (algorithmId.Length > MaxSchemaFingerprintAlgorithmLength
+            || encodedFingerprint.Length > MaxSchemaFingerprintValueLength
+            || algorithmId.Any(char.IsWhiteSpace)
+            || encodedFingerprint.Any(char.IsWhiteSpace)) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+        }
+
+        // 8-6a re-review: reject unsupported algorithms at the trust boundary instead of letting
+        // the client smuggle arbitrary algorithm strings into the negotiator and structured logs.
+        if (!SupportedAlgorithms.Contains(algorithmId)) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+        }
+
+        // 8-6a re-review: validate decoded byte length matches the expected SHA-256 hash size.
+        // A 1-byte base64 value previously slipped through and was forwarded to the negotiator
+        // as a "fingerprint". Drop the FormatException as inner-exception so its text cannot
+        // leak through telemetry sinks that log ex.InnerException.Message (AC15).
+        byte[] decoded;
+        try {
+            decoded = Convert.FromBase64String(encodedFingerprint);
+        }
+        catch (FormatException) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+        }
+
+        if (decoded.Length != Sha256ByteLength) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+        }
+
+        return new SchemaFingerprint(algorithmId, encodedFingerprint);
     }
 
     private static FrontComposerMcpApiKeyIdentity? MatchApiKey(

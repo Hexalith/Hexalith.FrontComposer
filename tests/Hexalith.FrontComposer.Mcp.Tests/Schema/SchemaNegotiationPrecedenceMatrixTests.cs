@@ -34,6 +34,15 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             ForbiddenAgentCategories: ["schema-mismatch", "schema-compatible-warning", "schema-unavailable", "unsupported-schema-fingerprint"],
             ForbiddenMessageKey: "schema.incompatible"));
 
+        data.Add(new PrecedenceCase(
+            "row-1b-hidden-over-schema-mismatch",
+            IsHidden: true, IsStale: false, IntegrityMismatch: false, BaselineTrusted: true,
+            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
+            Expected: McpSchemaNegotiationResultKind.HiddenOrUnknown,
+            ExpectedAgentCategory: "unknown_resource",
+            ForbiddenAgentCategories: ["schema-mismatch", "schema-compatible-warning", "schema-unavailable", "unsupported-schema-fingerprint"],
+            ForbiddenMessageKey: "schema.incompatible"));
+
         // Row 2: stale wins over schema integrity.
         data.Add(new PrecedenceCase(
             "row-2-stale-over-integrity",

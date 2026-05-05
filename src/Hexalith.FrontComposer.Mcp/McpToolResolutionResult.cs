@@ -7,12 +7,16 @@ public sealed record McpToolResolutionResult(
     McpVisibleToolCatalogEntry? Tool,
     McpToolSuggestion? Suggestion,
     IReadOnlyList<McpVisibleToolCatalogEntry> VisibleTools,
-    bool IsVisibleListTruncated) {
-    public static McpToolResolutionResult Accept(McpVisibleToolCatalogEntry tool, McpVisibleToolCatalog catalog) {
+    bool IsVisibleListTruncated,
+    Schema.McpSchemaNegotiationResult? SchemaNegotiation = null) {
+    public static McpToolResolutionResult Accept(
+        McpVisibleToolCatalogEntry tool,
+        McpVisibleToolCatalog catalog,
+        Schema.McpSchemaNegotiationResult? schemaNegotiation = null) {
         ArgumentNullException.ThrowIfNull(tool);
         ArgumentNullException.ThrowIfNull(catalog);
 
-        return new(true, FrontComposerMcpFailureCategory.None, tool.Name, tool, null, catalog.Tools, catalog.IsTruncated);
+        return new(true, FrontComposerMcpFailureCategory.None, tool.Name, tool, null, catalog.Tools, catalog.IsTruncated, schemaNegotiation);
     }
 
     public static McpToolResolutionResult Reject(

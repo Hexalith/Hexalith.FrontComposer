@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-05 (story 8-6a code review pass via bmad-code-review; status review -> in-progress. Three parallel review layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) surfaced 5 architectural decision-needed items, 35 patches, 6 deferred, 3 dismissed. User selected option 1 (apply every patch). Surface and HIGH-impact patches applied: AppDomain.GetAssemblies non-determinism replaced with deterministic catalog (H8/M7), HasCompatibleAdditiveDrift legacy bool now ignored (M1), empty-delta defensive Exact branch (M2), schema failure payload aligned with projection mapper shape (M3/M4), AgentCategory now stable identifier (M5), McpLifecycleResult PascalCase (L1), fixture deltaCategory clarified (L2), source-walking tests replaced with reflection cross-checks (M10), corpus fingerprint provider seam wired into descriptor registry (H6), aggregate integrity check fails closed on non-canonical algorithm (H7), determinism tests rewritten to actually exercise EOL/culture invariance (H12/H13), Normalize handles U+2028/U+2029. ARCHITECTURAL patches D1 (extract Schema runtime library), D2 (typed accessor + HTTP header), D4 (ILogger telemetry) and ~13 medium patches remain as action items in the story file — too large to land safely in the single review-pass session. Validation: dotnet build (0 warnings/errors); dotnet test all suites pass (Mcp 253, Shell 1542, SourceTools 623+64skipped, Bench 2). See _bmad-output/implementation-artifacts/8-6a-schema-negotiation-runtime-gate.md#review-findings for per-patch status.)"
+last_updated: "2026-05-05 (story 8-6a Group A re-review patches applied; status remains review pending Groups B/C/D re-review. Applied D6 per-manifest integrity loop, header parser hardening (SHA-256 length + algorithm allow-list), accessor memoization on HttpContext.Items, ObjectDisposedException resilience, OrdinalIgnoreCase comparer alignment, SchemaCompatibilityDecision.Unknown -> Incompatible mapping, tuple-key fingerprint dedup, Lazy PublicationOnly mode, decisionKind enum-to-string, MapSchemaFailureStrict default-branch contract, cancellation check before sync gate work, inner-exception drop, corpus-provider null guard, DerivablePropertyNames null guard, exception logging with stack capture. D7 partial revert after byte-match contract regression; D8 deferred. Validation: dotnet build -m:1 TreatWarningsAsErrors passed 0/0; dotnet test Hexalith.FrontComposer.sln --no-build -m:1 passed: SourceTools 623+64 skipped, Contracts 159, Shell 1542, Bench 2, MCP 260 (+2 new fingerprint parser tests).)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -121,7 +121,7 @@ development_status:
   8-4a-projection-rendering-sanitized-taxonomy-and-snapshot: done
   8-5-skill-corpus-and-build-time-agent-support: done
   8-6-schema-versioning-and-multi-surface-abstraction: done
-  8-6a-schema-negotiation-runtime-gate: in-progress
+  8-6a-schema-negotiation-runtime-gate: review
   epic-8-retrospective: optional
 
   # Epic 9: Developer Tooling & Documentation

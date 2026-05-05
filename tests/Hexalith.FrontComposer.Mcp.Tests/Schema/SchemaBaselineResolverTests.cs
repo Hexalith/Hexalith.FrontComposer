@@ -1,6 +1,7 @@
 using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Schema;
+using Hexalith.FrontComposer.Mcp.Schema;
 
 using Shouldly;
 using Xunit;
@@ -99,19 +100,7 @@ public sealed class SchemaBaselineResolverTests {
     }
 
     private static Type? TryFindResolverType() {
-        Assembly mcp = typeof(Hexalith.FrontComposer.Mcp.Schema.McpSchemaNegotiator).Assembly;
-        Assembly contracts = typeof(SchemaBaselineSnapshot).Assembly;
-
-        return mcp.GetTypes()
-            .Concat(contracts.GetTypes())
-            .FirstOrDefault(t =>
-                (t.IsInterface || (t.IsClass && !t.IsAbstract))
-                && (t.Name == "ISchemaBaselineProvider"
-                    || t.Name == "SchemaBaselineProvider"
-                    || t.GetMethods().Any(m =>
-                        m.Name == "TryResolve"
-                        && m.GetParameters().Length == 4
-                        && m.GetParameters()[0].ParameterType == typeof(SchemaContractFamily))));
+        return typeof(ISchemaBaselineProvider);
     }
 
     private sealed class ResolverInvoker {
@@ -132,13 +121,7 @@ public sealed class SchemaBaselineResolverTests {
 
             object instance;
             if (resolver.IsInterface) {
-                Type? impl = resolver.Assembly.GetTypes()
-                    .FirstOrDefault(t => !t.IsAbstract && resolver.IsAssignableFrom(t) && t.GetConstructor(Type.EmptyTypes) is not null);
-                if (impl is null) {
-                    throw new InvalidOperationException("No concrete ISchemaBaselineProvider implementation found with a public parameterless constructor.");
-                }
-
-                instance = Activator.CreateInstance(impl)!;
+                instance = new InMemorySchemaBaselineProvider();
             } else {
                 instance = Activator.CreateInstance(resolver)!;
             }

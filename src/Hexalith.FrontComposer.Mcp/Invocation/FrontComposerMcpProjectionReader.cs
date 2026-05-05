@@ -190,9 +190,19 @@ public sealed class FrontComposerMcpProjectionReader(
             return FrontComposerMcpFailureCategory.StaleDescriptor;
         }
 
-        return await IsResourceVisibleAsync(visibilityGate, snapshot.Descriptor.ToDescriptor(), context, cancellationToken).ConfigureAwait(false)
-            ? null
-            : FrontComposerMcpFailureCategory.UnknownResource;
+        McpResourceDescriptor descriptor = snapshot.Descriptor.ToDescriptor();
+        if (!await IsResourceVisibleAsync(visibilityGate, descriptor, context, cancellationToken).ConfigureAwait(false)) {
+            return FrontComposerMcpFailureCategory.UnknownResource;
+        }
+
+        // 8-6a re-review: honor cancellation before the synchronous canonical-JSON snapshot
+        // build inside the schema gate. Long-running serialization work after a cancel request
+        // wastes CPU and produces a result that will never be returned.
+        cancellationToken.ThrowIfCancellationRequested();
+        McpSchemaNegotiationResult? schema = SchemaNegotiationRuntimeGate.EvaluateResource(descriptor, agentContextAccessor, services);
+        return schema is not null && !schema.AllowsSideEffects
+            ? schema.FailureCategory
+            : null;
     }
 
     private static ValueTask<bool> IsResourceVisibleAsync(

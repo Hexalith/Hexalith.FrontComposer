@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Mcp"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Mcp.Tests", "tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj", "{36FF382A-309A-4804-A625-AD57F80940C1}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Schema", "src\Hexalith.FrontComposer.Schema\Hexalith.FrontComposer.Schema.csproj", "{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -189,6 +191,18 @@ Global
 		{36FF382A-309A-4804-A625-AD57F80940C1}.Release|x64.Build.0 = Release|Any CPU
 		{36FF382A-309A-4804-A625-AD57F80940C1}.Release|x86.ActiveCfg = Release|Any CPU
 		{36FF382A-309A-4804-A625-AD57F80940C1}.Release|x86.Build.0 = Release|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Debug|x64.Build.0 = Debug|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Debug|x86.Build.0 = Debug|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Release|x64.ActiveCfg = Release|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Release|x64.Build.0 = Release|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Release|x86.ActiveCfg = Release|Any CPU
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -207,5 +221,6 @@ Global
 		{3B97061E-5519-4D7C-83E8-F035264C79B7} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{8B7A747A-AFD8-4AAB-AFA2-7741F9DF1BCE} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{36FF382A-309A-4804-A625-AD57F80940C1} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 	EndGlobalSection
 EndGlobal

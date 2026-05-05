@@ -10,6 +10,7 @@ using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Hexalith.FrontComposer.Mcp.Invocation;
@@ -18,7 +19,8 @@ public sealed class FrontComposerMcpCommandInvoker(
     IFrontComposerMcpAgentContextAccessor agentContextAccessor,
     FrontComposerMcpToolAdmissionService admissionService,
     IServiceProvider services,
-    IOptions<FrontComposerMcpOptions> options) {
+    IOptions<FrontComposerMcpOptions> options,
+    ILogger<FrontComposerMcpCommandInvoker> logger) {
     private static readonly HashSet<string> SpoofedDerivableNames = new(StringComparer.OrdinalIgnoreCase) {
         "TenantId",
         "UserId",
@@ -54,7 +56,8 @@ public sealed class FrontComposerMcpCommandInvoker(
 
             McpCommandDescriptor descriptor = resolution.Tool.Descriptor;
             FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
-            McpSchemaNegotiationResult? schema = SchemaNegotiationRuntimeGate.EvaluateCommand(descriptor, agentContextAccessor, services);
+            McpSchemaNegotiationResult? schema = resolution.SchemaNegotiation
+                ?? SchemaNegotiationRuntimeGate.EvaluateCommand(descriptor, agentContextAccessor, services);
             if (schema is not null && !schema.AllowsSideEffects) {
                 return SchemaNegotiationRuntimeGate.ToStructuredFailure(schema.FailureCategory);
             }
@@ -140,12 +143,30 @@ public sealed class FrontComposerMcpCommandInvoker(
                 or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
                 or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
                 or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
+                // 8-6a re-review: convert enum to string explicitly so structured-log sinks
+                // produce a deterministic value across enricher configurations (D4 bounded fields).
+                logger.LogInformation(
+                    "MCP command invocation failed with schema category {Category}.",
+                    ex.Category.ToString());
                 return SchemaNegotiationRuntimeGate.ToStructuredFailure(ex.Category);
             }
 
+            logger.LogWarning(
+                "MCP command invocation failed with category {Category}.",
+                ex.Category.ToString());
             return FrontComposerMcpResult.Failure(ex.Category);
         }
-        catch {
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            // 8-6a re-review: capture the exception object via the structured-log overload so
+            // the type/stack survive in diagnostic sinks; previous logging emitted only the
+            // `DownstreamFailed` token, losing the underlying signal entirely. The `when` guard
+            // is defensive — the explicit OperationCanceledException handler above takes
+            // precedence under normal CLR exception dispatch, but exception filters with side
+            // effects could otherwise drop cancellation here.
+            logger.LogWarning(
+                ex,
+                "MCP command invocation failed with category {Category}.",
+                FrontComposerMcpFailureCategory.DownstreamFailed.ToString());
             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.DownstreamFailed);
         }
     }

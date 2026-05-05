@@ -1,5 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Schema;
-using Hexalith.FrontComposer.SourceTools.Diagnostics;
+using Hexalith.FrontComposer.Schema.Diagnostics;
 
 using Shouldly;
 using Xunit;

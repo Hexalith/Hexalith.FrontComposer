@@ -12,10 +12,11 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
-    <ProjectReference Include="..\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj" />
+    <ProjectReference Include="..\Hexalith.FrontComposer.Schema\Hexalith.FrontComposer.Schema.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.FrontComposer.Mcp.Tests" />
+    <InternalsVisibleTo Include="Hexalith.FrontComposer.SourceTools.Tests" />
   </ItemGroup>
   <ItemGroup>
     <!-- Story 8-5 packaging contract: corpus markdown ships as embedded resources only.

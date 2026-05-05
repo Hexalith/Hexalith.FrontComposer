@@ -1,5 +1,7 @@
 using System.Security.Claims;
 
+using Hexalith.FrontComposer.Contracts.Schema;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
@@ -144,6 +146,75 @@ public sealed class AuthContextAccessorTests {
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => sut.GetContext());
         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_ParsesSchemaFingerprintHeader() {
+        // 8-6a re-review: parser now enforces a 32-byte SHA-256 hash length and an algorithm
+        // allow-list at the trust boundary, so the test must supply a real 32-byte hash payload
+        // and a supported algorithm id.
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        byte[] hashBytes = new byte[32];
+        for (int i = 0; i < hashBytes.Length; i++) {
+            hashBytes[i] = (byte)(i + 1);
+        }
+
+        string fingerprint = Convert.ToBase64String(hashBytes);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + fingerprint;
+
+        SchemaFingerprint? hint = sut.ClientFingerprintHint;
+
+        hint.ShouldNotBeNull();
+        hint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
+        hint.Value.ShouldBe(fingerprint);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_RejectsShortFingerprint() {
+        // 8-6a re-review: a non-SHA-256-length fingerprint is malformed and must fail-closed.
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        string tooShort = Convert.ToBase64String([1, 2, 3, 4]);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + tooShort;
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_RejectsUnsupportedAlgorithm() {
+        // 8-6a re-review: algorithm allow-list at the trust boundary blocks arbitrary
+        // algorithm strings from reaching the negotiator and structured logs.
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        byte[] hashBytes = new byte[32];
+        string fingerprint = Convert.ToBase64String(hashBytes);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            "frontcomposer.schema.attacker-controlled.v1:" + fingerprint;
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_MalformedHeader_FailsClosed() {
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] = "not-a-valid-fingerprint";
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
+
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_OversizedHeader_FailsClosed() {
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('A', 600);
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
+
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
     }
 
     [Fact]

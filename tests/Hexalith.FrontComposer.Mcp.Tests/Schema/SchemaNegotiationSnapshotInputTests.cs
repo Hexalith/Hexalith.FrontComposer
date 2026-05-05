@@ -11,7 +11,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// <summary>
 /// AC6 / T2 — replace <c>HasCompatibleAdditiveDrift</c> bool with snapshot inputs and let the
 /// negotiator derive Exact / CompatibleAdditive / Incompatible from
-/// <see cref="SourceTools.Diagnostics.SchemaMigrationDeltaAnalyzer"/>. Memory rule
+/// <see cref="Hexalith.FrontComposer.Schema.Diagnostics.SchemaMigrationDeltaAnalyzer"/>. Memory rule
 /// "optional security parameters are an anti-pattern" applies: caller-supplied "additive" bools
 /// short-circuit the gate, so the input contract must surface snapshots only.
 /// </summary>
