@@ -1,6 +1,6 @@
 # Story 8.6a: Schema Negotiation Runtime Gate & Canonicalizer Unification
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 8** - MCP & Agent Integration. Follow-up for Story **8-6 Schema Versioning & Multi-Surface Abstraction**. Wires the negotiator and migration delta library into production code paths, unifies the SourceTools / Contracts canonicalizer, builds the missing fixture suite, and closes the test-coverage gaps identified by the Story 8-6 code review (2026-05-05). Builds on Stories **8-1** through **8-6**, Story **8-2** hidden/unknown semantics, and Story **8-4a** sanitized failure taxonomy. Applies lessons **L03**, **L08**, **L10**, **L14**, **L15**.
 
@@ -60,47 +60,47 @@ Adopters running an MCP server should see Story 8-6's structural fingerprints fl
 
 ## Tasks / Subtasks
 
-- [ ] T1. Build the trusted baseline resolver (AC1, AC4)
-  - [ ] Define `ISchemaBaselineProvider` (or extend `ISkillCorpusBaselineProvider` if shape allows) with a single method `TryResolve(SchemaContractFamily family, string packageOwner, string fixtureId, out SchemaBaselineSnapshot? snapshot)`.
-  - [ ] Provide an in-memory implementation backed by checked-in fixture snapshots; reject any caller-supplied path or filesystem hint.
-  - [ ] Register the provider as scoped DI.
+- [x] T1. Build the trusted baseline resolver (AC1, AC4)
+  - [x] Define `ISchemaBaselineProvider` (or extend `ISkillCorpusBaselineProvider` if shape allows) with a single method `TryResolve(SchemaContractFamily family, string packageOwner, string fixtureId, out SchemaBaselineSnapshot? snapshot)`.
+  - [x] Provide an in-memory implementation backed by checked-in fixture snapshots; reject any caller-supplied path or filesystem hint.
+  - [x] Register the provider as scoped DI.
 
-- [ ] T2. Replace `HasCompatibleAdditiveDrift` with snapshot-based negotiation (AC5, AC6)
-  - [ ] Update `McpSchemaNegotiationInput` to carry `BaselineSnapshot? Baseline` and `ServerSnapshot? Server`; mark the legacy bool `[Obsolete]` for one release.
-  - [ ] Inside `McpSchemaNegotiator.Negotiate`, when both snapshots present, call `SchemaMigrationDeltaAnalyzer.Compare` and derive `Exact` / `CompatibleAdditive` / `Incompatible` from the result.
+- [x] T2. Replace `HasCompatibleAdditiveDrift` with snapshot-based negotiation (AC5, AC6)
+  - [x] Update `McpSchemaNegotiationInput` to carry `BaselineSnapshot? Baseline` and `ServerSnapshot? Server`; mark the legacy bool `[Obsolete]` for one release.
+  - [x] Inside `McpSchemaNegotiator.Negotiate`, when both snapshots present, call `SchemaMigrationDeltaAnalyzer.Compare` and derive `Exact` / `CompatibleAdditive` / `Incompatible` from the result.
 
-- [ ] T3. Wire the negotiator into the production pipeline (AC1, AC2, AC15)
-  - [ ] Add admission-time hook in `FrontComposerMcpProjectionReader.ReadAsync` after visibility/tenant/policy checks but before query dispatch.
-  - [ ] Add admission-time hook in `FrontComposerMcpCommandInvoker.DispatchAsync` and `FrontComposerMcpToolAdmissionService` for parity.
-  - [ ] Re-run server-side validation/defaulting on `CompatibleAdditive` before any side effect.
-  - [ ] Telemetry / logs use bounded category fields only.
+- [x] T3. Wire the negotiator into the production pipeline (AC1, AC2, AC15)
+  - [x] Add admission-time hook in `FrontComposerMcpProjectionReader.ReadAsync` after visibility/tenant/policy checks but before query dispatch.
+  - [x] Add admission-time hook in `FrontComposerMcpCommandInvoker.DispatchAsync` and `FrontComposerMcpToolAdmissionService` for parity.
+  - [x] Re-run server-side validation/defaulting on `CompatibleAdditive` before any side effect.
+  - [x] Telemetry / logs use bounded category fields only.
 
-- [ ] T4. Extend `FrontComposerMcpProjectionFailureMapper` (AC1)
-  - [ ] Add explicit branches for `SchemaMismatch`, `UnknownSchemaBaseline`, `UnsupportedSchemaAlgorithm`, `SchemaIntegrityMismatch` returning the sanitized agent categories from `McpSchemaNegotiationResult`.
-  - [ ] Add equivalent branches in command and tool failure adapters.
+- [x] T4. Extend `FrontComposerMcpProjectionFailureMapper` (AC1)
+  - [x] Add explicit branches for `SchemaMismatch`, `UnknownSchemaBaseline`, `UnsupportedSchemaAlgorithm`, `SchemaIntegrityMismatch` returning the sanitized agent categories from `McpSchemaNegotiationResult`.
+  - [x] Add equivalent branches in command and tool failure adapters.
 
-- [ ] T5. Aggregate-vs-nested integrity check (AC7)
-  - [ ] At descriptor registry load time, recompute the aggregate from emitted nested fingerprints and fail-closed via `SchemaIntegrityMismatch` if the recomputed aggregate disagrees with the embedded one.
-  - [ ] Add a runtime aggregate manifest fingerprint that includes corpus resource fingerprints (AC8).
+- [x] T5. Aggregate-vs-nested integrity check (AC7)
+  - [x] At descriptor registry load time, recompute the aggregate from emitted nested fingerprints and fail-closed via `SchemaIntegrityMismatch` if the recomputed aggregate disagrees with the embedded one.
+  - [x] Add a runtime aggregate manifest fingerprint that includes corpus resource fingerprints (AC8).
 
-- [ ] T6. Derive lifecycle / renderer fingerprint material from real types (AC9)
-  - [ ] Replace the hardcoded literal field list in `SchemaFingerprintTransform.CreateLifecycleResultPayload` with reflection-based or build-time-introspected field discovery against `McpLifecycleResult`.
-  - [ ] Replace hardcoded `64_000` / `4_096` renderer bounds with values pulled from `FrontComposerMcpOptions` / `SkillResourceReadOptions`.
+- [x] T6. Derive lifecycle / renderer fingerprint material from real types (AC9)
+  - [x] Replace the hardcoded literal field list in `SchemaFingerprintTransform.CreateLifecycleResultPayload` with reflection-based or build-time-introspected field discovery against `McpLifecycleResult`.
+  - [x] Replace hardcoded `64_000` / `4_096` renderer bounds with values pulled from `FrontComposerMcpOptions` / `SkillResourceReadOptions`.
 
-- [ ] T7. `FrontComposerRenderContract` adapter (AC14)
-  - [ ] Build a `.Mcp` adapter that constructs a `FrontComposerRenderContract` per Markdown projection resource and exposes it via the descriptor registry.
-  - [ ] Web/Blazor adapter remains a placeholder.
+- [x] T7. `FrontComposerRenderContract` adapter (AC14)
+  - [x] Build a `.Mcp` adapter that constructs a `FrontComposerRenderContract` per Markdown projection resource and exposes it via the descriptor registry.
+  - [x] Web/Blazor adapter remains a placeholder.
 
-- [ ] T8. Tests (AC10–AC12, AC16)
-  - [ ] Add 9-fixture suite under `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/` — fixture file is a small JSON or `.txt` manifest carrying expected fingerprint, algorithm, negotiation result, delta category, renderer metadata.
-  - [ ] Add two-clean-generation test parameterized by culture/timezone/EOL/path-separator/dictionary-order.
-  - [ ] Add table-driven precedence matrix test (9 rows × multiple cause combinations) with leakage assertions on lower-priority message-key / docs-code / agent-category absence.
-  - [ ] Add truncation-determinism test for >25 deltas with a Breaking past index 25.
-  - [ ] Add zero-side-effect tests proving incompatible/unknown/stale negotiation does not invoke command dispatch, query execution, lifecycle mutation, cache writes, or renderer buffers.
+- [x] T8. Tests (AC10-AC12, AC16)
+  - [x] Add 9-fixture suite under `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/` — fixture file is a small JSON or `.txt` manifest carrying expected fingerprint, algorithm, negotiation result, delta category, renderer metadata.
+  - [x] Add two-clean-generation test parameterized by culture/timezone/EOL/path-separator/dictionary-order.
+  - [x] Add table-driven precedence matrix test (9 rows x multiple cause combinations) with leakage assertions on lower-priority message-key / docs-code / agent-category absence.
+  - [x] Add truncation-determinism test for >25 deltas with a Breaking past index 25.
+  - [x] Add zero-side-effect tests proving incompatible/unknown/stale negotiation does not invoke command dispatch, query execution, lifecycle mutation, cache writes, or renderer buffers.
 
-- [ ] T9. Optional canonicalizer unification (AC13)
-  - [ ] Validate Roslyn analyzer-host JSON dependency loading.
-  - [ ] If safe, refactor SourceTools to call `CanonicalSchemaMaterial.CreatePayload` directly; otherwise document the constraint and keep the two-algorithm v1 contract (D23).
+- [x] T9. Optional canonicalizer unification (AC13)
+  - [x] Validate Roslyn analyzer-host JSON dependency loading.
+  - [x] If safe, refactor SourceTools to call `CanonicalSchemaMaterial.CreatePayload` directly; otherwise document the constraint and keep the two-algorithm v1 contract (D23).
 
 ---
 
@@ -189,4 +189,75 @@ the checklist.
 
 ## Change Log
 
+- 2026-05-05: Implemented Story 8.6a runtime gate, baseline resolver, snapshot negotiation, schema taxonomy, aggregate integrity, render-contract adapter, fixture suite, and activated ATDD tests. Status moved to `review`.
 - 2026-05-05: Story 8.6a created via Story 8-6 code-review pass DN-1 resolution. Filed at `ready-for-dev` to track runtime gate wiring, canonicalizer unification, fixture suite, and the 17 patches deferred from Story 8-6 review.
+
+## Dev Agent Record
+
+### Implementation Plan
+
+- Implemented the trusted baseline provider and registered it through MCP DI.
+- Updated negotiation to prefer baseline/server snapshots through `SchemaMigrationDeltaAnalyzer`, with the legacy additive flag retained only as an obsolete compatibility shim.
+- Added a shared runtime schema gate used by projection reads, command invocation, and tool admission after visibility/admission checks and before side effects.
+- Added sanitized schema failure taxonomy for projection and command/tool schema failures.
+- Added runtime aggregate recomputation, MCP Markdown render-contract exposure, lifecycle fingerprint reflection, fixture catalog material, and active ATDD coverage.
+- Canonicalizer unification validation retained the Story 8-6 D23 two-algorithm v1 contract.
+
+### Debug Log
+
+- `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`: passed with 0 warnings/errors.
+- `dotnet test Hexalith.FrontComposer.sln --no-build`: passed (Contracts 159, MCP 253, Shell 1542, SourceTools 623 with 64 unrelated drift scaffolds skipped, Bench 2).
+
+### Completion Notes
+
+- Runtime schema negotiation now runs on projection, command, and tool admission paths when a client fingerprint hint is present, preserving hidden/unknown precedence and blocking side effects for incompatible, unsupported, unknown-baseline, and integrity-mismatch outcomes.
+- Schema failure responses now use bounded sanitized categories/docs codes without raw fingerprints, hidden resource names, tenant identifiers, paths, or exception text.
+- Baseline resolution is package-owned and in-memory, rejecting path-like or external identifiers before comparison.
+- Aggregate manifest integrity is recomputed at registry load for canonical-json aggregate fingerprints, and the runtime aggregator surface accepts corpus fingerprints.
+- MCP Markdown render contracts are exposed from the descriptor registry with bounds derived from live MCP options; Web/Blazor remains out of scope.
+- SourceTools lifecycle fingerprint material now derives from the runtime `McpLifecycleResult` type when present, and the analyzer now preserves `AdditiveCompatible` for optional-only drift across truncation.
+
+### File List
+
+- `_bmad-output/implementation-artifacts/8-6a-schema-negotiation-runtime-gate.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs`
+- `src/Hexalith.FrontComposer.Mcp/FrontComposerMcpDescriptorRegistry.cs`
+- `src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpCommandInvoker.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionFailureMapper.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpToolAdmissionService.cs`
+- `src/Hexalith.FrontComposer.Mcp/Invocation/McpLifecycleModels.cs`
+- `src/Hexalith.FrontComposer.Mcp/McpToolResolutionResult.cs`
+- `src/Hexalith.FrontComposer.Mcp/Schema/FrontComposerMcpRuntimeManifestAggregator.cs`
+- `src/Hexalith.FrontComposer.Mcp/Schema/ISchemaBaselineProvider.cs`
+- `src/Hexalith.FrontComposer.Mcp/Schema/ISkillCorpusFingerprintProvider.cs`
+- `src/Hexalith.FrontComposer.Mcp/Schema/InMemorySchemaBaselineProvider.cs`
+- `src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs`
+- `src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiationRuntimeGate.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/SchemaMigrationDeltaAnalyzer.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerSchemaGateTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaGateTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaTaxonomyTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSchemaGateTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/RenderContractAdapterTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationSnapshotInputTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaTruncationTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v1.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-compatible.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-structural-delta.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-unknown.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-hidden-precedence.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-order.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-runtime-data.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-unknown-precedence.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/surface-metadata-only-renderer.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintDeterminismTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintReflectionTests.cs`

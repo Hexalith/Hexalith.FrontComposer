@@ -1,4 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Schema;
+using Hexalith.FrontComposer.SourceTools.Diagnostics;
 
 namespace Hexalith.FrontComposer.Mcp.Schema;
 
@@ -21,8 +22,11 @@ public sealed record McpSchemaNegotiationInput(
     SchemaFingerprint? ClientFingerprint,
     SchemaFingerprint? ServerFingerprint,
     bool HasTrustedBaseline,
+    [property: Obsolete("Use Baseline and Server snapshots; the negotiator derives compatibility via SchemaMigrationDeltaAnalyzer.")]
     bool HasCompatibleAdditiveDrift,
-    bool HasSchemaIntegrityMismatch);
+    bool HasSchemaIntegrityMismatch,
+    SchemaBaselineSnapshot? Baseline = null,
+    SchemaBaselineSnapshot? Server = null);
 
 public sealed record McpSchemaNegotiationResult(
     McpSchemaNegotiationResultKind Kind,
@@ -151,7 +155,28 @@ public static class McpSchemaNegotiator {
                 false);
         }
 
-        if (hashesMatch) {
+        SchemaCompatibilityDecision? snapshotDecision = CompareSnapshots(input);
+        if (snapshotDecision is SchemaCompatibilityDecision.UnsupportedAlgorithm) {
+            return Result(
+                McpSchemaNegotiationResultKind.UnsupportedAlgorithm,
+                FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm,
+                "unsupported-schema-fingerprint",
+                "schema.algorithm.unsupported",
+                "HFC-SCHEMA-UNSUPPORTED-ALGORITHM",
+                false);
+        }
+
+        if (snapshotDecision is SchemaCompatibilityDecision.Unknown) {
+            return Result(
+                McpSchemaNegotiationResultKind.UnknownServerBaseline,
+                FrontComposerMcpFailureCategory.UnknownSchemaBaseline,
+                "schema-unavailable",
+                "schema.baseline.unknown",
+                "HFC-SCHEMA-UNKNOWN-BASELINE",
+                false);
+        }
+
+        if (snapshotDecision is SchemaCompatibilityDecision.Exact) {
             return Result(
                 McpSchemaNegotiationResultKind.Exact,
                 FrontComposerMcpFailureCategory.None,
@@ -161,7 +186,20 @@ public static class McpSchemaNegotiator {
                 true);
         }
 
-        if (input.HasCompatibleAdditiveDrift) {
+        if (hashesMatch && snapshotDecision is null) {
+            return Result(
+                McpSchemaNegotiationResultKind.Exact,
+                FrontComposerMcpFailureCategory.None,
+                "schema-exact",
+                "schema.exact",
+                "HFC-SCHEMA-EXACT",
+                true);
+        }
+
+        if (snapshotDecision is SchemaCompatibilityDecision.CompatibleWarning or SchemaCompatibilityDecision.AdditiveCompatible
+#pragma warning disable CS0618
+            || (snapshotDecision is null && input.HasCompatibleAdditiveDrift)) {
+#pragma warning restore CS0618
             return Result(
                 McpSchemaNegotiationResultKind.CompatibleAdditive,
                 FrontComposerMcpFailureCategory.None,
@@ -178,6 +216,15 @@ public static class McpSchemaNegotiator {
             "schema.incompatible",
             "HFC-SCHEMA-MISMATCH",
             false);
+    }
+
+    private static SchemaCompatibilityDecision? CompareSnapshots(McpSchemaNegotiationInput input) {
+        if (input.Baseline is null || input.Server is null) {
+            return null;
+        }
+
+        SchemaMigrationDeltaResult delta = SchemaMigrationDeltaAnalyzer.Compare(input.Baseline, input.Server);
+        return delta.Decision;
     }
 
     private static McpSchemaNegotiationResult Result(

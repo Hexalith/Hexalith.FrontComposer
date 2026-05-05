@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.Mcp.Rendering;
+using Hexalith.FrontComposer.Mcp.Schema;
 using Hexalith.FrontComposer.Mcp.Skills;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
@@ -36,6 +37,7 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         services.TryAddScoped<IFrontComposerMcpAgentContextAccessor, HttpFrontComposerMcpAgentContextAccessor>();
         services.TryAddScoped<FrontComposerMcpCommandInvoker>();
         services.TryAddScoped<FrontComposerMcpProjectionReader>();
+        services.TryAddScoped<ISchemaBaselineProvider, InMemorySchemaBaselineProvider>();
         services.TryAddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
         services.TryAddScoped<FrontComposerMcpLifecycleTracker>();
         // P-3: resource visibility revalidation is mandatory. Hosts MUST register a real gate

@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json.Nodes;
 
 using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -81,6 +82,11 @@ public sealed class FrontComposerMcpToolAdmissionService(
         McpVisibleToolCatalogEntry? exact = catalog.Tools
             .FirstOrDefault(t => string.Equals(t.Name, requestedName, StringComparison.Ordinal));
         if (exact is not null) {
+            McpSchemaNegotiationResult? schema = SchemaNegotiationRuntimeGate.EvaluateCommand(exact.Descriptor, agentContextAccessor, services);
+            if (schema is not null && !schema.AllowsSideEffects) {
+                return McpToolResolutionResult.Reject(sanitizedRequested, schema.FailureCategory, catalog);
+            }
+
             return McpToolResolutionResult.Accept(exact, catalog);
         }
 

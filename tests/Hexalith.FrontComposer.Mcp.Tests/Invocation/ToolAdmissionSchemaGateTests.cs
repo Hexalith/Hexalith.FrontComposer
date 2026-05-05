@@ -21,9 +21,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// fingerprint must demote the resolution to a sanitized rejection.
 /// </summary>
 public sealed class ToolAdmissionSchemaGateTests {
-    private const string SkipReason = "RED-PHASE: T3 — tool admission schema-gate wiring pending.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task ResolveAsync_StaleClientFingerprint_RejectsWithSanitizedSchemaCategory() {
         FrontComposerMcpToolAdmissionService admission = BuildAdmission(SchemaHintFor("stale-client"));
 
@@ -36,7 +34,7 @@ public sealed class ToolAdmissionSchemaGateTests {
         resolution.Tool.ShouldBeNull();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task ResolveAsync_UnsupportedAlgorithm_RejectsBeforeReturning() {
         FrontComposerMcpToolAdmissionService admission = BuildAdmission(
             new SchemaFingerprint("frontcomposer.schema.sha512.future", new string('z', 64)));
@@ -75,7 +73,8 @@ public sealed class ToolAdmissionSchemaGateTests {
                 "Pay invoice",
                 null,
                 [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
-                ["TenantId", "UserId", "MessageId"]),
+                ["TenantId", "UserId", "MessageId"],
+                Fingerprint: new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64))),
         ], []);
 
     private sealed class SchemaAwareStaticAccessor(SchemaFingerprint clientFingerprintHint) : IFrontComposerMcpAgentContextAccessor {

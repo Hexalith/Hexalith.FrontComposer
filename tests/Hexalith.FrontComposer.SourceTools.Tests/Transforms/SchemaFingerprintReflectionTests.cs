@@ -15,9 +15,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 /// must read its bounds from <c>FrontComposerMcpOptions</c> / <c>SkillResourceReadOptions</c>.
 /// </summary>
 public sealed class SchemaFingerprintReflectionTests {
-    private const string SkipReason = "RED-PHASE: T6 — lifecycle / renderer fingerprint reflection pending.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void LifecycleResultPayload_FieldsMatchRuntimeType_ReflectivelyDiscovered() {
         // T6 replaces the hardcoded literal field list with reflection-based discovery. After T6,
         // the canonical blob's `field=` lines must equal the McpLifecycleResult public property
@@ -42,7 +40,7 @@ public sealed class SchemaFingerprintReflectionTests {
             "AC9: lifecycle payload field list must derive from McpLifecycleResult, not from a literal constant.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void LifecycleResultPayload_SourceDoesNotEmbedLiteralFieldArray() {
         // AC9 stricter form: the transform body must not contain the legacy literal field rows.
         string? source = LocateTransformSource();
@@ -53,7 +51,7 @@ public sealed class SchemaFingerprintReflectionTests {
         source!.ShouldNotContain("correlationId|string|string|required|not-null");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void RendererPayload_BoundsAreNotMagicNumbers_PulledFromOptions() {
         // T6 replaces the hardcoded 64_000 / 4_096 in CreateMarkdownRendererPayload with values
         // pulled from FrontComposerMcpOptions / SkillResourceReadOptions. Verify the transform
@@ -66,7 +64,7 @@ public sealed class SchemaFingerprintReflectionTests {
         source!.ShouldNotContain("4_096");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void LifecyclePayload_FingerprintIsStable_AcrossInvocations() {
         // Determinism counter-test. Even with reflection-based discovery, two consecutive calls
         // produce the same fingerprint (no environment / time / GUID drift).
@@ -98,6 +96,13 @@ public sealed class SchemaFingerprintReflectionTests {
         // SourceTools intentionally has no project reference to .Mcp (build-time tools only depend
         // on Contracts). Probe loaded assemblies first; fall back to file-system-side load if the
         // dev later wires a typed contract for the lifecycle field list.
+        try {
+            _ = Assembly.Load("Hexalith.FrontComposer.Mcp");
+        }
+        catch {
+            // Fall through to loaded assemblies; the assertion below reports the contract miss.
+        }
+
         Type? loaded = AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(SafeGetTypes)
             .FirstOrDefault(t => t.FullName == "Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult");

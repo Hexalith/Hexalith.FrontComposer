@@ -20,9 +20,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// (Story 8-5 D4 / D22), even though the build-time emitter cannot see them.
 /// </summary>
 public sealed class AggregateManifestIntegrityTests {
-    private const string SkipReason = "RED-PHASE: T5 — runtime aggregate integrity check pending.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void DescriptorRegistry_LoadingTamperedAggregate_FailsClosed_WithIntegrityMismatch() {
         // Build a manifest where the embedded aggregate fingerprint is forged so it disagrees
         // with the structurally-recomputed aggregate over its nested resource fingerprints.
@@ -57,7 +55,7 @@ public sealed class AggregateManifestIntegrityTests {
         ex.Message.ToLowerInvariant().ShouldContain("integrity");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void RuntimeAggregate_IncludesCorpusFingerprints_WhenSkillCorpusIsLoaded() {
         // AC8: the runtime aggregate manifest fingerprint must include skill corpus resource
         // fingerprints. The build-time aggregate (emitted by SourceTools) cannot see corpus
@@ -80,7 +78,7 @@ public sealed class AggregateManifestIntegrityTests {
         hasCorpusParameter.ShouldBeTrue("AC8: aggregator surface must accept skill corpus fingerprints.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void RuntimeAggregate_TamperedCorpusFingerprint_TripsIntegrityMismatch() {
         // AC7 + AC8 combined: a corpus loader that returns a fingerprint not present in the
         // SourceTools-emitted aggregate must trip integrity mismatch at runtime, not silently

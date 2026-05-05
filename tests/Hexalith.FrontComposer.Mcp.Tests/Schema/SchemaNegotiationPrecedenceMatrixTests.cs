@@ -13,9 +13,6 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// lower-priority message-key, docs-code, or agent-category bleeds into the response.
 /// </summary>
 public sealed class SchemaNegotiationPrecedenceMatrixTests {
-    private const string SkipMatrix = "RED-PHASE: T8 — precedence-matrix scaffold pending. Unskip alongside T2 + T3.";
-    private const string SkipLeakage = "RED-PHASE: T3 telemetry / T4 mapper — leakage guards pending.";
-
     private static readonly SchemaFingerprint Server = new(
         SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
         new string('a', 64));
@@ -122,7 +119,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
         return data;
     }
 
-    [Theory(Skip = SkipMatrix)]
+    [Theory]
     [MemberData(nameof(Cases))]
     public void Negotiate_PrecedenceMatrix_RowYieldsExpectedClassification(PrecedenceCase row) {
         ArgumentNullException.ThrowIfNull(row);
@@ -132,7 +129,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
         result.AgentCategory.ShouldBe(row.ExpectedAgentCategory, $"row {row.Name}");
     }
 
-    [Theory(Skip = SkipLeakage)]
+    [Theory]
     [MemberData(nameof(Cases))]
     public void LeakageGuards_LowerPriorityFieldsDoNotBleedIntoResult(PrecedenceCase row) {
         ArgumentNullException.ThrowIfNull(row);
@@ -146,7 +143,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
         result.DocsCode.ShouldNotBeNullOrWhiteSpace();
     }
 
-    [Fact(Skip = SkipLeakage)]
+    [Fact]
     public void LeakageGuards_NoFingerprintHashEverAppearsInPublicFields() {
         // AC15: no raw client fingerprint hashes leak through agent-visible fields.
         McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(BuildInput(new PrecedenceCase(
@@ -166,7 +163,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
         result.DocsCode.ShouldNotContain(Client.Value);
     }
 
-    [Fact(Skip = SkipLeakage)]
+    [Fact]
     public void LeakageGuards_DocsCodeIsBoundedShortStableIdentifier() {
         // AC15 / Story 8-4a: docs codes are bounded short identifiers, not free-form messages.
         McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(BuildInput(new PrecedenceCase(
@@ -191,6 +188,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             ? new SchemaFingerprint("frontcomposer.schema.sha512.future", Server.Value)
             : Server;
 
+#pragma warning disable CS0618
         return new McpSchemaNegotiationInput(
             IsHiddenOrUnknown: row.IsHidden,
             IsStaleDescriptor: row.IsStale,
@@ -199,6 +197,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             HasTrustedBaseline: row.BaselineTrusted,
             HasCompatibleAdditiveDrift: row.AdditiveDrift,
             HasSchemaIntegrityMismatch: row.IntegrityMismatch);
+#pragma warning restore CS0618
     }
 
     public sealed record PrecedenceCase(

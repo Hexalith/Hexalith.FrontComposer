@@ -13,9 +13,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 /// truncated result still classifies as Breaking.
 /// </summary>
 public sealed class SchemaMigrationDeltaTruncationTests {
-    private const string SkipReason = "RED-PHASE: T8 — truncation determinism scaffold pending. Activate when fixture suite lands.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Compare_BreakingDeltaPastIndex25_StillProducesBreakingAggregate() {
         // 30 fields total: indexes 0..27 are added optional (compatible), indexes 28..29 add a
         // type-changed required field (Breaking). Index 28 sits past the truncation boundary.
@@ -44,7 +42,7 @@ public sealed class SchemaMigrationDeltaTruncationTests {
             "AC12: truncation must not downgrade the aggregate decision; a Breaking delta past index 25 still wins.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Compare_OnlyAdditiveDeltasPast25_AggregatesToAdditiveCompatible() {
         // Counter-test: 30 added optional fields → all compatible-additive. The aggregate must
         // not over-correct to Breaking just because truncation occurred.

@@ -18,9 +18,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Rendering;
 /// remain placeholders pending future stories.
 /// </summary>
 public sealed class RenderContractAdapterTests {
-    private const string SkipReason = "RED-PHASE: T7 — Mcp render-contract adapter pending.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void DescriptorRegistry_ExposesRenderContract_PerMarkdownProjectionResource() {
         FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
 
@@ -30,7 +28,7 @@ public sealed class RenderContractAdapterTests {
         contracts.ShouldContain(c => c.Surface == RenderSurfaceKind.McpMarkdown);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void RenderContract_BoundsMatchOptions_AndCarrySanitizedTaxonomy() {
         FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
 
@@ -47,7 +45,7 @@ public sealed class RenderContractAdapterTests {
             SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void WebBlazorAdapter_RemainsPlaceholder_DoesNotRegisterContract() {
         // Story 8-6a scope guard: only the .Mcp adapter ships in this story; Web/Blazor adapters
         // remain placeholders. The registry must not yet expose a WebBlazor render contract.

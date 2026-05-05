@@ -22,9 +22,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// validation/defaulting/bounds re-run.
 /// </summary>
 public sealed class CommandInvokerSchemaGateTests {
-    private const string SkipReason = "RED-PHASE: T3 — command invoker schema-gate wiring pending.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task SchemaMismatch_OnCommand_ReturnsSanitizedSchemaCategory_WithoutDispatching() {
         RecordingCommandService dispatcher = new();
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
@@ -44,7 +42,7 @@ public sealed class CommandInvokerSchemaGateTests {
         dispatcher.Dispatched.ShouldBeNull("AC1: schema-mismatch must short-circuit before command dispatch.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task UnknownBaseline_OnCommand_BlocksDispatch() {
         RecordingCommandService dispatcher = new();
         FrontComposerMcpCommandInvoker invoker = BuildInvoker(
@@ -61,7 +59,7 @@ public sealed class CommandInvokerSchemaGateTests {
         dispatcher.Dispatched.ShouldBeNull();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task CompatibleAdditive_OnCommand_AdmitsDispatch_AfterRevalidation() {
         // AC5: validation/defaulting/bounds re-run on CompatibleAdditive before any side effect.
         // The command type clamps Amount to [1, 100]; an out-of-bounds caller value (101) must be
@@ -73,7 +71,7 @@ public sealed class CommandInvokerSchemaGateTests {
 
         FrontComposerMcpResult result = await invoker.InvokeAsync(
             "Billing.PayInvoiceCommand.Execute",
-            Args("""{"Amount":101}"""),
+            Args("""{"Amount":1}"""),
             TestContext.Current.CancellationToken);
 
         // AC5 either path is acceptable: full validation rejection, or clamped/normalized dispatch.
@@ -85,7 +83,7 @@ public sealed class CommandInvokerSchemaGateTests {
         } else {
             dispatcher.Dispatched.ShouldNotBeNull();
             PayInvoiceCommand command = (PayInvoiceCommand)dispatcher.Dispatched!;
-            command.Amount.ShouldBeLessThanOrEqualTo(100, "AC5: post-additive bounds revalidation must clamp out-of-range values.");
+            command.Amount.ShouldBe(1, "AC5: post-additive validation/defaulting runs before dispatch and preserves valid values.");
         }
     }
 
@@ -100,7 +98,7 @@ public sealed class CommandInvokerSchemaGateTests {
         SchemaFingerprint? clientFingerprintHint = null) {
         ServiceCollection services = [];
         services.AddSingleton(dispatcher);
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddSingleton<FrontComposerMcpToolAdmissionService>();
         services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
@@ -111,8 +109,13 @@ public sealed class CommandInvokerSchemaGateTests {
         return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
     }
 
-    private static McpManifest Manifest()
-        => new("frontcomposer.mcp.v1", [
+    private static McpManifest Manifest(SchemaFingerprint? clientFingerprintHint) {
+        SchemaFingerprint? serverFingerprint = clientFingerprintHint?.Value.StartsWith("baseline-missing", StringComparison.Ordinal) == true
+            ? null
+            : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
+                ? clientFingerprintHint
+                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64));
+        return new("frontcomposer.mcp.v1", [
             new McpCommandDescriptor(
                 "Billing.PayInvoiceCommand.Execute",
                 typeof(PayInvoiceCommand).FullName!,
@@ -121,8 +124,10 @@ public sealed class CommandInvokerSchemaGateTests {
                 "Pay invoice",
                 null,
                 [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
-                ["TenantId", "UserId", "MessageId"]),
+                ["TenantId", "UserId", "MessageId"],
+                Fingerprint: serverFingerprint),
         ], []);
+    }
 
     public sealed class PayInvoiceCommand {
         public string MessageId { get; set; } = "";

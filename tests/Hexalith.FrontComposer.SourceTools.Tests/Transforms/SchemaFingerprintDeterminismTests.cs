@@ -14,9 +14,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 /// (StringComparer.Ordinal) is the contract under test.
 /// </summary>
 public sealed class SchemaFingerprintDeterminismTests {
-    private const string SkipReason = "RED-PHASE: T8 — two-clean-generation determinism harness pending.";
-
-    [Theory(Skip = SkipReason)]
+    [Theory]
     [InlineData("en-US")]
     [InlineData("tr-TR")] // dotted-i / dotless-i lowercase quirk
     [InlineData("de-DE")]
@@ -41,7 +39,7 @@ public sealed class SchemaFingerprintDeterminismTests {
         }
     }
 
-    [Theory(Skip = SkipReason)]
+    [Theory]
     [InlineData("\n")]
     [InlineData("\r\n")]
     [InlineData("\r")]

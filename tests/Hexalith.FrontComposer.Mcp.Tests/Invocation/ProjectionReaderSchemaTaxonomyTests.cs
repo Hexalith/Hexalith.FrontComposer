@@ -15,9 +15,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// code — and must not collapse to the generic <c>downstream_failed</c> path.
 /// </summary>
 public sealed class ProjectionReaderSchemaTaxonomyTests {
-    private const string SkipReason = "RED-PHASE: T4 — projection failure mapper schema branches pending.";
-
-    [Theory(Skip = SkipReason)]
+    [Theory]
     [InlineData(FrontComposerMcpFailureCategory.SchemaMismatch, "schema-mismatch", "HFC-MCP-PROJECTION-SCHEMA-MISMATCH", false, false)]
     [InlineData(FrontComposerMcpFailureCategory.UnknownSchemaBaseline, "schema-unavailable", "HFC-MCP-PROJECTION-SCHEMA-UNAVAILABLE", false, false)]
     [InlineData(FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm, "unsupported-schema-fingerprint", "HFC-MCP-PROJECTION-UNSUPPORTED-SCHEMA-ALGORITHM", false, false)]
@@ -42,7 +40,7 @@ public sealed class ProjectionReaderSchemaTaxonomyTests {
             "AC1: schema categories must not collapse to the generic downstream_failed branch.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Map_SchemaCategories_NeverFlagAsHiddenEquivalent() {
         // Story 8-2 hidden-equivalent collapse is for tenant/auth/policy cases — schema categories
         // are publicly diagnosable (a stale client should know to re-fetch the manifest).
@@ -58,7 +56,7 @@ public sealed class ProjectionReaderSchemaTaxonomyTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void SanitizedPayload_StructuredContent_ContainsOnlyBoundedFields() {
         // AC15: agent-visible structured content carries only category / message / docsCode /
         // retryable / refreshResources / isHiddenEquivalent. No raw exception text, no client
@@ -75,7 +73,7 @@ public sealed class ProjectionReaderSchemaTaxonomyTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void SanitizedPayload_DoesNotEcho_RawClientHashOrTenantId() {
         FrontComposerMcpResult result = InvokeMapper(FrontComposerMcpFailureCategory.SchemaMismatch);
         string serialized = result.StructuredContent!.ToJsonString();
