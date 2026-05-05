@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using System.Text;
 
+using Hexalith.FrontComposer.Contracts.Schema;
+
 namespace Hexalith.FrontComposer.SourceTools.Transforms;
 
 public sealed class GeneratedSchemaFingerprint {
@@ -32,15 +34,43 @@ public sealed class GeneratedSchemaPayload {
 }
 
 public static class SchemaFingerprintTransform {
-    public const string AlgorithmId = "frontcomposer.schema.sha256.canonical-json.v1";
-    public const string CanonicalizerVersion = "frontcomposer.canonical-json.v1";
-    public const string TestVectorId = "hfc-schema-v1";
+    // P-15 / DN-2: SourceTools-emitted fingerprints declare a distinct algorithm id from the
+    // Contracts canonical-JSON form because the build-time canonicalizer here produces a
+    // newline-delimited key=value text blob, not JSON. Both algorithms are supported by the
+    // runtime negotiator since the runtime trusts emitter-supplied fingerprints (it never
+    // recomputes them). Unifying the canonicalizers is deferred to Story 8-6a (D23).
+    public const string AlgorithmId = SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1;
+    public const string CanonicalizerVersion = SchemaFingerprintAlgorithm.CanonicalizerVersionV1;
+    public const string TestVectorId = SchemaFingerprintAlgorithm.TestVectorIdV1;
     public const string CommandSchemaVersion = "frontcomposer.command-tool.v1";
     public const string ProjectionResourceSchemaVersion = "frontcomposer.projection-resource.v1";
     public const string LifecycleResultSchemaVersion = "frontcomposer.lifecycle-result.v1";
     public const string MarkdownRendererSchemaVersion = "frontcomposer.renderer.markdown.v1";
     public const string SkillCorpusSchemaVersion = "frontcomposer.skill-corpus.v1";
     public const string AggregateManifestSchemaVersion = "frontcomposer.mcp-manifest.aggregate.v1";
+
+    /// <summary>
+    /// Sentinel emitted into canonical fingerprint material in place of a null/absent optional
+    /// scalar so a logical "value not provided" hashes differently from an explicit empty string.
+    /// Mirrors <c>CanonicalSchemaMaterial.AbsentValueSentinel</c> on the runtime side.
+    /// </summary>
+    public const string AbsentValueSentinel = "<absent>";
+
+    /// <summary>
+    /// Defense-in-depth: parameter names that must never appear in a structural fingerprint
+    /// because they are runtime correlation/identity values (per AC4 / D4). The upstream
+    /// <c>McpManifestTransform</c> already excludes these by parameter selection, but this
+    /// filter makes the invariant structurally enforced at the canonicalization edge.
+    /// </summary>
+    private static readonly HashSet<string> RuntimeCorrelationFieldNames = new(StringComparer.OrdinalIgnoreCase) {
+        "MessageId",
+        "TenantId",
+        "CorrelationId",
+        "UserId",
+        "Principal",
+        "Claims",
+        "Token",
+    };
 
     public static GeneratedSchemaPayload CreateCommandPayload(McpCommandDescriptorModel command)
         => Payload(
@@ -50,10 +80,12 @@ public static class SchemaFingerprintTransform {
             command.BoundedContext,
             command.CommandTypeName,
             command.ProtocolName,
-            command.Parameters.Select(FieldLine),
+            command.Parameters
+                .Where(p => !RuntimeCorrelationFieldNames.Contains(p.Name))
+                .Select(FieldLine),
             new Dictionary<string, string>(StringComparer.Ordinal) {
-                ["authorizationPolicy"] = command.AuthorizationPolicyName ?? "",
-                ["description"] = command.Description ?? "",
+                ["authorizationPolicy"] = OptionalScalar(command.AuthorizationPolicyName),
+                ["description"] = OptionalScalar(command.Description),
                 ["derivablePropertyCount"] = command.DerivablePropertyNames.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 ["title"] = command.Title,
             });
@@ -66,11 +98,13 @@ public static class SchemaFingerprintTransform {
             resource.BoundedContext,
             resource.ProjectionTypeName,
             resource.ProtocolUri,
-            resource.Fields.Select(FieldLine),
+            resource.Fields
+                .Where(p => !RuntimeCorrelationFieldNames.Contains(p.Name))
+                .Select(FieldLine),
             new Dictionary<string, string>(StringComparer.Ordinal) {
-                ["description"] = resource.Description ?? "",
-                ["emptyStateCtaCommandName"] = resource.EmptyStateCtaCommandName ?? "",
-                ["entityPluralLabel"] = resource.EntityPluralLabel ?? "",
+                ["description"] = OptionalScalar(resource.Description),
+                ["emptyStateCtaCommandName"] = OptionalScalar(resource.EmptyStateCtaCommandName),
+                ["entityPluralLabel"] = OptionalScalar(resource.EntityPluralLabel),
                 ["name"] = resource.Name,
                 ["renderStrategy"] = resource.RenderStrategy,
                 ["title"] = resource.Title,
@@ -168,21 +202,35 @@ public static class SchemaFingerprintTransform {
         string protocolIdentifier,
         IEnumerable<string> fields,
         IReadOnlyDictionary<string, string> metadata) {
+        // P-1: every user-controlled scalar that crosses the canonical-blob delimiters
+        // (`=`, `|`, `\n`) is escaped so an attacker- or user-controlled string (XML doc,
+        // attribute Description, etc.) cannot synthesize a fake `metadata.X=...\n` line and
+        // collide with a different schema. Backslash escapes are reversible: `\\` → `\`,
+        // `\n` → newline, `\=` → equals, `\|` → pipe, `\:` → colon. Field lines pre-escape
+        // their cells inside FieldLine; static identifiers (family/protocol/family-keys) are
+        // author-controlled and do not require escaping.
         var sb = new StringBuilder(1024);
         sb.Append("root=frontcomposer.schema.contract.v1\n");
-        sb.Append("family=").Append(Normalize(family)).Append('\n');
-        sb.Append("contractId=").Append(Normalize(contractId)).Append('\n');
-        sb.Append("schemaVersion=").Append(Normalize(schemaVersion)).Append('\n');
-        sb.Append("boundedContext=").Append(Normalize(boundedContext)).Append('\n');
-        sb.Append("fqn=").Append(Normalize(fullyQualifiedName)).Append('\n');
-        sb.Append("protocol=").Append(Normalize(protocolIdentifier)).Append('\n');
+        sb.Append("family=").Append(EscapeDelimited(Normalize(family))).Append('\n');
+        sb.Append("contractId=").Append(EscapeDelimited(Normalize(contractId))).Append('\n');
+        sb.Append("schemaVersion=").Append(EscapeDelimited(Normalize(schemaVersion))).Append('\n');
+        sb.Append("boundedContext=").Append(EscapeDelimited(Normalize(boundedContext))).Append('\n');
+        sb.Append("fqn=").Append(EscapeDelimited(Normalize(fullyQualifiedName))).Append('\n');
+        sb.Append("protocol=").Append(EscapeDelimited(Normalize(protocolIdentifier))).Append('\n');
         sb.Append("collections=fields:non-structural-sorted:name\n");
         foreach (string field in fields.OrderBy(f => f, StringComparer.Ordinal)) {
+            // Field lines are pre-escaped per cell inside FieldLine (commands/resources); for
+            // hand-authored static field strings (lifecycle/markdown/skill-corpus), the
+            // surface here is author-controlled, so newline normalization is sufficient.
             sb.Append("field=").Append(Normalize(field)).Append('\n');
         }
 
         foreach (KeyValuePair<string, string> pair in metadata.OrderBy(p => p.Key, StringComparer.Ordinal)) {
-            sb.Append("metadata.").Append(Normalize(pair.Key)).Append('=').Append(Normalize(pair.Value)).Append('\n');
+            sb.Append("metadata.")
+                .Append(EscapeDelimited(Normalize(pair.Key)))
+                .Append('=')
+                .Append(EscapeDelimited(Normalize(pair.Value)))
+                .Append('\n');
         }
 
         string json = sb.ToString();
@@ -192,25 +240,59 @@ public static class SchemaFingerprintTransform {
     }
 
     private static string FieldLine(McpParameterDescriptorModel parameter)
+        // Pipe-delimited record. EscapeDelimited per cell prevents a `|` inside a parameter
+        // name/description from synthesizing additional positional fields and colliding with
+        // an unrelated parameter.
         => string.Join("|", [
-            parameter.Name,
-            parameter.TypeName,
-            parameter.JsonType,
+            EscapeDelimited(parameter.Name),
+            EscapeDelimited(parameter.TypeName),
+            EscapeDelimited(parameter.JsonType),
             parameter.IsRequired ? "required" : "optional",
             parameter.IsNullable ? "nullable" : "not-null",
-            parameter.Title,
-            parameter.Description ?? "",
-            string.Join(",", parameter.EnumValues.OrderBy(v => v, StringComparer.Ordinal)),
+            EscapeDelimited(parameter.Title),
+            EscapeDelimited(OptionalScalar(parameter.Description)),
+            string.Join(",", parameter.EnumValues.OrderBy(v => v, StringComparer.Ordinal).Select(EscapeDelimited)),
             parameter.IsUnsupported ? "unsupported" : "supported",
-            string.Join(",", parameter.BadgeMappings.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => p.Key + ":" + p.Value)),
-            parameter.DisplayFormat,
+            string.Join(",", parameter.BadgeMappings.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => EscapeDelimited(p.Key) + ":" + EscapeDelimited(p.Value))),
+            EscapeDelimited(parameter.DisplayFormat),
         ]);
 
     private static string Normalize(string value)
         => (value ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Trim();
 
+    /// <summary>
+    /// Returns <see cref="AbsentValueSentinel"/> for null/empty/whitespace input so the
+    /// fingerprint distinguishes "value not provided" from explicit empty string. P-4.
+    /// </summary>
+    private static string OptionalScalar(string? value)
+        => string.IsNullOrWhiteSpace(value) ? AbsentValueSentinel : value!;
+
+    /// <summary>
+    /// Escapes the four canonical-blob delimiters so the canonical text cannot be ambiguously
+    /// re-parsed and so attacker-controlled metadata values cannot be crafted to collide. P-1.
+    /// </summary>
+    private static string EscapeDelimited(string value) {
+        if (string.IsNullOrEmpty(value)) {
+            return string.Empty;
+        }
+
+        var sb = new StringBuilder(value.Length);
+        foreach (char c in value) {
+            switch (c) {
+                case '\\': sb.Append("\\\\"); break;
+                case '=': sb.Append("\\="); break;
+                case '|': sb.Append("\\|"); break;
+                case ':': sb.Append("\\:"); break;
+                case '\n': sb.Append("\\n"); break;
+                default: sb.Append(c); break;
+            }
+        }
+
+        return sb.ToString();
+    }
+
     private static string JoinFingerprints(IEnumerable<GeneratedSchemaFingerprint> fingerprints)
-        => string.Join("|", fingerprints.Select(f => f.AlgorithmId + ":" + f.Value).OrderBy(v => v, StringComparer.Ordinal));
+        => string.Join("|", fingerprints.Select(f => EscapeDelimited(f.AlgorithmId) + ":" + EscapeDelimited(f.Value)).OrderBy(v => v, StringComparer.Ordinal));
 
     private static string Sha256Hex(string value) {
         using SHA256 sha = SHA256.Create();

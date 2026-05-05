@@ -1,15 +1,41 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.Unicode;
 
 namespace Hexalith.FrontComposer.Contracts.Schema;
+
+/// <summary>
+/// Sanitized exception type raised by canonical schema material validation failures.
+/// The message contains stable category/key only; raw paths and validation values are
+/// kept on the typed properties so callers can decide whether to log them.
+/// </summary>
+public sealed class SchemaMaterialValidationException : InvalidOperationException {
+    public SchemaMaterialValidationException(SchemaMaterialValidationResult validation)
+        : base(validation?.MessageKey ?? "schema.material.invalid") {
+        Validation = validation ?? throw new ArgumentNullException(nameof(validation));
+    }
+
+    public SchemaMaterialValidationResult Validation { get; }
+}
 
 /// <summary>
 /// Well-known v1 schema fingerprint algorithm identifiers.
 /// </summary>
 public static class SchemaFingerprintAlgorithm {
+    /// <summary>SHA-256 over canonical JSON serialization performed by <see cref="CanonicalSchemaMaterial"/>.</summary>
     public const string Sha256CanonicalJsonV1 = "frontcomposer.schema.sha256.canonical-json.v1";
+
+    /// <summary>
+    /// SHA-256 over the SourceTools-emitted newline-delimited key=value canonical blob. Distinct
+    /// from <see cref="Sha256CanonicalJsonV1"/> because the build-time canonicalizer cannot share
+    /// the runtime System.Text.Json source-gen pipeline (Roslyn analyzer hosting constraint).
+    /// Documented as the v1 dual-algorithm contract (D23 in Story 8-6).
+    /// </summary>
+    public const string Sha256SourceToolsBlobV1 = "frontcomposer.schema.sha256.v1.sourcetools-blob";
+
     public const string CanonicalizerVersionV1 = "frontcomposer.canonical-json.v1";
     public const string TestVectorIdV1 = "hfc-schema-v1";
 }
@@ -79,6 +105,9 @@ public enum SchemaMaterialValidationCategory {
     UnknownRootDiscriminator,
     UnknownContractFamily,
     DuplicateStableId,
+    DuplicateFieldName,
+    JsonDepthExceeded,
+    PayloadTooLarge,
 }
 
 public sealed record SchemaMaterialValidationResult(
@@ -94,17 +123,45 @@ public sealed record SchemaMaterialValidationResult(
 /// </summary>
 public static class CanonicalSchemaMaterial {
     private const int MaxDepth = 32;
+
+    /// <summary>
+    /// Upper bound on raw canonical JSON byte length accepted by <see cref="ValidateCanonicalJson"/>.
+    /// Prevents an untrusted oversized payload from forcing a full UTF-8 byte allocation.
+    /// </summary>
+    public const int MaxCanonicalJsonBytes = 4 * 1024 * 1024;
+
+    /// <summary>
+    /// Canonical JSON serialization options pinned with a stable JavaScript encoder so default
+    /// encoder escape tables changing between .NET runtimes cannot silently drift fingerprints.
+    /// The source-gen <see cref="SchemaFingerprintJsonContext"/> is the type-info resolver, so
+    /// AOT/trim consumers stay supported via the typed <see cref="s_canonicalTypeInfo"/> below.
+    /// </summary>
+    private static readonly JsonSerializerOptions s_canonicalOptions = new() {
+        WriteIndented = false,
+        DefaultIgnoreCondition = JsonIgnoreCondition.Never,
+        Encoder = JavaScriptEncoder.Create(UnicodeRanges.All),
+        TypeInfoResolver = SchemaFingerprintJsonContext.Default,
+    };
+
+    private static readonly System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument> s_canonicalTypeInfo
+        = (System.Text.Json.Serialization.Metadata.JsonTypeInfo<SchemaContractDocument>)s_canonicalOptions.GetTypeInfo(typeof(SchemaContractDocument));
+
     public static SchemaCanonicalPayload CreatePayload(SchemaContractDocument document) {
         if (document is null) {
             throw new ArgumentNullException(nameof(document));
         }
         SchemaMaterialValidationResult validation = ValidateDocument(document);
         if (!validation.IsValid) {
-            throw new InvalidOperationException(validation.MessageKey + ": " + validation.Path);
+            throw new SchemaMaterialValidationException(validation);
         }
 
         SchemaContractDocument normalized = Normalize(document);
-        string json = JsonSerializer.Serialize(normalized, SchemaFingerprintJsonContext.Default.SchemaContractDocument);
+        string json = JsonSerializer.Serialize(normalized, s_canonicalTypeInfo);
+        // P-43: producer-side parser validation closes the AC25 / D16 emit-side gap.
+        SchemaMaterialValidationResult roundTrip = ValidateCanonicalJson(json);
+        if (!roundTrip.IsValid) {
+            throw new SchemaMaterialValidationException(roundTrip);
+        }
         string hash = Sha256Hex(json);
         return new SchemaCanonicalPayload(
             normalized,
@@ -117,16 +174,29 @@ public static class CanonicalSchemaMaterial {
             return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.malformed", "$");
         }
 
+        // P-31: strip a leading UTF-8 BOM before we hand bytes to Utf8JsonReader.
+        string normalizedJson = json.Length > 0 && json[0] == '﻿' ? json.Substring(1) : json;
+
+        // P-33: bound payload size before allocating the UTF-8 byte array.
+        int byteCount = Encoding.UTF8.GetByteCount(normalizedJson);
+        if (byteCount > MaxCanonicalJsonBytes) {
+            return new(false, SchemaMaterialValidationCategory.PayloadTooLarge, "schema.json.payload-too-large", "$");
+        }
+
         try {
-            var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json), new JsonReaderOptions {
+            var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(normalizedJson), new JsonReaderOptions {
                 AllowTrailingCommas = false,
                 CommentHandling = JsonCommentHandling.Disallow,
                 MaxDepth = MaxDepth,
             });
             return ValidateJsonObject(ref reader, "$");
         }
-        catch (JsonException) {
-            return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.malformed", "$");
+        catch (JsonException ex) {
+            // P-30: depth-exceeded is a distinct category so consumers get actionable remediation.
+            bool depthExceeded = ex.Message?.IndexOf("depth", StringComparison.OrdinalIgnoreCase) >= 0;
+            return depthExceeded
+                ? new(false, SchemaMaterialValidationCategory.JsonDepthExceeded, "schema.json.depth-exceeded", "$")
+                : new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.malformed", "$");
         }
     }
 
@@ -149,10 +219,12 @@ public static class CanonicalSchemaMaterial {
             }
         }
 
+        // P-29: field-name duplicates carry their own category distinct from collection-level
+        // stable-id collisions so consumers can branch on validation feedback meaningfully.
         HashSet<string> fieldNames = new(StringComparer.Ordinal);
         foreach (SchemaFieldContract field in document.Fields) {
             if (!fieldNames.Add(field.Name)) {
-                return new(false, SchemaMaterialValidationCategory.DuplicateStableId, "schema.field.duplicate-id", "$.Fields." + field.Name);
+                return new(false, SchemaMaterialValidationCategory.DuplicateFieldName, "schema.field.duplicate-name", "$.Fields." + field.Name);
             }
         }
 
@@ -203,13 +275,58 @@ public static class CanonicalSchemaMaterial {
                     StringComparer.Ordinal),
                 StringComparer.Ordinal);
 
-    private static string NormalizeScalar(string value)
-        => value.Replace("\r\n", "\n")
-            .Replace('\r', '\n')
-            .Trim();
+    /// <summary>
+    /// Sentinel surrogate-pair-free placeholder used by canonical fingerprint material to
+    /// distinguish a logical "value not provided" from an explicit empty string. Chosen to
+    /// avoid collision with any plausible user-provided scalar.
+    /// </summary>
+    public const string AbsentValueSentinel = "<absent>";
 
-    private static string? NormalizeOptional(string? value)
-        => string.IsNullOrWhiteSpace(value) ? null : NormalizeScalar(value!);
+    private static string NormalizeScalar(string value) {
+        if (string.IsNullOrEmpty(value)) {
+            return string.Empty;
+        }
+
+        // P-8: strip a leading BOM and known zero-width characters that arrive from
+        // YAML/markdown loaders; normalize Unicode line separators alongside the existing
+        // CR/LF normalization so culturally identical strings produce identical hashes.
+        var sb = new StringBuilder(value.Length);
+        foreach (char c in value) {
+            switch (c) {
+                case '﻿': // BOM
+                case '​': // zero-width space
+                case '‌': // zero-width non-joiner
+                case '‍': // zero-width joiner
+                    continue;
+                case '\r':
+                    sb.Append('\n');
+                    continue;
+                case '\u2028': // line separator
+                case '\u2029': // paragraph separator
+                    sb.Append('\n');
+                    continue;
+                default:
+                    sb.Append(c);
+                    continue;
+            }
+        }
+
+        return sb.ToString().Replace("\r\n", "\n").Trim();
+    }
+
+    /// <summary>
+    /// Returns null only for null inputs; whitespace-only strings normalize to a sentinel so a
+    /// logical "value not provided" is not silently merged with `"   "`. Callers comparing
+    /// fingerprints can rely on the distinction surviving canonicalization.
+    /// </summary>
+    private static string? NormalizeOptional(string? value) {
+        if (value is null) {
+            return null;
+        }
+
+        string normalized = NormalizeScalar(value);
+        return normalized.Length == 0 ? AbsentValueSentinel : normalized;
+    }
 
     private static string Sha256Hex(string value) {
         using SHA256 sha = SHA256.Create();
@@ -291,6 +408,11 @@ public static class CanonicalSchemaMaterial {
     }
 }
 
+// P-2: pin the JavaScript encoder to a stable Unicode allowlist so default-encoder escape-table
+// changes between .NET runtime versions cannot silently drift the canonical JSON bytes (and
+// therefore every SHA-256 fingerprint). The source-generation attribute does not expose an
+// Encoder property, so the canonical options are built once and consumed by CreatePayload via
+// an explicit JsonTypeInfo lookup against the source-gen context.
 [JsonSerializable(typeof(SchemaContractDocument))]
-[JsonSourceGenerationOptions(WriteIndented = false)]
+[JsonSourceGenerationOptions(WriteIndented = false, DefaultIgnoreCondition = JsonIgnoreCondition.Never)]
 internal sealed partial class SchemaFingerprintJsonContext : JsonSerializerContext;

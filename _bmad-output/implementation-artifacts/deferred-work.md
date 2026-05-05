@@ -1,5 +1,22 @@
 # Deferred Work
 
+## Deferred from: code review of 8-6-schema-versioning-and-multi-surface-abstraction (2026-05-05)
+
+- **DEF-1 — `CompilationHelper.ParseProjection`/`ParseCommand` test infrastructure not in 8-6 diff** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintTransformTests.cs`,`tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs`] — Helper exists in repo from earlier stories; review noted reference but it is pre-existing infrastructure and not in scope. **Owner:** SourceTools test-helper consolidation. Sources: blind.
+- **DEF-2 — `MessageKey` (stable id) and `AgentCategory` (prose) mixed in `McpSchemaNegotiationResult`** [`src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs:54`] — Mirrors existing failure-category naming inconsistency across the MCP surface. **Owner:** v1.x naming-consistency cleanup. Sources: edge.
+
+## Deferred from: code review of 8-5-skill-corpus-and-build-time-agent-support (2026-05-04)
+
+- **DEF-1 — SkillCorpusValidationResult conflates snapshot + validation diagnostics** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:669-671`] — Refactor to discriminated union so callers can distinguish parse-failure from reference-validation failure. **Owner:** Story 8-5 follow-up. Sources: blind.
+- **DEF-2 — SkillResourceReadResult `IsSuccess` + `Category` dual source of truth** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1140-1150`] — Privatize ctor and expose `Success`/`Failure` factories to prevent invalid states. **Owner:** Story 8-5 follow-up. Sources: blind.
+- **DEF-3 — FrontComposerSkillMcpResource caches descriptor at construction; latent stale-on-hot-reload** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1193-1236`] — Today corpus is loaded once at registration so resources are static; future hot-reload would serve stale metadata. **Owner:** v1.x hot-reload story. Sources: blind.
+- **DEF-4 — ReadInt overflow defensive test** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1011-1022`] — `int.TryParse` already returns false on overflow and a diagnostic is emitted; add explicit unit test for `2147483648`. **Owner:** v1.x parser hardening. Sources: edge.
+- **DEF-5 — LowerIdPattern accepts numeric-only IDs and has no length cap** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1051-1052`] — `^[a-z0-9]+(?:-[a-z0-9]+)*$` permits `1234` or 1000-char IDs; no observed abuse path today. **Owner:** v1.x identifier policy. Sources: edge.
+- **DEF-6 — Diagnostic message `Source` field carries raw paths; latent leakage if logged unsanitized** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:737-741`] — No current consumer logs `snapshot.Diagnostics` to a tenant-facing channel; document the contract. **Owner:** v1.x telemetry contract. Sources: edge.
+- **DEF-7 — Frozen-set Ordinal trim contract** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:674-697`] — Lookup keys must be `.Trim()`'d before frozen-set comparison; document the parse-time-trim invariant. **Owner:** Story 8-5 follow-up doc. Sources: blind.
+- **DEF-8 — T1 "owning story/follow-up" per-file metadata** — Rolled into P-43 aggregate manifest (DN-8 resolved → derived aggregate at runtime). **Owner:** Story 8-5 P-43. Sources: auditor.
+- **DEF-9 — Real `TreatWarningsAsErrors=true` compile in generated-code validator (DN-7)** [`src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:721-726`] — Current `Compile` check fires only on substring `"COMPILE_ERROR"`. Live `dotnet build` invocation deferred to Story 10-6 benchmark harness which owns live multi-agent provider gates. **Owner:** Story 10-6. Sources: auditor.
+
 ## Deferred from: code review of 8-4a-projection-rendering-sanitized-taxonomy-and-snapshot pass 2 (2026-05-04)
 
 - **R2-D1 — `ProtocolUriCategory` snapshot field is hardcoded `"frontcomposer_projection"`** [`src/Hexalith.FrontComposer.Mcp/Invocation/FrontComposerMcpProjectionReader.cs:152`] — Decorative metadata; per CD-DN-3 the field is reserved for telemetry/host gating but no per-call differentiation exists. **Owner:** Story 8-6 schema-fingerprint follow-up. Sources: auditor.

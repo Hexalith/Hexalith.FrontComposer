@@ -4,6 +4,17 @@ namespace Hexalith.FrontComposer.SourceTools.Diagnostics;
 
 public static class SchemaMigrationDeltaAnalyzer {
     private const int MaxDeltaCount = 25;
+    private const int MaxPathLength = 256;
+
+    /// <summary>
+    /// Algorithm identifiers the analyzer accepts. Mirrors the negotiator's supported set; the
+    /// SourceTools build-time canonicalizer also flows through here when comparing baselines
+    /// captured at build time. Per D23.
+    /// </summary>
+    private static readonly HashSet<string> SupportedAlgorithms = new(StringComparer.Ordinal) {
+        SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
+        SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1,
+    };
 
     public static SchemaMigrationDeltaResult Compare(
         SchemaBaselineSnapshot baseline,
@@ -17,17 +28,25 @@ public static class SchemaMigrationDeltaAnalyzer {
             throw new ArgumentNullException(nameof(current));
         }
 
-        if (!string.Equals(baseline.Provenance.FingerprintAlgorithm, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)
-            || !string.Equals(current.Provenance.FingerprintAlgorithm, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)) {
+        // P-12: caller-supplied 0 or negative maxDeltaCount would suppress every delta
+        // (including Breaking ones), so reject the misuse rather than silently truncating.
+        if (maxDeltaCount <= 0) {
+            throw new ArgumentOutOfRangeException(nameof(maxDeltaCount), maxDeltaCount, "maxDeltaCount must be positive.");
+        }
+
+        if (!SupportedAlgorithms.Contains(baseline.Provenance.FingerprintAlgorithm ?? string.Empty)
+            || !SupportedAlgorithms.Contains(current.Provenance.FingerprintAlgorithm ?? string.Empty)) {
             return Result(SchemaCompatibilityDecision.UnsupportedAlgorithm, [
-                Delta(SchemaDeltaKind.Truncated, SchemaCompatibilityDecision.UnsupportedAlgorithm, "$.fingerprintAlgorithm", "schema.delta.unsupported-algorithm"),
+                Delta(SchemaDeltaKind.CanonicalizerUnsupported, SchemaCompatibilityDecision.UnsupportedAlgorithm, "$.fingerprintAlgorithm", "schema.delta.unsupported-algorithm"),
             ], false);
         }
 
+        // P-27: distinct CanonicalizerUnsupported kind so consumers branching on delta kind get
+        // actionable canonicalizer-version remediation instead of "your input was truncated".
         if (!string.Equals(baseline.Provenance.CanonicalizerVersion, current.Provenance.CanonicalizerVersion, StringComparison.Ordinal)
             || !string.Equals(baseline.Provenance.TestVectorId, current.Provenance.TestVectorId, StringComparison.Ordinal)) {
             return Result(SchemaCompatibilityDecision.Unknown, [
-                Delta(SchemaDeltaKind.Truncated, SchemaCompatibilityDecision.Unknown, "$.canonicalizer", "schema.delta.unsupported-canonicalizer"),
+                Delta(SchemaDeltaKind.CanonicalizerUnsupported, SchemaCompatibilityDecision.Unknown, "$.canonicalizer", "schema.delta.unsupported-canonicalizer"),
             ], false);
         }
 
@@ -90,33 +109,104 @@ public static class SchemaMigrationDeltaAnalyzer {
             }
         }
 
+        // P-10: compute aggregate decision from the FULL pre-truncation set so a Breaking delta
+        //       past index N is not silently downgraded to CompatibleWarning.
+        // P-11: keep the truncation marker WITHIN the maxDeltaCount budget so callers can size
+        //       their telemetry exactly.
         bool truncated = deltas.Count > maxDeltaCount;
-        if (truncated) {
-            deltas = [.. deltas.Take(maxDeltaCount)];
-            deltas.Add(Delta(SchemaDeltaKind.Truncated, SchemaCompatibilityDecision.CompatibleWarning, "$.Deltas", "schema.delta.truncated"));
-        }
-
         SchemaCompatibilityDecision aggregate = deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
             ? SchemaCompatibilityDecision.Breaking
             : SchemaCompatibilityDecision.CompatibleWarning;
+
+        if (truncated) {
+            // Keep the worst-decision deltas to maximise signal in the bounded window:
+            // Breaking first (so the operator sees the actual blockers), then CompatibleWarning.
+            List<SchemaDelta> ordered = [.. deltas
+                .OrderBy(d => DecisionRank(d.Decision))
+                .ThenBy(d => d.Path, StringComparer.Ordinal)];
+            deltas = [.. ordered.Take(maxDeltaCount - 1)];
+            deltas.Add(Delta(
+                SchemaDeltaKind.Truncated,
+                aggregate, // marker reflects FULL aggregate, not the bounded subset
+                "$.Deltas",
+                "schema.delta.truncated"));
+        }
+        else {
+            deltas = [.. deltas
+                .OrderBy(d => DecisionRank(d.Decision))
+                .ThenBy(d => d.Path, StringComparer.Ordinal)];
+        }
+
+        // P-18: a Breaking delta against shipped public material requires a migration guide
+        // declared on the baseline provenance; if absent, append a MissingMigrationGuide delta
+        // so the build fails closed on un-documented breakage.
+        if (aggregate == SchemaCompatibilityDecision.Breaking && !baseline.Provenance.RequiresMigrationGuide) {
+            deltas.Add(Delta(
+                SchemaDeltaKind.MissingMigrationGuide,
+                SchemaCompatibilityDecision.Breaking,
+                "$.Provenance.RequiresMigrationGuide",
+                "schema.delta.missing-migration-guide"));
+        }
+
         return Result(aggregate, deltas, truncated);
     }
 
+    private static int DecisionRank(SchemaCompatibilityDecision decision)
+        => decision switch {
+            SchemaCompatibilityDecision.Breaking => 0,
+            SchemaCompatibilityDecision.UnsupportedAlgorithm => 1,
+            SchemaCompatibilityDecision.Unknown => 2,
+            SchemaCompatibilityDecision.CompatibleWarning => 3,
+            SchemaCompatibilityDecision.AdditiveCompatible => 4,
+            SchemaCompatibilityDecision.Exact => 5,
+            _ => 6,
+        };
+
+    /// <summary>
+    /// Exact metadata-key allowlist. Keys whose CHANGE has a specific compatibility meaning
+    /// (renderer capability, bounds, skill-corpus resource) are mapped to their dedicated delta
+    /// kinds; every other change emits a generic <see cref="SchemaDeltaKind.MetadataChanged"/>
+    /// delta so changes are never silently dropped (P-6, P-7).
+    /// </summary>
+    private static readonly HashSet<string> RendererCapabilityKeys = new(StringComparer.Ordinal) {
+        "capability",
+        "outputContentType",
+    };
+
+    private static readonly HashSet<string> BoundsKeyPrefixes = new(StringComparer.Ordinal) {
+        "bounds.",
+    };
+
+    private static readonly HashSet<string> SkillCorpusKeys = new(StringComparer.Ordinal) {
+        "publicApiReferences",
+        "samplePaths",
+        "resourceCount",
+    };
+
     private static void AddMetadataDelta(string key, List<SchemaDelta> deltas) {
-        if (key.Contains("capability", StringComparison.OrdinalIgnoreCase)
-            || key.Contains("outputContentType", StringComparison.OrdinalIgnoreCase)) {
-            deltas.Add(Delta(SchemaDeltaKind.RendererCapabilityChanged, SchemaCompatibilityDecision.Breaking, "$.Metadata." + key, "schema.delta.renderer-contract-changed"));
+        string path = "$.Metadata." + key;
+
+        if (RendererCapabilityKeys.Contains(key)) {
+            deltas.Add(Delta(SchemaDeltaKind.RendererCapabilityChanged, SchemaCompatibilityDecision.Breaking, path, "schema.delta.renderer-contract-changed"));
             return;
         }
 
-        if (key.Contains("bounds", StringComparison.OrdinalIgnoreCase)) {
-            deltas.Add(Delta(SchemaDeltaKind.BoundsChanged, SchemaCompatibilityDecision.CompatibleWarning, "$.Metadata." + key, "schema.delta.bounds-changed"));
+        foreach (string prefix in BoundsKeyPrefixes) {
+            if (key.StartsWith(prefix, StringComparison.Ordinal)) {
+                deltas.Add(Delta(SchemaDeltaKind.BoundsChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.bounds-changed"));
+                return;
+            }
+        }
+
+        if (SkillCorpusKeys.Contains(key)) {
+            deltas.Add(Delta(SchemaDeltaKind.SkillCorpusResourceChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.skill-corpus-changed"));
             return;
         }
 
-        if (key.Contains("resource", StringComparison.OrdinalIgnoreCase) || key.Contains("sample", StringComparison.OrdinalIgnoreCase)) {
-            deltas.Add(Delta(SchemaDeltaKind.SkillCorpusResourceChanged, SchemaCompatibilityDecision.CompatibleWarning, "$.Metadata." + key, "schema.delta.skill-corpus-changed"));
-        }
+        // P-6: catch-all so authorization-policy / description / title / etc. changes are
+        // surfaced rather than silently dropped. CompatibleWarning by default; if the key
+        // semantically demands Breaking, map it explicitly above.
+        deltas.Add(Delta(SchemaDeltaKind.MetadataChanged, SchemaCompatibilityDecision.CompatibleWarning, path, "schema.delta.metadata-changed"));
     }
 
     private static bool SequenceEqual(IReadOnlyList<string>? left, IReadOnlyList<string>? right)
@@ -129,8 +219,12 @@ public static class SchemaMigrationDeltaAnalyzer {
                 (right ?? new Dictionary<string, string>(StringComparer.Ordinal)).OrderBy(p => p.Key, StringComparer.Ordinal),
                 EqualityComparer<KeyValuePair<string, string>>.Default);
 
+    /// <summary>
+    /// P-9: bound the structural path length so a hostile or extremely deep field name cannot
+    /// balloon downstream telemetry/log payloads. Truncation is deterministic and marked.
+    /// </summary>
     private static SchemaDelta Delta(SchemaDeltaKind kind, SchemaCompatibilityDecision decision, string path, string messageKey)
-        => new(kind, decision, path, messageKey);
+        => new(kind, decision, path.Length > MaxPathLength ? path.Substring(0, MaxPathLength) + "…" : path, messageKey);
 
     private static SchemaMigrationDeltaResult Result(SchemaCompatibilityDecision decision, IReadOnlyList<SchemaDelta> deltas, bool truncated)
         => new(

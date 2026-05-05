@@ -26,4 +26,6 @@ public enum FrontComposerMcpFailureCategory {
     UnknownSchemaBaseline,
     UnsupportedSchemaAlgorithm,
     SchemaIntegrityMismatch,
+    InvalidSkillCorpus,
+    SkillResourceTooLarge,
 }

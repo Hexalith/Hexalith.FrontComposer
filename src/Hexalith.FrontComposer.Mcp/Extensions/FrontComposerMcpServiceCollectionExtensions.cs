@@ -47,30 +47,60 @@ public static class FrontComposerMcpServiceCollectionExtensions {
         services.TryAddSingleton<IUlidFactory, FrontComposerMcpUlidFactory>();
         services.TryAddSingleton(_ => new FrontComposerSkillResourceProvider(SkillCorpusLoader.LoadEmbedded()));
 
-        // The MCP SDK's WithTools/WithResources takes a static enumerable, so the descriptor list
-        // is materialized once at AddFrontComposerMcp time. Adopters MUST call AddFrontComposerMcp
-        // AFTER all options Configure(...) calls; later mutations to FrontComposerMcpOptions are
-        // not reflected in the SDK-side tool catalog. The IValidateOptions guard above runs at
-        // probe time so misconfiguration fails fast with a deterministic message.
-        using ServiceProvider probe = services.BuildServiceProvider();
-        if (probe.GetService<IFrontComposerMcpTenantToolGate>() is null) {
+        // P-25 (Story 8-5): detect gate registrations via the ServiceCollection's ServiceDescriptor
+        // list rather than instance resolution. Resolving a Scoped service from the root probe
+        // would return null even when the host correctly registered the gate, causing a false
+        // "missing gate" startup failure for legitimate hosts. The descriptor check is
+        // lifetime-agnostic.
+        if (!services.Any(d => d.ServiceType == typeof(IFrontComposerMcpTenantToolGate))) {
             throw new InvalidOperationException(
                 "AddFrontComposerMcp requires an IFrontComposerMcpTenantToolGate registration. " +
                 "Register a host-supplied gate before AddFrontComposerMcp, or use AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>() " +
                 "explicitly for sample/dev hosts.");
         }
 
-        if (probe.GetService<IFrontComposerMcpResourceVisibilityGate>() is null) {
+        // P-25 + P-38: the visibility gate governs tenant-scoped projection descriptors only.
+        // Skill corpus resources (URI prefix `frontcomposer://skills/`) intentionally bypass this
+        // gate per Story 8-5 binding decision D4 — they are framework-global reference material,
+        // not tenant data. The gate is still required for projection reads, so the registration
+        // check stays mandatory.
+        if (!services.Any(d => d.ServiceType == typeof(IFrontComposerMcpResourceVisibilityGate))) {
             throw new InvalidOperationException(
-                "AddFrontComposerMcp requires an IFrontComposerMcpResourceVisibilityGate registration. " +
+                "AddFrontComposerMcp requires an IFrontComposerMcpResourceVisibilityGate registration for tenant-scoped projection resources. " +
+                "Skill corpus resources are framework-global per Story 8-5 D4 and bypass this gate by design. " +
                 "Register a host-supplied gate before AddFrontComposerMcp, or use AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>() " +
                 "explicitly for sample/dev hosts.");
         }
 
+        // The MCP SDK's WithTools/WithResources takes a static enumerable, so the descriptor list
+        // is materialized once at AddFrontComposerMcp time. Adopters MUST call AddFrontComposerMcp
+        // AFTER all options Configure(...) calls; later mutations to FrontComposerMcpOptions are
+        // not reflected in the SDK-side tool catalog. The IValidateOptions guard above runs at
+        // probe time so misconfiguration fails fast with a deterministic message.
+        using ServiceProvider probe = services.BuildServiceProvider();
+
         FrontComposerMcpDescriptorRegistry registry = probe.GetRequiredService<FrontComposerMcpDescriptorRegistry>();
+        FrontComposerSkillResourceProvider skillProvider = probe.GetRequiredService<FrontComposerSkillResourceProvider>();
+
+        // P-24: reject overlap between manifest projection URIs and skill resource URIs at
+        // registration time so an adopter cannot accidentally shadow framework skill docs (or
+        // vice versa) by naming a bounded context "skills".
+        HashSet<string> manifestUris = new(StringComparer.Ordinal);
+        foreach (Hexalith.FrontComposer.Contracts.Mcp.McpResourceDescriptor descriptor in registry.Resources) {
+            manifestUris.Add(descriptor.ProtocolUri);
+        }
+
+        foreach (string skillUri in skillProvider.ResourceUris) {
+            if (manifestUris.Contains(skillUri)) {
+                throw new InvalidOperationException(
+                    $"AddFrontComposerMcp detected a URI collision between a manifest projection resource and a skill resource ('{skillUri}'). " +
+                    "Skill resource URIs are reserved under the 'frontcomposer://skills/' prefix; rename the colliding projection resource.");
+            }
+        }
+
         IEnumerable<ModelContextProtocol.Server.McpServerResource> resources = registry.Resources
             .Select(r => (ModelContextProtocol.Server.McpServerResource)new FrontComposerMcpResource(r))
-            .Concat(probe.GetRequiredService<FrontComposerSkillResourceProvider>().CreateMcpResources())
+            .Concat(skillProvider.CreateMcpResources())
             .ToArray();
 
         services.AddMcpServer()

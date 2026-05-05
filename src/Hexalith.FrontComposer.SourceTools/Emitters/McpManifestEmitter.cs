@@ -241,8 +241,25 @@ public static class McpManifestEmitter {
         "Dashboard",
     };
 
-    private static string SanitizeRenderStrategy(string value)
-        => KnownRenderStrategies.Contains(value) ? value : "Default";
+    /// <summary>
+    /// P-16: a render-strategy value that does not match a defined <c>McpProjectionRenderStrategy</c>
+    /// member is a generator-time defect — most likely a new enum member that was added in
+    /// Contracts without updating <see cref="KnownRenderStrategies"/>. Throwing surfaces the
+    /// drift instead of silently producing <c>Default</c> and fingerprinting the wrong value.
+    /// </summary>
+    private static string SanitizeRenderStrategy(string value) {
+        if (string.IsNullOrEmpty(value)) {
+            return "Default";
+        }
+
+        if (!KnownRenderStrategies.Contains(value)) {
+            throw new InvalidOperationException(
+                "Unknown McpProjectionRenderStrategy value '" + value + "' encountered during manifest emission. "
+                + "Add the new strategy to McpManifestEmitter.KnownRenderStrategies (and update the schema fingerprint test vector).");
+        }
+
+        return value;
+    }
 
     private static string Escape(string value) {
         var sb = new StringBuilder(value.Length);

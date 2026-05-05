@@ -16,6 +16,16 @@ namespace Hexalith.FrontComposer.Mcp;
 /// such as <c>descriptor.Name</c> and <c>descriptor.BoundedContext</c>; reference-identity
 /// comparisons against a registry-side descriptor instance will mis-cache.
 /// </para>
+/// <para>
+/// P-38 (Story 8-5): this gate governs ONLY tenant-scoped projection descriptors. Skill corpus
+/// resources (URI prefix <c>frontcomposer://skills/</c>) intentionally bypass this gate per
+/// binding decision D4 ("Skill resources are framework-global, not tenant-scoped"). They contain
+/// framework reference material, not domain data, and are exposed without per-tenant filtering.
+/// The startup probe for this gate enforces presence for projection reads; skill resources are
+/// served by <c>FrontComposerSkillResourceProvider</c>, which does not consult any visibility
+/// gate. Hosts that wish to hide skill docs from anonymous callers must filter at the transport
+/// layer (auth middleware) rather than via this gate.
+/// </para>
 /// </remarks>
 public interface IFrontComposerMcpResourceVisibilityGate {
     ValueTask<bool> IsVisibleAsync(

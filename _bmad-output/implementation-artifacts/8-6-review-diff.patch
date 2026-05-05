@@ -1,0 +1,1528 @@
+diff --git a/Directory.Packages.props b/Directory.Packages.props
+index 64419e0..25e795b 100644
+--- a/Directory.Packages.props
++++ b/Directory.Packages.props
+@@ -15,6 +15,7 @@
+     <!-- System.ComponentModel.Annotations is ONLY needed on netstandard2.0 — net10.0 carries it in-box.
+          Used by FcShellOptions for [Range] / [RegularExpression] validation. -->
+     <PackageVersion Include="System.ComponentModel.Annotations" Version="5.0.0" />
++    <PackageVersion Include="System.Text.Json" Version="10.0.6" />
+     <!-- Story 3-5 D3 — ValueTask<T> is ONLY needed on netstandard2.0 for the IActionQueueCountReader
+          contract; net10.0 carries it in-box. -->
+     <PackageVersion Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
+diff --git a/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj b/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
+index 603c295..7064542 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
++++ b/src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj
+@@ -7,6 +7,7 @@
+   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+     <PackageReference Include="System.Collections.Immutable" />
+     <PackageReference Include="System.ComponentModel.Annotations" />
++    <PackageReference Include="System.Text.Json" />
+     <!-- Story 3-5 D3 — ValueTask<T> is not in netstandard2.0 in-box; required by
+          IActionQueueCountReader.GetCountAsync. net10.0 carries it via System.Runtime. -->
+     <PackageReference Include="System.Threading.Tasks.Extensions" />
+@@ -18,4 +19,4 @@
+   <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+     <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" />
+   </ItemGroup>
+-</Project>
+\ No newline at end of file
++</Project>
+diff --git a/src/Hexalith.FrontComposer.Contracts/Mcp/McpCommandDescriptor.cs b/src/Hexalith.FrontComposer.Contracts/Mcp/McpCommandDescriptor.cs
+index ba219ec..c0dc59b 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Mcp/McpCommandDescriptor.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Mcp/McpCommandDescriptor.cs
+@@ -1,3 +1,5 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++
+ namespace Hexalith.FrontComposer.Contracts.Mcp;
+ 
+ /// <summary>
+@@ -11,5 +13,5 @@ public sealed record McpCommandDescriptor(
+     string? Description,
+     string? AuthorizationPolicyName,
+     IReadOnlyList<McpParameterDescriptor> Parameters,
+-    IReadOnlyList<string> DerivablePropertyNames);
+-
++    IReadOnlyList<string> DerivablePropertyNames,
++    SchemaFingerprint? Fingerprint = null);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Mcp/McpManifest.cs b/src/Hexalith.FrontComposer.Contracts/Mcp/McpManifest.cs
+index 59a97da..0dff2d3 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Mcp/McpManifest.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Mcp/McpManifest.cs
+@@ -1,3 +1,5 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++
+ namespace Hexalith.FrontComposer.Contracts.Mcp;
+ 
+ /// <summary>
+@@ -6,8 +8,9 @@ namespace Hexalith.FrontComposer.Contracts.Mcp;
+ /// <param name="SchemaVersion">Descriptor schema version emitted by SourceTools.</param>
+ /// <param name="Commands">Command tool descriptors.</param>
+ /// <param name="Resources">Projection resource descriptors.</param>
++/// <param name="Fingerprint">Aggregate structural fingerprint for the manifest.</param>
+ public sealed record McpManifest(
+     string SchemaVersion,
+     IReadOnlyList<McpCommandDescriptor> Commands,
+-    IReadOnlyList<McpResourceDescriptor> Resources);
+-
++    IReadOnlyList<McpResourceDescriptor> Resources,
++    SchemaFingerprint? Fingerprint = null);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs b/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
+index a67f5f4..75f499e 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Mcp/McpResourceDescriptor.cs
+@@ -1,3 +1,5 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++
+ namespace Hexalith.FrontComposer.Contracts.Mcp;
+ 
+ /// <summary>
+@@ -11,6 +13,7 @@ public sealed record McpResourceDescriptor(
+     string Title,
+     string? Description,
+     IReadOnlyList<McpParameterDescriptor> Fields,
+-    string RenderStrategy = "Default",
++    McpProjectionRenderStrategy RenderStrategy = McpProjectionRenderStrategy.Default,
+     string? EntityPluralLabel = null,
+-    string? EmptyStateCtaCommandName = null);
++    string? EmptyStateCtaCommandName = null,
++    SchemaFingerprint? Fingerprint = null);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Rendering/FrontComposerRenderContract.cs b/src/Hexalith.FrontComposer.Contracts/Rendering/FrontComposerRenderContract.cs
+new file mode 100644
+index 0000000..4aa7187
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Rendering/FrontComposerRenderContract.cs
+@@ -0,0 +1,35 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++
++namespace Hexalith.FrontComposer.Contracts.Rendering;
++
++public enum RenderSurfaceKind {
++    WebBlazor,
++    McpMarkdown,
++    SkillResourceMarkdown,
++    Future,
++}
++
++public enum RenderCapability {
++    ProjectionTable,
++    ProjectionStatusOverview,
++    ProjectionTimeline,
++    EmptyState,
++    BoundedMarkdown,
++    SanitizedInertText,
++}
++
++public sealed record RenderBounds(
++    int MaxRows,
++    int MaxColumns,
++    int MaxCharacters,
++    int MaxFieldCharacters);
++
++public sealed record FrontComposerRenderContract(
++    string ContractId,
++    string ContractSchemaVersion,
++    RenderSurfaceKind Surface,
++    string OutputContentType,
++    IReadOnlyList<RenderCapability> Capabilities,
++    SchemaFingerprint Fingerprint,
++    RenderBounds Bounds,
++    IReadOnlyDictionary<string, string>? Metadata = null);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Schema/SchemaBaselineContracts.cs b/src/Hexalith.FrontComposer.Contracts/Schema/SchemaBaselineContracts.cs
+new file mode 100644
+index 0000000..2d51880
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Schema/SchemaBaselineContracts.cs
+@@ -0,0 +1,54 @@
++namespace Hexalith.FrontComposer.Contracts.Schema;
++
++public sealed record SchemaBaselineProvenance(
++    SchemaContractFamily ContractFamily,
++    string ContractSchemaVersion,
++    string FingerprintAlgorithm,
++    string PackageOwner,
++    string FixtureId,
++    bool RequiresMigrationGuide,
++    string CanonicalizerVersion = SchemaFingerprintAlgorithm.CanonicalizerVersionV1,
++    string TestVectorId = SchemaFingerprintAlgorithm.TestVectorIdV1);
++
++public sealed record SchemaBaselineSnapshot(
++    SchemaBaselineProvenance Provenance,
++    SchemaContractDocument Document,
++    SchemaFingerprint Fingerprint);
++
++public enum SchemaCompatibilityDecision {
++    Exact,
++    AdditiveCompatible,
++    CompatibleWarning,
++    Breaking,
++    Unknown,
++    UnsupportedAlgorithm,
++}
++
++public enum SchemaDeltaKind {
++    AddedOptionalField,
++    AddedRequiredField,
++    RemovedField,
++    TypeChanged,
++    EnumChanged,
++    ValidationConstraintChanged,
++    ProtocolIdentifierChanged,
++    RendererCapabilityChanged,
++    BoundsChanged,
++    SkillCorpusResourceChanged,
++    StructuralOrderChanged,
++    Truncated,
++}
++
++public sealed record SchemaDelta(
++    SchemaDeltaKind Kind,
++    SchemaCompatibilityDecision Decision,
++    string Path,
++    string MessageKey,
++    IReadOnlyDictionary<string, string>? Parameters = null);
++
++public sealed record SchemaMigrationDeltaResult(
++    SchemaCompatibilityDecision Decision,
++    IReadOnlyList<SchemaDelta> Deltas,
++    bool IsTruncated,
++    string DiagnosticId,
++    string DocsLink);
+diff --git a/src/Hexalith.FrontComposer.Contracts/Schema/SchemaFingerprintContracts.cs b/src/Hexalith.FrontComposer.Contracts/Schema/SchemaFingerprintContracts.cs
+new file mode 100644
+index 0000000..25f1213
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Contracts/Schema/SchemaFingerprintContracts.cs
+@@ -0,0 +1,296 @@
++using System.Security.Cryptography;
++using System.Text;
++using System.Text.Json;
++using System.Text.Json.Serialization;
++
++namespace Hexalith.FrontComposer.Contracts.Schema;
++
++/// <summary>
++/// Well-known v1 schema fingerprint algorithm identifiers.
++/// </summary>
++public static class SchemaFingerprintAlgorithm {
++    public const string Sha256CanonicalJsonV1 = "frontcomposer.schema.sha256.canonical-json.v1";
++    public const string CanonicalizerVersionV1 = "frontcomposer.canonical-json.v1";
++    public const string TestVectorIdV1 = "hfc-schema-v1";
++}
++
++/// <summary>
++/// SDK-neutral fingerprint metadata emitted with a generated contract descriptor.
++/// </summary>
++public sealed record SchemaFingerprint(
++    string AlgorithmId,
++    string Value,
++    string CanonicalizerVersion = SchemaFingerprintAlgorithm.CanonicalizerVersionV1,
++    string TestVectorId = SchemaFingerprintAlgorithm.TestVectorIdV1);
++
++public enum SchemaContractFamily {
++    CommandTool,
++    ProjectionResource,
++    LifecycleResult,
++    MarkdownRendererContract,
++    SkillCorpusManifest,
++    SkillCorpusResource,
++    AggregateMcpManifest,
++}
++
++public enum SchemaCollectionOrder {
++    NonStructuralSorted,
++    StructuralOrder,
++}
++
++public sealed record SchemaCollectionContract(
++    string Name,
++    SchemaCollectionOrder Order,
++    string StableIdField);
++
++public sealed record SchemaFieldContract(
++    string Name,
++    string TypeName,
++    string JsonType,
++    bool IsRequired,
++    bool IsNullable,
++    string? Title = null,
++    string? Description = null,
++    IReadOnlyList<string>? EnumValues = null,
++    IReadOnlyDictionary<string, string>? ValidationConstraints = null,
++    IReadOnlyDictionary<string, string>? Metadata = null);
++
++public sealed record SchemaContractDocument(
++    string RootDiscriminator,
++    SchemaContractFamily Family,
++    string ContractId,
++    string ContractSchemaVersion,
++    string? BoundedContext,
++    string? FullyQualifiedName,
++    string? ProtocolIdentifier,
++    IReadOnlyList<SchemaFieldContract> Fields,
++    IReadOnlyList<SchemaCollectionContract> Collections,
++    IReadOnlyDictionary<string, string> Metadata);
++
++public sealed record SchemaCanonicalPayload(
++    SchemaContractDocument Document,
++    string Json,
++    SchemaFingerprint Fingerprint);
++
++public enum SchemaMaterialValidationCategory {
++    None,
++    DuplicateJsonKey,
++    MalformedJson,
++    UnknownRootDiscriminator,
++    UnknownContractFamily,
++    DuplicateStableId,
++}
++
++public sealed record SchemaMaterialValidationResult(
++    bool IsValid,
++    SchemaMaterialValidationCategory Category,
++    string MessageKey,
++    string? Path = null) {
++    public static SchemaMaterialValidationResult Valid { get; } = new(true, SchemaMaterialValidationCategory.None, "schema.valid");
++}
++
++/// <summary>
++/// Deterministic canonical JSON and SHA-256 fingerprint helper for structural schema material.
++/// </summary>
++public static class CanonicalSchemaMaterial {
++    private const int MaxDepth = 32;
++    public static SchemaCanonicalPayload CreatePayload(SchemaContractDocument document) {
++        if (document is null) {
++            throw new ArgumentNullException(nameof(document));
++        }
++        SchemaMaterialValidationResult validation = ValidateDocument(document);
++        if (!validation.IsValid) {
++            throw new InvalidOperationException(validation.MessageKey + ": " + validation.Path);
++        }
++
++        SchemaContractDocument normalized = Normalize(document);
++        string json = JsonSerializer.Serialize(normalized, SchemaFingerprintJsonContext.Default.SchemaContractDocument);
++        string hash = Sha256Hex(json);
++        return new SchemaCanonicalPayload(
++            normalized,
++            json,
++            new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, hash));
++    }
++
++    public static SchemaMaterialValidationResult ValidateCanonicalJson(string json) {
++        if (string.IsNullOrWhiteSpace(json)) {
++            return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.malformed", "$");
++        }
++
++        try {
++            var reader = new Utf8JsonReader(Encoding.UTF8.GetBytes(json), new JsonReaderOptions {
++                AllowTrailingCommas = false,
++                CommentHandling = JsonCommentHandling.Disallow,
++                MaxDepth = MaxDepth,
++            });
++            return ValidateJsonObject(ref reader, "$");
++        }
++        catch (JsonException) {
++            return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.malformed", "$");
++        }
++    }
++
++    public static SchemaMaterialValidationResult ValidateDocument(SchemaContractDocument document) {
++        if (document is null) {
++            throw new ArgumentNullException(nameof(document));
++        }
++
++        if (!string.Equals(document.RootDiscriminator, "frontcomposer.schema.contract.v1", StringComparison.Ordinal)) {
++            return new(false, SchemaMaterialValidationCategory.UnknownRootDiscriminator, "schema.root.unknown", "$.RootDiscriminator");
++        }
++
++        if (!Enum.IsDefined(typeof(SchemaContractFamily), document.Family)) {
++            return new(false, SchemaMaterialValidationCategory.UnknownContractFamily, "schema.family.unknown", "$.Family");
++        }
++
++        foreach (SchemaCollectionContract collection in document.Collections) {
++            if (string.IsNullOrWhiteSpace(collection.Name) || string.IsNullOrWhiteSpace(collection.StableIdField)) {
++                return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.collection.invalid", "$.Collections");
++            }
++        }
++
++        HashSet<string> fieldNames = new(StringComparer.Ordinal);
++        foreach (SchemaFieldContract field in document.Fields) {
++            if (!fieldNames.Add(field.Name)) {
++                return new(false, SchemaMaterialValidationCategory.DuplicateStableId, "schema.field.duplicate-id", "$.Fields." + field.Name);
++            }
++        }
++
++        return SchemaMaterialValidationResult.Valid;
++    }
++
++    private static SchemaContractDocument Normalize(SchemaContractDocument document)
++        => document with {
++            RootDiscriminator = NormalizeScalar(document.RootDiscriminator),
++            ContractId = NormalizeScalar(document.ContractId),
++            ContractSchemaVersion = NormalizeScalar(document.ContractSchemaVersion),
++            BoundedContext = NormalizeOptional(document.BoundedContext),
++            FullyQualifiedName = NormalizeOptional(document.FullyQualifiedName),
++            ProtocolIdentifier = NormalizeOptional(document.ProtocolIdentifier),
++            Fields = [.. document.Fields
++                .OrderBy(f => f.Name, StringComparer.Ordinal)
++                .Select(NormalizeField)],
++            Collections = [.. document.Collections
++                .OrderBy(c => c.Name, StringComparer.Ordinal)
++                .Select(c => c with {
++                    Name = NormalizeScalar(c.Name),
++                    StableIdField = NormalizeScalar(c.StableIdField),
++                })],
++            Metadata = NormalizeDictionary(document.Metadata),
++        };
++
++    private static SchemaFieldContract NormalizeField(SchemaFieldContract field)
++        => field with {
++            Name = NormalizeScalar(field.Name),
++            TypeName = NormalizeScalar(field.TypeName),
++            JsonType = NormalizeScalar(field.JsonType),
++            Title = NormalizeOptional(field.Title),
++            Description = NormalizeOptional(field.Description),
++            EnumValues = field.EnumValues is null
++                ? []
++                : [.. field.EnumValues.Select(NormalizeScalar).OrderBy(v => v, StringComparer.Ordinal)],
++            ValidationConstraints = NormalizeDictionary(field.ValidationConstraints),
++            Metadata = NormalizeDictionary(field.Metadata),
++        };
++
++    private static IReadOnlyDictionary<string, string> NormalizeDictionary(IReadOnlyDictionary<string, string>? values)
++        => values is null
++            ? new SortedDictionary<string, string>(StringComparer.Ordinal)
++            : new SortedDictionary<string, string>(
++                values.ToDictionary(
++                    p => NormalizeScalar(p.Key),
++                    p => NormalizeScalar(p.Value),
++                    StringComparer.Ordinal),
++                StringComparer.Ordinal);
++
++    private static string NormalizeScalar(string value)
++        => value.Replace("\r\n", "\n")
++            .Replace('\r', '\n')
++            .Trim();
++
++    private static string? NormalizeOptional(string? value)
++        => string.IsNullOrWhiteSpace(value) ? null : NormalizeScalar(value!);
++
++    private static string Sha256Hex(string value) {
++        using SHA256 sha = SHA256.Create();
++        byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(value));
++        char[] chars = new char[bytes.Length * 2];
++        const string Hex = "0123456789abcdef";
++        for (int i = 0; i < bytes.Length; i++) {
++            chars[i * 2] = Hex[bytes[i] >> 4];
++            chars[(i * 2) + 1] = Hex[bytes[i] & 0xF];
++        }
++
++        return new string(chars);
++    }
++
++    private static SchemaMaterialValidationResult ValidateJsonObject(ref Utf8JsonReader reader, string path) {
++        if (!reader.Read() || reader.TokenType != JsonTokenType.StartObject) {
++            return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.root-object", path);
++        }
++
++        return ValidateObjectBody(ref reader, path);
++    }
++
++    private static SchemaMaterialValidationResult ValidateObjectBody(ref Utf8JsonReader reader, string path) {
++        HashSet<string> exact = new(StringComparer.Ordinal);
++        HashSet<string> caseVariant = new(StringComparer.OrdinalIgnoreCase);
++        while (reader.Read()) {
++            if (reader.TokenType == JsonTokenType.EndObject) {
++                return SchemaMaterialValidationResult.Valid;
++            }
++
++            if (reader.TokenType != JsonTokenType.PropertyName) {
++                return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.property-expected", path);
++            }
++
++            string property = reader.GetString() ?? string.Empty;
++            string propertyPath = path + "." + property;
++            if (!exact.Add(property) || !caseVariant.Add(property)) {
++                return new(false, SchemaMaterialValidationCategory.DuplicateJsonKey, "schema.json.duplicate-key", propertyPath);
++            }
++
++            if (!reader.Read()) {
++                return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.value-expected", propertyPath);
++            }
++
++            SchemaMaterialValidationResult nested = ValidateJsonValue(ref reader, propertyPath);
++            if (!nested.IsValid) {
++                return nested;
++            }
++        }
++
++        return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.unclosed-object", path);
++    }
++
++    private static SchemaMaterialValidationResult ValidateJsonValue(ref Utf8JsonReader reader, string path)
++        => reader.TokenType switch {
++            JsonTokenType.StartObject => ValidateObjectBody(ref reader, path),
++            JsonTokenType.StartArray => ValidateArray(ref reader, path),
++            JsonTokenType.String or JsonTokenType.Number or JsonTokenType.True or JsonTokenType.False or JsonTokenType.Null
++                => SchemaMaterialValidationResult.Valid,
++            _ => new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.value-invalid", path),
++        };
++
++    private static SchemaMaterialValidationResult ValidateArray(ref Utf8JsonReader reader, string path) {
++        int index = 0;
++        while (reader.Read()) {
++            if (reader.TokenType == JsonTokenType.EndArray) {
++                return SchemaMaterialValidationResult.Valid;
++            }
++
++            SchemaMaterialValidationResult nested = ValidateJsonValue(ref reader, path + "[" + index.ToString(System.Globalization.CultureInfo.InvariantCulture) + "]");
++            if (!nested.IsValid) {
++                return nested;
++            }
++
++            index++;
++        }
++
++        return new(false, SchemaMaterialValidationCategory.MalformedJson, "schema.json.unclosed-array", path);
++    }
++}
++
++[JsonSerializable(typeof(SchemaContractDocument))]
++[JsonSourceGenerationOptions(WriteIndented = false)]
++internal sealed partial class SchemaFingerprintJsonContext : JsonSerializerContext;
+diff --git a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs
+index d0f6bdf..9480f2f 100644
+--- a/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs
++++ b/src/Hexalith.FrontComposer.Mcp/FrontComposerMcpFailureCategory.cs
+@@ -17,4 +17,13 @@ public enum FrontComposerMcpFailureCategory {
+     DuplicateDescriptor,
+     MissingManifest,
+     PolicyGateMissing,
++    ResponseTooLarge,
++    UnsupportedRender,
++    StaleDescriptor,
++    DegradedResult,
++    PolicyFiltered,
++    SchemaMismatch,
++    UnknownSchemaBaseline,
++    UnsupportedSchemaAlgorithm,
++    SchemaIntegrityMismatch,
+ }
+diff --git a/src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs b/src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs
+new file mode 100644
+index 0000000..d11f2fd
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.Mcp/Schema/SchemaNegotiation.cs
+@@ -0,0 +1,137 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++
++namespace Hexalith.FrontComposer.Mcp.Schema;
++
++public enum McpSchemaNegotiationResultKind {
++    Exact,
++    CompatibleAdditive,
++    Incompatible,
++    UnknownClientVersion,
++    UnknownServerBaseline,
++    HiddenOrUnknown,
++    StaleDescriptor,
++    UnsupportedAlgorithm,
++    Unavailable,
++    SchemaIntegrityMismatch,
++}
++
++public sealed record McpSchemaNegotiationInput(
++    bool IsHiddenOrUnknown,
++    bool IsStaleDescriptor,
++    SchemaFingerprint? ClientFingerprint,
++    SchemaFingerprint? ServerFingerprint,
++    bool HasTrustedBaseline,
++    bool HasCompatibleAdditiveDrift,
++    bool HasSchemaIntegrityMismatch);
++
++public sealed record McpSchemaNegotiationResult(
++    McpSchemaNegotiationResultKind Kind,
++    FrontComposerMcpFailureCategory FailureCategory,
++    string AgentCategory,
++    string MessageKey,
++    string DocsCode,
++    bool AllowsSideEffects);
++
++public static class McpSchemaNegotiator {
++    public static McpSchemaNegotiationResult Negotiate(McpSchemaNegotiationInput input) {
++        ArgumentNullException.ThrowIfNull(input);
++
++        if (input.IsHiddenOrUnknown) {
++            return Result(
++                McpSchemaNegotiationResultKind.HiddenOrUnknown,
++                FrontComposerMcpFailureCategory.UnknownResource,
++                "unknown_resource",
++                "schema.hidden-or-unknown",
++                "HFC-MCP-UNKNOWN-RESOURCE",
++                false);
++        }
++
++        if (input.IsStaleDescriptor) {
++            return Result(
++                McpSchemaNegotiationResultKind.StaleDescriptor,
++                FrontComposerMcpFailureCategory.StaleDescriptor,
++                "projection temporarily unavailable",
++                "schema.stale-descriptor",
++                "HFC-MCP-STALE-DESCRIPTOR",
++                false);
++        }
++
++        if (input.ClientFingerprint is null || string.IsNullOrWhiteSpace(input.ClientFingerprint.Value)) {
++            return Result(
++                McpSchemaNegotiationResultKind.UnknownClientVersion,
++                FrontComposerMcpFailureCategory.UnsupportedSchema,
++                "unknown-version",
++                "schema.client-version.unknown",
++                "HFC-SCHEMA-UNKNOWN-CLIENT",
++                false);
++        }
++
++        if (!string.Equals(input.ClientFingerprint.AlgorithmId, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)
++            || !string.Equals(input.ServerFingerprint?.AlgorithmId, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)) {
++            return Result(
++                McpSchemaNegotiationResultKind.UnsupportedAlgorithm,
++                FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm,
++                "unsupported-schema-fingerprint",
++                "schema.algorithm.unsupported",
++                "HFC-SCHEMA-UNSUPPORTED-ALGORITHM",
++                false);
++        }
++
++        if (!input.HasTrustedBaseline) {
++            return Result(
++                McpSchemaNegotiationResultKind.UnknownServerBaseline,
++                FrontComposerMcpFailureCategory.UnknownSchemaBaseline,
++                "schema-unavailable",
++                "schema.baseline.unknown",
++                "HFC-SCHEMA-UNKNOWN-BASELINE",
++                false);
++        }
++
++        if (input.HasSchemaIntegrityMismatch) {
++            return Result(
++                McpSchemaNegotiationResultKind.SchemaIntegrityMismatch,
++                FrontComposerMcpFailureCategory.SchemaIntegrityMismatch,
++                "schema-unavailable",
++                "schema.integrity-mismatch",
++                "HFC-SCHEMA-INTEGRITY-MISMATCH",
++                false);
++        }
++
++        if (string.Equals(input.ClientFingerprint.Value, input.ServerFingerprint?.Value, StringComparison.Ordinal)) {
++            return Result(
++                McpSchemaNegotiationResultKind.Exact,
++                FrontComposerMcpFailureCategory.None,
++                "schema-exact",
++                "schema.exact",
++                "HFC-SCHEMA-EXACT",
++                true);
++        }
++
++        if (input.HasCompatibleAdditiveDrift) {
++            return Result(
++                McpSchemaNegotiationResultKind.CompatibleAdditive,
++                FrontComposerMcpFailureCategory.None,
++                "schema-compatible-warning",
++                "schema.compatible-additive",
++                "HFC-SCHEMA-COMPATIBLE-ADDITIVE",
++                true);
++        }
++
++        return Result(
++            McpSchemaNegotiationResultKind.Incompatible,
++            FrontComposerMcpFailureCategory.SchemaMismatch,
++            "schema-mismatch",
++            "schema.incompatible",
++            "HFC-SCHEMA-MISMATCH",
++            false);
++    }
++
++    private static McpSchemaNegotiationResult Result(
++        McpSchemaNegotiationResultKind kind,
++        FrontComposerMcpFailureCategory category,
++        string agentCategory,
++        string messageKey,
++        string docsCode,
++        bool allowsSideEffects)
++        => new(kind, category, agentCategory, messageKey, docsCode, allowsSideEffects);
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/SchemaMigrationDeltaAnalyzer.cs b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/SchemaMigrationDeltaAnalyzer.cs
+new file mode 100644
+index 0000000..0bd7621
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/SchemaMigrationDeltaAnalyzer.cs
+@@ -0,0 +1,142 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++
++namespace Hexalith.FrontComposer.SourceTools.Diagnostics;
++
++public static class SchemaMigrationDeltaAnalyzer {
++    private const int MaxDeltaCount = 25;
++
++    public static SchemaMigrationDeltaResult Compare(
++        SchemaBaselineSnapshot baseline,
++        SchemaBaselineSnapshot current,
++        int maxDeltaCount = MaxDeltaCount) {
++        if (baseline is null) {
++            throw new ArgumentNullException(nameof(baseline));
++        }
++
++        if (current is null) {
++            throw new ArgumentNullException(nameof(current));
++        }
++
++        if (!string.Equals(baseline.Provenance.FingerprintAlgorithm, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)
++            || !string.Equals(current.Provenance.FingerprintAlgorithm, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)) {
++            return Result(SchemaCompatibilityDecision.UnsupportedAlgorithm, [
++                Delta(SchemaDeltaKind.Truncated, SchemaCompatibilityDecision.UnsupportedAlgorithm, "$.fingerprintAlgorithm", "schema.delta.unsupported-algorithm"),
++            ], false);
++        }
++
++        if (!string.Equals(baseline.Provenance.CanonicalizerVersion, current.Provenance.CanonicalizerVersion, StringComparison.Ordinal)
++            || !string.Equals(baseline.Provenance.TestVectorId, current.Provenance.TestVectorId, StringComparison.Ordinal)) {
++            return Result(SchemaCompatibilityDecision.Unknown, [
++                Delta(SchemaDeltaKind.Truncated, SchemaCompatibilityDecision.Unknown, "$.canonicalizer", "schema.delta.unsupported-canonicalizer"),
++            ], false);
++        }
++
++        if (string.Equals(baseline.Fingerprint.Value, current.Fingerprint.Value, StringComparison.Ordinal)) {
++            return Result(SchemaCompatibilityDecision.Exact, [], false);
++        }
++
++        List<SchemaDelta> deltas = [];
++        if (!string.Equals(baseline.Document.ProtocolIdentifier, current.Document.ProtocolIdentifier, StringComparison.Ordinal)) {
++            deltas.Add(Delta(SchemaDeltaKind.ProtocolIdentifierChanged, SchemaCompatibilityDecision.Breaking, "$.ProtocolIdentifier", "schema.delta.protocol-id-changed"));
++        }
++
++        Dictionary<string, SchemaFieldContract> oldFields = baseline.Document.Fields.ToDictionary(f => f.Name, StringComparer.Ordinal);
++        Dictionary<string, SchemaFieldContract> newFields = current.Document.Fields.ToDictionary(f => f.Name, StringComparer.Ordinal);
++
++        foreach (string name in oldFields.Keys.OrderBy(k => k, StringComparer.Ordinal)) {
++            if (!newFields.ContainsKey(name)) {
++                deltas.Add(Delta(SchemaDeltaKind.RemovedField, SchemaCompatibilityDecision.Breaking, "$.Fields." + name, "schema.delta.field-removed"));
++            }
++        }
++
++        foreach (string name in newFields.Keys.OrderBy(k => k, StringComparer.Ordinal)) {
++            if (!oldFields.TryGetValue(name, out SchemaFieldContract? oldField)) {
++                SchemaCompatibilityDecision decision = newFields[name].IsRequired
++                    ? SchemaCompatibilityDecision.Breaking
++                    : SchemaCompatibilityDecision.CompatibleWarning;
++                deltas.Add(Delta(
++                    newFields[name].IsRequired ? SchemaDeltaKind.AddedRequiredField : SchemaDeltaKind.AddedOptionalField,
++                    decision,
++                    "$.Fields." + name,
++                    newFields[name].IsRequired ? "schema.delta.required-field-added" : "schema.delta.optional-field-added"));
++                continue;
++            }
++
++            SchemaFieldContract newField = newFields[name];
++            if (!string.Equals(oldField.JsonType, newField.JsonType, StringComparison.Ordinal)
++                || !string.Equals(oldField.TypeName, newField.TypeName, StringComparison.Ordinal)) {
++                deltas.Add(Delta(SchemaDeltaKind.TypeChanged, SchemaCompatibilityDecision.Breaking, "$.Fields." + name + ".Type", "schema.delta.type-changed"));
++            }
++
++            if (!SequenceEqual(oldField.EnumValues, newField.EnumValues)) {
++                deltas.Add(Delta(SchemaDeltaKind.EnumChanged, SchemaCompatibilityDecision.CompatibleWarning, "$.Fields." + name + ".EnumValues", "schema.delta.enum-changed"));
++            }
++
++            if (!DictionaryEqual(oldField.ValidationConstraints, newField.ValidationConstraints)) {
++                deltas.Add(Delta(SchemaDeltaKind.ValidationConstraintChanged, SchemaCompatibilityDecision.CompatibleWarning, "$.Fields." + name + ".ValidationConstraints", "schema.delta.validation-changed"));
++            }
++        }
++
++        foreach (KeyValuePair<string, string> oldMeta in baseline.Document.Metadata.OrderBy(p => p.Key, StringComparer.Ordinal)) {
++            if (!current.Document.Metadata.TryGetValue(oldMeta.Key, out string? newValue)
++                || !string.Equals(oldMeta.Value, newValue, StringComparison.Ordinal)) {
++                AddMetadataDelta(oldMeta.Key, deltas);
++            }
++        }
++
++        foreach (KeyValuePair<string, string> newMeta in current.Document.Metadata.OrderBy(p => p.Key, StringComparer.Ordinal)) {
++            if (!baseline.Document.Metadata.ContainsKey(newMeta.Key)) {
++                AddMetadataDelta(newMeta.Key, deltas);
++            }
++        }
++
++        bool truncated = deltas.Count > maxDeltaCount;
++        if (truncated) {
++            deltas = [.. deltas.Take(maxDeltaCount)];
++            deltas.Add(Delta(SchemaDeltaKind.Truncated, SchemaCompatibilityDecision.CompatibleWarning, "$.Deltas", "schema.delta.truncated"));
++        }
++
++        SchemaCompatibilityDecision aggregate = deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
++            ? SchemaCompatibilityDecision.Breaking
++            : SchemaCompatibilityDecision.CompatibleWarning;
++        return Result(aggregate, deltas, truncated);
++    }
++
++    private static void AddMetadataDelta(string key, List<SchemaDelta> deltas) {
++        if (key.Contains("capability", StringComparison.OrdinalIgnoreCase)
++            || key.Contains("outputContentType", StringComparison.OrdinalIgnoreCase)) {
++            deltas.Add(Delta(SchemaDeltaKind.RendererCapabilityChanged, SchemaCompatibilityDecision.Breaking, "$.Metadata." + key, "schema.delta.renderer-contract-changed"));
++            return;
++        }
++
++        if (key.Contains("bounds", StringComparison.OrdinalIgnoreCase)) {
++            deltas.Add(Delta(SchemaDeltaKind.BoundsChanged, SchemaCompatibilityDecision.CompatibleWarning, "$.Metadata." + key, "schema.delta.bounds-changed"));
++            return;
++        }
++
++        if (key.Contains("resource", StringComparison.OrdinalIgnoreCase) || key.Contains("sample", StringComparison.OrdinalIgnoreCase)) {
++            deltas.Add(Delta(SchemaDeltaKind.SkillCorpusResourceChanged, SchemaCompatibilityDecision.CompatibleWarning, "$.Metadata." + key, "schema.delta.skill-corpus-changed"));
++        }
++    }
++
++    private static bool SequenceEqual(IReadOnlyList<string>? left, IReadOnlyList<string>? right)
++        => (left ?? []).OrderBy(v => v, StringComparer.Ordinal).SequenceEqual((right ?? []).OrderBy(v => v, StringComparer.Ordinal), StringComparer.Ordinal);
++
++    private static bool DictionaryEqual(IReadOnlyDictionary<string, string>? left, IReadOnlyDictionary<string, string>? right)
++        => (left ?? new Dictionary<string, string>(StringComparer.Ordinal))
++            .OrderBy(p => p.Key, StringComparer.Ordinal)
++            .SequenceEqual(
++                (right ?? new Dictionary<string, string>(StringComparer.Ordinal)).OrderBy(p => p.Key, StringComparer.Ordinal),
++                EqualityComparer<KeyValuePair<string, string>>.Default);
++
++    private static SchemaDelta Delta(SchemaDeltaKind kind, SchemaCompatibilityDecision decision, string path, string messageKey)
++        => new(kind, decision, path, messageKey);
++
++    private static SchemaMigrationDeltaResult Result(SchemaCompatibilityDecision decision, IReadOnlyList<SchemaDelta> deltas, bool truncated)
++        => new(
++            decision,
++            deltas,
++            truncated,
++            "HFC-SCHEMA-DELTA",
++            "https://docs.hexalith.dev/frontcomposer/schema-migration");
++}
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs b/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs
+index 79afd76..ead757b 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Emitters/McpManifestEmitter.cs
+@@ -34,6 +34,23 @@ public static class McpManifestEmitter {
+ 
+         commandDescriptors.Sort((left, right) => string.CompareOrdinal(left.ProtocolName, right.ProtocolName));
+         resourceDescriptors.Sort((left, right) => string.CompareOrdinal(left.ProtocolUri, right.ProtocolUri));
++        GeneratedSchemaFingerprint[] commandFingerprints = [.. commandDescriptors
++            .Select(d => SchemaFingerprintTransform.CreateCommandPayload(d).Fingerprint)];
++        GeneratedSchemaFingerprint[] resourceFingerprints = [.. resourceDescriptors
++            .Select(d => SchemaFingerprintTransform.CreateResourcePayload(d).Fingerprint)];
++        GeneratedSchemaFingerprint lifecycleFingerprint = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint;
++        GeneratedSchemaFingerprint[] rendererFingerprints = [.. resourceDescriptors
++            .Select(d => SchemaFingerprintTransform.CreateMarkdownRendererPayload(
++                d.ProtocolUri + "#markdown-renderer",
++                d.RenderStrategy,
++                maxCharacters: 64_000,
++                maxFieldCharacters: 4_096).Fingerprint)];
++        GeneratedSchemaFingerprint aggregateFingerprint = SchemaFingerprintTransform.CreateAggregateManifestPayload(
++            commandFingerprints,
++            resourceFingerprints,
++            lifecycleFingerprint,
++            rendererFingerprints,
++            []).Fingerprint;
+ 
+         var sb = new StringBuilder(4096);
+         sb.AppendLine("// Generated by FrontComposer source generator");
+@@ -41,8 +58,10 @@ public static class McpManifestEmitter {
+         sb.AppendLine();
+         sb.AppendLine("#nullable enable");
+         sb.AppendLine();
++        sb.AppendLine("using System;");
+         sb.AppendLine("using System.Collections.Generic;");
+         sb.AppendLine("using Hexalith.FrontComposer.Contracts.Mcp;");
++        sb.AppendLine("using Hexalith.FrontComposer.Contracts.Schema;");
+         sb.AppendLine();
+         sb.AppendLine("namespace Hexalith.FrontComposer.Generated;");
+         sb.AppendLine();
+@@ -54,6 +73,9 @@ public static class McpManifestEmitter {
+         EmitCommands(sb, commandDescriptors);
+         sb.AppendLine(",");
+         EmitResources(sb, resourceDescriptors);
++        sb.AppendLine(",");
++        sb.Append("        ");
++        EmitFingerprint(sb, aggregateFingerprint);
+         sb.AppendLine(");");
+         sb.AppendLine("}");
+         return sb.ToString();
+@@ -96,6 +118,9 @@ public static class McpManifestEmitter {
+             sb.AppendLine(",");
+             sb.Append("                ");
+             EmitStrings(sb, command.DerivablePropertyNames, 16);
++            sb.AppendLine(",");
++            sb.Append("                ");
++            EmitFingerprint(sb, SchemaFingerprintTransform.CreateCommandPayload(command).Fingerprint);
+             sb.AppendLine("),");
+         }
+ 
+@@ -115,9 +140,17 @@ public static class McpManifestEmitter {
+             sb.AppendLine("                " + Literal(resource.Description) + ",");
+             EmitParameters(sb, resource.Fields, 16);
+             sb.AppendLine(",");
+-            sb.AppendLine("                \"" + Escape(resource.RenderStrategy) + "\",");
++            // P-18: validate the strategy identifier matches a defined McpProjectionRenderStrategy
++            // member before interpolating it into generated source. Anything else falls back to
++            // Default rather than producing a non-compiling (or worse, attacker-influenced)
++            // generated file. Today the upstream transform already passes enum.ToString(), but
++            // the constructor accepts any string, so the constraint is enforced at the emit edge.
++            string strategy = SanitizeRenderStrategy(resource.RenderStrategy);
++            sb.AppendLine("                McpProjectionRenderStrategy." + strategy + ",");
+             sb.AppendLine("                " + Literal(resource.EntityPluralLabel) + ",");
+-            sb.AppendLine("                " + Literal(resource.EmptyStateCtaCommandName));
++            sb.AppendLine("                " + Literal(resource.EmptyStateCtaCommandName) + ",");
++            sb.Append("                ");
++            EmitFingerprint(sb, SchemaFingerprintTransform.CreateResourcePayload(resource).Fingerprint);
+             sb.AppendLine("),");
+         }
+ 
+@@ -169,9 +202,8 @@ public static class McpManifestEmitter {
+ 
+     private static void EmitStringDictionary(StringBuilder sb, IReadOnlyDictionary<string, string> values, int indent) {
+         string pad = new(' ', indent);
+-        sb.Append("new Dictionary<string, string>");
++        sb.Append("new Dictionary<string, string>(StringComparer.Ordinal)");
+         if (values.Count == 0) {
+-            sb.Append("()");
+             return;
+         }
+ 
+@@ -184,11 +216,34 @@ public static class McpManifestEmitter {
+         sb.Append(pad + "}");
+     }
+ 
++    private static void EmitFingerprint(StringBuilder sb, GeneratedSchemaFingerprint fingerprint)
++        => sb.Append("new SchemaFingerprint(\"")
++            .Append(Escape(fingerprint.AlgorithmId))
++            .Append("\", \"")
++            .Append(Escape(fingerprint.Value))
++            .Append("\", \"")
++            .Append(Escape(fingerprint.CanonicalizerVersion))
++            .Append("\", \"")
++            .Append(Escape(fingerprint.TestVectorId))
++            .Append("\")");
++
+     private static string Literal(string? value)
+         => value is null ? "null" : "\"" + Escape(value) + "\"";
+ 
+     private static string Bool(bool value) => value ? "true" : "false";
+ 
++    private static readonly HashSet<string> KnownRenderStrategies = new(StringComparer.Ordinal) {
++        "Default",
++        "ActionQueue",
++        "StatusOverview",
++        "DetailRecord",
++        "Timeline",
++        "Dashboard",
++    };
++
++    private static string SanitizeRenderStrategy(string value)
++        => KnownRenderStrategies.Contains(value) ? value : "Default";
++
+     private static string Escape(string value) {
+         var sb = new StringBuilder(value.Length);
+         foreach (char c in value) {
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs b/src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs
+new file mode 100644
+index 0000000..245392f
+--- /dev/null
++++ b/src/Hexalith.FrontComposer.SourceTools/Transforms/SchemaFingerprintTransform.cs
+@@ -0,0 +1,227 @@
++using System.Security.Cryptography;
++using System.Text;
++
++namespace Hexalith.FrontComposer.SourceTools.Transforms;
++
++public sealed class GeneratedSchemaFingerprint {
++    public GeneratedSchemaFingerprint(string algorithmId, string value, string canonicalizerVersion, string testVectorId) {
++        AlgorithmId = algorithmId;
++        Value = value;
++        CanonicalizerVersion = canonicalizerVersion;
++        TestVectorId = testVectorId;
++    }
++
++    public string AlgorithmId { get; }
++
++    public string Value { get; }
++
++    public string CanonicalizerVersion { get; }
++
++    public string TestVectorId { get; }
++}
++
++public sealed class GeneratedSchemaPayload {
++    public GeneratedSchemaPayload(string json, GeneratedSchemaFingerprint fingerprint) {
++        Json = json;
++        Fingerprint = fingerprint;
++    }
++
++    public string Json { get; }
++
++    public GeneratedSchemaFingerprint Fingerprint { get; }
++}
++
++public static class SchemaFingerprintTransform {
++    public const string AlgorithmId = "frontcomposer.schema.sha256.canonical-json.v1";
++    public const string CanonicalizerVersion = "frontcomposer.canonical-json.v1";
++    public const string TestVectorId = "hfc-schema-v1";
++    public const string CommandSchemaVersion = "frontcomposer.command-tool.v1";
++    public const string ProjectionResourceSchemaVersion = "frontcomposer.projection-resource.v1";
++    public const string LifecycleResultSchemaVersion = "frontcomposer.lifecycle-result.v1";
++    public const string MarkdownRendererSchemaVersion = "frontcomposer.renderer.markdown.v1";
++    public const string SkillCorpusSchemaVersion = "frontcomposer.skill-corpus.v1";
++    public const string AggregateManifestSchemaVersion = "frontcomposer.mcp-manifest.aggregate.v1";
++
++    public static GeneratedSchemaPayload CreateCommandPayload(McpCommandDescriptorModel command)
++        => Payload(
++            "CommandTool",
++            command.ProtocolName,
++            CommandSchemaVersion,
++            command.BoundedContext,
++            command.CommandTypeName,
++            command.ProtocolName,
++            command.Parameters.Select(FieldLine),
++            new Dictionary<string, string>(StringComparer.Ordinal) {
++                ["authorizationPolicy"] = command.AuthorizationPolicyName ?? "",
++                ["description"] = command.Description ?? "",
++                ["derivablePropertyCount"] = command.DerivablePropertyNames.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
++                ["title"] = command.Title,
++            });
++
++    public static GeneratedSchemaPayload CreateResourcePayload(McpResourceDescriptorModel resource)
++        => Payload(
++            "ProjectionResource",
++            resource.ProtocolUri,
++            ProjectionResourceSchemaVersion,
++            resource.BoundedContext,
++            resource.ProjectionTypeName,
++            resource.ProtocolUri,
++            resource.Fields.Select(FieldLine),
++            new Dictionary<string, string>(StringComparer.Ordinal) {
++                ["description"] = resource.Description ?? "",
++                ["emptyStateCtaCommandName"] = resource.EmptyStateCtaCommandName ?? "",
++                ["entityPluralLabel"] = resource.EntityPluralLabel ?? "",
++                ["name"] = resource.Name,
++                ["renderStrategy"] = resource.RenderStrategy,
++                ["title"] = resource.Title,
++            });
++
++    public static GeneratedSchemaPayload CreateLifecycleResultPayload()
++        => Payload(
++            "LifecycleResult",
++            "frontcomposer.lifecycle.result",
++            LifecycleResultSchemaVersion,
++            "",
++            "Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult",
++            "frontcomposer://lifecycle/result",
++            [
++                "category|string|string|required|not-null",
++                "correlationId|string|string|required|not-null",
++                "messageId|string|string|required|not-null",
++                "state|string|string|required|not-null|Accepted,Confirmed,Failed,Rejected,Running",
++            ],
++            new Dictionary<string, string>(StringComparer.Ordinal) {
++                ["compatibilityPolicy"] = "no-client-timestamps",
++            });
++
++    public static GeneratedSchemaPayload CreateMarkdownRendererPayload(string rendererId, string renderStrategy, int maxCharacters, int maxFieldCharacters)
++        => Payload(
++            "MarkdownRendererContract",
++            rendererId,
++            MarkdownRendererSchemaVersion,
++            "",
++            "",
++            rendererId,
++            [],
++            new Dictionary<string, string>(StringComparer.Ordinal) {
++                ["bounds.maxCharacters"] = maxCharacters.ToString(System.Globalization.CultureInfo.InvariantCulture),
++                ["bounds.maxFieldCharacters"] = maxFieldCharacters.ToString(System.Globalization.CultureInfo.InvariantCulture),
++                ["capability"] = "bounded-markdown|sanitized-inert-text",
++                ["outputContentType"] = "text/markdown",
++                ["renderStrategy"] = renderStrategy,
++            });
++
++    public static GeneratedSchemaPayload CreateSkillCorpusResourcePayload(
++        string id,
++        string version,
++        string resourceUri,
++        string title,
++        string contentType,
++        int order,
++        IReadOnlyList<string> publicApiReferences,
++        IReadOnlyList<string> samplePaths)
++        => Payload(
++            "SkillCorpusResource",
++            id,
++            SkillCorpusSchemaVersion,
++            "",
++            "",
++            resourceUri,
++            [],
++            new Dictionary<string, string>(StringComparer.Ordinal) {
++                ["contentType"] = contentType,
++                ["order"] = order.ToString(System.Globalization.CultureInfo.InvariantCulture),
++                ["publicApiReferences"] = string.Join("|", publicApiReferences.OrderBy(v => v, StringComparer.Ordinal)),
++                ["samplePaths"] = string.Join("|", samplePaths.OrderBy(v => v, StringComparer.Ordinal)),
++                ["title"] = title,
++                ["version"] = version,
++            });
++
++    public static GeneratedSchemaPayload CreateAggregateManifestPayload(
++        IReadOnlyList<GeneratedSchemaFingerprint> commandFingerprints,
++        IReadOnlyList<GeneratedSchemaFingerprint> resourceFingerprints,
++        GeneratedSchemaFingerprint? lifecycleFingerprint,
++        IReadOnlyList<GeneratedSchemaFingerprint> rendererFingerprints,
++        IReadOnlyList<GeneratedSchemaFingerprint> skillCorpusFingerprints)
++        => Payload(
++            "AggregateMcpManifest",
++            "frontcomposer.mcp.manifest",
++            AggregateManifestSchemaVersion,
++            "",
++            "",
++            "frontcomposer://mcp/manifest",
++            [],
++            new Dictionary<string, string>(StringComparer.Ordinal) {
++                ["commandFingerprints"] = JoinFingerprints(commandFingerprints),
++                ["lifecycleFingerprint"] = lifecycleFingerprint?.Value ?? "",
++                ["resourceFingerprints"] = JoinFingerprints(resourceFingerprints),
++                ["rendererFingerprints"] = JoinFingerprints(rendererFingerprints),
++                ["skillCorpusFingerprints"] = JoinFingerprints(skillCorpusFingerprints),
++            });
++
++    private static GeneratedSchemaPayload Payload(
++        string family,
++        string contractId,
++        string schemaVersion,
++        string boundedContext,
++        string fullyQualifiedName,
++        string protocolIdentifier,
++        IEnumerable<string> fields,
++        IReadOnlyDictionary<string, string> metadata) {
++        var sb = new StringBuilder(1024);
++        sb.Append("root=frontcomposer.schema.contract.v1\n");
++        sb.Append("family=").Append(Normalize(family)).Append('\n');
++        sb.Append("contractId=").Append(Normalize(contractId)).Append('\n');
++        sb.Append("schemaVersion=").Append(Normalize(schemaVersion)).Append('\n');
++        sb.Append("boundedContext=").Append(Normalize(boundedContext)).Append('\n');
++        sb.Append("fqn=").Append(Normalize(fullyQualifiedName)).Append('\n');
++        sb.Append("protocol=").Append(Normalize(protocolIdentifier)).Append('\n');
++        sb.Append("collections=fields:non-structural-sorted:name\n");
++        foreach (string field in fields.OrderBy(f => f, StringComparer.Ordinal)) {
++            sb.Append("field=").Append(Normalize(field)).Append('\n');
++        }
++
++        foreach (KeyValuePair<string, string> pair in metadata.OrderBy(p => p.Key, StringComparer.Ordinal)) {
++            sb.Append("metadata.").Append(Normalize(pair.Key)).Append('=').Append(Normalize(pair.Value)).Append('\n');
++        }
++
++        string json = sb.ToString();
++        return new GeneratedSchemaPayload(
++            json,
++            new GeneratedSchemaFingerprint(AlgorithmId, Sha256Hex(json), CanonicalizerVersion, TestVectorId));
++    }
++
++    private static string FieldLine(McpParameterDescriptorModel parameter)
++        => string.Join("|", [
++            parameter.Name,
++            parameter.TypeName,
++            parameter.JsonType,
++            parameter.IsRequired ? "required" : "optional",
++            parameter.IsNullable ? "nullable" : "not-null",
++            parameter.Title,
++            parameter.Description ?? "",
++            string.Join(",", parameter.EnumValues.OrderBy(v => v, StringComparer.Ordinal)),
++            parameter.IsUnsupported ? "unsupported" : "supported",
++            string.Join(",", parameter.BadgeMappings.OrderBy(p => p.Key, StringComparer.Ordinal).Select(p => p.Key + ":" + p.Value)),
++            parameter.DisplayFormat,
++        ]);
++
++    private static string Normalize(string value)
++        => (value ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Trim();
++
++    private static string JoinFingerprints(IEnumerable<GeneratedSchemaFingerprint> fingerprints)
++        => string.Join("|", fingerprints.Select(f => f.AlgorithmId + ":" + f.Value).OrderBy(v => v, StringComparer.Ordinal));
++
++    private static string Sha256Hex(string value) {
++        using SHA256 sha = SHA256.Create();
++        byte[] bytes = sha.ComputeHash(Encoding.UTF8.GetBytes(value));
++        char[] chars = new char[bytes.Length * 2];
++        const string Hex = "0123456789abcdef";
++        for (int i = 0; i < bytes.Length; i++) {
++            chars[i * 2] = Hex[bytes[i] >> 4];
++            chars[(i * 2) + 1] = Hex[bytes[i] & 0xF];
++        }
++
++        return new string(chars);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Contracts.Tests/Schema/SchemaFingerprintContractsTests.cs b/tests/Hexalith.FrontComposer.Contracts.Tests/Schema/SchemaFingerprintContractsTests.cs
+new file mode 100644
+index 0000000..dbf051c
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Contracts.Tests/Schema/SchemaFingerprintContractsTests.cs
+@@ -0,0 +1,65 @@
++using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Contracts.Schema;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Contracts.Tests.Schema;
++
++public sealed class SchemaFingerprintContractsTests {
++    [Fact]
++    public void CreatePayload_ProducesStableLowercaseSha256Fingerprint() {
++        var document = new SchemaContractDocument(
++            "frontcomposer.schema.contract.v1",
++            SchemaContractFamily.CommandTool,
++            "Sales.ApproveOrder.Execute",
++            "frontcomposer.command-tool.v1",
++            "Sales",
++            "Orders.ApproveOrderCommand",
++            "Sales.ApproveOrder.Execute",
++            [
++                new SchemaFieldContract("OrderNumber", "String", "string", true, false),
++                new SchemaFieldContract("Comment", "String", "string", false, true),
++            ],
++            [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
++            new Dictionary<string, string> {
++                ["title"] = "Approve Order",
++            });
++
++        SchemaCanonicalPayload first = CanonicalSchemaMaterial.CreatePayload(document);
++        SchemaCanonicalPayload second = CanonicalSchemaMaterial.CreatePayload(document with {
++            Fields = [.. document.Fields.Reverse()],
++        });
++
++        second.Json.ShouldBe(first.Json);
++        second.Fingerprint.ShouldBe(first.Fingerprint);
++        first.Fingerprint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
++        first.Fingerprint.Value.ShouldBe(first.Fingerprint.Value.ToLowerInvariant());
++        first.Fingerprint.Value.Length.ShouldBe(64);
++    }
++
++    [Fact]
++    public void ValidateCanonicalJson_RejectsExactAndCaseVariantDuplicateKeys() {
++        CanonicalSchemaMaterial.ValidateCanonicalJson("""{"id":1,"id":2}""")
++            .Category.ShouldBe(SchemaMaterialValidationCategory.DuplicateJsonKey);
++
++        CanonicalSchemaMaterial.ValidateCanonicalJson("""{"id":1,"ID":2}""")
++            .Category.ShouldBe(SchemaMaterialValidationCategory.DuplicateJsonKey);
++    }
++
++    [Fact]
++    public void RenderContract_ModelsSurfaceMetadataWithoutRuntimeRows() {
++        var contract = new FrontComposerRenderContract(
++            "frontcomposer://Sales/projections/OrderQueue#markdown",
++            "frontcomposer.renderer.markdown.v1",
++            RenderSurfaceKind.McpMarkdown,
++            "text/markdown",
++            [RenderCapability.BoundedMarkdown, RenderCapability.SanitizedInertText],
++            new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('0', 64)),
++            new RenderBounds(100, 12, 64_000, 4_096));
++
++        contract.OutputContentType.ShouldBe("text/markdown");
++        contract.Capabilities.ShouldContain(RenderCapability.SanitizedInertText);
++        contract.Metadata.ShouldBeNull();
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/BoundaryTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/BoundaryTests.cs
+index 6f995f5..036eb40 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/BoundaryTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/BoundaryTests.cs
+@@ -23,6 +23,8 @@ public sealed class BoundaryTests {
+         referenced.ShouldNotContain("Microsoft.AspNetCore.Http");
+         referenced.ShouldNotContain("Microsoft.AspNetCore.Http.Abstractions");
+         referenced.ShouldNotContain("Microsoft.AspNetCore.Routing");
++        referenced.ShouldNotContain("Hexalith.FrontComposer.SourceTools");
++        referenced.ShouldNotContain("Hexalith.FrontComposer.Shell");
+     }
+ 
+     [Fact]
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs
+new file mode 100644
+index 0000000..d8b97ae
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs
+@@ -0,0 +1,85 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Schema;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
++
++public sealed class SchemaNegotiationTests {
++    private static readonly SchemaFingerprint Server = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64));
++    private static readonly SchemaFingerprint Client = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('b', 64));
++
++    [Fact]
++    public void Negotiate_HiddenAndStalePrecedenceWinBeforeSchemaMismatch() {
++        McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
++                IsHiddenOrUnknown: true,
++                IsStaleDescriptor: true,
++                Client,
++                Server,
++                HasTrustedBaseline: false,
++                HasCompatibleAdditiveDrift: false,
++                HasSchemaIntegrityMismatch: true))
++            .Kind.ShouldBe(McpSchemaNegotiationResultKind.HiddenOrUnknown);
++
++        McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
++                IsHiddenOrUnknown: false,
++                IsStaleDescriptor: true,
++                Client,
++                Server,
++                HasTrustedBaseline: true,
++                HasCompatibleAdditiveDrift: false,
++                HasSchemaIntegrityMismatch: false))
++            .Kind.ShouldBe(McpSchemaNegotiationResultKind.StaleDescriptor);
++    }
++
++    [Fact]
++    public void Negotiate_UnsupportedAlgorithm_DoesNotCompareHashStrings() {
++        var unsupported = new SchemaFingerprint("frontcomposer.schema.sha512.future", Server.Value);
++
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
++            IsHiddenOrUnknown: false,
++            IsStaleDescriptor: false,
++            unsupported,
++            Server,
++            HasTrustedBaseline: true,
++            HasCompatibleAdditiveDrift: true,
++            HasSchemaIntegrityMismatch: false));
++
++        result.Kind.ShouldBe(McpSchemaNegotiationResultKind.UnsupportedAlgorithm);
++        result.AllowsSideEffects.ShouldBeFalse();
++        result.AgentCategory.ShouldBe("unsupported-schema-fingerprint");
++    }
++
++    [Fact]
++    public void Negotiate_CompatibleAdditive_AllowsOnlyAdmittedPath() {
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
++            IsHiddenOrUnknown: false,
++            IsStaleDescriptor: false,
++            Client,
++            Server,
++            HasTrustedBaseline: true,
++            HasCompatibleAdditiveDrift: true,
++            HasSchemaIntegrityMismatch: false));
++
++        result.Kind.ShouldBe(McpSchemaNegotiationResultKind.CompatibleAdditive);
++        result.AllowsSideEffects.ShouldBeTrue();
++        result.AgentCategory.ShouldBe("schema-compatible-warning");
++    }
++
++    [Fact]
++    public void Negotiate_IncompatibleBlocksSideEffects() {
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
++            IsHiddenOrUnknown: false,
++            IsStaleDescriptor: false,
++            Client,
++            Server,
++            HasTrustedBaseline: true,
++            HasCompatibleAdditiveDrift: false,
++            HasSchemaIntegrityMismatch: false));
++
++        result.Kind.ShouldBe(McpSchemaNegotiationResultKind.Incompatible);
++        result.AllowsSideEffects.ShouldBeFalse();
++        result.FailureCategory.ShouldBe(FrontComposerMcpFailureCategory.SchemaMismatch);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs
+new file mode 100644
+index 0000000..f23f548
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs
+@@ -0,0 +1,63 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.SourceTools.Diagnostics;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
++
++public sealed class SchemaMigrationDeltaAnalyzerTests {
++    [Fact]
++    public void Compare_ClassifiesOptionalAndRequiredFields() {
++        SchemaBaselineSnapshot baseline = Snapshot([
++            new SchemaFieldContract("Number", "String", "string", true, false),
++        ]);
++        SchemaBaselineSnapshot current = Snapshot([
++            new SchemaFieldContract("Number", "String", "string", true, false),
++            new SchemaFieldContract("OptionalNote", "String", "string", false, true),
++            new SchemaFieldContract("RequiredCode", "String", "string", true, false),
++        ]);
++
++        SchemaMigrationDeltaResult result = SchemaMigrationDeltaAnalyzer.Compare(baseline, current);
++
++        result.Decision.ShouldBe(SchemaCompatibilityDecision.Breaking);
++        result.Deltas.ShouldContain(d => d.Kind == SchemaDeltaKind.AddedOptionalField);
++        result.Deltas.ShouldContain(d => d.Kind == SchemaDeltaKind.AddedRequiredField);
++    }
++
++    [Fact]
++    public void Compare_RejectsMismatchedCanonicalizerMetadata() {
++        SchemaBaselineSnapshot baseline = Snapshot([]);
++        SchemaBaselineSnapshot current = Snapshot([]) with {
++            Provenance = Snapshot([]).Provenance with { CanonicalizerVersion = "future" },
++        };
++
++        SchemaMigrationDeltaAnalyzer.Compare(baseline, current)
++            .Decision.ShouldBe(SchemaCompatibilityDecision.Unknown);
++    }
++
++    private static SchemaBaselineSnapshot Snapshot(IReadOnlyList<SchemaFieldContract> fields) {
++        var document = new SchemaContractDocument(
++            "frontcomposer.schema.contract.v1",
++            SchemaContractFamily.ProjectionResource,
++            "frontcomposer://Sales/projections/OrderQueue",
++            "frontcomposer.projection-resource.v1",
++            "Sales",
++            "Orders.OrderQueueProjection",
++            "frontcomposer://Sales/projections/OrderQueue",
++            fields,
++            [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
++            new Dictionary<string, string>());
++        SchemaCanonicalPayload payload = CanonicalSchemaMaterial.CreatePayload(document);
++        return new SchemaBaselineSnapshot(
++            new SchemaBaselineProvenance(
++                SchemaContractFamily.ProjectionResource,
++                "frontcomposer.projection-resource.v1",
++                SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++                "Hexalith.FrontComposer",
++                "baseline-known-v1",
++                RequiresMigrationGuide: false),
++            payload.Document,
++            payload.Fingerprint);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs
+new file mode 100644
+index 0000000..6e5ca83
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Emitters/McpManifestEmitterTests.cs
+@@ -0,0 +1,32 @@
++using System.Collections.Immutable;
++
++using Hexalith.FrontComposer.SourceTools.Emitters;
++
++using Shouldly;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Emitters;
++
++public sealed class McpManifestEmitterTests {
++    [Fact]
++    public void Emit_ProjectionDescriptor_UsesTypedRenderStrategyLiteral() {
++        const string Source = """
++            using Hexalith.FrontComposer.Contracts.Attributes;
++            namespace Orders;
++            [Projection]
++            [BoundedContext("Sales")]
++            [ProjectionRole(ProjectionRole.Timeline)]
++            public partial class OrderTimelineProjection {
++                public string Number { get; set; } = "";
++            }
++            """;
++
++        var parsed = CompilationHelper.ParseProjection(Source, "Orders.OrderTimelineProjection").Model!;
++
++        string source = McpManifestEmitter.Emit([], ImmutableArray.Create(parsed));
++
++        source.ShouldContain("McpProjectionRenderStrategy.Timeline");
++        source.ShouldNotContain("\"Timeline\",");
++        source.ShouldContain("new SchemaFingerprint(\"frontcomposer.schema.sha256.canonical-json.v1\"");
++        source.ShouldContain("using Hexalith.FrontComposer.Contracts.Schema;");
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintTransformTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintTransformTests.cs
+new file mode 100644
+index 0000000..eaa3db9
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintTransformTests.cs
+@@ -0,0 +1,79 @@
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
++
++public sealed class SchemaFingerprintTransformTests {
++    [Fact]
++    public void CommandFingerprint_ChangesWhenStructuralFieldChanges_AndIgnoresRuntimeNames() {
++        const string Source = """
++            using Hexalith.FrontComposer.Contracts.Attributes;
++            using System.ComponentModel.DataAnnotations;
++            namespace Orders;
++            [Command]
++            [BoundedContext("Sales")]
++            [Display(Name = "Approve Order")]
++            public partial class ApproveOrderCommand {
++                public string MessageId { get; set; } = "";
++                public string TenantId { get; set; } = "";
++                [Display(Name = "Order number")]
++                public string OrderNumber { get; set; } = "";
++            }
++            """;
++
++        var parsed = CompilationHelper.ParseCommand(Source, "Orders.ApproveOrderCommand").Model!;
++        McpCommandDescriptorModel descriptor = McpManifestTransform.TransformCommand(parsed);
++        GeneratedSchemaPayload payload = SchemaFingerprintTransform.CreateCommandPayload(descriptor);
++        McpCommandDescriptorModel changed = new(
++            descriptor.ProtocolName,
++            descriptor.CommandTypeName,
++            descriptor.BoundedContext,
++            "Approve Purchase Order",
++            descriptor.Description,
++            descriptor.AuthorizationPolicyName,
++            descriptor.Parameters,
++            descriptor.DerivablePropertyNames);
++
++        payload.Fingerprint.Value.ShouldNotBe(SchemaFingerprintTransform.CreateCommandPayload(changed).Fingerprint.Value);
++        payload.Json.ShouldNotContain("TenantId");
++        payload.Json.ShouldNotContain("MessageId");
++    }
++
++    [Fact]
++    public void ResourceFingerprint_IsIndependentOfFieldEnumerationOrder() {
++        var fieldA = new McpParameterDescriptorModel("Number", "String", "string", true, false, "Number", null, [], false);
++        var fieldB = new McpParameterDescriptorModel("Status", "Enum", "string", true, false, "Status", null, ["Pending", "Approved"], false);
++        var left = new McpResourceDescriptorModel(
++            "frontcomposer://Sales/projections/OrderQueue",
++            "OrderQueue",
++            "Orders.OrderQueueProjection",
++            "Sales",
++            "Order queue",
++            null,
++            [fieldA, fieldB]);
++        var right = new McpResourceDescriptorModel(
++            left.ProtocolUri,
++            left.Name,
++            left.ProjectionTypeName,
++            left.BoundedContext,
++            left.Title,
++            left.Description,
++            [fieldB, fieldA]);
++
++        SchemaFingerprintTransform.CreateResourcePayload(left).Fingerprint.Value
++            .ShouldBe(SchemaFingerprintTransform.CreateResourcePayload(right).Fingerprint.Value);
++    }
++
++    [Fact]
++    public void AggregateFingerprint_ChangesWhenNestedFingerprintChanges() {
++        GeneratedSchemaFingerprint a = new(SchemaFingerprintTransform.AlgorithmId, new string('a', 64), SchemaFingerprintTransform.CanonicalizerVersion, SchemaFingerprintTransform.TestVectorId);
++        GeneratedSchemaFingerprint b = new(SchemaFingerprintTransform.AlgorithmId, new string('b', 64), SchemaFingerprintTransform.CanonicalizerVersion, SchemaFingerprintTransform.TestVectorId);
++
++        GeneratedSchemaFingerprint one = SchemaFingerprintTransform.CreateAggregateManifestPayload([a], [], null, [], []).Fingerprint;
++        GeneratedSchemaFingerprint two = SchemaFingerprintTransform.CreateAggregateManifestPayload([b], [], null, [], []).Fingerprint;
++
++        one.Value.ShouldNotBe(two.Value);
++    }
++}

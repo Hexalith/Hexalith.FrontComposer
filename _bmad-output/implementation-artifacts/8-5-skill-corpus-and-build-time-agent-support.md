@@ -1,6 +1,6 @@
 # Story 8.5: Skill Corpus & Build-Time Agent Support
 
-Status: review
+Status: done
 
 > **Epic 8** - MCP & Agent Integration. Covers **FR55**, **FR58**, **NFR85**, and the Epic 8 handoff into **FR69/FR73**. Builds on Stories **8-1** through **8-4** MCP descriptors, visibility, lifecycle, and Markdown projection rendering; consumes the PRD documentation strategy for single-source human/agent docs. Applies lessons **L03**, **L04**, **L06**, **L07**, **L08**, **L10**, **L11**, and **L14**.
 
@@ -123,6 +123,89 @@ An adopter should be able to install or enable FrontComposer once and let an IDE
   - [x] Adopter-experience tests that diagnostics identify the exact source file/section for missing manifest entries, broken URIs, duplicate titles/slugs, and invalid migration-guide links without requiring repo-local absolute paths.
   - [x] Regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
   - [x] Targeted tests: `tests/Hexalith.FrontComposer.Mcp.Tests`, `tests/Hexalith.FrontComposer.SourceTools.Tests`, and packaging tests; Story 10-6 owns live multi-agent/provider benchmark gates.
+
+### Review Findings
+
+Code review pass via `/bmad-code-review 8-5` against commit `a776288` (story 8-5 file subset). Three review layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) produced 75 raw findings → 10 decision-needed, 36 patches, 8 deferred, 9 dismissed.
+
+#### Decisions Resolved
+
+All 10 decision-needed items resolved (2026-05-04). Resulting patches/defers folded into the lists below.
+
+- DN-1 → (b) lowercase-canonicalize URIs at parse time + Ordinal everywhere → P-37
+- DN-2 → (a) document the gate bypass and adjust probe wording (preserves D4 framework-global intent) → P-38
+- DN-3 → (a) include markdown body hash in fingerprint payload → P-39
+- DN-4 → (a) accumulate all generated-code validator categories (security-first) → P-40
+- DN-5 → (b) land framework + stub `IBaselineProvider`, defer baseline persistence → P-41
+- DN-6 → (b) implement symbol-only Roslyn check against Contracts/SourceTools/Shell/Mcp → P-42
+- DN-7 → (c) defer real `TreatWarningsAsErrors=true` compile to Story 10-6 → DEF-9
+- DN-8 → (b) emit derived aggregate at runtime + `frontcomposer://skills/manifest` MCP resource → P-43
+- DN-9 → (b) drop file-system Content copy from .nupkg (runtime reads embedded resources only) → P-44
+- DN-10 → (a) fail-fast at startup with diagnostics in exception message (folded into P-2) → P-45
+
+#### Patches
+
+- [x] [Review][Patch] P-1 ToPath `Replace('.', '/')` mangles file extensions and dotted file names [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1068-1069]
+- [x] [Review][Patch] P-2 ParseOne shared diagnostics list discards every subsequent valid file once one fails [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:771-773, 822-824]
+- [x] [Review][Patch] P-3 **CRITICAL** Forbidden token `<Target` matches `<TargetFramework>` and rejects all real SDK-style csproj generations [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1363-1372]
+- [x] [Review][Patch] P-4 SkillBenchmarkCacheKey omits `prompt.ExpectedShape` and uses anonymous-type JSON (AOT/trim hazard) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1442-1453]
+- [x] [Review][Patch] P-5 `JsonSerializer.Serialize(result)` uses reflection overload despite source-gen context [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1505-1514]
+- [x] [Review][Patch] P-6 PackageReferenceRegex misses long-form, `Update=`, and `Version`-first attribute order [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1389-1390]
+- [x] [Review][Patch] P-7 Forbidden-tokens denylist missing `<UsingTask`, `<Choose>`, `<Sdk Name=`, `<ProjectReference Include="..\` traversal; not applied to .props/.targets [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1359-1372]
+- [x] [Review][Patch] P-8 TenantId/UserId substring match flags `RecipientUserId`, `LastTenantIdentifier` [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1351-1357]
+- [x] [Review][Patch] P-9 CommandClassRegex matches `[Command]` in comments/strings; lazy quantifier is ReDoS shape [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1386-1387]
+- [x] [Review][Patch] P-10 hasRegistration uses `Contains("Add") && Contains("FrontComposer")` — passes any file with a `using` directive [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1289]
+- [x] [Review][Patch] P-11 hasSourceToolsManifest matches any path containing letters "obj" [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1292-1294]
+- [x] [Review][Patch] P-12 ReadAsync echoes `descriptor.ResourceUri` even on malformed/missing requests [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1217-1234]
+- [x] [Review][Patch] P-13 SkillResourceReadResult.Failure body is raw enum name — violates DN-2 hidden-equivalent invariant from Story 8-4a [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1148-1150]
+- [x] [Review][Patch] P-14 OfflineScorer reports `Diagnostics[0].Category`, order-dependent [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1521-1528]
+- [x] [Review][Patch] P-15 CanPersist trusts caller-supplied `SanitizedDiagnostics` with no enforcement [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1499-1503]
+- [x] [Review][Patch] P-16 ContainsUnsafeContent denylist covers only "bypass authorization" + 3 "impersonate" variants, missing "bypass validation/generated/tenant" per T2 [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1039-1043]
+- [x] [Review][Patch] P-17 Front-matter parser silently overwrites duplicate keys [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:753-766]
+- [x] [Review][Patch] P-18 ApprovedPackages whitelist missing `xunit.runner.visualstudio` and `coverlet.collector`; comparer is `Ordinal` while NuGet is case-insensitive [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1264-1272]
+- [x] [Review][Patch] P-19 ParseOne does not strip BOM and does not normalize lone `\r` line endings [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:735-742]
+- [x] [Review][Patch] P-20 Section parser does not track fenced-code-block state — markers inside ` ``` ` toggle state [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:904-964]
+- [x] [Review][Patch] P-21 SkillBenchmarkPromptSet uses `SingleOrDefault` (throws on collision) and silently returns empty when missing [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1402-1419]
+- [x] [Review][Patch] P-22 SkillCorpusReferenceValidator uses `Type.GetType` fallback that loads arbitrary BCL types [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1119-1128]
+- [x] [Review][Patch] P-23 samplePaths validator allows `..` traversal [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1103-1113]
+- [x] [Review][Patch] P-24 Skill resource URIs not deduped against existing manifest projection URIs in `Concat` registration [src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs:60-64]
+- [x] [Review][Patch] P-25 Probe `GetService<IFrontComposerMcpResourceVisibilityGate>()` may return null for `Scoped`-registered gates [src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs:552-557]
+- [x] [Review][Patch] P-26 ProviderConfigHash field is caller-supplied; never derived (AC10) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs SkillBenchmarkResult]
+- [x] [Review][Patch] P-27 Add `MaxSkillResourceCharacters` option and `ResponseTooLarge` failure path on read (T3 "bounded response size", D10) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1169-1177]
+- [x] [Review][Patch] P-28 Add `OneShotPassTarget = 0.80` constant or prompt-set metadata field (T6 sub-bullet 7, AC9)
+- [x] [Review][Patch] P-29 Add aggregation helper + 16-pass-of-20 test (T8 "20-prompt aggregation math") [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/BenchmarkHarnessTests.cs]
+- [x] [Review][Patch] P-30 Add packaging test that asserts the produced .nupkg contains `contentFiles\any\any\skills\frontcomposer\...` (T8 sub-bullet 3) [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/]
+- [x] [Review][Patch] P-31 Add truncation/bounded-output test (T3, T8) — paired with P-27 [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillResourceTests.cs]
+- [x] [Review][Patch] P-32 Add per-category negative validator tests for missing-registration, missing-validation-tests, invalid-attributes, package-source mutation (T8 sub-bullet 5) [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/GeneratedCodeValidatorTests.cs]
+- [x] [Review][Patch] P-33 Expand `samples/new-bounded-context.md` agent-reference body with concrete fenced project layout, command/projection/validator/registration shapes, and link to Counter sample (T2 sub-bullet 2)
+- [x] [Review][Patch] P-34 Add explicit "duplicate marker block" test case (AC15) [tests/Hexalith.FrontComposer.Mcp.Tests/Skills/SkillCorpusTests.cs]
+- [x] [Review][Patch] P-35 SkillCorpusReleaseGuard `MigrationOwner` accepts "TBD"/"unknown" — tighten to require `Story \d+-\d+` pattern [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1531-1547]
+- [x] [Review][Patch] P-36 TryBuildArtifact magic string `"redaction-not-passed"` → constant [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1505-1514]
+- [x] [Review][Patch] P-37 Lowercase-canonicalize URIs at parse time and use Ordinal everywhere (DN-1) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1163, 1213-1214]
+- [x] [Review][Patch] P-38 Document skill resource gate-bypass and rename probe wording to reflect manifest-only enforcement (DN-2) [src/Hexalith.FrontComposer.Mcp/Extensions/FrontComposerMcpServiceCollectionExtensions.cs:552-557, src/Hexalith.FrontComposer.Mcp/IFrontComposerMcpResourceVisibilityGate.cs]
+- [x] [Review][Patch] P-39 Include markdown body hash in skill resource fingerprint payload (DN-3) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:844-870]
+- [x] [Review][Patch] P-40 Generated-code validator: accumulate all diagnostic categories instead of short-circuiting on `PackageBoundary` (DN-4) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1283-1285]
+- [x] [Review][Patch] P-41 Add `IBaselineProvider` seam + stub implementation; emit `MigrationGuideMissing` when prior `PublicApiReferences` differs and `MigrationOwner` is unset (DN-5) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1531-1547]
+- [x] [Review][Patch] P-42 Implement symbol-only Roslyn validator over fenced C# snippets against Contracts/SourceTools/Shell/Mcp (DN-6, AC5, T4) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:472-519]
+- [x] [Review][Patch] P-43 Emit derived aggregate corpus manifest at runtime + expose `frontcomposer://skills/manifest` MCP resource with `manifestSchemaVersion` (DN-8, T1, AC14, AC19) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs]
+- [x] [Review][Patch] P-44 Drop `Pack="true"` Content include from csproj — runtime reads embedded resources only (DN-9) [src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj:594-602]
+- [x] [Review][Patch] P-45 `FrontComposerSkillResourceProvider` ctor: fail-fast at startup with diagnostics list in exception message; add `InvalidSkillCorpus` failure category (DN-10, ties to P-2) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1156-1163]
+
+#### Deferred
+
+- [x] [Review][Defer] DEF-1 SkillCorpusValidationResult conflates snapshot + validation diagnostics [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:669-671] — deferred, refactor not blocking 8-5 scope
+- [x] [Review][Defer] DEF-2 SkillResourceReadResult has `IsSuccess` + `Category` dual source of truth [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1140-1150] — deferred, refactor (privatize ctor + factories)
+- [x] [Review][Defer] DEF-3 FrontComposerSkillMcpResource caches descriptor at construction; latent stale-on-hot-reload [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1193-1236] — deferred, no hot-reload today
+- [x] [Review][Defer] DEF-4 ReadInt overflow defensive test [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1011-1022] — deferred, edge-case nit
+- [x] [Review][Defer] DEF-5 LowerIdPattern accepts numeric-only IDs and has no length cap [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1051-1052] — deferred, no observed abuse path
+- [x] [Review][Defer] DEF-6 Diagnostic message `Source` field carries raw paths; latent leakage if logged unsanitized [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:737-741] — deferred, no current consumer logs to tenant-facing channel
+- [x] [Review][Defer] DEF-7 Frozen-set Ordinal trim contract — document the parse-time-trim invariant [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:674-697] — deferred, doc-only
+- [x] [Review][Defer] DEF-8 T1 "owning story/follow-up" per-file metadata — rolled into P-43 aggregate manifest (DN-8 resolved)
+- [x] [Review][Defer] DEF-9 Real `TreatWarningsAsErrors=true` compile in generated-code validator (DN-7) [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:721-726] — deferred to Story 10-6 benchmark harness which owns live multi-agent provider gates
+
+#### Dismissed
+
+DIS-1 Sha256 `ToLowerInvariant` after `Convert.ToHexString` (perf trivial); DIS-2 `ContentType` `text/plain` dead branch (defensive); DIS-3 `seenKinds` rejects duplicate kinds so `Join` reduces to single element (intentional per AC15); DIS-4 `MaxProjectionCellCharacters < 4` floor (Story 8-4a hunk, not 8-5 scope); DIS-5 Singleton DI lazy parsing latency (measured fast); DIS-6 Pack vs EmbeddedResource duplication (covered by DN-9); DIS-7 Diff bundles other-story hunks (review-hygiene observation, not a code defect); DIS-8 `---bad: junk` accepted as terminator (parser conservative; doc/test only); DIS-9 Per-file owning-story metadata (covered by DN-8 / DEF-8).
 
 ---
 
@@ -302,10 +385,24 @@ GPT-5 Codex
 - 2026-05-02: Party-mode review completed via `/bmad-party-mode 8-5-skill-corpus-and-build-time-agent-support; review;`. Applied corpus metadata schema, URI/order, section extraction, structural drift-check, validator diagnostic, offline benchmark artifact, and test-budget clarifications. Ready for advanced elicitation on a later run.
 - 2026-05-02: Advanced elicitation completed via `/bmad-advanced-elicitation 8-5-skill-corpus-and-build-time-agent-support`. Applied extraction fail-closed, inert content, immutable package-resource, unsafe generated-project admission, stale benchmark cache, redaction persistence, and Story 8-6 boundary hardening. Ready for development.
 - 2026-05-04: Implemented story 8-5. Added versioned shared docs/skill source under `docs/skills/frontcomposer`, embedded and packed it into `.Mcp`, exposed framework skill resources through MCP, added fail-closed corpus validation and public API reference checks, scaffolded generated-code structural validation, added the 20-prompt offline benchmark harness, and covered release/migration guardrails. Story is ready for review.
+- 2026-05-04: Code review pass via `/bmad-code-review 8-5` against commit `a776288` (story-8-5 path subset). Resolved 10 decisions and applied 45 patches; 9 deferred (DEF-1..DEF-9), 9 dismissed.
+  - **Decisions (DN-1..DN-10):** lowercase URI canonicalization; document gate-bypass for skills (D4); include markdown body hash in fingerprint; accumulate validator categories (security-first); land `IBaselineProvider` stub; symbol-only Roslyn snippet validator; defer real `dotnet build --warnaserror` to Story 10-6; emit derived aggregate corpus manifest at runtime; drop file-system Content from .nupkg; fail-fast at startup with diagnostics in exception.
+  - **Critical patches:** P-3 fixed `<Target` denylist matching `<TargetFramework>` (every real csproj would have been rejected); P-2 fixed shared diagnostics list nuking valid files after a single failure; P-1 fixed `ToPath` mangling `.md` extension and dotted file names.
+  - **Security gates:** P-6/P-7 expanded the project-shape denylist (`<UsingTask>`, `<Choose>`, `<Sdk Name=`, `<ProjectReference>` traversal, `Update=` and `Version`-first attribute orders); P-8 word-boundary anchored TenantId/UserId field detection; P-9 bounded `CommandClassRegex` with timeout; P-10 specific `\bAdd[A-Z]\w*FrontComposer\w*\(` registration regex; P-22 dropped `Type.GetType` BCL fallback; P-23 sample-path traversal block.
+  - **Cache integrity (P-4):** SkillBenchmarkCacheKey now derives from a canonical pipe-delimited string covering `prompt.ExpectedShape`, all config fields, with explicit null sentinels; AOT-safe (no anonymous-type reflection JSON).
+  - **Fingerprint (P-39):** WithFingerprint now hashes the markdown body so AC8 drift detection works on content alone.
+  - **New types:** `SkillCorpusSnippetValidator` (P-42 Roslyn symbol-existence over fenced C# snippets), `SkillCorpusAggregateManifest` + `SkillCorpusAggregateManifestBuilder` (P-43 derived manifest + `frontcomposer://skills/manifest` MCP resource), `ISkillCorpusBaselineProvider` + `EmptySkillCorpusBaselineProvider` (P-41 release-time baseline seam), `InvalidSkillCorpusException` (P-45), `SkillResourceReadOptions` (P-27 bounded response), `SkillBenchmarkOfflineScorer.OneShotPassRate`/`.OneShotPassTarget` (P-28/P-29).
+  - **Failure surface (P-13):** `SkillResourceReadResult.Failure` body uses stable opaque tokens (`unknown_resource`, `canceled`, `malformed_request`, `response_too_large`) that preserve hidden-equivalent semantics from Story 8-4a DN-2 instead of leaking enum names.
+  - **Persistence gate (P-15):** `SkillBenchmarkArtifactWriter.CanPersist` rejects results whose `SanitizedDiagnostics` still contain raw filesystem paths, even when `RedactionStatus = Passed`.
+  - **Packaging (P-44):** dropped duplicate `Pack="true"` Content from `Hexalith.FrontComposer.Mcp.csproj`; runtime reads embedded resources only.
+  - **Tests:** added 40 new tests under `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/` covering aggregate manifest, body-hash fingerprint, lowercase canonicalization, fenced-code-block markers, ParseOne per-file delta, BCL reference rejection, sample-path traversal, handwave migration owners, baseline comparison, response-too-large, opaque failure tokens, expanded unsafe-project-shape categories, false-positive guards for tenant fields, missing-registration heuristic, `obj/` precise match, accumulated categories, sanitization gate, ProviderConfigHash determinism, ExpectedShape cache invalidation, Seed change cache invalidation, OneShotPassRate aggregation, snippet validator pass + fail.
+  - **Validation:** `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` (0 warnings/errors); `dotnet test Hexalith.FrontComposer.sln --no-build` => Contracts 159/0/0, MCP 199/0/0 (was 159), Shell 1542/0/0, SourceTools 606/0/0, Bench 2/0/0.
+- 2026-05-04: Status moved to done after review pass; sprint-status updated.
 
 ### Change Log
 
 - 2026-05-04: Story implementation complete; status moved to review.
+- 2026-05-04: Code review applied 10 decisions + 45 patches (P-1..P-45), 9 deferred (DEF-1..DEF-9), 9 dismissed; status moved to done.
 
 ### Party-Mode Review
 

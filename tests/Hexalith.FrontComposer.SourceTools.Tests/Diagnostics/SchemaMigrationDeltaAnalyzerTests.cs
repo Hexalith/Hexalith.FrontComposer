@@ -56,7 +56,7 @@ public sealed class SchemaMigrationDeltaAnalyzerTests {
                 SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
                 "Hexalith.FrontComposer",
                 "baseline-known-v1",
-                RequiresMigrationGuide: false),
+                requiresMigrationGuide: false),
             payload.Document,
             payload.Fingerprint);
     }

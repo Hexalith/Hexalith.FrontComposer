@@ -6,6 +6,9 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="ModelContextProtocol.AspNetCore" />
+    <!-- Story 8-5 P-42: Roslyn symbol-existence validator over fenced C# snippets in the skill
+         corpus. Used by SkillCorpusSnippetValidator to detect stale attribute names/types. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
@@ -14,13 +17,15 @@
     <InternalsVisibleTo Include="Hexalith.FrontComposer.Mcp.Tests" />
   </ItemGroup>
   <ItemGroup>
+    <!-- Story 8-5 packaging contract: corpus markdown ships as embedded resources only.
+         The Pack="true" Content include was dropped per DN-9: the runtime reads embedded
+         resources, and adopters who need raw markdown can pull it from the docfx site (Story
+         9-5) rather than browsing the .nupkg contentFiles tree. The path-flatten LogicalName
+         template uses backslash on Windows and forward slash on Linux; the loader normalizes
+         either way via SkillCorpusLoader.ToPath. -->
     <EmbeddedResource Include="..\..\docs\skills\frontcomposer\**\*.md"
                       LogicalName="Hexalith.FrontComposer.Mcp.Skills.%(RecursiveDir)%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\..\docs\skills\frontcomposer\benchmark-prompts\v1\prompt-set.json"
                       LogicalName="Hexalith.FrontComposer.Mcp.Skills.benchmark-prompts.v1.prompt-set.json" />
-    <Content Include="..\..\docs\skills\frontcomposer\**\*.*"
-             Pack="true"
-             PackagePath="contentFiles\any\any\skills\frontcomposer\%(RecursiveDir)%(Filename)%(Extension)"
-             Visible="false" />
   </ItemGroup>
 </Project>
