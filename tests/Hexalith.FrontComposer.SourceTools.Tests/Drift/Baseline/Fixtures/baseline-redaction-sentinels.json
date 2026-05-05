@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+  "algorithm": "frontcomposer-structural-v1",
+  "_redactionFixtureNote": "AC13 / T7 — every value below contains a sentinel that must NEVER appear in any drift diagnostic message, property bag, or thrown-exception text. Sentinels are: SENTINEL_TENANT_d4f1, SENTINEL_USER_88aa, SENTINEL_TOKEN_ey.eyJzdWIiOiIxMjM0NTYi.fake, SENTINEL_PATH_C__Users_jane_secrets, SENTINEL_PAYLOAD_{\"ssn\":\"000-00-0000\"}, SENTINEL_ETAG_W/abc123, SENTINEL_CACHE_KEY_tenant_42, SENTINEL_ROW_select_*, SENTINEL_GENERATED_SOURCE_///auto/.",
+  "contracts": [
+    {
+      "family": "projection",
+      "type": "Acme.SENTINEL_TENANT_d4f1.SENTINEL_USER_88aa.SecretProjection",
+      "boundedContext": "SENTINEL_TENANT_d4f1",
+      "displayName": "SENTINEL_PAYLOAD_{\"ssn\":\"000-00-0000\"}",
+      "properties": [
+        { "name": "ETag",     "category": "String", "nullable": false, "displayName": "SENTINEL_ETAG_W/abc123" },
+        { "name": "CacheKey", "category": "String", "nullable": false, "displayName": "SENTINEL_CACHE_KEY_tenant_42" },
+        { "name": "Path",     "category": "String", "nullable": false, "displayName": "SENTINEL_PATH_C__Users_jane_secrets" },
+        { "name": "Token",    "category": "String", "nullable": false, "displayName": "SENTINEL_TOKEN_ey.eyJzdWIiOiIxMjM0NTYi.fake" }
+      ]
+    }
+  ]
+}

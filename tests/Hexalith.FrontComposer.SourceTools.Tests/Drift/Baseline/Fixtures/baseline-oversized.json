@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+  "algorithm": "frontcomposer-structural-v1",
+  "_oversizedHint": "T1 caps maximum baseline file size, declaration count, property count, nesting depth, and diagnostic count. This fixture is the bounds-violation marker — at activation time the test should regenerate it with a synthetically-generated 64+ MB body or 10000+ contract entries that exceed the analyzer-configured cap, then assert AC9 fail-closed Error diagnostic.",
+  "contracts": []
+}

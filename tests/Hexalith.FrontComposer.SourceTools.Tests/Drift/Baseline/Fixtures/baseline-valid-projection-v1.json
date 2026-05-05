@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+  "algorithm": "frontcomposer-structural-v1",
+  "contracts": [
+    {
+      "family": "projection",
+      "type": "Acme.Shipping.ShipmentProjection",
+      "boundedContext": "Shipping",
+      "displayName": "Shipments",
+      "role": "ActionQueue",
+      "properties": [
+        { "name": "Id",       "category": "String",          "nullable": false, "displayName": "Id",       "columnPriority": 0, "fieldGroup": null,         "displayFormat": "Default" },
+        { "name": "Priority", "category": "Enum",            "nullable": false, "displayName": "Priority", "columnPriority": 1, "fieldGroup": null,         "displayFormat": "Default" },
+        { "name": "DueDate",  "category": "DateTimeOffset",  "nullable": true,  "displayName": "Due",      "columnPriority": 2, "fieldGroup": "Schedule",   "displayFormat": "RelativeTime" },
+        { "name": "Notes",    "category": "String",          "nullable": true,  "displayName": "Notes",    "columnPriority": 9, "fieldGroup": "Additional", "displayFormat": "Default" }
+      ]
+    }
+  ]
+}

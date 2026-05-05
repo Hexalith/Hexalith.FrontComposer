@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+  "algorithm": "frontcomposer-structural-v1",
+  "contracts": [
+    {
+      "family": "command",
+      "type": "Acme.Shipping.ConfirmShipmentCommand",
+      "boundedContext": "Shipping",
+      "displayName": "Confirm Shipment",
+      "destructive": false,
+      "icon": "TruckCheck",
+      "requiresPolicy": "Shipping.Confirm",
+      "properties": [
+        { "name": "MessageId",  "category": "Guid",   "nullable": false, "derivable": true  },
+        { "name": "ShipmentId", "category": "Guid",   "nullable": false, "derivable": false },
+        { "name": "Carrier",    "category": "String", "nullable": false, "derivable": false }
+      ]
+    }
+  ]
+}

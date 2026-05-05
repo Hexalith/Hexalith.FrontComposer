@@ -1,0 +1,14 @@
+{
+  "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+  "algorithm": "frontcomposer-structural-v1",
+  "contracts": [
+    {
+      "family": "projection",
+      "type": "",
+      "boundedContext": "",
+      "properties": [
+        { "name": "", "category": "Enum", "nullable": false, "columnPriority": -7 }
+      ]
+    }
+  ]
+}

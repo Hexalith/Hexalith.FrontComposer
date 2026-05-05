@@ -1,0 +1,15 @@
+{
+  "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+  "algorithm": "frontcomposer-structural-v1",
+  "contracts": [
+    {
+      "family": "projection",
+      "type": "Acme.Shipping.ShipmentProjection",
+      "boundedContext": "Shipping",
+      "displayName": "Shipments (file B — colliding)",
+      "properties": [
+        { "name": "Priority", "category": "Enum", "nullable": true }
+      ]
+    }
+  ]
+}
