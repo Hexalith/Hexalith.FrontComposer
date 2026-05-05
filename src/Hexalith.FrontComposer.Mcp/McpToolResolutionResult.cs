@@ -30,4 +30,20 @@ public sealed record McpToolResolutionResult(
             catalog.Tools,
             catalog.IsTruncated);
     }
+
+    public static McpToolResolutionResult Reject(
+        string requestedName,
+        FrontComposerMcpFailureCategory category,
+        McpVisibleToolCatalog catalog) {
+        ArgumentNullException.ThrowIfNull(catalog);
+
+        return new(
+            false,
+            category,
+            requestedName,
+            null,
+            null,
+            catalog.Tools,
+            catalog.IsTruncated);
+    }
 }

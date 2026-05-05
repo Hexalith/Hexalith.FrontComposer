@@ -20,9 +20,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
 /// precedence, and re-run server-side validation on `CompatibleAdditive`.
 /// </summary>
 public sealed class ProjectionReaderSchemaGateTests {
-    private const string SkipReason = "RED-PHASE: T3 — projection reader schema-gate wiring pending.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task SchemaGate_RunsAfterVisibility_BeforeQueryDispatch() {
         CountingQueryService query = new();
         FrontComposerMcpProjectionReader reader = BuildReader(query, clientFingerprintHint: SchemaHintFor("stale-client"));
@@ -35,11 +33,11 @@ public sealed class ProjectionReaderSchemaGateTests {
         result.Category.ShouldBe(FrontComposerMcpFailureCategory.SchemaMismatch);
         result.StructuredContent.ShouldNotBeNull();
         result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("schema-mismatch");
-        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldStartWith("HFC-SCHEMA-");
+        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldStartWith("HFC-MCP-PROJECTION-SCHEMA-");
         query.CallCount.ShouldBe(0, "AC1: schema-mismatch must short-circuit before query dispatch.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task HiddenPrecedence_WinsOverSchemaMismatch() {
         // AC2 anchor: a hidden resource AND a stale client schema. The reader must collapse to
         // the hidden-equivalent unknown_resource public payload, not surface schema-mismatch.
@@ -64,7 +62,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         query.CallCount.ShouldBe(0);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task CompatibleAdditive_AdmitsDispatch_AfterRevalidation() {
         // AC5: CompatibleAdditive admits the request, but server-side validation/defaulting
         // must run again before the query is invoked. The validator counter proves revalidation.
@@ -82,7 +80,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         query.RevalidationCount.ShouldBeGreaterThanOrEqualTo(1, "AC5: validation must re-run before dispatch on CompatibleAdditive.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task UnsupportedAlgorithm_FromClient_SurfacesSanitizedAgentCategory() {
         CountingQueryService query = new();
         FrontComposerMcpProjectionReader reader = BuildReader(
@@ -99,7 +97,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         query.CallCount.ShouldBe(0);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task UnknownBaseline_SurfacesSchemaUnavailable() {
         CountingQueryService query = new();
         FrontComposerMcpProjectionReader reader = BuildReader(
@@ -116,7 +114,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         query.CallCount.ShouldBe(0);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public async Task ZeroSideEffects_OnIncompatibleNegotiation_NoQueryNoRender() {
         // AC1 zero-side-effect tightening: incompatible negotiation must not invoke query
         // execution, lifecycle mutation, cache writes, or renderer buffers.
@@ -142,7 +140,7 @@ public sealed class ProjectionReaderSchemaGateTests {
         Action<IServiceCollection>? configureServices = null) {
         ServiceCollection services = [];
         services.AddSingleton(queryService);
-        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
+        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
         services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
         services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor(clientFingerprintHint));
         services.AddScoped<FrontComposerMcpProjectionReader>();
@@ -153,8 +151,13 @@ public sealed class ProjectionReaderSchemaGateTests {
         return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
     }
 
-    private static McpManifest Manifest()
-        => new("frontcomposer.mcp.v1", [], [
+    private static McpManifest Manifest(SchemaFingerprint? clientFingerprintHint) {
+        SchemaFingerprint? serverFingerprint = clientFingerprintHint?.Value.StartsWith("baseline-missing", StringComparison.Ordinal) == true
+            ? null
+            : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
+                ? clientFingerprintHint
+                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64));
+        return new("frontcomposer.mcp.v1", [], [
             new McpResourceDescriptor(
                 "frontcomposer://Billing/projections/InvoiceProjection",
                 "InvoiceProjection",
@@ -165,8 +168,10 @@ public sealed class ProjectionReaderSchemaGateTests {
                 [
                     new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
                 ],
-                RenderStrategy: McpProjectionRenderStrategy.Default),
+                RenderStrategy: McpProjectionRenderStrategy.Default,
+                Fingerprint: serverFingerprint),
         ]);
+    }
 
     public sealed record InvoiceProjection(string Number);
 

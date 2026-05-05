@@ -12,8 +12,6 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Schema;
 /// are valid JSON, and carry the expected schema.
 /// </summary>
 public sealed class SchemaFixtureCatalogTests {
-    private const string SkipReason = "RED-PHASE: T8 — fixture catalog discovery + parser pending.";
-
     private static readonly IReadOnlyList<string> ExpectedFixtureIds = [
         "baseline-known-v1",
         "baseline-known-v2-compatible",
@@ -26,7 +24,7 @@ public sealed class SchemaFixtureCatalogTests {
         "surface-metadata-only-renderer",
     ];
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Catalog_ShipsExactlyTheStoryT8Set() {
         IReadOnlyList<string> fixtureIds = LoadFixtureIds();
 
@@ -35,7 +33,7 @@ public sealed class SchemaFixtureCatalogTests {
                 "AC10: fixture catalog must match the Story 8-6 T8 named set exactly.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void EachFixture_DocumentsExpectedFingerprintMaterial() {
         DirectoryInfo dir = LocateFixtureDirectory();
 
@@ -55,7 +53,7 @@ public sealed class SchemaFixtureCatalogTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void RendererFixture_DocumentsRendererSurfaceAndBoundsSource() {
         DirectoryInfo dir = LocateFixtureDirectory();
         FileInfo rendererFile = new(Path.Combine(dir.FullName, "surface-metadata-only-renderer.json"));

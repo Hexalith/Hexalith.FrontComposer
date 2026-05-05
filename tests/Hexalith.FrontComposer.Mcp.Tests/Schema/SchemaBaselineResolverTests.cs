@@ -15,9 +15,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// before any comparison.
 /// </summary>
 public sealed class SchemaBaselineResolverTests {
-    private const string SkipReason = "RED-PHASE: T1 — ISchemaBaselineProvider not implemented yet.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Resolver_TypeExists_AndIsRegisteredAsScopedDi() {
         Type? resolver = TryFindResolverType();
         resolver.ShouldNotBeNull(
@@ -35,7 +33,7 @@ public sealed class SchemaBaselineResolverTests {
         parameters[3].IsOut.ShouldBeTrue();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Resolver_RejectsClientSuppliedFilesystemHints() {
         // AC4: a caller-supplied package owner that looks like a filesystem path must not resolve
         // to anything. SchemaBaselineProvenance P-17 already rejects "../" via SafeIdentifier; the
@@ -50,7 +48,7 @@ public sealed class SchemaBaselineResolverTests {
             .Resolved.ShouldBeFalse("AC4 forbids absolute paths in fixture id.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Resolver_RejectsCallerSuppliedAbsolutePathsForPackageOwner() {
         ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
 
@@ -60,7 +58,7 @@ public sealed class SchemaBaselineResolverTests {
             .Resolved.ShouldBeFalse();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Resolver_RejectsExternalPackageOwners() {
         // AC4: only package-owned identifiers are accepted. A different package owner must not
         // resolve, even if the safe-identifier pattern accepts the string.
@@ -70,7 +68,7 @@ public sealed class SchemaBaselineResolverTests {
             .Resolved.ShouldBeFalse("Resolver must whitelist package owners shipped with HFC, not honor any safe-identifier string.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Resolver_ReturnsTypedSnapshotForKnownIdentifiers() {
         ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
 
@@ -88,7 +86,7 @@ public sealed class SchemaBaselineResolverTests {
             SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Resolver_RejectsNullOrWhitespaceArguments() {
         ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
 

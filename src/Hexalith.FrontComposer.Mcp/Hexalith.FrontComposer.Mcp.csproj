@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <ProjectReference Include="..\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.FrontComposer.Mcp.Tests" />

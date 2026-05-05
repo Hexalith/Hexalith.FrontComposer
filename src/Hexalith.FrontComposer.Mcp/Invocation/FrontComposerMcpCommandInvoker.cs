@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Mcp;
+using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -39,6 +40,13 @@ public sealed class FrontComposerMcpCommandInvoker(
         try {
             McpToolResolutionResult resolution = await admissionService.ResolveAsync(toolName, cancellationToken).ConfigureAwait(false);
             if (!resolution.Accepted || resolution.Tool is null) {
+                if (resolution.Category is FrontComposerMcpFailureCategory.SchemaMismatch
+                    or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
+                    or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
+                    or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
+                    return SchemaNegotiationRuntimeGate.ToStructuredFailure(resolution.Category);
+                }
+
                 return FrontComposerMcpResult.Failure(
                     FrontComposerMcpFailureCategory.UnknownTool,
                     FrontComposerMcpToolAdmissionService.BuildUnknownToolStructuredContent(resolution));
@@ -46,6 +54,11 @@ public sealed class FrontComposerMcpCommandInvoker(
 
             McpCommandDescriptor descriptor = resolution.Tool.Descriptor;
             FrontComposerMcpAgentContext context = agentContextAccessor.GetContext();
+            McpSchemaNegotiationResult? schema = SchemaNegotiationRuntimeGate.EvaluateCommand(descriptor, agentContextAccessor, services);
+            if (schema is not null && !schema.AllowsSideEffects) {
+                return SchemaNegotiationRuntimeGate.ToStructuredFailure(schema.FailureCategory);
+            }
+
             ValidateArguments(descriptor, arguments);
             Type commandType = ResolveType(descriptor.CommandTypeName);
             object command = CreateInstanceOrThrow(commandType);
@@ -123,6 +136,13 @@ public sealed class FrontComposerMcpCommandInvoker(
             return FrontComposerMcpResult.Failure(FrontComposerMcpFailureCategory.Timeout);
         }
         catch (FrontComposerMcpException ex) {
+            if (ex.Category is FrontComposerMcpFailureCategory.SchemaMismatch
+                or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
+                or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
+                or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
+                return SchemaNegotiationRuntimeGate.ToStructuredFailure(ex.Category);
+            }
+
             return FrontComposerMcpResult.Failure(ex.Category);
         }
         catch {

@@ -16,9 +16,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// short-circuit the gate, so the input contract must surface snapshots only.
 /// </summary>
 public sealed class SchemaNegotiationSnapshotInputTests {
-    private const string SkipReason = "RED-PHASE: T2 — snapshot-based McpSchemaNegotiationInput pending. Activate when AC6 lands.";
-
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Input_ExposesBaselineAndServerSnapshotProperties() {
         // RED: when T2 lands, McpSchemaNegotiationInput must expose
         //   BaselineSnapshot? Baseline { get; init; }
@@ -36,7 +34,7 @@ public sealed class SchemaNegotiationSnapshotInputTests {
         server!.PropertyType.ShouldBe(typeof(SchemaBaselineSnapshot));
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Input_LegacyBooleanIsObsoleteOrRemoved() {
         // RED: HasCompatibleAdditiveDrift must be removed or marked [Obsolete] for a release so
         // existing callers fail loudly instead of silently bypassing the analyzer.
@@ -51,7 +49,7 @@ public sealed class SchemaNegotiationSnapshotInputTests {
             "AC6 requires HasCompatibleAdditiveDrift be [Obsolete] (or removed). The negotiator must derive additive vs breaking internally.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Negotiate_DerivesCompatibleAdditive_FromAnalyzerNotFromCallerBool() {
         // Two snapshots with identical canonicalizer metadata but a single newly-added optional
         // field on `current`. The analyzer should classify this as AdditiveCompatible, and the
@@ -74,7 +72,7 @@ public sealed class SchemaNegotiationSnapshotInputTests {
         result.AgentCategory.ShouldBe("schema-compatible-warning");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
     public void Negotiate_TrustingCallerBool_DoesNotOverrideAnalyzerDecision() {
         // Even if a (legacy) caller passes HasCompatibleAdditiveDrift = true, the analyzer's
         // verdict must win. Snapshots disagree on a required field type — Breaking — and the

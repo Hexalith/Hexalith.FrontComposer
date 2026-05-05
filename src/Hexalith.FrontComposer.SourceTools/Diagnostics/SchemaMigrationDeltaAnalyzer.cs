@@ -72,7 +72,7 @@ public static class SchemaMigrationDeltaAnalyzer {
             if (!oldFields.TryGetValue(name, out SchemaFieldContract? oldField)) {
                 SchemaCompatibilityDecision decision = newFields[name].IsRequired
                     ? SchemaCompatibilityDecision.Breaking
-                    : SchemaCompatibilityDecision.CompatibleWarning;
+                    : SchemaCompatibilityDecision.AdditiveCompatible;
                 deltas.Add(Delta(
                     newFields[name].IsRequired ? SchemaDeltaKind.AddedRequiredField : SchemaDeltaKind.AddedOptionalField,
                     decision,
@@ -116,7 +116,9 @@ public static class SchemaMigrationDeltaAnalyzer {
         bool truncated = deltas.Count > maxDeltaCount;
         SchemaCompatibilityDecision aggregate = deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
             ? SchemaCompatibilityDecision.Breaking
-            : SchemaCompatibilityDecision.CompatibleWarning;
+            : deltas.All(d => d.Decision == SchemaCompatibilityDecision.AdditiveCompatible)
+                ? SchemaCompatibilityDecision.AdditiveCompatible
+                : SchemaCompatibilityDecision.CompatibleWarning;
 
         if (truncated) {
             // Keep the worst-decision deltas to maximise signal in the bounded window:

@@ -118,12 +118,7 @@ public static class SchemaFingerprintTransform {
             "",
             "Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult",
             "frontcomposer://lifecycle/result",
-            [
-                "category|string|string|required|not-null",
-                "correlationId|string|string|required|not-null",
-                "messageId|string|string|required|not-null",
-                "state|string|string|required|not-null|Accepted,Confirmed,Failed,Rejected,Running",
-            ],
+            CreateLifecycleFieldLines(),
             new Dictionary<string, string>(StringComparer.Ordinal) {
                 ["compatibilityPolicy"] = "no-client-timestamps",
             });
@@ -144,6 +139,23 @@ public static class SchemaFingerprintTransform {
                 ["outputContentType"] = "text/markdown",
                 ["renderStrategy"] = renderStrategy,
             });
+
+    private static IReadOnlyList<string> CreateLifecycleFieldLines() {
+        string[] fallback = ["category", "correlationId", "messageId", "state"];
+        Type? runtimeType = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(a => a.GetType("Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult", throwOnError: false, ignoreCase: false))
+            .FirstOrDefault(t => t is not null);
+        IEnumerable<string> names = runtimeType is null
+            ? fallback
+            : runtimeType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
+                .Select(p => p.Name);
+
+        return [.. names
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .Select(n => n == "state"
+                ? n + "|string|string|required|not-null|Accepted,Confirmed,Failed,Rejected,Running"
+                : n + "|string|string|required|not-null")];
+    }
 
     public static GeneratedSchemaPayload CreateSkillCorpusResourcePayload(
         string id,

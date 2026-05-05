@@ -6,6 +6,7 @@ using System.Text.Json.Nodes;
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Mcp;
 using Hexalith.FrontComposer.Mcp.Rendering;
+using Hexalith.FrontComposer.Mcp.Schema;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -55,6 +56,11 @@ public sealed class FrontComposerMcpProjectionReader(
 
             if (!await IsResourceVisibleAsync(visibilityGate, descriptor, context, cancellationToken).ConfigureAwait(false)) {
                 return FrontComposerMcpProjectionFailureMapper.ToResult(FrontComposerMcpFailureCategory.UnknownResource);
+            }
+
+            McpSchemaNegotiationResult? schema = SchemaNegotiationRuntimeGate.EvaluateResource(descriptor, agentContextAccessor, services);
+            if (schema is not null && !schema.AllowsSideEffects) {
+                return FrontComposerMcpProjectionFailureMapper.ToResult(schema.FailureCategory);
             }
 
             FrontComposerMcpProjectionReadSnapshot snapshot = CreateSnapshot(descriptor, postLookupEpochs, cancellationToken);
