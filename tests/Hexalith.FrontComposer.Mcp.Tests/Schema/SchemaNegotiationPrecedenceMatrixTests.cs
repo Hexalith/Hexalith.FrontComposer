@@ -40,7 +40,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             IsHidden: false, IsStale: true, IntegrityMismatch: true, BaselineTrusted: true,
             UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
             Expected: McpSchemaNegotiationResultKind.StaleDescriptor,
-            ExpectedAgentCategory: "projection temporarily unavailable",
+            ExpectedAgentCategory: "projection_unavailable",
             ForbiddenAgentCategories: ["schema-mismatch", "unsupported-schema-fingerprint"],
             ForbiddenMessageKey: "schema.integrity-mismatch"));
 
@@ -171,7 +171,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             IsHidden: false, IsStale: true, IntegrityMismatch: false, BaselineTrusted: true,
             UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
             Expected: McpSchemaNegotiationResultKind.StaleDescriptor,
-            ExpectedAgentCategory: "projection temporarily unavailable",
+            ExpectedAgentCategory: "projection_unavailable",
             ForbiddenAgentCategories: [],
             ForbiddenMessageKey: "")));
 
@@ -188,6 +188,21 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             ? new SchemaFingerprint("frontcomposer.schema.sha512.future", Server.Value)
             : Server;
 
+        // 8-6a review M1: when the row's intent is "additive drift admits side effects", supply
+        // baseline + server snapshots that the analyzer classifies as AdditiveCompatible. The
+        // legacy `HasCompatibleAdditiveDrift` bool is now ignored per AC6.
+        SchemaBaselineSnapshot? baseline = null;
+        SchemaBaselineSnapshot? serverSnapshot = null;
+        if (row.AdditiveDrift) {
+            baseline = BuildSnapshot(new string('a', 64), [
+                new SchemaFieldContract("Number", "Int32", "integer", true, false),
+            ]);
+            serverSnapshot = BuildSnapshot(new string('b', 64), [
+                new SchemaFieldContract("Number", "Int32", "integer", true, false),
+                new SchemaFieldContract("Note", "String", "string", false, true),
+            ]);
+        }
+
 #pragma warning disable CS0618
         return new McpSchemaNegotiationInput(
             IsHiddenOrUnknown: row.IsHidden,
@@ -196,9 +211,33 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             ServerFingerprint: server,
             HasTrustedBaseline: row.BaselineTrusted,
             HasCompatibleAdditiveDrift: row.AdditiveDrift,
-            HasSchemaIntegrityMismatch: row.IntegrityMismatch);
+            HasSchemaIntegrityMismatch: row.IntegrityMismatch,
+            Baseline: baseline,
+            Server: serverSnapshot);
 #pragma warning restore CS0618
     }
+
+    private static SchemaBaselineSnapshot BuildSnapshot(string fingerprintValue, IReadOnlyList<SchemaFieldContract> fields)
+        => new(
+            new SchemaBaselineProvenance(
+                SchemaContractFamily.ProjectionResource,
+                "frontcomposer.projection-resource.v1",
+                SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
+                "Hexalith.FrontComposer",
+                "test-vector",
+                requiresMigrationGuide: false),
+            new SchemaContractDocument(
+                "frontcomposer.schema.contract.v1",
+                SchemaContractFamily.ProjectionResource,
+                "frontcomposer://test/baseline",
+                "frontcomposer.projection-resource.v1",
+                "Hexalith",
+                "Hexalith.FrontComposer.Test",
+                "frontcomposer://test/baseline",
+                fields,
+                [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
+                new Dictionary<string, string>()),
+            new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, fingerprintValue));
 
     public sealed record PrecedenceCase(
         string Name,

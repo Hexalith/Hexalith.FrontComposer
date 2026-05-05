@@ -62,26 +62,69 @@ internal static class SchemaNegotiationRuntimeGate {
             Server: server));
     }
 
-    public static FrontComposerMcpResult ToStructuredFailure(FrontComposerMcpFailureCategory category)
-        => FrontComposerMcpResult.Failure(category, "Request failed.", BuildStructuredFailure(category));
+    public static FrontComposerMcpResult ToStructuredFailure(FrontComposerMcpFailureCategory category) {
+        SchemaFailureContract contract = MapSchemaFailure(category);
+        return FrontComposerMcpResult.Failure(category, contract.SafeText, BuildStructuredPayload(contract));
+    }
 
-    public static JsonObject BuildStructuredFailure(FrontComposerMcpFailureCategory category) {
-        (string agentCategory, string docsCode) = category switch {
-            FrontComposerMcpFailureCategory.SchemaMismatch => ("schema-mismatch", "HFC-SCHEMA-MISMATCH"),
-            FrontComposerMcpFailureCategory.UnknownSchemaBaseline => ("schema-unavailable", "HFC-SCHEMA-UNKNOWN-BASELINE"),
-            FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm => ("unsupported-schema-fingerprint", "HFC-SCHEMA-UNSUPPORTED-ALGORITHM"),
-            FrontComposerMcpFailureCategory.SchemaIntegrityMismatch => ("schema-unavailable", "HFC-SCHEMA-INTEGRITY-MISMATCH"),
-            _ => ("downstream_failed", "HFC-MCP-DOWNSTREAM-FAILED"),
-        };
+    public static JsonObject BuildStructuredFailure(FrontComposerMcpFailureCategory category)
+        => BuildStructuredPayload(MapSchemaFailure(category));
 
-        return new JsonObject {
-            ["category"] = agentCategory,
-            ["docsCode"] = docsCode,
-            ["retryable"] = false,
-            ["refreshResources"] = false,
+    private static JsonObject BuildStructuredPayload(SchemaFailureContract contract)
+        => new() {
+            ["category"] = contract.AgentCategory,
+            ["message"] = contract.SafeText,
+            ["docsCode"] = contract.DocsCode,
+            ["retryable"] = contract.Retryable,
+            ["refreshResources"] = contract.RefreshResources,
             ["isHiddenEquivalent"] = false,
         };
-    }
+
+    // 8-6a review M4: align command/tool schema-failure payload with the projection mapper's
+    // shape (include `message`, drop hardcoded retryable=false). Per-category retryable mirrors
+    // the projection mapper's table — keep the surfaces consistent so agents see the same
+    // remediation cues regardless of whether the call hit a projection read or a command/tool
+    // dispatch path.
+    private static SchemaFailureContract MapSchemaFailure(FrontComposerMcpFailureCategory category)
+        => category switch {
+            FrontComposerMcpFailureCategory.SchemaMismatch => new(
+                "schema-mismatch",
+                "Schema is not compatible with the client manifest. Refresh schema metadata and retry.",
+                "HFC-SCHEMA-MISMATCH",
+                Retryable: false,
+                RefreshResources: false),
+            FrontComposerMcpFailureCategory.UnknownSchemaBaseline => new(
+                "schema-unavailable",
+                "Schema baseline is unavailable. Refresh schema metadata or contact the host maintainer.",
+                "HFC-SCHEMA-UNKNOWN-BASELINE",
+                Retryable: false,
+                RefreshResources: false),
+            FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm => new(
+                "unsupported-schema-fingerprint",
+                "Schema fingerprint algorithm is not supported by this server.",
+                "HFC-SCHEMA-UNSUPPORTED-ALGORITHM",
+                Retryable: false,
+                RefreshResources: false),
+            FrontComposerMcpFailureCategory.SchemaIntegrityMismatch => new(
+                "schema-unavailable",
+                "Schema metadata failed an integrity check.",
+                "HFC-SCHEMA-INTEGRITY-MISMATCH",
+                Retryable: false,
+                RefreshResources: false),
+            _ => new(
+                "downstream_failed",
+                "Request failed.",
+                "HFC-MCP-DOWNSTREAM-FAILED",
+                Retryable: true,
+                RefreshResources: false),
+        };
+
+    private sealed record SchemaFailureContract(
+        string AgentCategory,
+        string SafeText,
+        string DocsCode,
+        bool Retryable,
+        bool RefreshResources);
 
     private static SchemaFingerprint? TryGetClientFingerprint(IFrontComposerMcpAgentContextAccessor accessor) {
         PropertyInfo? property = accessor.GetType().GetProperty("ClientFingerprintHint", BindingFlags.Public | BindingFlags.Instance);

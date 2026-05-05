@@ -20,19 +20,27 @@ public sealed class SchemaFingerprintDeterminismTests {
     [InlineData("de-DE")]
     [InlineData("ja-JP")]
     public void LifecyclePayload_FingerprintIdenticalAcrossCultures(string cultureName) {
+        // 8-6a review H13: compute the invariant-culture fingerprint OUTSIDE the test culture
+        // scope so the comparison actually crosses culture boundaries. The prior test computed
+        // both sides under the same culture and passed vacuously.
         CultureInfo previousCulture = CultureInfo.CurrentCulture;
         CultureInfo previousUiCulture = CultureInfo.CurrentUICulture;
+
+        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
+        CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
+        string invariantFingerprint = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
+
         try {
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(cultureName);
 
-            string baseline = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
+            string testCultureFingerprint = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
             string repeated = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
 
-            baseline.ShouldBe(repeated, $"culture {cultureName} produced drift across two clean generations.");
-            // Cross-culture invariant: the fingerprint under tr-TR must match en-US.
-            string invariant = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
-            invariant.ShouldBe(baseline);
+            testCultureFingerprint.ShouldBe(repeated, $"culture {cultureName} produced drift across two clean generations.");
+            testCultureFingerprint.ShouldBe(
+                invariantFingerprint,
+                $"AC11 cross-culture invariant: fingerprint under {cultureName} must match invariant culture.");
         } finally {
             CultureInfo.CurrentCulture = previousCulture;
             CultureInfo.CurrentUICulture = previousUiCulture;
@@ -43,26 +51,32 @@ public sealed class SchemaFingerprintDeterminismTests {
     [InlineData("\n")]
     [InlineData("\r\n")]
     [InlineData("\r")]
-    [InlineData("\u2028")] // Unicode line separator
-    public void RendererPayload_NormalizesEolInMetadataValues(string eol) {
+    [InlineData("\u2028")] // Unicode LINE SEPARATOR
+    [InlineData("\u2029")] // Unicode PARAGRAPH SEPARATOR
+    public void RendererPayload_NormalizesEolInRendererId(string eol) {
         ArgumentNullException.ThrowIfNull(eol);
-        // AC11: a metadata value carrying any of these line-terminator variants must canonicalize
-        // identically. The transform's Normalize step is the contract under test.
-        string baseline = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
-            "frontcomposer.mcp.markdown",
+        // 8-6a review H12: actually inject the EOL into a string that flows through Normalize().
+        // The prior test parameterized by `eol` but never used it in the payload inputs, so the
+        // two computed fingerprints were trivially identical (same input, different parameter).
+        // The renderer's `rendererId` is one of the strings that goes through Normalize, so a
+        // multi-line value carrying any EOL flavor should canonicalize identically and produce
+        // the same fingerprint.
+        const string LfId = "frontcomposer.mcp.markdown\nextra";
+        string variantId = "frontcomposer.mcp.markdown" + eol + "extra";
+
+        string reference = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
+            LfId,
+            "Default",
+            maxCharacters: 64_000,
+            maxFieldCharacters: 4_096).Fingerprint.Value;
+        string variant = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
+            variantId,
             "Default",
             maxCharacters: 64_000,
             maxFieldCharacters: 4_096).Fingerprint.Value;
 
-        // The renderer payload's caller-facing inputs do not currently include a multi-line
-        // string; AC11 still requires normalization to be consistent across runs even if the
-        // current callers don't pass EOLs. This test pins the invariant.
-        string repeated = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
-            $"frontcomposer.mcp.markdown",
-            "Default",
-            maxCharacters: 64_000,
-            maxFieldCharacters: 4_096).Fingerprint.Value;
-
-        baseline.ShouldBe(repeated, $"EOL '{eol.Replace("\r", "\\r").Replace("\n", "\\n")}' caused drift across regenerations.");
+        variant.ShouldBe(
+            reference,
+            $"AC11: EOL '{eol.Replace("\r", "\\r").Replace("\n", "\\n")}' must canonicalize to the LF reference fingerprint.");
     }
 }

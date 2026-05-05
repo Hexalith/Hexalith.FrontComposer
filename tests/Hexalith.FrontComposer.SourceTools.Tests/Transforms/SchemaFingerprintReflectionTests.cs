@@ -10,24 +10,21 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
 /// <summary>
 /// AC9 / T6 — derive lifecycle and renderer fingerprint material from runtime model structure
-/// rather than literal field-list constants. The lifecycle payload must reflect the actual
-/// <c>Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult</c> field set; the renderer payload
-/// must read its bounds from <c>FrontComposerMcpOptions</c> / <c>SkillResourceReadOptions</c>.
+/// rather than literal field-list constants. After the 8-6a review pass the SourceTools side
+/// maintains a deterministic catalog (the AppDomain.GetAssemblies() scan was removed for AC11
+/// determinism), so these tests enforce the cross-package invariant by comparing the catalog's
+/// field set against the runtime <c>McpLifecycleResult</c> properties at test time. Drift in
+/// either direction surfaces here.
 /// </summary>
 public sealed class SchemaFingerprintReflectionTests {
     [Fact]
-    public void LifecycleResultPayload_FieldsMatchRuntimeType_ReflectivelyDiscovered() {
-        // T6 replaces the hardcoded literal field list with reflection-based discovery. After T6,
-        // the canonical blob's `field=` lines must equal the McpLifecycleResult public property
-        // names (sorted ordinal) — so any new property added to the runtime type drifts the
-        // fingerprint automatically.
+    public void LifecycleResultPayload_FieldsMatchRuntimeType() {
         Type? lifecycleResult = TryLoadLifecycleResultType();
         lifecycleResult.ShouldNotBeNull(
-            "AC9 / T6 require McpLifecycleResult to be reachable from SourceTools — pull it via reflection or share the canonical type contract.");
+            "AC9 / T6 require McpLifecycleResult to be reachable from SourceTools test host.");
 
         IReadOnlyList<string> runtimeFieldNames = lifecycleResult!
             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-            .Where(p => !RuntimeCorrelationName(p.Name))
             .Select(p => p.Name)
             .OrderBy(n => n, StringComparer.Ordinal)
             .ToArray();
@@ -37,37 +34,27 @@ public sealed class SchemaFingerprintReflectionTests {
 
         payloadFieldNames.ShouldBe(
             runtimeFieldNames,
-            "AC9: lifecycle payload field list must derive from McpLifecycleResult, not from a literal constant.");
+            "AC9 cross-check: SourceTools lifecycle catalog must mirror McpLifecycleResult property set.");
     }
 
     [Fact]
-    public void LifecycleResultPayload_SourceDoesNotEmbedLiteralFieldArray() {
-        // AC9 stricter form: the transform body must not contain the legacy literal field rows.
-        string? source = LocateTransformSource();
-        source.ShouldNotBeNull();
+    public void RendererPayload_BoundsContributeToFingerprint() {
+        // AC9 behavior test: replaces the prior source-walking test (M10 — source walks broke
+        // under packaged test runs). Different bounds must produce different fingerprints; if
+        // the renderer payload ever stops consuming the bounds parameters (e.g. reverts to magic
+        // numbers), this fails.
+        GeneratedSchemaPayload first = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
+            "frontcomposer.mcp.markdown", "Auto", maxCharacters: 50_000, maxFieldCharacters: 1_000);
+        GeneratedSchemaPayload second = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
+            "frontcomposer.mcp.markdown", "Auto", maxCharacters: 80_000, maxFieldCharacters: 2_000);
 
-        // AC9: lifecycle payload must derive its field list from McpLifecycleResult reflection, not literal string rows.
-        source!.ShouldNotContain("category|string|string|required|not-null");
-        source!.ShouldNotContain("correlationId|string|string|required|not-null");
-    }
-
-    [Fact]
-    public void RendererPayload_BoundsAreNotMagicNumbers_PulledFromOptions() {
-        // T6 replaces the hardcoded 64_000 / 4_096 in CreateMarkdownRendererPayload with values
-        // pulled from FrontComposerMcpOptions / SkillResourceReadOptions. Verify the transform
-        // body no longer hosts the literal magic numbers.
-        string? source = LocateTransformSource();
-        source.ShouldNotBeNull("Unable to locate SchemaFingerprintTransform.cs for AC9 source verification.");
-
-        // AC9: literal magic numbers must not appear in the transform body — pull from FrontComposerMcpOptions / SkillResourceReadOptions at the call site.
-        source!.ShouldNotContain("64_000");
-        source!.ShouldNotContain("4_096");
+        first.Fingerprint.Value.ShouldNotBe(
+            second.Fingerprint.Value,
+            "AC9: renderer bounds must drive the fingerprint material.");
     }
 
     [Fact]
     public void LifecyclePayload_FingerprintIsStable_AcrossInvocations() {
-        // Determinism counter-test. Even with reflection-based discovery, two consecutive calls
-        // produce the same fingerprint (no environment / time / GUID drift).
         GeneratedSchemaPayload first = SchemaFingerprintTransform.CreateLifecycleResultPayload();
         GeneratedSchemaPayload second = SchemaFingerprintTransform.CreateLifecycleResultPayload();
 
@@ -77,13 +64,7 @@ public sealed class SchemaFingerprintReflectionTests {
             SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
     }
 
-    private static bool RuntimeCorrelationName(string name)
-        => name is "MessageId" or "TenantId" or "CorrelationId" or "UserId";
-
     private static IReadOnlyList<string> ExtractFieldNames(GeneratedSchemaPayload payload) {
-        // Transform's canonical blob is newline-delimited key=value text. Field rows look like
-        //   field=<name>|<type>|<jsonType>|<required>|<nullable>...
-        // T6 may also keep the same wire shape; either way, the leading cell is the field name.
         string canonical = payload.Json ?? string.Empty;
         return canonical.Split('\n', StringSplitOptions.RemoveEmptyEntries)
             .Where(line => line.StartsWith("field=", StringComparison.Ordinal))
@@ -93,20 +74,18 @@ public sealed class SchemaFingerprintReflectionTests {
     }
 
     private static Type? TryLoadLifecycleResultType() {
-        // SourceTools intentionally has no project reference to .Mcp (build-time tools only depend
-        // on Contracts). Probe loaded assemblies first; fall back to file-system-side load if the
-        // dev later wires a typed contract for the lifecycle field list.
+        // SourceTools does not project-reference Mcp at build time; tests can probe Mcp via the
+        // already-loaded assembly set after Mcp.Tests has wired it transitively.
         try {
             _ = Assembly.Load("Hexalith.FrontComposer.Mcp");
         }
         catch {
-            // Fall through to loaded assemblies; the assertion below reports the contract miss.
+            // Probe loaded assemblies regardless; the cross-check assertion reports the contract miss.
         }
 
-        Type? loaded = AppDomain.CurrentDomain.GetAssemblies()
+        return AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(SafeGetTypes)
             .FirstOrDefault(t => t.FullName == "Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult");
-        return loaded;
     }
 
     private static IEnumerable<Type> SafeGetTypes(Assembly assembly) {
@@ -116,17 +95,5 @@ public sealed class SchemaFingerprintReflectionTests {
         catch (ReflectionTypeLoadException ex) {
             return ex.Types.Where(t => t is not null)!;
         }
-    }
-
-    private static string? LocateTransformSource() {
-        DirectoryInfo? dir = new(AppContext.BaseDirectory);
-        for (int i = 0; i < 10 && dir is not null; i++, dir = dir.Parent) {
-            string candidate = Path.Combine(dir.FullName, "src", "Hexalith.FrontComposer.SourceTools", "Transforms", "SchemaFingerprintTransform.cs");
-            if (File.Exists(candidate)) {
-                return File.ReadAllText(candidate);
-            }
-        }
-
-        return null;
     }
 }

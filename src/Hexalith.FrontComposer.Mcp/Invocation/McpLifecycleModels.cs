@@ -14,10 +14,10 @@ internal enum McpTerminalOutcomeKind {
 }
 
 internal sealed record McpLifecycleResult(
-    string category,
-    string correlationId,
-    string messageId,
-    string state);
+    string Category,
+    string CorrelationId,
+    string MessageId,
+    string State);
 
 internal sealed record McpLifecycleSubscription(string Tool, string Uri, int RetryAfterMs) {
     public JsonObject ToJson() => new() {

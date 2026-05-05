@@ -18,7 +18,13 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
     private readonly IReadOnlyDictionary<string, string> _normalizedNames;
     private readonly IReadOnlyList<FrontComposerRenderContract> _renderContracts;
 
-    public FrontComposerMcpDescriptorRegistry(IOptions<FrontComposerMcpOptions> options) {
+    public FrontComposerMcpDescriptorRegistry(IOptions<FrontComposerMcpOptions> options)
+        : this(options, corpusProviders: null) {
+    }
+
+    public FrontComposerMcpDescriptorRegistry(
+        IOptions<FrontComposerMcpOptions> options,
+        IEnumerable<ISkillCorpusFingerprintProvider>? corpusProviders) {
         ArgumentNullException.ThrowIfNull(options);
 
         List<McpManifest> manifests = [.. options.Value.Manifests];
@@ -26,7 +32,17 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
             manifests.AddRange(LoadGeneratedManifests(assembly));
         }
 
-        ValidateAggregateIntegrity(manifests, []);
+        // 8-6a review H6: collect skill corpus fingerprints from registered providers so AC8's
+        // "runtime aggregate manifest fingerprint includes corpus resource fingerprints" actually
+        // holds at registration time. The build-time emitter has no visibility into the runtime
+        // corpus and stamps `[]` for the corpus list; the runtime layer in registers the loaded
+        // corpus's fingerprints here and recomputes the aggregate. Hosts without a corpus
+        // provider get an empty list (which is valid for hosts that ship no skill corpus).
+        IReadOnlyList<SchemaFingerprint> corpusFingerprints = corpusProviders is null
+            ? []
+            : [.. corpusProviders.SelectMany(p => p.GetFingerprints())];
+
+        ValidateAggregateIntegrity(manifests, corpusFingerprints);
         _commands = BuildCommandMap(manifests);
         _resources = BuildResourceMap(manifests);
         _orderedCommands = [.. _commands.Values.OrderBy(c => c.ProtocolName, StringComparer.Ordinal)];
@@ -139,10 +155,19 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
     private static void ValidateAggregateIntegrity(
         IReadOnlyList<McpManifest> manifests,
         IReadOnlyList<SchemaFingerprint> corpusFingerprints) {
+        // 8-6a review H7: a manifest that ships a fingerprint but stamps a non-canonical-JSON
+        // algorithm is an inconsistent claim — the canonical aggregate algorithm is fixed at
+        // Sha256CanonicalJsonV1 by D17/AC7. Fail closed in that case. Manifests with no
+        // fingerprint at all (test/legacy scenarios where integrity isn't claimed) are skipped:
+        // build-time-emitted manifests always ship a fingerprint, so absence indicates the
+        // manifest was author-supplied via `FrontComposerMcpOptions.Manifests` for testing.
         foreach (McpManifest manifest in manifests) {
-            if (manifest.Fingerprint is null
-                || !string.Equals(manifest.Fingerprint.AlgorithmId, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)) {
+            if (manifest.Fingerprint is null) {
                 continue;
+            }
+
+            if (!string.Equals(manifest.Fingerprint.AlgorithmId, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)) {
+                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch);
             }
 
             SchemaFingerprint computed = FrontComposerMcpRuntimeManifestAggregator.Compute([manifest], corpusFingerprints);

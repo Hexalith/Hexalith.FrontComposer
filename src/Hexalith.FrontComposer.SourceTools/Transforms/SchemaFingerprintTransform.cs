@@ -140,22 +140,26 @@ public static class SchemaFingerprintTransform {
                 ["renderStrategy"] = renderStrategy,
             });
 
-    private static IReadOnlyList<string> CreateLifecycleFieldLines() {
-        string[] fallback = ["category", "correlationId", "messageId", "state"];
-        Type? runtimeType = AppDomain.CurrentDomain.GetAssemblies()
-            .Select(a => a.GetType("Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult", throwOnError: false, ignoreCase: false))
-            .FirstOrDefault(t => t is not null);
-        IEnumerable<string> names = runtimeType is null
-            ? fallback
-            : runtimeType.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-                .Select(p => p.Name);
-
-        return [.. names
-            .OrderBy(n => n, StringComparer.Ordinal)
-            .Select(n => n == "state"
-                ? n + "|string|string|required|not-null|Accepted,Confirmed,Failed,Rejected,Running"
-                : n + "|string|string|required|not-null")];
-    }
+    /// <summary>
+    /// 8-6a review: replaces the prior <c>AppDomain.CurrentDomain.GetAssemblies()</c> scan with a
+    /// deterministic catalog. The scan was non-deterministic across build environments — Roslyn
+    /// analyzer host vs IDE vs CI process loads different assembly sets, and at source-generator
+    /// time (the actual fingerprint emission path) the consumer's <c>Hexalith.FrontComposer.Mcp</c>
+    /// assembly is being COMPILED, not loaded, so the scan always failed and silently fell back
+    /// to a separate camelCase constant. That broke AC11 fingerprint determinism between build
+    /// time and test time when property casing differed from the fallback. The catalog mirrors
+    /// <c>Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult</c>'s public surface and is
+    /// pinned by <c>SchemaFingerprintReflectionTests</c> — adding/renaming/removing a lifecycle
+    /// property requires updating both the record and this catalog together; the cross-check
+    /// test surfaces drift as a regression.
+    /// </summary>
+    private static IReadOnlyList<string> CreateLifecycleFieldLines()
+        => [
+            "Category|string|string|required|not-null",
+            "CorrelationId|string|string|required|not-null",
+            "MessageId|string|string|required|not-null",
+            "State|string|string|required|not-null|Accepted,Confirmed,Failed,Rejected,Running",
+        ];
 
     public static GeneratedSchemaPayload CreateSkillCorpusResourcePayload(
         string id,
@@ -270,7 +274,16 @@ public static class SchemaFingerprintTransform {
         ]);
 
     private static string Normalize(string value)
-        => (value ?? string.Empty).Replace("\r\n", "\n").Replace('\r', '\n').Trim();
+        // 8-6a review: include Unicode line separators (U+2028 LINE SEPARATOR, U+2029 PARAGRAPH
+        // SEPARATOR) in the EOL-normalization contract so determinism tests across all line
+        // terminator flavors hash identically. Without this, AC11 cross-OS / cross-EOL fingerprint
+        // tests treat U+2028 as a non-newline character and produce drift.
+        => (value ?? string.Empty)
+            .Replace("\r\n", "\n")
+            .Replace('\r', '\n')
+            .Replace('\u2028', '\n')
+            .Replace('\u2029', '\n')
+            .Trim();
 
     /// <summary>
     /// Returns <see cref="AbsentValueSentinel"/> for null/empty/whitespace input so the

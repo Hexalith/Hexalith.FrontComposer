@@ -114,11 +114,17 @@ public static class SchemaMigrationDeltaAnalyzer {
         // P-11: keep the truncation marker WITHIN the maxDeltaCount budget so callers can size
         //       their telemetry exactly.
         bool truncated = deltas.Count > maxDeltaCount;
-        SchemaCompatibilityDecision aggregate = deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
-            ? SchemaCompatibilityDecision.Breaking
-            : deltas.All(d => d.Decision == SchemaCompatibilityDecision.AdditiveCompatible)
-                ? SchemaCompatibilityDecision.AdditiveCompatible
-                : SchemaCompatibilityDecision.CompatibleWarning;
+        // 8-6a review: defensive Exact branch on empty deltas. The byte-equality short-circuit
+        // at line 53 should already cover this, but if a non-fingerprint comparison ever produces
+        // an empty delta list (e.g. canonicalizer divergence with structurally-equal documents),
+        // .All() returning vacuous-true would misclassify as AdditiveCompatible.
+        SchemaCompatibilityDecision aggregate = deltas.Count == 0
+            ? SchemaCompatibilityDecision.Exact
+            : deltas.Any(d => d.Decision == SchemaCompatibilityDecision.Breaking)
+                ? SchemaCompatibilityDecision.Breaking
+                : deltas.All(d => d.Decision == SchemaCompatibilityDecision.AdditiveCompatible)
+                    ? SchemaCompatibilityDecision.AdditiveCompatible
+                    : SchemaCompatibilityDecision.CompatibleWarning;
 
         if (truncated) {
             // Keep the worst-decision deltas to maximise signal in the bounded window:

@@ -77,7 +77,7 @@ public static class McpSchemaNegotiator {
             return Result(
                 McpSchemaNegotiationResultKind.StaleDescriptor,
                 FrontComposerMcpFailureCategory.StaleDescriptor,
-                "projection temporarily unavailable",
+                "projection_unavailable",
                 "schema.stale-descriptor",
                 "HFC-MCP-STALE-DESCRIPTOR",
                 false);
@@ -196,10 +196,11 @@ public static class McpSchemaNegotiator {
                 true);
         }
 
-        if (snapshotDecision is SchemaCompatibilityDecision.CompatibleWarning or SchemaCompatibilityDecision.AdditiveCompatible
-#pragma warning disable CS0618
-            || (snapshotDecision is null && input.HasCompatibleAdditiveDrift)) {
-#pragma warning restore CS0618
+        // Per Story 8-6a AC6 ("HasCompatibleAdditiveDrift is removed (or marked [Obsolete]
+        // and ignored) and replaced by Baseline / Server snapshot inputs"): the legacy bool is
+        // no longer consulted — when snapshots are absent the negotiator cannot prove additive
+        // compatibility and falls through to Incompatible classification below.
+        if (snapshotDecision is SchemaCompatibilityDecision.CompatibleWarning or SchemaCompatibilityDecision.AdditiveCompatible) {
             return Result(
                 McpSchemaNegotiationResultKind.CompatibleAdditive,
                 FrontComposerMcpFailureCategory.None,
