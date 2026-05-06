@@ -137,12 +137,25 @@ public static class SchemaMigrationDeltaAnalyzer {
         SchemaCompatibilityDecision aggregate = ComputeAggregate(deltas);
 
         if (truncated) {
+            // Group C: reserve a slot for the MissingMigrationGuide marker (when emitted) so it
+            // survives truncation. The marker's `$.Provenance.*` path sorts after `$.Fields.*` and
+            // `$.Metadata.*` in the Path tiebreaker, so when ≥ maxDeltaCount-1 Breaking deltas
+            // exist with earlier-sorting paths, the marker would otherwise be dropped — losing
+            // P-18's "no migration guide for shipped breakage" signal.
+            SchemaDelta? migrationGuideMarker = deltas.FirstOrDefault(d => d.Kind == SchemaDeltaKind.MissingMigrationGuide);
+            int markerSlot = migrationGuideMarker is null ? 0 : 1;
+
             // Keep the worst-decision deltas to maximise signal in the bounded window:
             // Breaking first (so the operator sees the actual blockers), then CompatibleWarning.
             List<SchemaDelta> ordered = [.. deltas
+                .Where(d => d.Kind != SchemaDeltaKind.MissingMigrationGuide)
                 .OrderBy(d => DecisionRank(d.Decision))
                 .ThenBy(d => d.Path, StringComparer.Ordinal)];
-            deltas = [.. ordered.Take(maxDeltaCount - 1)];
+            deltas = [.. ordered.Take(Math.Max(0, maxDeltaCount - 1 - markerSlot))];
+            if (migrationGuideMarker is not null) {
+                deltas.Add(migrationGuideMarker);
+            }
+
             deltas.Add(Delta(
                 SchemaDeltaKind.Truncated,
                 aggregate, // marker reflects FULL aggregate, not the bounded subset

@@ -28,7 +28,7 @@ public sealed class SchemaContractFamilyNamesTests {
         foreach (SchemaContractFamily family in all) {
             string canonical = SchemaContractFamilyNames.Canonical(family);
             canonical.ShouldNotBeNullOrWhiteSpace($"Canonical mapping for {family} must yield a non-empty name.");
-            Regex.IsMatch(canonical, "^[a-z][a-z0-9-]*$").ShouldBeTrue(
+            Regex.IsMatch(canonical, "^[a-z][a-z0-9]*(-[a-z0-9]+)*$").ShouldBeTrue(
                 $"Canonical mapping for {family} must be kebab-case (got '{canonical}').");
         }
     }
