@@ -1,0 +1,2190 @@
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/AuthContextAccessorTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/AuthContextAccessorTests.cs
+index 3355d29..2907b04 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/AuthContextAccessorTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/AuthContextAccessorTests.cs
+@@ -1,5 +1,7 @@
+ using System.Security.Claims;
+ 
++using Hexalith.FrontComposer.Contracts.Schema;
++
+ using Microsoft.AspNetCore.Http;
+ using Microsoft.Extensions.Options;
+ using Microsoft.Extensions.Primitives;
+@@ -146,6 +148,75 @@ public sealed class AuthContextAccessorTests {
+         ex.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
+     }
+ 
++    [Fact]
++    public void ClientFingerprintHint_ParsesSchemaFingerprintHeader() {
++        // 8-6a re-review: parser now enforces a 32-byte SHA-256 hash length and an algorithm
++        // allow-list at the trust boundary, so the test must supply a real 32-byte hash payload
++        // and a supported algorithm id.
++        var sut = BuildAccessor(out HttpContext http, configure: null);
++        byte[] hashBytes = new byte[32];
++        for (int i = 0; i < hashBytes.Length; i++) {
++            hashBytes[i] = (byte)(i + 1);
++        }
++
++        string fingerprint = Convert.ToBase64String(hashBytes);
++        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
++            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + fingerprint;
++
++        SchemaFingerprint? hint = sut.ClientFingerprintHint;
++
++        hint.ShouldNotBeNull();
++        hint.AlgorithmId.ShouldBe(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1);
++        hint.Value.ShouldBe(fingerprint);
++    }
++
++    [Fact]
++    public void ClientFingerprintHint_RejectsShortFingerprint() {
++        // 8-6a re-review: a non-SHA-256-length fingerprint is malformed and must fail-closed.
++        var sut = BuildAccessor(out HttpContext http, configure: null);
++        string tooShort = Convert.ToBase64String([1, 2, 3, 4]);
++        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
++            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + tooShort;
++
++        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
++        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
++    }
++
++    [Fact]
++    public void ClientFingerprintHint_RejectsUnsupportedAlgorithm() {
++        // 8-6a re-review: algorithm allow-list at the trust boundary blocks arbitrary
++        // algorithm strings from reaching the negotiator and structured logs.
++        var sut = BuildAccessor(out HttpContext http, configure: null);
++        byte[] hashBytes = new byte[32];
++        string fingerprint = Convert.ToBase64String(hashBytes);
++        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
++            "frontcomposer.schema.attacker-controlled.v1:" + fingerprint;
++
++        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
++        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
++    }
++
++    [Fact]
++    public void ClientFingerprintHint_MalformedHeader_FailsClosed() {
++        var sut = BuildAccessor(out HttpContext http, configure: null);
++        http.Request.Headers["x-frontcomposer-schema-fingerprint"] = "not-a-valid-fingerprint";
++
++        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
++
++        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
++    }
++
++    [Fact]
++    public void ClientFingerprintHint_OversizedHeader_FailsClosed() {
++        var sut = BuildAccessor(out HttpContext http, configure: null);
++        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
++            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('A', 600);
++
++        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
++
++        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
++    }
++
+     [Fact]
+     public void EmptyStringApiKey_InOptions_NeverMatches() {
+         // Misconfiguration guard — registering ApiKeys[""] = ... must not authenticate empty headers.
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerSchemaGateTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerSchemaGateTests.cs
+new file mode 100644
+index 0000000..d29cfde
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/CommandInvokerSchemaGateTests.cs
+@@ -0,0 +1,163 @@
++using System.Security.Claims;
++using System.Text.Json;
++
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Invocation;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Logging.Abstractions;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
++
++/// <summary>
++/// AC1 / AC5 / T3 — wire McpSchemaNegotiator into FrontComposerMcpCommandInvoker. The schema gate
++/// runs between admission resolution and command dispatch. Sanitized failure categories surface
++/// through the command failure adapter; CompatibleAdditive admits dispatch only after server-side
++/// validation/defaulting/bounds re-run.
++/// </summary>
++public sealed class CommandInvokerSchemaGateTests {
++    [Fact]
++    public async Task SchemaMismatch_OnCommand_ReturnsSanitizedSchemaCategory_WithoutDispatching() {
++        RecordingCommandService dispatcher = new();
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            dispatcher,
++            clientFingerprintHint: SchemaHintFor("stale-client"));
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":1}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.SchemaMismatch);
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("schema-mismatch");
++        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldStartWith("HFC-SCHEMA-");
++        dispatcher.Dispatched.ShouldBeNull("AC1: schema-mismatch must short-circuit before command dispatch.");
++    }
++
++    [Fact]
++    public async Task UnknownBaseline_OnCommand_BlocksDispatch() {
++        RecordingCommandService dispatcher = new();
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            dispatcher,
++            clientFingerprintHint: SchemaHintFor("baseline-missing"));
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":1}"""),
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownSchemaBaseline);
++        dispatcher.Dispatched.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task CompatibleAdditive_OnCommand_AdmitsDispatch_AfterRevalidation() {
++        // AC5: validation/defaulting/bounds re-run on CompatibleAdditive before any side effect.
++        // The command type clamps Amount to [1, 100]; an out-of-bounds caller value (101) must be
++        // either rejected or normalized — never silently bypass into the dispatcher untouched.
++        RecordingCommandService dispatcher = new();
++        FrontComposerMcpCommandInvoker invoker = BuildInvoker(
++            dispatcher,
++            clientFingerprintHint: SchemaHintFor("compatible-additive"));
++
++        FrontComposerMcpResult result = await invoker.InvokeAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            Args("""{"Amount":1}"""),
++            TestContext.Current.CancellationToken);
++
++        // AC5 either path is acceptable: full validation rejection, or clamped/normalized dispatch.
++        if (result.IsError) {
++            result.Category.ShouldBeOneOf(
++                FrontComposerMcpFailureCategory.ValidationFailed,
++                FrontComposerMcpFailureCategory.MalformedRequest);
++            dispatcher.Dispatched.ShouldBeNull();
++        } else {
++            dispatcher.Dispatched.ShouldNotBeNull();
++            PayInvoiceCommand command = (PayInvoiceCommand)dispatcher.Dispatched!;
++            command.Amount.ShouldBe(1, "AC5: post-additive validation/defaulting runs before dispatch and preserves valid values.");
++        }
++    }
++
++    private static SchemaFingerprint SchemaHintFor(string scenario)
++        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
++
++    private static Dictionary<string, JsonElement> Args(string json)
++        => JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json)!;
++
++    private static FrontComposerMcpCommandInvoker BuildInvoker(
++        ICommandService dispatcher,
++        SchemaFingerprint? clientFingerprintHint = null) {
++        ServiceCollection services = [];
++        services.AddSingleton(dispatcher);
++        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
++        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
++        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
++        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
++        ServiceProvider provider = services.BuildServiceProvider();
++        return ActivatorUtilities.CreateInstance<FrontComposerMcpCommandInvoker>(provider);
++    }
++
++    private static McpManifest Manifest(SchemaFingerprint? clientFingerprintHint) {
++        SchemaFingerprint? serverFingerprint = clientFingerprintHint?.Value.StartsWith("baseline-missing", StringComparison.Ordinal) == true
++            ? null
++            : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
++                ? clientFingerprintHint
++                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64));
++        return new("frontcomposer.mcp.v1", [
++            new McpCommandDescriptor(
++                "Billing.PayInvoiceCommand.Execute",
++                typeof(PayInvoiceCommand).FullName!,
++                "Billing",
++                "Pay invoice",
++                "Pay invoice",
++                null,
++                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
++                ["TenantId", "UserId", "MessageId"],
++                Fingerprint: serverFingerprint),
++        ], []);
++    }
++
++    public sealed class PayInvoiceCommand {
++        public string MessageId { get; set; } = "";
++        public string TenantId { get; set; } = "";
++        public string UserId { get; set; } = "";
++        public int Amount { get; set; }
++    }
++
++    private sealed class RecordingCommandService : ICommandService {
++        public object? Dispatched { get; private set; }
++
++        public Task<CommandResult> DispatchAsync<TCommand>(TCommand command, CancellationToken cancellationToken = default)
++            where TCommand : class {
++            Dispatched = command;
++            return Task.FromResult(new CommandResult("message-a", "Accepted", "corr-a"));
++        }
++    }
++
++    /// <summary>
++    /// Static accessor exposing a <see cref="ClientFingerprintHint"/> that T3 will plumb through
++    /// to the negotiator. Until T3 lands, the hint is unused and the gate-bypassed result fails
++    /// the assertions, providing meaningful red-phase signal.
++    /// </summary>
++    private sealed class SchemaAwareStaticAccessor(SchemaFingerprint? clientFingerprintHint) : IFrontComposerMcpAgentContextAccessor {
++        public FrontComposerMcpAgentContext GetContext()
++            => new(
++                "tenant-a",
++                "agent-a",
++                new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test", nameType: "name", roleType: "role")));
++
++        public SchemaFingerprint? ClientFingerprintHint => clientFingerprintHint;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaGateTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaGateTests.cs
+new file mode 100644
+index 0000000..56bb163
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaGateTests.cs
+@@ -0,0 +1,245 @@
++using System.Security.Claims;
++
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Invocation;
++using Hexalith.FrontComposer.Mcp.Rendering;
++
++using Microsoft.Extensions.DependencyInjection;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
++
++/// <summary>
++/// AC1 / AC2 / AC5 / T3 — wire McpSchemaNegotiator into FrontComposerMcpProjectionReader. The
++/// reader must run negotiation between visibility/tenant checks and query dispatch, surface
++/// sanitized schema categories via the failure mapper, preserve Story 8-2 hidden/unknown
++/// precedence, and re-run server-side validation on `CompatibleAdditive`.
++/// </summary>
++public sealed class ProjectionReaderSchemaGateTests {
++    [Fact]
++    public async Task SchemaGate_RunsAfterVisibility_BeforeQueryDispatch() {
++        CountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(query, clientFingerprintHint: SchemaHintFor("stale-client"));
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.SchemaMismatch);
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("schema-mismatch");
++        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldStartWith("HFC-MCP-PROJECTION-SCHEMA-");
++        query.CallCount.ShouldBe(0, "AC1: schema-mismatch must short-circuit before query dispatch.");
++    }
++
++    [Fact]
++    public async Task HiddenPrecedence_WinsOverSchemaMismatch() {
++        // AC2 anchor: a hidden resource AND a stale client schema. The reader must collapse to
++        // the hidden-equivalent unknown_resource public payload, not surface schema-mismatch.
++        CountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            clientFingerprintHint: SchemaHintFor("stale-client"),
++            configureServices: services => services.AddSingleton<IFrontComposerMcpResourceVisibilityGate>(
++                new ToggleResourceVisibilityGate(visible: false)));
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unknown_resource");
++        result.StructuredContent["isHiddenEquivalent"]!.GetValue<bool>().ShouldBeTrue();
++        // No schema details bleed.
++        result.StructuredContent.ToJsonString().ShouldNotContain("schema-mismatch");
++        result.StructuredContent.ToJsonString().ShouldNotContain("HFC-SCHEMA-");
++        query.CallCount.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task CompatibleAdditive_AdmitsDispatch_AfterRevalidation() {
++        // AC5: CompatibleAdditive admits the request, but server-side validation/defaulting
++        // must run again before the query is invoked. The validator counter proves revalidation.
++        RevalidationCountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            clientFingerprintHint: SchemaHintFor("compatible-additive"));
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeFalse();
++        query.CallCount.ShouldBe(1);
++        query.RevalidationCount.ShouldBeGreaterThanOrEqualTo(1, "AC5: validation must re-run before dispatch on CompatibleAdditive.");
++    }
++
++    [Fact]
++    public async Task UnsupportedAlgorithm_FromClient_SurfacesSanitizedAgentCategory() {
++        CountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            clientFingerprintHint: new SchemaFingerprint("frontcomposer.schema.sha512.future", new string('c', 64)));
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("unsupported-schema-fingerprint");
++        query.CallCount.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task UnknownBaseline_SurfacesSchemaUnavailable() {
++        CountingQueryService query = new();
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            clientFingerprintHint: SchemaHintFor("baseline-missing"));
++
++        FrontComposerMcpResult result = await reader.ReadAsync(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            TestContext.Current.CancellationToken);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownSchemaBaseline);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe("schema-unavailable");
++        query.CallCount.ShouldBe(0);
++    }
++
++    [Fact]
++    public async Task ZeroSideEffects_OnIncompatibleNegotiation_NoQueryNoRender() {
++        // AC1 zero-side-effect tightening: incompatible negotiation must not invoke query
++        // execution, lifecycle mutation, cache writes, or renderer buffers.
++        CountingQueryService query = new();
++        CountingProjectionRenderer renderer = new(McpProjectionRenderResult.Failure(FrontComposerMcpFailureCategory.UnsupportedRender));
++        FrontComposerMcpProjectionReader reader = BuildReader(
++            query,
++            clientFingerprintHint: SchemaHintFor("incompatible"),
++            configureServices: s => s.AddSingleton<IFrontComposerMcpProjectionRenderer>(renderer));
++
++        await reader.ReadAsync("frontcomposer://Billing/projections/InvoiceProjection", TestContext.Current.CancellationToken);
++
++        query.CallCount.ShouldBe(0);
++        renderer.CallCount.ShouldBe(0);
++    }
++
++    private static SchemaFingerprint SchemaHintFor(string scenario)
++        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
++
++    private static FrontComposerMcpProjectionReader BuildReader(
++        IQueryService queryService,
++        SchemaFingerprint? clientFingerprintHint = null,
++        Action<IServiceCollection>? configureServices = null) {
++        ServiceCollection services = [];
++        services.AddSingleton(queryService);
++        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest(clientFingerprintHint)));
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new StaticAccessor(clientFingerprintHint));
++        services.AddScoped<FrontComposerMcpProjectionReader>();
++        services.AddSingleton<IFrontComposerMcpProjectionRenderer, DefaultFrontComposerMcpProjectionRenderer>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
++        configureServices?.Invoke(services);
++        ServiceProvider provider = services.BuildServiceProvider();
++        return ActivatorUtilities.CreateInstance<FrontComposerMcpProjectionReader>(provider);
++    }
++
++    private static McpManifest Manifest(SchemaFingerprint? clientFingerprintHint) {
++        SchemaFingerprint? serverFingerprint = clientFingerprintHint?.Value.StartsWith("baseline-missing", StringComparison.Ordinal) == true
++            ? null
++            : clientFingerprintHint?.Value.StartsWith("compatible-additive", StringComparison.Ordinal) == true
++                ? clientFingerprintHint
++                : new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64));
++        return new("frontcomposer.mcp.v1", [], [
++            new McpResourceDescriptor(
++                "frontcomposer://Billing/projections/InvoiceProjection",
++                "InvoiceProjection",
++                typeof(InvoiceProjection).FullName!,
++                "Billing",
++                "Invoices",
++                null,
++                [
++                    new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
++                ],
++                RenderStrategy: McpProjectionRenderStrategy.Default,
++                Fingerprint: serverFingerprint),
++        ]);
++    }
++
++    public sealed record InvoiceProjection(string Number);
++
++    private sealed class CountingQueryService : IQueryService {
++        public int CallCount { get; private set; }
++
++        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
++            CallCount++;
++            object[] items = [new InvoiceProjection("INV-1")];
++            return Task.FromResult(new QueryResult<T>(items.Cast<T>().ToArray(), 1, null));
++        }
++    }
++
++    /// <summary>
++    /// Counts how many times the host-side validator runs before <see cref="QueryAsync"/>.
++    /// AC5 requires re-validation on CompatibleAdditive; the actual hook will be added in T3
++    /// — this scaffold uses a sentinel <see cref="QueryRequest.Take"/> bound to detect the
++    /// re-validation path once it lands.
++    /// </summary>
++    private sealed class RevalidationCountingQueryService : IQueryService {
++        public int CallCount { get; private set; }
++
++        public int RevalidationCount { get; private set; }
++
++        public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default) {
++            CallCount++;
++            // T3 should pin the take bound through the post-additive validator. Until T3 lands,
++            // RevalidationCount stays 0 and this scaffold will fail meaningfully when unskipped.
++            if (request.Take > 0 && request.Take <= 1024) {
++                RevalidationCount++;
++            }
++
++            object[] items = [new InvoiceProjection("INV-1")];
++            return Task.FromResult(new QueryResult<T>(items.Cast<T>().ToArray(), 1, null));
++        }
++    }
++
++    /// <summary>
++    /// Mirrors the existing accessor pattern but exposes a client schema fingerprint hint that
++    /// T3 will plumb through to the negotiator. Until T3 lands, the hint is unused and the
++    /// resulting tests fail because the gate hasn't run.
++    /// </summary>
++    private sealed class StaticAccessor(SchemaFingerprint? clientFingerprintHint) : IFrontComposerMcpAgentContextAccessor {
++        public FrontComposerMcpAgentContext GetContext()
++            => new(
++                "tenant-a",
++                "agent-a",
++                new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test", nameType: "name", roleType: "role")));
++
++        public SchemaFingerprint? ClientFingerprintHint => clientFingerprintHint;
++    }
++
++    private sealed class ToggleResourceVisibilityGate(bool visible) : IFrontComposerMcpResourceVisibilityGate {
++        public ValueTask<bool> IsVisibleAsync(McpResourceDescriptor descriptor, FrontComposerMcpAgentContext context, CancellationToken cancellationToken)
++            => ValueTask.FromResult(visible);
++    }
++
++    private sealed class AllowAllResourceVisibilityGate : IFrontComposerMcpResourceVisibilityGate {
++        public ValueTask<bool> IsVisibleAsync(McpResourceDescriptor descriptor, FrontComposerMcpAgentContext context, CancellationToken cancellationToken)
++            => ValueTask.FromResult(true);
++    }
++
++    private sealed class CountingProjectionRenderer(McpProjectionRenderResult result) : IFrontComposerMcpProjectionRenderer {
++        public int CallCount { get; private set; }
++
++        public McpProjectionRenderResult Render(McpProjectionRenderRequest request, FrontComposerMcpOptions options, CancellationToken cancellationToken) {
++            CallCount++;
++            return result;
++        }
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaTaxonomyTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaTaxonomyTests.cs
+new file mode 100644
+index 0000000..dc743ea
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ProjectionReaderSchemaTaxonomyTests.cs
+@@ -0,0 +1,100 @@
++using System.Reflection;
++using System.Text.Json.Nodes;
++
++using Hexalith.FrontComposer.Mcp;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
++
++/// <summary>
++/// AC1 / AC15 / T4 — extend FrontComposerMcpProjectionFailureMapper with explicit branches for
++/// SchemaMismatch, UnknownSchemaBaseline, UnsupportedSchemaAlgorithm, SchemaIntegrityMismatch.
++/// Each branch must surface a stable agent category, retryable flag, refresh hint, and HFC docs
++/// code — and must not collapse to the generic <c>downstream_failed</c> path.
++/// </summary>
++public sealed class ProjectionReaderSchemaTaxonomyTests {
++    [Theory]
++    [InlineData(FrontComposerMcpFailureCategory.SchemaMismatch, "schema-mismatch", "HFC-MCP-PROJECTION-SCHEMA-MISMATCH", false, false)]
++    [InlineData(FrontComposerMcpFailureCategory.UnknownSchemaBaseline, "schema-unavailable", "HFC-MCP-PROJECTION-SCHEMA-UNAVAILABLE", false, false)]
++    [InlineData(FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm, "unsupported-schema-fingerprint", "HFC-MCP-PROJECTION-UNSUPPORTED-SCHEMA-ALGORITHM", false, false)]
++    [InlineData(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch, "schema-unavailable", "HFC-MCP-PROJECTION-SCHEMA-INTEGRITY-MISMATCH", false, false)]
++    public void Map_NewSchemaCategories_ReturnDeterministicAgentTaxonomy(
++        FrontComposerMcpFailureCategory category,
++        string expectedAgentCategory,
++        string expectedDocsCode,
++        bool expectedRetryable,
++        bool expectedRefreshResources) {
++        FrontComposerMcpResult result = InvokeMapper(category);
++
++        result.IsError.ShouldBeTrue();
++        result.Category.ShouldBe(category);
++        result.StructuredContent.ShouldNotBeNull();
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldBe(expectedAgentCategory);
++        result.StructuredContent!["docsCode"]!.GetValue<string>().ShouldBe(expectedDocsCode);
++        result.StructuredContent!["retryable"]!.GetValue<bool>().ShouldBe(expectedRetryable);
++        result.StructuredContent!["refreshResources"]!.GetValue<bool>().ShouldBe(expectedRefreshResources);
++        result.StructuredContent!["category"]!.GetValue<string>().ShouldNotBe(
++            "downstream_failed",
++            "AC1: schema categories must not collapse to the generic downstream_failed branch.");
++    }
++
++    [Fact]
++    public void Map_SchemaCategories_NeverFlagAsHiddenEquivalent() {
++        // Story 8-2 hidden-equivalent collapse is for tenant/auth/policy cases — schema categories
++        // are publicly diagnosable (a stale client should know to re-fetch the manifest).
++        foreach (FrontComposerMcpFailureCategory category in new[] {
++            FrontComposerMcpFailureCategory.SchemaMismatch,
++            FrontComposerMcpFailureCategory.UnknownSchemaBaseline,
++            FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm,
++            FrontComposerMcpFailureCategory.SchemaIntegrityMismatch,
++        }) {
++            FrontComposerMcpResult result = InvokeMapper(category);
++            result.StructuredContent!["isHiddenEquivalent"]!.GetValue<bool>()
++                .ShouldBeFalse($"category {category} must NOT be hidden-equivalent (Story 8-2 reserves that for tenant/auth/policy).");
++        }
++    }
++
++    [Fact]
++    public void SanitizedPayload_StructuredContent_ContainsOnlyBoundedFields() {
++        // AC15: agent-visible structured content carries only category / message / docsCode /
++        // retryable / refreshResources / isHiddenEquivalent. No raw exception text, no client
++        // fingerprint hash, no tenant id, no resource name.
++        FrontComposerMcpResult result = InvokeMapper(FrontComposerMcpFailureCategory.SchemaMismatch);
++
++        JsonObject content = result.StructuredContent!;
++        HashSet<string> allowed = new(StringComparer.Ordinal) {
++            "category", "message", "docsCode", "retryable", "refreshResources", "isHiddenEquivalent",
++        };
++        foreach (KeyValuePair<string, JsonNode?> property in content) {
++            allowed.ShouldContain(property.Key,
++                $"AC15: failure mapper exposed an unexpected structured field '{property.Key}'.");
++        }
++    }
++
++    [Fact]
++    public void SanitizedPayload_DoesNotEcho_RawClientHashOrTenantId() {
++        FrontComposerMcpResult result = InvokeMapper(FrontComposerMcpFailureCategory.SchemaMismatch);
++        string serialized = result.StructuredContent!.ToJsonString();
++
++        serialized.ShouldNotContain("tenant-a");
++        serialized.ShouldNotContain("eyJabc"); // sample raw JWT prefix
++        serialized.ShouldNotContain(new string('a', 32));
++    }
++
++    private static FrontComposerMcpResult InvokeMapper(FrontComposerMcpFailureCategory category) {
++        // FrontComposerMcpProjectionFailureMapper is internal. Resolve via reflection so this test
++        // compiles as a co-located red-phase scaffold. T4 may keep the mapper internal but should
++        // expose either an InternalsVisibleTo or a public typed adapter; either way, the mapper's
++        // ToResult shape is the contract under test.
++        Type? mapper = typeof(FrontComposerMcpResult).Assembly
++            .GetType("Hexalith.FrontComposer.Mcp.Invocation.FrontComposerMcpProjectionFailureMapper", throwOnError: false);
++        mapper.ShouldNotBeNull("FrontComposerMcpProjectionFailureMapper not found — has the namespace moved?");
++
++        MethodInfo? toResult = mapper!.GetMethod("ToResult", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic);
++        toResult.ShouldNotBeNull("ToResult(FrontComposerMcpFailureCategory) method not found.");
++
++        return (FrontComposerMcpResult)toResult!.Invoke(null, [category])!;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSchemaGateTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSchemaGateTests.cs
+new file mode 100644
+index 0000000..9f64680
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Invocation/ToolAdmissionSchemaGateTests.cs
+@@ -0,0 +1,89 @@
++using System.Security.Claims;
++
++using Hexalith.FrontComposer.Contracts.Communication;
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Invocation;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Logging.Abstractions;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Invocation;
++
++/// <summary>
++/// AC1 / T3 — wire McpSchemaNegotiator into FrontComposerMcpToolAdmissionService. The schema gate
++/// runs after admission resolves the tool but before any acceptance leaves the service. Listing
++/// the tool catalog must remain unaffected (so agents can self-correct), but a stale client
++/// fingerprint must demote the resolution to a sanitized rejection.
++/// </summary>
++public sealed class ToolAdmissionSchemaGateTests {
++    [Fact]
++    public async Task ResolveAsync_StaleClientFingerprint_RejectsWithSanitizedSchemaCategory() {
++        FrontComposerMcpToolAdmissionService admission = BuildAdmission(SchemaHintFor("stale-client"));
++
++        McpToolResolutionResult resolution = await admission.ResolveAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            TestContext.Current.CancellationToken);
++
++        resolution.Accepted.ShouldBeFalse(
++            "AC1: a stale client schema fingerprint must demote the resolution to rejected even when the tool name resolves exactly.");
++        resolution.Tool.ShouldBeNull();
++    }
++
++    [Fact]
++    public async Task ResolveAsync_UnsupportedAlgorithm_RejectsBeforeReturning() {
++        FrontComposerMcpToolAdmissionService admission = BuildAdmission(
++            new SchemaFingerprint("frontcomposer.schema.sha512.future", new string('z', 64)));
++
++        McpToolResolutionResult resolution = await admission.ResolveAsync(
++            "Billing.PayInvoiceCommand.Execute",
++            TestContext.Current.CancellationToken);
++
++        resolution.Accepted.ShouldBeFalse();
++        resolution.Tool.ShouldBeNull();
++    }
++
++    private static SchemaFingerprint SchemaHintFor(string scenario)
++        => new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, scenario.PadRight(64, 'x').Substring(0, 64));
++
++    private static FrontComposerMcpToolAdmissionService BuildAdmission(SchemaFingerprint clientFingerprintHint) {
++        ServiceCollection services = [];
++        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(Manifest()));
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
++        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
++        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
++        services.AddScoped<IFrontComposerMcpAgentContextAccessor>(_ => new SchemaAwareStaticAccessor(clientFingerprintHint));
++        services.AddSingleton<FrontComposerMcpToolAdmissionService>();
++        ServiceProvider provider = services.BuildServiceProvider();
++        return provider.GetRequiredService<FrontComposerMcpToolAdmissionService>();
++    }
++
++    private static McpManifest Manifest()
++        => new("frontcomposer.mcp.v1", [
++            new McpCommandDescriptor(
++                "Billing.PayInvoiceCommand.Execute",
++                "Hexalith.FrontComposer.Sample.Commands.PayInvoiceCommand",
++                "Billing",
++                "Pay invoice",
++                "Pay invoice",
++                null,
++                [new McpParameterDescriptor("Amount", "Int32", "number", true, false, "Amount", null, [], false)],
++                ["TenantId", "UserId", "MessageId"],
++                Fingerprint: new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, "server-current".PadRight(64, 's').Substring(0, 64))),
++        ], []);
++
++    private sealed class SchemaAwareStaticAccessor(SchemaFingerprint clientFingerprintHint) : IFrontComposerMcpAgentContextAccessor {
++        public FrontComposerMcpAgentContext GetContext()
++            => new(
++                "tenant-a",
++                "agent-a",
++                new ClaimsPrincipal(new ClaimsIdentity(authenticationType: "test", nameType: "name", roleType: "role")));
++
++        public SchemaFingerprint ClientFingerprintHint { get; } = clientFingerprintHint;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/RenderContractAdapterTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/RenderContractAdapterTests.cs
+new file mode 100644
+index 0000000..9555468
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Rendering/RenderContractAdapterTests.cs
+@@ -0,0 +1,95 @@
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Contracts.Rendering;
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Invocation;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Logging.Abstractions;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Rendering;
++
++/// <summary>
++/// AC14 / T7 — at least one .Mcp adapter produces a FrontComposerRenderContract per Markdown
++/// projection resource and registers it through the descriptor registry. Web/Blazor adapters
++/// remain placeholders pending future stories.
++/// </summary>
++public sealed class RenderContractAdapterTests {
++    [Fact]
++    public void DescriptorRegistry_ExposesRenderContract_PerMarkdownProjectionResource() {
++        FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
++
++        IReadOnlyList<FrontComposerRenderContract> contracts = ResolveRenderContracts(registry);
++
++        contracts.ShouldNotBeEmpty("AC14: at least one Markdown projection resource must publish a render contract.");
++        contracts.ShouldContain(c => c.Surface == RenderSurfaceKind.McpMarkdown);
++    }
++
++    [Fact]
++    public void RenderContract_BoundsMatchOptions_AndCarrySanitizedTaxonomy() {
++        FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
++
++        FrontComposerRenderContract contract = ResolveRenderContracts(registry)
++            .First(c => c.Surface == RenderSurfaceKind.McpMarkdown);
++
++        contract.OutputContentType.ShouldBe("text/markdown");
++        contract.Capabilities.ShouldContain(RenderCapability.BoundedMarkdown);
++        contract.Capabilities.ShouldContain(RenderCapability.SanitizedInertText);
++        contract.Bounds.MaxCharacters.ShouldBeGreaterThan(0,
++            "AC9 / T6 ties bounds to FrontComposerMcpOptions / SkillResourceReadOptions; the adapter must surface the live values.");
++        contract.Fingerprint.AlgorithmId.ShouldBeOneOf(
++            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++            SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
++    }
++
++    [Fact]
++    public void WebBlazorAdapter_RemainsPlaceholder_DoesNotRegisterContract() {
++        // Story 8-6a scope guard: only the .Mcp adapter ships in this story; Web/Blazor adapters
++        // remain placeholders. The registry must not yet expose a WebBlazor render contract.
++        FrontComposerMcpDescriptorRegistry registry = BuildRegistry(SampleResource());
++
++        ResolveRenderContracts(registry)
++            .ShouldNotContain(c => c.Surface == RenderSurfaceKind.WebBlazor,
++                "AC14 scope guard: WebBlazor adapter is out of scope for Story 8-6a.");
++    }
++
++    private static FrontComposerMcpDescriptorRegistry BuildRegistry(McpResourceDescriptor resource) {
++        ServiceCollection services = [];
++        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(new McpManifest("frontcomposer.mcp.v1", [], [resource])));
++        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++        return services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
++    }
++
++    private static McpResourceDescriptor SampleResource()
++        => new(
++            "frontcomposer://Billing/projections/InvoiceProjection",
++            "InvoiceProjection",
++            "Hexalith.FrontComposer.Sample.InvoiceProjection",
++            "Billing",
++            "Invoices",
++            null,
++            [
++                new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
++            ],
++            RenderStrategy: McpProjectionRenderStrategy.Default,
++            Fingerprint: new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64)));
++
++    /// <summary>
++    /// Resolves render contracts from the registry through the seam T7 will introduce. Until T7
++    /// lands, the seam doesn't exist and the assertion fails meaningfully when unskipped.
++    /// </summary>
++    private static IReadOnlyList<FrontComposerRenderContract> ResolveRenderContracts(FrontComposerMcpDescriptorRegistry registry) {
++        // Expected accessor shape: registry.GetRenderContracts() or a sibling provider.
++        System.Reflection.MethodInfo? accessor = registry.GetType()
++            .GetMethod("GetRenderContracts", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
++        accessor.ShouldNotBeNull(
++            "AC14 / T7 require a public registry accessor for render contracts. Implement T7 before unskipping.");
++
++        object? result = accessor!.Invoke(registry, []);
++        return (IReadOnlyList<FrontComposerRenderContract>)result!;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs
+new file mode 100644
+index 0000000..63c5733
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/AggregateManifestIntegrityTests.cs
+@@ -0,0 +1,146 @@
++using Hexalith.FrontComposer.Contracts.Mcp;
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Invocation;
++using Hexalith.FrontComposer.Mcp.Schema;
++
++using Microsoft.Extensions.DependencyInjection;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Logging.Abstractions;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
++
++/// <summary>
++/// AC7 / AC8 / T5 — descriptor registry must recompute the aggregate manifest fingerprint from
++/// nested fingerprints at runtime and fail closed via SchemaIntegrityMismatch when the embedded
++/// aggregate disagrees. The runtime aggregate must include skill corpus resource fingerprints
++/// (Story 8-5 D4 / D22), even though the build-time emitter cannot see them.
++/// </summary>
++public sealed class AggregateManifestIntegrityTests {
++    [Fact]
++    public void DescriptorRegistry_LoadingTamperedAggregate_FailsClosed_WithIntegrityMismatch() {
++        // Build a manifest where the embedded aggregate fingerprint is forged so it disagrees
++        // with the structurally-recomputed aggregate over its nested resource fingerprints.
++        SchemaFingerprint nestedResourceFp = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64));
++        SchemaFingerprint forgedAggregateFp = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('z', 64));
++
++        McpManifest tampered = new(
++            "frontcomposer.mcp.v1",
++            [],
++            [new McpResourceDescriptor(
++                "frontcomposer://Billing/projections/InvoiceProjection",
++                "InvoiceProjection",
++                "Hexalith.FrontComposer.Sample.InvoiceProjection",
++                "Billing",
++                "Invoices",
++                null,
++                [
++                    new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false),
++                ],
++                Fingerprint: nestedResourceFp)],
++            Fingerprint: forgedAggregateFp);
++
++        ServiceCollection services = [];
++        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(tampered));
++        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++
++        Exception ex = Should.Throw<Exception>(
++            () => services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>());
++
++        // AC7: descriptor registry must throw a sanitized integrity-mismatch error before exposing the manifest.
++        ex.Message.ToLowerInvariant().ShouldContain("integrity");
++    }
++
++    [Fact]
++    public void RuntimeAggregate_IncludesCorpusFingerprints_WhenSkillCorpusIsLoaded() {
++        // AC8: the runtime aggregate manifest fingerprint must include skill corpus resource
++        // fingerprints. The build-time aggregate (emitted by SourceTools) cannot see corpus
++        // fingerprints — it deliberately fingerprints generated code only — so the runtime
++        SchemaFingerprint nested = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64));
++        SchemaFingerprint corpus = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('b', 64));
++        McpManifest manifest = new(
++            "frontcomposer.mcp.v1",
++            [new McpCommandDescriptor(
++                "Billing.PayInvoiceCommand.Execute",
++                "Billing.PayInvoiceCommand",
++                "Billing",
++                "Pay invoice",
++                null,
++                null,
++                [],
++                [],
++                nested)],
++            []);
++
++        SchemaFingerprint withoutCorpus = FrontComposerMcpRuntimeManifestAggregator.Compute([manifest], []);
++        SchemaFingerprint withCorpus = FrontComposerMcpRuntimeManifestAggregator.Compute([manifest], [corpus]);
++
++        withCorpus.Value.ShouldNotBe(
++            withoutCorpus.Value,
++            "AC8: corpus resource fingerprints must contribute to the runtime aggregate.");
++    }
++
++    [Fact]
++    public void RuntimeAggregate_TamperedNestedFingerprint_TripsIntegrityMismatch() {
++        // 8-6a re-review D6: the integrity check is per-manifest scope. The build-time emitter
++        // computes the manifest's claimed Fingerprint over its OWN nested fingerprints (no corpus
++        // — the emitter cannot see runtime corpus). The runtime check must catch tampering with
++        // those nested fingerprints (a forged resource fp inside an otherwise-signed manifest).
++        // The cross-manifest+corpus invariant lives in `FrontComposerMcpRuntimeManifestAggregator
++        // .Compute(...)` and is tested separately in
++        // `RuntimeAggregate_IncludesCorpusFingerprints_WhenSkillCorpusIsLoaded`.
++        SchemaFingerprint nestedResourceFp = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64));
++        SchemaFingerprint forgedNestedFp = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('z', 64));
++        McpManifest signed = new(
++            "frontcomposer.mcp.v1",
++            [],
++            [new McpResourceDescriptor(
++                "frontcomposer://Billing/projections/InvoiceProjection",
++                "InvoiceProjection",
++                "Hexalith.FrontComposer.Sample.InvoiceProjection",
++                "Billing",
++                "Invoices",
++                null,
++                [new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false)],
++                Fingerprint: nestedResourceFp)],
++            Fingerprint: FrontComposerMcpRuntimeManifestAggregator.Compute(
++                [new McpManifest(
++                    "frontcomposer.mcp.v1",
++                    [],
++                    [new McpResourceDescriptor(
++                        "frontcomposer://Billing/projections/InvoiceProjection",
++                        "InvoiceProjection",
++                        "Hexalith.FrontComposer.Sample.InvoiceProjection",
++                        "Billing",
++                        "Invoices",
++                        null,
++                        [new McpParameterDescriptor("Number", "String", "string", true, false, "Number", null, [], false)],
++                        Fingerprint: nestedResourceFp)])],
++                []));
++
++        // Tamper: swap the nested resource fingerprint after signing. The manifest's claimed
++        // fingerprint no longer matches the recomputed per-manifest aggregate.
++        McpManifest tampered = signed with {
++            Resources = [signed.Resources[0] with { Fingerprint = forgedNestedFp }],
++        };
++
++        ServiceCollection services = [];
++        services.Configure<FrontComposerMcpOptions>(o => o.Manifests.Add(tampered));
++        services.AddSingleton<ISkillCorpusFingerprintProvider>(
++            new StaticCorpusFingerprintProvider([new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('b', 64))]));
++        services.AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
++        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
++
++        Exception ex = Should.Throw<Exception>(
++            () => services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>());
++
++        ex.Message.ToLowerInvariant().ShouldContain("integrity");
++    }
++
++    private sealed class StaticCorpusFingerprintProvider(IReadOnlyList<SchemaFingerprint> fingerprints) : ISkillCorpusFingerprintProvider {
++        public IReadOnlyList<SchemaFingerprint> GetFingerprints() => fingerprints;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs
+new file mode 100644
+index 0000000..3102e6d
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaBaselineResolverTests.cs
+@@ -0,0 +1,142 @@
++using System.Reflection;
++
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Schema;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
++
++/// <summary>
++/// AC4 / T1 — trusted baseline resolver. Memory rule "optional security parameters are an
++/// anti-pattern" + AC4 require the resolver to consume only typed package-owned identifiers
++/// (<see cref="SchemaBaselineProvenance"/> P-17 safe-identifier validated). Client-supplied paths,
++/// path-traversal segments, absolute paths, and untrusted generated output must be rejected
++/// before any comparison.
++/// </summary>
++public sealed class SchemaBaselineResolverTests {
++    [Fact]
++    public void Resolver_TypeExists_AndIsRegisteredAsScopedDi() {
++        Type? resolver = TryFindResolverType();
++        resolver.ShouldNotBeNull(
++            "AC4 / T1 require an ISchemaBaselineProvider (or extension of ISkillCorpusBaselineProvider). "
++            + "Implement T1 before unskipping.");
++
++        // Method shape: TryResolve(SchemaContractFamily, string packageOwner, string fixtureId, out SchemaBaselineSnapshot? snapshot)
++        MethodInfo? tryResolve = resolver!.GetMethod("TryResolve", BindingFlags.Public | BindingFlags.Instance);
++        tryResolve.ShouldNotBeNull();
++        ParameterInfo[] parameters = tryResolve!.GetParameters();
++        parameters.Length.ShouldBe(4);
++        parameters[0].ParameterType.ShouldBe(typeof(SchemaContractFamily));
++        parameters[1].ParameterType.ShouldBe(typeof(string));
++        parameters[2].ParameterType.ShouldBe(typeof(string));
++        parameters[3].IsOut.ShouldBeTrue();
++    }
++
++    [Fact]
++    public void Resolver_RejectsClientSuppliedFilesystemHints() {
++        // AC4: a caller-supplied package owner that looks like a filesystem path must not resolve
++        // to anything. SchemaBaselineProvenance P-17 already rejects "../" via SafeIdentifier; the
++        // resolver must surface that as a TryResolve=false (no exception escapes to the agent).
++        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
++
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "../etc/passwd", "baseline-known-v1")
++            .Resolved.ShouldBeFalse("AC4 forbids path-traversal segments in package owner.");
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "Hexalith.FrontComposer", "../baseline")
++            .Resolved.ShouldBeFalse("AC4 forbids path-traversal segments in fixture id.");
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "Hexalith.FrontComposer", "/abs/path/v1")
++            .Resolved.ShouldBeFalse("AC4 forbids absolute paths in fixture id.");
++    }
++
++    [Fact]
++    public void Resolver_RejectsCallerSuppliedAbsolutePathsForPackageOwner() {
++        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
++
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "C:/Users/agent/inj.json", "baseline-known-v1")
++            .Resolved.ShouldBeFalse();
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, @"\\unc\share\inj", "baseline-known-v1")
++            .Resolved.ShouldBeFalse();
++    }
++
++    [Fact]
++    public void Resolver_RejectsExternalPackageOwners() {
++        // AC4: only package-owned identifiers are accepted. A different package owner must not
++        // resolve, even if the safe-identifier pattern accepts the string.
++        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
++
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "Contoso.NotShipped", "baseline-known-v1")
++            .Resolved.ShouldBeFalse("Resolver must whitelist package owners shipped with HFC, not honor any safe-identifier string.");
++    }
++
++    [Fact]
++    public void Resolver_ReturnsTypedSnapshotForKnownIdentifiers() {
++        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
++
++        ResolverInvoker.Outcome outcome = resolver.TryResolve(
++            SchemaContractFamily.ProjectionResource,
++            "Hexalith.FrontComposer",
++            "baseline-known-v1");
++
++        outcome.Resolved.ShouldBeTrue();
++        outcome.Snapshot.ShouldNotBeNull();
++        outcome.Snapshot!.Provenance.PackageOwner.ShouldBe("Hexalith.FrontComposer");
++        outcome.Snapshot.Provenance.FixtureId.ShouldBe("baseline-known-v1");
++        outcome.Snapshot.Fingerprint.AlgorithmId.ShouldBeOneOf(
++            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++            SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
++    }
++
++    [Fact]
++    public void Resolver_RejectsNullOrWhitespaceArguments() {
++        ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
++
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "", "baseline-known-v1")
++            .Resolved.ShouldBeFalse();
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "Hexalith.FrontComposer", "")
++            .Resolved.ShouldBeFalse();
++        resolver.TryResolve(SchemaContractFamily.ProjectionResource, "   ", "baseline-known-v1")
++            .Resolved.ShouldBeFalse();
++    }
++
++    private static Type? TryFindResolverType() {
++        return typeof(ISchemaBaselineProvider);
++    }
++
++    private sealed class ResolverInvoker {
++        private readonly object _instance;
++        private readonly MethodInfo _tryResolve;
++
++        private ResolverInvoker(object instance, MethodInfo tryResolve) {
++            _instance = instance;
++            _tryResolve = tryResolve;
++        }
++
++        public static ResolverInvoker CreateOrSkip() {
++            Type? resolver = TryFindResolverType();
++            if (resolver is null) {
++                throw new InvalidOperationException(
++                    "AC4 / T1 require ISchemaBaselineProvider; implement T1 before unskipping.");
++            }
++
++            object instance;
++            if (resolver.IsInterface) {
++                instance = new InMemorySchemaBaselineProvider();
++            } else {
++                instance = Activator.CreateInstance(resolver)!;
++            }
++
++            MethodInfo? tryResolve = resolver.GetMethod("TryResolve", BindingFlags.Public | BindingFlags.Instance);
++            tryResolve.ShouldNotBeNull();
++            return new ResolverInvoker(instance, tryResolve!);
++        }
++
++        public Outcome TryResolve(SchemaContractFamily family, string packageOwner, string fixtureId) {
++            object?[] args = [family, packageOwner, fixtureId, null];
++            bool ok = (bool)_tryResolve.Invoke(_instance, args)!;
++            return new Outcome(ok, args[3] as SchemaBaselineSnapshot);
++        }
++
++        public sealed record Outcome(bool Resolved, SchemaBaselineSnapshot? Snapshot);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs
+new file mode 100644
+index 0000000..a8d6abb
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs
+@@ -0,0 +1,108 @@
++using System.Reflection;
++
++using Hexalith.FrontComposer.Mcp.Invocation;
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
++
++/// <summary>
++/// AC9 / T6 cross-package check: SourceTools' deterministic lifecycle field catalog must mirror
++/// <c>Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult</c>'s runtime shape. Hosted in
++/// Mcp.Tests (8-6a Group B D10 resolution) so the cross-check rides Mcp's existing
++/// <c>InternalsVisibleTo</c> seam rather than piercing Mcp's internal boundary from a SourceTools
++/// test project. The Mcp.Tests project already references SourceTools, so
++/// <see cref="SchemaFingerprintTransform"/> is reachable here.
++/// </summary>
++public sealed class SchemaFingerprintCrossPackageTests {
++    /// <summary>
++    /// The canonical lifecycle State enum-values cell. Not backed by a CLR enum (the values are
++    /// MCP protocol-level state names, not C# enum members), so the catalog is the source of
++    /// truth and this pin guards against silent drift. If the canonical state set legitimately
++    /// changes, update this constant AND document the fingerprint regeneration in the story log.
++    /// </summary>
++    private const string ExpectedStateLine = "State|string|string|required|not-null|Accepted,Confirmed,Failed,Rejected,Running";
++
++    [Fact]
++    public void LifecycleCatalog_FieldNames_MatchRuntimeProperties() {
++        IReadOnlyList<string> runtimeFieldNames = typeof(McpLifecycleResult)
++            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
++            .Select(p => p.Name)
++            .OrderBy(n => n, StringComparer.Ordinal)
++            .ToArray();
++
++        IReadOnlyList<string> catalogFieldNames = ExtractCatalog()
++            .Select(parts => parts[0])
++            .OrderBy(n => n, StringComparer.Ordinal)
++            .ToArray();
++
++        catalogFieldNames.ShouldBe(
++            runtimeFieldNames,
++            "AC9 cross-check: SourceTools lifecycle catalog field names must match McpLifecycleResult property set.");
++    }
++
++    [Fact]
++    public void LifecycleCatalog_FieldTypes_MatchRuntimePropertyTypes() {
++        // P-47 (8-6a Group B): the prior cross-check only validated field NAMES; a future change
++        // that retypes a property (e.g. State from string to int) would slip past name checks but
++        // break fingerprint determinism. This pins each catalog typename to the runtime property
++        // type so type drift fails build, not runtime.
++        Dictionary<string, string> runtimeTypes = typeof(McpLifecycleResult)
++            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
++            .ToDictionary(
++                p => p.Name,
++                p => MapClrTypeToCatalogType(p.PropertyType),
++                StringComparer.Ordinal);
++
++        foreach (string[] row in ExtractCatalog()) {
++            string name = row[0];
++            string typeName = row[2];
++            runtimeTypes.ShouldContainKey(name, $"Catalog references unknown property '{name}'.");
++            typeName.ShouldBe(
++                runtimeTypes[name],
++                $"AC9 cross-check: catalog typename for '{name}' must match the runtime property CLR type.");
++        }
++    }
++
++    [Fact]
++    public void LifecycleCatalog_StateEnumValues_PinnedToCanonicalSet() {
++        // P-47 (8-6a Group B): the State field's enum-values cell is not backed by a C# enum
++        // anywhere in-tree (the values are MCP protocol-level state names). This pin catches
++        // accidental drift — reordering, casing, additions, or removals — that would silently
++        // change the lifecycle fingerprint without surfacing as a name/type test failure.
++        IReadOnlyList<string[]> catalog = ExtractCatalog();
++        string[] stateRow = catalog.Single(parts => parts[0] == "State");
++        string actualLine = string.Join("|", stateRow);
++
++        actualLine.ShouldBe(
++            ExpectedStateLine,
++            "Lifecycle State catalog line must remain pinned. If the canonical state set legitimately "
++            + "changes, update ExpectedStateLine and document the fingerprint regeneration in the story log.");
++    }
++
++    private static IReadOnlyList<string[]> ExtractCatalog() {
++        GeneratedSchemaPayload payload = SchemaFingerprintTransform.CreateLifecycleResultPayload();
++        string canonical = payload.Json ?? string.Empty;
++        return canonical
++            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
++            .Where(line => line.StartsWith("field=", StringComparison.Ordinal))
++            .Select(line => line.Substring("field=".Length).Split('|'))
++            .ToArray();
++    }
++
++    private static string MapClrTypeToCatalogType(Type clrType) {
++        // The lifecycle surface is string-only today. If a property is re-typed to a non-string
++        // CLR type, this throws so the cross-check escalates rather than silently producing a
++        // bogus comparison. Extend the map when the lifecycle catalog legitimately gains
++        // non-string columns.
++        if (clrType == typeof(string)) {
++            return "string";
++        }
++
++        throw new InvalidOperationException(
++            $"P-47 cross-check has no mapping for CLR type '{clrType.FullName}'. "
++            + "Either extend MapClrTypeToCatalogType or update SchemaFingerprintTransform's catalog format.");
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs
+new file mode 100644
+index 0000000..89db6a0
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationPrecedenceMatrixTests.cs
+@@ -0,0 +1,267 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Schema;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
++
++/// <summary>
++/// AC3 / AC15 / T8 — table-driven precedence matrix. Each row stacks multiple causes
++/// (hidden + stale + integrity + unsupported algo + unknown baseline + incompatible drift) and
++/// asserts the earliest-precedence category wins deterministically. The leakage guards prove no
++/// lower-priority message-key, docs-code, or agent-category bleeds into the response.
++/// </summary>
++public sealed class SchemaNegotiationPrecedenceMatrixTests {
++    private static readonly SchemaFingerprint Server = new(
++        SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++        new string('a', 64));
++
++    private static readonly SchemaFingerprint Client = new(
++        SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++        new string('b', 64));
++
++    public static TheoryData<PrecedenceCase> Cases() {
++        TheoryData<PrecedenceCase> data = [];
++
++        // Row 1: hidden ALWAYS wins. (AC2 anchor.)
++        data.Add(new PrecedenceCase(
++            "row-1-hidden-over-everything",
++            IsHidden: true, IsStale: true, IntegrityMismatch: true, BaselineTrusted: false,
++            UnsupportedAlgo: true, ClientNull: true, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.HiddenOrUnknown,
++            ExpectedAgentCategory: "unknown_resource",
++            ForbiddenAgentCategories: ["schema-mismatch", "schema-compatible-warning", "schema-unavailable", "unsupported-schema-fingerprint"],
++            ForbiddenMessageKey: "schema.incompatible"));
++
++        data.Add(new PrecedenceCase(
++            "row-1b-hidden-over-schema-mismatch",
++            IsHidden: true, IsStale: false, IntegrityMismatch: false, BaselineTrusted: true,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.HiddenOrUnknown,
++            ExpectedAgentCategory: "unknown_resource",
++            ForbiddenAgentCategories: ["schema-mismatch", "schema-compatible-warning", "schema-unavailable", "unsupported-schema-fingerprint"],
++            ForbiddenMessageKey: "schema.incompatible"));
++
++        // Row 2: stale wins over schema integrity.
++        data.Add(new PrecedenceCase(
++            "row-2-stale-over-integrity",
++            IsHidden: false, IsStale: true, IntegrityMismatch: true, BaselineTrusted: true,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.StaleDescriptor,
++            ExpectedAgentCategory: "projection_unavailable",
++            ForbiddenAgentCategories: ["schema-mismatch", "unsupported-schema-fingerprint"],
++            ForbiddenMessageKey: "schema.integrity-mismatch"));
++
++        // Row 3: integrity wins over unsupported algorithm. (P-42 ordering.)
++        data.Add(new PrecedenceCase(
++            "row-3-integrity-over-algorithm",
++            IsHidden: false, IsStale: false, IntegrityMismatch: true, BaselineTrusted: true,
++            UnsupportedAlgo: true, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.SchemaIntegrityMismatch,
++            ExpectedAgentCategory: "schema-unavailable",
++            ForbiddenAgentCategories: ["unsupported-schema-fingerprint", "schema-mismatch"],
++            ForbiddenMessageKey: "schema.algorithm.unsupported"));
++
++        // Row 4: unsupported algorithm wins over missing baseline.
++        data.Add(new PrecedenceCase(
++            "row-4-algorithm-over-baseline",
++            IsHidden: false, IsStale: false, IntegrityMismatch: false, BaselineTrusted: false,
++            UnsupportedAlgo: true, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.UnsupportedAlgorithm,
++            ExpectedAgentCategory: "unsupported-schema-fingerprint",
++            ForbiddenAgentCategories: ["schema-mismatch", "schema-unavailable"],
++            ForbiddenMessageKey: "schema.baseline.unknown"));
++
++        // Row 5: missing baseline wins over incompatible drift when client/server differ.
++        data.Add(new PrecedenceCase(
++            "row-5-baseline-over-drift",
++            IsHidden: false, IsStale: false, IntegrityMismatch: false, BaselineTrusted: false,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.UnknownServerBaseline,
++            ExpectedAgentCategory: "schema-unavailable",
++            ForbiddenAgentCategories: ["schema-mismatch", "schema-compatible-warning"],
++            ForbiddenMessageKey: "schema.incompatible"));
++
++        // Row 6: incompatible drift wins over additive when snapshots show breaking deltas.
++        data.Add(new PrecedenceCase(
++            "row-6-incompatible-over-additive",
++            IsHidden: false, IsStale: false, IntegrityMismatch: false, BaselineTrusted: true,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.Incompatible,
++            ExpectedAgentCategory: "schema-mismatch",
++            ForbiddenAgentCategories: ["schema-compatible-warning"],
++            ForbiddenMessageKey: "schema.compatible-additive"));
++
++        // Row 7: additive wins when only optional drift is present.
++        data.Add(new PrecedenceCase(
++            "row-7-additive-allows-side-effects",
++            IsHidden: false, IsStale: false, IntegrityMismatch: false, BaselineTrusted: true,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: true,
++            Expected: McpSchemaNegotiationResultKind.CompatibleAdditive,
++            ExpectedAgentCategory: "schema-compatible-warning",
++            ForbiddenAgentCategories: ["schema-mismatch", "unsupported-schema-fingerprint"],
++            ForbiddenMessageKey: "schema.incompatible"));
++
++        // Row 8: exact byte-match short-circuits even without trusted baseline (P-40).
++        data.Add(new PrecedenceCase(
++            "row-8-exact-shortcircuits-baseline",
++            IsHidden: false, IsStale: false, IntegrityMismatch: false, BaselineTrusted: false,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.Exact,
++            ExpectedAgentCategory: "schema-exact",
++            ForbiddenAgentCategories: ["schema-unavailable", "schema-mismatch"],
++            ForbiddenMessageKey: "schema.baseline.unknown",
++            UseEqualHashes: true));
++
++        // Row 9: missing client fingerprint after algorithm gate yields UnknownClientVersion
++        // — distinct from algorithm/baseline rows so agents see actionable remediation.
++        data.Add(new PrecedenceCase(
++            "row-9-missing-client-version",
++            IsHidden: false, IsStale: false, IntegrityMismatch: false, BaselineTrusted: true,
++            UnsupportedAlgo: false, ClientNull: true, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.UnknownClientVersion,
++            ExpectedAgentCategory: "unknown-version",
++            ForbiddenAgentCategories: ["schema-mismatch", "unsupported-schema-fingerprint"],
++            ForbiddenMessageKey: "schema.incompatible"));
++
++        return data;
++    }
++
++    [Theory]
++    [MemberData(nameof(Cases))]
++    public void Negotiate_PrecedenceMatrix_RowYieldsExpectedClassification(PrecedenceCase row) {
++        ArgumentNullException.ThrowIfNull(row);
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(BuildInput(row));
++
++        result.Kind.ShouldBe(row.Expected, $"row {row.Name}");
++        result.AgentCategory.ShouldBe(row.ExpectedAgentCategory, $"row {row.Name}");
++    }
++
++    [Theory]
++    [MemberData(nameof(Cases))]
++    public void LeakageGuards_LowerPriorityFieldsDoNotBleedIntoResult(PrecedenceCase row) {
++        ArgumentNullException.ThrowIfNull(row);
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(BuildInput(row));
++
++        foreach (string forbidden in row.ForbiddenAgentCategories) {
++            result.AgentCategory.ShouldNotBe(forbidden, $"row {row.Name} leaked lower-priority agent category");
++        }
++
++        result.MessageKey.ShouldNotBe(row.ForbiddenMessageKey, $"row {row.Name} leaked lower-priority message key");
++        result.DocsCode.ShouldNotBeNullOrWhiteSpace();
++    }
++
++    [Fact]
++    public void LeakageGuards_NoFingerprintHashEverAppearsInPublicFields() {
++        // AC15: no raw client fingerprint hashes leak through agent-visible fields.
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(BuildInput(new PrecedenceCase(
++            "leak-guard-fingerprint",
++            IsHidden: false, IsStale: false, IntegrityMismatch: false, BaselineTrusted: true,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.Incompatible,
++            ExpectedAgentCategory: "schema-mismatch",
++            ForbiddenAgentCategories: [],
++            ForbiddenMessageKey: "")));
++
++        result.AgentCategory.ShouldNotContain(Server.Value);
++        result.AgentCategory.ShouldNotContain(Client.Value);
++        result.MessageKey.ShouldNotContain(Server.Value);
++        result.MessageKey.ShouldNotContain(Client.Value);
++        result.DocsCode.ShouldNotContain(Server.Value);
++        result.DocsCode.ShouldNotContain(Client.Value);
++    }
++
++    [Fact]
++    public void LeakageGuards_DocsCodeIsBoundedShortStableIdentifier() {
++        // AC15 / Story 8-4a: docs codes are bounded short identifiers, not free-form messages.
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(BuildInput(new PrecedenceCase(
++            "leak-guard-docs-code",
++            IsHidden: false, IsStale: true, IntegrityMismatch: false, BaselineTrusted: true,
++            UnsupportedAlgo: false, ClientNull: false, AdditiveDrift: false,
++            Expected: McpSchemaNegotiationResultKind.StaleDescriptor,
++            ExpectedAgentCategory: "projection_unavailable",
++            ForbiddenAgentCategories: [],
++            ForbiddenMessageKey: "")));
++
++        result.DocsCode.Length.ShouldBeLessThanOrEqualTo(64);
++        // Docs codes are stable HFC-prefixed identifiers per Story 8-4a taxonomy.
++        result.DocsCode.ShouldStartWith("HFC-");
++    }
++
++    private static McpSchemaNegotiationInput BuildInput(PrecedenceCase row) {
++        SchemaFingerprint? client = row.ClientNull
++            ? null
++            : row.UseEqualHashes ? Server : Client;
++        SchemaFingerprint server = row.UnsupportedAlgo
++            ? new SchemaFingerprint("frontcomposer.schema.sha512.future", Server.Value)
++            : Server;
++
++        // 8-6a review M1: when the row's intent is "additive drift admits side effects", supply
++        // baseline + server snapshots that the analyzer classifies as AdditiveCompatible. The
++        // legacy `HasCompatibleAdditiveDrift` bool is now ignored per AC6.
++        SchemaBaselineSnapshot? baseline = null;
++        SchemaBaselineSnapshot? serverSnapshot = null;
++        if (row.AdditiveDrift) {
++            baseline = BuildSnapshot(new string('a', 64), [
++                new SchemaFieldContract("Number", "Int32", "integer", true, false),
++            ]);
++            serverSnapshot = BuildSnapshot(new string('b', 64), [
++                new SchemaFieldContract("Number", "Int32", "integer", true, false),
++                new SchemaFieldContract("Note", "String", "string", false, true),
++            ]);
++        }
++
++#pragma warning disable CS0618
++        return new McpSchemaNegotiationInput(
++            IsHiddenOrUnknown: row.IsHidden,
++            IsStaleDescriptor: row.IsStale,
++            ClientFingerprint: client,
++            ServerFingerprint: server,
++            HasTrustedBaseline: row.BaselineTrusted,
++            HasCompatibleAdditiveDrift: row.AdditiveDrift,
++            HasSchemaIntegrityMismatch: row.IntegrityMismatch,
++            Baseline: baseline,
++            Server: serverSnapshot);
++#pragma warning restore CS0618
++    }
++
++    private static SchemaBaselineSnapshot BuildSnapshot(string fingerprintValue, IReadOnlyList<SchemaFieldContract> fields)
++        => new(
++            new SchemaBaselineProvenance(
++                SchemaContractFamily.ProjectionResource,
++                "frontcomposer.projection-resource.v1",
++                SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++                "Hexalith.FrontComposer",
++                "test-vector",
++                requiresMigrationGuide: false),
++            new SchemaContractDocument(
++                "frontcomposer.schema.contract.v1",
++                SchemaContractFamily.ProjectionResource,
++                "frontcomposer://test/baseline",
++                "frontcomposer.projection-resource.v1",
++                "Hexalith",
++                "Hexalith.FrontComposer.Test",
++                "frontcomposer://test/baseline",
++                fields,
++                [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
++                new Dictionary<string, string>()),
++            new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, fingerprintValue));
++
++    public sealed record PrecedenceCase(
++        string Name,
++        bool IsHidden,
++        bool IsStale,
++        bool IntegrityMismatch,
++        bool BaselineTrusted,
++        bool UnsupportedAlgo,
++        bool ClientNull,
++        bool AdditiveDrift,
++        McpSchemaNegotiationResultKind Expected,
++        string ExpectedAgentCategory,
++        IReadOnlyList<string> ForbiddenAgentCategories,
++        string ForbiddenMessageKey,
++        bool UseEqualHashes = false) {
++        public override string ToString() => Name;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationSnapshotInputTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationSnapshotInputTests.cs
+new file mode 100644
+index 0000000..3fb642a
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationSnapshotInputTests.cs
+@@ -0,0 +1,157 @@
++using System.Reflection;
++
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Mcp.Schema;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
++
++/// <summary>
++/// AC6 / T2 — replace <c>HasCompatibleAdditiveDrift</c> bool with snapshot inputs and let the
++/// negotiator derive Exact / CompatibleAdditive / Incompatible from
++/// <see cref="Hexalith.FrontComposer.Schema.Diagnostics.SchemaMigrationDeltaAnalyzer"/>. Memory rule
++/// "optional security parameters are an anti-pattern" applies: caller-supplied "additive" bools
++/// short-circuit the gate, so the input contract must surface snapshots only.
++/// </summary>
++public sealed class SchemaNegotiationSnapshotInputTests {
++    [Fact]
++    public void Input_ExposesBaselineAndServerSnapshotProperties() {
++        // RED: when T2 lands, McpSchemaNegotiationInput must expose
++        //   BaselineSnapshot? Baseline { get; init; }
++        //   ServerSnapshot?   Server   { get; init; }
++        // (or equivalently typed SchemaBaselineSnapshot members) so the negotiator can derive
++        // additive vs breaking via SchemaMigrationDeltaAnalyzer rather than trust a caller bool.
++        Type input = typeof(McpSchemaNegotiationInput);
++
++        PropertyInfo? baseline = input.GetProperty("Baseline", BindingFlags.Public | BindingFlags.Instance);
++        PropertyInfo? server = input.GetProperty("Server", BindingFlags.Public | BindingFlags.Instance);
++
++        baseline.ShouldNotBeNull("AC6 requires a typed Baseline snapshot input.");
++        server.ShouldNotBeNull("AC6 requires a typed Server snapshot input.");
++        baseline!.PropertyType.ShouldBe(typeof(SchemaBaselineSnapshot));
++        server!.PropertyType.ShouldBe(typeof(SchemaBaselineSnapshot));
++    }
++
++    [Fact]
++    public void Input_LegacyBooleanIsObsoleteOrRemoved() {
++        // RED: HasCompatibleAdditiveDrift must be removed or marked [Obsolete] for a release so
++        // existing callers fail loudly instead of silently bypassing the analyzer.
++        PropertyInfo? legacy = typeof(McpSchemaNegotiationInput)
++            .GetProperty("HasCompatibleAdditiveDrift", BindingFlags.Public | BindingFlags.Instance);
++
++        if (legacy is null) {
++            return; // removed outright — acceptable.
++        }
++
++        legacy.GetCustomAttribute<ObsoleteAttribute>().ShouldNotBeNull(
++            "AC6 requires HasCompatibleAdditiveDrift be [Obsolete] (or removed). The negotiator must derive additive vs breaking internally.");
++    }
++
++    [Fact]
++    public void Negotiate_DerivesCompatibleAdditive_FromAnalyzerNotFromCallerBool() {
++        // Two snapshots with identical canonicalizer metadata but a single newly-added optional
++        // field on `current`. The analyzer should classify this as AdditiveCompatible, and the
++        // negotiator's Kind must reflect that — without any caller hint.
++        SchemaBaselineSnapshot baselineSnapshot = MakeSnapshot([
++            new SchemaFieldContract("Number", "String", "string", true, false),
++        ]);
++        SchemaBaselineSnapshot currentSnapshot = MakeSnapshot([
++            new SchemaFieldContract("Number", "String", "string", true, false),
++            new SchemaFieldContract("OptionalNote", "String", "string", false, true),
++        ]);
++
++        // RED: requires the new constructor surface.
++        McpSchemaNegotiationInput input = NewSnapshotInput(baselineSnapshot, currentSnapshot);
++
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(input);
++
++        result.Kind.ShouldBe(McpSchemaNegotiationResultKind.CompatibleAdditive);
++        result.AllowsSideEffects.ShouldBeTrue("AC5 requires CompatibleAdditive to admit dispatch (after revalidation).");
++        result.AgentCategory.ShouldBe("schema-compatible-warning");
++    }
++
++    [Fact]
++    public void Negotiate_TrustingCallerBool_DoesNotOverrideAnalyzerDecision() {
++        // Even if a (legacy) caller passes HasCompatibleAdditiveDrift = true, the analyzer's
++        // verdict must win. Snapshots disagree on a required field type — Breaking — and the
++        // negotiator must classify Incompatible regardless of any leftover bool.
++        SchemaBaselineSnapshot baselineSnapshot = MakeSnapshot([
++            new SchemaFieldContract("Number", "String", "string", true, false),
++        ]);
++        SchemaBaselineSnapshot currentSnapshot = MakeSnapshot([
++            new SchemaFieldContract("Number", "Int32", "number", true, false),
++        ]);
++
++        McpSchemaNegotiationInput input = NewSnapshotInput(baselineSnapshot, currentSnapshot, legacyAdditiveBool: true);
++
++        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(input);
++
++        result.Kind.ShouldBe(McpSchemaNegotiationResultKind.Incompatible);
++        result.AllowsSideEffects.ShouldBeFalse();
++    }
++
++    private static SchemaBaselineSnapshot MakeSnapshot(IReadOnlyList<SchemaFieldContract> fields) {
++        var document = new SchemaContractDocument(
++            "frontcomposer.schema.contract.v1",
++            SchemaContractFamily.ProjectionResource,
++            "frontcomposer://Sales/projections/Snapshot",
++            "frontcomposer.projection-resource.v1",
++            "Sales",
++            "Sales.SnapshotProjection",
++            "frontcomposer://Sales/projections/Snapshot",
++            fields,
++            [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
++            new Dictionary<string, string>());
++        SchemaCanonicalPayload payload = CanonicalSchemaMaterial.CreatePayload(document);
++        return new SchemaBaselineSnapshot(
++            new SchemaBaselineProvenance(
++                SchemaContractFamily.ProjectionResource,
++                "frontcomposer.projection-resource.v1",
++                SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++                "Hexalith.FrontComposer",
++                "story-8-6a-snapshot",
++                requiresMigrationGuide: false),
++            payload.Document,
++            payload.Fingerprint);
++    }
++
++    /// <summary>
++    /// Bridges current and post-T2 input shapes via reflection so this scaffold compiles while
++    /// the snapshot constructor is still pending. When unskipped before T2 lands, the test fails
++    /// with a precise "snapshot constructor missing" message rather than a compile error.
++    /// </summary>
++    private static McpSchemaNegotiationInput NewSnapshotInput(
++        SchemaBaselineSnapshot baseline,
++        SchemaBaselineSnapshot current,
++        bool legacyAdditiveBool = false) {
++        ConstructorInfo? snapshotCtor = typeof(McpSchemaNegotiationInput)
++            .GetConstructors()
++            .FirstOrDefault(c => c.GetParameters().Any(p => p.ParameterType == typeof(SchemaBaselineSnapshot)));
++
++        if (snapshotCtor is null) {
++            throw new InvalidOperationException(
++                "AC6 requires McpSchemaNegotiationInput to expose a constructor accepting SchemaBaselineSnapshot inputs. "
++                + "Implement T2 before unskipping this test.");
++        }
++
++        ParameterInfo[] parameters = snapshotCtor.GetParameters();
++        object?[] args = new object?[parameters.Length];
++        for (int i = 0; i < parameters.Length; i++) {
++            ParameterInfo p = parameters[i];
++            args[i] = (p.Name?.ToLowerInvariant(), p.ParameterType) switch {
++                ("baseline" or "baselinesnapshot", _) => baseline,
++                ("server" or "serversnapshot", _) => current,
++                ("clientfingerprint", _) => current.Fingerprint,
++                ("serverfingerprint", _) => current.Fingerprint,
++                ("hashtruststedbaseline" or "hastrustedbaseline", _) => true,
++                (_, Type t) when t == typeof(bool) && p.Name?.Contains("additive", StringComparison.OrdinalIgnoreCase) == true => legacyAdditiveBool,
++                (_, Type t) when t == typeof(bool) => false,
++                _ => p.HasDefaultValue ? p.DefaultValue : null,
++            };
++        }
++
++        return (McpSchemaNegotiationInput)snapshotCtor.Invoke(args)!;
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs
+index d8b97ae..d047c5e 100644
+--- a/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs
++++ b/tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaNegotiationTests.cs
+@@ -53,20 +53,58 @@ public sealed class SchemaNegotiationTests {
+ 
+     [Fact]
+     public void Negotiate_CompatibleAdditive_AllowsOnlyAdmittedPath() {
++        // 8-6a review M1: the legacy `HasCompatibleAdditiveDrift` bool is now ignored per AC6;
++        // additive compatibility must be derived from baseline+server snapshot inputs through
++        // the analyzer. Build a baseline with one required field and a server snapshot that adds
++        // an optional field — analyzer classifies the diff as AdditiveCompatible.
++        SchemaBaselineSnapshot baseline = BuildSnapshot(
++            fingerprintValue: new string('a', 64),
++            fields: [new SchemaFieldContract("Number", "Int32", "integer", true, false)]);
++        SchemaBaselineSnapshot server = BuildSnapshot(
++            fingerprintValue: new string('b', 64),
++            fields: [
++                new SchemaFieldContract("Number", "Int32", "integer", true, false),
++                new SchemaFieldContract("Note", "String", "string", false, true),
++            ]);
++
+         McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
+             IsHiddenOrUnknown: false,
+             IsStaleDescriptor: false,
+             Client,
+             Server,
+             HasTrustedBaseline: true,
+-            HasCompatibleAdditiveDrift: true,
+-            HasSchemaIntegrityMismatch: false));
++            HasCompatibleAdditiveDrift: false,
++            HasSchemaIntegrityMismatch: false,
++            Baseline: baseline,
++            Server: server));
+ 
+         result.Kind.ShouldBe(McpSchemaNegotiationResultKind.CompatibleAdditive);
+         result.AllowsSideEffects.ShouldBeTrue();
+         result.AgentCategory.ShouldBe("schema-compatible-warning");
+     }
+ 
++    private static SchemaBaselineSnapshot BuildSnapshot(string fingerprintValue, IReadOnlyList<SchemaFieldContract> fields)
++        => new(
++            new SchemaBaselineProvenance(
++                SchemaContractFamily.ProjectionResource,
++                "frontcomposer.projection-resource.v1",
++                SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++                "Hexalith.FrontComposer",
++                "test-vector",
++                requiresMigrationGuide: false),
++            new SchemaContractDocument(
++                "frontcomposer.schema.contract.v1",
++                SchemaContractFamily.ProjectionResource,
++                "frontcomposer://test/baseline",
++                "frontcomposer.projection-resource.v1",
++                "Hexalith",
++                "Hexalith.FrontComposer.Test",
++                "frontcomposer://test/baseline",
++                fields,
++                [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
++                new Dictionary<string, string>()),
++            new SchemaFingerprint(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, fingerprintValue));
++
+     [Fact]
+     public void Negotiate_IncompatibleBlocksSideEffects() {
+         McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs
+index 0a27cac..c22be61 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaAnalyzerTests.cs
+@@ -1,5 +1,5 @@
+ using Hexalith.FrontComposer.Contracts.Schema;
+-using Hexalith.FrontComposer.SourceTools.Diagnostics;
++using Hexalith.FrontComposer.Schema.Diagnostics;
+ 
+ using Shouldly;
+ using Xunit;
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaTruncationTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaTruncationTests.cs
+new file mode 100644
+index 0000000..2cd4e3d
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/SchemaMigrationDeltaTruncationTests.cs
+@@ -0,0 +1,91 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Schema.Diagnostics;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
++
++/// <summary>
++/// AC12 / T8 — when more than 25 deltas exist, the analyzer truncates the delta list but the
++/// aggregate <see cref="SchemaCompatibilityDecision"/> still reflects the FULL pre-truncation
++/// worst-case category. This test inserts a Breaking delta past index 25 and asserts the
++/// truncated result still classifies as Breaking.
++/// </summary>
++public sealed class SchemaMigrationDeltaTruncationTests {
++    [Fact]
++    public void Compare_BreakingDeltaPastIndex25_StillProducesBreakingAggregate() {
++        // 30 fields total: indexes 0..27 are added optional (compatible), indexes 28..29 add a
++        // type-changed required field (Breaking). Index 28 sits past the truncation boundary.
++        SchemaBaselineSnapshot baseline = Snapshot([
++            new SchemaFieldContract("Anchor", "String", "string", true, false),
++        ]);
++
++        SchemaFieldContract[] currentFields = new SchemaFieldContract[30];
++        currentFields[0] = new SchemaFieldContract("Anchor", "String", "string", true, false);
++        for (int i = 1; i < 28; i++) {
++            currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2"), "String", "string", false, true);
++        }
++
++        // Indexes 28 and 29 add type-changes that, sorted ordinal, push them past index 25 of the
++        // truncated delta list while keeping their Breaking decision intact in the aggregate.
++        currentFields[28] = new SchemaFieldContract("XBreakingTypeChange", "Int32", "number", true, false);
++        currentFields[29] = new SchemaFieldContract("YBreakingTypeChange", "Int32", "number", true, false);
++
++        SchemaBaselineSnapshot current = Snapshot(currentFields);
++
++        SchemaMigrationDeltaResult result = SchemaMigrationDeltaAnalyzer.Compare(baseline, current);
++
++        result.IsTruncated.ShouldBeTrue("AC12 anchor: more than 25 deltas should trigger truncation.");
++        result.Decision.ShouldBe(
++            SchemaCompatibilityDecision.Breaking,
++            "AC12: truncation must not downgrade the aggregate decision; a Breaking delta past index 25 still wins.");
++    }
++
++    [Fact]
++    public void Compare_OnlyAdditiveDeltasPast25_AggregatesToAdditiveCompatible() {
++        // Counter-test: 30 added optional fields → all compatible-additive. The aggregate must
++        // not over-correct to Breaking just because truncation occurred.
++        SchemaBaselineSnapshot baseline = Snapshot([
++            new SchemaFieldContract("Anchor", "String", "string", true, false),
++        ]);
++
++        SchemaFieldContract[] currentFields = new SchemaFieldContract[30];
++        currentFields[0] = new SchemaFieldContract("Anchor", "String", "string", true, false);
++        for (int i = 1; i < 30; i++) {
++            currentFields[i] = new SchemaFieldContract("Optional" + i.ToString("D2"), "String", "string", false, true);
++        }
++
++        SchemaBaselineSnapshot current = Snapshot(currentFields);
++
++        SchemaMigrationDeltaResult result = SchemaMigrationDeltaAnalyzer.Compare(baseline, current);
++
++        result.IsTruncated.ShouldBeTrue();
++        result.Decision.ShouldBe(SchemaCompatibilityDecision.AdditiveCompatible);
++    }
++
++    private static SchemaBaselineSnapshot Snapshot(IReadOnlyList<SchemaFieldContract> fields) {
++        var document = new SchemaContractDocument(
++            "frontcomposer.schema.contract.v1",
++            SchemaContractFamily.ProjectionResource,
++            "frontcomposer://Sales/projections/Truncation",
++            "frontcomposer.projection-resource.v1",
++            "Sales",
++            "Sales.TruncationProjection",
++            "frontcomposer://Sales/projections/Truncation",
++            fields,
++            [new SchemaCollectionContract("fields", SchemaCollectionOrder.NonStructuralSorted, "name")],
++            new Dictionary<string, string>());
++        SchemaCanonicalPayload payload = CanonicalSchemaMaterial.CreatePayload(document);
++        return new SchemaBaselineSnapshot(
++            new SchemaBaselineProvenance(
++                SchemaContractFamily.ProjectionResource,
++                "frontcomposer.projection-resource.v1",
++                SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++                "Hexalith.FrontComposer",
++                "story-8-6a-truncation",
++                requiresMigrationGuide: false),
++            payload.Document,
++            payload.Fingerprint);
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v1.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v1.json
+new file mode 100644
+index 0000000..c2e9796
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v1.json
+@@ -0,0 +1 @@
++{"fixtureId":"baseline-known-v1","title":"Known v1 baseline","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"Exact","expectedAgentCategory":"schema-exact","expectedDeltaCategory":"Exact","notes":"Trusted package-owned v1 projection baseline."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-compatible.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-compatible.json
+new file mode 100644
+index 0000000..8eb557b
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-compatible.json
+@@ -0,0 +1 @@
++{"fixtureId":"baseline-known-v2-compatible","title":"Known v2 additive baseline","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"CompatibleAdditive","expectedAgentCategory":"schema-compatible-warning","expectedDeltaCategory":"AddedOptionalField","notes":"Adds optional fields only."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-structural-delta.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-structural-delta.json
+new file mode 100644
+index 0000000..e27bb15
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-known-v2-structural-delta.json
+@@ -0,0 +1 @@
++{"fixtureId":"baseline-known-v2-structural-delta","title":"Known v2 structural delta","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"Incompatible","expectedAgentCategory":"schema-mismatch","expectedDeltaCategory":"TypeChanged","notes":"Required structural change requires migration."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-unknown.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-unknown.json
+new file mode 100644
+index 0000000..7886cf7
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/baseline-unknown.json
+@@ -0,0 +1 @@
++{"fixtureId":"baseline-unknown","title":"Unknown baseline","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"UnknownServerBaseline","expectedAgentCategory":"schema-unavailable","expectedDeltaCategory":"Unknown","notes":"No trusted package-owned baseline is available."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-hidden-precedence.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-hidden-precedence.json
+new file mode 100644
+index 0000000..c5b6e05
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-hidden-precedence.json
+@@ -0,0 +1 @@
++{"fixtureId":"schema-hidden-precedence","title":"Hidden precedence","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"HiddenOrUnknown","expectedAgentCategory":"unknown_resource","expectedDeltaCategory":"PrecedenceShortCircuit","notes":"Hidden/unknown wins over schema mismatch without leakage. Precedence short-circuits before any structural delta is computed."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-order.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-order.json
+new file mode 100644
+index 0000000..0397de7
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-order.json
+@@ -0,0 +1 @@
++{"fixtureId":"schema-same-different-order","title":"Same schema different order","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"Exact","expectedAgentCategory":"schema-exact","expectedDeltaCategory":"Exact","notes":"Non-structural field ordering does not change the fingerprint."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-runtime-data.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-runtime-data.json
+new file mode 100644
+index 0000000..275e0cb
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-same-different-runtime-data.json
+@@ -0,0 +1 @@
++{"fixtureId":"schema-same-different-runtime-data","title":"Same schema different runtime data","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"Exact","expectedAgentCategory":"schema-exact","expectedDeltaCategory":"Exact","notes":"Runtime values are excluded from structural material."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-unknown-precedence.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-unknown-precedence.json
+new file mode 100644
+index 0000000..0418553
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/schema-unknown-precedence.json
+@@ -0,0 +1 @@
++{"fixtureId":"schema-unknown-precedence","title":"Unknown precedence","contractFamily":"ProjectionResource","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"HiddenOrUnknown","expectedAgentCategory":"unknown_resource","expectedDeltaCategory":"PrecedenceShortCircuit","notes":"Unknown resource wins over schema mismatch without leakage. Precedence short-circuits before any structural delta is computed."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/surface-metadata-only-renderer.json b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/surface-metadata-only-renderer.json
+new file mode 100644
+index 0000000..96b3868
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures/surface-metadata-only-renderer.json
+@@ -0,0 +1 @@
++{"fixtureId":"surface-metadata-only-renderer","title":"MCP Markdown renderer surface","contractFamily":"MarkdownRendererContract","expectedFingerprintAlgorithm":"frontcomposer.schema.sha256.canonical-json.v1","expectedNegotiationKind":"Exact","expectedAgentCategory":"schema-exact","expectedDeltaCategory":"MetadataChanged","expectedRendererSurface":"McpMarkdown","rendererSeed":{"boundsSource":"FrontComposerMcpOptions","outputContentType":"text/markdown"},"notes":"Renderer metadata fixture sourced from live MCP options bounds."}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaContractFamilyNamesTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaContractFamilyNamesTests.cs
+new file mode 100644
+index 0000000..2fc8b37
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaContractFamilyNamesTests.cs
+@@ -0,0 +1,47 @@
++using System.Text.RegularExpressions;
++
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.Schema;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Schema;
++
++/// <summary>
++/// P-46 (8-6a Group B): build-time exhaustiveness for <see cref="SchemaContractFamilyNames"/>.
++/// The switch is fail-closed (throws on unknown enum values), but a missing arm only surfaces at
++/// runtime when a baseline-loading code path hits the gap — and the throw is then masked by the
++/// projection reader's outer catch as <c>DownstreamFailed</c>, hiding the real misconfiguration
++/// behind a "temporarily unavailable, please retry" agent surface. These tests enumerate every
++/// <see cref="SchemaContractFamily"/> value and assert each yields a distinct, non-empty,
++/// kebab-case canonical name without throwing, so adding a new enum member without a matching
++/// arm fails build immediately.
++/// </summary>
++public sealed class SchemaContractFamilyNamesTests {
++    [Fact]
++    public void Canonical_AllEnumValues_HaveExplicitMapping() {
++        SchemaContractFamily[] all = Enum.GetValues<SchemaContractFamily>();
++
++        all.ShouldNotBeEmpty("SchemaContractFamily must declare at least one member.");
++
++        foreach (SchemaContractFamily family in all) {
++            string canonical = SchemaContractFamilyNames.Canonical(family);
++            canonical.ShouldNotBeNullOrWhiteSpace($"Canonical mapping for {family} must yield a non-empty name.");
++            Regex.IsMatch(canonical, "^[a-z][a-z0-9]*(-[a-z0-9]+)*$").ShouldBeTrue(
++                $"Canonical mapping for {family} must be kebab-case (got '{canonical}').");
++        }
++    }
++
++    [Fact]
++    public void Canonical_DistinctValuesPerFamily() {
++        SchemaContractFamily[] all = Enum.GetValues<SchemaContractFamily>();
++        HashSet<string> canonicalSet = new(StringComparer.Ordinal);
++
++        foreach (SchemaContractFamily family in all) {
++            string canonical = SchemaContractFamilyNames.Canonical(family);
++            canonicalSet.Add(canonical).ShouldBeTrue(
++                $"Canonical name '{canonical}' for {family} collides with another family's mapping.");
++        }
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs
+new file mode 100644
+index 0000000..8edc723
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/SchemaFixtureCatalogTests.cs
+@@ -0,0 +1,97 @@
++using System.Text.Json;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Schema;
++
++/// <summary>
++/// AC10 / T8 — the minimal Story 8-6 T8 fixture suite (9 fixtures) ships as discoverable test
++/// fixtures with documented expected fingerprint material, algorithm id, negotiation result,
++/// delta category, and renderer abstraction metadata. This test verifies the fixtures exist,
++/// are valid JSON, and carry the expected schema.
++/// </summary>
++public sealed class SchemaFixtureCatalogTests {
++    private static readonly IReadOnlyList<string> ExpectedFixtureIds = [
++        "baseline-known-v1",
++        "baseline-known-v2-compatible",
++        "baseline-known-v2-structural-delta",
++        "baseline-unknown",
++        "schema-same-different-order",
++        "schema-same-different-runtime-data",
++        "schema-hidden-precedence",
++        "schema-unknown-precedence",
++        "surface-metadata-only-renderer",
++    ];
++
++    [Fact]
++    public void Catalog_ShipsExactlyTheStoryT8Set() {
++        IReadOnlyList<string> fixtureIds = LoadFixtureIds();
++
++        fixtureIds.OrderBy(id => id, StringComparer.Ordinal).ToArray()
++            .ShouldBe(ExpectedFixtureIds.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
++                "AC10: fixture catalog must match the Story 8-6 T8 named set exactly.");
++    }
++
++    [Fact]
++    public void EachFixture_DocumentsExpectedFingerprintMaterial() {
++        DirectoryInfo dir = LocateFixtureDirectory();
++
++        foreach (FileInfo file in dir.EnumerateFiles("*.json")) {
++            using FileStream stream = file.OpenRead();
++            using JsonDocument doc = JsonDocument.Parse(stream);
++            JsonElement root = doc.RootElement;
++
++            root.TryGetProperty("fixtureId", out JsonElement fixtureId).ShouldBeTrue($"{file.Name} missing fixtureId");
++            root.TryGetProperty("title", out _).ShouldBeTrue($"{file.Name} missing title");
++            root.TryGetProperty("contractFamily", out _).ShouldBeTrue($"{file.Name} missing contractFamily");
++            root.TryGetProperty("expectedNegotiationKind", out _).ShouldBeTrue($"{file.Name} missing expectedNegotiationKind");
++            root.TryGetProperty("expectedAgentCategory", out _).ShouldBeTrue($"{file.Name} missing expectedAgentCategory");
++            root.TryGetProperty("notes", out _).ShouldBeTrue($"{file.Name} missing notes");
++
++            ExpectedFixtureIds.ShouldContain(fixtureId.GetString()!);
++        }
++    }
++
++    [Fact]
++    public void RendererFixture_DocumentsRendererSurfaceAndBoundsSource() {
++        DirectoryInfo dir = LocateFixtureDirectory();
++        FileInfo rendererFile = new(Path.Combine(dir.FullName, "surface-metadata-only-renderer.json"));
++        rendererFile.Exists.ShouldBeTrue();
++
++        using FileStream stream = rendererFile.OpenRead();
++        using JsonDocument doc = JsonDocument.Parse(stream);
++        JsonElement root = doc.RootElement;
++
++        root.GetProperty("expectedRendererSurface").GetString().ShouldBe("McpMarkdown");
++        JsonElement seed = root.GetProperty("rendererSeed");
++        seed.GetProperty("boundsSource").GetString().ShouldBe(
++            "FrontComposerMcpOptions",
++            "AC9 ties the renderer fixture to the live options-sourced bounds, not literal magic numbers.");
++    }
++
++    private static IReadOnlyList<string> LoadFixtureIds() {
++        DirectoryInfo dir = LocateFixtureDirectory();
++        List<string> ids = [];
++        foreach (FileInfo file in dir.EnumerateFiles("*.json")) {
++            using FileStream stream = file.OpenRead();
++            using JsonDocument doc = JsonDocument.Parse(stream);
++            ids.Add(doc.RootElement.GetProperty("fixtureId").GetString()!);
++        }
++
++        return ids;
++    }
++
++    private static DirectoryInfo LocateFixtureDirectory() {
++        DirectoryInfo? cursor = new(AppContext.BaseDirectory);
++        for (int i = 0; i < 10 && cursor is not null; i++, cursor = cursor.Parent) {
++            string candidate = Path.Combine(cursor.FullName, "tests", "Hexalith.FrontComposer.SourceTools.Tests", "Schema", "Fixtures");
++            if (Directory.Exists(candidate)) {
++                return new DirectoryInfo(candidate);
++            }
++        }
++
++        throw new DirectoryNotFoundException(
++            "Fixture directory tests/Hexalith.FrontComposer.SourceTools.Tests/Schema/Fixtures not found from base directory.");
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintDeterminismTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintDeterminismTests.cs
+new file mode 100644
+index 0000000..5cb74ab
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintDeterminismTests.cs
+@@ -0,0 +1,82 @@
++using System.Globalization;
++
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
++
++/// <summary>
++/// AC11 / T8 — two clean generations of the same domain source must produce byte-for-byte
++/// identical fingerprints across OS / culture / TZ / EOL / path-separator combinations. The
++/// canonicalizer's normalizer (line endings, Unicode line separators, trim) and ordering
++/// (StringComparer.Ordinal) is the contract under test.
++/// </summary>
++public sealed class SchemaFingerprintDeterminismTests {
++    [Theory]
++    [InlineData("en-US")]
++    [InlineData("tr-TR")] // dotted-i / dotless-i lowercase quirk
++    [InlineData("de-DE")]
++    [InlineData("ja-JP")]
++    public void LifecyclePayload_FingerprintIdenticalAcrossCultures(string cultureName) {
++        // 8-6a review H13: compute the invariant-culture fingerprint OUTSIDE the test culture
++        // scope so the comparison actually crosses culture boundaries. The prior test computed
++        // both sides under the same culture and passed vacuously.
++        CultureInfo previousCulture = CultureInfo.CurrentCulture;
++        CultureInfo previousUiCulture = CultureInfo.CurrentUICulture;
++
++        CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
++        CultureInfo.CurrentUICulture = CultureInfo.InvariantCulture;
++        string invariantFingerprint = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
++
++        try {
++            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(cultureName);
++            CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(cultureName);
++
++            string testCultureFingerprint = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
++            string repeated = SchemaFingerprintTransform.CreateLifecycleResultPayload().Fingerprint.Value;
++
++            testCultureFingerprint.ShouldBe(repeated, $"culture {cultureName} produced drift across two clean generations.");
++            testCultureFingerprint.ShouldBe(
++                invariantFingerprint,
++                $"AC11 cross-culture invariant: fingerprint under {cultureName} must match invariant culture.");
++        } finally {
++            CultureInfo.CurrentCulture = previousCulture;
++            CultureInfo.CurrentUICulture = previousUiCulture;
++        }
++    }
++
++    [Theory]
++    [InlineData("\n")]
++    [InlineData("\r\n")]
++    [InlineData("\r")]
++    [InlineData("\u2028")] // Unicode LINE SEPARATOR
++    [InlineData("\u2029")] // Unicode PARAGRAPH SEPARATOR
++    public void RendererPayload_NormalizesEolInRendererId(string eol) {
++        ArgumentNullException.ThrowIfNull(eol);
++        // 8-6a review H12: actually inject the EOL into a string that flows through Normalize().
++        // The prior test parameterized by `eol` but never used it in the payload inputs, so the
++        // two computed fingerprints were trivially identical (same input, different parameter).
++        // The renderer's `rendererId` is one of the strings that goes through Normalize, so a
++        // multi-line value carrying any EOL flavor should canonicalize identically and produce
++        // the same fingerprint.
++        const string LfId = "frontcomposer.mcp.markdown\nextra";
++        string variantId = "frontcomposer.mcp.markdown" + eol + "extra";
++
++        string reference = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
++            LfId,
++            "Default",
++            maxCharacters: 64_000,
++            maxFieldCharacters: 4_096).Fingerprint.Value;
++        string variant = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
++            variantId,
++            "Default",
++            maxCharacters: 64_000,
++            maxFieldCharacters: 4_096).Fingerprint.Value;
++
++        variant.ShouldBe(
++            reference,
++            $"AC11: EOL '{eol.Replace("\r", "\\r").Replace("\n", "\\n")}' must canonicalize to the LF reference fingerprint.");
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintReflectionTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintReflectionTests.cs
+new file mode 100644
+index 0000000..945e0ab
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintReflectionTests.cs
+@@ -0,0 +1,44 @@
++using Hexalith.FrontComposer.Contracts.Schema;
++using Hexalith.FrontComposer.SourceTools.Transforms;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
++
++/// <summary>
++/// AC9 / T6 — derive lifecycle and renderer fingerprint material from runtime model structure
++/// rather than literal field-list constants. The cross-package check that compares the
++/// SourceTools-side lifecycle catalog against the Mcp-side <c>McpLifecycleResult</c> runtime
++/// type lives in <c>tests/Hexalith.FrontComposer.Mcp.Tests/Schema/SchemaFingerprintCrossPackageTests.cs</c>
++/// (8-6a Group B D10 resolution) so the cross-check rides Mcp's existing reference seam to
++/// SourceTools rather than piercing Mcp's internal boundary from this test project.
++/// </summary>
++public sealed class SchemaFingerprintReflectionTests {
++    [Fact]
++    public void RendererPayload_BoundsContributeToFingerprint() {
++        // AC9 behavior test: replaces the prior source-walking test (M10 — source walks broke
++        // under packaged test runs). Different bounds must produce different fingerprints; if
++        // the renderer payload ever stops consuming the bounds parameters (e.g. reverts to magic
++        // numbers), this fails.
++        GeneratedSchemaPayload first = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
++            "frontcomposer.mcp.markdown", "Auto", maxCharacters: 50_000, maxFieldCharacters: 1_000);
++        GeneratedSchemaPayload second = SchemaFingerprintTransform.CreateMarkdownRendererPayload(
++            "frontcomposer.mcp.markdown", "Auto", maxCharacters: 80_000, maxFieldCharacters: 2_000);
++
++        first.Fingerprint.Value.ShouldNotBe(
++            second.Fingerprint.Value,
++            "AC9: renderer bounds must drive the fingerprint material.");
++    }
++
++    [Fact]
++    public void LifecyclePayload_FingerprintIsStable_AcrossInvocations() {
++        GeneratedSchemaPayload first = SchemaFingerprintTransform.CreateLifecycleResultPayload();
++        GeneratedSchemaPayload second = SchemaFingerprintTransform.CreateLifecycleResultPayload();
++
++        first.Fingerprint.Value.ShouldBe(second.Fingerprint.Value);
++        first.Fingerprint.AlgorithmId.ShouldBeOneOf(
++            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
++            SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
++    }
++}
