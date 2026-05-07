@@ -1,0 +1,278 @@
+# Story 10.2: Accessibility CI Gates & Visual Specimen Verification
+
+Status: ready-for-dev
+
+> **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR76**, **FR77**, **UX-DR32**, **UX-DR33**, **UX-DR34**, **NFR37**, and **NFR38**. Turns the existing accessibility intent and early Playwright/axe helpers into a merge-blocking specimen gate. Applies lessons **L06**, **L07**, **L08**, **L10**, **L11**, **L13**, and **L15**.
+
+---
+
+## Executive Summary
+
+Story 10-2 makes accessibility and visual consistency enforceable before merge:
+
+- Add deterministic type and data-formatting specimen routes that exercise the generated UI surfaces that carry the framework's accessibility promise.
+- Extend the existing `tests/e2e` Playwright workspace and `helpers/a11y.ts` instead of creating a parallel browser test harness.
+- Run axe-core through Playwright against the type specimen and data-formatting specimen, blocking only `serious` and `critical` violations while reporting lower impacts.
+- Add keyboard, focus visibility, forced-colors, reduced-motion, and zoom/reflow checks against the same specimen surface.
+- Add visual baselines for Light/Dark x Compact/Comfortable/Roomy in v1 scope, with RTL and broader browser matrices deferred to named follow-up work.
+- Require rationale and before/after evidence when specimen baselines change.
+
+---
+
+## Story
+
+As a developer,
+I want automated accessibility checks and visual specimen verification that block merge on violations,
+so that every release maintains WCAG 2.1 AA conformance and visual consistency across themes and densities.
+
+### Adopter Job To Preserve
+
+An adopter should be able to trust generated FrontComposer UI without manually auditing every generated command form, projection grid, badge, empty state, density setting, theme, or lifecycle wrapper. The framework must prove its own baseline in CI while keeping custom adopter components governed by the existing custom-component accessibility contract.
+
+---
+
+## Dev Agent Cheat Sheet
+
+| Area | Required outcome |
+| --- | --- |
+| Browser test home | Extend `tests/e2e`; do not create a second Playwright workspace. Keep `test:e2e`, `test:e2e:install`, and `test:e2e:report` as the npm entry points. |
+| Specimen routes | Add shell-hosted type and data-formatting specimen views under the existing sample/test host surface. They must be deterministic, route-addressable, and not require live EventStore, DAPR, SignalR, or network calls. |
+| Axe gate | Reuse and harden `tests/e2e/helpers/a11y.ts`. The gate scans WCAG 2.1 A/AA tags and fails the merge lane only when violation impact is `serious` or `critical`; `minor` and `moderate` are reported in artifacts. |
+| Visual baseline scope | v1 compares 6 combinations: Light and Dark x Compact, Comfortable, Roomy. Store committed baselines under the e2e snapshot convention and keep browser/OS deterministic. RTL and additional zoom visual baselines are deferred. |
+| Type specimen content | Every type ramp slot, semantic color token, both themes, all three densities, one DataGrid with column headers and six badge states, one flat command form with five-state lifecycle wrapper, one expanded detail view, and one multi-level nav group. |
+| Data specimen content | One DataGrid row per formatting class: locale numbers, absolute and relative timestamps, truncated IDs, null em dash, collection counts, currency, boolean Yes/No, truncated enums, unsupported-field placeholder. |
+| Keyboard/focus | Add Playwright tab-order assertions and focus-visible screenshot checks. Do not rely on CSS class names where role/name/data-testid selectors exist. |
+| Media modes | Cover `forced-colors`, `prefers-reduced-motion`, and zoom/reflow at 100%, 200%, and 400%. Tests must assert behavior, not only take screenshots. |
+| Manual audit logs | Add `docs/accessibility-verification/` templates and release-branch log requirements for NVDA+Firefox, JAWS+Chrome, and VoiceOver+Safari. This story creates the log shape; it does not fake manual verification results. |
+| Scope boundaries | Do not implement Pact, mutation testing, flaky quarantine automation, LLM benchmark, SBOM/signing, or broad Fluent UI/Playwright package upgrades beyond what is required for this gate. |
+
+Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe gate -> T4 keyboard/focus/media checks -> T5 visual baselines -> T6 CI wiring -> T7 docs/manual evidence.
+
+---
+
+## Acceptance Criteria
+
+| AC | Given | When | Then |
+| --- | --- | --- | --- |
+| AC1 | A pull request changes UI code | The accessibility CI lane runs | Playwright navigates to the type specimen and data-formatting specimen views and runs axe-core scans on both. |
+| AC2 | axe-core returns violations | Results are evaluated | Any `serious` or `critical` WCAG violation fails CI, while `minor` and `moderate` findings are reported as artifacts without blocking. |
+| AC3 | The accessibility scan runs | AxeBuilder is configured | It uses WCAG 2.1 A/AA tags (`wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa`) unless a documented rule-specific exception is added. |
+| AC4 | The type specimen renders | It is loaded in CI | It displays every type ramp slot, every semantic color token, both Light and Dark themes, all three density levels, one DataGrid with column headers and six badge states, one flat command form with a five-state lifecycle wrapper, one expanded detail view, and one multi-level nav group. |
+| AC5 | The data-formatting specimen renders | It is loaded in CI | A single DataGrid contains one deterministic row per formatting rule: locale-formatted numbers, absolute and relative timestamps, truncated IDs, null em dash, collection counts, currency, boolean Yes/No, truncated enums, and unsupported-field placeholder. |
+| AC6 | Specimens render across theme and density | Screenshots are compared | v1 baselines cover exactly 6 combinations: Light/Dark x Compact/Comfortable/Roomy. |
+| AC7 | A baseline screenshot changes | A developer updates snapshots | The PR includes a rationale paragraph plus before/after screenshot artifacts or links; unexplained drift blocks merge. |
+| AC8 | Keyboard navigation tests run | The scripted tab order enters specimen controls | Focus order is deterministic, reaches command form fields/actions, DataGrid controls, nav groups, density/theme controls, and expanded details without traps. |
+| AC9 | Focus visibility is tested | Playwright captures focused states | Focus-visible styling remains detectable and distinct from lifecycle sync or badge state visuals. |
+| AC10 | Forced-colors mode is emulated | Specimens render | Important controls, focus indicators, badges, and lifecycle states remain perceivable without color-only signaling. |
+| AC11 | Reduced-motion mode is emulated | Lifecycle and sync specimens render | Motion-dependent effects are disabled or reduced while state changes remain announced and visually understandable. |
+| AC12 | Zoom/reflow tests run at 100%, 200%, and 400% | Specimens render in the configured viewport | Content remains reachable without two-dimensional scrolling for the required specimen surfaces, and no critical controls overlap. |
+| AC13 | Density parity testing runs | Each density level is applied | Compact, Comfortable, and Roomy preserve accessible names, labels, landmarks, badge text, focus order, and minimum touch-target intent. |
+| AC14 | Manual screen reader verification is required for release branches | A release branch is cut | A dated log is committed under `docs/accessibility-verification/` for NVDA+Firefox, JAWS+Chrome, and VoiceOver+Safari, with pass/fail status and unresolved issues. |
+| AC15 | CI checks out repository submodules | Accessibility and visual jobs run | They use root-level submodules only and never initialize nested submodules recursively. |
+| AC16 | The e2e suite runs in CI | Test artifacts are generated | Playwright HTML report, JUnit output, screenshots, visual diffs, and axe result summaries are retained on failure. |
+| AC17 | Specimen routes are unavailable or blank | CI runs | The job fails with a clear message naming the missing route or empty specimen instead of passing with zero scanned nodes. |
+| AC18 | Lower-impact or known temporary violations exist | A suppression is needed | Suppressions are scoped by selector/rule with owner, expiry, and linked story; blanket page-level suppressions are rejected. |
+
+---
+
+## Tasks / Subtasks
+
+- [ ] T1. Add deterministic specimen host surfaces (AC4, AC5, AC12, AC17)
+  - [ ] Add route-addressable type and data-formatting specimen views under the existing Shell/sample test surface.
+  - [ ] Keep specimen data local, deterministic, and independent of live EventStore, DAPR, SignalR, local network, wall-clock time, random IDs, or machine-specific paths.
+  - [ ] Mount specimens inside the real `FrontComposerShell` so theme, density, localization, navigation, lifecycle, DataGrid, and badge behavior are exercised in context.
+  - [ ] Add stable `data-testid` attributes only where role/name locators cannot identify a specimen element reliably.
+  - [ ] Add a blank-specimen guard that fails if required specimen sections, rows, or controls are missing.
+
+- [ ] T2. Build the type specimen content (AC4, AC6, AC9-AC13)
+  - [ ] Render every type ramp slot and semantic color token in both Light and Dark themes.
+  - [ ] Render Compact, Comfortable, and Roomy density states through the same density service/state used by the shell.
+  - [ ] Include one DataGrid with canonical headers and six badge states using existing badge components.
+  - [ ] Include one flat command form with all five lifecycle states: Idle, Submitting, Acknowledged, Syncing, Confirmed/Rejected.
+  - [ ] Include one expanded detail view and one multi-level nav group using existing layout/navigation components.
+  - [ ] Ensure specimen state is deterministic across reruns and does not depend on current locale except where explicitly tested.
+
+- [ ] T3. Build the data-formatting specimen content (AC5, AC6, AC12, AC13)
+  - [ ] Add one DataGrid row per formatting category from UX-DR34/UX-DR35.
+  - [ ] Cover locale numbers, absolute timestamps, relative timestamps with frozen time, truncated IDs, null em dash, collection counts, currency, boolean Yes/No, truncated enum labels, and unsupported-field placeholder.
+  - [ ] Preserve the existing label precedence rule: explicit `[Display(Name=...)]` beats humanization and formatting fallbacks.
+  - [ ] Assert generated formatting text and accessible names so visual baselines are not the only oracle.
+  - [ ] Do not move formatting ownership out of SourceTools/Shell just to build the specimen.
+
+- [ ] T4. Harden axe-core accessibility checks (AC1-AC3, AC16-AC18)
+  - [ ] Extend `tests/e2e/helpers/a11y.ts` to separate blocking impacts (`serious`, `critical`) from report-only impacts (`minor`, `moderate`).
+  - [ ] Keep WCAG 2.1 A/AA tag configuration explicit.
+  - [ ] Fail if the scan includes zero target nodes or a required specimen section is absent.
+  - [ ] Emit a concise artifact containing rule id, impact, help URL, affected selectors, and specimen route.
+  - [ ] Require suppressions to name rule id, selector, owner, expiry date, and linked story/issue.
+  - [ ] Avoid blanket exclusions for Fluent UI shadow DOM. Exclude only a named element when the underlying issue is documented.
+
+- [ ] T5. Add keyboard, focus, forced-colors, reduced-motion, and zoom/reflow tests (AC8-AC13)
+  - [ ] Add tab-order tests for nav, DataGrid controls, command form fields/actions, expanded detail, theme/density controls, and skip links.
+  - [ ] Add focus-visible screenshots for representative controls in each specimen and assert focus is not obscured by lifecycle sync visuals.
+  - [ ] Use Playwright media emulation for dark/light color scheme and reduced motion; use browser/context support for forced-colors where available and document fallback behavior when not supported.
+  - [ ] Test 100%, 200%, and 400% zoom/reflow with deterministic viewport sizes.
+  - [ ] Assert no critical controls overlap and no required content becomes unreachable.
+
+- [ ] T6. Add visual baselines and baseline-governance checks (AC6, AC7, AC16)
+  - [ ] Use Playwright `expect(page).toHaveScreenshot(...)` or equivalent Playwright snapshot conventions already supported by the e2e workspace.
+  - [ ] Generate and commit baselines for the 6 v1 combinations only: Light/Dark x Compact/Comfortable/Roomy.
+  - [ ] Keep screenshots on a single OS/browser baseline lane to avoid font/rendering drift; broader browser coverage may run functional accessibility checks without visual baselines.
+  - [ ] Add a CI check that detects changed specimen snapshots and requires a rationale file or PR-body marker plus before/after artifacts.
+  - [ ] Mask or stabilize only genuinely dynamic elements; do not hide the UI surfaces this story exists to verify.
+
+- [ ] T7. Wire the CI gate without expanding unrelated governance (AC1, AC2, AC6, AC15, AC16)
+  - [ ] Add a dedicated accessibility/visual job or lane to `.github/workflows/ci.yml`.
+  - [ ] Use existing npm scripts where possible; add narrowly scoped scripts such as `test:e2e:a11y` or `test:e2e:visual` only if they simplify CI.
+  - [ ] Install Playwright browsers in the job and preserve reports on failure.
+  - [ ] Keep root-level submodule checkout behavior only; do not use recursive nested submodule update commands.
+  - [ ] Keep full flaky quarantine, CI diet governance, mutation, Pact, SBOM, and release signing out of this story.
+
+- [ ] T8. Add manual verification log templates and docs (AC14, AC18)
+  - [ ] Create `docs/accessibility-verification/README.md` or template documentation for release-branch manual verification.
+  - [ ] Include required fields: release branch/tag, date, tester, OS, browser, screen reader, version, specimen route, pass/fail, issue links, and resolution status.
+  - [ ] Document that this story creates the evidence path and requirement; it must not invent pass results for audits that were not performed.
+  - [ ] Document suppression governance for temporary axe exceptions.
+
+- [ ] T9. Final verification and handoff (AC1-AC18)
+  - [ ] Run `npm --prefix tests/e2e install`.
+  - [ ] Run `npm --prefix tests/e2e run typecheck`.
+  - [ ] Run the new accessibility/specimen Playwright lane locally where browser dependencies are available.
+  - [ ] Run the default .NET test lane touched by specimen host changes.
+  - [ ] Run `dotnet build Hexalith.FrontComposer.sln --configuration Release`.
+  - [ ] Record specimen routes, screenshot baseline locations, CI job name, accessibility artifact paths, and any temporary suppressions.
+
+---
+
+## Dev Notes
+
+### Current Repository State
+
+- `tests/e2e` already exists with Playwright config, fixtures, page objects, smoke, lifecycle, density, and responsive specs.
+- `tests/e2e/helpers/a11y.ts` already wraps `@axe-core/playwright` with WCAG 2.1 A/AA tags. This story should harden that helper rather than replacing it.
+- Root `package.json` already exposes `test:e2e`, `test:e2e:install`, `test:e2e:ui`, and `test:e2e:report` by delegating to `tests/e2e`.
+- `.github/workflows/ci.yml` currently runs npm install, .NET build/test lanes, coverage collection, and CLI packaging smoke. Add the accessibility/visual lane without collapsing unrelated gates.
+- `tests/Hexalith.FrontComposer.Shell.Tests/Generated/AxeCoreA11yTests.cs` is only a bUnit markup contract check. It explicitly states real axe DOM walking belongs at the Playwright browser layer; do not treat the bUnit tests as sufficient for this story.
+- Shell components already contain accessibility-critical surfaces to exercise: `FrontComposerShell`, `FrontComposerNavigation`, `FcThemeToggle`, `FcDensityApplier`, `FcDensityAnnouncer`, `FcStatusBadge`, `FcDesaturatedBadge`, DataGrid helpers, command renderers, and lifecycle UI.
+- `Directory.Packages.props` uses current .NET/xUnit/bUnit pins for .NET tests. Browser-package pins live in `tests/e2e/package.json`.
+- At story creation time, npm reports latest `@playwright/test` as `1.59.1`, latest `@axe-core/playwright` as `4.11.3`, and latest `axe-core` as `4.11.4`. Do not make a broad upgrade unless implementation verifies compatibility and lockfile impact.
+
+### Architecture and Package Boundaries
+
+| Surface | Story 10-2 responsibility |
+| --- | --- |
+| `src/Hexalith.FrontComposer.Shell` | Specimen components/routes and any runtime accessibility fixes required for generated UI surfaces. |
+| `tests/e2e` | Playwright axe, keyboard, media, zoom/reflow, visual baseline, and artifact tests. Primary browser gate home. |
+| `.github/workflows/ci.yml` | CI lane wiring, browser install, artifact upload, and merge-blocking behavior. |
+| `docs/accessibility-verification/` | Manual release-branch screen reader verification template/log path. |
+| `src/Hexalith.FrontComposer.Testing` | May provide helper setup from Story 10-1 if already implemented, but Story 10-2 must not depend on a live adopter package to render internal specimens. |
+| `src/Hexalith.FrontComposer.SourceTools` | Formatting and generated-output contracts remain producer-owned. Use them; do not create a second formatting pipeline for specimens. |
+| `Hexalith.EventStore` submodule | Not required for default specimen rendering. Do not initialize nested submodules or scan submodule internals. |
+
+### Accessibility Contract Details
+
+- Baseline is WCAG 2.1 AA for auto-generated output, verified through specimen routes plus targeted generated component assertions.
+- Color cannot be the only signal. Badge and lifecycle specimen content must include visible text or accessible labels that survive forced-colors mode.
+- Focus visibility outranks lifecycle animation. If a focused element is also syncing, the focus ring must remain detectable and separate from the sync effect.
+- Custom components remain governed by the Level 2-4 custom-component accessibility contract: accessible name, keyboard reachability, focus visibility, state announcement, reduced-motion support, and forced-colors support.
+- Manual screen reader checks are required because automated scans cannot prove announcement quality.
+
+### Visual Baseline Contract
+
+| Dimension | v1 scope |
+| --- | --- |
+| Theme | Light, Dark |
+| Density | Compact, Comfortable, Roomy |
+| Direction | LTR only; RTL deferred to a named v1.x/v2 story |
+| Browser baseline | One deterministic CI browser/OS lane for screenshots. Other browsers may run functional a11y checks without committed baselines. |
+| Update protocol | Snapshot changes require rationale plus before/after evidence. |
+| Dynamic content | Freeze time, IDs, locale, data, viewport, and animations; mask only unavoidable external noise. |
+
+### Cross-Story Contract Table
+
+| Producer | Consumer | Contract |
+| --- | --- | --- |
+| Story 10-1 | Story 10-2 | Test-host utilities may help render deterministic generated views, but this story owns browser-level CI gates and specimen routes. |
+| Stories 2-3 through 2-5 | Story 10-2 | Command lifecycle states, rejection/idempotency presentation, form labels, aria-live behavior, and focus behavior must appear in specimens. |
+| Stories 3-1 through 3-6 | Story 10-2 | Shell layout, navigation, theme, density, persistence, localization, skip links, and responsive behavior must be exercised. |
+| Stories 4-1 through 4-6 | Story 10-2 | DataGrid roles, headers, formatting, badges, empty states, unsupported placeholders, virtualization/detail behavior must be covered. |
+| Stories 5-3 through 5-7 | Story 10-2 | Reconnection/sync visuals and reduced-motion behavior must not degrade focus or announcements. |
+| Stories 6-1 through 6-4 | Story 10-2 | Customization accessibility contract must remain testable; specimens may include one representative override only if deterministic. |
+| Stories 7-1 through 7-3 | Story 10-2 | Tenant/user/auth test setup must fail closed and avoid cross-tenant state leakage in browser tests. |
+| Stories 9-1 through 9-5 | Story 10-2 | Diagnostic HelpLinkUri/docs should reference the accessibility evidence path and specimen routes when relevant. |
+
+### Latest Technical Notes
+
+- Playwright's accessibility guide recommends `@axe-core/playwright` for axe-powered tests and warns that automated tests must be combined with manual accessibility assessment.
+- Playwright's visual comparison support uses `expect(page).toHaveScreenshot()` and stores committed snapshots; stable screenshot environments are required because browser rendering varies by OS, settings, hardware, and headless mode.
+- Playwright supports media emulation such as `colorScheme` and `page.emulateMedia(...)`; implementation must verify the exact supported API for reduced-motion and forced-colors in the installed package version before relying on it.
+- `@axe-core/playwright` and `axe-core` are npm/browser test dependencies, not .NET packages. Keep them scoped to the e2e workspace.
+
+### Scope Guardrails
+
+Do not implement these in Story 10-2:
+
+- Story 10-3 Pact consumer/provider contracts.
+- Story 10-4 Stryker mutation testing or FsCheck idempotency governance.
+- Story 10-5 flaky quarantine automation, reintroduction PRs, or CI diet governance.
+- Story 10-6 LLM benchmark, release signing, SBOM, or package provenance.
+- Full adopter-facing Testing package creation if Story 10-1 is not implemented yet.
+- A new browser-test framework alongside Playwright.
+- A cloud visual-regression service requirement.
+- A live EventStore, DAPR sidecar, SignalR hub, or Aspire topology dependency for default specimen rendering.
+- Recursive or nested submodule initialization.
+- A broad Fluent UI, .NET SDK, Playwright, or axe package upgrade without explicit compatibility evidence.
+- Fake manual screen reader pass results.
+
+### Known Gaps / Follow-Ups
+
+| Gap | Owner |
+| --- | --- |
+| RTL visual baseline matrix and direction-specific keyboard assertions. | Future v1.x/v2 accessibility story |
+| Pact REST-to-generated-UI contracts and provider verification. | Story 10-3 |
+| Stryker.NET mutation score gates and FsCheck command idempotency suites. | Story 10-4 |
+| Flaky quarantine automation and CI duration governance. | Story 10-5 |
+| Release package signing, SBOM, and test package provenance evidence. | Story 10-6 |
+| Browser/device matrix expansion beyond one screenshot baseline lane. | Product/architecture decision after first stable baseline |
+
+---
+
+## References
+
+- [Source: `_bmad-output/planning-artifacts/epics/epic-10-framework-quality-adopter-confidence.md#Story-10.2`] - story statement and acceptance criteria foundation.
+- [Source: `_bmad-output/planning-artifacts/epics/requirements-inventory.md#FR76-FR77`] - accessibility and visual specimen functional requirements.
+- [Source: `_bmad-output/planning-artifacts/epics/requirements-inventory.md#NFR37-NFR38`] - axe-core and visual baseline CI requirements.
+- [Source: `_bmad-output/planning-artifacts/ux-design-specification/visual-design-foundation.md#Type-Specimen`] - type specimen content and baseline discipline.
+- [Source: `_bmad-output/planning-artifacts/ux-design-specification/visual-design-foundation.md#Accessibility-Considerations`] - WCAG 2.1 AA commitments and manual verification requirement.
+- [Source: `_bmad-output/planning-artifacts/ux-design-specification/ux-consistency-patterns.md#Data-Formatting-Specimen`] - data-formatting specimen requirements.
+- [Source: `_bmad-output/planning-artifacts/ux-design-specification/responsive-design-accessibility.md#Validation-Matrix`] - forced-colors, zoom/reflow, and verification log guidance.
+- [Source: `_bmad-output/planning-artifacts/architecture.md#Accessibility-Enforcement`] - Playwright-level axe testing strategy.
+- [Source: `tests/e2e/package.json`] - current browser-test dependencies and npm scripts.
+- [Source: `tests/e2e/playwright.config.ts`] - current browser projects, reporters, artifacts, and snapshot environment.
+- [Source: `tests/e2e/helpers/a11y.ts`] - existing axe-core helper to extend.
+- [Source: `tests/Hexalith.FrontComposer.Shell.Tests/Generated/AxeCoreA11yTests.cs`] - bUnit accessibility contract checks and browser-layer handoff note.
+- [Source: `.github/workflows/ci.yml`] - current CI lanes and artifact behavior.
+- [Source: Playwright accessibility testing](https://playwright.dev/docs/next/accessibility-testing) - current `@axe-core/playwright` guidance and WCAG tag usage.
+- [Source: Playwright visual comparisons](https://playwright.dev/docs/next/test-snapshots) - current screenshot baseline behavior and determinism warning.
+- [Source: Playwright emulation](https://playwright.dev/docs/emulation) - current media and color-scheme emulation guidance.
+- [Source: npm `@axe-core/playwright`](https://www.npmjs.com/package/%40axe-core/playwright) - browser-test dependency source.
+
+---
+
+## Dev Agent Record
+
+### Agent Model Used
+
+(to be filled in by dev agent)
+
+### Debug Log References
+
+(to be filled in by dev agent)
+
+### Completion Notes List
+
+- 2026-05-07: Story created via `/bmad-create-story 10-2-accessibility-ci-gates-and-visual-specimen-verification` during recurring pre-dev hardening job. Ready for BMAD review in a later run.
+
+### File List
+
+(to be filled in by dev agent)

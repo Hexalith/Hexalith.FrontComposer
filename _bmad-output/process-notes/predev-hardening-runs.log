@@ -122,3 +122,4 @@
 2026-05-07T08:02:35+02:00	none	-	none	ready buffer 5; all ready stories have completed party-mode and advanced-elicitation traces
 2026-05-07T13:25:59+02:00	none	-	none	ready buffer 5; all ready stories have completed party-mode and advanced-elicitation traces
 2026-05-07T21:36:02+02:00	create-story	10-1-adopter-test-host-and-component-testing-utilities	ok	created adopter test host and component testing utilities story
+2026-05-07T22:05:00+02:00	create-story	10-2-accessibility-ci-gates-and-visual-specimen-verification	ok	created accessibility CI gates and visual specimen verification story
