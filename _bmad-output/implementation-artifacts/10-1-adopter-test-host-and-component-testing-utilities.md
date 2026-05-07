@@ -47,6 +47,17 @@ An adopter should be able to create an xUnit v3 + bUnit test project, reference 
 
 Start here: T1 package surface -> T2 service builder/base class -> T3 projection/customization helpers -> T4 builders/assertions -> T5 fault/query doubles -> T6 docs/sample -> T7 packaging/CI validation.
 
+## Party-Mode Hardening Contract
+
+The 2026-05-07 party-mode review (Winston, Amelia, John, Murat) found that Story 10-1 is ready for development if it treats the Testing package as a small adopter API, not a dump of internal test fixtures. Apply these binding clarifications during implementation:
+
+- **Public API admission:** The initial public surface is limited to `FrontComposerTestBase`, setup extensions or builder, options, deterministic projection/command builders, assertion helpers, and explicit fake command/query/fault providers. Any extra public type must be named in completion notes with its adopter use case and why it could not stay internal.
+- **Extraction rule:** Extract reusable behavior from internal test bases, but do not expose or package internal test assemblies, namespaces, fixture-only hacks, generated temporary files, or test project paths. Internal framework tests may consume the package after extraction, but adopter samples must prove the package works without referencing internal test projects.
+- **Evidence objects over hidden state:** Fake command, query, page-loader, and fault helpers must return immutable captured evidence records with tenant/user, correlation/message IDs, lifecycle sequence, timing/fault mode, and validation outcome. Do not rely on shared static queues, ambient current user fallbacks, or hidden global clocks.
+- **Package-boundary gate:** Add nupkg inspection that fails if `tests/`, `bin`, `obj`, screenshots, local settings, submodule internals, internal test namespaces, or unintended public dependencies leak into the package. Keep assertion dependencies private unless they are part of the documented API contract.
+- **Story 10-2 handoff:** Testing utilities may provide deterministic component-host setup that Story 10-2 can reuse for specimens, but Story 10-1 does not own Playwright, axe-core, browser screenshots, manual screen-reader logs, or CI accessibility gates.
+- **Adopter ergonomics:** Docs and sample tests must show both inheritance and composition usage, and setup validation failures must name the missing registration or invalid override contract with the method that fixes it.
+
 ---
 
 ## Acceptance Criteria
@@ -81,6 +92,7 @@ Start here: T1 package surface -> T2 service builder/base class -> T3 projection
   - [ ] Add the project to `Hexalith.FrontComposer.sln` and Central Package Management only where needed.
   - [ ] Reference Contracts and Shell directly; reference SourceTools only for generated-component test helpers that truly need generator-driver support.
   - [ ] Keep test-only package references explicit: bUnit, xUnit v3 abstractions where required, Shouldly only if public assertion helpers expose it, NSubstitute only if fakes depend on it.
+  - [ ] Record the intended public API inventory before implementation is complete; every public type outside the Party-Mode Hardening Contract list needs a completion-note rationale.
   - [ ] Add XML docs for public test-host APIs; do not enable broad CS1591 cleanup outside this package.
   - [ ] Add pack metadata and content exclusions so package output is deterministic and does not include repo-local artifacts.
 
@@ -91,6 +103,7 @@ Start here: T1 package surface -> T2 service builder/base class -> T3 projection
   - [ ] Register default fake tenant/user context with explicit `TestTenantId` and `TestUserId`; require explicit opt-in for null/invalid context scenarios.
   - [ ] Register logging, localization, options, Fluent UI components, loose JS interop defaults, in-memory storage, lifecycle services, feedback publisher, auth redirector, and projection connection state.
   - [ ] Add diagnostics or setup validation for missing service seams instead of allowing null-reference failures.
+  - [ ] Fail sample and package tests if they reference internal framework test assemblies, internal test namespaces, or fixture-only setup classes.
   - [ ] Add parallel-test isolation tests that create multiple contexts with different tenants/users and verify no state leaks.
 
 - [ ] T3. Add generated projection/DataGrid test helpers (AC4, AC6, AC7, AC9, AC12)
@@ -109,6 +122,7 @@ Start here: T1 package surface -> T2 service builder/base class -> T3 projection
 - [ ] T5. Add command/query/fault doubles for adopter tests (AC8-AC10, AC15-AC17)
   - [ ] Provide fake command service/dispatcher helpers that capture payload, tenant/user, command name, bounded context, correlation/message IDs, lifecycle sequence, validation outcome, rejection reason, and idempotency state.
   - [ ] Provide fake query/page-loader helpers for success, empty, not-modified, stale-cache, cancellation, error, slow-query, and bounded oversized response cases.
+  - [ ] Return immutable evidence records from each fake helper so assertions do not depend on shared mutable queues or ambient process state.
   - [ ] Promote reusable parts of `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/*` for SignalR/reconnection simulation while keeping internal trace files out of the package.
   - [ ] Ensure fault helpers do not require live SignalR, network, DAPR, EventStore, or submodule initialization.
   - [ ] Add tests for drop, delay, partial delivery, reorder, reconnect, cancellation, and deterministic disposal behavior.
@@ -123,6 +137,7 @@ Start here: T1 package surface -> T2 service builder/base class -> T3 projection
 - [ ] T7. Add package, coverage, and CI validation (AC12-AC18)
   - [ ] Add tests for the Testing package public API surface and setup validation messages.
   - [ ] Add `dotnet pack` validation for the Testing package.
+  - [ ] Inspect the generated nupkg and fail on leaked `tests/`, `bin`, `obj`, screenshots, local settings, submodule internals, generated temporary artifacts, internal test namespaces, or unintended public dependencies.
   - [ ] Add local package-consumption smoke validation using the sample adopter tests.
   - [ ] Wire CI to run the package tests and smoke validation without introducing the later Epic 10 CI governance machinery.
   - [ ] Verify coverage collection can include core unit coverage, generated component bUnit coverage, and API-boundary integration coverage reports, but keep enforcement thresholds aligned with existing repo policy until a dedicated gate exists.
@@ -135,7 +150,7 @@ Start here: T1 package surface -> T2 service builder/base class -> T3 projection
   - [ ] Run SourceTools generated-output tests if helpers depend on generator output.
   - [ ] Run `dotnet pack src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`.
   - [ ] Run the sample adopter test project against the packed package or documented project-reference fallback.
-  - [ ] Update completion notes with package path, public APIs added, sample tests run, coverage command used, and any deferred package/API decisions.
+  - [ ] Update completion notes with package path, public APIs added, public API inventory rationale, sample tests run, coverage command used, package inspection result, and any deferred package/API decisions.
 
 ---
 
@@ -265,7 +280,23 @@ Do not implement these in Story 10-1:
 ### Completion Notes List
 
 - 2026-05-07: Story created via `/bmad-create-story 10-1-adopter-test-host-and-component-testing-utilities` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-07T23:04:51+02:00: Party-mode review completed via `/bmad-party-mode 10-1-adopter-test-host-and-component-testing-utilities; review;`.
+  - Findings summary: The story already covers the right package, test-host, builder, fake, sample, and CI validation scope. Review tightened public API admission, extraction boundaries, immutable fake evidence, nupkg leak checks, Story 10-2 ownership, and adopter-facing diagnostics.
+  - Changes applied: Added the Party-Mode Hardening Contract; hardened T1, T2, T5, T7, and T8; preserved `ready-for-dev` status because changes clarify implementation constraints without changing product scope.
+  - Findings deferred: Full Playwright/axe/visual specimen gate remains Story 10-2; Pact, mutation/property testing, flaky quarantine, SBOM/signing, and broader Playwright helper package shape remain later Epic 10 stories.
+  - Final recommendation: ready-for-dev
 
 ### File List
 
 (to be filled in by dev agent)
+
+## Party-Mode Review
+
+- ISO date and time: 2026-05-07T23:04:51+02:00
+- Selected story key: 10-1-adopter-test-host-and-component-testing-utilities
+- Command/skill invocation used: `/bmad-party-mode 10-1-adopter-test-host-and-component-testing-utilities; review;`
+- Participating BMAD agents: Winston (Architect), Amelia (Developer), John (Product Manager), Murat (Test Architect)
+- Findings summary: The package concept is coherent and implementable, but needed sharper boundaries around public API admission, extraction from internal test fixtures, fake-helper evidence capture, package artifact hygiene, Story 10-2 ownership, and adopter diagnostics.
+- Changes applied: Added a Party-Mode Hardening Contract; added task-level requirements for public API inventory, internal-test reference checks, immutable evidence records, nupkg leak inspection, and completion-note handoff evidence.
+- Findings deferred: Browser-level accessibility and visual gates stay in Story 10-2; Pact, mutation/property testing, flaky quarantine, package signing/SBOM, and broad Playwright adopter helper scope remain deferred to their named Epic 10 stories.
+- Final recommendation: ready-for-dev
