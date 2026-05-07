@@ -174,9 +174,16 @@ public sealed class FrontComposerMcpDescriptorRegistry : IFrontComposerMcpDescri
                 continue;
             }
 
-            // 8-6a review H7: a manifest that ships a fingerprint but stamps a non-canonical-JSON
-            // algorithm is an inconsistent claim — the canonical aggregate algorithm is fixed at
-            // Sha256CanonicalJsonV1 by D17/AC7. Fail closed in that case.
+            // C1 (Group D / chunk-2 re-review): SourceTools-emitted aggregates declare the
+            // build-time blob canonicalizer (`Sha256SourceToolsBlobV1`) which is not available
+            // at runtime — the canonicalizer hosting constraint that drove the dual-algorithm v1
+            // contract (D23). Trust the emitter for blob-stamped aggregates rather than failing
+            // closed at host startup; runtime recompute applies only when the manifest declares
+            // `Sha256CanonicalJsonV1` (manifest was produced via `CanonicalSchemaMaterial`).
+            if (string.Equals(manifest.Fingerprint.AlgorithmId, SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1, StringComparison.Ordinal)) {
+                continue;
+            }
+
             if (!string.Equals(manifest.Fingerprint.AlgorithmId, SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, StringComparison.Ordinal)) {
                 throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch);
             }

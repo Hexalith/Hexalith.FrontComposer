@@ -42,6 +42,36 @@ public sealed class SchemaMigrationDeltaTruncationTests {
             "AC12: truncation must not downgrade the aggregate decision; a Breaking delta past index 25 still wins.");
     }
 
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    public void Compare_LowMaxDeltaCount_TruncatedListNeverExceedsBudget(int maxDeltaCount) {
+        // P-48 (8-6a Chunk 1): the truncated delta list — including any MissingMigrationGuide
+        // marker and the Truncated marker itself — must never exceed maxDeltaCount, regardless of
+        // how small the budget is. Previously, maxDeltaCount=1 with a MissingMigrationGuide marker
+        // present produced [marker, Truncated] (2 entries), violating P-11.
+        SchemaBaselineSnapshot baseline = Snapshot([
+            new SchemaFieldContract("Anchor", "String", "string", true, false),
+        ]);
+
+        // Construct enough breaking deltas to force truncation AND trigger the migration-guide
+        // marker (baseline.Provenance.RequiresMigrationGuide = false ⇒ marker emitted on Breaking).
+        SchemaFieldContract[] currentFields = new SchemaFieldContract[5];
+        currentFields[0] = new SchemaFieldContract("Anchor", "Int32", "number", true, false); // type changed = Breaking
+        for (int i = 1; i < 5; i++) {
+            currentFields[i] = new SchemaFieldContract("Required" + i, "String", "string", true, false);
+        }
+
+        SchemaBaselineSnapshot current = Snapshot(currentFields);
+
+        SchemaMigrationDeltaResult result = SchemaMigrationDeltaAnalyzer.Compare(baseline, current, maxDeltaCount);
+
+        result.IsTruncated.ShouldBeTrue();
+        result.Deltas.Count.ShouldBeLessThanOrEqualTo(maxDeltaCount, $"truncated delta list must respect maxDeltaCount={maxDeltaCount}.");
+        result.Deltas.ShouldContain(d => d.Kind == SchemaDeltaKind.Truncated, "the Truncated marker is the truncation signal and must always survive.");
+    }
+
     [Fact]
     public void Compare_OnlyAdditiveDeltasPast25_AggregatesToAdditiveCompatible() {
         // Counter-test: 30 added optional fields → all compatible-additive. The aggregate must

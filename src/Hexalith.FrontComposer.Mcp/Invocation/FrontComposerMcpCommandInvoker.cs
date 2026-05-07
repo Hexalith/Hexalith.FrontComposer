@@ -45,6 +45,7 @@ public sealed class FrontComposerMcpCommandInvoker(
                 if (resolution.Category is FrontComposerMcpFailureCategory.SchemaMismatch
                     or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
                     or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
+                    or FrontComposerMcpFailureCategory.UnsupportedSchema
                     or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
                     return SchemaNegotiationRuntimeGate.ToStructuredFailure(resolution.Category);
                 }
@@ -142,6 +143,7 @@ public sealed class FrontComposerMcpCommandInvoker(
             if (ex.Category is FrontComposerMcpFailureCategory.SchemaMismatch
                 or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
                 or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
+                or FrontComposerMcpFailureCategory.UnsupportedSchema
                 or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
                 // 8-6a re-review: convert enum to string explicitly so structured-log sinks
                 // produce a deterministic value across enricher configurations (D4 bounded fields).

@@ -79,4 +79,54 @@ public sealed class SchemaFingerprintDeterminismTests {
             reference,
             $"AC11: EOL '{eol.Replace("\r", "\\r").Replace("\n", "\\n")}' must canonicalize to the LF reference fingerprint.");
     }
+
+    [Theory]
+    [InlineData("\n")]
+    [InlineData("\r\n")]
+    [InlineData("\r")]
+    [InlineData("\u2028")] // Unicode LINE SEPARATOR
+    [InlineData("\u2029")] // Unicode PARAGRAPH SEPARATOR
+    public void CommandPayload_NormalizesEolInParameterDescription(string eol) {
+        ArgumentNullException.ThrowIfNull(eol);
+        // 8-6a chunk-3 review (Edge F1+F8): exercises the FieldLine cell path where Normalize
+        // runs AFTER per-cell EscapeDelimited (`SchemaFingerprintTransform.cs:241`). Pre-fix, a
+        // U+2028 in a parameter Description survived EscapeDelimited and was then collapsed to a
+        // bare `\n` by Normalize, splitting the canonical-blob row mid-cell and synthesizing a
+        // fake `field=...` line. Post-fix, EscapeDelimited maps U+2028/U+2029 to the same `\\n`
+        // escape as `\n` so all line-break flavors hash identically AND cannot inject rows.
+        const string LfDescription = "first line\nsecond line";
+        string variantDescription = "first line" + eol + "second line";
+
+        McpCommandDescriptorModel reference = BuildCommand(LfDescription);
+        McpCommandDescriptorModel variant = BuildCommand(variantDescription);
+
+        string referenceFingerprint = SchemaFingerprintTransform.CreateCommandPayload(reference).Fingerprint.Value;
+        string variantFingerprint = SchemaFingerprintTransform.CreateCommandPayload(variant).Fingerprint.Value;
+
+        variantFingerprint.ShouldBe(
+            referenceFingerprint,
+            $"AC11: EOL '{eol.Replace("\r", "\\r").Replace("\n", "\\n")}' inside a parameter Description must canonicalize to the LF reference fingerprint.");
+    }
+
+    private static McpCommandDescriptorModel BuildCommand(string parameterDescription)
+        => new(
+            protocolName: "frontcomposer.test.command",
+            commandTypeName: "Hexalith.FrontComposer.Tests.TestCommand",
+            boundedContext: "Test",
+            title: "Test Command",
+            description: "command description",
+            authorizationPolicyName: null,
+            parameters: [
+                new McpParameterDescriptorModel(
+                    name: "Subject",
+                    typeName: "string",
+                    jsonType: "string",
+                    isRequired: true,
+                    isNullable: false,
+                    title: "Subject",
+                    description: parameterDescription,
+                    enumValues: [],
+                    isUnsupported: false),
+            ],
+            derivablePropertyNames: []);
 }

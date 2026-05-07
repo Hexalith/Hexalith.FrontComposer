@@ -143,7 +143,12 @@ public static class SchemaMigrationDeltaAnalyzer {
             // exist with earlier-sorting paths, the marker would otherwise be dropped — losing
             // P-18's "no migration guide for shipped breakage" signal.
             SchemaDelta? migrationGuideMarker = deltas.FirstOrDefault(d => d.Kind == SchemaDeltaKind.MissingMigrationGuide);
-            int markerSlot = migrationGuideMarker is null ? 0 : 1;
+            // P-48 (8-6a Chunk 1): when maxDeltaCount < 2, only the Truncated marker fits — the
+            // migration-guide marker must be sacrificed so callers can still detect that
+            // truncation occurred at all. Without this, maxDeltaCount=1 would emit 2 entries
+            // (marker + Truncated), violating P-11's "marker stays WITHIN the budget" invariant.
+            bool keepMigrationMarker = migrationGuideMarker is not null && maxDeltaCount >= 2;
+            int markerSlot = keepMigrationMarker ? 1 : 0;
 
             // Keep the worst-decision deltas to maximise signal in the bounded window:
             // Breaking first (so the operator sees the actual blockers), then CompatibleWarning.
@@ -152,8 +157,8 @@ public static class SchemaMigrationDeltaAnalyzer {
                 .OrderBy(d => DecisionRank(d.Decision))
                 .ThenBy(d => d.Path, StringComparer.Ordinal)];
             deltas = [.. ordered.Take(Math.Max(0, maxDeltaCount - 1 - markerSlot))];
-            if (migrationGuideMarker is not null) {
-                deltas.Add(migrationGuideMarker);
+            if (keepMigrationMarker) {
+                deltas.Add(migrationGuideMarker!);
             }
 
             deltas.Add(Delta(

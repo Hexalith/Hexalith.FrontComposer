@@ -43,7 +43,7 @@ internal sealed class SchemaNegotiationRuntimeGate {
 #pragma warning restore CS0618
             HasSchemaIntegrityMismatch: false,
             Baseline: baseline,
-            Server: server)), services);
+            Server: server)), accessor, services);
     }
 
     public static McpSchemaNegotiationResult? EvaluateCommand(
@@ -69,7 +69,7 @@ internal sealed class SchemaNegotiationRuntimeGate {
 #pragma warning restore CS0618
             HasSchemaIntegrityMismatch: false,
             Baseline: baseline,
-            Server: server)), services);
+            Server: server)), accessor, services);
     }
 
     public static FrontComposerMcpResult ToStructuredFailure(FrontComposerMcpFailureCategory category) {
@@ -101,6 +101,7 @@ internal sealed class SchemaNegotiationRuntimeGate {
         => category is FrontComposerMcpFailureCategory.SchemaMismatch
             or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
             or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
+            or FrontComposerMcpFailureCategory.UnsupportedSchema
             or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch
             ? MapSchemaFailure(category)
             : throw new ArgumentException(
@@ -131,6 +132,17 @@ internal sealed class SchemaNegotiationRuntimeGate {
                 "HFC-SCHEMA-UNSUPPORTED-ALGORITHM",
                 Retryable: false,
                 RefreshResources: false),
+            // C4 (Group D / chunk-2 re-review): SchemaNegotiation maps the UnknownClientVersion
+            // arm to UnsupportedSchema; without this case the strict mapper threw ArgumentException
+            // and the structured payload silently collapsed to DownstreamFailed via the outer catch.
+            // Distinct agent category from UnsupportedSchemaAlgorithm so agents can branch between
+            // "your schema version is unknown" and "your fingerprint algorithm is unsupported".
+            FrontComposerMcpFailureCategory.UnsupportedSchema => new(
+                "unsupported-schema-version",
+                "Schema version declared by the client is not supported by this server.",
+                "HFC-SCHEMA-UNSUPPORTED-VERSION",
+                Retryable: false,
+                RefreshResources: false),
             FrontComposerMcpFailureCategory.SchemaIntegrityMismatch => new(
                 "schema-unavailable",
                 "Schema metadata failed an integrity check.",
@@ -152,13 +164,21 @@ internal sealed class SchemaNegotiationRuntimeGate {
         bool Retryable,
         bool RefreshResources);
 
-    private static McpSchemaNegotiationResult LogAndReturn(McpSchemaNegotiationResult result, IServiceProvider services) {
+    private static McpSchemaNegotiationResult LogAndReturn(
+        McpSchemaNegotiationResult result,
+        IFrontComposerMcpAgentContextAccessor accessor,
+        IServiceProvider services) {
         if (result.Kind == McpSchemaNegotiationResultKind.Exact) {
             return result;
         }
 
+        // C-2-new (chunk 2 re-review): prefer the request-scoped provider so per-request log
+        // enrichers (correlation id, tenant id, etc.) attach to the structured-log entry.
+        // Mirrors `TryResolveBaseline`'s scoping convention. Falls back to the captured
+        // `services` only when no request scope is available (non-HTTP host, tests).
+        IServiceProvider scope = accessor.RequestServices ?? services;
         ILogger<SchemaNegotiationRuntimeGate> logger =
-            services.GetService<ILogger<SchemaNegotiationRuntimeGate>>()
+            scope.GetService<ILogger<SchemaNegotiationRuntimeGate>>()
             ?? NullLogger<SchemaNegotiationRuntimeGate>.Instance;
 
         // 8-6a re-review: convert the enum to its name explicitly so structured-log sinks

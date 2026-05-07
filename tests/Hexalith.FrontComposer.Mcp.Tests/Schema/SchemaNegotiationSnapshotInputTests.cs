@@ -145,7 +145,7 @@ public sealed class SchemaNegotiationSnapshotInputTests {
                 ("server" or "serversnapshot", _) => current,
                 ("clientfingerprint", _) => current.Fingerprint,
                 ("serverfingerprint", _) => current.Fingerprint,
-                ("hashtruststedbaseline" or "hastrustedbaseline", _) => true,
+                ("hastrustedbaseline", _) => true,
                 (_, Type t) when t == typeof(bool) && p.Name?.Contains("additive", StringComparison.OrdinalIgnoreCase) == true => legacyAdditiveBool,
                 (_, Type t) when t == typeof(bool) => false,
                 _ => p.HasDefaultValue ? p.DefaultValue : null,

@@ -35,6 +35,12 @@ public sealed class SchemaFixtureCatalogTests {
 
     [Fact]
     public void EachFixture_DocumentsExpectedFingerprintMaterial() {
+        // CK4-P7: the documented contract per AC10 is "expected fingerprint material, algorithm
+        // id, negotiation result, delta category, and renderer abstraction metadata". The prior
+        // assertions checked everything EXCEPT `expectedFingerprintAlgorithm` and
+        // `expectedDeltaCategory` — leaving the two highest-risk fields (algorithm ID drift and
+        // delta-category drift) un-pinned. Adding both checks so a fixture with a missing or
+        // wrong algorithm id fails-loud.
         DirectoryInfo dir = LocateFixtureDirectory();
 
         foreach (FileInfo file in dir.EnumerateFiles("*.json")) {
@@ -47,7 +53,11 @@ public sealed class SchemaFixtureCatalogTests {
             root.TryGetProperty("contractFamily", out _).ShouldBeTrue($"{file.Name} missing contractFamily");
             root.TryGetProperty("expectedNegotiationKind", out _).ShouldBeTrue($"{file.Name} missing expectedNegotiationKind");
             root.TryGetProperty("expectedAgentCategory", out _).ShouldBeTrue($"{file.Name} missing expectedAgentCategory");
+            root.TryGetProperty("expectedFingerprintAlgorithm", out JsonElement algorithm).ShouldBeTrue($"{file.Name} missing expectedFingerprintAlgorithm");
+            root.TryGetProperty("expectedDeltaCategory", out _).ShouldBeTrue($"{file.Name} missing expectedDeltaCategory");
             root.TryGetProperty("notes", out _).ShouldBeTrue($"{file.Name} missing notes");
+
+            algorithm.GetString().ShouldNotBeNullOrWhiteSpace($"{file.Name} expectedFingerprintAlgorithm must document a real algorithm id");
 
             ExpectedFixtureIds.ShouldContain(fixtureId.GetString()!);
         }

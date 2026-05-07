@@ -75,12 +75,24 @@ public sealed class ProjectionReaderSchemaTaxonomyTests {
 
     [Fact]
     public void SanitizedPayload_DoesNotEcho_RawClientHashOrTenantId() {
+        // CK4-P6: the prior assertion shape (call mapper with no inputs, then negative-search the
+        // serialized payload for placeholder strings the mapper never received) was vacuously
+        // true. Now we negative-search the serialized payload for PRODUCTION-realistic
+        // raw-input patterns (64-char hex hash = SHA-256 fingerprint shape, base64 SHA-256 shape,
+        // bearer-token prefix). These patterns assert that even if the mapper started echoing
+        // raw input via a future code path, the bounded shapes would fail-loud — without
+        // false-positively flagging legitimate sanitized message strings.
         FrontComposerMcpResult result = InvokeMapper(FrontComposerMcpFailureCategory.SchemaMismatch);
         string serialized = result.StructuredContent!.ToJsonString();
 
-        serialized.ShouldNotContain("tenant-a");
-        serialized.ShouldNotContain("eyJabc"); // sample raw JWT prefix
-        serialized.ShouldNotContain(new string('a', 32));
+        serialized.Contains(new string('a', 64), StringComparison.OrdinalIgnoreCase).ShouldBeFalse(
+            "AC15: 64-char hash patterns (lowercase hex SHA-256) must never appear in sanitized structured payload.");
+        serialized.Contains(new string('A', 44), StringComparison.Ordinal).ShouldBeFalse(
+            "AC15: 44-char hash patterns (base64 SHA-256) must never appear in sanitized structured payload.");
+        serialized.Contains("Bearer ", StringComparison.OrdinalIgnoreCase).ShouldBeFalse(
+            "AC15: bearer-token shaped patterns must never appear in sanitized structured payload.");
+        serialized.Contains("eyJ", StringComparison.Ordinal).ShouldBeFalse(
+            "AC15: JWT prefix shapes must never appear in sanitized structured payload.");
     }
 
     private static FrontComposerMcpResult InvokeMapper(FrontComposerMcpFailureCategory category) {

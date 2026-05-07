@@ -1,5 +1,6 @@
 using System.Reflection;
 
+using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Mcp.Invocation;
 using Hexalith.FrontComposer.SourceTools.Transforms;
 
@@ -17,13 +18,6 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// <see cref="SchemaFingerprintTransform"/> is reachable here.
 /// </summary>
 public sealed class SchemaFingerprintCrossPackageTests {
-    /// <summary>
-    /// The canonical lifecycle State enum-values cell. Not backed by a CLR enum (the values are
-    /// MCP protocol-level state names, not C# enum members), so the catalog is the source of
-    /// truth and this pin guards against silent drift. If the canonical state set legitimately
-    /// changes, update this constant AND document the fingerprint regeneration in the story log.
-    /// </summary>
-    private const string ExpectedStateLine = "State|string|string|required|not-null|Accepted,Confirmed,Failed,Rejected,Running";
 
     [Fact]
     public void LifecycleCatalog_FieldNames_MatchRuntimeProperties() {
@@ -67,19 +61,25 @@ public sealed class SchemaFingerprintCrossPackageTests {
     }
 
     [Fact]
-    public void LifecycleCatalog_StateEnumValues_PinnedToCanonicalSet() {
-        // P-47 (8-6a Group B): the State field's enum-values cell is not backed by a C# enum
-        // anywhere in-tree (the values are MCP protocol-level state names). This pin catches
-        // accidental drift — reordering, casing, additions, or removals — that would silently
-        // change the lifecycle fingerprint without surfacing as a name/type test failure.
+    public void LifecycleCatalog_StateEnumValues_MatchMcpLifecycleStateNames() {
+        // 8-6a chunk-3 review (decision): the catalog's State enum-values cell is sourced from
+        // Hexalith.FrontComposer.Contracts.Lifecycle.McpLifecycleStateNames.Canonical so the
+        // SourceTools fingerprint catalog and any future MCP wire emitter share a single source
+        // of truth (replaces the prior self-pinned ExpectedStateLine constant). Reordering,
+        // casing changes, additions, or removals to the constant regenerate the lifecycle
+        // fingerprint AND fail this cross-check test in the same build.
         IReadOnlyList<string[]> catalog = ExtractCatalog();
         string[] stateRow = catalog.Single(parts => parts[0] == "State");
         string actualLine = string.Join("|", stateRow);
 
+        string expectedLine = "State|string|string|required|not-null|"
+            + string.Join(",", McpLifecycleStateNames.Canonical);
+
         actualLine.ShouldBe(
-            ExpectedStateLine,
-            "Lifecycle State catalog line must remain pinned. If the canonical state set legitimately "
-            + "changes, update ExpectedStateLine and document the fingerprint regeneration in the story log.");
+            expectedLine,
+            "Lifecycle State catalog line must match McpLifecycleStateNames.Canonical. If the canonical "
+            + "wire-state set legitimately changes, update McpLifecycleStateNames.Canonical and document "
+            + "the fingerprint regeneration in the story log.");
     }
 
     private static IReadOnlyList<string[]> ExtractCatalog() {

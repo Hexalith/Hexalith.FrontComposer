@@ -37,8 +37,12 @@ public sealed class SchemaFingerprintReflectionTests {
         GeneratedSchemaPayload second = SchemaFingerprintTransform.CreateLifecycleResultPayload();
 
         first.Fingerprint.Value.ShouldBe(second.Fingerprint.Value);
-        first.Fingerprint.AlgorithmId.ShouldBeOneOf(
-            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
-            SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
+        // CK4-P9: per D23 / chunk-2 C1, lifecycle payload runs through the SourceTools blob
+        // canonicalizer at build time. Pin to Sha256SourceToolsBlobV1 so a regression that swaps
+        // canonicalizer (e.g. accidental use of Sha256CanonicalJsonV1) fails this test instead of
+        // silently passing the prior `ShouldBeOneOf(...)` either-or.
+        first.Fingerprint.AlgorithmId.ShouldBe(
+            SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1,
+            "D23: lifecycle payload must be canonicalized via the SourceTools blob algorithm; the runtime cannot recompute it (Roslyn analyzer hosting constraint).");
     }
 }

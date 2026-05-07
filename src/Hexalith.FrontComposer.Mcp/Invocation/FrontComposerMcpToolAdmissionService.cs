@@ -90,6 +90,7 @@ public sealed class FrontComposerMcpToolAdmissionService(
                 when (ex.Category is FrontComposerMcpFailureCategory.SchemaMismatch
                     or FrontComposerMcpFailureCategory.UnknownSchemaBaseline
                     or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
+                    or FrontComposerMcpFailureCategory.UnsupportedSchema
                     or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
                 return McpToolResolutionResult.Reject(sanitizedRequested, ex.Category, catalog);
             }

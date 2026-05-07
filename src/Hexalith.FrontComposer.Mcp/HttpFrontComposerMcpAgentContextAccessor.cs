@@ -14,11 +14,17 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
     IHttpContextAccessor httpContextAccessor,
     IOptions<FrontComposerMcpOptions> options) : IFrontComposerMcpAgentContextAccessor {
     private const string SchemaFingerprintHeaderName = "x-frontcomposer-schema-fingerprint";
-    private const int MaxSchemaFingerprintHeaderLength = 512;
+    private const int MaxSchemaFingerprintHeaderLength = 256;
     private const int MaxSchemaFingerprintAlgorithmLength = 128;
-    private const int MaxSchemaFingerprintValueLength = 256;
-    private const int Sha256ByteLength = 32;
+    private const int Sha256HexLength = 64;
     private const string ClientFingerprintCacheKey = "Hexalith.FrontComposer.Mcp.SchemaFingerprintHint";
+
+    // C3 (Group D / chunk-2 re-review): sentinel cached on HttpContext.Items when the header
+    // parse failed, so subsequent property accesses on the same request return the cached
+    // failure instead of re-parsing and re-throwing on every access (admission, invoker, pre-
+    // query, pre-render). The exception is re-thrown each access to preserve fail-closed
+    // semantics, but parsing happens exactly once.
+    private static readonly object MalformedFingerprintSentinel = new();
 
     /// <summary>
     /// 8-6a re-review: pin the algorithms accepted at the trust boundary so a hostile client
@@ -43,20 +49,29 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
 
             // 8-6a re-review: memoize the parsed fingerprint on HttpContext.Items so repeated
             // accesses (admission + invoker, projection reader pre-query + pre-render) parse
-            // and validate the header exactly once. Also avoids re-throwing the malformed-request
-            // exception multiple times per request. The key includes the assembly identifier so
-            // hosts that compose multiple FrontComposer pipelines do not collide.
+            // and validate the header exactly once. The malformed-request sentinel covers the
+            // failure path so a malformed header still triggers fail-closed on every access
+            // (preserving the security posture) without re-running the parser.
             if (http.Items.TryGetValue(ClientFingerprintCacheKey, out object? cached)) {
-                return cached as SchemaFingerprint;
+                return cached is SchemaFingerprint hint ? hint
+                    : ReferenceEquals(cached, MalformedFingerprintSentinel)
+                        ? throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest)
+                        : null;
             }
 
-            if (values.Count != 1) {
-                throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
-            }
+            try {
+                if (values.Count != 1) {
+                    throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
+                }
 
-            SchemaFingerprint? parsed = ParseClientFingerprint(values[0]);
-            http.Items[ClientFingerprintCacheKey] = parsed;
-            return parsed;
+                SchemaFingerprint? parsed = ParseClientFingerprint(values[0]);
+                http.Items[ClientFingerprintCacheKey] = parsed;
+                return parsed;
+            }
+            catch (FrontComposerMcpException ex) when (ex.Category == FrontComposerMcpFailureCategory.MalformedRequest) {
+                http.Items[ClientFingerprintCacheKey] = MalformedFingerprintSentinel;
+                throw;
+            }
         }
     }
 
@@ -116,9 +131,8 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
         string algorithmId = trimmed[..separator];
         string encodedFingerprint = trimmed[(separator + 1)..];
         if (algorithmId.Length > MaxSchemaFingerprintAlgorithmLength
-            || encodedFingerprint.Length > MaxSchemaFingerprintValueLength
-            || algorithmId.Any(char.IsWhiteSpace)
-            || encodedFingerprint.Any(char.IsWhiteSpace)) {
+            || encodedFingerprint.Length != Sha256HexLength
+            || algorithmId.Any(char.IsWhiteSpace)) {
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
         }
 
@@ -128,23 +142,30 @@ internal sealed class HttpFrontComposerMcpAgentContextAccessor(
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
         }
 
-        // 8-6a re-review: validate decoded byte length matches the expected SHA-256 hash size.
-        // A 1-byte base64 value previously slipped through and was forwarded to the negotiator
-        // as a "fingerprint". Drop the FormatException as inner-exception so its text cannot
-        // leak through telemetry sinks that log ex.InnerException.Message (AC15).
-        byte[] decoded;
-        try {
-            decoded = Convert.FromBase64String(encodedFingerprint);
-        }
-        catch (FormatException) {
-            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
-        }
-
-        if (decoded.Length != Sha256ByteLength) {
+        // C3 (Group D / chunk-2 re-review): server-side fingerprints emit lowercase hex via
+        // CanonicalSchemaMaterial.Sha256Hex (Contracts/Schema/SchemaFingerprintContracts.cs); the
+        // client must use the SAME wire encoding so byte-equality short-circuits in McpSchemaNegotiator
+        // can match identical structural schemas. Reject anything that is not exactly 64 lowercase
+        // hex characters (the SHA-256 hex form). Previously the parser accepted base64, which
+        // never matched the server's hex value — making the byte-match path unreachable and
+        // forcing every fingerprint-bearing request to fall through to structural snapshot compare.
+        if (!IsLowercaseSha256Hex(encodedFingerprint)) {
             throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.MalformedRequest);
         }
 
         return new SchemaFingerprint(algorithmId, encodedFingerprint);
+    }
+
+    private static bool IsLowercaseSha256Hex(string value) {
+        foreach (char c in value) {
+            bool isDigit = c >= '0' && c <= '9';
+            bool isLowerHex = c >= 'a' && c <= 'f';
+            if (!isDigit && !isLowerHex) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private static FrontComposerMcpApiKeyIdentity? MatchApiKey(

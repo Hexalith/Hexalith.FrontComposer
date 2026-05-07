@@ -1,7 +1,10 @@
 using System.Reflection;
 
 using Hexalith.FrontComposer.Contracts.Schema;
+using Hexalith.FrontComposer.Mcp.Extensions;
 using Hexalith.FrontComposer.Mcp.Schema;
+
+using Microsoft.Extensions.DependencyInjection;
 
 using Shouldly;
 using Xunit;
@@ -17,7 +20,7 @@ namespace Hexalith.FrontComposer.Mcp.Tests.Schema;
 /// </summary>
 public sealed class SchemaBaselineResolverTests {
     [Fact]
-    public void Resolver_TypeExists_AndIsRegisteredAsScopedDi() {
+    public void Resolver_TypeExists_AndHasExpectedShape() {
         Type? resolver = TryFindResolverType();
         resolver.ShouldNotBeNull(
             "AC4 / T1 require an ISchemaBaselineProvider (or extension of ISkillCorpusBaselineProvider). "
@@ -32,6 +35,34 @@ public sealed class SchemaBaselineResolverTests {
         parameters[1].ParameterType.ShouldBe(typeof(string));
         parameters[2].ParameterType.ShouldBe(typeof(string));
         parameters[3].IsOut.ShouldBeTrue();
+    }
+
+    [Fact]
+    public void AddFrontComposerMcp_RegistersBaselineProviderAsScoped() {
+        // CK4-P3: the prior `Resolver_TypeExists_AndIsRegisteredAsScopedDi` test name promised
+        // scoped-DI verification but the body inspected only type existence. Per AC4 / T1 the
+        // baseline provider must be registered as scoped so per-request `RequestServices` scoping
+        // works (see SchemaNegotiationRuntimeGate `LogAndReturn` chunk-2 patch). This test now
+        // pins the lifetime so a regression to singleton fails loudly.
+        ServiceCollection services = [];
+        // AddFrontComposerMcp probes the service collection for tenant/visibility gates and fails
+        // closed if absent. Register the AllowAll variants up front so the probe succeeds.
+        services.AddSingleton<IFrontComposerMcpTenantToolGate, AllowAllMcpTenantToolGate>();
+        services.AddSingleton<IFrontComposerMcpResourceVisibilityGate, AllowAllResourceVisibilityGate>();
+
+        // Provide a minimal manifest so the descriptor registry can be activated by the probe inside
+        // AddFrontComposerMcp.
+        services.AddFrontComposerMcp(options => options.Manifests.Add(new Hexalith.FrontComposer.Contracts.Mcp.McpManifest(
+            "frontcomposer.mcp.v1",
+            [],
+            [])));
+
+        ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == typeof(ISchemaBaselineProvider));
+        descriptor.ShouldNotBeNull(
+            "AC4 / T1: AddFrontComposerMcp must register an ISchemaBaselineProvider.");
+        descriptor!.Lifetime.ShouldBe(
+            ServiceLifetime.Scoped,
+            "AC4: ISchemaBaselineProvider must be scoped so per-request RequestServices flows enrichers / tenant context.");
     }
 
     [Fact]
@@ -70,7 +101,13 @@ public sealed class SchemaBaselineResolverTests {
     }
 
     [Fact]
-    public void Resolver_ReturnsTypedSnapshotForKnownIdentifiers() {
+    public void Resolver_DefaultProviderReturnsFalseUntilD3MaterializesBaselines() {
+        // C5 (Group D / chunk-2 re-review): the default `InMemorySchemaBaselineProvider` ships
+        // with no snapshots until D3 (build-time baseline materialization) lands. Previously the
+        // provider shipped placeholder snapshots that produced `SchemaMismatch` for every real
+        // adopter request — fail-closed by default. New default behavior: TryResolve returns
+        // false so the gate falls back to descriptor.Fingerprint byte-match. Hosts wanting
+        // fixture-driven baselines must register their own ISchemaBaselineProvider.
         ResolverInvoker resolver = ResolverInvoker.CreateOrSkip();
 
         ResolverInvoker.Outcome outcome = resolver.TryResolve(
@@ -78,13 +115,9 @@ public sealed class SchemaBaselineResolverTests {
             "Hexalith.FrontComposer",
             "baseline-known-v1");
 
-        outcome.Resolved.ShouldBeTrue();
-        outcome.Snapshot.ShouldNotBeNull();
-        outcome.Snapshot!.Provenance.PackageOwner.ShouldBe("Hexalith.FrontComposer");
-        outcome.Snapshot.Provenance.FixtureId.ShouldBe("baseline-known-v1");
-        outcome.Snapshot.Fingerprint.AlgorithmId.ShouldBeOneOf(
-            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1,
-            SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1);
+        outcome.Resolved.ShouldBeFalse(
+            "default provider must return false until D3 materializes real baselines (placeholder snapshots caused SchemaMismatch for every real adopter request).");
+        outcome.Snapshot.ShouldBeNull();
     }
 
     [Fact]

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text;
 
 using Hexalith.FrontComposer.Contracts.Schema;
 
@@ -150,16 +151,16 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ClientFingerprintHint_ParsesSchemaFingerprintHeader() {
-        // 8-6a re-review: parser now enforces a 32-byte SHA-256 hash length and an algorithm
-        // allow-list at the trust boundary, so the test must supply a real 32-byte hash payload
-        // and a supported algorithm id.
+        // C3 (chunk-2 re-review): parser enforces 64-char lowercase hex matching the server-side
+        // Sha256Hex emission. Base64 was the prior wire form but never matched the server's hex
+        // values; switching to hex makes the byte-equality short-circuit reachable.
         var sut = BuildAccessor(out HttpContext http, configure: null);
-        byte[] hashBytes = new byte[32];
-        for (int i = 0; i < hashBytes.Length; i++) {
-            hashBytes[i] = (byte)(i + 1);
+        StringBuilder hex = new(64);
+        for (int i = 0; i < 32; i++) {
+            hex.Append(((byte)(i + 1)).ToString("x2", System.Globalization.CultureInfo.InvariantCulture));
         }
 
-        string fingerprint = Convert.ToBase64String(hashBytes);
+        string fingerprint = hex.ToString();
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + fingerprint;
 
@@ -172,9 +173,9 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ClientFingerprintHint_RejectsShortFingerprint() {
-        // 8-6a re-review: a non-SHA-256-length fingerprint is malformed and must fail-closed.
+        // C3 (chunk-2 re-review): non-64-char hex fingerprints fail-closed.
         var sut = BuildAccessor(out HttpContext http, configure: null);
-        string tooShort = Convert.ToBase64String([1, 2, 3, 4]);
+        const string tooShort = "abc123";
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + tooShort;
 
@@ -187,8 +188,7 @@ public sealed class AuthContextAccessorTests {
         // 8-6a re-review: algorithm allow-list at the trust boundary blocks arbitrary
         // algorithm strings from reaching the negotiator and structured logs.
         var sut = BuildAccessor(out HttpContext http, configure: null);
-        byte[] hashBytes = new byte[32];
-        string fingerprint = Convert.ToBase64String(hashBytes);
+        string fingerprint = new('0', 64);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
             "frontcomposer.schema.attacker-controlled.v1:" + fingerprint;
 
@@ -208,9 +208,28 @@ public sealed class AuthContextAccessorTests {
 
     [Fact]
     public void ClientFingerprintHint_OversizedHeader_FailsClosed() {
+        // CK4-P10: use lowercase hex 'a' so the value satisfies the hex-character guard. The test
+        // now specifically targets the 256-char length cap — a regression that accepted long
+        // values fails on length alone, not on the case-sensitivity guard. The companion test
+        // `ClientFingerprintHint_RejectsUppercaseHex` pins the case-sensitivity guard separately.
         var sut = BuildAccessor(out HttpContext http, configure: null);
         http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
-            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('A', 600);
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('a', 600);
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
+
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_RejectsUppercaseHex() {
+        // CK4-P10: the production parser requires lowercase hex via `IsLowercaseSha256Hex` (see
+        // C3 chunk-2 patch). Pin the case-sensitivity guard so a regression to case-insensitive
+        // matching fails this test, instead of silently slipping past the prior oversized-header
+        // test that conflated length+case rejections.
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('A', 64);
 
         FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
 

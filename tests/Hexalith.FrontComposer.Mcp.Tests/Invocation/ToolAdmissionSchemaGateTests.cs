@@ -32,6 +32,12 @@ public sealed class ToolAdmissionSchemaGateTests {
         resolution.Accepted.ShouldBeFalse(
             "AC1: a stale client schema fingerprint must demote the resolution to rejected even when the tool name resolves exactly.");
         resolution.Tool.ShouldBeNull();
+        // CK4-P8: pin the sanitized failure category so a regression to UnknownTool or
+        // DownstreamFailed (instead of a schema-specific category) fails the test. AC1 forbids
+        // collapsing schema rejections into the generic taxonomy.
+        resolution.Category.ShouldBeOneOf(
+            FrontComposerMcpFailureCategory.SchemaMismatch,
+            FrontComposerMcpFailureCategory.UnknownSchemaBaseline);
     }
 
     [Fact]
@@ -45,6 +51,11 @@ public sealed class ToolAdmissionSchemaGateTests {
 
         resolution.Accepted.ShouldBeFalse();
         resolution.Tool.ShouldBeNull();
+        // CK4-P8: pin the sanitized failure category — the unsupported-algorithm path must surface
+        // as UnsupportedSchemaAlgorithm specifically, never DownstreamFailed.
+        resolution.Category.ShouldBe(
+            FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm,
+            "AC1: unsupported algorithm rejection must surface the dedicated UnsupportedSchemaAlgorithm category.");
     }
 
     private static SchemaFingerprint SchemaHintFor(string scenario)

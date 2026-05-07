@@ -191,18 +191,16 @@ public sealed class FrontComposerMcpProjectionReader(
         }
 
         McpResourceDescriptor descriptor = snapshot.Descriptor.ToDescriptor();
-        if (!await IsResourceVisibleAsync(visibilityGate, descriptor, context, cancellationToken).ConfigureAwait(false)) {
-            return FrontComposerMcpFailureCategory.UnknownResource;
-        }
-
-        // 8-6a re-review: honor cancellation before the synchronous canonical-JSON snapshot
-        // build inside the schema gate. Long-running serialization work after a cancel request
-        // wastes CPU and produces a result that will never be returned.
-        cancellationToken.ThrowIfCancellationRequested();
-        McpSchemaNegotiationResult? schema = SchemaNegotiationRuntimeGate.EvaluateResource(descriptor, agentContextAccessor, services);
-        return schema is not null && !schema.AllowsSideEffects
-            ? schema.FailureCategory
-            : null;
+        return await IsResourceVisibleAsync(visibilityGate, descriptor, context, cancellationToken).ConfigureAwait(false)
+            ? null
+            : FrontComposerMcpFailureCategory.UnknownResource;
+        // C-2-new (chunk 2 re-review): the schema gate is no longer re-evaluated here. The
+        // initial admission-time `EvaluateResource` call in `ReadAsync` is sufficient — the
+        // descriptor is immutable for the lifetime of the host (DN-3) and the cached
+        // `ClientFingerprintHint` on `HttpContext.Items` would re-emit the same negotiation
+        // decision and a duplicate structured-log entry. Visibility re-check above guards
+        // against tenant/policy changes mid-flight; schema drift between admission and render
+        // is not a real scenario the gate can observe.
     }
 
     private static ValueTask<bool> IsResourceVisibleAsync(

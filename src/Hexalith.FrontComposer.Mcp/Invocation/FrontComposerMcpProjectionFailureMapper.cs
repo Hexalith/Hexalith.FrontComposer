@@ -110,10 +110,21 @@ internal static class FrontComposerMcpProjectionFailureMapper {
                 Retryable: false,
                 RefreshResources: false,
                 IsHiddenEquivalent: false),
-            FrontComposerMcpFailureCategory.UnsupportedRender or FrontComposerMcpFailureCategory.UnsupportedSchema => new(
+            FrontComposerMcpFailureCategory.UnsupportedRender => new(
                 "unsupported_render",
                 "Projection rendering strategy is not supported for the agent surface.",
                 "HFC-MCP-PROJECTION-UNSUPPORTED-RENDER",
+                Retryable: false,
+                RefreshResources: false,
+                IsHiddenEquivalent: false),
+            // C4 (Group D / chunk-2 re-review): UnsupportedSchema (UnknownClientVersion path) was
+            // previously folded into the UnsupportedRender arm, emitting the wrong taxonomy
+            // (`unsupported_render`) for a schema-version mismatch. Distinct branch so agents
+            // can branch between rendering capability and schema version.
+            FrontComposerMcpFailureCategory.UnsupportedSchema => new(
+                "unsupported-schema-version",
+                "Projection schema version declared by the client is not supported by this server.",
+                "HFC-MCP-PROJECTION-UNSUPPORTED-SCHEMA-VERSION",
                 Retryable: false,
                 RefreshResources: false,
                 IsHiddenEquivalent: false),

@@ -148,10 +148,16 @@ public static class SchemaFingerprintTransform {
     /// assembly is being COMPILED, not loaded, so the scan always failed and silently fell back
     /// to a separate camelCase constant. That broke AC11 fingerprint determinism between build
     /// time and test time when property casing differed from the fallback. The catalog mirrors
-    /// <c>Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult</c>'s public surface and is
-    /// pinned by <c>SchemaFingerprintReflectionTests</c> — adding/renaming/removing a lifecycle
-    /// property requires updating both the record and this catalog together; the cross-check
-    /// test surfaces drift as a regression.
+    /// <c>Hexalith.FrontComposer.Mcp.Invocation.McpLifecycleResult</c>'s public surface; field
+    /// names are pinned by <c>SchemaFingerprintCrossPackageTests.LifecycleCatalog_FieldNames_…</c>
+    /// against the runtime record, and the State enum-values cell is pinned by
+    /// <c>LifecycleCatalog_StateEnumValues_MatchMcpLifecycleStateNames</c> against
+    /// <c>Hexalith.FrontComposer.Contracts.Lifecycle.McpLifecycleStateNames.Canonical</c>
+    /// (8-6a chunk-3 decision: Contracts owns the canonical wire-state set; SourceTools repeats
+    /// the literal here because Contracts non-const references are not loadable by the Roslyn
+    /// analyzer host that runs the source generator on adopter projects). Adding/renaming/
+    /// removing a lifecycle property or wire-state name requires updating BOTH this literal AND
+    /// the Contracts constant; the cross-check test surfaces drift as a build failure.
     /// </summary>
     private static IReadOnlyList<string> CreateLifecycleFieldLines()
         => [
@@ -274,10 +280,13 @@ public static class SchemaFingerprintTransform {
         ]);
 
     private static string Normalize(string value)
-        // 8-6a review: include Unicode line separators (U+2028 LINE SEPARATOR, U+2029 PARAGRAPH
-        // SEPARATOR) in the EOL-normalization contract so determinism tests across all line
-        // terminator flavors hash identically. Without this, AC11 cross-OS / cross-EOL fingerprint
-        // tests treat U+2028 as a non-newline character and produce drift.
+        // 8-6a chunk-3 review: AC11 EOL-invariance applies to LF, CRLF, CR, U+2028 LINE SEPARATOR,
+        // and U+2029 PARAGRAPH SEPARATOR. Other Unicode line-break code points (U+0085 NEL, U+000B
+        // VT, U+000C FF) are not normalized \u2014 sources do not produce them in practice (Roslyn
+        // syntax trees + attribute string literals + XML doc comments), and AC11 determinism tests
+        // do not parameterize over them. EscapeDelimited (`'\n'`/`'\u2028'`/`'\u2029'` -> `\\n`)
+        // collapses any surviving in-cell line breaks to a literal escape so they cannot synthesize
+        // a row split inside the canonical blob even when Normalize runs after cell escaping.
         => (value ?? string.Empty)
             .Replace("\r\n", "\n")
             .Replace('\r', '\n')
@@ -293,12 +302,25 @@ public static class SchemaFingerprintTransform {
         => string.IsNullOrWhiteSpace(value) ? AbsentValueSentinel : value!;
 
     /// <summary>
-    /// Escapes the four canonical-blob delimiters so the canonical text cannot be ambiguously
-    /// re-parsed and so attacker-controlled metadata values cannot be crafted to collide. P-1.
+    /// Escapes the canonical-blob delimiters so the canonical text cannot be ambiguously re-parsed
+    /// and so attacker-controlled metadata values cannot be crafted to collide. P-1.
+    /// 8-6a chunk-3 review: U+2028 / U+2029 are escaped to the same `\\n` escape as `\n` because
+    /// `field=` rows go through `Normalize(field)` AFTER per-cell escaping (see Payload `:241`).
+    /// Without this, U+2028 in a parameter description survived FieldLine then was collapsed to a
+    /// bare `\n` by Normalize, terminating the row mid-cell and synthesizing a fake `field=…` line
+    /// inside the canonical blob. Mapping all line-break flavors to the same escape also enforces
+    /// AC11 EOL-invariance: the same description authored with any line terminator hashes alike.
     /// </summary>
     private static string EscapeDelimited(string value) {
         if (string.IsNullOrEmpty(value)) {
             return string.Empty;
+        }
+
+        // Collapse CRLF to LF before per-char escape so the switch handles all line-break flavors
+        // uniformly: a `\r\n` pair would otherwise emit `\\n\\n` (two escapes) where `\n` alone
+        // emits `\\n` (one), breaking AC11 EOL-invariance for FieldLine cells.
+        if (value.IndexOf('\r') >= 0) {
+            value = value.Replace("\r\n", "\n");
         }
 
         var sb = new StringBuilder(value.Length);
@@ -308,7 +330,10 @@ public static class SchemaFingerprintTransform {
                 case '=': sb.Append("\\="); break;
                 case '|': sb.Append("\\|"); break;
                 case ':': sb.Append("\\:"); break;
-                case '\n': sb.Append("\\n"); break;
+                case '\n':
+                case '\r':
+                case '\u2028':
+                case '\u2029': sb.Append("\\n"); break;
                 default: sb.Append(c); break;
             }
         }
