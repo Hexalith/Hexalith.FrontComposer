@@ -1,0 +1,728 @@
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticCatalogTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticCatalogTests.cs
+new file mode 100644
+index 0000000..e4182e2
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticCatalogTests.cs
+@@ -0,0 +1,111 @@
++using System.Reflection;
++
++using Hexalith.FrontComposer.Contracts.Diagnostics;
++using Hexalith.FrontComposer.SourceTools.Diagnostics;
++
++using Microsoft.CodeAnalysis;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Diagnostics;
++
++/// <summary>
++/// AC12 / T4 — Story 9-1 catalog discipline. Drift diagnostics live in a contiguous HFC range
++/// allocated immediately after HFC1057 (current Unshipped allocation tail). Sibling to
++/// <see cref="DiagnosticCatalogTests"/>; the existing catalog test asserts cross-cutting shape,
++/// while this test asserts:
++/// (a) every newly-introduced drift descriptor falls in the planned HFC1058+ range,
++/// (b) every drift descriptor populates <see cref="DiagnosticDescriptor.HelpLinkUri"/>
++///     against the canonical docs prefix,
++/// (c) every drift descriptor has a matching <see cref="FcDiagnosticIds"/> constant,
++/// (d) every drift descriptor is documented in <c>AnalyzerReleases.Unshipped.md</c>.
++/// </summary>
++public sealed class DriftDiagnosticCatalogTests {
++    private const string SkipReason = "RED-PHASE: T4 — drift diagnostic descriptors not yet introduced.";
++
++    private const string DocsLinkPrefix = "https://hexalith.github.io/FrontComposer/diagnostics/";
++    private const int FirstAllocatedDriftId = 1058;
++    private const int LastReservedDriftId = 1099;
++
++    [Fact()]
++    public void DriftDescriptors_AreContiguousFromHfc1058() {
++        DiagnosticDescriptor[] driftDescriptors = [.. DriftDescriptors()];
++
++        driftDescriptors.Length.ShouldBeGreaterThan(0,
++            "AC12 — at least one drift descriptor must be allocated in T4.");
++        int[] numericIds = [.. driftDescriptors.Select(d => int.Parse(d.Id["HFC".Length..], System.Globalization.CultureInfo.InvariantCulture))];
++        numericIds.Min().ShouldBeGreaterThanOrEqualTo(FirstAllocatedDriftId);
++        numericIds.Max().ShouldBeLessThanOrEqualTo(LastReservedDriftId);
++    }
++
++    [Fact()]
++    public void EveryDriftDescriptor_PopulatesHelpLinkUri_AgainstCanonicalDocsPrefix() {
++        foreach (DiagnosticDescriptor descriptor in DriftDescriptors()) {
++            descriptor.HelpLinkUri.ShouldNotBeNullOrWhiteSpace($"AC12 — {descriptor.Id} missing HelpLinkUri.");
++            descriptor.HelpLinkUri.ShouldStartWith(DocsLinkPrefix);
++            descriptor.HelpLinkUri.ShouldContain(descriptor.Id, Case.Sensitive);
++        }
++    }
++
++    [Fact()]
++    public void EveryDriftDescriptorId_HasMatchingFcDiagnosticIdsConstant() {
++        HashSet<string> driftIds = [.. DriftDescriptors().Select(d => d.Id)];
++        HashSet<string> constantIds = [.. typeof(FcDiagnosticIds)
++            .GetFields(BindingFlags.Public | BindingFlags.Static)
++            .Where(f => f.IsLiteral && f.FieldType == typeof(string))
++            .Select(f => (string)f.GetRawConstantValue()!)
++            .Where(v => v.StartsWith("HFC", StringComparison.Ordinal))];
++
++        foreach (string driftId in driftIds) {
++            constantIds.ShouldContain(driftId,
++                $"AC12 / T4 — every drift descriptor must have a matching FcDiagnosticIds constant ({driftId}).");
++        }
++    }
++
++    [Fact()]
++    public void EveryDriftDescriptor_IsDocumentedInUnshippedAnalyzerReleases() {
++        string releasesPath = LocateAnalyzerReleasesUnshipped();
++        string releaseNotes = File.ReadAllText(releasesPath);
++
++        foreach (DiagnosticDescriptor descriptor in DriftDescriptors()) {
++            releaseNotes.ShouldContain(descriptor.Id,
++                customMessage: $"AC12 / T4 — {descriptor.Id} must be listed in AnalyzerReleases.Unshipped.md.");
++        }
++    }
++
++    [Fact()]
++    public void Hfc1010_IsNotReusedForDriftCategory() {
++        // Story 1-8 / HFC1010 owns hot-reload/full-rebuild guidance. Drift diagnostics MUST NOT
++        // borrow that ID — they must allocate fresh IDs in HFC1058+.
++        IEnumerable<DiagnosticDescriptor> driftDescriptors = DriftDescriptors();
++        driftDescriptors.Any(d => d.Id == FcDiagnosticIds.HFC1010_FullRebuildRequired).ShouldBeFalse(
++            "AC12 — HFC1010 is owned by Story 1-8 hot-reload guidance and must not be reused for drift.");
++    }
++
++    private static IEnumerable<DiagnosticDescriptor> DriftDescriptors() {
++        foreach (FieldInfo field in typeof(DiagnosticDescriptors).GetFields(BindingFlags.Public | BindingFlags.Static)) {
++            if (field.FieldType == typeof(DiagnosticDescriptor)
++                && field.GetValue(null) is DiagnosticDescriptor descriptor
++                && descriptor.Id.StartsWith("HFC", StringComparison.Ordinal)
++                && int.TryParse(descriptor.Id.AsSpan("HFC".Length), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int n)
++                && n >= FirstAllocatedDriftId
++                && n <= LastReservedDriftId) {
++                yield return descriptor;
++            }
++        }
++    }
++
++    private static string LocateAnalyzerReleasesUnshipped() {
++        string here = Path.GetDirectoryName(typeof(DriftDiagnosticCatalogTests).Assembly.Location)!;
++        for (int i = 0; i < 8; i++) {
++            string candidate = Path.Combine(here, "src", "Hexalith.FrontComposer.SourceTools", "AnalyzerReleases.Unshipped.md");
++            if (File.Exists(candidate)) {
++                return candidate;
++            }
++            here = Path.GetDirectoryName(here)
++                ?? throw new InvalidOperationException("Could not locate repo root from test assembly location.");
++        }
++        throw new FileNotFoundException("AnalyzerReleases.Unshipped.md not found.");
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Incremental/DriftIncrementalCacheTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Incremental/DriftIncrementalCacheTests.cs
+new file mode 100644
+index 0000000..54f8995
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Incremental/DriftIncrementalCacheTests.cs
+@@ -0,0 +1,129 @@
++using Microsoft.CodeAnalysis;
++using Microsoft.CodeAnalysis.CSharp;
++
++using Shouldly;
++using Xunit;
++
++using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Incremental;
++
++/// <summary>
++/// AC10 / T2 — incremental caching discipline. Adding the drift `AdditionalTextsProvider`
++/// must:
++/// (a) introduce a new tracked step (expected name <c>LoadDriftBaselines</c>),
++/// (b) leave existing tracked steps (`Parse`, `ParseCommand`, `ParseProjectionTemplate`)
++///     reporting Cached/Unchanged when the drift baseline content is unchanged,
++/// (c) leave existing generated outputs invariant when only an unrelated file edits.
++/// </summary>
++public sealed class DriftIncrementalCacheTests {
++    private const string SkipReason = "RED-PHASE: T2 — drift baseline AdditionalTextsProvider not yet introduced.";
++
++    private const string ExpectedTrackedStepName = "LoadDriftBaselines";
++
++    private const string ValidBaseline = """
++        { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
++          "algorithm": "frontcomposer-structural-v1",
++          "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
++            "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
++        """;
++
++    [Fact()]
++    public void NewTrackedStep_LoadDriftBaselines_IsRegistered() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CSharpCompilation compilation = CompilationHelper.CreateCompilation(SimpleSource());
++        FrontComposerGenerator generator = new();
++        AdditionalText baseline = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", ValidBaseline);
++
++        GeneratorDriver driver = CSharpGeneratorDriver.Create(
++            generators: [generator.AsSourceGenerator()],
++            additionalTexts: [baseline],
++            optionsProvider: null,
++            parseOptions: null,
++            driverOptions: new GeneratorDriverOptions(
++                disabledOutputs: IncrementalGeneratorOutputKind.None,
++                trackIncrementalGeneratorSteps: true));
++        driver = driver.RunGenerators(compilation, ct);
++
++        GeneratorRunResult result = driver.GetRunResult().Results[0];
++        result.TrackedSteps.ContainsKey(ExpectedTrackedStepName).ShouldBeTrue(
++            $"AC10 — drift baseline pipeline must register the '{ExpectedTrackedStepName}' tracked step.");
++    }
++
++    [Fact()]
++    public void UnchangedBaseline_AndUnrelatedSourceEdit_KeepsExistingParseStepsCached() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CSharpCompilation compilation = CompilationHelper.CreateCompilation(SimpleSource());
++        FrontComposerGenerator generator = new();
++        AdditionalText baseline = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", ValidBaseline);
++
++        GeneratorDriverOptions trackOpts = new(
++            disabledOutputs: IncrementalGeneratorOutputKind.None,
++            trackIncrementalGeneratorSteps: true);
++        GeneratorDriver driver = CSharpGeneratorDriver.Create(
++            generators: [generator.AsSourceGenerator()],
++            additionalTexts: [baseline],
++            optionsProvider: null,
++            parseOptions: null,
++            driverOptions: trackOpts);
++        driver = driver.RunGenerators(compilation, ct);
++
++        SyntaxTree unrelatedTree = CSharpSyntaxTree.ParseText("public class Unrelated { }", cancellationToken: ct);
++        CSharpCompilation compilation2 = compilation.AddSyntaxTrees(unrelatedTree);
++        driver = driver.RunGenerators(compilation2, ct);
++
++        GeneratorRunResult result = driver.GetRunResult().Results[0];
++        AssertCachedOrUnchanged(result, "Parse");
++        AssertCachedOrUnchanged(result, ExpectedTrackedStepName);
++    }
++
++    [Fact()]
++    public void ChangedBaselineContent_InvalidatesOnlyDriftStep_NotDomainParse() {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CSharpCompilation compilation = CompilationHelper.CreateCompilation(SimpleSource());
++        FrontComposerGenerator generator = new();
++        AdditionalText baselineA = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", ValidBaseline);
++
++        GeneratorDriverOptions trackOpts = new(
++            disabledOutputs: IncrementalGeneratorOutputKind.None,
++            trackIncrementalGeneratorSteps: true);
++        GeneratorDriver driver = CSharpGeneratorDriver.Create(
++            generators: [generator.AsSourceGenerator()],
++            additionalTexts: [baselineA],
++            optionsProvider: null,
++            parseOptions: null,
++            driverOptions: trackOpts);
++        driver = driver.RunGenerators(compilation, ct);
++
++        AdditionalText baselineB = new InMemoryAdditionalText(
++            "frontcomposer.drift-baseline.json",
++            ValidBaseline.Replace("\"Id\"", "\"OldId\"", StringComparison.Ordinal));
++        driver = driver.ReplaceAdditionalTexts(System.Collections.Immutable.ImmutableArray.Create(baselineB));
++        driver = driver.RunGenerators(compilation, ct);
++
++        GeneratorRunResult result = driver.GetRunResult().Results[0];
++        AssertCachedOrUnchanged(result, "Parse");
++        result.TrackedSteps[ExpectedTrackedStepName]
++            .SelectMany(s => s.Outputs)
++            .Any(o => o.Reason == IncrementalStepRunReason.Modified)
++            .ShouldBeTrue("Changing baseline content must re-run only the drift-baseline step.");
++    }
++
++    private static void AssertCachedOrUnchanged(GeneratorRunResult result, string stepName) {
++        result.TrackedSteps.ContainsKey(stepName).ShouldBeTrue($"Tracked step '{stepName}' missing.");
++        result.TrackedSteps[stepName]
++            .SelectMany(s => s.Outputs)
++            .Any(o => o.Reason is IncrementalStepRunReason.Cached or IncrementalStepRunReason.Unchanged)
++            .ShouldBeTrue($"AC10 — '{stepName}' should report Cached/Unchanged after non-affecting edit.");
++    }
++
++    private static string SimpleSource() => """
++        using Hexalith.FrontComposer.Contracts.Attributes;
++        namespace TestDomain;
++        [BoundedContext("Orders")]
++        [Projection]
++        public partial class OrderProjection {
++            public string Id { get; set; } = string.Empty;
++        }
++        """;
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftByteStabilityRegressionTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftByteStabilityRegressionTests.cs
+new file mode 100644
+index 0000000..bbd0a99
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftByteStabilityRegressionTests.cs
+@@ -0,0 +1,155 @@
++using Microsoft.CodeAnalysis;
++using Microsoft.CodeAnalysis.CSharp;
++
++using Shouldly;
++using Xunit;
++
++using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Regression;
++
++/// <summary>
++/// AC18 / T5 + T7 — generated outputs are byte-stable across:
++/// (a) repeated runs,
++/// (b) equivalent declaration-order permutations of the same source set,
++/// (c) partial-type declaration ordering,
++/// (d) equivalent baseline file enumeration order.
++/// Drift detection adds diagnostics only — never rewrites generated output.
++/// </summary>
++public sealed class DriftByteStabilityRegressionTests {
++    private const string SkipReason = "RED-PHASE: T5 + T7 — byte-stability regression harness pending Story 9-1 wiring.";
++
++    private const string ValidBaseline = """
++        { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
++          "algorithm": "frontcomposer-structural-v1",
++          "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
++            "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
++        """;
++
++    private const string ProjectionA = """
++        using Hexalith.FrontComposer.Contracts.Attributes;
++        namespace TestDomain;
++        [BoundedContext("Orders")]
++        [Projection]
++        public partial class A { public string Id { get; set; } = string.Empty; }
++        """;
++
++    private const string ProjectionB = """
++        using Hexalith.FrontComposer.Contracts.Attributes;
++        namespace TestDomain;
++        [BoundedContext("Orders")]
++        [Projection]
++        public partial class B { public string Id { get; set; } = string.Empty; }
++        """;
++
++    [Fact()]
++    public void GeneratedOutput_IsByteIdenticalAcrossRepeatedRuns_WithBaselinePresent() {
++        string[] runOne = RunAndCollectGenerated([ProjectionA, ProjectionB], ValidBaseline);
++        string[] runTwo = RunAndCollectGenerated([ProjectionA, ProjectionB], ValidBaseline);
++
++        runOne.Length.ShouldBe(runTwo.Length);
++        for (int i = 0; i < runOne.Length; i++) {
++            runOne[i].ShouldBe(runTwo[i], "AC18 — generated output must be byte-identical across repeated runs.");
++        }
++    }
++
++    [Fact()]
++    public void GeneratedOutput_IsByteIdenticalAcrossInputFileOrderPermutations() {
++        string[] forward = RunAndCollectGenerated([ProjectionA, ProjectionB], ValidBaseline);
++        string[] reverse = RunAndCollectGenerated([ProjectionB, ProjectionA], ValidBaseline);
++
++        forward.ShouldBe(reverse, "AC18 — input file order must not change generated bytes.");
++    }
++
++    [Fact()]
++    public void GeneratedOutput_IsByteIdenticalAcrossPartialDeclarationOrderPermutations() {
++        const string partA = """
++            using Hexalith.FrontComposer.Contracts.Attributes;
++            namespace TestDomain;
++            [BoundedContext("Orders")]
++            [Projection]
++            public partial class OrderProjection {
++                public string Id { get; set; } = string.Empty;
++            }
++            """;
++        const string partB = """
++            namespace TestDomain;
++            public partial class OrderProjection {
++                public string Notes { get; set; } = string.Empty;
++            }
++            """;
++
++        string[] forward = RunAndCollectGenerated([partA, partB], ValidBaseline);
++        string[] reverse = RunAndCollectGenerated([partB, partA], ValidBaseline);
++
++        forward.ShouldBe(reverse, "AC18 — partial-declaration order must not change generated bytes.");
++    }
++
++    [Fact()]
++    public void GeneratedOutput_IsByteIdenticalAcrossEquivalentBaselineFileOrder() {
++        const string baselineA = """
++            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
++              "algorithm": "frontcomposer-structural-v1",
++              "contracts": [{ "family": "projection", "type": "TestDomain.A", "boundedContext": "Orders",
++                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
++            """;
++        const string baselineB = """
++            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
++              "algorithm": "frontcomposer-structural-v1",
++              "contracts": [{ "family": "projection", "type": "TestDomain.B", "boundedContext": "Orders",
++                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
++            """;
++
++        string[] forward = RunAndCollectGeneratedMultiBaseline([ProjectionA, ProjectionB], [("a.json", baselineA), ("b.json", baselineB)]);
++        string[] reverse = RunAndCollectGeneratedMultiBaseline([ProjectionA, ProjectionB], [("b.json", baselineB), ("a.json", baselineA)]);
++
++        forward.ShouldBe(reverse, "AC18 — baseline file enumeration order must not change generated bytes.");
++    }
++
++    [Fact()]
++    public void DriftDetection_DoesNotRewriteGeneratedOutput_ComparedToPreviousMaster() {
++        // Activation: generate before T1-T7 land (master baseline) and compare to generation
++        // after activation. Both must be byte-equal because Story 9-1 is diagnostics-only.
++        string[] withDrift = RunAndCollectGenerated([ProjectionA], ValidBaseline);
++        string[] withoutDrift = RunAndCollectGenerated([ProjectionA], baselineJson: null);
++
++        withDrift.ShouldBe(withoutDrift,
++            "AC18 — drift detection is diagnostics-only and MUST NOT alter generated output.");
++    }
++
++    private static string[] RunAndCollectGenerated(string[] sources, string? baselineJson) {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CSharpCompilation compilation = CompilationHelper.CreateCompilation(sources);
++        FrontComposerGenerator generator = new();
++        AdditionalText[] texts = baselineJson is null
++            ? []
++            : [new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson)];
++
++        GeneratorDriver driver = CSharpGeneratorDriver.Create(
++            generators: [generator.AsSourceGenerator()],
++            additionalTexts: texts,
++            optionsProvider: CompilationHelper.DriftEnabledOptions());
++        driver = driver.RunGenerators(compilation, ct);
++
++        return [.. driver.GetRunResult().GeneratedTrees
++            .Select(t => t.GetText(ct).ToString())
++            .OrderBy(s => s, StringComparer.Ordinal)];
++    }
++
++    private static string[] RunAndCollectGeneratedMultiBaseline(string[] sources, (string Path, string Content)[] baselines) {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CSharpCompilation compilation = CompilationHelper.CreateCompilation(sources);
++        FrontComposerGenerator generator = new();
++        AdditionalText[] texts = [.. baselines.Select(b => (AdditionalText)new InMemoryAdditionalText(b.Path, b.Content))];
++
++        GeneratorDriver driver = CSharpGeneratorDriver.Create(
++            generators: [generator.AsSourceGenerator()],
++            additionalTexts: texts,
++            optionsProvider: CompilationHelper.DriftEnabledOptions());
++        driver = driver.RunGenerators(compilation, ct);
++
++        return [.. driver.GetRunResult().GeneratedTrees
++            .Select(t => t.GetText(ct).ToString())
++            .OrderBy(s => s, StringComparer.Ordinal)];
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftCultureInvarianceTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftCultureInvarianceTests.cs
+new file mode 100644
+index 0000000..51e636d
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftCultureInvarianceTests.cs
+@@ -0,0 +1,133 @@
++using System.Globalization;
++
++using Microsoft.CodeAnalysis;
++using Microsoft.CodeAnalysis.CSharp;
++
++using Shouldly;
++using Xunit;
++
++using static Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison.DriftClassifierProjectionPropertyTests;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Regression;
++
++/// <summary>
++/// AC19 / T7 — culture invariance. Under non-default cultures (`fr-FR`, `tr-TR`):
++/// classification, sorting, hashes, numeric formatting in messages and properties, diagnostics,
++/// and generated bytes must remain identical to the invariant baseline.
++/// </summary>
++public sealed class DriftCultureInvarianceTests {
++    private const string SkipReason = "RED-PHASE: T7 — culture-invariant pipeline pending.";
++
++    private const string ValidBaseline = """
++        { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
++          "algorithm": "frontcomposer-structural-v1",
++          "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
++            "properties": [
++              { "name": "Id",       "category": "String", "nullable": false, "columnPriority": 0 },
++              { "name": "Priority", "category": "Int32",  "nullable": false, "columnPriority": 1 }
++            ] }] }
++        """;
++
++    private const string Source = """
++        using Hexalith.FrontComposer.Contracts.Attributes;
++        namespace TestDomain;
++        [BoundedContext("Orders")]
++        [Projection]
++        public partial class OrderProjection {
++            public string Id { get; set; } = string.Empty;
++            public int Priority { get; set; }
++            public string Added { get; set; } = string.Empty;
++        }
++        """;
++
++    [Theory()]
++    [InlineData("fr-FR")]
++    [InlineData("tr-TR")]
++    public void DiagnosticIds_AreInvariantUnderNonDefaultCulture(string cultureName) {
++        IReadOnlyList<Diagnostic> invariant = RunUnderCulture(CultureInfo.InvariantCulture);
++        IReadOnlyList<Diagnostic> scoped = RunUnderCulture(new CultureInfo(cultureName));
++
++        invariant.Select(d => d.Id).OrderBy(s => s, StringComparer.Ordinal)
++            .ShouldBe(scoped.Select(d => d.Id).OrderBy(s => s, StringComparer.Ordinal),
++                $"AC19 — diagnostic IDs must be identical under {cultureName}.");
++    }
++
++    [Theory()]
++    [InlineData("fr-FR")]
++    [InlineData("tr-TR")]
++    public void DiagnosticPropertyValues_AreInvariantUnderNonDefaultCulture(string cultureName) {
++        IReadOnlyList<Diagnostic> invariant = RunUnderCulture(CultureInfo.InvariantCulture);
++        IReadOnlyList<Diagnostic> scoped = RunUnderCulture(new CultureInfo(cultureName));
++
++        Diagnostic[] invariantDrifts = [.. invariant.Where(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal))];
++        Diagnostic[] scopedDrifts = [.. scoped.Where(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal))];
++        invariantDrifts.Length.ShouldBe(scopedDrifts.Length);
++
++        for (int i = 0; i < invariantDrifts.Length; i++) {
++            foreach (KeyValuePair<string, string?> p in invariantDrifts[i].Properties) {
++                scopedDrifts[i].Properties[p.Key].ShouldBe(p.Value,
++                    $"AC19 — diagnostic property '{p.Key}' must be culture-invariant under {cultureName}.");
++            }
++        }
++    }
++
++    [Theory()]
++    [InlineData("fr-FR")]
++    [InlineData("tr-TR")]
++    public void GeneratedBytes_AreInvariantUnderNonDefaultCulture(string cultureName) {
++        string[] invariantBytes = RunGeneratedUnderCulture(CultureInfo.InvariantCulture);
++        string[] scopedBytes = RunGeneratedUnderCulture(new CultureInfo(cultureName));
++
++        invariantBytes.ShouldBe(scopedBytes, $"AC19 — generated bytes must be identical under {cultureName}.");
++    }
++
++    private static IReadOnlyList<Diagnostic> RunUnderCulture(CultureInfo culture) {
++        CultureInfo prior = CultureInfo.CurrentCulture;
++        CultureInfo priorUi = CultureInfo.CurrentUICulture;
++        try {
++            CultureInfo.CurrentCulture = culture;
++            CultureInfo.CurrentUICulture = culture;
++
++            CancellationToken ct = TestContext.Current.CancellationToken;
++            CSharpCompilation compilation = CompilationHelper.CreateCompilation(Source);
++            FrontComposerGenerator generator = new();
++            AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", ValidBaseline);
++            GeneratorDriver driver = CSharpGeneratorDriver.Create(
++                generators: [generator.AsSourceGenerator()],
++                additionalTexts: [baselineText],
++                optionsProvider: CompilationHelper.DriftEnabledOptions());
++            driver = driver.RunGenerators(compilation, ct);
++            return driver.GetRunResult().Diagnostics;
++        }
++        finally {
++            CultureInfo.CurrentCulture = prior;
++            CultureInfo.CurrentUICulture = priorUi;
++        }
++    }
++
++    private static string[] RunGeneratedUnderCulture(CultureInfo culture) {
++        CultureInfo prior = CultureInfo.CurrentCulture;
++        CultureInfo priorUi = CultureInfo.CurrentUICulture;
++        try {
++            CultureInfo.CurrentCulture = culture;
++            CultureInfo.CurrentUICulture = culture;
++
++            CancellationToken ct = TestContext.Current.CancellationToken;
++            CSharpCompilation compilation = CompilationHelper.CreateCompilation(Source);
++            FrontComposerGenerator generator = new();
++            AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", ValidBaseline);
++            GeneratorDriver driver = CSharpGeneratorDriver.Create(
++                generators: [generator.AsSourceGenerator()],
++                additionalTexts: [baselineText],
++                optionsProvider: CompilationHelper.DriftEnabledOptions());
++            driver = driver.RunGenerators(compilation, ct);
++            return [.. driver.GetRunResult().GeneratedTrees
++                .Select(t => t.GetText(ct).ToString())
++                .OrderBy(s => s, StringComparer.Ordinal)];
++        }
++        finally {
++            CultureInfo.CurrentCulture = prior;
++            CultureInfo.CurrentUICulture = priorUi;
++        }
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Seam/DriftSeamPublicSurfaceContractTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Seam/DriftSeamPublicSurfaceContractTests.cs
+new file mode 100644
+index 0000000..9173115
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Seam/DriftSeamPublicSurfaceContractTests.cs
+@@ -0,0 +1,64 @@
++using System.Reflection;
++using System.Runtime.CompilerServices;
++
++using Hexalith.FrontComposer.SourceTools.Parsing;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Seam;
++
++/// <summary>
++/// AC17 / T1 + T3 — comparison seam stays internal. Story 9-1 must NOT introduce any public
++/// CLI verb, command UX, code fix, source rewrite, or public package API. Story 9-2 owns the
++/// public CLI; in 9-1 the seam is exposed only via <c>InternalsVisibleTo</c>. Reflective
++/// contract test: every newly-introduced drift type that ships in
++/// <c>Hexalith.FrontComposer.SourceTools</c> must be <see cref="Type.IsNotPublic"/>.
++/// </summary>
++public sealed class DriftSeamPublicSurfaceContractTests {
++    private const string SkipReason = "RED-PHASE: T1 + T3 + T4 — drift surface introduction pending.";
++
++    private static readonly string[] ForbiddenPublicTypeSubstrings = [
++        "Drift",
++        "BaselineCli",
++        "BaselineMigration",
++        "BaselineUpdate",
++    ];
++
++    [Fact()]
++    public void NoPublicTypeWithDriftKeyword_ShipsInSourceToolsAssembly() {
++        Assembly sourceTools = typeof(DomainModel).Assembly;
++        Type[] publicDriftTypes = [.. sourceTools.GetTypes()
++            .Where(t => t.IsPublic
++                     && ForbiddenPublicTypeSubstrings.Any(token => t.Name.Contains(token, StringComparison.Ordinal)))];
++
++        publicDriftTypes.ShouldBeEmpty(
++            $"AC17 — no drift-related type may be public in 9-1: found {string.Join(", ", publicDriftTypes.Select(t => t.FullName))}.");
++    }
++
++    [Fact()]
++    public void NoPublicCommandLineEntryPoint_ShipsInSourceToolsAssembly() {
++        Assembly sourceTools = typeof(DomainModel).Assembly;
++        Type[] cliTypes = [.. sourceTools.GetTypes()
++            .Where(t => t.IsPublic
++                     && (t.GetMethods().Any(m => m.Name == "Main" && m.GetParameters().Length == 1
++                                              && m.GetParameters()[0].ParameterType == typeof(string[]))
++                      || t.GetCustomAttributes().Any(a => a.GetType().Name.Contains("Command", StringComparison.Ordinal))))];
++
++        cliTypes.ShouldBeEmpty(
++            $"AC17 — Story 9-2 owns the CLI; 9-1 must not ship public command entry points: {string.Join(", ", cliTypes.Select(t => t.FullName))}.");
++    }
++
++    [Fact()]
++    public void DriftComparisonService_IsAccessibleOnlyViaInternalsVisibleTo() {
++        Assembly sourceTools = typeof(DomainModel).Assembly;
++        Type? service = sourceTools.GetTypes().FirstOrDefault(t => t.Name == "DriftComparisonService");
++        service.ShouldNotBeNull("AC17 — the seam must exist as an internal type once T3 lands.");
++        service!.IsPublic.ShouldBeFalse("AC17 — the seam must remain internal.");
++
++        // The test-assembly access is granted via [InternalsVisibleTo("Hexalith.FrontComposer.SourceTools.Tests")].
++        IEnumerable<InternalsVisibleToAttribute> ivt = sourceTools.GetCustomAttributes<InternalsVisibleToAttribute>();
++        ivt.Any(a => a.AssemblyName.StartsWith("Hexalith.FrontComposer.SourceTools.Tests", StringComparison.Ordinal))
++            .ShouldBeTrue("AC17 — InternalsVisibleTo must be wired so the test project can reach the seam.");
++    }
++}
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs
+new file mode 100644
+index 0000000..c3b7f10
+--- /dev/null
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs
+@@ -0,0 +1,100 @@
++using Microsoft.CodeAnalysis;
++using Microsoft.CodeAnalysis.CSharp;
++using Microsoft.CodeAnalysis.Diagnostics;
++
++using Shouldly;
++using Xunit;
++
++namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.TrimAot;
++
++/// <summary>
++/// AC14 + AC15 / T6 — narrow trim/AOT reflection-catalog evidence diagnostic.
++/// AC14: when <c>build_property.PublishTrimmed=true</c> AND no adopter-supplied
++/// <c>IActionQueueProjectionCatalog</c> override is statically observable, emit a Warning
++/// pointing to the source-generated catalog path. AC15: when adopter override evidence is
++/// not statically knowable (no IActionQueueProjectionCatalog symbol visible to SourceTools),
++/// stay silent — runtime validators are authoritative.
++/// </summary>
++public sealed class TrimAotReflectionCatalogDiagnosticTests {
++    private const string SkipReason = "RED-PHASE: T6 — trim/AOT reflection-catalog evidence diagnostic not yet introduced.";
++
++    [Fact()]
++    public void PublishTrimmedTrue_AndNoOverrideEvidence_EmitsWarning_PointingAtCatalogPath() {
++        const string source = """
++            using Hexalith.FrontComposer.Contracts.Attributes;
++            namespace TestDomain;
++            [BoundedContext("Orders")]
++            [Projection]
++            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
++            """;
++
++        IReadOnlyList<Diagnostic> diagnostics = Run(source, publishTrimmed: true);
++
++        Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
++                                                        && d.GetMessage().Contains("trim", StringComparison.OrdinalIgnoreCase));
++        trim.ShouldNotBeNull("AC14 — trim/AOT advisory must fire when PublishTrimmed=true with default reflection catalog.");
++        trim!.Severity.ShouldBe(DiagnosticSeverity.Warning);
++        trim.GetMessage().ShouldContain("IActionQueueProjectionCatalog", Case.Insensitive);
++        trim.GetMessage().ShouldContain("source-generated", Case.Insensitive);
++    }
++
++    [Fact()]
++    public void PublishTrimmedFalse_NoDiagnostic() {
++        const string source = """
++            using Hexalith.FrontComposer.Contracts.Attributes;
++            namespace TestDomain;
++            [BoundedContext("Orders")]
++            [Projection]
++            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
++            """;
++
++        IReadOnlyList<Diagnostic> diagnostics = Run(source, publishTrimmed: false);
++
++        diagnostics.Any(d => d.GetMessage().Contains("trim", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
++    }
++
++    [Fact()]
++    public void HostPolicyCatalogUnknownAtBuildTime_NoDiagnostic_RuntimeAuthoritative() {
++        // AC15 — when there is NO statically visible IActionQueueProjectionCatalog override
++        // candidate AND there is also no statically visible reflection-catalog reference, the
++        // analyzer must be silent. Runtime validators are authoritative.
++        const string sourceWithoutAnyCatalogReference = """
++            namespace TestDomain;
++            public class IsolatedDomainObject { public string Name { get; set; } = string.Empty; }
++            """;
++
++        IReadOnlyList<Diagnostic> diagnostics = Run(sourceWithoutAnyCatalogReference, publishTrimmed: true);
++
++        diagnostics.Any(d => d.GetMessage().Contains("trim", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse(
++            "AC15 — no diagnostic when build-time evidence is insufficient.");
++    }
++
++    private static IReadOnlyList<Diagnostic> Run(string source, bool publishTrimmed) {
++        CancellationToken ct = TestContext.Current.CancellationToken;
++        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
++        FrontComposerGenerator generator = new();
++        AnalyzerConfigOptionsProvider options = new InMemoryOptions(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
++            ["build_property.PublishTrimmed"] = publishTrimmed ? "true" : "false",
++        });
++
++        GeneratorDriver driver = CSharpGeneratorDriver.Create(
++            generators: [generator.AsSourceGenerator()],
++            additionalTexts: [],
++            optionsProvider: options);
++        driver = driver.RunGenerators(compilation, ct);
++        return driver.GetRunResult().Diagnostics;
++    }
++
++    private sealed class InMemoryOptions(IReadOnlyDictionary<string, string> values) : AnalyzerConfigOptionsProvider {
++        public override AnalyzerConfigOptions GlobalOptions { get; } = new InMemory(values);
++        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => GlobalOptions;
++        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => GlobalOptions;
++
++        private sealed class InMemory(IReadOnlyDictionary<string, string> values) : AnalyzerConfigOptions {
++            public override bool TryGetValue(string key, out string value) {
++                if (values.TryGetValue(key, out string? v)) { value = v; return true; }
++                value = string.Empty; return false;
++            }
++        }
++    }
++}

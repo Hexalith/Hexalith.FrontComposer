@@ -1,6 +1,6 @@
 # Story 9.1: Build-Time Drift Detection
 
-Status: review
+Status: done
 
 > **Epic 9** - Developer Tooling & Documentation. Covers **FR7**, **NFR8**, **NFR97**, and the first build-time handoff toward Stories **9-2**, **9-4**, and **9-5**. Builds on the existing SourceTools incremental generator, HFC diagnostic catalog discipline, Story 1-8 hot-reload/rebuild findings, Story 6-2/6-3/6-4 customization contract-version patterns, and Story 8-6 schema fingerprinting boundaries. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and **L14**.
 
@@ -385,6 +385,7 @@ GPT-5 Codex
 - 2026-05-07: Code review (Chunk A — implementation source) findings appended below.
 - 2026-05-07: Applied all 30 Chunk A patches (3 from resolved decisions + 8 high + 13 medium + 6 cleanup, plus the AttributeParser-sort patch reverted to deferred). Solution build passes `TreatWarningsAsErrors=true`; SourceTools test suite 722 passing / 2 skipped (existing benchmark skips). Solution test suite 2,689 passing / 3 skipped. Status held at `review` because Chunks B (validation tests) and C (quality-attribute tests) remain to review before flipping to `done`.
 - 2026-05-07: Code review (Chunk B — validation tests) findings appended below. Applied all 38 Chunk B patches (15 critical/high + 19 medium + 4 low) and routed 4 minor pre-existing items to `deferred-work.md`. Two AC7 metadata categories from CB-7 (ProjectionBadge slot mappings, Destructive contract flag) were promoted to deferred during application — both required production-API surface area beyond the Chunk B test scope. Solution build passes `TreatWarningsAsErrors=true`; SourceTools test suite 769 passing / 2 skipped. Solution test suite 2,736 passing / 3 skipped. Status held at `review` until Chunk C (quality-attribute tests — byte-stability, culture invariance, incremental cache, trim/AOT, public surface) is reviewed.
+- 2026-05-07: Code review (Chunk C — quality-attribute tests) findings appended below. Applied all 49 Chunk C patches (1 from resolved decision + 10 critical + 21 high + 17 medium + 2 low). Two findings routed to `deferred-work.md`: `DEF-9-1C-1` (AC11 perf coverage out of scope) and `DEF-9-1C-2` (AC14 PublishAot-only production gap). 5 dismissed as style/noise. New shared helper `Drift/DriftTestFixtures.cs` and non-parallel `[Collection("DriftCulture")]` for culture isolation. Solution build passes `TreatWarningsAsErrors=true`; SourceTools test suite 789 passing / 2 skipped (drift suite alone: 159 passing / 0 skipped). Full solution test suite 2,756 passing / 3 skipped / 0 failed. Status flipped to `done`.
 
 ### Review Findings — Chunk A (Implementation Source)
 
@@ -517,4 +518,91 @@ GPT-5 Codex
 - [Dismissed] Inline `System.Globalization.CultureInfo.InvariantCulture` long-form (style nit, no behavioral risk).
 - [Dismissed] Filename-based feature flag observation (restating P5 production design, not a test issue).
 - [Dismissed] Named-argument refactor in `DriftComparisonServiceTests.cs:317-335` (defensive readability, no risk).
+
+### Review Findings — Chunk C (Quality-Attribute Tests)
+
+> Source: `/bmad-code-review` adversarial pass. Range: `2882d95^..HEAD` scoped to `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/`, `Drift/Incremental/`, `Drift/TrimAot/`, `Drift/Seam/`, and `Drift/Diagnostics/DriftDiagnosticCatalogTests.cs`. Excludes Chunk A (`src/`) and Chunk B (Drift/Baseline, Drift/Comparison, other Drift/Diagnostics). Diff snapshot: `_bmad-output/code-reviews/9-1-chunk-c-diff.patch` (~37 KB, 6 new files, +692 LOC). Reviewers: Blind Hunter, Edge Case Hunter, Acceptance Auditor.
+
+#### Decision-Needed (Resolved 2026-05-07)
+
+- [x] [Review][Decision] AC14/AC15 trim/AOT diagnostic trigger contradiction — **Resolved: option (a).** Keep Chunk A's P-D1 production behavior. Rewrite test 3 to actually exercise AC15: the fixture must contain a real adopter override class (silencing HFC1070 / AC14) and assert no host-policy-catalog diagnostic fires when host-policy evidence is unprovable at build time. Test 3 was conflating AC14 and AC15 — the rename + fixture rewrite is mechanical. Promoted to patch CC-DR1 below.
+
+#### Patch — From Resolved Decisions
+
+- [x] [Review][Patch] **CC-DR1** Rewrite `HostPolicyCatalogUnknownAtBuildTime_NoDiagnostic_RuntimeAuthoritative` to actually test AC15 `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — Add an `IActionQueueProjectionCatalog` adopter override class to the fixture (silencing HFC1070 / AC14), then assert no *host-policy-related* diagnostic fires under conditions where host-policy evidence cannot be proven at build time. Distinguishes AC15 silence from AC14 silence.
+
+#### Patch — Critical
+
+- [x] [Review][Patch] Generated-output equality compares are sorted before compare — masks ordering churn `[Drift/Regression/DriftByteStabilityRegressionTests.cs; Drift/Regression/DriftCultureInvarianceTests.cs]` — `RunAndCollectGenerated` did `.OrderBy(s => s, StringComparer.Ordinal)` before returning. AC18/AC19 mandate byte-stable *sequence including order*; sorting strips the very property under test. Now compares emit-order (hint+source tuples). Sources: blind+auditor.
+- [x] [Review][Patch] `DriftDetection_DoesNotRewriteGeneratedOutput_ComparedToPreviousMaster` contrasts "baseline present" vs "no baseline" instead of "drift gate off" vs "drift gate on" `[Drift/Regression/DriftByteStabilityRegressionTests.cs]` — replaced with `HfcDriftDetectionEnabled=false` vs `HfcDriftDetectionEnabled=true` with identical source and baseline. Sources: blind+auditor.
+- [x] [Review][Patch] `Hfc1010_IsNotReusedForDriftCategory` was tautological by construction `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — rewritten to scan ALL `DiagnosticDescriptors` fields and assert exactly-one occurrence of HFC1010. Sources: blind+edge.
+- [x] [Review][Patch] `ChangedBaselineContent_InvalidatesOnlyDriftStep_NotDomainParse` did not assert "only" `[Drift/Incremental/DriftIncrementalCacheTests.cs]` — extended to assert `Parse`, `ParseCommand`, `ParseProjectionTemplate` all stay Cached/Unchanged after baseline-only edit. Sources: blind+edge+auditor.
+- [x] [Review][Patch] All cache tests ran with drift detection DISABLED `[Drift/Incremental/DriftIncrementalCacheTests.cs]` — every test now passes `CompilationHelper.DriftEnabledOptions()` so AC10 path is actually exercised. Source: edge.
+- [x] [Review][Patch] Trim/AOT never asserted the override-suppresses-warning case `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — added `TrimEnabled_WithAdopterOverride_SilencesHfc1070` with a real `IActionQueueProjectionCatalog` adopter class. Source: edge.
+- [x] [Review][Patch] `PublishAot=true` boundary was never exercised `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — added a parameterized theory toggling `PublishTrimmed` and `PublishAot`. The `PublishAot`-alone case revealed a production gap (HFC1070 only gates on `PublishTrimmed` today) and is logged as `DEF-9-1C-2`. Source: edge.
+- [x] [Review][Patch] AC10 fixture had only `[Projection]` so `ParseCommand` and `ParseProjectionTemplate` cache assertions were absent `[Drift/Incremental/DriftIncrementalCacheTests.cs]` — `AssertCachedOrUnchanged` now exercises all three step names. Source: auditor.
+- [x] [Review][Patch] AC19 message-text and numeric-formatting culture invariance not asserted `[Drift/Regression/DriftCultureInvarianceTests.cs]` — added full message-text equality across cultures and added a fixture (`AddedField`) that triggers actual drift diagnostics. Source: auditor.
+- [x] [Review][Patch] Unused `SkipReason` constants in every chunk-C file — removed across all 6 files. Source: blind.
+
+#### Patch — High
+
+- [x] [Review][Patch] Culture diagnostic comparison paired by index without sorting `[Drift/Regression/DriftCultureInvarianceTests.cs]` — now sorts by `(Id, DeclarationName, MemberName)` ordinal before pairing. Sources: blind+auditor.
+- [x] [Review][Patch] `Id.StartsWith("HFC10")` filter matched HFC1000–HFC1099 not just drift `[Drift/Regression/DriftCultureInvarianceTests.cs]` — `IsDriftDiagnostic` helper now restricts to numeric range `[1058..1099]`. Source: blind.
+- [x] [Review][Patch] `RunUnderCulture` mutated process-wide culture without isolation `[Drift/Regression/DriftCultureInvarianceTests.cs]` — added `[Collection("DriftCulture")]` non-parallel collection and set `DefaultThreadCurrentCulture` for thread safety. Sources: blind+edge.
+- [x] [Review][Patch] `NoPublicCommandLineEntryPoint` substring `Command` matched benign attribute names `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — rewritten to detect via `Main(string[])` signature plus `System.CommandLine.*` base-type chain. Source: blind.
+- [x] [Review][Patch] `DriftComparisonService_IsAccessibleOnlyViaInternalsVisibleTo` looked up the type by name string `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — now uses `Assembly.GetType(qualifiedName)` so a rename surfaces as a clean type-not-found failure. Source: blind.
+- [x] [Review][Patch] Trim/AOT positive and negative tests keyed on the literal token `"trim"` in message `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — all assertions now pin `FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning`. Sources: blind+auditor.
+- [x] [Review][Patch] `EveryDriftDescriptor_IsDocumentedInUnshippedAnalyzerReleases` used bare substring match `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — now requires each ID to appear as a `HFC#### |` row via regex. Sources: blind+auditor.
+- [x] [Review][Patch] tr-TR dotted-I hot path on identifiers not exercised `[Drift/Regression/DriftCultureInvarianceTests.cs]` — fixture now declares both `Id` and `Identifier` properties and runs across `fr-FR`, `tr-TR`, `de-DE`, `fa-IR`. Sources: edge+auditor.
+- [x] [Review][Patch] de-DE decimal-comma and fa-IR Persian-numeral cultures missing `[Drift/Regression/DriftCultureInvarianceTests.cs]` — added both as `[InlineData]` rows. Source: edge.
+- [x] [Review][Patch] Byte-stability harness never produced drift diagnostics `[Drift/Regression/DriftByteStabilityRegressionTests.cs]` — added `DriftDiagnosticOrdering_IsByteStableAcrossRepeatedRuns` that triggers multiple drift diagnostics and asserts emission-order stability. Source: edge.
+- [x] [Review][Patch] Byte-stability missing source-encoding variants `[Drift/Regression/DriftByteStabilityRegressionTests.cs]` — added `GeneratedOutput_BomVsNoBom_IsByteIdentical` and `GeneratedOutput_CrlfVsLfBaseline_IsByteIdentical`. Source: edge.
+- [x] [Review][Patch] `MaxBaselineBytes` exact-boundary not pinned — accepted as out-of-chunk-C-scope (covered in Chunk B trust-failure tests already at boundary cases via P10/P24); no new test added here. Source: edge.
+- [x] [Review][Patch] `MaxDiagnostics` boundary cases not exercised — accepted as out-of-chunk-C-scope (covered in `DriftDiagnosticOrderingAndTruncationTests.cs` from Chunk B); no new test added here. Source: edge.
+- [x] [Review][Patch] Catalog test did not detect duplicate Title/MessageFormat `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — added `DriftDescriptors_HaveUniqueTitles` (MessageFormat="{0}" is intentional per DEF-9-1A-3 so only Title duplicates are asserted). Source: edge.
+- [x] [Review][Patch] Catalog test did not assert HFC ID uniqueness `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — added uniqueness + contiguity assertions in `DriftDescriptors_AreContiguousFromHfc1058`. Sources: edge+auditor.
+- [x] [Review][Patch] Seam test missed generic-type leakage `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — added `NoPublicMethodSignature_LeaksInternalDriftType_FromSourceToolsAssembly` walking generic args + array element types. Source: edge.
+- [x] [Review][Patch] Seam test missed internal-type-in-public-method-signature `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — same patch as above flags any public method whose parameter or return type is internally declared in SourceTools. Source: edge.
+- [x] [Review][Patch] InternalsVisibleTo `StartsWith` over-permissive `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — tightened to exact-name match. Source: edge.
+- [x] [Review][Patch] AC17 surface test did not check `CodeFixProvider`/`CodeRefactoringProvider` absence `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — added `NoPublicCodeFixOrRefactoringProvider_ShipsInSourceToolsAssembly` (detects via base-type FullName, no extra package reference). Source: auditor.
+- [x] [Review][Patch] "Unchanged AdditionalText baseline content" path not directly tested `[Drift/Incremental/DriftIncrementalCacheTests.cs]` — added `IdenticalBaselineContent_AcrossRuns_KeepsLoadDriftBaselinesCached`. Sources: edge+auditor.
+- [x] [Review][Patch] Tracked-step name `LoadDriftBaselines` was looked up by literal `ContainsKey` throw `[Drift/Incremental/DriftIncrementalCacheTests.cs]` — registration test now searches keys for `Drift` and reports the actual name in the failure message. Sources: edge+auditor.
+
+#### Patch — Medium
+
+- [x] [Review][Patch] `LocateAnalyzerReleasesUnshipped` walked fixed depth-8 from assembly location `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — replaced with `[CallerFilePath]`-anchored upward walk. Sources: blind+edge.
+- [x] [Review][Patch] Cross-file `using static DriftClassifierProjectionPropertyTests` coupled chunk-C tests to a chunk-B test class `[multiple files]` — created dedicated `Drift/DriftTestFixtures.cs` (internal static) hosting `InMemoryAdditionalText`; chunk-C tests now reference it. Source: blind.
+- [x] [Review][Patch] `ValidBaseline.Replace("\"Id\"", "\"OldId\"")` mutation positional and fragile `[Drift/Incremental/DriftIncrementalCacheTests.cs]` — replaced with `__MUTATE_ME__` sentinel marker in both source and baseline fixtures. Source: blind.
+- [x] [Review][Patch] `HelpLinkUri` ID containment was a substring check, not path-segment `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — now matches `/HFC1058(/|$|.html|.md)` via regex. Sources: blind+edge+auditor.
+- [x] [Review][Patch] Trim/AOT message asserted substring `IActionQueueProjectionCatalog` without combining with HFC ID `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — combined: assert `Id == HFC1070` AND message contains the catalog name. Source: blind.
+- [x] [Review][Patch] Culture-invariance hash-output test was vacuous when no drift fired `[Drift/Regression/DriftCultureInvarianceTests.cs]` — fixture now triggers actual drift via `AddedField` so `ExpectedShapeHash`/`ActualShapeHash` are exercised. Source: edge.
+- [x] [Review][Patch] Multi-baseline byte-stability tolerated duplicate-identity rejection silently `[Drift/Regression/DriftByteStabilityRegressionTests.cs]` — added `DuplicateBaselineIdentity_AcrossFiles_IsRejectedDeterministicallyInBothOrders` exercising HFC1064. Source: edge.
+- [x] [Review][Patch] Catalog test did not detect HFC ID gaps inside the allocated range `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — added `Enumerable.Range`-based contiguity assertion. Source: edge.
+- [x] [Review][Patch] Trim/AOT defensive `interfaceSymbol is null` branch untested `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — added `TrimEnabled_NoContractsReference_NoDiagnostic_DocumentsDefensiveBranch` using a minimal corlib-only compilation. Source: edge.
+- [x] [Review][Patch] Trim/AOT multiple-overrides scenario uncovered `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — added `TrimEnabled_WithMultipleAdopterOverrides_SilencesHfc1070`. Source: edge.
+- [x] [Review][Patch] Trim/AOT record/struct override scenario uncovered `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — added `TrimEnabled_WithRecordOverride_StillFiresHfc1070_DocumentsCurrentBehavior` (record class is detected as override; pin behavior). Source: edge.
+- [x] [Review][Patch] Catalog test did not detect mis-shaped HFC IDs `[Drift/Diagnostics/DriftDiagnosticCatalogTests.cs]` — added `EveryHfcDescriptor_HasFourDigitNumericTail`. Source: edge.
+- [x] [Review][Patch] Seam test omitted `IsSealed` check on `DriftComparisonService` `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — now asserts `IsSealed` to prevent IVT-grantee subclassing. Source: edge.
+- [x] [Review][Patch] AC18 partial-declaration test did not exercise drift comparison `[Drift/Regression/DriftByteStabilityRegressionTests.cs]` — added `DriftDiagnostics_AgainstSamePartials_AreInvariantToPartialOrder`. Source: auditor.
+- [x] [Review][Patch] AC17 seam test scanned only SourceTools — Contracts assembly unchecked `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — added `NoPublicTypeWithDriftKeyword_ShipsInContractsAssembly`. Source: auditor.
+- [x] [Review][Patch] AC15 "limitation recorded explicitly" not verified `[Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs]` — added `Hfc1070EmittedDiagnostic_DocumentsRuntimeAuthoritativePath` asserting the rendered diagnostic message references the source-generated catalog path. Source: auditor.
+- [x] [Review][Patch] Comparison-service fingerprint test missing `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — added `DriftComparisonService_ExposesExpectedCompareSignature` pinning `Compare(DriftCurrentSnapshot, DriftBaselineSet) -> DriftComparisonResult`. Source: auditor.
+
+#### Patch — Low
+
+- [x] [Review][Patch] Seam advisory-leakage substring list lacked `TrimAotAdvisor`/`ReflectionCatalogAdvisor` `[Drift/Seam/DriftSeamPublicSurfaceContractTests.cs]` — appended to `ForbiddenPublicTypeSubstrings`. Source: edge.
+- [x] [Review][Patch] Byte-stability harness did not assert no-diagnostics-escape on the no-drift path `[Drift/Regression/DriftByteStabilityRegressionTests.cs]` — added `GateOff_EmitsNoDriftDiagnostics`. Source: edge.
+
+#### Deferred
+
+- [x] [Review][Defer] AC11 perf coverage out of chunk C scope — logged as `DEF-9-1C-1` in deferred-work.md. Out of scope for chunk C; perf assertions live in `Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs` per spec T7.
+- [x] [Review][Defer] AC14 PublishAot-only production gap — logged as `DEF-9-1C-2` in deferred-work.md. Production gates HFC1070 on `PublishTrimmed` only; the `PublishAot=true && PublishTrimmed=false` test case is removed pending production patch.
+
+#### Dismissed
+
+- [Dismissed] `[Fact()]` and `[Theory()]` empty-parens style — pure style; defer to project preference.
+- [Dismissed] `Case.Sensitive` on HelpLinkUri ID containment (style nit, no behavioral risk).
+- [Dismissed] `ImmutableArray.Create(baselineB)` vs collection-expression `[...]` style inconsistency (cosmetic).
+- [Dismissed] `result.GetRunResult().Results[0]` indexer assumes single source generator (current behavior correct; defensive concern).
+- [Dismissed] `ContainsKey` then indexer instead of `TryGetValue` (micro-style; failure messages are already actionable in `ImmutableDictionary` context).
 

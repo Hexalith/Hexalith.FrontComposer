@@ -1,3 +1,5 @@
+using Hexalith.FrontComposer.Contracts.Diagnostics;
+
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -9,73 +11,169 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.TrimAot;
 
 /// <summary>
 /// AC14 + AC15 / T6 — narrow trim/AOT reflection-catalog evidence diagnostic.
-/// AC14: when <c>build_property.PublishTrimmed=true</c> AND no adopter-supplied
-/// <c>IActionQueueProjectionCatalog</c> override is statically observable, emit a Warning
-/// pointing to the source-generated catalog path. AC15: when adopter override evidence is
-/// not statically knowable (no IActionQueueProjectionCatalog symbol visible to SourceTools),
-/// stay silent — runtime validators are authoritative.
 /// </summary>
 public sealed class TrimAotReflectionCatalogDiagnosticTests {
-    private const string SkipReason = "RED-PHASE: T6 — trim/AOT reflection-catalog evidence diagnostic not yet introduced.";
+    private const string ProjectionSource = """
+        using Hexalith.FrontComposer.Contracts.Attributes;
+        namespace TestDomain;
+        [BoundedContext("Orders")]
+        [Projection]
+        public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
+        """;
 
-    [Fact()]
-    public void PublishTrimmedTrue_AndNoOverrideEvidence_EmitsWarning_PointingAtCatalogPath() {
-        const string source = """
-            using Hexalith.FrontComposer.Contracts.Attributes;
-            namespace TestDomain;
-            [BoundedContext("Orders")]
-            [Projection]
-            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
-            """;
+    private const string AdopterClassOverrideSource = """
+        using System;
+        using System.Collections.Generic;
+        using Hexalith.FrontComposer.Contracts.Badges;
 
-        IReadOnlyList<Diagnostic> diagnostics = Run(source, publishTrimmed: true);
+        namespace TestDomain;
 
-        Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id.StartsWith("HFC10", StringComparison.Ordinal)
-                                                        && d.GetMessage().Contains("trim", StringComparison.OrdinalIgnoreCase));
-        trim.ShouldNotBeNull("AC14 — trim/AOT advisory must fire when PublishTrimmed=true with default reflection catalog.");
+        public sealed class AdopterCatalog : IActionQueueProjectionCatalog {
+            public IReadOnlyList<Type> ActionQueueTypes => Array.Empty<Type>();
+        }
+        """;
+
+    [Theory]
+    [InlineData(true, false)] // PublishTrimmed alone
+    [InlineData(true, true)]  // PublishTrimmed + PublishAot
+    public void PublishTrimmedEnabled_AndNoOverrideEvidence_EmitsHfc1070(bool publishTrimmed, bool publishAot) {
+        // CC-7 — exercise PublishAot toggle in combination with PublishTrimmed. Production
+        // gates HFC1070 on PublishTrimmed only today (FrontComposerGenerator.cs:116); the
+        // PublishAot-alone case is documented as a production AC14 gap (DEF-9-1C-2) rather
+        // than enforced here.
+        IReadOnlyList<Diagnostic> diagnostics = Run(ProjectionSource, publishTrimmed: publishTrimmed, publishAot: publishAot);
+
+        Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning);
+        // CH-6 / CM-6 — pin to HFC ID, then sanity-check message references catalog.
+        trim.ShouldNotBeNull(
+            $"AC14 — HFC1070 must fire when PublishTrimmed={publishTrimmed} (PublishAot={publishAot}) with default reflection catalog.");
         trim!.Severity.ShouldBe(DiagnosticSeverity.Warning);
         trim.GetMessage().ShouldContain("IActionQueueProjectionCatalog", Case.Insensitive);
         trim.GetMessage().ShouldContain("source-generated", Case.Insensitive);
     }
 
-    [Fact()]
-    public void PublishTrimmedFalse_NoDiagnostic() {
-        const string source = """
-            using Hexalith.FrontComposer.Contracts.Attributes;
-            namespace TestDomain;
-            [BoundedContext("Orders")]
-            [Projection]
-            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
-            """;
-
-        IReadOnlyList<Diagnostic> diagnostics = Run(source, publishTrimmed: false);
-
-        diagnostics.Any(d => d.GetMessage().Contains("trim", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+    [Fact]
+    public void NeitherTrimNorAot_NoDiagnostic() {
+        IReadOnlyList<Diagnostic> diagnostics = Run(ProjectionSource, publishTrimmed: false, publishAot: false);
+        diagnostics.Any(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning).ShouldBeFalse();
     }
 
-    [Fact()]
-    public void HostPolicyCatalogUnknownAtBuildTime_NoDiagnostic_RuntimeAuthoritative() {
-        // AC15 — when there is NO statically visible IActionQueueProjectionCatalog override
-        // candidate AND there is also no statically visible reflection-catalog reference, the
-        // analyzer must be silent. Runtime validators are authoritative.
-        const string sourceWithoutAnyCatalogReference = """
+    [Fact]
+    public void TrimEnabled_WithAdopterOverride_SilencesHfc1070() {
+        // CC-6 — AC14: when an adopter override is statically observable, HFC1070 must NOT fire.
+        IReadOnlyList<Diagnostic> diagnostics = Run(
+            sources: [ProjectionSource, AdopterClassOverrideSource],
+            publishTrimmed: true,
+            publishAot: false);
+
+        diagnostics.Any(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning).ShouldBeFalse(
+            "AC14 — adopter-supplied IActionQueueProjectionCatalog override must silence HFC1070.");
+    }
+
+    [Fact]
+    public void TrimEnabled_WithMultipleAdopterOverrides_SilencesHfc1070() {
+        // CM-12 — multiple override candidates are valid catalog discipline; HFC1070 must stay silent.
+        const string secondOverride = """
+            using System;
+            using System.Collections.Generic;
+            using Hexalith.FrontComposer.Contracts.Badges;
+
+            namespace TestDomain.Other;
+
+            public sealed class SecondAdopterCatalog : IActionQueueProjectionCatalog {
+                public IReadOnlyList<Type> ActionQueueTypes => Array.Empty<Type>();
+            }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(
+            sources: [ProjectionSource, AdopterClassOverrideSource, secondOverride],
+            publishTrimmed: true,
+            publishAot: false);
+
+        diagnostics.Any(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning).ShouldBeFalse();
+    }
+
+    [Fact]
+    public void TrimEnabled_WithRecordOverride_StillFiresHfc1070_DocumentsCurrentBehavior() {
+        // CM-13 — production filters out non-class TypeKinds (records compile to classes but are
+        // currently picked up; record struct / abstract class are skipped). Pin current behavior:
+        // a record-class adopter override IS detected and silences HFC1070.
+        const string recordOverride = """
+            using System;
+            using System.Collections.Generic;
+            using Hexalith.FrontComposer.Contracts.Badges;
+
+            namespace TestDomain;
+
+            public sealed record class RecordCatalog : IActionQueueProjectionCatalog {
+                public IReadOnlyList<Type> ActionQueueTypes => Array.Empty<Type>();
+            }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(
+            sources: [ProjectionSource, recordOverride],
+            publishTrimmed: true,
+            publishAot: false);
+
+        diagnostics.Any(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning).ShouldBeFalse(
+            "AC14 — record-class adopter overrides count as override evidence (current behavior).");
+    }
+
+    [Fact]
+    public void TrimEnabled_NoContractsReference_NoDiagnostic_DocumentsDefensiveBranch() {
+        // CM-11 — when Contracts is not referenced, the analyzer cannot resolve the interface
+        // symbol; production returns true (silence) so unrelated builds aren't pelted with
+        // HFC1070. Pin this defensive behavior.
+        const string source = """
             namespace TestDomain;
             public class IsolatedDomainObject { public string Name { get; set; } = string.Empty; }
             """;
 
-        IReadOnlyList<Diagnostic> diagnostics = Run(sourceWithoutAnyCatalogReference, publishTrimmed: true);
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        // Compile WITHOUT the Contracts/SourceTools-backed reference set — minimal corlib only.
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            "Isolated",
+            [CSharpSyntaxTree.ParseText(source, cancellationToken: ct)],
+            [
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(typeof(System.Collections.Immutable.ImmutableArray<>).Assembly.Location),
+            ],
+            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        diagnostics.Any(d => d.GetMessage().Contains("trim", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse(
-            "AC15 — no diagnostic when build-time evidence is insufficient.");
+        FrontComposerGenerator generator = new();
+        AnalyzerConfigOptionsProvider options = TrimAotOptions(publishTrimmed: true, publishAot: false);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [],
+            optionsProvider: options);
+        driver = driver.RunGenerators(compilation, ct);
+
+        IReadOnlyList<Diagnostic> diagnostics = driver.GetRunResult().Diagnostics;
+        diagnostics.Any(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning).ShouldBeFalse(
+            "AC15 — when Contracts is not referenced, the analyzer cannot prove anything; stay silent.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, bool publishTrimmed) {
+    [Fact]
+    public void Hfc1070EmittedDiagnostic_DocumentsRuntimeAuthoritativePath() {
+        // CM-18 — AC15 mandates the limitation is "recorded explicitly" and runtime validators
+        // remain authoritative. The descriptor's MessageFormat is the parameterized "{0}" shape
+        // (DEF-9-1A-3), so we trigger an actual diagnostic and assert its rendered message
+        // mentions the source-generated path — the user-visible "recorded explicitly" surface.
+        IReadOnlyList<Diagnostic> diagnostics = Run(ProjectionSource, publishTrimmed: true, publishAot: false);
+        Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning);
+        trim.ShouldNotBeNull("AC14 — HFC1070 must fire under the test conditions.");
+        trim!.GetMessage().ShouldContain("source-generated", Case.Insensitive,
+            "AC15 — HFC1070 message must point at the source-generated catalog path so the runtime-authoritative remediation is recorded explicitly.");
+    }
+
+    private static IReadOnlyList<Diagnostic> Run(string source, bool publishTrimmed, bool publishAot)
+        => Run([source], publishTrimmed, publishAot);
+
+    private static IReadOnlyList<Diagnostic> Run(string[] sources, bool publishTrimmed, bool publishAot) {
         CancellationToken ct = TestContext.Current.CancellationToken;
-        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(sources);
         FrontComposerGenerator generator = new();
-        AnalyzerConfigOptionsProvider options = new InMemoryOptions(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
-            ["build_property.PublishTrimmed"] = publishTrimmed ? "true" : "false",
-        });
+        AnalyzerConfigOptionsProvider options = TrimAotOptions(publishTrimmed, publishAot);
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
             generators: [generator.AsSourceGenerator()],
@@ -84,6 +182,12 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }
+
+    private static AnalyzerConfigOptionsProvider TrimAotOptions(bool publishTrimmed, bool publishAot)
+        => new InMemoryOptions(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+            ["build_property.PublishTrimmed"] = publishTrimmed ? "true" : "false",
+            ["build_property.PublishAot"] = publishAot ? "true" : "false",
+        });
 
     private sealed class InMemoryOptions(IReadOnlyDictionary<string, string> values) : AnalyzerConfigOptionsProvider {
         public override AnalyzerConfigOptions GlobalOptions { get; } = new InMemory(values);

@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-07 (story 9-1 build-time drift detection completed; status set to review. Validation: SourceTools tests 723 passed / 2 benchmark skips; full solution build TreatWarningsAsErrors=true 0 warnings / 0 errors; solution tests passed with existing MCP skip and SourceTools benchmark skips.)"
+last_updated: "2026-05-07 (story 9-1 build-time drift detection chunk-C review applied; status flipped to done. Validation: SourceTools tests 789 passed / 2 benchmark skips; full solution build TreatWarningsAsErrors=true 0 warnings / 0 errors; full solution test suite 2,756 passing / 3 skipped / 0 failed.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -126,7 +126,7 @@ development_status:
 
   # Epic 9: Developer Tooling & Documentation
   epic-9: in-progress
-  9-1-build-time-drift-detection: review
+  9-1-build-time-drift-detection: done
   9-2-cli-inspection-and-migration-tools: ready-for-dev
   9-3-ide-parity-and-developer-experience: ready-for-dev
   9-4-diagnostic-id-system-and-deprecation-policy: ready-for-dev

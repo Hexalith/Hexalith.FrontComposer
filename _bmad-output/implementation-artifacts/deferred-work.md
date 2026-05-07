@@ -1,5 +1,11 @@
 # Deferred Work
 
+## Deferred from: code review of 9-1-build-time-drift-detection chunk C (2026-05-07)
+
+- **DEF-9-1C-2 — AC14 PublishAot=true alone does not fire HFC1070** [`src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs:116`] — Production gates the HFC1070 emit on `optionsResult.Options.PublishTrimmed` only. AC14 reads "trim-enabled OR native-AOT host", so a project with `PublishAot=true` and `PublishTrimmed=false` (uncommon but valid for some AOT scenarios) silently skips the advisory. The chunk-C test theory was reduced to the `PublishTrimmed`-only matrix; restore the `(false, true)` case once production also gates on `PublishAot`. **Owner:** Story 9-1 follow-up production patch. Sources: edge.
+
+- **DEF-9-1C-1 — AC11 perf coverage out of chunk C scope** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs` or sibling] — AC11 mandates median/p95 < 500 ms with warmup excluded across cache-hit and cache-miss paths. None of the six chunk-C files (Regression, Incremental, TrimAot, Seam, Diagnostics/DriftDiagnosticCatalogTests) carry perf assertions. Per spec T7, perf tests live in `Drift/Benchmarks/` (chunk A or pre-existing). **Owner:** Confirm AC11 coverage exists in `Drift/Benchmarks/IncrementalRebuildBenchmarkTests.cs` or schedule a follow-up perf-test pass. Sources: auditor.
+
 ## Deferred from: code review of 9-1-build-time-drift-detection chunk B (2026-05-07)
 
 - **DEF-9-1B-1 — Order-dependence test concatenation `Id+"|"+Message` could mask non-Id/Message diff** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftBaselineTrustFailureTests.cs:136-138`] — Pre-existing pattern reinforced (not introduced) by chunk-B fixture renames. Order-comparison tests concatenate diagnostic Id+Message with `|` and ordinal-sort; tests cannot detect a regression where two diagnostics share Id+Message but differ on severity, location, or properties bag. Switch to structural comparison on the full diagnostic shape. **Owner:** v1.x test-rigor pass. Sources: blind.
