@@ -16,7 +16,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison;
 public sealed class DriftClassifierMetadataTests {
     private const string SkipReason = "RED-PHASE: T3 — metadata drift classifier not yet introduced.";
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("Display.Name",                   "[System.ComponentModel.DataAnnotations.Display(Name=\"OldLabel\")]", "[System.ComponentModel.DataAnnotations.Display(Name=\"NewLabel\")]")]
     [InlineData("Display.GroupName",              "[System.ComponentModel.DataAnnotations.Display(GroupName=\"GroupA\")]", "[System.ComponentModel.DataAnnotations.Display(GroupName=\"GroupB\")]")]
     [InlineData("Description",                    "[System.ComponentModel.Description(\"Old\")]",                          "[System.ComponentModel.Description(\"New\")]")]
@@ -53,7 +53,7 @@ public sealed class DriftClassifierMetadataTests {
         oldAttr.ShouldNotBeNull();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void MultipleCategoriesChangedOnSameDeclaration_OneDiagnosticPerCategory() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;

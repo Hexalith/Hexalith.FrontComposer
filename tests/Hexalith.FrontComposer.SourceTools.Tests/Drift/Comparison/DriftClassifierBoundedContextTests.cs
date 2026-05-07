@@ -25,7 +25,7 @@ public sealed class DriftClassifierBoundedContextTests {
         "action queue",
     ];
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void BoundedContextRename_EmitsSingleDiagnosticListingAllAffectedSurfaces() {
         const string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
@@ -57,7 +57,7 @@ public sealed class DriftClassifierBoundedContextTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void BoundedContext_Stable_NoDiagnostic() {
         const string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",

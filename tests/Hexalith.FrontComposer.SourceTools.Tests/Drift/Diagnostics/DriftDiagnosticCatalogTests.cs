@@ -28,7 +28,7 @@ public sealed class DriftDiagnosticCatalogTests {
     private const int FirstAllocatedDriftId = 1058;
     private const int LastReservedDriftId = 1099;
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void DriftDescriptors_AreContiguousFromHfc1058() {
         DiagnosticDescriptor[] driftDescriptors = [.. DriftDescriptors()];
 
@@ -39,7 +39,7 @@ public sealed class DriftDiagnosticCatalogTests {
         numericIds.Max().ShouldBeLessThanOrEqualTo(LastReservedDriftId);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void EveryDriftDescriptor_PopulatesHelpLinkUri_AgainstCanonicalDocsPrefix() {
         foreach (DiagnosticDescriptor descriptor in DriftDescriptors()) {
             descriptor.HelpLinkUri.ShouldNotBeNullOrWhiteSpace($"AC12 — {descriptor.Id} missing HelpLinkUri.");
@@ -48,7 +48,7 @@ public sealed class DriftDiagnosticCatalogTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void EveryDriftDescriptorId_HasMatchingFcDiagnosticIdsConstant() {
         HashSet<string> driftIds = [.. DriftDescriptors().Select(d => d.Id)];
         HashSet<string> constantIds = [.. typeof(FcDiagnosticIds)
@@ -63,7 +63,7 @@ public sealed class DriftDiagnosticCatalogTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void EveryDriftDescriptor_IsDocumentedInUnshippedAnalyzerReleases() {
         string releasesPath = LocateAnalyzerReleasesUnshipped();
         string releaseNotes = File.ReadAllText(releasesPath);
@@ -74,7 +74,7 @@ public sealed class DriftDiagnosticCatalogTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void Hfc1010_IsNotReusedForDriftCategory() {
         // Story 1-8 / HFC1010 owns hot-reload/full-rebuild guidance. Drift diagnostics MUST NOT
         // borrow that ID — they must allocate fresh IDs in HFC1058+.

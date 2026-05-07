@@ -1,5 +1,6 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
 using Xunit;
@@ -17,7 +18,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Baseline;
 public sealed class DriftBaselineMissingDiagnosticTests {
     private const string SkipReason = "RED-PHASE: T1 + T2 — baseline-missing diagnostic not yet introduced.";
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NoBaselineProvided_AndDriftDetectionOptedIn_EmitsFirstRunDiagnostic_Once() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -39,7 +40,7 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         missing[0].GetMessage().ShouldContain("Story 9-2", Case.Insensitive);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void ConfiguredPathDoesNotResolve_EmitsInvalidPathDiagnostic_DistinctFromFirstRun() {
         // Activation contract: when build_property.HfcDriftBaselinePath points at a path that
         // does not match any AdditionalText, the analyzer reports it as a *configuration* failure,
@@ -63,7 +64,7 @@ public sealed class DriftBaselineMissingDiagnosticTests {
             "AC8 — the invalid-path diagnostic must NOT reuse the first-run wording.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void MissingBaseline_SuppressesAllDriftComparisonDiagnostics_ForThatBaseline() {
         // Even though the source declares two projections, the missing-baseline diagnostic must
         // suppress structural-drift / metadata-drift comparison; only the missing-baseline
@@ -93,7 +94,9 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         // Drift-detection opt-in is expected to be modelled either via a project-level analyzer
         // config (build_property.HfcDriftDetectionEnabled) or via the presence of a baseline
         // AdditionalText. The activation harness will swap this for the real option.
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [generator.AsSourceGenerator()],
+            optionsProvider: EnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }
@@ -102,12 +105,39 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
-        // The activation harness will plumb AnalyzerConfigOptionsProvider with
-        // build_property.HfcDriftBaselinePath = "does/not/exist.json". Until then we rely on
-        // the no-baseline pathway; the test asserts behavioral *distinction* will be observable
-        // once T2 lands.
-        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+        AnalyzerConfigOptionsProvider options = EnabledOptions(new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+            ["build_property.HfcDriftBaselinePath"] = "does/not/exist.json",
+        });
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [generator.AsSourceGenerator()],
+            optionsProvider: options);
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
+    }
+
+    private static AnalyzerConfigOptionsProvider EnabledOptions(Dictionary<string, string>? extra = null) {
+        Dictionary<string, string> values = extra is null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(extra, StringComparer.OrdinalIgnoreCase);
+        values["build_property.HfcDriftDetectionEnabled"] = "true";
+        return new InMemoryOptions(values);
+    }
+
+    private sealed class InMemoryOptions(IReadOnlyDictionary<string, string> values) : AnalyzerConfigOptionsProvider {
+        public override AnalyzerConfigOptions GlobalOptions { get; } = new InMemory(values);
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => GlobalOptions;
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => GlobalOptions;
+
+        private sealed class InMemory(IReadOnlyDictionary<string, string> values) : AnalyzerConfigOptions {
+            public override bool TryGetValue(string key, out string value) {
+                if (values.TryGetValue(key, out string? v)) {
+                    value = v;
+                    return true;
+                }
+
+                value = string.Empty;
+                return false;
+            }
+        }
     }
 }

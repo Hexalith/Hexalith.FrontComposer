@@ -29,7 +29,7 @@ public sealed class DriftBaselineTrustFailureTests {
         { "baseline-invariant-violation.json",       "invariant" },
     };
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [MemberData(nameof(TrustFailureFixtures))]
     public void Fixture_FailsClosed_WithErrorAndSuppressedComparison(string fixtureFileName, string expectedMessageToken) {
         const string source = """
@@ -53,7 +53,7 @@ public sealed class DriftBaselineTrustFailureTests {
             .ShouldBeFalse($"AC9 — trust failure must suppress structural-drift comparison for {fixtureFileName}.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void DuplicateIdentityAcrossBaselineFiles_FailsClosed_NoLastWriterWins() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -83,7 +83,7 @@ public sealed class DriftBaselineTrustFailureTests {
         diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void DuplicateIdentityWithinSingleFile_FailsClosed() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -101,7 +101,7 @@ public sealed class DriftBaselineTrustFailureTests {
             .ShouldBeTrue();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void DuplicateIdentityAcrossFiles_OrderAgnostic_SameDiagnostic() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;

@@ -1,6 +1,6 @@
 # Story 9.1: Build-Time Drift Detection
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 9** - Developer Tooling & Documentation. Covers **FR7**, **NFR8**, **NFR97**, and the first build-time handoff toward Stories **9-2**, **9-4**, and **9-5**. Builds on the existing SourceTools incremental generator, HFC diagnostic catalog discipline, Story 1-8 hot-reload/rebuild findings, Story 6-2/6-3/6-4 customization contract-version patterns, and Story 8-6 schema fingerprinting boundaries. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and **L14**.
 
@@ -58,70 +58,70 @@ An adopter should be able to rename, remove, add, or retag a `[Projection]`, `[C
 
 ## Tasks / Subtasks
 
-- [ ] T1. Define the drift baseline contract (AC1-AC9, AC13, AC16)
-  - [ ] Add SourceTools-owned baseline models for projection, command, bounded-context, renderer-impacting metadata, and generated artifact expectations.
-  - [ ] Define the baseline owner, checked-in file location contract, schema version, algorithm version, deterministic parse rules, and trust boundary. Story 9-1 reads only analyzer `AdditionalText` baseline artifacts, never live runtime state.
-  - [ ] Keep models SDK-neutral and runtime-data-free. Do not reference Shell components, Fluent UI types, EventStore clients, MCP SDK DTOs, tenant/user services, or runtime reflection outputs.
-  - [ ] Include only structural fields already present in `DomainModel`, `CommandModel`, `PropertyModel`, `RazorModel`, `CommandFormModel`, `RegistrationModel`, and MCP descriptor transforms.
-  - [ ] Include a baseline schema version and algorithm identifier so unsupported baselines fail closed instead of comparing incompatible content.
-  - [ ] Cap maximum baseline file size, declaration count, property count, nesting depth, and diagnostic count through explicit options.
-  - [ ] Validate analyzer-configured size/count/severity options before comparison; invalid option values emit deterministic configuration diagnostics and fall back only to documented safe defaults.
-  - [ ] Reject empty/whitespace baselines, duplicate declaration/member identities, duplicate identities across multiple configured baseline files, mixed valid/invalid entries, and invariant-violating snapshots before drift comparison.
+- [x] T1. Define the drift baseline contract (AC1-AC9, AC13, AC16)
+  - [x] Add SourceTools-owned baseline models for projection, command, bounded-context, renderer-impacting metadata, and generated artifact expectations.
+  - [x] Define the baseline owner, checked-in file location contract, schema version, algorithm version, deterministic parse rules, and trust boundary. Story 9-1 reads only analyzer `AdditionalText` baseline artifacts, never live runtime state.
+  - [x] Keep models SDK-neutral and runtime-data-free. Do not reference Shell components, Fluent UI types, EventStore clients, MCP SDK DTOs, tenant/user services, or runtime reflection outputs.
+  - [x] Include only structural fields already present in `DomainModel`, `CommandModel`, `PropertyModel`, `RazorModel`, `CommandFormModel`, `RegistrationModel`, and MCP descriptor transforms.
+  - [x] Include a baseline schema version and algorithm identifier so unsupported baselines fail closed instead of comparing incompatible content.
+  - [x] Cap maximum baseline file size, declaration count, property count, nesting depth, and diagnostic count through explicit options.
+  - [x] Validate analyzer-configured size/count/severity options before comparison; invalid option values emit deterministic configuration diagnostics and fall back only to documented safe defaults.
+  - [x] Reject empty/whitespace baselines, duplicate declaration/member identities, duplicate identities across multiple configured baseline files, mixed valid/invalid entries, and invariant-violating snapshots before drift comparison.
 
-- [ ] T2. Load baselines through the incremental pipeline (AC8-AC11, AC16)
-  - [ ] Use Roslyn `AdditionalTextsProvider` / analyzer config inputs for checked-in baseline files rather than ad hoc file IO in emitters.
-  - [ ] If multiple baseline `AdditionalText` files are configured, normalize and sort by deterministic repo-relative path, merge only unique identities, and fail closed on duplicates instead of allowing file-order-dependent overwrite behavior.
-  - [ ] Keep `ForAttributeWithMetadataName` discovery for `[Projection]`, `[Command]`, and `[ProjectionTemplate]`; drift inputs are an additional provider, not a replacement parse path.
-  - [ ] Ensure baseline changes invalidate only drift comparison and shared generated baseline metadata, not unrelated projection/command outputs.
-  - [ ] Add an internal test-only observation seam for parse/comparison counts or tracked-step inspection; do not expose it as public API.
-  - [ ] Add tests proving unrelated file edits and unchanged `AdditionalText` content keep existing tracked steps Cached/Unchanged.
-  - [ ] Add malformed, unsupported-version, oversized, and missing-baseline fixtures.
+- [x] T2. Load baselines through the incremental pipeline (AC8-AC11, AC16)
+  - [x] Use Roslyn `AdditionalTextsProvider` / analyzer config inputs for checked-in baseline files rather than ad hoc file IO in emitters.
+  - [x] If multiple baseline `AdditionalText` files are configured, normalize and sort by deterministic repo-relative path, merge only unique identities, and fail closed on duplicates instead of allowing file-order-dependent overwrite behavior.
+  - [x] Keep `ForAttributeWithMetadataName` discovery for `[Projection]`, `[Command]`, and `[ProjectionTemplate]`; drift inputs are an additional provider, not a replacement parse path.
+  - [x] Ensure baseline changes invalidate only drift comparison and shared generated baseline metadata, not unrelated projection/command outputs.
+  - [x] Add an internal test-only observation seam for parse/comparison counts or tracked-step inspection; do not expose it as public API.
+  - [x] Add tests proving unrelated file edits and unchanged `AdditionalText` content keep existing tracked steps Cached/Unchanged.
+  - [x] Add malformed, unsupported-version, oversized, and missing-baseline fixtures.
 
-- [ ] T3. Implement structural comparison and classification (AC1-AC7, AC13, AC16)
-  - [ ] Compare by stable declaration identity: namespace + type name + contract family + bounded context, with explicit behavior for global namespace.
-  - [ ] Merge partial declarations deterministically before comparison; source locations may choose a stable primary declaration, but partial file order must not affect identity, hashes, diagnostics, or generated output.
-  - [ ] Classify property added, removed, likely rename, type/category change, nullability change, display/description change, enum member/badge change, role/group/priority change, command density change, derivable/non-derivable split change, authorization policy change, destructive/icon metadata change, and bounded-context name change.
-  - [ ] Reuse existing type category and transform logic instead of duplicating field inference rules.
-  - [ ] Treat likely rename as a deterministic one-to-one classification only; never rewrite source or update baselines automatically in this story.
-  - [ ] Sort diagnostics by bounded context, declaration kind, declaration name, member name, then drift kind using ordinal comparison before applying the diagnostic cap.
+- [x] T3. Implement structural comparison and classification (AC1-AC7, AC13, AC16)
+  - [x] Compare by stable declaration identity: namespace + type name + contract family + bounded context, with explicit behavior for global namespace.
+  - [x] Merge partial declarations deterministically before comparison; source locations may choose a stable primary declaration, but partial file order must not affect identity, hashes, diagnostics, or generated output.
+  - [x] Classify property added, removed, likely rename, type/category change, nullability change, display/description change, enum member/badge change, role/group/priority change, command density change, derivable/non-derivable split change, authorization policy change, destructive/icon metadata change, and bounded-context name change.
+  - [x] Reuse existing type category and transform logic instead of duplicating field inference rules.
+  - [x] Treat likely rename as a deterministic one-to-one classification only; never rewrite source or update baselines automatically in this story.
+  - [x] Sort diagnostics by bounded context, declaration kind, declaration name, member name, then drift kind using ordinal comparison before applying the diagnostic cap.
 
-- [ ] T4. Add HFC diagnostics and catalog discipline (AC2-AC9, AC12, AC14-AC16)
-  - [ ] Reserve a contiguous SourceTools ID block after the current HFC1057 allocation, unless Story 9-4 has already assigned a final range.
-  - [ ] Add descriptors to `DiagnosticDescriptors`, constants to `FcDiagnosticIds`, and rows to `AnalyzerReleases.Unshipped.md`.
-  - [ ] Use `DiagnosticDescriptor.HelpLinkUri` for each new diagnostic where supported by the current Microsoft.CodeAnalysis package.
-  - [ ] Ensure every diagnostic message carries What, Expected, Got, Fix, and DocsLink fields or equivalent structured parameters.
-  - [ ] Add a diagnostic precedence table for missing baseline, malformed/empty baseline, unsupported schema, unsupported algorithm, oversized baseline, duplicate/invariant failure, structural drift, metadata drift, renderer-impacting drift, truncation summary, redaction failure, and trim/AOT reflection-catalog evidence.
-  - [ ] Add diagnostics for invalid drift-detector analyzer-config options and duplicate baseline identities across configured files; both must be stable, sanitized, and suppress unsafe downstream comparison where needed.
-  - [ ] Use deterministic Error diagnostics for trust-breaking baseline validation failures and suppress downstream drift conclusions for the affected baseline.
-  - [ ] Add catalog tests proving IDs are unique, shaped as HFCxxxx, documented in release notes, and linked to canonical diagnostics docs.
+- [x] T4. Add HFC diagnostics and catalog discipline (AC2-AC9, AC12, AC14-AC16)
+  - [x] Reserve a contiguous SourceTools ID block after the current HFC1057 allocation, unless Story 9-4 has already assigned a final range.
+  - [x] Add descriptors to `DiagnosticDescriptors`, constants to `FcDiagnosticIds`, and rows to `AnalyzerReleases.Unshipped.md`.
+  - [x] Use `DiagnosticDescriptor.HelpLinkUri` for each new diagnostic where supported by the current Microsoft.CodeAnalysis package.
+  - [x] Ensure every diagnostic message carries What, Expected, Got, Fix, and DocsLink fields or equivalent structured parameters.
+  - [x] Add a diagnostic precedence table for missing baseline, malformed/empty baseline, unsupported schema, unsupported algorithm, oversized baseline, duplicate/invariant failure, structural drift, metadata drift, renderer-impacting drift, truncation summary, redaction failure, and trim/AOT reflection-catalog evidence.
+  - [x] Add diagnostics for invalid drift-detector analyzer-config options and duplicate baseline identities across configured files; both must be stable, sanitized, and suppress unsafe downstream comparison where needed.
+  - [x] Use deterministic Error diagnostics for trust-breaking baseline validation failures and suppress downstream drift conclusions for the affected baseline.
+  - [x] Add catalog tests proving IDs are unique, shaped as HFCxxxx, documented in release notes, and linked to canonical diagnostics docs.
 
-- [ ] T5. Emit or refresh baseline metadata for generated UI contracts (AC1, AC3, AC5, AC7, AC17, AC18)
-  - [ ] Define the checked-in baseline file naming and folder contract. Prefer a deterministic SourceTools-owned location under the adopter project, not `obj/`.
-  - [ ] Generate baseline material from the same parse/transform data that produces Razor, Fluxor, registration, MCP manifests, and template/slot/view descriptor metadata.
-  - [ ] Do not hash or diff generated C# source text; compare structural metadata so formatting or banner churn does not create false positives.
-  - [ ] Preserve existing generated output hint names: namespace-qualified projection hints and `.Command` command hint prefixes.
-  - [ ] Do not automatically rewrite or refresh trusted checked-in baselines during normal builds; normal Story 9-1 behavior is diagnostics-only.
-  - [ ] Ensure any emitted metadata is deterministic, timestamp-free, culture-invariant, path-normalized, and byte-stable for identical structural inputs.
-  - [ ] Document that Story 9-2 owns the user-facing CLI command to inspect or update these baselines.
+- [x] T5. Emit or refresh baseline metadata for generated UI contracts (AC1, AC3, AC5, AC7, AC17, AC18)
+  - [x] Define the checked-in baseline file naming and folder contract. Prefer a deterministic SourceTools-owned location under the adopter project, not `obj/`.
+  - [x] Generate baseline material from the same parse/transform data that produces Razor, Fluxor, registration, MCP manifests, and template/slot/view descriptor metadata.
+  - [x] Do not hash or diff generated C# source text; compare structural metadata so formatting or banner churn does not create false positives.
+  - [x] Preserve existing generated output hint names: namespace-qualified projection hints and `.Command` command hint prefixes.
+  - [x] Do not automatically rewrite or refresh trusted checked-in baselines during normal builds; normal Story 9-1 behavior is diagnostics-only.
+  - [x] Ensure any emitted metadata is deterministic, timestamp-free, culture-invariant, path-normalized, and byte-stable for identical structural inputs.
+  - [x] Document that Story 9-2 owns the user-facing CLI command to inspect or update these baselines.
 
-- [ ] T6. Add trim/AOT reflection-catalog diagnostics where evidence is reliable (AC14, AC15)
-  - [ ] Detect `PublishTrimmed=true` / native AOT project settings only through analyzer config/build metadata available to SourceTools.
-  - [ ] Warn when the default `ReflectionActionQueueProjectionCatalog` path appears to be used without a source-generated or adopter-supplied `IActionQueueProjectionCatalog`.
-  - [ ] If adopter override evidence is not statically knowable, emit guidance as Warning/Info only and leave runtime validation as authoritative.
-  - [ ] Keep this diagnostic narrow to the documented Story 3-5 G22 gap; do not scan assemblies, inspect runtime types, add runtime dependencies, or start a broad DI-lifetime analyzer in this story.
+- [x] T6. Add trim/AOT reflection-catalog diagnostics where evidence is reliable (AC14, AC15)
+  - [x] Detect `PublishTrimmed=true` / native AOT project settings only through analyzer config/build metadata available to SourceTools.
+  - [x] Warn when the default `ReflectionActionQueueProjectionCatalog` path appears to be used without a source-generated or adopter-supplied `IActionQueueProjectionCatalog`.
+  - [x] If adopter override evidence is not statically knowable, emit guidance as Warning/Info only and leave runtime validation as authoritative.
+  - [x] Keep this diagnostic narrow to the documented Story 3-5 G22 gap; do not scan assemblies, inspect runtime types, add runtime dependencies, or start a broad DI-lifetime analyzer in this story.
 
-- [ ] T7. Tests and verification (AC1-AC19)
-  - [ ] Unit tests for baseline parsing, schema-version rejection, unsupported algorithm, oversized/truncated output, missing baseline, empty/whitespace baseline, duplicate identities, duplicate identities across baseline files, invalid analyzer-config options, invariant violations, mixed valid/invalid entries, and malformed baseline.
-  - [ ] Matrix-driven classification tests for property add/remove/deterministic rename/type/nullability, command field add/remove/type, bounded-context change, display metadata, role/group/priority, enum/badge, command density, derivable split, destructive/icon, policy metadata changes, and generated contract expectation drift.
-  - [ ] Integration tests using `CSharpGeneratorDriver` and `AdditionalText` baselines proving diagnostics appear at the correct source location and have `HelpLinkUri`.
-  - [ ] Golden diagnostic fixtures for no drift, added declaration, removed declaration, changed type/signature, reordered declarations with no semantic drift, oversized drift truncation, invalid baseline, and redaction sentinel.
-  - [ ] Incremental caching tests proving unrelated edits do not invalidate existing generator outputs and unchanged baselines do not re-run unrelated parse work.
-  - [ ] Performance tests extending `IncrementalRebuildBenchmarkTests` or a sibling benchmark with warmup excluded, at least 20 measured iterations where practical, median/p95 reporting, and representative cache-hit/cache-miss paths; mark machine-sensitive tests as benchmark/integration rather than normal unit gates if needed.
-  - [ ] Regression tests proving generated Razor/Fluxor/registration/MCP output still compiles after adding drift detection and remains byte-stable across repeated runs, equivalent input order changes, partial declaration order changes, and equivalent baseline file ordering.
-  - [ ] Redaction tests with tenant/user/token/path/ETag/payload sentinels in source and baseline fixtures, diagnostic properties, exception paths, raw JSON fragments, generated source snippets, and oversized values.
-  - [ ] Culture-invariance test under `fr-FR` or `tr-TR` proving stable sorting, formatting, hashes, diagnostics, and generated bytes.
-  - [ ] Targeted suite: `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics`, `.../Incremental`, `.../Integration`, and existing emitter snapshot tests only when intentionally touched.
-  - [ ] Full regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
+- [x] T7. Tests and verification (AC1-AC19)
+  - [x] Unit tests for baseline parsing, schema-version rejection, unsupported algorithm, oversized/truncated output, missing baseline, empty/whitespace baseline, duplicate identities, duplicate identities across baseline files, invalid analyzer-config options, invariant violations, mixed valid/invalid entries, and malformed baseline.
+  - [x] Matrix-driven classification tests for property add/remove/deterministic rename/type/nullability, command field add/remove/type, bounded-context change, display metadata, role/group/priority, enum/badge, command density, derivable split, destructive/icon, policy metadata changes, and generated contract expectation drift.
+  - [x] Integration tests using `CSharpGeneratorDriver` and `AdditionalText` baselines proving diagnostics appear at the correct source location and have `HelpLinkUri`.
+  - [x] Golden diagnostic fixtures for no drift, added declaration, removed declaration, changed type/signature, reordered declarations with no semantic drift, oversized drift truncation, invalid baseline, and redaction sentinel.
+  - [x] Incremental caching tests proving unrelated edits do not invalidate existing generator outputs and unchanged baselines do not re-run unrelated parse work.
+  - [x] Performance tests extending `IncrementalRebuildBenchmarkTests` or a sibling benchmark with warmup excluded, at least 20 measured iterations where practical, median/p95 reporting, and representative cache-hit/cache-miss paths; mark machine-sensitive tests as benchmark/integration rather than normal unit gates if needed.
+  - [x] Regression tests proving generated Razor/Fluxor/registration/MCP output still compiles after adding drift detection and remains byte-stable across repeated runs, equivalent input order changes, partial declaration order changes, and equivalent baseline file ordering.
+  - [x] Redaction tests with tenant/user/token/path/ETag/payload sentinels in source and baseline fixtures, diagnostic properties, exception paths, raw JSON fragments, generated source snippets, and oversized values.
+  - [x] Culture-invariance test under `fr-FR` or `tr-TR` proving stable sorting, formatting, hashes, diagnostics, and generated bytes.
+  - [x] Targeted suite: `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics`, `.../Incremental`, `.../Integration`, and existing emitter snapshot tests only when intentionally touched.
+  - [x] Full regression: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
 
 ---
 
@@ -311,17 +311,21 @@ Do not implement these in Story 9-1:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-05-07: `dotnet build src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj -p:TreatWarningsAsErrors=true --no-restore` passed after netstandard compatibility cleanup.
+- 2026-05-07: `dotnet test tests\Hexalith.FrontComposer.SourceTools.Tests\Hexalith.FrontComposer.SourceTools.Tests.csproj --no-restore` passed: 723 passed, 2 skipped benchmark tests.
+- 2026-05-07: `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false` passed: 0 warnings, 0 errors.
+- 2026-05-07: `dotnet test Hexalith.FrontComposer.sln --no-restore` passed: Contracts 159, MCP 264 + 1 skipped, SourceTools 723 + 2 skipped benchmarks, Shell 1542, Shell.Bench 2.
 
 ### Completion Notes List
 
 - 2026-05-02: Story created via `/bmad-create-story 9-1-build-time-drift-detection` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-03: Party-mode review via `/bmad-party-mode 9-1-build-time-drift-detection; review;` completed with Winston, Amelia, John, and Murat. Applied story hardening for baseline trust ownership, developer reconciliation workflow, deterministic rename/cap ordering, fail-closed baseline precedence, diagnostic properties/sanitization, SourceTools-only comparison seam, no automatic baseline rewrites, performance/incrementality measurement bounds, trim/AOT scope guardrails, culture/byte-stability tests, and matrix/golden fixture guidance. Final recommendation: ready-for-dev after story update.
 - 2026-05-03: Advanced elicitation via `/bmad-advanced-elicitation 9-1-build-time-drift-detection` completed two batches focused on security, failure modes, determinism, and simplification. Applied multi-baseline duplicate rejection, analyzer-config option validation, partial declaration merge determinism, normalized diagnostic path rules, and seam ownership clarifications. Final recommendation: ready-for-dev.
+- 2026-05-07: Implemented Story 9-1 build-time drift detection in SourceTools. Added internal baseline parser/validator, analyzer-config option binder, incremental `AdditionalTextsProvider` baseline loading, internal comparison seam, structural/metadata drift classification, sanitized HFC1058-HFC1070 diagnostics with HelpLinkUri/properties, trim/AOT reflection-catalog advisory, deterministic partial-declaration ordering, and active drift test coverage. Normal generation remains diagnostics-only and byte-stable.
 
 ### Party-Mode Review
 
@@ -346,4 +350,35 @@ Do not implement these in Story 9-1:
 
 ### File List
 
-(to be filled in by dev agent)
+- `_bmad-output/implementation-artifacts/9-1-build-time-drift-detection.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs`
+- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`
+- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Drift/DriftDetection.cs`
+- `src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs`
+- `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`
+- `src/Hexalith.FrontComposer.SourceTools/Parsing/AttributeParser.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftAnalyzerConfigOptionsTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftBaselineMissingDiagnosticTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Baseline/DriftBaselineTrustFailureTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierBoundedContextTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierMetadataTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierProjectionPropertyTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierRenameTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftClassifierTypeAndNullabilityTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Comparison/DriftComparisonServiceTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticCatalogTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticContractTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticOrderingAndTruncationTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticPrecedenceTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Diagnostics/DriftDiagnosticRedactionTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Incremental/DriftIncrementalCacheTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftByteStabilityRegressionTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftCultureInvarianceTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Seam/DriftSeamPublicSurfaceContractTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/TrimAot/TrimAotReflectionCatalogDiagnosticTests.cs`
+
+### Change Log
+
+- 2026-05-07: Completed build-time drift detection implementation and moved story to review.

@@ -1,5 +1,7 @@
 using System.Reflection;
+using System.Collections.Immutable;
 
+using Hexalith.FrontComposer.SourceTools.Drift;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 
 using Shouldly;
@@ -18,7 +20,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison;
 public sealed class DriftComparisonServiceTests {
     private const string SkipReason = "RED-PHASE: T1 + T3 — DriftComparisonService not yet introduced.";
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void Service_TypeIsInternal_AndExposesCompareMethodOnDomainAndBaseline() {
         Type? service = TryFindServiceType();
 
@@ -34,7 +36,7 @@ public sealed class DriftComparisonServiceTests {
         parameters.ShouldContain(p => p.ParameterType.Name.Contains("Baseline", StringComparison.Ordinal));
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void Result_IsDeterministicForIdenticalInputs() {
         // Same domain + same baseline ⇒ comparison results compare equal (value-based, ordered).
         // Activation contract: invoke the service twice with the same DomainModel sequence and
@@ -53,7 +55,7 @@ public sealed class DriftComparisonServiceTests {
         firstFacts.Select(f => f.ToString()).ShouldBe(secondFacts.Select(f => f.ToString()));
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void Result_IsIndependentOfPartialDeclarationOrder() {
         // T3: partial declarations of the same projection/command type may live in any file
         // order; merging must produce identical drift facts regardless of declaration order.
@@ -66,7 +68,7 @@ public sealed class DriftComparisonServiceTests {
                 "AC18: partial-declaration order must not affect drift output.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void Result_IsIndependentOfBaselineFileOrder() {
         // T2: when multiple AdditionalText baseline files are provided, ordinal-sorted path
         // normalization must produce identical drift facts regardless of enumeration order.
@@ -117,11 +119,37 @@ public sealed class DriftComparisonServiceTests {
             object instance = type.IsAbstract ? null! : Activator.CreateInstance(type)!;
             MethodInfo compare = type.GetMethod("Compare")
                 ?? throw new InvalidOperationException("Compare method missing.");
+            DriftCurrentSnapshot domain = new(ImmutableArray.Create(new DriftCurrentContract(
+                "projection",
+                "TestDomain.OrderProjection",
+                "Orders",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                ImmutableArray.Create(new DriftCurrentProperty("Id", "String", false, null, null, null, null, null, "Default")),
+                string.Empty,
+                -1,
+                -1)));
+            DriftBaselineSet baseline = new(ImmutableArray.Create(new DriftBaselineContract(
+                "frontcomposer.drift-baseline.json",
+                "projection",
+                "TestDomain.OrderProjection",
+                "Orders",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                ImmutableArray.Create(new DriftBaselineProperty("Id", "String", false, null, null, null, null, null, "Default")))));
             return new InvocationProbe {
                 Service = instance,
                 CompareMethod = compare,
-                SampleDomain = new object(),
-                SampleBaseline = new object(),
+                SampleDomain = domain,
+                SampleBaseline = baseline,
             };
         }
     }

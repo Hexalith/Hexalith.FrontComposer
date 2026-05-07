@@ -267,6 +267,71 @@ public static class FcDiagnosticIds {
     /// </summary>
     public const string HFC1055_CustomizationForcedColorsMissing = "HFC1055";
 
+    /// <summary>
+    /// Build-time Warning: drift detection is enabled but no trusted generated UI baseline is available.
+    /// </summary>
+    public const string HFC1058_GeneratedUiBaselineMissing = "HFC1058";
+
+    /// <summary>
+    /// Build-time Error: configured generated UI drift baseline path does not match an AdditionalText.
+    /// </summary>
+    public const string HFC1059_GeneratedUiBaselinePathInvalid = "HFC1059";
+
+    /// <summary>
+    /// Build-time Error: generated UI drift baseline content is empty or malformed.
+    /// </summary>
+    public const string HFC1060_GeneratedUiBaselineContentInvalid = "HFC1060";
+
+    /// <summary>
+    /// Build-time Error: generated UI drift baseline schema version is unsupported.
+    /// </summary>
+    public const string HFC1061_GeneratedUiBaselineSchemaUnsupported = "HFC1061";
+
+    /// <summary>
+    /// Build-time Error: generated UI drift baseline algorithm version is unsupported.
+    /// </summary>
+    public const string HFC1062_GeneratedUiBaselineAlgorithmUnsupported = "HFC1062";
+
+    /// <summary>
+    /// Build-time Error: generated UI drift baseline exceeds configured bounds.
+    /// </summary>
+    public const string HFC1063_GeneratedUiBaselineBoundsExceeded = "HFC1063";
+
+    /// <summary>
+    /// Build-time Error: generated UI drift baseline contains duplicate identities or invariant violations.
+    /// </summary>
+    public const string HFC1064_GeneratedUiBaselineIdentityInvalid = "HFC1064";
+
+    /// <summary>
+    /// Build-time Warning: generated UI structural drift was detected.
+    /// </summary>
+    public const string HFC1065_GeneratedUiStructuralDrift = "HFC1065";
+
+    /// <summary>
+    /// Build-time Warning: generated UI metadata drift was detected.
+    /// </summary>
+    public const string HFC1066_GeneratedUiMetadataDrift = "HFC1066";
+
+    /// <summary>
+    /// Build-time Warning: generated UI drift detector analyzer-config option is invalid.
+    /// </summary>
+    public const string HFC1067_GeneratedUiDriftOptionInvalid = "HFC1067";
+
+    /// <summary>
+    /// Build-time Warning: generated UI drift diagnostics were truncated.
+    /// </summary>
+    public const string HFC1068_GeneratedUiDriftTruncated = "HFC1068";
+
+    /// <summary>
+    /// Build-time Error: generated UI drift diagnostic was suppressed because redaction could not prove safety.
+    /// </summary>
+    public const string HFC1069_GeneratedUiDriftRedactionSuppressed = "HFC1069";
+
+    /// <summary>
+    /// Build-time Warning: trim/AOT build may be using the reflection action-queue projection catalog.
+    /// </summary>
+    public const string HFC1070_TrimAotReflectionCatalogWarning = "HFC1070";
+
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
 

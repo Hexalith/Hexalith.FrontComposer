@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 
 using Hexalith.FrontComposer.SourceTools.Diagnostics;
+using Hexalith.FrontComposer.SourceTools.Drift;
 using Hexalith.FrontComposer.SourceTools.Emitters;
 using Hexalith.FrontComposer.SourceTools.Parsing;
 using Hexalith.FrontComposer.SourceTools.Transforms;
@@ -47,6 +48,54 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
 
         IncrementalValueProvider<ImmutableArray<ParseResult>> collectedProjections = projectionResults.Collect();
         IncrementalValueProvider<ImmutableArray<CommandParseResult>> collectedCommands = commandResults.Collect();
+        IncrementalValueProvider<DriftOptionsResult> driftOptions = context.AnalyzerConfigOptionsProvider
+            .Select(static (provider, _) => DriftOptions.Bind(provider));
+        IncrementalValuesProvider<DriftBaselineInput> driftBaselineInputs = context.AdditionalTextsProvider
+            .Where(static text => DriftBaselineInput.IsCandidate(text.Path))
+            .Select(static (text, ct) => DriftBaselineInput.FromAdditionalText(text, ct))
+            .WithTrackingName("LoadDriftBaselines");
+        IncrementalValueProvider<ImmutableArray<DriftBaselineInput>> collectedDriftBaselines = driftBaselineInputs.Collect();
+
+        context.RegisterSourceOutput(
+            context.CompilationProvider.Combine(collectedProjections.Combine(collectedCommands).Combine(collectedDriftBaselines.Combine(driftOptions))),
+            static (spc, input) => {
+                Compilation compilation = input.Left;
+                var source = input.Right;
+                ImmutableArray<ParseResult> projections = source.Left.Left;
+                ImmutableArray<CommandParseResult> commands = source.Left.Right;
+                ImmutableArray<DriftBaselineInput> baselineInputs = source.Right.Left;
+                DriftOptionsResult optionsResult = source.Right.Right;
+
+                foreach (DriftDiagnosticFact diagnostic in optionsResult.Diagnostics) {
+                    spc.ReportDiagnostic(diagnostic.ToDiagnostic(compilation));
+                }
+
+                bool hasContracts = projections.Any(static p => p.Model is not null)
+                    || commands.Any(static c => c.Model is not null);
+
+                DriftBaselineLoadResult baseline = DriftBaselineLoader.Load(baselineInputs, optionsResult.Options);
+                foreach (DriftDiagnosticFact diagnostic in baseline.Diagnostics) {
+                    if (hasContracts || diagnostic.Id != "HFC1058") {
+                        spc.ReportDiagnostic(diagnostic.ToDiagnostic(compilation));
+                    }
+                }
+
+                if (hasContracts && baseline.ComparisonEnabled) {
+                    DriftCurrentSnapshot current = DriftCurrentSnapshot.From(projections, commands);
+                    DriftComparisonResult comparison = DriftComparisonService.Compare(
+                        current,
+                        baseline.Baseline,
+                        optionsResult.Options.MaxDiagnostics,
+                        optionsResult.Options.DriftSeverity);
+                    foreach (DriftDiagnosticFact diagnostic in comparison.Diagnostics) {
+                        spc.ReportDiagnostic(diagnostic.ToDiagnostic(compilation));
+                    }
+                }
+
+                if (hasContracts && optionsResult.Options.PublishTrimmed) {
+                    spc.ReportDiagnostic(DriftDiagnosticFact.TrimAot().ToDiagnostic(compilation));
+                }
+            });
 
         context.RegisterSourceOutput(
             collectedProjections.Combine(collectedCommands).Combine(collectedTemplates),
@@ -252,6 +301,19 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
         "HFC1041" => DiagnosticDescriptors.ProjectionSlotContractVersionMismatch,
         "HFC1056" => DiagnosticDescriptors.CommandAuthorizationPolicyInvalid,
         "HFC1057" => DiagnosticDescriptors.CommandAuthorizationPolicyDuplicate,
+        "HFC1058" => DiagnosticDescriptors.GeneratedUiBaselineMissing,
+        "HFC1059" => DiagnosticDescriptors.GeneratedUiBaselinePathInvalid,
+        "HFC1060" => DiagnosticDescriptors.GeneratedUiBaselineContentInvalid,
+        "HFC1061" => DiagnosticDescriptors.GeneratedUiBaselineSchemaUnsupported,
+        "HFC1062" => DiagnosticDescriptors.GeneratedUiBaselineAlgorithmUnsupported,
+        "HFC1063" => DiagnosticDescriptors.GeneratedUiBaselineBoundsExceeded,
+        "HFC1064" => DiagnosticDescriptors.GeneratedUiBaselineIdentityInvalid,
+        "HFC1065" => DiagnosticDescriptors.GeneratedUiStructuralDrift,
+        "HFC1066" => DiagnosticDescriptors.GeneratedUiMetadataDrift,
+        "HFC1067" => DiagnosticDescriptors.GeneratedUiDriftOptionInvalid,
+        "HFC1068" => DiagnosticDescriptors.GeneratedUiDriftTruncated,
+        "HFC1069" => DiagnosticDescriptors.GeneratedUiDriftRedactionSuppressed,
+        "HFC1070" => DiagnosticDescriptors.TrimAotReflectionCatalogWarning,
         _ => new DiagnosticDescriptor(
             id,
             "FrontComposer Diagnostic",

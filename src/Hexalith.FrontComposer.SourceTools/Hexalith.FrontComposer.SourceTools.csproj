@@ -17,6 +17,7 @@
     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
     <ProjectReference Include="..\Hexalith.FrontComposer.Schema\Hexalith.FrontComposer.Schema.csproj" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Hexalith.FrontComposer.SourceTools.Tests" />

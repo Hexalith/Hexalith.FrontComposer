@@ -17,7 +17,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison;
 public sealed class DriftClassifierTypeAndNullabilityTests {
     private const string SkipReason = "RED-PHASE: T3 — type/nullability classifier not yet introduced.";
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("string", "int", "form input")]
     [InlineData("int", "string", "DataGrid")]
     [InlineData("System.DateTime", "System.DateTimeOffset", "format")]
@@ -51,7 +51,7 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         typeDrift.GetMessage().ShouldContain(expectedSurface, Case.Insensitive);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NullabilityChange_NonNullableToNullable_EmitsWarning() {
         const string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
@@ -77,7 +77,7 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
             .ShouldBeTrue("AC5 nullability change must emit a Warning naming the property.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NullabilityChange_NullableToNonNullable_EmitsWarning_WithBreakingHint() {
         const string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
@@ -103,7 +103,7 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         nullabilityDrift!.GetMessage().ShouldMatch("(required|breaking|tight)");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void TypeCategoryChange_OnCommandProperty_EmitsWarning_WithFormInputHint() {
         const string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",

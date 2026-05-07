@@ -18,7 +18,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Baseline;
 public sealed class DriftAnalyzerConfigOptionsTests {
     private const string SkipReason = "RED-PHASE: T1 + T4 — drift analyzer-config option binder not yet introduced.";
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("build_property.HfcDriftMaxDiagnostics", "-1")]
     [InlineData("build_property.HfcDriftMaxDiagnostics", "abc")]
     [InlineData("build_property.HfcDriftMaxDiagnostics", "")]
@@ -41,7 +41,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
             .ShouldBeTrue($"AC9 — invalid {optionKey}={optionValue} must surface a deterministic configuration diagnostic.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void InvalidOption_FallsBackToDocumentedSafeDefault_NotSilentDisable() {
         // Story §"Validate analyzer-configured size/count/severity options before comparison;
         // invalid option values emit deterministic configuration diagnostics and fall back only
@@ -72,7 +72,7 @@ public sealed class DriftAnalyzerConfigOptionsTests {
             "AC9 — drift detection must keep working under documented safe defaults; invalid options must not silently disable it.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void OptionParsing_IsCultureInvariant() {
         // AC19 — parsing "1,000" must NOT be accepted as 1000 under fr-FR. The binder must use
         // CultureInfo.InvariantCulture; the value should be rejected with the same configuration

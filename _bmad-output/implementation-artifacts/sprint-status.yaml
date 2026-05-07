@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-07 (story 8-6a chunk 4 re-review patches applied; status flips to done — all four chunks complete. Chunk 4 (MCP + SourceTools tests, 27 files / 2076 ins / 3 del): 0 decisions, 11 patches applied (CK4-P1 CompatibleAdditive AC5 strengthened then skipped pending DEF-D5; CK4-P2 typed FrontComposerMcpException + Category assertion replaces broad Should.Throw + lowercase-substring; CK4-P3 added AddFrontComposerMcp_RegistersBaselineProviderAsScoped test to pin scoped DI lifetime; CK4-P4 renamed RuntimeAggregate_IncludesCorpusFingerprints_WhenSkillCorpusIsLoaded to Aggregator_WhenInvokedWithCorpusFingerprints_ChangesAggregate with C2 deferral comment; CK4-P5 added corpus order-invariance assertion (dedup not asserted — production intentionally distinguishes via corpusFingerprintCount metadata); CK4-P6 replaced vacuous placeholder-string sanitization test with production-realistic 64-char hex / 44-char base64 / Bearer / JWT-prefix patterns; CK4-P7 added expectedFingerprintAlgorithm + expectedDeltaCategory presence checks; CK4-P8 added Category.ShouldBeOneOf and ShouldBe assertions to admission rejection tests; CK4-P9 pinned LifecyclePayload_FingerprintIsStable to Sha256SourceToolsBlobV1 per D23; CK4-P10 changed OversizedHeader to lowercase 'a' length-only + new ClientFingerprintHint_RejectsUppercaseHex for case-sensitivity; CK4-P11 fixed typo hashtruststedbaseline → hastrustedbaseline), 16 deferred (see deferred-work.md DEF-CK4-1 through DEF-CK4-16), 7 dismissed (diff-rendering artifact, intentional unit-bypass, synthetic pipeline values, verified setup, cosmetic). Validation: dotnet build TreatWarningsAsErrors=true 0/0; tests SourceTools 632+64 skipped, Contracts 159, Shell 1542, Shell.Bench 2, Mcp 264+1 skipped (CompatibleAdditive_OnCommand red-phase per DEF-D5) — 2599 passed, 0 failed, 65 skipped total. Prior chunk-1/2/3 patches and Groups A+B/C remain applied unchanged. AC5 revalidation hook (DEF-D5), AC8 corpus runtime aggregate wiring (DEF-D3 / chunk-2 C2), and 19 deferred items are tracked for follow-up stories.)"
+last_updated: "2026-05-07 (story 9-1 build-time drift detection completed; status set to review. Validation: SourceTools tests 723 passed / 2 benchmark skips; full solution build TreatWarningsAsErrors=true 0 warnings / 0 errors; solution tests passed with existing MCP skip and SourceTools benchmark skips.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -126,7 +126,7 @@ development_status:
 
   # Epic 9: Developer Tooling & Documentation
   epic-9: in-progress
-  9-1-build-time-drift-detection: ready-for-dev
+  9-1-build-time-drift-detection: review
   9-2-cli-inspection-and-migration-tools: ready-for-dev
   9-3-ide-parity-and-developer-experience: ready-for-dev
   9-4-diagnostic-id-system-and-deprecation-policy: ready-for-dev

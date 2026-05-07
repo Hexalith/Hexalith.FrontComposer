@@ -18,7 +18,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.TrimAot;
 public sealed class TrimAotReflectionCatalogDiagnosticTests {
     private const string SkipReason = "RED-PHASE: T6 — trim/AOT reflection-catalog evidence diagnostic not yet introduced.";
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void PublishTrimmedTrue_AndNoOverrideEvidence_EmitsWarning_PointingAtCatalogPath() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -38,7 +38,7 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         trim.GetMessage().ShouldContain("source-generated", Case.Insensitive);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void PublishTrimmedFalse_NoDiagnostic() {
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -53,7 +53,7 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         diagnostics.Any(d => d.GetMessage().Contains("trim", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void HostPolicyCatalogUnknownAtBuildTime_NoDiagnostic_RuntimeAuthoritative() {
         // AC15 — when there is NO statically visible IActionQueueProjectionCatalog override
         // candidate AND there is also no statically visible reflection-catalog reference, the

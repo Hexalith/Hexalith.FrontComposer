@@ -19,7 +19,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Diagnostics;
 public sealed class DriftDiagnosticPrecedenceTests {
     private const string SkipReason = "RED-PHASE: T4 — diagnostic precedence wiring not yet introduced.";
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("baseline-empty.json",                 "empty")]
     [InlineData("baseline-malformed.json",             "malformed")]
     [InlineData("baseline-unsupported-schema.json",    "schema version")]
@@ -51,7 +51,7 @@ public sealed class DriftDiagnosticPrecedenceTests {
             .ShouldBeFalse($"Trust failure '{trustToken}' must SUPPRESS lower-precedence drift comparison.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void StructuralDrift_TakesPrecedenceOverMetadataDrift_OnSameDeclaration() {
         // When BOTH a structural change (added/removed property) AND a metadata change (display
         // name) hit the same declaration, the structural diagnostic must come first; metadata

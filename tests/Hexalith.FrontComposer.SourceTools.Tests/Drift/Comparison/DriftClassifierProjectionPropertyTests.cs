@@ -34,7 +34,7 @@ public sealed class DriftClassifierProjectionPropertyTests {
         }
         """;
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void Removed_DataGridProperty_EmitsDriftDiagnostic_WithDeclarationAndMemberAndSurface() {
         string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
@@ -61,7 +61,7 @@ public sealed class DriftClassifierProjectionPropertyTests {
             .ShouldBeTrue("AC2 message must reference an affected UI surface.");
     }
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("public int RowVersion { get; set; }",      "DataGrid")]
     [InlineData("public string Notes { get; set; } = \"\";", "detail")]
     [InlineData("public IReadOnlyList<string> Tags { get; } = [];", "unsupported")]
@@ -89,7 +89,7 @@ public sealed class DriftClassifierProjectionPropertyTests {
         addDrifts[0].GetMessage().ShouldContain(expectedSurface, Case.Insensitive);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NoDrift_WhenSourceMatchesBaselineExactly() {
         string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;

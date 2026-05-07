@@ -41,7 +41,7 @@ public sealed class DriftDiagnosticContractTests {
             ] }] }
         """;
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void EveryDriftDiagnostic_CarriesPopulatedHelpLinkUri() {
         IReadOnlyList<Diagnostic> diagnostics = Run(SourceWithMissingMember(), BaselineProjectionRemovedMember);
 
@@ -53,7 +53,7 @@ public sealed class DriftDiagnosticContractTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void EveryDriftDiagnostic_ExposesAllRequiredPropertyKeys_OrSentinel() {
         IReadOnlyList<Diagnostic> diagnostics = Run(SourceWithMissingMember(), BaselineProjectionRemovedMember);
 
@@ -68,7 +68,7 @@ public sealed class DriftDiagnosticContractTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void DiagnosticMessage_HasWhatExpectedGotFixDocsLinkShape() {
         IReadOnlyList<Diagnostic> diagnostics = Run(SourceWithMissingMember(), BaselineProjectionRemovedMember);
 
@@ -82,7 +82,7 @@ public sealed class DriftDiagnosticContractTests {
         message.ShouldContain("https://hexalith.github.io/FrontComposer/diagnostics/", Case.Insensitive);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void BaselinePathProperty_IsRepoRelativeForwardSlash_OrOutsideProjectSentinel() {
         IReadOnlyList<Diagnostic> diagnostics = Run(SourceWithMissingMember(), BaselineProjectionRemovedMember);
 
@@ -96,7 +96,7 @@ public sealed class DriftDiagnosticContractTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void DiagnosticLocation_PointsAtSourceDeclaration_NotBaselineFile() {
         IReadOnlyList<Diagnostic> diagnostics = Run(SourceWithMissingMember(), BaselineProjectionRemovedMember);
 

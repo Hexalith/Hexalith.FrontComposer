@@ -40,7 +40,7 @@ public sealed class DriftCultureInvarianceTests {
         }
         """;
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("fr-FR")]
     [InlineData("tr-TR")]
     public void DiagnosticIds_AreInvariantUnderNonDefaultCulture(string cultureName) {
@@ -52,7 +52,7 @@ public sealed class DriftCultureInvarianceTests {
                 $"AC19 — diagnostic IDs must be identical under {cultureName}.");
     }
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("fr-FR")]
     [InlineData("tr-TR")]
     public void DiagnosticPropertyValues_AreInvariantUnderNonDefaultCulture(string cultureName) {
@@ -71,7 +71,7 @@ public sealed class DriftCultureInvarianceTests {
         }
     }
 
-    [Theory(Skip = SkipReason)]
+    [Theory()]
     [InlineData("fr-FR")]
     [InlineData("tr-TR")]
     public void GeneratedBytes_AreInvariantUnderNonDefaultCulture(string cultureName) {

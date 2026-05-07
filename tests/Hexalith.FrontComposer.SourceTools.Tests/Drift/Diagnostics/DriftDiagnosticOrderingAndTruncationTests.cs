@@ -19,7 +19,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Diagnostics;
 public sealed class DriftDiagnosticOrderingAndTruncationTests {
     private const string SkipReason = "RED-PHASE: T3 + T4 — drift sort / truncate pipeline not yet introduced.";
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void First50_AreSortedByBoundedContextDeclarationKindNameMemberDriftKind_Ordinal() {
         (string source, string baseline) = BuildScenario(driftCount: 60);
 
@@ -35,7 +35,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
             "AC16 — first 50 diagnostics must be sorted by ordinal composite key before cap.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void TruncationSummary_FollowsFirst50_AndReportsOmittedCount() {
         const int totalDrifts = 70;
         (string source, string baseline) = BuildScenario(driftCount: totalDrifts);
@@ -50,7 +50,7 @@ public sealed class DriftDiagnosticOrderingAndTruncationTests {
             .ShouldBe(1, "AC16 — exactly one truncation summary, no per-declaration repetition.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NoTruncationSummary_WhenDriftCountIsAtOrBelowCap() {
         (string source, string baseline) = BuildScenario(driftCount: 50);
 

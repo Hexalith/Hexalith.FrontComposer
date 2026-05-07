@@ -25,7 +25,7 @@ public sealed class DriftSeamPublicSurfaceContractTests {
         "BaselineUpdate",
     ];
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NoPublicTypeWithDriftKeyword_ShipsInSourceToolsAssembly() {
         Assembly sourceTools = typeof(DomainModel).Assembly;
         Type[] publicDriftTypes = [.. sourceTools.GetTypes()
@@ -36,7 +36,7 @@ public sealed class DriftSeamPublicSurfaceContractTests {
             $"AC17 — no drift-related type may be public in 9-1: found {string.Join(", ", publicDriftTypes.Select(t => t.FullName))}.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NoPublicCommandLineEntryPoint_ShipsInSourceToolsAssembly() {
         Assembly sourceTools = typeof(DomainModel).Assembly;
         Type[] cliTypes = [.. sourceTools.GetTypes()
@@ -49,7 +49,7 @@ public sealed class DriftSeamPublicSurfaceContractTests {
             $"AC17 — Story 9-2 owns the CLI; 9-1 must not ship public command entry points: {string.Join(", ", cliTypes.Select(t => t.FullName))}.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void DriftComparisonService_IsAccessibleOnlyViaInternalsVisibleTo() {
         Assembly sourceTools = typeof(DomainModel).Assembly;
         Type? service = sourceTools.GetTypes().FirstOrDefault(t => t.Name == "DriftComparisonService");

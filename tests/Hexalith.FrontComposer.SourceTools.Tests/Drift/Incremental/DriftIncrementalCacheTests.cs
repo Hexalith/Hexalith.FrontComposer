@@ -28,7 +28,7 @@ public sealed class DriftIncrementalCacheTests {
             "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
         """;
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NewTrackedStep_LoadDriftBaselines_IsRegistered() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(SimpleSource());
@@ -50,7 +50,7 @@ public sealed class DriftIncrementalCacheTests {
             $"AC10 — drift baseline pipeline must register the '{ExpectedTrackedStepName}' tracked step.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void UnchangedBaseline_AndUnrelatedSourceEdit_KeepsExistingParseStepsCached() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(SimpleSource());
@@ -77,7 +77,7 @@ public sealed class DriftIncrementalCacheTests {
         AssertCachedOrUnchanged(result, ExpectedTrackedStepName);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void ChangedBaselineContent_InvalidatesOnlyDriftStep_NotDomainParse() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(SimpleSource());

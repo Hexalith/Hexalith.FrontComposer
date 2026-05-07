@@ -86,19 +86,27 @@ public static class AttributeParser {
         // Parse properties
         ImmutableArray<PropertyModel>.Builder propertiesBuilder = ImmutableArray.CreateBuilder<PropertyModel>();
 
-        ImmutableArray<ISymbol> members = typeSymbol.GetMembers();
-        for (int i = 0; i < members.Length; i++) {
+        ImmutableArray<IPropertySymbol> propertySymbols = typeSymbol.GetMembers()
+            .OfType<IPropertySymbol>()
+            .Where(static propertySymbol =>
+                propertySymbol.DeclaredAccessibility == Accessibility.Public
+                && !propertySymbol.IsStatic
+                && !propertySymbol.IsIndexer)
+            .ToImmutableArray();
+
+        if (typeSymbol.DeclaringSyntaxReferences.Length > 1) {
+            propertySymbols = propertySymbols
+                .OrderBy(static propertySymbol => propertySymbol.Name, StringComparer.Ordinal)
+                .ToImmutableArray();
+        }
+
+        for (int i = 0; i < propertySymbols.Length; i++) {
             if (ct.IsCancellationRequested) {
                 return EmptyParseResult;
             }
 
-            if (members[i] is IPropertySymbol propertySymbol
-                && propertySymbol.DeclaredAccessibility == Accessibility.Public
-                && !propertySymbol.IsStatic
-                && !propertySymbol.IsIndexer) {
-                PropertyModel property = ParseProperty(propertySymbol, typeName, diagnostics, filePath);
-                propertiesBuilder.Add(property);
-            }
+            PropertyModel property = ParseProperty(propertySymbols[i], typeName, diagnostics, filePath);
+            propertiesBuilder.Add(property);
         }
 
         EquatableArray<PropertyModel> parsedProperties = new(propertiesBuilder.ToImmutable());

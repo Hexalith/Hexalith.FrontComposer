@@ -662,6 +662,162 @@ public static class DiagnosticDescriptors {
         helpLinkUri: "https://hexalith.io/docs/policies/duplicate-attributes");
 
     /// <summary>
+    /// HFC1058: Drift detection is enabled but no generated UI baseline is available.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiBaselineMissing = new(
+        id: "HFC1058",
+        title: "Generated UI drift baseline is missing",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1058");
+
+    /// <summary>
+    /// HFC1059: Configured drift baseline path does not match any analyzer AdditionalText.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiBaselinePathInvalid = new(
+        id: "HFC1059",
+        title: "Generated UI drift baseline path is invalid",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1059");
+
+    /// <summary>
+    /// HFC1060: Generated UI drift baseline content is empty or malformed.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiBaselineContentInvalid = new(
+        id: "HFC1060",
+        title: "Generated UI drift baseline content is invalid",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1060");
+
+    /// <summary>
+    /// HFC1061: Generated UI drift baseline schema version is unsupported.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiBaselineSchemaUnsupported = new(
+        id: "HFC1061",
+        title: "Generated UI drift baseline schema version is unsupported",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1061");
+
+    /// <summary>
+    /// HFC1062: Generated UI drift baseline algorithm version is unsupported.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiBaselineAlgorithmUnsupported = new(
+        id: "HFC1062",
+        title: "Generated UI drift baseline algorithm version is unsupported",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1062");
+
+    /// <summary>
+    /// HFC1063: Generated UI drift baseline exceeds configured bounds.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiBaselineBoundsExceeded = new(
+        id: "HFC1063",
+        title: "Generated UI drift baseline exceeds configured bounds",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1063");
+
+    /// <summary>
+    /// HFC1064: Generated UI drift baseline contains duplicate identities or invariant violations.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiBaselineIdentityInvalid = new(
+        id: "HFC1064",
+        title: "Generated UI drift baseline identity is invalid",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1064");
+
+    /// <summary>
+    /// HFC1065: Generated UI structural drift was detected.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiStructuralDrift = new(
+        id: "HFC1065",
+        title: "Generated UI structural drift detected",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1065");
+
+    /// <summary>
+    /// HFC1066: Generated UI metadata drift was detected.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiMetadataDrift = new(
+        id: "HFC1066",
+        title: "Generated UI metadata drift detected",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1066");
+
+    /// <summary>
+    /// HFC1067: Drift detector analyzer-config option is invalid.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiDriftOptionInvalid = new(
+        id: "HFC1067",
+        title: "Generated UI drift option is invalid",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1067");
+
+    /// <summary>
+    /// HFC1068: Generated UI drift diagnostics were truncated.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiDriftTruncated = new(
+        id: "HFC1068",
+        title: "Generated UI drift diagnostics truncated",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1068");
+
+    /// <summary>
+    /// HFC1069: Drift diagnostic was suppressed because redaction could not prove safety.
+    /// </summary>
+    public static readonly DiagnosticDescriptor GeneratedUiDriftRedactionSuppressed = new(
+        id: "HFC1069",
+        title: "Generated UI drift diagnostic suppressed for redaction",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1069");
+
+    /// <summary>
+    /// HFC1070: Trim/AOT build may be using the reflection action-queue projection catalog.
+    /// </summary>
+    public static readonly DiagnosticDescriptor TrimAotReflectionCatalogWarning = new(
+        id: "HFC1070",
+        title: "Reflection action-queue projection catalog may be trim-incompatible",
+        messageFormat: "{0}",
+        category: "HexalithFrontComposer",
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true,
+        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1070");
+
+    /// <summary>
     /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.
     /// </summary>
     public static readonly DiagnosticDescriptor DevModeAnnotationSiteInvalid = new(

@@ -17,7 +17,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison;
 public sealed class DriftClassifierRenameTests {
     private const string SkipReason = "RED-PHASE: T3 — rename heuristic not yet introduced.";
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void OneRemoved_OneAdded_CompatibleCategory_EmitsRenameWithEpic9Wording() {
         const string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
@@ -53,7 +53,7 @@ public sealed class DriftClassifierRenameTests {
         message.ShouldMatch("See HFC1\\d{3}\\.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void MultipleAdded_MultipleRemoved_NoDeterministicMatch_DegradesToAddRemovePairs() {
         const string baseline = """
             { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
@@ -83,7 +83,7 @@ public sealed class DriftClassifierRenameTests {
         diagnostics.Count(d => d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase)).ShouldBe(2);
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void OneRemoved_OneAdded_IncompatibleCategory_NotClassifiedAsRename() {
         // String → Enum is not a rename — categories differ; degrade to add+remove.
         const string baseline = """

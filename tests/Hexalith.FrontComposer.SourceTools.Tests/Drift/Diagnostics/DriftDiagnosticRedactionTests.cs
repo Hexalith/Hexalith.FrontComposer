@@ -31,7 +31,7 @@ public sealed class DriftDiagnosticRedactionTests {
         "SENTINEL_GENERATED_SOURCE_///auto/",
     ];
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void NoSentinelLeaksIntoDiagnosticMessages_OrPropertyValues() {
         // Source body deliberately drips sentinels into the *baseline* via attributes that the
         // baseline JSON references. Activation: the parser must reject or sanitize the sentinels
@@ -64,7 +64,7 @@ public sealed class DriftDiagnosticRedactionTests {
         }
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact()]
     public void RedactionFailure_EmitsRedactionFallbackDiagnostic_AndSuppressesOriginal() {
         // Activation: when the sanitizer cannot prove a value is safe, it must emit a
         // dedicated redaction-fallback diagnostic and SUPPRESS the original diagnostic that
