@@ -134,8 +134,8 @@ development_status:
   epic-9-retrospective: optional
 
   # Epic 10: Framework Quality & Adopter Confidence
-  epic-10: backlog
-  10-1-adopter-test-host-and-component-testing-utilities: backlog
+  epic-10: in-progress
+  10-1-adopter-test-host-and-component-testing-utilities: ready-for-dev
   10-2-accessibility-ci-gates-and-visual-specimen-verification: backlog
   10-3-consumer-driven-contract-tests-pact: backlog
   10-4-mutation-testing-and-property-based-testing: backlog
