@@ -56,45 +56,78 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
             .WithTrackingName("LoadDriftBaselines");
         IncrementalValueProvider<ImmutableArray<DriftBaselineInput>> collectedDriftBaselines = driftBaselineInputs.Collect();
 
+        // Story 9-1 review P12 (AC10): drift comparison no longer depends on the compilation.
+        // Source locations come from parsed declaration models, so combining CompilationProvider
+        // here was invalidating drift output on every unrelated compilation change.
         context.RegisterSourceOutput(
-            context.CompilationProvider.Combine(collectedProjections.Combine(collectedCommands).Combine(collectedDriftBaselines.Combine(driftOptions))),
-            static (spc, input) => {
-                Compilation compilation = input.Left;
-                var source = input.Right;
+            collectedProjections.Combine(collectedCommands).Combine(collectedDriftBaselines.Combine(driftOptions)),
+            static (spc, source) => {
                 ImmutableArray<ParseResult> projections = source.Left.Left;
                 ImmutableArray<CommandParseResult> commands = source.Left.Right;
                 ImmutableArray<DriftBaselineInput> baselineInputs = source.Right.Left;
                 DriftOptionsResult optionsResult = source.Right.Right;
 
                 foreach (DriftDiagnosticFact diagnostic in optionsResult.Diagnostics) {
-                    spc.ReportDiagnostic(diagnostic.ToDiagnostic(compilation));
+                    spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+                }
+
+                // Story 9-1 review P4: drift detection is opt-in. Don't load or compare unless
+                // the adopter explicitly set HfcDriftDetectionEnabled — a stray *.json
+                // AdditionalText must not produce HFC1060/HFC1064 noise.
+                if (!optionsResult.Options.Enabled) {
+                    return;
+                }
+
+                DriftBaselineLoadResult baseline = DriftBaselineLoader.Load(baselineInputs, optionsResult.Options);
+                foreach (DriftDiagnosticFact diagnostic in baseline.Diagnostics) {
+                    spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+                }
+
+                // Story 9-1 review P3 (AC2): a baseline-with-no-current-source run must still
+                // emit RemovedDeclaration / RemovedProperty drift. Don't gate on hasContracts.
+                if (!baseline.ComparisonEnabled) {
+                    return;
+                }
+
+                DriftCurrentSnapshot current = DriftCurrentSnapshot.From(projections, commands);
+                DriftComparisonResult comparison = DriftComparisonService.Compare(
+                    current,
+                    baseline.Baseline,
+                    optionsResult.Options.MaxDiagnostics,
+                    optionsResult.Options.DriftSeverity);
+                foreach (DriftDiagnosticFact diagnostic in comparison.Diagnostics) {
+                    spc.ReportDiagnostic(diagnostic.ToDiagnostic());
+                }
+            });
+
+        // Story 9-1 review P-D1 (AC14): trim/AOT diagnostic requires looking at the compilation
+        // for adopter-supplied IActionQueueProjectionCatalog evidence. Run as a separate
+        // RegisterSourceOutput so the compilation dependency does not leak into drift comparison.
+        // The advisory is independent of HfcDriftDetectionEnabled — trim/AOT safety advice
+        // applies whether or not drift detection is opted in.
+        context.RegisterSourceOutput(
+            context.CompilationProvider.Combine(driftOptions).Combine(collectedProjections.Combine(collectedCommands)),
+            static (spc, source) => {
+                Compilation compilation = source.Left.Left;
+                DriftOptionsResult optionsResult = source.Left.Right;
+                ImmutableArray<ParseResult> projections = source.Right.Left;
+                ImmutableArray<CommandParseResult> commands = source.Right.Right;
+
+                if (!optionsResult.Options.PublishTrimmed) {
+                    return;
                 }
 
                 bool hasContracts = projections.Any(static p => p.Model is not null)
                     || commands.Any(static c => c.Model is not null);
-
-                DriftBaselineLoadResult baseline = DriftBaselineLoader.Load(baselineInputs, optionsResult.Options);
-                foreach (DriftDiagnosticFact diagnostic in baseline.Diagnostics) {
-                    if (hasContracts || diagnostic.Id != "HFC1058") {
-                        spc.ReportDiagnostic(diagnostic.ToDiagnostic(compilation));
-                    }
+                if (!hasContracts) {
+                    return;
                 }
 
-                if (hasContracts && baseline.ComparisonEnabled) {
-                    DriftCurrentSnapshot current = DriftCurrentSnapshot.From(projections, commands);
-                    DriftComparisonResult comparison = DriftComparisonService.Compare(
-                        current,
-                        baseline.Baseline,
-                        optionsResult.Options.MaxDiagnostics,
-                        optionsResult.Options.DriftSeverity);
-                    foreach (DriftDiagnosticFact diagnostic in comparison.Diagnostics) {
-                        spc.ReportDiagnostic(diagnostic.ToDiagnostic(compilation));
-                    }
+                if (HasActionQueueProjectionCatalogOverride(compilation)) {
+                    return;
                 }
 
-                if (hasContracts && optionsResult.Options.PublishTrimmed) {
-                    spc.ReportDiagnostic(DriftDiagnosticFact.TrimAot().ToDiagnostic(compilation));
-                }
+                spc.ReportDiagnostic(DriftDiagnosticFact.TrimAot().ToDiagnostic());
             });
 
         context.RegisterSourceOutput(
@@ -260,6 +293,50 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
 
     private static string GetQualifiedHintPrefix(string @namespace, string typeName)
         => string.IsNullOrEmpty(@namespace) ? typeName : @namespace + "." + typeName;
+
+    /// <summary>
+    /// Story 9-1 P-D1 (AC14): scans the compilation for any non-default
+    /// <c>IActionQueueProjectionCatalog</c> implementation in source. Returns <c>true</c> when
+    /// adopter override evidence is present (so HFC1070 should NOT fire). When the contracts
+    /// interface is not referenced (e.g., trim/AOT setting flipped on a project that does not
+    /// reference <c>Hexalith.FrontComposer.Contracts</c>), returns <c>true</c> to fail-quiet —
+    /// the trim/AOT warning targets adopters who use the framework, not unrelated builds.
+    /// </summary>
+    private static bool HasActionQueueProjectionCatalogOverride(Compilation compilation) {
+        const string interfaceMetadataName = "Hexalith.FrontComposer.Contracts.Badges.IActionQueueProjectionCatalog";
+        const string defaultImplName = "ReflectionActionQueueProjectionCatalog";
+        INamedTypeSymbol? interfaceSymbol = compilation.GetTypeByMetadataName(interfaceMetadataName);
+        if (interfaceSymbol is null) {
+            return true;
+        }
+
+        foreach (SyntaxTree tree in compilation.SyntaxTrees) {
+            SemanticModel semanticModel = compilation.GetSemanticModel(tree);
+            foreach (SyntaxNode node in tree.GetRoot().DescendantNodes()) {
+                if (node is not TypeDeclarationSyntax typeDecl) {
+                    continue;
+                }
+
+                if (semanticModel.GetDeclaredSymbol(typeDecl) is not INamedTypeSymbol typeSymbol) {
+                    continue;
+                }
+
+                if (typeSymbol.IsAbstract || typeSymbol.TypeKind != TypeKind.Class) {
+                    continue;
+                }
+
+                if (string.Equals(typeSymbol.Name, defaultImplName, StringComparison.Ordinal)) {
+                    continue;
+                }
+
+                if (typeSymbol.AllInterfaces.Contains(interfaceSymbol, SymbolEqualityComparer.Default)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
 
     private static DiagnosticDescriptor GetDescriptor(string id, string severity) => id switch {
         "HFC1001" => DiagnosticDescriptors.NoAnnotatedTypesFound,

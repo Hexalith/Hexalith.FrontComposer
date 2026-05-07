@@ -76,6 +76,10 @@ public sealed class DriftDiagnosticContractTests {
                                                          && d.GetMessage().Contains("Removed", StringComparison.Ordinal));
         drift.ShouldNotBeNull();
         string message = drift!.GetMessage();
+        // Story 9-1 review CB-6: AC12 enumerates "What, Expected, Got, Fix, and DocsLink fields".
+        // Production templates do emit "What:" — assert it explicitly so a regression that drops
+        // the leading What: clause is caught.
+        message.ShouldContain("What",     Case.Insensitive);
         message.ShouldContain("Expected", Case.Insensitive);
         message.ShouldContain("Got",      Case.Insensitive);
         message.ShouldContain("Fix",      Case.Insensitive);
@@ -104,9 +108,21 @@ public sealed class DriftDiagnosticContractTests {
                                                                 && d.Location != Location.None)];
         driftDiagnostics.Length.ShouldBeGreaterThan(0);
         foreach (Diagnostic d in driftDiagnostics) {
-            d.Location.SourceTree.ShouldNotBeNull();
-            d.Location.SourceTree!.FilePath.ShouldEndWith(".cs",
-                customMessage: "AC12 — diagnostic location should point at the C# declaration, not the baseline JSON.");
+            // Story 9-1 review P12: drift comparison no longer combines `CompilationProvider`
+            // (so SyntaxTree-backed locations are not available without re-coupling), but the
+            // diagnostic location still carries the C# file path via `GetMappedLineSpan().Path`.
+            // Story 9-1 review CB-4: a path of `"baseline-stub.cs"` would slip past the
+            // earlier `EndsWith(".cs")`-only check. Pin the path to the actual source file
+            // (`Test0.cs` is the synthetic name produced by `CompilationHelper.CreateCompilation`)
+            // and assert the line/column references the projection declaration position.
+            Microsoft.CodeAnalysis.FileLinePositionSpan span = d.Location.GetMappedLineSpan();
+            string path = span.Path;
+            path.ShouldEndWith("Test0.cs",
+                customMessage: "AC12 — diagnostic location must point at the source `.cs` file, not a baseline-side stub. Got: " + path);
+            path.ShouldNotContain("baseline",
+                customMessage: "AC12 — diagnostic location must NOT reference the baseline JSON.");
+            // Synthetic test compilation produces declarations starting at line 0 (1-indexed: 1+).
+            (span.StartLinePosition.Line >= 0).ShouldBeTrue("AC12 — location must carry a real line position.");
         }
     }
 
@@ -126,7 +142,9 @@ public sealed class DriftDiagnosticContractTests {
         FrontComposerGenerator generator = new();
         AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baselineText],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }

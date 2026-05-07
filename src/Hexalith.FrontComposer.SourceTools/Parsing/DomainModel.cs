@@ -155,7 +155,10 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         bool isDestructive = false,
         string? destructiveConfirmTitle = null,
         string? destructiveConfirmBody = null,
-        string? authorizationPolicyName = null) {
+        string? authorizationPolicyName = null,
+        string? sourceFilePath = null,
+        int sourceLine = -1,
+        int sourceColumn = -1) {
         TypeName = typeName;
         Namespace = @namespace;
         BoundedContext = boundedContext;
@@ -169,8 +172,20 @@ public sealed class CommandModel : IEquatable<CommandModel> {
         DestructiveConfirmTitle = destructiveConfirmTitle;
         DestructiveConfirmBody = destructiveConfirmBody;
         AuthorizationPolicyName = authorizationPolicyName;
+        SourceFilePath = sourceFilePath ?? string.Empty;
+        SourceLine = sourceLine;
+        SourceColumn = sourceColumn;
         Density = ComputeDensity(nonDerivableProperties.Count);
     }
+
+    /// <summary>Story 9-1 P22: file path of the command's primary declaration. Used by drift diagnostics for IDE squiggle locations. Empty when unavailable. Not part of equality.</summary>
+    internal string SourceFilePath { get; }
+
+    /// <summary>Story 9-1 P22: zero-based line of the command's primary declaration, or -1 when unavailable. Not part of equality.</summary>
+    internal int SourceLine { get; }
+
+    /// <summary>Story 9-1 P22: zero-based column of the command's primary declaration, or -1 when unavailable. Not part of equality.</summary>
+    internal int SourceColumn { get; }
 
     /// <summary>
     /// Computes density from non-derivable property count (Story 2-2 AC1, Decision D3).

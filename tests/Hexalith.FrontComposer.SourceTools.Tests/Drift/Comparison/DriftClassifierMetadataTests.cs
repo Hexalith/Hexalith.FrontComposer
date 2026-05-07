@@ -54,7 +54,10 @@ public sealed class DriftClassifierMetadataTests {
     }
 
     [Fact()]
-    public void MultipleCategoriesChangedOnSameDeclaration_OneDiagnosticPerCategory() {
+    public void MultipleCategoriesChangedOnSameDeclaration_ExactlyOneDiagnosticPerCategory() {
+        // Story 9-1 review CB-21: AC7 says "at most one diagnostic per declaration per impact
+        // category". With four categories changing, the count must equal exactly four — the
+        // earlier `Between(4, 8)` bound let a per-category dedup regression slip through.
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
             namespace TestDomain;
@@ -79,8 +82,68 @@ public sealed class DriftClassifierMetadataTests {
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
 
         Diagnostic[] notesDrifts = [.. diagnostics.Where(d => d.GetMessage().Contains("Notes", StringComparison.Ordinal))];
-        notesDrifts.Length.ShouldBeGreaterThanOrEqualTo(4, "Each impact category should produce its own diagnostic.");
-        notesDrifts.Length.ShouldBeLessThanOrEqualTo(8, "AC7 keeps the cap to ≤1 per category — total bounded by category count.");
+        notesDrifts.Length.ShouldBe(4, "AC7 — exactly one diagnostic per affected metadata category (Display.Name, Description, ColumnPriority, ProjectionFieldGroup).");
+    }
+
+    [Fact()]
+    public void RelativeTimeWindowChange_EmitsMetadataDiagnostic() {
+        // Story 9-1 review CB-7: AC7 enumerates [RelativeTime] as a renderer-impacting category.
+        // Source-side attributes apply to DateTimeOffset properties; baseline records the days
+        // window in `relativeTimeWindowDays`.
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection {
+                [RelativeTime(14)]
+                public System.DateTimeOffset OccurredAt { get; set; }
+            }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "OccurredAt", "category": "DateTimeOffset", "nullable": false,
+                                 "displayFormat": "RelativeTime", "relativeTimeWindowDays": 7 }] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Any(d => d.Id == "HFC1066"
+                          && d.GetMessage().Contains("RelativeTime", StringComparison.Ordinal)
+                          && d.GetMessage().Contains("OccurredAt", StringComparison.Ordinal))
+            .ShouldBeTrue("AC7 — relative-time window change must emit one HFC1066 metadata-drift diagnostic.");
+    }
+
+    [Fact()]
+    public void RequiresPolicyChange_EmitsMetadataDiagnostic() {
+        // Story 9-1 review CB-7: AC7 enumerates [RequiresPolicy] as a renderer-impacting category
+        // at the contract level. Changing the policy name must surface a metadata-drift diagnostic.
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Command]
+            [RequiresPolicy("Orders.Manage")]
+            public partial class CancelCommand {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "command", "type": "TestDomain.CancelCommand", "boundedContext": "Orders",
+                "requiresPolicy": "Orders.Read",
+                "properties": [{ "name": "MessageId", "category": "String", "nullable": false, "derivable": false }] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Any(d => d.Id == "HFC1066"
+                          && d.GetMessage().Contains("RequiresPolicy", StringComparison.Ordinal)
+                          && d.GetMessage().Contains("CancelCommand", StringComparison.Ordinal))
+            .ShouldBeTrue("AC7 — RequiresPolicy change must emit one HFC1066 metadata-drift diagnostic.");
     }
 
     private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
@@ -89,7 +152,9 @@ public sealed class DriftClassifierMetadataTests {
         FrontComposerGenerator generator = new();
         AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baselineText],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }

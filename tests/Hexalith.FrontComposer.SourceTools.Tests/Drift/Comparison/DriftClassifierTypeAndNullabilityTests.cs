@@ -100,7 +100,46 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         Diagnostic? nullabilityDrift = diagnostics.FirstOrDefault(d => d.GetMessage().Contains("Reference", StringComparison.Ordinal)
                                                                     && d.GetMessage().Contains("nullable", StringComparison.OrdinalIgnoreCase));
         nullabilityDrift.ShouldNotBeNull();
-        nullabilityDrift!.GetMessage().ShouldMatch("(required|breaking|tight)");
+        // Story 9-1 review CB-25: anchor with word boundaries so a regression that drops the
+        // breaking-hint token but leaves an incidental substring (e.g. "required" inside a
+        // doc-link path or "tightly-coupled" prose) does not pass silently.
+        nullabilityDrift!.GetMessage().ShouldMatch(@"\b(required|breaking|tightened)\b");
+    }
+
+    [Theory()]
+    // Story 9-1 review CB-24: extend type-change coverage beyond primitive↔primitive. The
+    // boundary cases where the production category mapping crosses a kind-of-thing line
+    // (scalar→collection, value→reference, generic-arg) must surface a deterministic
+    // structural drift diagnostic; otherwise a regression that misclassifies (or silently
+    // accepts) cross-kind transitions slips through.
+    [InlineData("string",                       "System.Collections.Generic.IReadOnlyList<string>", "Tags",      "String")]
+    [InlineData("int",                          "string",                                            "Reference", "Int32")]
+    [InlineData("System.DateTimeOffset",        "string",                                            "OccurredAt","DateTimeOffset")]
+    public void TypeCategoryChange_AcrossKinds_EmitsStructuralDrift(string baselineClr, string currentClr, string memberName, string baselineCategory) {
+        ArgumentNullException.ThrowIfNull(currentClr);
+        string baseline = $$"""
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "{{memberName}}", "category": "{{baselineCategory}}", "nullable": false }] }] }
+            """;
+        string source = $$"""
+            using System.Collections.Generic;
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection {
+                public {{currentClr}} {{memberName}} { get; set; }{{(currentClr == "string" ? " = string.Empty;" : currentClr.Contains("IReadOnlyList") ? " = [];" : "")}}
+            }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Any(d => d.Id == "HFC1065"
+                          && d.GetMessage().Contains(memberName, StringComparison.Ordinal)
+                          && d.Severity == DiagnosticSeverity.Warning)
+            .ShouldBeTrue($"AC5 cross-kind boundary — {baselineClr} → {currentClr} on {memberName} must emit a structural-drift Warning.");
     }
 
     [Fact()]
@@ -130,6 +169,69 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
             .ShouldBeTrue("AC5 — command type change must call out form input rendering risk.");
     }
 
+    [Fact()]
+    public void CommandPropertyAdded_EmitsStructuralDrift_WithFormInputHint() {
+        // Story 9-1 review CB-8 (AC3 + T7 matrix): command field add/remove must be classified
+        // as structural drift on the command surface — Chunk B previously covered only command
+        // type-change. Add-side coverage closes the matrix.
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "command", "type": "TestDomain.ConfirmCommand", "boundedContext": "Orders",
+                "properties": [{ "name": "MessageId", "category": "String", "nullable": false, "derivable": false }] }] }
+            """;
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Command]
+            public partial class ConfirmCommand {
+                public string MessageId { get; set; } = string.Empty;
+                public int Quantity { get; set; }
+            }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Any(d => d.Id == "HFC1065"
+                          && d.GetMessage().Contains("Quantity", StringComparison.Ordinal)
+                          && d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase)
+                          && d.Severity == DiagnosticSeverity.Warning)
+            .ShouldBeTrue("AC3 — command field add must emit one structural-drift Warning.");
+    }
+
+    [Fact()]
+    public void CommandPropertyRemoved_EmitsStructuralDrift_WithFormInputHint() {
+        // Story 9-1 review CB-8 (AC3 + T7 matrix): command field remove counterpart.
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "command", "type": "TestDomain.ConfirmCommand", "boundedContext": "Orders",
+                "properties": [
+                  { "name": "MessageId",  "category": "String", "nullable": false, "derivable": false },
+                  { "name": "OldField",   "category": "String", "nullable": false, "derivable": false }
+                ] }] }
+            """;
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Command]
+            public partial class ConfirmCommand {
+                public string MessageId { get; set; } = string.Empty;
+            }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Any(d => d.Id == "HFC1065"
+                          && d.GetMessage().Contains("OldField", StringComparison.Ordinal)
+                          && (d.GetMessage().Contains("not found", StringComparison.OrdinalIgnoreCase)
+                           || d.GetMessage().Contains("removed", StringComparison.OrdinalIgnoreCase))
+                          && d.Severity == DiagnosticSeverity.Warning)
+            .ShouldBeTrue("AC3 — command field remove must emit one structural-drift Warning naming the removed property.");
+    }
+
     private static string CategoryFor(string clrType) => clrType switch {
         "string" => "String",
         "int" => "Int32",
@@ -146,7 +248,9 @@ public sealed class DriftClassifierTypeAndNullabilityTests {
         FrontComposerGenerator generator = new();
         AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baselineText],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }

@@ -93,7 +93,9 @@ public sealed class DriftCultureInvarianceTests {
             FrontComposerGenerator generator = new();
             AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", ValidBaseline);
             GeneratorDriver driver = CSharpGeneratorDriver.Create(
-                generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+                generators: [generator.AsSourceGenerator()],
+                additionalTexts: [baselineText],
+                optionsProvider: CompilationHelper.DriftEnabledOptions());
             driver = driver.RunGenerators(compilation, ct);
             return driver.GetRunResult().Diagnostics;
         }
@@ -115,7 +117,9 @@ public sealed class DriftCultureInvarianceTests {
             FrontComposerGenerator generator = new();
             AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", ValidBaseline);
             GeneratorDriver driver = CSharpGeneratorDriver.Create(
-                generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+                generators: [generator.AsSourceGenerator()],
+                additionalTexts: [baselineText],
+                optionsProvider: CompilationHelper.DriftEnabledOptions());
             driver = driver.RunGenerators(compilation, ct);
             return [.. driver.GetRunResult().GeneratedTrees
                 .Select(t => t.GetText(ct).ToString())

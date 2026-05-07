@@ -29,6 +29,13 @@ public sealed class DriftDiagnosticRedactionTests {
         "SENTINEL_CACHE_KEY_tenant_42",
         "SENTINEL_ROW_select_*",
         "SENTINEL_GENERATED_SOURCE_///auto/",
+        // Story 9-1 review CB-16: extend the sentinel list with Unicode and JWT-shape tokens.
+        // AC13 enumerates "tokens", "raw JSON fragments", and "raw exception text"; zero-width
+        // characters and JWT-shape strings are realistic redaction triggers that the previous
+        // ASCII-only list did not exercise.
+        "SENTINEL_ZW​SP_inside",                // U+200B zero-width space
+        "SENTINEL_RTL‮Override_inside",         // U+202E right-to-left override
+        "SENTINEL_JWT_eyJhbGciOi.eyJzdWIiOi.signedBlob",
     ];
 
     [Fact()]
@@ -80,9 +87,21 @@ public sealed class DriftDiagnosticRedactionTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, baselineJson);
 
-        diagnostics.Any(d => d.GetMessage().Contains("redact", StringComparison.OrdinalIgnoreCase)
-                          || d.GetMessage().Contains("sanitize", StringComparison.OrdinalIgnoreCase))
-            .ShouldBeTrue("AC13 — when sanitization cannot prove a value safe, the analyzer must emit an explicit redaction-fallback diagnostic.");
+        // Story 9-1 review CB-23 (redaction): pin to the production HFC1069 RedactionSuppressed
+        // ID instead of substring-matching "redact"/"sanitize", which can match incidental
+        // docslink prose.
+        diagnostics.Any(d => d.Id == "HFC1069" && d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeTrue("AC13 — RedactionSuppressed must emit HFC1069 Error.");
+
+        // Story 9-1 review CB-23: the precedence-row-11 contract says redaction failure
+        // SUPPRESSES the original would-have-leaked drift diagnostic. Assert no structural-
+        // drift (HFC1065) or metadata-drift (HFC1066) leaks for the contracts whose values
+        // the redaction layer flagged. The sentinels-fixture contract is
+        // "Acme.SENTINEL_TENANT_d4f1.SENTINEL_USER_88aa.SecretProjection" — drift comparison
+        // for that contract MUST be suppressed.
+        diagnostics.Any(d => (d.Id == "HFC1065" || d.Id == "HFC1066")
+                          && d.GetMessage().Contains("SecretProjection", StringComparison.Ordinal))
+            .ShouldBeFalse("AC13 — redaction failure must SUPPRESS the would-have-leaked drift diagnostic for the affected contract.");
     }
 
     private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
@@ -91,7 +110,9 @@ public sealed class DriftDiagnosticRedactionTests {
         FrontComposerGenerator generator = new();
         AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baselineText],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }

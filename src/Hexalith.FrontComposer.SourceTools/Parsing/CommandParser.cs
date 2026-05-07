@@ -348,7 +348,10 @@ public static class CommandParser {
             isDestructive,
             destructiveConfirmTitle,
             destructiveConfirmBody,
-            authorizationPolicyName);
+            authorizationPolicyName,
+            filePath,
+            linePos.Line,
+            linePos.Character);
 
         return new CommandParseResult(
             model,

@@ -46,11 +46,14 @@ public sealed class DriftClassifierRenameTests {
         // Epic 9 verbatim wording shape (story §AC4):
         // "Property '{OldName}' was expected on {TypeName} but not found. '{NewName}' was added.
         //  If this is a rename, update the generated output. See HFC{id}."
+        // Story 9-1 review CB-5: anchor with regex enforcing the entire sentence shape so a
+        // regression that drops single quotes, reorders sentences, or drops the trailing
+        // "See HFC..." pointer is caught. The `[\s\S]*?` between sentences allows for an
+        // optional drift-prefix preamble emitted by the production message template.
         string message = renames[0].GetMessage();
-        message.ShouldContain("Property 'OldLabel' was expected on TestDomain.OrderProjection but not found.");
-        message.ShouldContain("'NewLabel' was added.");
-        message.ShouldContain("If this is a rename, update the generated output.");
-        message.ShouldMatch("See HFC1\\d{3}\\.");
+        message.ShouldMatch(
+            @"Property 'OldLabel' was expected on TestDomain\.OrderProjection but not found\.[\s\S]*?'NewLabel' was added\.[\s\S]*?If this is a rename, update the generated output\.[\s\S]*?See HFC1\d{3}\.",
+            customMessage: "AC4 — full Epic 9 wording shape with single-quoted member names, period-terminated sentences, and trailing 'See HFC####.' pointer must be preserved.");
     }
 
     [Fact()]
@@ -109,13 +112,65 @@ public sealed class DriftClassifierRenameTests {
             .ShouldBeFalse();
     }
 
+    [Theory()]
+    // Story 9-1 review CB-23: pin the rename-heuristic compatibility boundary so a regression
+    // that broadens (or narrows) the "compatible enough to rename" rule is caught.
+    // Numeric within a width family (Int32→Int64): documented as a TYPE change on the same
+    // member name; cross-name numeric pairs are NOT collapsed into a rename, they degrade to
+    // add+remove. Same for DateTime→DateTimeOffset and String→String? (nullability-only).
+    [InlineData("Int32",    "Int64",          "false",  "false")]
+    [InlineData("DateTime", "DateTimeOffset", "false",  "false")]
+    public void OneRemoved_OneAdded_NumericOrTemporalBoundary_NotClassifiedAsRename(
+        string baselineCategory, string addedCategory, string baselineNullable, string addedNullable) {
+        string baseline = $$"""
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "OldField", "category": "{{baselineCategory}}", "nullable": {{baselineNullable}} }] }] }
+            """;
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection {
+                public {{ClrTypeFor(addedCategory, addedNullable)}} NewField { get; set; }{{Initializer(addedCategory, addedNullable)}}
+            }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Any(d => d.GetMessage().Contains("rename", StringComparison.OrdinalIgnoreCase))
+            .ShouldBeFalse($"AC4 boundary — {baselineCategory}→{addedCategory} cross-name change must NOT collapse into a rename.");
+        diagnostics.Count(d => d.GetMessage().Contains("not found", StringComparison.OrdinalIgnoreCase)).ShouldBe(1,
+            $"AC4 boundary — {baselineCategory}→{addedCategory} must surface OldField as removed.");
+        diagnostics.Count(d => d.GetMessage().Contains("added", StringComparison.OrdinalIgnoreCase)
+                            && d.GetMessage().Contains("NewField", StringComparison.Ordinal)).ShouldBe(1,
+            $"AC4 boundary — {baselineCategory}→{addedCategory} must surface NewField as added.");
+    }
+
+    private static string ClrTypeFor(string category, string nullable) => (category, nullable) switch {
+        ("Int32", "false") => "int",
+        ("Int64", "false") => "long",
+        ("DateTime", "false") => "System.DateTime",
+        ("DateTimeOffset", "false") => "System.DateTimeOffset",
+        ("String", "true") => "string?",
+        ("String", "false") => "string",
+        _ => "object",
+    };
+
+    private static string Initializer(string category, string nullable)
+        => category == "String" && nullable == "false" ? " = string.Empty;" : string.Empty;
+
     private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
         AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baselineText],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }

@@ -3,6 +3,7 @@ using Hexalith.FrontComposer.SourceTools.Parsing;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests;
 
@@ -117,4 +118,40 @@ internal static class CompilationHelper {
 
     private static SyntaxTree CreateSyntaxTree(string source, string filePath)
         => CSharpSyntaxTree.ParseText(source, path: filePath);
+
+    /// <summary>
+    /// Story 9-1 review P4: drift detection is opt-in. Tests that exercise the drift pipeline
+    /// must pass an <see cref="AnalyzerConfigOptionsProvider"/> with
+    /// <c>build_property.HfcDriftDetectionEnabled=true</c>; this helper builds one and lets
+    /// callers add additional options for narrower scenarios (path overrides, severity, caps).
+    /// </summary>
+    internal static AnalyzerConfigOptionsProvider DriftEnabledOptions(IReadOnlyDictionary<string, string>? extra = null) {
+        Dictionary<string, string> values = extra is null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(extra, StringComparer.OrdinalIgnoreCase);
+        values["build_property.HfcDriftDetectionEnabled"] = "true";
+        return new InMemoryDriftOptionsProvider(values);
+    }
+
+    private sealed class InMemoryDriftOptionsProvider(IReadOnlyDictionary<string, string> values) : AnalyzerConfigOptionsProvider {
+        public override AnalyzerConfigOptions GlobalOptions { get; } = new InMemory(values);
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => GlobalOptions;
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => GlobalOptions;
+
+        private sealed class InMemory(IReadOnlyDictionary<string, string> values) : AnalyzerConfigOptions {
+            // Story 9-1 review CB-27: Roslyn's real `AnalyzerConfigOptions.TryGetValue` leaves
+            // `out value` at its default (`null`) on miss. Returning `string.Empty` here would
+            // diverge from production and let consumers that ignore the bool see a present-but-
+            // empty string instead of "absent". Suppress the nullable warning explicitly.
+            public override bool TryGetValue(string key, out string value) {
+                if (values.TryGetValue(key, out string? v)) {
+                    value = v;
+                    return true;
+                }
+
+                value = null!;
+                return false;
+            }
+        }
+    }
 }

@@ -126,7 +126,9 @@ public sealed class DriftByteStabilityRegressionTests {
             : [new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson)];
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: texts);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: texts,
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
 
         return [.. driver.GetRunResult().GeneratedTrees
@@ -141,7 +143,9 @@ public sealed class DriftByteStabilityRegressionTests {
         AdditionalText[] texts = [.. baselines.Select(b => (AdditionalText)new InMemoryAdditionalText(b.Path, b.Content))];
 
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: texts);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: texts,
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
 
         return [.. driver.GetRunResult().GeneratedTrees

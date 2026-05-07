@@ -55,10 +55,19 @@ public sealed class DriftClassifierProjectionPropertyTests {
         removeDrifts.Length.ShouldBe(1, "AC2 emits exactly one diagnostic per removed property.");
         removeDrifts[0].GetMessage().ShouldContain("OrderProjection");
         removeDrifts[0].GetMessage().ShouldContain("DueDate");
-        // AC2 — message must list one of the documented affected surfaces:
-        new[] { "DataGrid", "detail", "MCP", "filter", "column" }
-            .Any(token => removeDrifts[0].GetMessage().Contains(token, StringComparison.OrdinalIgnoreCase))
-            .ShouldBeTrue("AC2 message must reference an affected UI surface.");
+        // AC2 — message must list documented affected surfaces. Story 9-1 review CB-35: the
+        // earlier `Any` substring check passed on incidental "column" matches (e.g. "ColumnPriority"
+        // in unrelated metadata text). For the canonical removed-DateTimeOffset case the
+        // production message says: "Affected surface: DataGrid column, detail field, MCP descriptor".
+        // Pin the assertion to require BOTH `DataGrid` and `detail` so a regression that emits
+        // only metadata-style prose is caught.
+        string message = removeDrifts[0].GetMessage();
+        message.ShouldContain("Affected surface", Case.Insensitive,
+            customMessage: "AC2 — diagnostic must label the affected surface explicitly.");
+        message.ShouldContain("DataGrid", Case.Insensitive,
+            customMessage: "AC2 — DateTimeOffset removal affects the DataGrid column surface.");
+        message.ShouldContain("detail", Case.Insensitive,
+            customMessage: "AC2 — DateTimeOffset removal affects the detail field surface.");
     }
 
     [Theory()]
@@ -118,8 +127,10 @@ public sealed class DriftClassifierProjectionPropertyTests {
         FrontComposerGenerator generator = new();
 
         AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson);
-        GeneratorDriver driver = CSharpGeneratorDriver
-            .Create(generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baselineText],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         driver = driver.RunGenerators(compilation, ct);
 
         return driver.GetRunResult().Diagnostics;

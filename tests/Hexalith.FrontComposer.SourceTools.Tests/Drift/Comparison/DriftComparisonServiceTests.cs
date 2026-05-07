@@ -11,11 +11,11 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Comparison;
 
 /// <summary>
 /// AC1 / T1 + T3 — the structural drift comparison seam. Asserts the planned internal
-/// pure service surface (<c>DriftComparisonService.Compare(domain, baseline, options)</c>)
+/// pure service surface (<c>DriftComparisonService.Compare(snapshot, baseline)</c>)
 /// exists, returns a deterministic <c>DriftComparisonResult</c>, and treats partial-type
-/// declaration order as semantically irrelevant. Memory rule "comparison logic stays
-/// internal — no public CLI/code-fix/source-rewrite surface in 9-1" is enforced by
-/// <see cref="Seam.DriftSeamPublicSurfaceContractTests"/>.
+/// declaration order and baseline file order as semantically irrelevant. Memory rule
+/// "comparison logic stays internal — no public CLI/code-fix/source-rewrite surface in 9-1"
+/// is enforced by <see cref="Seam.DriftSeamPublicSurfaceContractTests"/>.
 /// </summary>
 public sealed class DriftComparisonServiceTests {
     private const string SkipReason = "RED-PHASE: T1 + T3 — DriftComparisonService not yet introduced.";
@@ -27,58 +27,77 @@ public sealed class DriftComparisonServiceTests {
         service.ShouldNotBeNull("AC1 / T3: planned `DriftComparisonService` must exist as an internal pure service.");
         service!.IsPublic.ShouldBeFalse("AC17 forbids public comparison API in 9-1.");
 
-        MethodInfo? compare = service.GetMethod("Compare", BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance);
-        compare.ShouldNotBeNull("Service must expose a Compare method.");
+        // Story 9-1 review CB-1: pin the lookup to the canonical 2-arg overload by exact
+        // parameter types. The earlier `OrderBy(parameters.Length).FirstOrDefault()` was
+        // brittle: it would silently bind to a different (or null) method if a future overload
+        // shifted positions, instead of asserting the contract. Production exposes:
+        //   internal static DriftComparisonResult Compare(DriftCurrentSnapshot, DriftBaselineSet)
+        // and a 4-arg variant with options; here we pin to the 2-arg one explicitly.
+        MethodInfo? compare = service.GetMethod(
+            "Compare",
+            BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance,
+            binder: null,
+            types: [typeof(DriftCurrentSnapshot), typeof(DriftBaselineSet)],
+            modifiers: null);
+        compare.ShouldNotBeNull("Service must expose Compare(DriftCurrentSnapshot, DriftBaselineSet).");
         ParameterInfo[] parameters = compare!.GetParameters();
-        parameters.Length.ShouldBeGreaterThanOrEqualTo(2);
-        parameters.ShouldContain(p => p.ParameterType.Name.Contains("DomainModel", StringComparison.Ordinal)
-                                    || p.ParameterType.Name.Contains("DriftCurrent", StringComparison.Ordinal));
-        parameters.ShouldContain(p => p.ParameterType.Name.Contains("Baseline", StringComparison.Ordinal));
+        parameters[0].ParameterType.ShouldBe(typeof(DriftCurrentSnapshot));
+        parameters[1].ParameterType.ShouldBe(typeof(DriftBaselineSet));
     }
 
     [Fact()]
     public void Result_IsDeterministicForIdenticalInputs() {
         // Same domain + same baseline ⇒ comparison results compare equal (value-based, ordered).
-        // Activation contract: invoke the service twice with the same DomainModel sequence and
-        // the same parsed baseline; assert ImmutableArray<DriftDiagnosticFact>-equivalent equality.
         InvocationProbe probe = InvocationProbe.CreateOrSkip();
-        object first = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
-        object second = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
+        DriftComparisonResult first = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
+        DriftComparisonResult second = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
 
-        first.ShouldNotBeNull();
-        second.ShouldNotBeNull();
-        first.GetType().ShouldBe(second.GetType());
-
-        IEnumerable<object> firstFacts = ExtractDiagnosticFacts(first);
-        IEnumerable<object> secondFacts = ExtractDiagnosticFacts(second);
-
-        firstFacts.Select(f => f.ToString()).ShouldBe(secondFacts.Select(f => f.ToString()));
+        // Story 9-1 review CB-38: compare facts structurally (Id + Severity + Message) rather
+        // than via `f.ToString()` — DriftDiagnosticFact does not override ToString, so the prior
+        // assertion compared `Type.FullName` for every element and passed trivially.
+        first.Diagnostics.Length.ShouldBe(second.Diagnostics.Length);
+        for (int i = 0; i < first.Diagnostics.Length; i++) {
+            DriftDiagnosticFact a = first.Diagnostics[i];
+            DriftDiagnosticFact b = second.Diagnostics[i];
+            a.Id.ShouldBe(b.Id, $"AC18 determinism — fact[{i}].Id differs.");
+            a.Severity.ShouldBe(b.Severity, $"AC18 determinism — fact[{i}].Severity differs.");
+            a.Message.ShouldBe(b.Message, $"AC18 determinism — fact[{i}].Message differs.");
+        }
     }
 
     [Fact()]
     public void Result_IsIndependentOfPartialDeclarationOrder() {
         // T3: partial declarations of the same projection/command type may live in any file
-        // order; merging must produce identical drift facts regardless of declaration order.
-        InvocationProbe probe = InvocationProbe.CreateOrSkip();
-        object forward = probe.Compare(probe.PartialPermutationDomain(reverse: false), probe.SampleBaseline);
-        object reverse = probe.Compare(probe.PartialPermutationDomain(reverse: true), probe.SampleBaseline);
+        // order; merging must produce identical drift facts regardless of contract enumeration
+        // order in the snapshot.
+        // Story 9-1 review CB-2: actually permute. The earlier helpers returned the same
+        // instance regardless of `reverse:`, so the test was a tautology.
+        InvocationProbe probe = InvocationProbe.CreateOrSkip(twoContracts: true);
+        DriftComparisonResult forward = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
+        DriftComparisonResult reverse = probe.Compare(probe.ReversedDomain, probe.SampleBaseline);
 
-        ExtractDiagnosticFacts(forward).Select(f => f.ToString())
-            .ShouldBe(ExtractDiagnosticFacts(reverse).Select(f => f.ToString()),
-                "AC18: partial-declaration order must not affect drift output.");
+        AssertSameFacts(forward, reverse, "AC18 partial-declaration order must not affect drift output.");
     }
 
     [Fact()]
     public void Result_IsIndependentOfBaselineFileOrder() {
         // T2: when multiple AdditionalText baseline files are provided, ordinal-sorted path
         // normalization must produce identical drift facts regardless of enumeration order.
-        InvocationProbe probe = InvocationProbe.CreateOrSkip();
-        object forward = probe.Compare(probe.SampleDomain, probe.PermutedBaseline(reverse: false));
-        object reverse = probe.Compare(probe.SampleDomain, probe.PermutedBaseline(reverse: true));
+        // Story 9-1 review CB-2: actually permute the baseline contract array.
+        InvocationProbe probe = InvocationProbe.CreateOrSkip(twoContracts: true);
+        DriftComparisonResult forward = probe.Compare(probe.SampleDomain, probe.SampleBaseline);
+        DriftComparisonResult reverse = probe.Compare(probe.SampleDomain, probe.ReversedBaseline);
 
-        ExtractDiagnosticFacts(forward).Select(f => f.ToString())
-            .ShouldBe(ExtractDiagnosticFacts(reverse).Select(f => f.ToString()),
-                "AC18: baseline file enumeration order must not change drift output.");
+        AssertSameFacts(forward, reverse, "AC18 baseline file enumeration order must not change drift output.");
+    }
+
+    private static void AssertSameFacts(DriftComparisonResult a, DriftComparisonResult b, string reason) {
+        // Sort by Id+Message so we compare set equality. The comparison service guarantees
+        // ordering, but the goal here is to assert that order independence holds at the *fact*
+        // level — the production sort is exercised by DriftDiagnosticOrderingAndTruncationTests.
+        IOrderedEnumerable<string> aKeys = a.Diagnostics.Select(f => f.Id + "|" + f.Message).OrderBy(s => s, StringComparer.Ordinal);
+        IOrderedEnumerable<string> bKeys = b.Diagnostics.Select(f => f.Id + "|" + f.Message).OrderBy(s => s, StringComparer.Ordinal);
+        aKeys.ShouldBe(bKeys, reason);
     }
 
     private static Type? TryFindServiceType() {
@@ -88,69 +107,114 @@ public sealed class DriftComparisonServiceTests {
             || (t.Name.EndsWith("DriftComparisonService", StringComparison.Ordinal)));
     }
 
-    private static IEnumerable<object> ExtractDiagnosticFacts(object result) {
-        // The result type is expected to expose a `Diagnostics` (or `Facts`) property whose
-        // element type is a stable record. We enumerate via reflection so the test compiles
-        // before the type lands.
-        PropertyInfo? facts = result.GetType().GetProperty("Diagnostics")
-            ?? result.GetType().GetProperty("Facts")
-            ?? result.GetType().GetProperty("Drifts");
-        if (facts is null) {
-            return Array.Empty<object>();
-        }
-
-        return ((System.Collections.IEnumerable)facts.GetValue(result)!).Cast<object>();
-    }
-
-    public sealed class InvocationProbe {
-        public required object Service { get; init; }
+    internal sealed class InvocationProbe {
         public required MethodInfo CompareMethod { get; init; }
-        public required object SampleDomain { get; init; }
-        public required object SampleBaseline { get; init; }
+        public required DriftCurrentSnapshot SampleDomain { get; init; }
+        public required DriftBaselineSet SampleBaseline { get; init; }
+        public required DriftCurrentSnapshot ReversedDomain { get; init; }
+        public required DriftBaselineSet ReversedBaseline { get; init; }
 
-        public object PartialPermutationDomain(bool reverse) => SampleDomain;
-        public object PermutedBaseline(bool reverse) => SampleBaseline;
+        public DriftComparisonResult Compare(DriftCurrentSnapshot domain, DriftBaselineSet baseline)
+            => (DriftComparisonResult)CompareMethod.Invoke(null, [domain, baseline])!;
 
-        public object Compare(object domain, object baseline) => CompareMethod.Invoke(Service, [domain, baseline])!;
-
-        public static InvocationProbe CreateOrSkip() {
+        internal static InvocationProbe CreateOrSkip(bool twoContracts = false) {
             Type? type = TryFindServiceType()
                 ?? throw new InvalidOperationException("DriftComparisonService not yet implemented.");
-            object instance = type.IsAbstract ? null! : Activator.CreateInstance(type)!;
-            MethodInfo compare = type.GetMethod("Compare")
-                ?? throw new InvalidOperationException("Compare method missing.");
-            DriftCurrentSnapshot domain = new(ImmutableArray.Create(new DriftCurrentContract(
-                "projection",
-                "TestDomain.OrderProjection",
-                "Orders",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                ImmutableArray.Create(new DriftCurrentProperty("Id", "String", false, null, null, null, null, null, "Default")),
-                string.Empty,
-                -1,
-                -1)));
-            DriftBaselineSet baseline = new(ImmutableArray.Create(new DriftBaselineContract(
-                "frontcomposer.drift-baseline.json",
-                "projection",
-                "TestDomain.OrderProjection",
-                "Orders",
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                ImmutableArray.Create(new DriftBaselineProperty("Id", "String", false, null, null, null, null, null, "Default")))));
+            // Story 9-1 review CB-1: pin to the exact 2-arg signature.
+            MethodInfo compare = type.GetMethod(
+                "Compare",
+                BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Static | BindingFlags.Instance,
+                binder: null,
+                types: [typeof(DriftCurrentSnapshot), typeof(DriftBaselineSet)],
+                modifiers: null)
+                ?? throw new InvalidOperationException("Compare(DriftCurrentSnapshot, DriftBaselineSet) missing.");
+
+            DriftCurrentContract orderContract = MakeCurrentContract("TestDomain.OrderProjection", "Orders", "Id");
+            DriftBaselineContract orderBaseline = MakeBaselineContract("TestDomain.OrderProjection", "Orders", "Id");
+
+            ImmutableArray<DriftCurrentContract> currentContracts;
+            ImmutableArray<DriftCurrentContract> currentReversed;
+            ImmutableArray<DriftBaselineContract> baselineContracts;
+            ImmutableArray<DriftBaselineContract> baselineReversed;
+
+            if (twoContracts) {
+                // Story 9-1 review CB-2: real permutation requires ≥2 contracts (or members).
+                // Use two distinct projections; reversing the array proves order independence.
+                DriftCurrentContract shipContract = MakeCurrentContract("TestDomain.ShipmentProjection", "Shipping", "Priority");
+                DriftBaselineContract shipBaseline = MakeBaselineContract("TestDomain.ShipmentProjection", "Shipping", "Priority");
+
+                currentContracts = ImmutableArray.Create(orderContract, shipContract);
+                currentReversed = ImmutableArray.Create(shipContract, orderContract);
+                baselineContracts = ImmutableArray.Create(orderBaseline, shipBaseline);
+                baselineReversed = ImmutableArray.Create(shipBaseline, orderBaseline);
+            } else {
+                currentContracts = ImmutableArray.Create(orderContract);
+                currentReversed = currentContracts;
+                baselineContracts = ImmutableArray.Create(orderBaseline);
+                baselineReversed = baselineContracts;
+            }
+
             return new InvocationProbe {
-                Service = instance,
                 CompareMethod = compare,
-                SampleDomain = domain,
-                SampleBaseline = baseline,
+                SampleDomain = new DriftCurrentSnapshot(currentContracts),
+                SampleBaseline = new DriftBaselineSet(baselineContracts),
+                ReversedDomain = new DriftCurrentSnapshot(currentReversed),
+                ReversedBaseline = new DriftBaselineSet(baselineReversed),
             };
         }
+
+        private static DriftCurrentContract MakeCurrentContract(string type, string boundedContext, string propertyName)
+            => new(
+                "projection",
+                type,
+                boundedContext,
+                displayName: null,
+                displayGroupName: null,
+                role: null,
+                icon: null,
+                destructive: null,
+                requiresPolicy: null,
+                emptyStateCtaCommandTypeName: null,
+                ImmutableArray.Create(new DriftCurrentProperty(
+                    propertyName,
+                    "String",
+                    false,
+                    derivable: null,
+                    displayName: null,
+                    description: null,
+                    columnPriority: null,
+                    fieldGroup: null,
+                    displayFormat: "Default",
+                    relativeTimeWindowDays: null,
+                    badgeSignature: null)),
+                string.Empty,
+                -1,
+                -1);
+
+        private static DriftBaselineContract MakeBaselineContract(string type, string boundedContext, string propertyName)
+            => new(
+                "frontcomposer.drift-baseline.json",
+                "projection",
+                type,
+                boundedContext,
+                displayName: null,
+                displayGroupName: null,
+                role: null,
+                icon: null,
+                destructive: null,
+                requiresPolicy: null,
+                emptyStateCtaCommandTypeName: null,
+                ImmutableArray.Create(new DriftBaselineProperty(
+                    propertyName,
+                    "String",
+                    false,
+                    derivable: null,
+                    displayName: null,
+                    description: null,
+                    columnPriority: null,
+                    fieldGroup: null,
+                    displayFormat: "Default",
+                    relativeTimeWindowDays: null,
+                    badgeSignature: null)));
     }
 }

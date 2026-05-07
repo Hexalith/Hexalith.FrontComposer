@@ -45,6 +45,8 @@ public sealed class DriftBaselineMissingDiagnosticTests {
         // Activation contract: when build_property.HfcDriftBaselinePath points at a path that
         // does not match any AdditionalText, the analyzer reports it as a *configuration* failure,
         // not a first-run diagnostic. The two MUST carry different IDs.
+        // Story 9-1 review CB-32: positively assert distinct HFC IDs (HFC1058 vs HFC1059) —
+        // wording-only differentiation is brittle.
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
             namespace TestDomain;
@@ -55,12 +57,22 @@ public sealed class DriftBaselineMissingDiagnosticTests {
             }
             """;
 
-        IReadOnlyList<Diagnostic> diagnostics = RunWithMisconfiguredBaselinePath(source);
+        IReadOnlyList<Diagnostic> withoutBaseline = RunWithoutBaseline(source);
+        IReadOnlyList<Diagnostic> invalidPath = RunWithMisconfiguredBaselinePath(source);
 
-        Diagnostic[] invalid = [.. diagnostics.Where(d => d.GetMessage().Contains("baseline", StringComparison.OrdinalIgnoreCase)
-                                                       && d.GetMessage().Contains("path", StringComparison.OrdinalIgnoreCase))];
-        invalid.Length.ShouldBeGreaterThan(0);
-        invalid.Any(d => d.GetMessage().Contains("first run", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse(
+        Diagnostic? missing = withoutBaseline.FirstOrDefault(d => d.GetMessage().Contains("baseline", StringComparison.OrdinalIgnoreCase)
+                                                               && (d.GetMessage().Contains("first run", StringComparison.OrdinalIgnoreCase)
+                                                                || d.GetMessage().Contains("missing", StringComparison.OrdinalIgnoreCase)));
+        Diagnostic? invalid = invalidPath.FirstOrDefault(d => d.GetMessage().Contains("baseline", StringComparison.OrdinalIgnoreCase)
+                                                           && d.GetMessage().Contains("path", StringComparison.OrdinalIgnoreCase));
+
+        missing.ShouldNotBeNull();
+        invalid.ShouldNotBeNull();
+        missing!.Id.ShouldNotBe(invalid!.Id, "AC8 — missing-baseline (HFC1058) and invalid-path (HFC1059) MUST carry distinct IDs.");
+        missing.Id.ShouldBe("HFC1058", "AC8 — first-run/missing baseline pinned to HFC1058.");
+        invalid.Id.ShouldBe("HFC1059", "AC8 — invalid-configured-path pinned to HFC1059.");
+
+        invalidPath.Any(d => d.GetMessage().Contains("first run", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse(
             "AC8 — the invalid-path diagnostic must NOT reuse the first-run wording.");
     }
 

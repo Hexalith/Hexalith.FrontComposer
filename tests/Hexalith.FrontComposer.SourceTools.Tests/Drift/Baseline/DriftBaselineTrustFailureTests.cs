@@ -2,6 +2,7 @@ using System.Reflection;
 
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Diagnostics;
 
 using Shouldly;
 using Xunit;
@@ -41,7 +42,16 @@ public sealed class DriftBaselineTrustFailureTests {
             """;
         string fixtureContent = LoadFixture(fixtureFileName);
 
-        IReadOnlyList<Diagnostic> diagnostics = Run(source, fixtureContent);
+        // Story 9-1 review P2 + P10: the oversized fixture is a stable 520-byte artifact and
+        // does not exceed the default 256 KB cap on its own. Tighten MaxBaselineBytes to a
+        // small value so the cap fires deterministically without checking in a multi-MB
+        // fixture (the previous implementation cheated by looking for a `_oversizedHint`
+        // sentinel substring in production code, which leaked test fixtures into the loader).
+        int? maxBytesOverride = string.Equals(fixtureFileName, "baseline-oversized.json", StringComparison.Ordinal)
+            ? 100
+            : null;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, fixtureContent, maxBytesOverride);
 
         Diagnostic? trustFailure = diagnostics.FirstOrDefault(d =>
             d.Severity == DiagnosticSeverity.Error
@@ -54,10 +64,155 @@ public sealed class DriftBaselineTrustFailureTests {
     }
 
     [Fact()]
-    public void DuplicateIdentityAcrossBaselineFiles_FailsClosed_NoLastWriterWins() {
+    public void OversizedCap_AtExactByteCap_DoesNotFire() {
+        // Story 9-1 review CB-11 boundary: the loader uses `>` strictly when comparing byte
+        // length to MaxBaselineBytes; a baseline at exactly the configured cap is allowed.
+        // Build a minimal-valid baseline, measure its byte length, and pass that exact value
+        // as the cap. The loader must NOT emit HFC1063 (BaselineBoundsExceeded) at the boundary.
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
             namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
+            """;
+        int exactBytes = System.Text.Encoding.UTF8.GetByteCount(baseline);
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline, maxBaselineBytesOverride: exactBytes);
+
+        diagnostics.Any(d => d.Id == "HFC1063")
+            .ShouldBeFalse("CB-11 — oversize cap is `>` strict; baseline at exactly MaxBaselineBytes must pass.");
+    }
+
+    [Fact()]
+    public void OversizedCap_AtCapPlusOne_FailsClosed() {
+        // Companion to the at-cap test: cap-1 fires HFC1063, proving the boundary is between
+        // exactCap (allowed) and exactCap-1 (rejected).
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
+            """;
+        int exactBytes = System.Text.Encoding.UTF8.GetByteCount(baseline);
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline, maxBaselineBytesOverride: exactBytes - 1);
+
+        diagnostics.Any(d => d.Id == "HFC1063" && d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeTrue("CB-11 — baseline strictly larger than MaxBaselineBytes must emit HFC1063 Error.");
+    }
+
+    [Fact()]
+    public void OversizedCap_MeasuresBytesNotChars_ForMultiByteUtf8() {
+        // Story 9-1 review P10: oversize check uses `Encoding.UTF8.GetByteCount` (not character
+        // count). Build a baseline where multi-byte (CJK) characters drive byte length above
+        // a configured cap that the char count would not exceed.
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
+            """;
+        // Each CJK character is 3 bytes in UTF-8 but 1 char. Build a description ~50 chars but
+        // ~150+ bytes; the cap below (set just under the byte length) must reject by bytes.
+        string padding = new string('漢', 60);
+        string baseline = $$"""
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "displayName": "{{padding}}",
+                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
+            """;
+        int byteCount = System.Text.Encoding.UTF8.GetByteCount(baseline);
+        int charCount = baseline.Length;
+        // Sanity guard: this fixture is only meaningful if byteCount > charCount + slack.
+        byteCount.ShouldBeGreaterThan(charCount + 100, "CB-11 fixture must contain enough multi-byte chars to differentiate.");
+
+        // Cap at a value below byteCount but above charCount. A char-counting impl would let
+        // this through; the byte-counting impl must reject.
+        int cap = (charCount + byteCount) / 2;
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline, maxBaselineBytesOverride: cap);
+
+        diagnostics.Any(d => d.Id == "HFC1063" && d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeTrue("P10 — oversize comparison must use UTF-8 byte count, not char count.");
+    }
+
+    [Fact()]
+    public void Utf8Bom_OnValidBaseline_ParsesAsValid_NoTrustFailure() {
+        // Story 9-1 review P11: `JsonDocument.Parse` rejects UTF-8 BOM, so the loader strips it
+        // before parsing. Prefix a valid baseline with U+FEFF and assert no HFC1060 fires.
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
+            """;
+        const string baselineBody = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
+            """;
+        string bomBaseline = "﻿" + baselineBody;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, bomBaseline);
+
+        diagnostics.Any(d => d.Id == "HFC1060" || d.Id == "HFC1061" || d.Id == "HFC1062")
+            .ShouldBeFalse("P11 — UTF-8 BOM-prefixed valid baseline must parse cleanly (no malformed/schema/algorithm error).");
+    }
+
+    [Fact()]
+    public void PropertyNameCaseCollision_FailsClosed_WithInvariantDiagnostic() {
+        // Story 9-1 review P13: property dedupe uses `OrdinalIgnoreCase`. A baseline that
+        // declares both `"Foo"` and `"foo"` on a single contract must fail the invariant check
+        // (HFC1064) rather than silently throw or last-writer-wins-merge.
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection { public string Id { get; set; } = string.Empty; }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [
+                  { "name": "Foo", "category": "String", "nullable": false },
+                  { "name": "foo", "category": "String", "nullable": false }
+                ] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Any(d => d.Id == "HFC1064" && d.Severity == DiagnosticSeverity.Error)
+            .ShouldBeTrue("P13 — case-only property duplicates must emit HFC1064 (DuplicateOrInvariant) Error.");
+    }
+
+    [Fact()]
+    public void DuplicateIdentityAcrossBaselineFiles_FailsClosed_NoLastWriterWins() {
+        // Source matches the fixture identity (`Acme.Shipping.ShipmentProjection`) so this
+        // exercises the realistic "duplicate poisons a real declaration" branch — chunk-B
+        // CB-3 fix. The previous version used `TestDomain.ShipmentProjection`, which left
+        // the duplicated identity disconnected from any compiled type.
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace Acme.Shipping;
             [BoundedContext("Shipping")]
             [Projection]
             public partial class ShipmentProjection {
@@ -67,10 +222,13 @@ public sealed class DriftBaselineTrustFailureTests {
         string fileA = LoadFixture("baseline-duplicate-identity-across-a.json");
         string fileB = LoadFixture("baseline-duplicate-identity-across-b.json");
 
+        // Story 9-1 review P5: IsCandidate now requires the documented baseline naming prefix
+        // (`frontcomposer.drift-baseline*` / `frontcomposer.generated-ui-baseline*`). Stray
+        // *.json AdditionalText files are no longer treated as drift baselines.
         IReadOnlyList<Diagnostic> diagnostics = RunWithMultipleBaselines(
             source,
-            ("a.json", fileA),
-            ("b.json", fileB));
+            ("frontcomposer.drift-baseline-a.json", fileA),
+            ("frontcomposer.drift-baseline-b.json", fileB));
 
         Diagnostic? duplicate = diagnostics.FirstOrDefault(d =>
             d.Severity == DiagnosticSeverity.Error
@@ -79,15 +237,20 @@ public sealed class DriftBaselineTrustFailureTests {
         duplicate.ShouldNotBeNull(
             "AC9 — duplicate identity across files MUST fail closed with an Error; no silent last-writer-wins merge.");
 
-        // Drift comparison must be fully suppressed for that contract.
+        // Drift comparison must be fully suppressed for that contract: neither structural drift
+        // (Priority added vs file-B nullable) nor metadata drift (displayName diff between the
+        // two files) may leak.
         diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        diagnostics.Any(d => d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
     }
 
     [Fact()]
     public void DuplicateIdentityWithinSingleFile_FailsClosed() {
+        // Source matches the fixture identity (`Acme.Shipping.ShipmentProjection`) — chunk-B
+        // CB-3 fix.
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
-            namespace TestDomain;
+            namespace Acme.Shipping;
             [BoundedContext("Shipping")]
             [Projection]
             public partial class ShipmentProjection { public string Id { get; set; } = string.Empty; }
@@ -96,16 +259,25 @@ public sealed class DriftBaselineTrustFailureTests {
 
         IReadOnlyList<Diagnostic> diagnostics = Run(source, fixtureContent);
 
-        diagnostics.Any(d => d.Severity == DiagnosticSeverity.Error
+        diagnostics.Any(d => d.Id == "HFC1064"
+                          && d.Severity == DiagnosticSeverity.Error
                           && d.GetMessage().Contains("duplicate", StringComparison.OrdinalIgnoreCase))
             .ShouldBeTrue();
+        // Even though the source defines the contract, drift comparison must be suppressed for it.
+        diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
+        diagnostics.Any(d => d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase)).ShouldBeFalse();
     }
 
     [Fact()]
-    public void DuplicateIdentityAcrossFiles_OrderAgnostic_SameDiagnostic() {
+    public void DuplicateIdentityAcrossFiles_OrderAgnostic_BothOrderingsEmitDuplicate_NoDriftLeaks() {
+        // Story 9-1 review CB-31: it isn't enough to assert that diagnostics compare equal under
+        // forward and reverse orderings — the test must positively verify (a) the duplicate-id
+        // diagnostic IS PRESENT in BOTH orderings (proving fail-closed ran in each), and
+        // (b) no contract drift leaked under either ordering (proving the comparison was
+        // actually suppressed, not silently reconciled).
         const string source = """
             using Hexalith.FrontComposer.Contracts.Attributes;
-            namespace TestDomain;
+            namespace Acme.Shipping;
             [BoundedContext("Shipping")]
             [Projection]
             public partial class ShipmentProjection { public string Priority { get; set; } = string.Empty; }
@@ -113,21 +285,34 @@ public sealed class DriftBaselineTrustFailureTests {
         string a = LoadFixture("baseline-duplicate-identity-across-a.json");
         string b = LoadFixture("baseline-duplicate-identity-across-b.json");
 
-        IReadOnlyList<Diagnostic> forward = RunWithMultipleBaselines(source, ("a.json", a), ("b.json", b));
-        IReadOnlyList<Diagnostic> reverse = RunWithMultipleBaselines(source, ("b.json", b), ("a.json", a));
+        IReadOnlyList<Diagnostic> forward = RunWithMultipleBaselines(source, ("frontcomposer.drift-baseline-a.json", a), ("frontcomposer.drift-baseline-b.json", b));
+        IReadOnlyList<Diagnostic> reverse = RunWithMultipleBaselines(source, ("frontcomposer.drift-baseline-b.json", b), ("frontcomposer.drift-baseline-a.json", a));
+
+        foreach ((IReadOnlyList<Diagnostic> diagnostics, string label) in new[] { (forward, "forward"), (reverse, "reverse") }) {
+            diagnostics.Any(d => d.Id == "HFC1064" && d.Severity == DiagnosticSeverity.Error)
+                .ShouldBeTrue($"AC9 — {label} ordering must emit HFC1064 duplicate-identity Error.");
+            diagnostics.Any(d => d.GetMessage().Contains("structural drift", StringComparison.OrdinalIgnoreCase)
+                              || d.GetMessage().Contains("metadata drift", StringComparison.OrdinalIgnoreCase))
+                .ShouldBeFalse($"AC9 — {label} ordering must suppress drift comparison for the duplicated identity.");
+        }
 
         forward.Select(d => d.Id + "|" + d.GetMessage()).OrderBy(s => s, StringComparer.Ordinal)
             .ShouldBe(reverse.Select(d => d.Id + "|" + d.GetMessage()).OrderBy(s => s, StringComparer.Ordinal),
                 "AC9 + AC18 — file enumeration order must not change diagnostics.");
     }
 
-    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
+    private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson, int? maxBaselineBytesOverride = null) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
         AdditionalText baselineText = new InMemoryAdditionalText("frontcomposer.drift-baseline.json", baselineJson);
+        // Story 9-1 review P4: drift detection is opt-in. Tests must explicitly set the flag.
+        // Story 9-1 review CB-28: consolidate to use the shared helper.
+        AnalyzerConfigOptionsProvider options = EnabledOptions(maxBaselineBytesOverride);
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baselineText]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baselineText],
+            optionsProvider: options);
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }
@@ -137,10 +322,24 @@ public sealed class DriftBaselineTrustFailureTests {
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
         FrontComposerGenerator generator = new();
         AdditionalText[] texts = [.. baselines.Select(b => (AdditionalText)new InMemoryAdditionalText(b.Path, b.Content))];
+        AnalyzerConfigOptionsProvider options = EnabledOptions();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: texts);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: texts,
+            optionsProvider: options);
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
+    }
+
+    private static AnalyzerConfigOptionsProvider EnabledOptions(int? maxBaselineBytes = null) {
+        // Story 9-1 review CB-28: delegate to the canonical helper instead of duplicating the
+        // provider/options classes inline.
+        Dictionary<string, string>? extra = maxBaselineBytes is int max
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+                ["build_property.HfcDriftMaxBaselineBytes"] = max.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            }
+            : null;
+        return CompilationHelper.DriftEnabledOptions(extra);
     }
 
     internal static string LoadFixture(string fileName) {

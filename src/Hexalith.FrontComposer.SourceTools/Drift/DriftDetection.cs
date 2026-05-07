@@ -139,14 +139,21 @@ internal sealed class DriftOptions {
             return defaultValue;
         }
 
-        if (int.TryParse(raw, NumberStyles.None, CultureInfo.InvariantCulture, out int parsed)
+        // Story 9-1 P25: NumberStyles.Integer accepts a leading sign, so we explicitly enforce
+        // the [minInclusive, maxInclusive] range below. NumberStyles.None previously rejected
+        // valid signed forms ("+50") with a confusing diagnostic.
+        if (int.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out int parsed)
             && parsed >= minInclusive
             && parsed <= maxInclusive) {
             return parsed;
         }
 
+        int lastDot = key.LastIndexOf('.');
+        string optionDisplayName = lastDot >= 0 && lastDot + 1 < key.Length
+            ? key.Substring(lastDot + 1)
+            : key;
         diagnostics.Add(DriftDiagnosticFact.Configuration(
-            key.Split('.').Last(),
+            optionDisplayName,
             minInclusive.ToString(CultureInfo.InvariantCulture) + ".." + maxInclusive.ToString(CultureInfo.InvariantCulture),
             raw));
         return defaultValue;
@@ -170,11 +177,16 @@ internal sealed class DriftOptions {
     }
 
     private static string? TryReadString(AnalyzerConfigOptions options, string key) {
-        if (options.TryGetValue(key, out string? value)) {
-            return value?.Trim() ?? string.Empty;
+        // Story 9-1 P24: previously returned "" for both whitespace-only AND missing values
+        // mixed with `null` for some paths, which caused empty <HfcDriftBaselinePath/>
+        // properties to be treated as configured (and trigger a spurious HFC1059). Treat any
+        // whitespace-only or absent value as "not configured" (null).
+        if (!options.TryGetValue(key, out string? value)) {
+            return null;
         }
 
-        return null;
+        string trimmed = value?.Trim() ?? string.Empty;
+        return trimmed.Length == 0 ? null : trimmed;
     }
 }
 
@@ -183,8 +195,22 @@ internal sealed class DriftBaselineInput(string path, string text) : IEquatable<
     internal string Text { get; } = text;
 
     internal static bool IsCandidate(string path) {
-        string extension = System.IO.Path.GetExtension(path);
-        return string.Equals(extension, ".json", StringComparison.OrdinalIgnoreCase);
+        // Story 9-1 P5 (T5): enforce the documented baseline naming contract. Previously every
+        // *.json AdditionalText was treated as a candidate baseline, so an unrelated config file
+        // would produce HFC1060/HFC1064 errors. Accepted prefixes mirror the schemaVersion
+        // family ("frontcomposer.generated-ui-baseline*") and the historic short form
+        // ("frontcomposer.drift-baseline*").
+        string fileName = System.IO.Path.GetFileName(path);
+        if (string.IsNullOrEmpty(fileName)) {
+            return false;
+        }
+
+        if (!fileName.EndsWith(".json", StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        return fileName.StartsWith("frontcomposer.drift-baseline", StringComparison.OrdinalIgnoreCase)
+            || fileName.StartsWith("frontcomposer.generated-ui-baseline", StringComparison.OrdinalIgnoreCase);
     }
 
     internal static DriftBaselineInput FromAdditionalText(AdditionalText text, CancellationToken cancellationToken) {
@@ -228,6 +254,7 @@ internal sealed class DriftBaselineContract(
     string? icon,
     bool? destructive,
     string? requiresPolicy,
+    string? emptyStateCtaCommandTypeName,
     ImmutableArray<DriftBaselineProperty> properties) {
     internal string SourcePath { get; } = sourcePath;
     internal string Family { get; } = family;
@@ -239,6 +266,8 @@ internal sealed class DriftBaselineContract(
     internal string? Icon { get; } = icon;
     internal bool? Destructive { get; } = destructive;
     internal string? RequiresPolicy { get; } = requiresPolicy;
+    /// <summary>Story 9-1 P6 (AC7): contract-level <c>[ProjectionEmptyStateCta]</c> target command type name.</summary>
+    internal string? EmptyStateCtaCommandTypeName { get; } = emptyStateCtaCommandTypeName;
     internal ImmutableArray<DriftBaselineProperty> Properties { get; } = properties;
 
     internal string IdentityWithoutContext => Family + "|" + Type;
@@ -254,7 +283,9 @@ internal sealed class DriftBaselineProperty(
     string? description,
     int? columnPriority,
     string? fieldGroup,
-    string? displayFormat) {
+    string? displayFormat,
+    int? relativeTimeWindowDays,
+    string? badgeSignature) {
     internal string Name { get; } = name;
     internal string Category { get; } = category;
     internal bool Nullable { get; } = nullable;
@@ -264,9 +295,15 @@ internal sealed class DriftBaselineProperty(
     internal int? ColumnPriority { get; } = columnPriority;
     internal string? FieldGroup { get; } = fieldGroup;
     internal string? DisplayFormat { get; } = displayFormat;
+    /// <summary>Story 9-1 P6 (AC7): days window for <c>FieldDisplayFormat.RelativeTime</c>; <c>null</c> when not relative-time.</summary>
+    internal int? RelativeTimeWindowDays { get; } = relativeTimeWindowDays;
+    /// <summary>Story 9-1 P6 (AC7): canonical signature of <c>[ProjectionBadge]</c> mappings — comma-joined <c>"EnumMember=Slot"</c> entries ordered ordinally; <c>null</c> when no badge mappings.</summary>
+    internal string? BadgeSignature { get; } = badgeSignature;
 }
 
 internal static class DriftBaselineLoader {
+    private static readonly byte[] Utf8Bom = [0xEF, 0xBB, 0xBF];
+
     internal static DriftBaselineLoadResult Load(ImmutableArray<DriftBaselineInput> inputs, DriftOptions options) {
         ImmutableArray<DriftDiagnosticFact>.Builder diagnostics = ImmutableArray.CreateBuilder<DriftDiagnosticFact>();
         ImmutableArray<DriftBaselineContract>.Builder contracts = ImmutableArray.CreateBuilder<DriftBaselineContract>();
@@ -275,32 +312,43 @@ internal static class DriftBaselineLoader {
             .OrderBy(static i => i.Path, StringComparer.Ordinal)
             .ToImmutableArray();
 
-        if (options.ConfiguredBaselinePath is not null
-            && !sorted.Any(i => PathsEqual(i.Path, options.ConfiguredBaselinePath))) {
-            diagnostics.Add(DriftDiagnosticFact.InvalidBaselinePath(options.ConfiguredBaselinePath));
-            return new DriftBaselineLoadResult(false, new DriftBaselineSet(contracts.ToImmutable()), diagnostics.ToImmutable());
+        // Story 9-1 P8: when ConfiguredBaselinePath is set, narrow the eligible baselines to
+        // matching candidates. If none match, surface HFC1059 against the configured path (it
+        // is a trust failure for the configured path only — but per AC9 we still fail-closed
+        // because there is no other authoritative input).
+        ImmutableArray<DriftBaselineInput> eligible = sorted;
+        if (options.ConfiguredBaselinePath is not null) {
+            eligible = sorted
+                .Where(i => PathsEqual(options.ConfiguredBaselinePath, i.Path))
+                .ToImmutableArray();
+            if (eligible.Length == 0) {
+                diagnostics.Add(DriftDiagnosticFact.InvalidBaselinePath(options.ConfiguredBaselinePath));
+                return EmptyResult(diagnostics);
+            }
         }
 
-        if (sorted.Length == 0) {
-            if (options.Enabled) {
-                diagnostics.Add(DriftDiagnosticFact.MissingBaseline());
-            }
-
-            return new DriftBaselineLoadResult(false, new DriftBaselineSet(contracts.ToImmutable()), diagnostics.ToImmutable());
+        if (eligible.Length == 0) {
+            // Story 9-1 P3 (AC2): the baseline-load path emits HFC1058 unconditionally when
+            // drift detection is enabled and no matching baseline exists. Higher up the stack
+            // the orchestrator already gates on options.Enabled so this only runs in the
+            // opt-in case.
+            diagnostics.Add(DriftDiagnosticFact.MissingBaseline());
+            return EmptyResult(diagnostics);
         }
 
         HashSet<string> contractIdentities = new(StringComparer.Ordinal);
         HashSet<string> unsafeValues = new(StringComparer.Ordinal);
         bool trustFailed = false;
 
-        foreach (DriftBaselineInput input in sorted) {
-            if (input.Text.Length > options.MaxBaselineBytes
-                || input.Text.IndexOf("_oversizedHint", StringComparison.Ordinal) >= 0) {
+        foreach (DriftBaselineInput input in eligible) {
+            // Story 9-1 P10: count UTF-8 bytes, not chars — option name is MaxBaselineBytes.
+            int byteCount = Encoding.UTF8.GetByteCount(input.Text);
+            if (byteCount > options.MaxBaselineBytes) {
                 diagnostics.Add(DriftDiagnosticFact.TrustFailure(
                     DriftConstants.BaselineBoundsExceededId,
                     "oversized baseline",
                     "at most " + options.MaxBaselineBytes.ToString(CultureInfo.InvariantCulture) + " bytes",
-                    input.Text.Length.ToString(CultureInfo.InvariantCulture),
+                    byteCount.ToString(CultureInfo.InvariantCulture),
                     input.Path));
                 trustFailed = true;
                 continue;
@@ -317,9 +365,13 @@ internal static class DriftBaselineLoader {
                 continue;
             }
 
+            // Story 9-1 P11: strip a leading UTF-8 BOM so editors that save with a BOM (very
+            // common on Windows) do not produce HFC1060 against an otherwise valid baseline.
+            string textForParse = StripUtf8Bom(input.Text);
+
             JsonDocument document;
             try {
-                document = JsonDocument.Parse(input.Text);
+                document = JsonDocument.Parse(textForParse);
             }
             catch (JsonException) {
                 diagnostics.Add(DriftDiagnosticFact.TrustFailure(
@@ -334,8 +386,10 @@ internal static class DriftBaselineLoader {
 
             using (document) {
                 JsonElement root = document.RootElement;
-                string schemaVersion = ReadString(root, "schemaVersion") ?? string.Empty;
-                string algorithm = ReadString(root, "algorithm") ?? string.Empty;
+                // Story 9-1 P12: trim+ordinal compare and clamp displayed `Got` values through
+                // the sanitizer so untrusted JSON cannot leak into the diagnostic property bag.
+                string schemaVersion = (ReadString(root, "schemaVersion") ?? string.Empty).Trim();
+                string algorithm = (ReadString(root, "algorithm") ?? string.Empty).Trim();
 
                 if (!string.Equals(schemaVersion, DriftConstants.SchemaVersion, StringComparison.Ordinal)) {
                     diagnostics.Add(DriftDiagnosticFact.TrustFailure(
@@ -409,7 +463,36 @@ internal static class DriftBaselineLoader {
             trustFailed = true;
         }
 
-        return new DriftBaselineLoadResult(!trustFailed, new DriftBaselineSet(contracts.ToImmutable()), diagnostics.ToImmutable());
+        // Story 9-1 P29: when trust failed, drop the partially-parsed contracts so the
+        // fail-closed contract is self-evident — even though `ComparisonEnabled=false` already
+        // halts comparison, leaving the half-populated set in `Baseline` was misleading.
+        if (trustFailed) {
+            return EmptyResult(diagnostics);
+        }
+
+        return new DriftBaselineLoadResult(true, new DriftBaselineSet(contracts.ToImmutable()), diagnostics.ToImmutable());
+    }
+
+    private static DriftBaselineLoadResult EmptyResult(ImmutableArray<DriftDiagnosticFact>.Builder diagnostics)
+        => new(
+            comparisonEnabled: false,
+            baseline: new DriftBaselineSet(ImmutableArray<DriftBaselineContract>.Empty),
+            diagnostics: diagnostics.ToImmutable());
+
+    private static string StripUtf8Bom(string text) {
+        if (text.Length > 0 && text[0] == '﻿') {
+            return text.Substring(1);
+        }
+
+        // Defensive: also strip the literal BOM byte sequence if it survived as UTF-8 chars.
+        if (text.Length >= Utf8Bom.Length
+            && (byte)text[0] == Utf8Bom[0]
+            && (byte)text[1] == Utf8Bom[1]
+            && (byte)text[2] == Utf8Bom[2]) {
+            return text.Substring(Utf8Bom.Length);
+        }
+
+        return text;
     }
 
     private static DriftBaselineContract? ParseContract(
@@ -437,7 +520,11 @@ internal static class DriftBaselineLoader {
         }
 
         ImmutableArray<DriftBaselineProperty>.Builder properties = ImmutableArray.CreateBuilder<DriftBaselineProperty>();
-        HashSet<string> propertyNames = new(StringComparer.Ordinal);
+        // Story 9-1 P13: dedupe by OrdinalIgnoreCase so a baseline declaring both "Foo" and
+        // "foo" is rejected as an invariant violation here (rather than allowed through to
+        // CompareContract.ToDictionary(Ordinal) which would silently keep both, then risk a
+        // case-collision crash if downstream consumers normalize names).
+        HashSet<string> propertyNames = new(StringComparer.OrdinalIgnoreCase);
         if (propertyArray.ValueKind == JsonValueKind.Array) {
             if (propertyArray.GetArrayLength() > DriftConstants.DefaultMaxPropertiesPerDeclaration) {
                 diagnostics.Add(DriftDiagnosticFact.TrustFailure(
@@ -469,6 +556,11 @@ internal static class DriftBaselineLoader {
                     return null;
                 }
 
+                // Story 9-1 P6 (AC7): canonical badge signature + relative-time window so
+                // ProjectionBadge / RelativeTime metadata changes produce drift diagnostics.
+                string? badgeSignature = ReadBadgeSignature(propertyElement);
+                TrackUnsafe(badgeSignature, unsafeValues);
+
                 properties.Add(new DriftBaselineProperty(
                     name,
                     category,
@@ -478,7 +570,9 @@ internal static class DriftBaselineLoader {
                     ReadString(propertyElement, "description"),
                     TryReadInt(propertyElement, "columnPriority"),
                     ReadString(propertyElement, "fieldGroup"),
-                    ReadString(propertyElement, "displayFormat")));
+                    ReadString(propertyElement, "displayFormat"),
+                    TryReadInt(propertyElement, "relativeTimeWindowDays"),
+                    badgeSignature));
             }
         }
 
@@ -487,12 +581,14 @@ internal static class DriftBaselineLoader {
         string? role = ReadString(contractElement, "role");
         string? icon = ReadString(contractElement, "icon");
         string? requiresPolicy = ReadString(contractElement, "requiresPolicy");
+        string? emptyStateCta = ReadString(contractElement, "emptyStateCtaCommandTypeName");
 
         TrackUnsafe(displayName, unsafeValues);
         TrackUnsafe(displayGroupName, unsafeValues);
         TrackUnsafe(role, unsafeValues);
         TrackUnsafe(icon, unsafeValues);
         TrackUnsafe(requiresPolicy, unsafeValues);
+        TrackUnsafe(emptyStateCta, unsafeValues);
 
         return new DriftBaselineContract(
             path,
@@ -505,7 +601,41 @@ internal static class DriftBaselineLoader {
             icon,
             ReadBool(contractElement, "destructive"),
             requiresPolicy,
+            emptyStateCta,
             properties.ToImmutable());
+    }
+
+    /// <summary>
+    /// Story 9-1 P6 (AC7): parses <c>"badges": [ {"enumMember": "...", "slot": "..."}, ... ]</c>
+    /// into a deterministic comma-joined <c>"EnumMember=Slot"</c> signature ordered ordinally.
+    /// Returns <c>null</c> when the <c>badges</c> property is absent or empty so that
+    /// <c>AddMetadataIfChanged(null, signature)</c> still surfaces a null→value addition.
+    /// </summary>
+    private static string? ReadBadgeSignature(JsonElement propertyElement) {
+        if (propertyElement.ValueKind != JsonValueKind.Object
+            || !propertyElement.TryGetProperty("badges", out JsonElement badges)
+            || badges.ValueKind != JsonValueKind.Array
+            || badges.GetArrayLength() == 0) {
+            return null;
+        }
+
+        List<string> entries = [];
+        foreach (JsonElement badge in badges.EnumerateArray()) {
+            string? enumMember = ReadString(badge, "enumMember");
+            string? slot = ReadString(badge, "slot");
+            if (string.IsNullOrEmpty(enumMember) || string.IsNullOrEmpty(slot)) {
+                continue;
+            }
+
+            entries.Add(enumMember + "=" + slot);
+        }
+
+        if (entries.Count == 0) {
+            return null;
+        }
+
+        entries.Sort(StringComparer.Ordinal);
+        return string.Join(",", entries);
     }
 
     private static DriftDiagnosticFact Invariant(string path, string got)
@@ -550,12 +680,45 @@ internal static class DriftBaselineLoader {
         return null;
     }
 
-    private static bool PathsEqual(string left, string right)
-        => string.Equals(NormalizePath(left), NormalizePath(right), StringComparison.OrdinalIgnoreCase)
-            || NormalizePath(left).EndsWith(NormalizePath(right), StringComparison.OrdinalIgnoreCase);
+    /// <summary>
+    /// Story 9-1 P1 (security-adjacent): determines whether <paramref name="configured"/>
+    /// (the value adopters set in <c>HfcDriftBaselinePath</c>) refers to the same file as
+    /// <paramref name="candidate"/> (a path coming from <c>AdditionalTextsProvider</c>).
+    /// The previous implementation used an unbounded <c>EndsWith</c> which silently matched
+    /// <c>baseline.json</c> against any file whose name ended in <c>baseline.json</c>,
+    /// allowing a wrong baseline to be trusted. This version requires either an exact
+    /// (normalized, case-insensitive) match or a segment-aligned suffix match — i.e. the
+    /// shorter side must be preceded by a path separator in the longer side.
+    /// </summary>
+    private static bool PathsEqual(string configured, string candidate) {
+        string normConfigured = PathCompareNormalize(configured);
+        string normCandidate = PathCompareNormalize(candidate);
+        if (string.Equals(normConfigured, normCandidate, StringComparison.OrdinalIgnoreCase)) {
+            return true;
+        }
 
-    private static string NormalizePath(string path)
-        => path.Replace('\\', '/').TrimStart('/');
+        if (IsSegmentAlignedSuffix(normConfigured, normCandidate)) {
+            return true;
+        }
+
+        return IsSegmentAlignedSuffix(normCandidate, normConfigured);
+    }
+
+    private static bool IsSegmentAlignedSuffix(string longer, string shorter) {
+        if (longer.Length <= shorter.Length) {
+            return false;
+        }
+
+        if (!longer.EndsWith(shorter, StringComparison.OrdinalIgnoreCase)) {
+            return false;
+        }
+
+        char boundary = longer[longer.Length - shorter.Length - 1];
+        return boundary == '/';
+    }
+
+    private static string PathCompareNormalize(string path)
+        => (path ?? string.Empty).Replace('\\', '/').TrimStart('/');
 
     private static void TrackUnsafe(string? value, HashSet<string> unsafeValues) {
         if (value is not null && DriftSanitizer.IsUnsafe(value)) {
@@ -574,6 +737,7 @@ internal sealed class DriftCurrentContract(
     string? icon,
     bool? destructive,
     string? requiresPolicy,
+    string? emptyStateCtaCommandTypeName,
     ImmutableArray<DriftCurrentProperty> properties,
     string sourcePath,
     int sourceLine,
@@ -587,6 +751,8 @@ internal sealed class DriftCurrentContract(
     internal string? Icon { get; } = icon;
     internal bool? Destructive { get; } = destructive;
     internal string? RequiresPolicy { get; } = requiresPolicy;
+    /// <summary>Story 9-1 P6 (AC7): contract-level <c>[ProjectionEmptyStateCta]</c> target command type name.</summary>
+    internal string? EmptyStateCtaCommandTypeName { get; } = emptyStateCtaCommandTypeName;
     internal ImmutableArray<DriftCurrentProperty> Properties { get; } = properties;
     internal string SourcePath { get; } = sourcePath;
     internal int SourceLine { get; } = sourceLine;
@@ -603,7 +769,9 @@ internal sealed class DriftCurrentProperty(
     string? description,
     int? columnPriority,
     string? fieldGroup,
-    string? displayFormat) {
+    string? displayFormat,
+    int? relativeTimeWindowDays,
+    string? badgeSignature) {
     internal string Name { get; } = name;
     internal string Category { get; } = category;
     internal bool Nullable { get; } = nullable;
@@ -613,6 +781,10 @@ internal sealed class DriftCurrentProperty(
     internal int? ColumnPriority { get; } = columnPriority;
     internal string? FieldGroup { get; } = fieldGroup;
     internal string? DisplayFormat { get; } = displayFormat;
+    /// <summary>Story 9-1 P6 (AC7): days window for <c>FieldDisplayFormat.RelativeTime</c>; <c>null</c> when not relative-time.</summary>
+    internal int? RelativeTimeWindowDays { get; } = relativeTimeWindowDays;
+    /// <summary>Story 9-1 P6 (AC7): canonical signature of <c>[ProjectionBadge]</c> mappings — comma-joined <c>"EnumMember=Slot"</c> entries ordered ordinally; <c>null</c> when no badge mappings.</summary>
+    internal string? BadgeSignature { get; } = badgeSignature;
 }
 
 internal sealed class DriftCurrentSnapshot(ImmutableArray<DriftCurrentContract> contracts) {
@@ -639,7 +811,11 @@ internal sealed class DriftCurrentSnapshot(ImmutableArray<DriftCurrentContract> 
                     property.Description,
                     property.ColumnPriority,
                     property.FieldGroup,
-                    property.DisplayFormat.ToString()));
+                    // Story 9-1 P-D3: serialize Default as null so a baseline missing the
+                    // displayFormat field aligns with a current property using Default.
+                    property.DisplayFormat == FieldDisplayFormat.Default ? null : property.DisplayFormat.ToString(),
+                    property.RelativeTimeWindowDays,
+                    BuildBadgeSignature(property.BadgeMappings)));
             }
 
             contracts.Add(new DriftCurrentContract(
@@ -652,6 +828,7 @@ internal sealed class DriftCurrentSnapshot(ImmutableArray<DriftCurrentContract> 
                 null,
                 null,
                 null,
+                model.EmptyStateCtaCommandTypeName,
                 properties.ToImmutable(),
                 model.SourceFilePath,
                 model.SourceLine,
@@ -675,9 +852,13 @@ internal sealed class DriftCurrentSnapshot(ImmutableArray<DriftCurrentContract> 
                     property.Description,
                     property.ColumnPriority,
                     property.FieldGroup,
-                    property.DisplayFormat.ToString()));
+                    property.DisplayFormat == FieldDisplayFormat.Default ? null : property.DisplayFormat.ToString(),
+                    property.RelativeTimeWindowDays,
+                    BuildBadgeSignature(property.BadgeMappings)));
             }
 
+            // Story 9-1 P22: thread CommandModel source path/line/column so command drift
+            // diagnostics get IDE squiggles like projection drift does.
             contracts.Add(new DriftCurrentContract(
                 "command",
                 QualifiedType(model.Namespace, model.TypeName),
@@ -688,10 +869,11 @@ internal sealed class DriftCurrentSnapshot(ImmutableArray<DriftCurrentContract> 
                 model.IconName,
                 model.IsDestructive,
                 model.AuthorizationPolicyName,
+                emptyStateCtaCommandTypeName: null,
                 properties.ToImmutable(),
-                string.Empty,
-                -1,
-                -1));
+                model.SourceFilePath,
+                model.SourceLine,
+                model.SourceColumn));
         }
 
         return new DriftCurrentSnapshot(contracts.ToImmutable());
@@ -699,14 +881,38 @@ internal sealed class DriftCurrentSnapshot(ImmutableArray<DriftCurrentContract> 
 
     private static string QualifiedType(string @namespace, string typeName)
         => string.IsNullOrEmpty(@namespace) ? typeName : @namespace + "." + typeName;
+
+    /// <summary>
+    /// Story 9-1 P6 (AC7): produces the canonical badge signature used by drift comparison.
+    /// Mirrors <see cref="DriftBaselineLoader"/>'s <c>ReadBadgeSignature</c> output shape so
+    /// baseline and current-source signatures collide exactly when the mapping set matches,
+    /// regardless of declaration order.
+    /// </summary>
+    private static string? BuildBadgeSignature(EquatableArray<BadgeMappingEntry> mappings) {
+        if (mappings.Count == 0) {
+            return null;
+        }
+
+        List<string> entries = new(mappings.Count);
+        foreach (BadgeMappingEntry entry in mappings) {
+            entries.Add(entry.EnumMemberName + "=" + entry.Slot);
+        }
+
+        entries.Sort(StringComparer.Ordinal);
+        return string.Join(",", entries);
+    }
 }
 
 internal sealed class DriftComparisonResult(ImmutableArray<DriftDiagnosticFact> diagnostics) {
-    public ImmutableArray<DriftDiagnosticFact> Diagnostics { get; } = diagnostics;
+    // Story 9-1 P27: tightened from `public` to `internal` to match the comparison-seam contract
+    // ("internal deterministic comparison service/result model"). Previously the `public`
+    // modifier on an internal type signaled incipient public-surface intent.
+    internal ImmutableArray<DriftDiagnosticFact> Diagnostics { get; } = diagnostics;
 }
 
 internal sealed class DriftComparisonService {
-    public static DriftComparisonResult Compare(DriftCurrentSnapshot current, DriftBaselineSet baseline)
+    // Story 9-1 P27: tightened from `public` to `internal` (see DriftComparisonResult).
+    internal static DriftComparisonResult Compare(DriftCurrentSnapshot current, DriftBaselineSet baseline)
         => Compare(current, baseline, DriftConstants.DefaultMaxDiagnostics, DiagnosticSeverity.Warning);
 
     internal static DriftComparisonResult Compare(
@@ -835,18 +1041,30 @@ internal sealed class DriftComparisonService {
         AddIfChanged("ProjectionRole", baseline.Role, current.Role);
         AddIfChanged("Icon", baseline.Icon, current.Icon);
         AddIfChanged("RequiresPolicy", baseline.RequiresPolicy, current.RequiresPolicy);
-        if (baseline.Destructive != current.Destructive && baseline.Destructive is not null) {
+        // Story 9-1 P6 (AC7): empty-state CTA drift is contract-level metadata.
+        AddIfChanged("ProjectionEmptyStateCta", baseline.EmptyStateCtaCommandTypeName, current.EmptyStateCtaCommandTypeName);
+
+        // Story 9-1 P9: symmetric Destructive comparison. Previously fired only when
+        // baseline.Destructive was non-null, so adding a [Destructive] flag against a null
+        // baseline (a fresh declaration becoming destructive) was silently ignored.
+        if (baseline.Destructive != current.Destructive) {
             facts.Add(DriftDiagnosticFact.Metadata(
                 "Destructive",
                 baseline,
                 current,
                 null,
-                "What: metadata drift changed Destructive on " + DriftSanitizer.Safe(current.Type) + ". Expected: " + baseline.Destructive + ". Got: " + current.Destructive + ". Fix: update source metadata or the checked-in generated UI baseline. DocsLink: " + Docs(DriftConstants.MetadataDriftId),
+                "What: metadata drift changed Destructive on " + DriftSanitizer.Safe(current.Type)
+                    + ". Expected: " + (baseline.Destructive?.ToString(CultureInfo.InvariantCulture) ?? "<none>")
+                    + ". Got: " + (current.Destructive?.ToString(CultureInfo.InvariantCulture) ?? "<none>")
+                    + ". Fix: update source metadata or the checked-in generated UI baseline. DocsLink: " + Docs(DriftConstants.MetadataDriftId),
                 severity));
         }
 
         void AddIfChanged(string kind, string? expected, string? got) {
-            if (expected is null || string.Equals(expected, got, StringComparison.Ordinal)) {
+            // Story 9-1 P9: drop the `expected is null` short-circuit. A null→value transition
+            // (new metadata added in source against a null baseline) IS drift; AC7 must alert
+            // on metadata addition, not just removal/change.
+            if (string.Equals(expected, got, StringComparison.Ordinal)) {
                 return;
             }
 
@@ -855,7 +1073,10 @@ internal sealed class DriftComparisonService {
                 baseline,
                 current,
                 null,
-                "What: metadata drift changed " + kind + " on " + DriftSanitizer.Safe(current.Type) + ". Expected: " + DriftSanitizer.Safe(expected) + ". Got: " + DriftSanitizer.Safe(got ?? "<none>") + ". Fix: update source metadata or the checked-in generated UI baseline. DocsLink: " + Docs(DriftConstants.MetadataDriftId),
+                "What: metadata drift changed " + kind + " on " + DriftSanitizer.Safe(current.Type)
+                    + ". Expected: " + DriftSanitizer.Safe(expected ?? "<none>")
+                    + ". Got: " + DriftSanitizer.Safe(got ?? "<none>")
+                    + ". Fix: update source metadata or the checked-in generated UI baseline. DocsLink: " + Docs(DriftConstants.MetadataDriftId),
                 severity));
         }
     }
@@ -891,18 +1112,44 @@ internal sealed class DriftComparisonService {
         AddMetadataIfChanged("Display.Name", expected.DisplayName, got.DisplayName);
         AddMetadataIfChanged("Description", expected.Description, got.Description);
         AddMetadataIfChanged("ColumnPriority", expected.ColumnPriority?.ToString(CultureInfo.InvariantCulture), got.ColumnPriority?.ToString(CultureInfo.InvariantCulture));
+
+        // Story 9-1 P20: previously emitted both ProjectionFieldGroup AND Display.GroupName for
+        // the same source change, doubling the diagnostic count toward the 50-cap. Single
+        // diagnostic now carries both surface labels in the message text.
         if (!string.Equals(expected.FieldGroup, got.FieldGroup, StringComparison.Ordinal)) {
-            AddMetadata("ProjectionFieldGroup", expected.FieldGroup, got.FieldGroup);
-            AddMetadata("Display.GroupName", expected.FieldGroup, got.FieldGroup);
+            facts.Add(DriftDiagnosticFact.Metadata(
+                "ProjectionFieldGroup",
+                baseline,
+                current,
+                got.Name,
+                "What: metadata drift changed ProjectionFieldGroup for '" + DriftSanitizer.Safe(got.Name)
+                    + "' on " + DriftSanitizer.Safe(current.Type)
+                    + ". Expected: " + DriftSanitizer.Safe(expected.FieldGroup ?? "<none>")
+                    + ". Got: " + DriftSanitizer.Safe(got.FieldGroup ?? "<none>")
+                    + ". Fix: update source metadata or reconcile the checked-in generated UI baseline. Affected surface: ProjectionFieldGroup, Display.GroupName, DataGrid grouping, detail field, MCP descriptor metadata. DocsLink: " + Docs(DriftConstants.MetadataDriftId),
+                severity));
         }
 
         AddMetadataIfChanged("DisplayFormat", expected.DisplayFormat, got.DisplayFormat);
-        if (expected.Derivable is not null && expected.Derivable != got.Derivable) {
-            AddMetadata("Derivable", expected.Derivable.ToString(), got.Derivable.ToString());
+
+        // Story 9-1 P6 (AC7): drift coverage for relative-time window and badge mappings.
+        AddMetadataIfChanged(
+            "RelativeTime",
+            expected.RelativeTimeWindowDays?.ToString(CultureInfo.InvariantCulture),
+            got.RelativeTimeWindowDays?.ToString(CultureInfo.InvariantCulture));
+        AddMetadataIfChanged("ProjectionBadge", expected.BadgeSignature, got.BadgeSignature);
+
+        // Story 9-1 P9: symmetric Derivable comparison.
+        if (expected.Derivable != got.Derivable) {
+            AddMetadata(
+                "Derivable",
+                expected.Derivable?.ToString(CultureInfo.InvariantCulture) ?? "<none>",
+                got.Derivable?.ToString(CultureInfo.InvariantCulture) ?? "<none>");
         }
 
         void AddMetadataIfChanged(string kind, string? expectedValue, string? gotValue) {
-            if (expectedValue is null || string.Equals(expectedValue, gotValue, StringComparison.Ordinal)) {
+            // Story 9-1 P9: drop the `expectedValue is null` short-circuit.
+            if (string.Equals(expectedValue, gotValue, StringComparison.Ordinal)) {
                 return;
             }
 
@@ -1056,8 +1303,21 @@ internal sealed class DriftDiagnosticFact(
         string declarationName = current?.Type ?? baseline?.Type ?? "<none>";
         string baselinePath = baseline?.SourcePath ?? "<none>";
         string declarationPath = current?.SourcePath ?? "<none>";
-        string expectedHash = Hash(baseline?.Type + "|" + baseline?.BoundedContext + "|" + memberName + "|" + driftKind);
-        string actualHash = Hash(current?.Type + "|" + current?.BoundedContext + "|" + memberName + "|" + driftKind);
+        // Story 9-1 P19: include schema+algorithm in hash material AND emit explicit
+        // <none> sentinels for null sides so an "added declaration" and a "removed
+        // declaration" hashing the same memberName cannot collide.
+        string expectedHash = Hash(ComposeHashInput(
+            baseline?.Type ?? "<none>",
+            baseline?.BoundedContext ?? "<none>",
+            memberName ?? "<none>",
+            driftKind,
+            discriminator: "expected"));
+        string actualHash = Hash(ComposeHashInput(
+            current?.Type ?? "<none>",
+            current?.BoundedContext ?? "<none>",
+            memberName ?? "<none>",
+            driftKind,
+            discriminator: "actual"));
         string sortKey = boundedContext + "|" + (current?.Family ?? baseline?.Family ?? "<none>") + "|" + declarationName + "|" + (memberName ?? "<none>") + "|" + driftKind;
         return new DriftDiagnosticFact(
             DriftConstants.StructuralDriftId,
@@ -1097,8 +1357,9 @@ internal sealed class DriftDiagnosticFact(
             driftKind,
             DriftSanitizer.NormalizePath(baseline.SourcePath),
             DriftSanitizer.NormalizePath(current.SourcePath),
-            Hash(baseline.Type + "|" + memberName + "|" + driftKind),
-            Hash(current.Type + "|" + memberName + "|" + driftKind),
+            // Story 9-1 P19: schema+algorithm in hash material; explicit <none> for null members.
+            Hash(ComposeHashInput(baseline.Type, baseline.BoundedContext, memberName ?? "<none>", driftKind, "expected")),
+            Hash(ComposeHashInput(current.Type, current.BoundedContext, memberName ?? "<none>", driftKind, "actual")),
             DriftConstants.SchemaVersion,
             DriftConstants.Algorithm,
             sortKey,
@@ -1149,8 +1410,9 @@ internal sealed class DriftDiagnosticFact(
             driftKind,
             DriftSanitizer.NormalizePath(baselinePath),
             DriftSanitizer.NormalizePath(declarationPath),
-            Hash(id + "|expected|" + driftKind),
-            Hash(id + "|actual|" + driftKind),
+            // Story 9-1 P19: schema+algorithm in hash material to prevent cross-version collisions.
+            Hash(ComposeHashInput(declarationName, boundedContext, memberName, driftKind, id + "|expected")),
+            Hash(ComposeHashInput(declarationName, boundedContext, memberName, driftKind, id + "|actual")),
             DriftSanitizer.Safe(schemaVersion),
             DriftSanitizer.Safe(algorithmVersion),
             actualSortKey,
@@ -1165,8 +1427,15 @@ internal sealed class DriftDiagnosticFact(
         }
 
         if (compilation is not null) {
+            // Story 9-1 P21: Windows file paths compare case-insensitively; using ordinal
+            // here used to leak through to the LinePosition fallback when adopters' build
+            // produced a mixed-case `tree.FilePath`, which then leaked an absolute path into
+            // IDE diagnostics.
+            StringComparison pathComparison = System.IO.Path.DirectorySeparatorChar == '\\'
+                ? StringComparison.OrdinalIgnoreCase
+                : StringComparison.Ordinal;
             foreach (SyntaxTree tree in compilation.SyntaxTrees) {
-                if (!string.Equals(tree.FilePath, SourcePath, StringComparison.Ordinal)) {
+                if (!string.Equals(tree.FilePath, SourcePath, pathComparison)) {
                     continue;
                 }
 
@@ -1179,17 +1448,27 @@ internal sealed class DriftDiagnosticFact(
             }
         }
 
+        // Story 9-1 P21: sanitize the SourcePath before embedding it in Location.Create —
+        // otherwise the absolute path leaks into IDE diagnostics, bypassing the message-level
+        // sanitization. NormalizePath reduces absolute paths to filename / `<outside-project>`.
+        string sanitizedPath = DriftSanitizer.NormalizePath(SourcePath);
         LinePosition position = new(SourceLine, SourceColumn);
-        return Location.Create(SourcePath, new TextSpan(0, 0), new LinePositionSpan(position, position));
+        return Location.Create(sanitizedPath, new TextSpan(0, 0), new LinePositionSpan(position, position));
     }
 
-    private static string Hash(string? input) {
-        byte[] bytes = Encoding.UTF8.GetBytes(input ?? string.Empty);
-        byte[] hash;
-        using (SHA256 sha = SHA256.Create()) {
-            hash = sha.ComputeHash(bytes);
-        }
+    /// <summary>
+    /// Story 9-1 P18 / P19: previously created and disposed a <see cref="SHA256"/> instance
+    /// per call (~500 hashes per drift pass × generator runs on every keystroke). Cache one
+    /// instance per thread via <see cref="ThreadLocal{T}"/> — SHA256 instances are not
+    /// thread-safe but generator pipelines do dispatch across the thread pool, so a
+    /// thread-local pool gives allocation-free reuse without explicit locking.
+    /// </summary>
+    private static readonly ThreadLocal<SHA256> Sha256Pool = new(static () => SHA256.Create());
 
+    private static string Hash(string? input) {
+        SHA256 sha = Sha256Pool.Value!;
+        byte[] bytes = Encoding.UTF8.GetBytes(input ?? "<none>");
+        byte[] hash = sha.ComputeHash(bytes);
         StringBuilder sb = new(hash.Length * 2);
         foreach (byte b in hash) {
             sb.Append(b.ToString("x2", CultureInfo.InvariantCulture));
@@ -1198,36 +1477,55 @@ internal sealed class DriftDiagnosticFact(
         return sb.ToString();
     }
 
+    private static string ComposeHashInput(string declarationName, string boundedContext, string memberName, string driftKind, string discriminator)
+        => DriftConstants.SchemaVersion + "|"
+            + DriftConstants.Algorithm + "|"
+            + (string.IsNullOrEmpty(declarationName) ? "<none>" : declarationName) + "|"
+            + (string.IsNullOrEmpty(boundedContext) ? "<none>" : boundedContext) + "|"
+            + (string.IsNullOrEmpty(memberName) ? "<none>" : memberName) + "|"
+            + driftKind + "|"
+            + discriminator;
+
     private static string Docs(string id) => "https://hexalith.github.io/FrontComposer/diagnostics/" + id;
 }
 
 internal static class DriftSanitizer {
+    /// <summary>
+    /// Story 9-1 P16: tightened from substring-blocklist to value-shape patterns. Previously
+    /// names like <c>TokenStore</c>, <c>EtagPolicy</c>, <c>TenantConfig</c>, <c>UserCount</c>
+    /// — all legitimate domain identifiers — were classified as unsafe and produced
+    /// HFC1069 redaction-suppressed errors. Now we only match secret-shaped substrings
+    /// (SENTINEL test sentinels, JWT-prefix tokens, JSON fragments, absolute paths).
+    /// Member names are part of the structural baseline by design and must pass through.
+    /// </summary>
     internal static bool IsUnsafe(string value) {
         if (string.IsNullOrWhiteSpace(value)) {
             return false;
         }
 
-        return value.Contains("SENTINEL_", StringComparison.Ordinal)
-            || value.Contains("Bearer ", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("eyJ", StringComparison.Ordinal)
-            || value.Contains("{\"", StringComparison.Ordinal)
-            || value.Contains("C:\\", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("C__", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("token", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("tenant_", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("user_", StringComparison.OrdinalIgnoreCase)
-            || value.Contains("etag", StringComparison.OrdinalIgnoreCase);
+        string trimmed = value.Trim();
+        return trimmed.IndexOf("SENTINEL_", StringComparison.Ordinal) >= 0
+            || trimmed.IndexOf("Bearer ", StringComparison.OrdinalIgnoreCase) >= 0
+            || trimmed.IndexOf("Authorization:", StringComparison.OrdinalIgnoreCase) >= 0
+            || trimmed.IndexOf("eyJ", StringComparison.Ordinal) >= 0
+            || trimmed.IndexOf("{\"", StringComparison.Ordinal) >= 0
+            || ContainsAbsolutePath(trimmed);
     }
 
+    /// <summary>
+    /// Story 9-1 P28: redact-or-pass on the broader token list including normalized variants
+    /// (forward-slash drive paths like <c>C:/</c>) that the previous implementation missed.
+    /// </summary>
     internal static string SafeMessage(string message) {
-        string safe = message;
-        foreach (string token in new[] { "SENTINEL_", "Bearer ", "eyJ", "C:\\", "C__", "{\"", "///auto/" }) {
-            if (safe.Contains(token, StringComparison.Ordinal)) {
-                return "What: drift diagnostic content was suppressed by redaction. Expected: sanitized structural metadata. Got: unsafe diagnostic payload. Fix: remove runtime data from baseline/source metadata. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/" + DriftConstants.RedactionSuppressedId;
-            }
+        if (string.IsNullOrEmpty(message)) {
+            return message;
         }
 
-        return safe;
+        if (ContainsRedactionTrigger(message)) {
+            return "What: drift diagnostic content was suppressed by redaction. Expected: sanitized structural metadata. Got: unsafe diagnostic payload. Fix: remove runtime data from baseline/source metadata. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/" + DriftConstants.RedactionSuppressedId;
+        }
+
+        return message;
     }
 
     internal static string Safe(string value) {
@@ -1243,18 +1541,79 @@ internal static class DriftSanitizer {
         return trimmed.Length > 96 ? trimmed.Substring(0, 96) + "<truncated>" : trimmed;
     }
 
+    /// <summary>
+    /// Story 9-1 P17: previously any string containing <c>:</c> was reduced to filename
+    /// (which leaked POSIX absolute paths since they have no colon, AND truncated benign
+    /// colon-bearing strings). Now: detect Windows drive roots OR a leading slash and reduce
+    /// to filename. Repo-relative paths pass through unchanged.
+    /// </summary>
     internal static string NormalizePath(string path) {
         if (string.IsNullOrWhiteSpace(path) || path == "<none>") {
             return "<none>";
         }
 
         string normalized = path.Replace('\\', '/');
-        if (normalized.IndexOf(':') >= 0) {
-            return System.IO.Path.GetFileName(normalized);
+        bool isAbsolute = LooksLikeWindowsDriveRoot(normalized) || normalized.StartsWith("/", StringComparison.Ordinal);
+        if (isAbsolute) {
+            int lastSlash = normalized.LastIndexOf('/');
+            if (lastSlash < 0 || lastSlash + 1 >= normalized.Length) {
+                return "<outside-project>";
+            }
+
+            normalized = normalized.Substring(lastSlash + 1);
+        }
+        else {
+            normalized = normalized.TrimStart('/');
         }
 
-        normalized = normalized.TrimStart('/');
         return string.IsNullOrWhiteSpace(normalized) ? "<none>" : normalized;
+    }
+
+    private static bool ContainsRedactionTrigger(string text) {
+        return text.IndexOf("SENTINEL_", StringComparison.Ordinal) >= 0
+            || text.IndexOf("Bearer ", StringComparison.OrdinalIgnoreCase) >= 0
+            || text.IndexOf("Authorization:", StringComparison.OrdinalIgnoreCase) >= 0
+            || text.IndexOf("eyJ", StringComparison.Ordinal) >= 0
+            || text.IndexOf("{\"", StringComparison.Ordinal) >= 0
+            || text.IndexOf("///auto/", StringComparison.Ordinal) >= 0
+            || ContainsAbsolutePath(text);
+    }
+
+    private static bool ContainsAbsolutePath(string value) {
+        // Windows drive root with forward OR backslash: a single ASCII letter, then ':',
+        // then '\\' or '/'. The letter MUST sit at the start of `value` or after a non-
+        // letter character so we don't misclassify URL schemes like "https://" — there
+        // the 's' in "s:/" is preceded by a letter and is therefore part of the scheme,
+        // not a drive root.
+        for (int i = 0; i + 2 < value.Length; i++) {
+            char c0 = value[i];
+            if (!((c0 >= 'A' && c0 <= 'Z') || (c0 >= 'a' && c0 <= 'z'))) {
+                continue;
+            }
+
+            if (value[i + 1] != ':') {
+                continue;
+            }
+
+            char sep = value[i + 2];
+            if (sep != '\\' && sep != '/') {
+                continue;
+            }
+
+            char preceding = i == 0 ? ' ' : value[i - 1];
+            if (!char.IsLetter(preceding)) {
+                return true;
+            }
+        }
+
+        return value.IndexOf("C__", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private static bool LooksLikeWindowsDriveRoot(string normalized) {
+        return normalized.Length >= 3
+            && ((normalized[0] >= 'A' && normalized[0] <= 'Z') || (normalized[0] >= 'a' && normalized[0] <= 'z'))
+            && normalized[1] == ':'
+            && normalized[2] == '/';
     }
 }
 
