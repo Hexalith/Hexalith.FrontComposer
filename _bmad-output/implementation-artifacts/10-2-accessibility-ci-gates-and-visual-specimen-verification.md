@@ -79,6 +79,10 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
 | AC23 | Snapshot baselines are missing or changed | The visual lane runs | Missing baselines fail outside the documented intentional baseline-update command; changed baselines require review rationale and before/after evidence instead of automatic CI regeneration. |
 | AC24 | Generated specimens pass this gate | Adopters interpret the result | The docs state that this gate proves the committed generated/Shell specimen surfaces only; arbitrary adopter-provided custom components remain governed by the existing custom-component accessibility contract. |
 | AC25 | Data-formatting specimens exercise locale-sensitive output | The specimen renders | At least one fixed non-default culture is covered for formatting text assertions; full localization layout and RTL visual matrices remain deferred to named follow-up work. |
+| AC26 | Specimen coverage is reviewed | The Playwright lane starts | It loads a committed specimen manifest that names required routes, section/landmark roots, theme/density combinations, expected artifact names, and selector or role-count invariants; missing, blank, or unowned manifest entries fail before axe or visual comparison. |
+| AC27 | Specimen routes are registered | The host runs outside the test/development specimen mode | Type and data-formatting specimen routes are not exposed by default, and a production-style route smoke test proves the routes fail closed unless the explicit specimen host configuration is enabled. |
+| AC28 | CI retries or reruns occur | An accessibility, media, zoom, or visual assertion fails | The first failing evidence remains attached to the failed run, retry success cannot erase blocking violations or snapshot diffs, and no retry path may auto-update baselines or create suppressions. |
+| AC29 | Accessibility and visual artifacts are serialized | Reports are retained by CI | Artifact payloads are deterministic, bounded, and redacted; they include route, rule, impact, selector, artifact path, and truncation markers where needed, but never persist full DOM dumps, local machine paths, tokens, cookies, or environment secrets. |
 
 ---
 
@@ -87,11 +91,14 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
 - [ ] T1. Add deterministic specimen host surfaces (AC4, AC5, AC12, AC17, AC19, AC20, AC24)
   - [ ] Add route-addressable type and data-formatting specimen views under the existing Shell/sample test surface, and document the exact route paths in the story handoff.
   - [ ] Keep specimen routes test/development-owned, auth-independent, and unavailable as adopter product pages unless an existing host convention already exposes test specimens.
+  - [ ] Gate specimen route registration behind an explicit test/development specimen-host configuration, and add a production-style smoke test that proves the routes are not exposed by default.
   - [ ] Keep specimen data local, deterministic, and independent of live EventStore, DAPR, SignalR, local network, wall-clock time, random IDs, browser storage, user preferences, or machine-specific paths.
   - [ ] Freeze culture/locale, timezone, seeded IDs, viewport, device scale factor, fonts, and animations before screenshot or axe checks.
   - [ ] Mount specimens inside the real `FrontComposerShell` so theme, density, localization, navigation, lifecycle, DataGrid, and badge behavior are exercised in context.
   - [ ] Add stable `data-testid` attributes only where role/name locators cannot identify a specimen element reliably.
+  - [ ] Add a committed specimen manifest that names every required specimen route, expected landmark/section roots, theme/density combinations, route-ready markers, and artifact names consumed by the tests.
   - [ ] Add a blank/partial-specimen guard that fails if required specimen sections, rows, controls, landmark roots, theme/density variants, local assets, or route-ready markers are missing.
+  - [ ] Validate the manifest before axe scans or screenshots run, and fail on missing, blank, duplicate, stale, or unowned entries with the owning story key in the failure message.
   - [ ] Fail on unhandled browser console errors, hydration/runtime exceptions, and unexpected network calls from default specimen routes.
 
 - [ ] T2. Build the type specimen content (AC4, AC6, AC9-AC13)
@@ -116,6 +123,7 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
   - [ ] Scan the full rendered specimen page or explicitly named landmark roots; fail if the scan includes zero target nodes or a required specimen section is absent.
   - [ ] Add helper regression coverage proving `serious`/`critical` violations fail while `minor`/`moderate` violations are still written to artifacts.
   - [ ] Emit a concise artifact containing rule id, impact, help URL, affected selectors, and specimen route.
+  - [ ] Keep axe artifacts deterministic, bounded, and redacted: include rule metadata, route, selector, owner/suppression status, and truncation markers where needed, but do not write full DOM dumps, cookies, tokens, local paths, or environment values.
   - [ ] Require suppressions to name route, WCAG/axe rule id, selector, rationale, owner, expiry or review date, linked story/issue, and evidence that the issue is third-party or intentionally deferred.
   - [ ] Avoid blanket exclusions for Fluent UI shadow DOM. Exclude only a named element when the underlying issue is documented; broad rule disables fail CI.
 
@@ -144,6 +152,7 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
   - [ ] Use existing npm scripts where possible; add narrowly scoped scripts such as `test:e2e:a11y` or `test:e2e:visual` only if they simplify CI.
   - [ ] Install Playwright browsers in the job and preserve reports on failure with stable artifact names and a configured retention period.
   - [ ] Add artifact-validation logic that confirms Playwright HTML report, JUnit XML, screenshots, visual diffs, axe summaries, and trace/video outputs exist when expected.
+  - [ ] Ensure retries, reruns, or shard replays preserve the first failing accessibility/visual evidence and cannot turn a blocking violation into a pass by overwriting artifacts, suppressions, or snapshots.
   - [ ] Keep root-level submodule checkout behavior only; do not use recursive nested submodule update commands.
   - [ ] Keep full flaky quarantine, CI diet governance, mutation, Pact, SBOM, and release signing out of this story.
 
@@ -162,7 +171,8 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
   - [ ] Run the new accessibility/specimen Playwright lane locally where browser dependencies are available.
   - [ ] Run the default .NET test lane touched by specimen host changes.
   - [ ] Run `dotnet build Hexalith.FrontComposer.sln --configuration Release`.
-  - [ ] Record specimen routes, screenshot baseline locations, CI trigger split, CI job name, accessibility artifact paths, baseline-update command, manual evidence path, and any temporary suppressions.
+  - [ ] Verify the specimen manifest, production route-exposure smoke test, artifact redaction/bounding behavior, retry evidence preservation, and no automatic snapshot or suppression creation in CI.
+  - [ ] Record specimen routes, screenshot baseline locations, specimen manifest path, CI trigger split, CI job name, accessibility artifact paths, baseline-update command, manual evidence path, and any temporary suppressions.
 
 ---
 
@@ -198,6 +208,8 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
 - Focus visibility outranks lifecycle animation. If a focused element is also syncing, the focus ring must remain detectable and separate from the sync effect.
 - Custom components remain governed by the Level 2-4 custom-component accessibility contract: accessible name, keyboard reachability, focus visibility, state announcement, reduced-motion support, and forced-colors support.
 - Manual screen reader checks are required because automated scans cannot prove announcement quality.
+- Specimen routes are test infrastructure. They must require an explicit test/development specimen-host configuration and must not become adopter product routes by default.
+- CI evidence is part of the accessibility contract. Reports may summarize bounded selectors and rule metadata, but must not persist secrets, cookies, local paths, full DOM dumps, or environment-specific values.
 
 ### Visual Baseline Contract
 
@@ -247,6 +259,8 @@ Do not implement these in Story 10-2:
 - A broad Fluent UI, .NET SDK, Playwright, or axe package upgrade without explicit compatibility evidence.
 - Fake manual screen reader pass results.
 - Broad component-level accessibility remediation outside the specimen infrastructure. Defects discovered by the gate may be fixed only when they are required for the committed specimen surfaces; otherwise file or defer them with owner and evidence.
+- Retry or shard behavior that overwrites the first failing accessibility or visual evidence before artifact upload.
+- Automatic CI creation of snapshot baselines, suppressions, or specimen manifest entries.
 
 ### Known Gaps / Follow-Ups
 
@@ -305,6 +319,30 @@ Do not implement these in Story 10-2:
 - Findings deferred:
   - Full RTL and direction-specific visual matrices remain deferred to the existing v1.x/v2 accessibility follow-up.
   - Full localization layout verification remains deferred; this story only requires one fixed non-default culture for data-formatting text assertions.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-08T05:11:47+02:00
+- Selected story key: `10-2-accessibility-ci-gates-and-visual-specimen-verification`
+- Command/skill invocation used: `/bmad-advanced-elicitation 10-2-accessibility-ci-gates-and-visual-specimen-verification`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records
+- Findings summary:
+  - A false-green run could still pass if the test silently scans the wrong route, a partial specimen, or an unowned selector set; a committed specimen manifest gives the gate an oracle before axe and screenshots run.
+  - Test-only specimen routes needed an executable fail-closed check so they do not become adopter product routes by accident.
+  - Retry and shard behavior could erase first-failure evidence or mask blocking accessibility and visual defects unless artifact preservation is explicit.
+  - Axe and Playwright artifacts needed redaction and bounding requirements to avoid leaking local paths, cookies, tokens, full DOM, or environment-specific data.
+  - Baseline and suppression governance remained sound only if CI cannot generate baselines, suppressions, or manifest entries automatically.
+- Changes applied:
+  - Added AC26-AC29 for specimen manifest validation, production route-exposure fail-closed behavior, retry evidence preservation, and artifact redaction/bounding.
+  - Hardened T1 with explicit specimen-host configuration, manifest creation, and pre-scan manifest validation.
+  - Hardened T4 and T7 with redacted bounded artifacts and retry/shard evidence preservation.
+  - Hardened T9 with final verification for manifest, production exposure, artifact redaction, retry preservation, and no automatic baseline or suppression creation.
+  - Added scope guardrails preventing retry evidence overwrite and automatic CI creation of snapshots, suppressions, or manifest entries.
+- Findings deferred:
+  - No new product, architecture, or cross-story scope changes were accepted.
+  - Detailed manifest file naming and JSON schema shape remain implementation choices as long as AC26 and the T1/T9 handoff are satisfied.
 - Final recommendation: ready-for-dev
 
 ## Dev Agent Record
