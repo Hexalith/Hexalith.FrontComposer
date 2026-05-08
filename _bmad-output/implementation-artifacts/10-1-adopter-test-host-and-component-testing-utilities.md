@@ -58,6 +58,17 @@ The 2026-05-07 party-mode review (Winston, Amelia, John, Murat) found that Story
 - **Story 10-2 handoff:** Testing utilities may provide deterministic component-host setup that Story 10-2 can reuse for specimens, but Story 10-1 does not own Playwright, axe-core, browser screenshots, manual screen-reader logs, or CI accessibility gates.
 - **Adopter ergonomics:** Docs and sample tests must show both inheritance and composition usage, and setup validation failures must name the missing registration or invalid override contract with the method that fixes it.
 
+## Advanced Elicitation Hardening Contract
+
+The 2026-05-08 advanced elicitation pass hardened Story 10-1 against package-boundary drift, hidden state, and brittle adopter-consumption paths. Apply these binding clarifications during implementation:
+
+- **Public API drift control:** The Testing package must carry an intentional public API inventory or compatibility baseline. Public additions, removals, and signature changes require an updated baseline plus completion-note rationale tied to an adopter use case.
+- **Clean consumer proof:** Package smoke validation must consume the locally packed nupkg from a clean temporary adopter project outside the repository tree. Passing only through project references or internal test assemblies is insufficient evidence.
+- **Dependency allowlist:** The package restore graph must be inspected for unintended public dependencies. Test-framework, assertion, substitute, and browser-related packages stay private unless a public API signature genuinely requires them and the completion notes name the reason.
+- **Bounded and redacted evidence:** Fake command/query/page-loader/fault evidence may keep raw assertion values in memory for the current test, but failure messages, logs, serialized artifacts, and docs examples must bound payload size and redact tenant/user identifiers, tokens, secrets, and large command payloads.
+- **Deterministic cleanup:** Test-host contexts, fake providers, subscriptions, timers, JSInterop defaults, in-memory storage, and captured evidence must be reset or disposed per test context. The story must prove repeated and parallel contexts do not leak state.
+- **Version-alignment diagnostics:** If Testing, Shell, Contracts, or SourceTools package versions are mixed in unsupported combinations, setup validation must fail with an actionable message naming the mismatched packages and expected alignment.
+
 ---
 
 ## Acceptance Criteria
@@ -82,21 +93,30 @@ The 2026-05-07 party-mode review (Winston, Amelia, John, Murat) found that Story
 | AC16 | The package is used in parallel tests | Multiple bUnit contexts run | No static mutable state, shared fake queues, shared tenant/user values, or JSInterop assumptions leak between tests. |
 | AC17 | The repo has root-level submodules | Test discovery and package validation run | They do not initialize or update nested submodules and do not scan nested repository internals unless a test explicitly targets a root-level submodule contract. |
 | AC18 | Documentation snippets are published for the test host | Docs/sample validation runs | Snippets compile against the package, use xUnit v3 + bUnit 2.7.2, and demonstrate base-class and composable setup usage. |
+| AC19 | The Testing package public surface changes | API compatibility validation runs | Public API drift is detected unless the intentional API inventory/baseline is updated with a completion-note rationale and adopter use case. |
+| AC20 | The Testing package restore graph is inspected | Package validation runs | Only intended public dependencies are exposed; test-framework, assertion, substitute, browser, and internal framework dependencies are private or explicitly justified. |
+| AC21 | A sample adopter project consumes the package | The smoke test runs from a clean temporary directory outside the repo | The sample restores from the packed nupkg, references no internal test assemblies or repository source paths, and renders the override/DataGrid examples successfully. |
+| AC22 | Fake helpers capture command, query, page-loader, or fault evidence | Assertions fail or diagnostics are emitted | Failure messages and serialized artifacts redact secrets, tenant/user identifiers, tokens, and oversized payloads while preserving enough bounded context to debug the test. |
+| AC23 | Test host contexts are created repeatedly or in parallel | Each context is disposed | Event subscriptions, timers, JSInterop defaults, Fluxor subscriptions, in-memory storage, fake evidence records, and fault providers are cleaned up without cross-test leakage. |
+| AC24 | Testing, Shell, Contracts, or SourceTools versions are mixed incompatibly | Setup validation runs | The failure names the mismatched packages and the expected version alignment instead of surfacing null references or late render failures. |
 
 ---
 
 ## Tasks / Subtasks
 
-- [ ] T1. Add the adopter-facing testing package surface (AC1, AC13, AC14)
+- [ ] T1. Add the adopter-facing testing package surface (AC1, AC13, AC14, AC19, AC20, AC24)
   - [ ] Create `src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj` if it does not already exist.
   - [ ] Add the project to `Hexalith.FrontComposer.sln` and Central Package Management only where needed.
   - [ ] Reference Contracts and Shell directly; reference SourceTools only for generated-component test helpers that truly need generator-driver support.
   - [ ] Keep test-only package references explicit: bUnit, xUnit v3 abstractions where required, Shouldly only if public assertion helpers expose it, NSubstitute only if fakes depend on it.
   - [ ] Record the intended public API inventory before implementation is complete; every public type outside the Party-Mode Hardening Contract list needs a completion-note rationale.
+  - [ ] Add an API compatibility or approved-public-API baseline for the Testing package and fail validation when public signatures drift without an intentional baseline update.
+  - [ ] Validate package dependency metadata so unintended public dependencies, browser packages, internal test assemblies, and broad framework implementation dependencies do not leak to adopters.
+  - [ ] Add setup validation that detects unsupported Testing/Shell/Contracts/SourceTools version combinations before first render and names the packages that must align.
   - [ ] Add XML docs for public test-host APIs; do not enable broad CS1591 cleanup outside this package.
   - [ ] Add pack metadata and content exclusions so package output is deterministic and does not include repo-local artifacts.
 
-- [ ] T2. Promote `FrontComposerTestBase` without leaking internal test project details (AC1-AC4, AC15, AC16)
+- [ ] T2. Promote `FrontComposerTestBase` without leaking internal test project details (AC1-AC4, AC15, AC16, AC23)
   - [ ] Extract stable setup from `tests/Hexalith.FrontComposer.Shell.Tests/FrontComposerTestBase.cs` into the Testing package.
   - [ ] Provide both an optional base class and service-collection/setup extensions such as `AddFrontComposerTestHost(...)`.
   - [ ] Preserve delayed/idempotent Fluxor store initialization so adopters can replace services before first render.
@@ -104,7 +124,7 @@ The 2026-05-07 party-mode review (Winston, Amelia, John, Murat) found that Story
   - [ ] Register logging, localization, options, Fluent UI components, loose JS interop defaults, in-memory storage, lifecycle services, feedback publisher, auth redirector, and projection connection state.
   - [ ] Add diagnostics or setup validation for missing service seams instead of allowing null-reference failures.
   - [ ] Fail sample and package tests if they reference internal framework test assemblies, internal test namespaces, or fixture-only setup classes.
-  - [ ] Add parallel-test isolation tests that create multiple contexts with different tenants/users and verify no state leaks.
+  - [ ] Add repeated-dispose and parallel-test isolation tests that create multiple contexts with different tenants/users and verify no event subscription, timer, JSInterop, Fluxor, in-memory storage, or fake-evidence state leaks.
 
 - [ ] T3. Add generated projection/DataGrid test helpers (AC4, AC6, AC7, AC9, AC12)
   - [ ] Extract stable patterns from `GeneratedComponentTestBase.cs` without copying internal-only Shell test hacks.
@@ -119,38 +139,45 @@ The 2026-05-07 party-mode review (Winston, Amelia, John, Murat) found that Story
   - [ ] Validate projection type, role, contract version, context density/theme/read-only values, and accessibility metadata before rendering.
   - [ ] Add negative tests for invalid projection type, duplicate override, contract-version mismatch, missing render context, invalid role, and inaccessible override metadata.
 
-- [ ] T5. Add command/query/fault doubles for adopter tests (AC8-AC10, AC15-AC17)
+- [ ] T5. Add command/query/fault doubles for adopter tests (AC8-AC10, AC15-AC17, AC22, AC23)
   - [ ] Provide fake command service/dispatcher helpers that capture payload, tenant/user, command name, bounded context, correlation/message IDs, lifecycle sequence, validation outcome, rejection reason, and idempotency state.
   - [ ] Provide fake query/page-loader helpers for success, empty, not-modified, stale-cache, cancellation, error, slow-query, and bounded oversized response cases.
   - [ ] Return immutable evidence records from each fake helper so assertions do not depend on shared mutable queues or ambient process state.
+  - [ ] Bound captured evidence counts and payload sizes by option defaults, and redact tenant/user identifiers, secrets, tokens, and oversized payloads from failure messages, serialized artifacts, and docs examples.
   - [ ] Promote reusable parts of `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/*` for SignalR/reconnection simulation while keeping internal trace files out of the package.
   - [ ] Ensure fault helpers do not require live SignalR, network, DAPR, EventStore, or submodule initialization.
-  - [ ] Add tests for drop, delay, partial delivery, reorder, reconnect, cancellation, and deterministic disposal behavior.
+  - [ ] Add tests for drop, delay, partial delivery, reorder, reconnect, cancellation, deterministic disposal behavior, and evidence redaction behavior.
 
-- [ ] T6. Add builders, samples, and docs snippets (AC7, AC11, AC14, AC18)
+- [ ] T6. Add builders, samples, and docs snippets (AC7, AC11, AC14, AC18, AC21, AC22)
   - [ ] Add domain model builders for representative projection and command models, including deterministic IDs, timestamps, tenant/user, badges, nulls, enums, collections, and unsupported fields.
   - [ ] Keep builders composable and adopter-oriented; do not expose internal SourceTools IR mutation helpers as the primary API.
   - [ ] Add a sample adopter test project or sample folder that references the package and contains one override test and one generated DataGrid test.
+  - [ ] Add a clean temporary consumer smoke path that restores from the locally packed nupkg outside the repo and fails if samples rely on project references, internal tests, or repository-relative source paths.
   - [ ] Add documentation snippets for inheritance and composition usage. Snippets must compile against xUnit v3 + bUnit 2.7.2.
+  - [ ] Ensure docs snippets and expected failure examples use redacted sample tenant/user IDs, tokens, and payloads.
   - [ ] Use naming convention `{Method}_{Scenario}_{Expected}` or `Should_{Behavior}_When_{Condition}` consistently in new tests.
 
-- [ ] T7. Add package, coverage, and CI validation (AC12-AC18)
+- [ ] T7. Add package, coverage, and CI validation (AC12-AC24)
   - [ ] Add tests for the Testing package public API surface and setup validation messages.
+  - [ ] Run API compatibility/public-inventory validation and fail on unapproved Testing package public API drift.
   - [ ] Add `dotnet pack` validation for the Testing package.
   - [ ] Inspect the generated nupkg and fail on leaked `tests/`, `bin`, `obj`, screenshots, local settings, submodule internals, generated temporary artifacts, internal test namespaces, or unintended public dependencies.
   - [ ] Add local package-consumption smoke validation using the sample adopter tests.
+  - [ ] Run the package-consumption smoke validation from a clean temporary directory using the locally packed nupkg as the primary path.
+  - [ ] Add dependency-allowlist validation for package references and fail on unintended public restore-graph expansion.
   - [ ] Wire CI to run the package tests and smoke validation without introducing the later Epic 10 CI governance machinery.
   - [ ] Verify coverage collection can include core unit coverage, generated component bUnit coverage, and API-boundary integration coverage reports, but keep enforcement thresholds aligned with existing repo policy until a dedicated gate exists.
   - [ ] Add package artifact hygiene checks for `tests/`, `bin`, `obj`, `.git`, local settings, screenshots, submodule internals, and temp files.
 
-- [ ] T8. Final verification and handoff (AC1-AC18)
+- [ ] T8. Final verification and handoff (AC1-AC24)
   - [ ] Run `dotnet restore Hexalith.FrontComposer.sln`.
   - [ ] Run Testing package tests.
   - [ ] Run Shell generated/component tests touched by extraction.
   - [ ] Run SourceTools generated-output tests if helpers depend on generator output.
   - [ ] Run `dotnet pack src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`.
   - [ ] Run the sample adopter test project against the packed package or documented project-reference fallback.
-  - [ ] Update completion notes with package path, public APIs added, public API inventory rationale, sample tests run, coverage command used, package inspection result, and any deferred package/API decisions.
+  - [ ] Run the clean temporary consumer smoke path against the packed nupkg.
+  - [ ] Update completion notes with package path, public APIs added, public API inventory rationale, dependency allowlist result, sample tests run, clean consumer smoke result, redaction/isolation evidence, coverage command used, package inspection result, and any deferred package/API decisions.
 
 ---
 
@@ -176,6 +203,7 @@ The 2026-05-07 party-mode review (Winston, Amelia, John, Murat) found that Story
 | `src/Hexalith.FrontComposer.Shell` | Runtime components and services. Do not move runtime code into Testing. |
 | `src/Hexalith.FrontComposer.SourceTools` | Generator/IR internals. Testing package may provide helpers that consume generated artifacts, not a second generator. |
 | `Hexalith.EventStore` submodule | Do not initialize nested submodules or package submodule internals. Use fakes/doubles for adopter tests. |
+| Package validation / API baseline | Story 10-1 owns Testing package public API drift detection, dependency allowlisting, clean consumer smoke, and version-alignment diagnostics. |
 
 ### Public API Shape Guidance
 
@@ -232,6 +260,7 @@ Do not implement these in Story 10-1:
 - Broad package-train upgrades, especially Roslyn, Fluent UI, Fluxor, bUnit, xUnit, or .NET SDK changes.
 - A second runtime registry, second source generator, or second storage abstraction created only for tests.
 - Public exposure of internal test-only hacks that lock the current Shell implementation graph.
+- Unbounded capture of command/query evidence in logs or artifacts, or unredacted examples that expose tenant/user IDs, tokens, secrets, or large payloads.
 
 ### Known Gaps / Follow-Ups
 
@@ -285,6 +314,13 @@ Do not implement these in Story 10-1:
   - Changes applied: Added the Party-Mode Hardening Contract; hardened T1, T2, T5, T7, and T8; preserved `ready-for-dev` status because changes clarify implementation constraints without changing product scope.
   - Findings deferred: Full Playwright/axe/visual specimen gate remains Story 10-2; Pact, mutation/property testing, flaky quarantine, SBOM/signing, and broader Playwright helper package shape remain later Epic 10 stories.
   - Final recommendation: ready-for-dev
+- 2026-05-08T03:13:22+02:00: Advanced elicitation completed via `/bmad-advanced-elicitation 10-1-adopter-test-host-and-component-testing-utilities`.
+  - Batch 1 methods: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+  - Batch 2 methods: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+  - Findings summary: The story needed stronger package-boundary drift controls, out-of-repo consumer proof, dependency allowlisting, bounded/redacted fake evidence, deterministic cleanup, and mixed-version diagnostics.
+  - Changes applied: Added the Advanced Elicitation Hardening Contract; added AC19-AC24; hardened T1, T2, T5, T6, T7, and T8; clarified package validation/API-baseline ownership and a redaction scope guardrail.
+  - Findings deferred: Full Pact, mutation/property testing, flaky quarantine automation, accessibility/visual browser gates, and signing/SBOM remain with their named Epic 10 follow-up stories.
+  - Final recommendation: ready-for-dev
 
 ### File List
 
@@ -299,4 +335,16 @@ Do not implement these in Story 10-1:
 - Findings summary: The package concept is coherent and implementable, but needed sharper boundaries around public API admission, extraction from internal test fixtures, fake-helper evidence capture, package artifact hygiene, Story 10-2 ownership, and adopter diagnostics.
 - Changes applied: Added a Party-Mode Hardening Contract; added task-level requirements for public API inventory, internal-test reference checks, immutable evidence records, nupkg leak inspection, and completion-note handoff evidence.
 - Findings deferred: Browser-level accessibility and visual gates stay in Story 10-2; Pact, mutation/property testing, flaky quarantine, package signing/SBOM, and broad Playwright adopter helper scope remain deferred to their named Epic 10 stories.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-08T03:13:22+02:00
+- Selected story key: 10-1-adopter-test-host-and-component-testing-utilities
+- Command/skill invocation used: `/bmad-advanced-elicitation 10-1-adopter-test-host-and-component-testing-utilities`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+- Findings summary: Advanced elicitation found that the story was ready but under-specified around API drift, clean package consumption, dependency exposure, evidence redaction, per-context cleanup, and mixed-version diagnostics.
+- Changes applied: Added AC19-AC24; added an Advanced Elicitation Hardening Contract; hardened package API validation, clean consumer smoke, dependency allowlisting, redacted/bounded evidence, repeated-dispose/parallel isolation, version-alignment diagnostics, and completion-note evidence requirements.
+- Findings deferred: Pact contracts, mutation/property gates, flaky quarantine automation, browser accessibility/visual gates, package signing, SBOM, and release provenance remain deferred to their named Epic 10 stories.
 - Final recommendation: ready-for-dev

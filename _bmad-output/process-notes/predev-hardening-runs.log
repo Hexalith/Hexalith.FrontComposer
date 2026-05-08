@@ -125,3 +125,4 @@
 2026-05-07T22:05:00+02:00	create-story	10-2-accessibility-ci-gates-and-visual-specimen-verification	ok	created accessibility CI gates and visual specimen verification story
 2026-05-07T23:04:51+02:00	party-mode-review	10-1-adopter-test-host-and-component-testing-utilities	ok	applied party-mode hardening for Testing package boundaries and package evidence
 2026-05-08T03:01:53+02:00	party-mode-review	10-2-accessibility-ci-gates-and-visual-specimen-verification	ok	applied party-mode hardening for accessibility CI gates and specimen evidence
+2026-05-08T03:13:22+02:00	advanced-elicitation	10-1-adopter-test-host-and-component-testing-utilities	ok	applied advanced elicitation hardening for Testing package API, dependency, evidence, and isolation controls
