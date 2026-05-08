@@ -72,17 +72,27 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
 | AC16 | The e2e suite runs in CI | Test artifacts are generated | Playwright HTML report, JUnit output, screenshots, visual diffs, and axe result summaries are retained on failure. |
 | AC17 | Specimen routes are unavailable or blank | CI runs | The job fails with a clear message naming the missing route or empty specimen instead of passing with zero scanned nodes. |
 | AC18 | Lower-impact or known temporary violations exist | A suppression is needed | Suppressions are scoped by selector/rule with owner, expiry, and linked story; blanket page-level suppressions are rejected. |
+| AC19 | A specimen route is added | The route contract is reviewed | The exact type and data-formatting specimen route paths, route ownership, test/development visibility, auth independence, and expected landmark roots are documented in the story handoff. |
+| AC20 | Visual or accessibility specimens render in CI | The test harness stabilizes the page | Culture/locale, timezone, viewport, device scale factor, fonts, seeded fixture data, storage state, network dependencies, animations, and ready markers are fixed before axe scans or screenshots run. |
+| AC21 | Keyboard, focus, media, and zoom tests execute | Assertions are evaluated | Each non-axe check has an enforceable pass/fail assertion for focus order, visible focus, keyboard traps, active media emulation, no color-only state, reduced motion behavior, no horizontal document overflow, and reachable focused controls. |
+| AC22 | Playwright or axe artifacts are expected | CI completes or fails | A validation step confirms named reports exist for Playwright HTML/JUnit, axe summaries, screenshots, visual diffs, and trace/video where enabled; missing expected artifacts fail the job or fail the artifact-validation step. |
+| AC23 | Snapshot baselines are missing or changed | The visual lane runs | Missing baselines fail outside the documented intentional baseline-update command; changed baselines require review rationale and before/after evidence instead of automatic CI regeneration. |
+| AC24 | Generated specimens pass this gate | Adopters interpret the result | The docs state that this gate proves the committed generated/Shell specimen surfaces only; arbitrary adopter-provided custom components remain governed by the existing custom-component accessibility contract. |
+| AC25 | Data-formatting specimens exercise locale-sensitive output | The specimen renders | At least one fixed non-default culture is covered for formatting text assertions; full localization layout and RTL visual matrices remain deferred to named follow-up work. |
 
 ---
 
 ## Tasks / Subtasks
 
-- [ ] T1. Add deterministic specimen host surfaces (AC4, AC5, AC12, AC17)
-  - [ ] Add route-addressable type and data-formatting specimen views under the existing Shell/sample test surface.
-  - [ ] Keep specimen data local, deterministic, and independent of live EventStore, DAPR, SignalR, local network, wall-clock time, random IDs, or machine-specific paths.
+- [ ] T1. Add deterministic specimen host surfaces (AC4, AC5, AC12, AC17, AC19, AC20, AC24)
+  - [ ] Add route-addressable type and data-formatting specimen views under the existing Shell/sample test surface, and document the exact route paths in the story handoff.
+  - [ ] Keep specimen routes test/development-owned, auth-independent, and unavailable as adopter product pages unless an existing host convention already exposes test specimens.
+  - [ ] Keep specimen data local, deterministic, and independent of live EventStore, DAPR, SignalR, local network, wall-clock time, random IDs, browser storage, user preferences, or machine-specific paths.
+  - [ ] Freeze culture/locale, timezone, seeded IDs, viewport, device scale factor, fonts, and animations before screenshot or axe checks.
   - [ ] Mount specimens inside the real `FrontComposerShell` so theme, density, localization, navigation, lifecycle, DataGrid, and badge behavior are exercised in context.
   - [ ] Add stable `data-testid` attributes only where role/name locators cannot identify a specimen element reliably.
-  - [ ] Add a blank-specimen guard that fails if required specimen sections, rows, or controls are missing.
+  - [ ] Add a blank/partial-specimen guard that fails if required specimen sections, rows, controls, landmark roots, theme/density variants, local assets, or route-ready markers are missing.
+  - [ ] Fail on unhandled browser console errors, hydration/runtime exceptions, and unexpected network calls from default specimen routes.
 
 - [ ] T2. Build the type specimen content (AC4, AC6, AC9-AC13)
   - [ ] Render every type ramp slot and semantic color token in both Light and Dark themes.
@@ -92,55 +102,67 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
   - [ ] Include one expanded detail view and one multi-level nav group using existing layout/navigation components.
   - [ ] Ensure specimen state is deterministic across reruns and does not depend on current locale except where explicitly tested.
 
-- [ ] T3. Build the data-formatting specimen content (AC5, AC6, AC12, AC13)
+- [ ] T3. Build the data-formatting specimen content (AC5, AC6, AC12, AC13, AC25)
   - [ ] Add one DataGrid row per formatting category from UX-DR34/UX-DR35.
   - [ ] Cover locale numbers, absolute timestamps, relative timestamps with frozen time, truncated IDs, null em dash, collection counts, currency, boolean Yes/No, truncated enum labels, and unsupported-field placeholder.
+  - [ ] Include one fixed non-default culture for text assertions without expanding into a full localization visual matrix.
   - [ ] Preserve the existing label precedence rule: explicit `[Display(Name=...)]` beats humanization and formatting fallbacks.
   - [ ] Assert generated formatting text and accessible names so visual baselines are not the only oracle.
   - [ ] Do not move formatting ownership out of SourceTools/Shell just to build the specimen.
 
-- [ ] T4. Harden axe-core accessibility checks (AC1-AC3, AC16-AC18)
+- [ ] T4. Harden axe-core accessibility checks (AC1-AC3, AC16-AC18, AC21, AC22)
   - [ ] Extend `tests/e2e/helpers/a11y.ts` to separate blocking impacts (`serious`, `critical`) from report-only impacts (`minor`, `moderate`).
   - [ ] Keep WCAG 2.1 A/AA tag configuration explicit.
-  - [ ] Fail if the scan includes zero target nodes or a required specimen section is absent.
+  - [ ] Scan the full rendered specimen page or explicitly named landmark roots; fail if the scan includes zero target nodes or a required specimen section is absent.
+  - [ ] Add helper regression coverage proving `serious`/`critical` violations fail while `minor`/`moderate` violations are still written to artifacts.
   - [ ] Emit a concise artifact containing rule id, impact, help URL, affected selectors, and specimen route.
-  - [ ] Require suppressions to name rule id, selector, owner, expiry date, and linked story/issue.
-  - [ ] Avoid blanket exclusions for Fluent UI shadow DOM. Exclude only a named element when the underlying issue is documented.
+  - [ ] Require suppressions to name route, WCAG/axe rule id, selector, rationale, owner, expiry or review date, linked story/issue, and evidence that the issue is third-party or intentionally deferred.
+  - [ ] Avoid blanket exclusions for Fluent UI shadow DOM. Exclude only a named element when the underlying issue is documented; broad rule disables fail CI.
 
-- [ ] T5. Add keyboard, focus, forced-colors, reduced-motion, and zoom/reflow tests (AC8-AC13)
+- [ ] T5. Add keyboard, focus, forced-colors, reduced-motion, and zoom/reflow tests (AC8-AC13, AC20, AC21)
   - [ ] Add tab-order tests for nav, DataGrid controls, command form fields/actions, expanded detail, theme/density controls, and skip links.
+  - [ ] Assert focus order, visible focus indicator, Enter/Space activation where relevant, Escape behavior for dismissible surfaces, and no keyboard traps instead of only sending key presses.
   - [ ] Add focus-visible screenshots for representative controls in each specimen and assert focus is not obscured by lifecycle sync visuals.
   - [ ] Use Playwright media emulation for dark/light color scheme and reduced motion; use browser/context support for forced-colors where available and document fallback behavior when not supported.
+  - [ ] Assert media emulation is active before checking forced-colors or reduced-motion behavior.
+  - [ ] Verify forced-colors and reduced-motion through behavior/token assertions: perceivable focus, non-color-only state indicators, disabled/reduced motion effects, and understandable lifecycle state changes.
   - [ ] Test 100%, 200%, and 400% zoom/reflow with deterministic viewport sizes.
-  - [ ] Assert no critical controls overlap and no required content becomes unreachable.
+  - [ ] Assert no critical controls overlap, no horizontal document overflow at 200% and 400%, required content remains reachable, and focused elements scroll into view.
 
-- [ ] T6. Add visual baselines and baseline-governance checks (AC6, AC7, AC16)
+- [ ] T6. Add visual baselines and baseline-governance checks (AC6, AC7, AC16, AC20, AC22, AC23)
   - [ ] Use Playwright `expect(page).toHaveScreenshot(...)` or equivalent Playwright snapshot conventions already supported by the e2e workspace.
   - [ ] Generate and commit baselines for the 6 v1 combinations only: Light/Dark x Compact/Comfortable/Roomy.
   - [ ] Keep screenshots on a single OS/browser baseline lane to avoid font/rendering drift; broader browser coverage may run functional accessibility checks without visual baselines.
+  - [ ] Add a documented baseline-update command or npm script; missing baselines fail in CI unless that intentional update workflow is being run locally.
   - [ ] Add a CI check that detects changed specimen snapshots and requires a rationale file or PR-body marker plus before/after artifacts.
+  - [ ] Ensure baseline updates are committed intentionally and are never regenerated automatically by CI.
   - [ ] Mask or stabilize only genuinely dynamic elements; do not hide the UI surfaces this story exists to verify.
 
-- [ ] T7. Wire the CI gate without expanding unrelated governance (AC1, AC2, AC6, AC15, AC16)
+- [ ] T7. Wire the CI gate without expanding unrelated governance (AC1, AC2, AC6, AC15, AC16, AC22, AC23)
   - [ ] Add a dedicated accessibility/visual job or lane to `.github/workflows/ci.yml`.
+  - [ ] Define the trigger split explicitly: PR gates must run axe, blank/partial route checks, keyboard/focus, media/zoom assertions, artifact validation, and either the full visual matrix or a documented minimal visual smoke subset; main/nightly may own the full visual matrix if PR runtime is too high.
   - [ ] Use existing npm scripts where possible; add narrowly scoped scripts such as `test:e2e:a11y` or `test:e2e:visual` only if they simplify CI.
-  - [ ] Install Playwright browsers in the job and preserve reports on failure.
+  - [ ] Install Playwright browsers in the job and preserve reports on failure with stable artifact names and a configured retention period.
+  - [ ] Add artifact-validation logic that confirms Playwright HTML report, JUnit XML, screenshots, visual diffs, axe summaries, and trace/video outputs exist when expected.
   - [ ] Keep root-level submodule checkout behavior only; do not use recursive nested submodule update commands.
   - [ ] Keep full flaky quarantine, CI diet governance, mutation, Pact, SBOM, and release signing out of this story.
 
-- [ ] T8. Add manual verification log templates and docs (AC14, AC18)
+- [ ] T8. Add manual verification log templates and docs (AC14, AC18, AC22, AC24)
   - [ ] Create `docs/accessibility-verification/README.md` or template documentation for release-branch manual verification.
   - [ ] Include required fields: release branch/tag, date, tester, OS, browser, screen reader, version, specimen route, pass/fail, issue links, and resolution status.
+  - [ ] Document that manual screen reader evidence is required before release/package promotion for NVDA+Firefox, JAWS+Chrome, and VoiceOver+Safari, but is not faked or CI-synthesized by this story.
+  - [ ] Document the reviewer/sign-off expectation and minimum evidence attachment for manual screen reader logs.
   - [ ] Document that this story creates the evidence path and requirement; it must not invent pass results for audits that were not performed.
+  - [ ] Document adopter-facing evidence paths so adopters can inspect accessibility summaries, specimen screenshots or diffs, and manual verification logs without understanding Playwright internals.
   - [ ] Document suppression governance for temporary axe exceptions.
 
-- [ ] T9. Final verification and handoff (AC1-AC18)
+- [ ] T9. Final verification and handoff (AC1-AC25)
   - [ ] Run `npm --prefix tests/e2e install`.
   - [ ] Run `npm --prefix tests/e2e run typecheck`.
   - [ ] Run the new accessibility/specimen Playwright lane locally where browser dependencies are available.
   - [ ] Run the default .NET test lane touched by specimen host changes.
   - [ ] Run `dotnet build Hexalith.FrontComposer.sln --configuration Release`.
-  - [ ] Record specimen routes, screenshot baseline locations, CI job name, accessibility artifact paths, and any temporary suppressions.
+  - [ ] Record specimen routes, screenshot baseline locations, CI trigger split, CI job name, accessibility artifact paths, baseline-update command, manual evidence path, and any temporary suppressions.
 
 ---
 
@@ -185,8 +207,8 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
 | Density | Compact, Comfortable, Roomy |
 | Direction | LTR only; RTL deferred to a named v1.x/v2 story |
 | Browser baseline | One deterministic CI browser/OS lane for screenshots. Other browsers may run functional a11y checks without committed baselines. |
-| Update protocol | Snapshot changes require rationale plus before/after evidence. |
-| Dynamic content | Freeze time, IDs, locale, data, viewport, and animations; mask only unavoidable external noise. |
+| Update protocol | Snapshot changes require rationale plus before/after evidence. Missing baselines fail in CI except during the documented local baseline-update command. |
+| Dynamic content | Freeze time, IDs, locale, timezone, storage state, data, viewport, device scale factor, fonts, and animations; mask only unavoidable external noise. |
 
 ### Cross-Story Contract Table
 
@@ -200,6 +222,7 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
 | Stories 6-1 through 6-4 | Story 10-2 | Customization accessibility contract must remain testable; specimens may include one representative override only if deterministic. |
 | Stories 7-1 through 7-3 | Story 10-2 | Tenant/user/auth test setup must fail closed and avoid cross-tenant state leakage in browser tests. |
 | Stories 9-1 through 9-5 | Story 10-2 | Diagnostic HelpLinkUri/docs should reference the accessibility evidence path and specimen routes when relevant. |
+| `tests/e2e/helpers/a11y.ts` | Story 10-2 and later e2e suites | Shared helper defaults must remain explicit and versioned in code comments or docs; changes to impact thresholds, include/exclude behavior, and artifact schema are cross-suite contract changes. |
 
 ### Latest Technical Notes
 
@@ -223,6 +246,7 @@ Do not implement these in Story 10-2:
 - Recursive or nested submodule initialization.
 - A broad Fluent UI, .NET SDK, Playwright, or axe package upgrade without explicit compatibility evidence.
 - Fake manual screen reader pass results.
+- Broad component-level accessibility remediation outside the specimen infrastructure. Defects discovered by the gate may be fixed only when they are required for the committed specimen surfaces; otherwise file or defer them with owner and evidence.
 
 ### Known Gaps / Follow-Ups
 
@@ -259,6 +283,30 @@ Do not implement these in Story 10-2:
 
 ---
 
+## Party-Mode Review
+
+- Date/time: 2026-05-08T03:01:53+02:00
+- Selected story key: `10-2-accessibility-ci-gates-and-visual-specimen-verification`
+- Command/skill invocation used: `/bmad-party-mode 10-2-accessibility-ci-gates-and-visual-specimen-verification; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- Findings summary:
+  - Route ownership, route visibility, auth independence, and expected landmark roots needed to be explicit before implementation.
+  - Specimen determinism needed stronger invariants for culture, timezone, viewport, device scale factor, fonts, storage, network calls, animations, and ready markers.
+  - Axe-only checks risked false-green results without enforceable keyboard, focus, media, zoom, blank-route, console-error, and artifact assertions.
+  - Visual baseline governance needed missing-baseline behavior, an intentional local update workflow, and no automatic CI snapshot regeneration.
+  - Suppression governance needed route/rule/selector/rationale/owner/review-date evidence, plus rejection of broad rule disables.
+  - Adopter-facing evidence, manual screen reader sign-off expectations, localization scope, and custom-component boundaries needed clearer acceptance language.
+- Changes applied:
+  - Added AC19-AC25 for specimen route contracts, deterministic harness setup, enforceable non-axe checks, artifact validation, baseline governance, adopter interpretation boundaries, and fixed non-default culture coverage.
+  - Hardened T1, T3, T4, T5, T6, T7, T8, and T9 with concrete route, selector, media, zoom, artifact, baseline, manual-evidence, and handoff requirements.
+  - Strengthened the visual baseline contract with missing-baseline and stabilization rules.
+  - Added a cross-suite `tests/e2e/helpers/a11y.ts` contract row for impact thresholds, include/exclude behavior, and artifact schema changes.
+  - Added a scope guardrail preventing broad component-level accessibility remediation from being silently absorbed into this story.
+- Findings deferred:
+  - Full RTL and direction-specific visual matrices remain deferred to the existing v1.x/v2 accessibility follow-up.
+  - Full localization layout verification remains deferred; this story only requires one fixed non-default culture for data-formatting text assertions.
+- Final recommendation: ready-for-dev
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -272,6 +320,7 @@ Do not implement these in Story 10-2:
 ### Completion Notes List
 
 - 2026-05-07: Story created via `/bmad-create-story 10-2-accessibility-ci-gates-and-visual-specimen-verification` during recurring pre-dev hardening job. Ready for BMAD review in a later run.
+- 2026-05-08: Party-mode review applied route, determinism, artifact, baseline, suppression, manual-evidence, and adopter-boundary hardening. Ready for advanced elicitation in a later run.
 
 ### File List
 
