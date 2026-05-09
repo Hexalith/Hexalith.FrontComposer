@@ -1,7 +1,8 @@
 {
   "rowId": "IDE-SHOULD-004",
-  "fixtureName": "IdeParityCounterFixture",
-  "repositoryCommitSha": "2b2ed62f89ea01af195c3a09764582cc528af3a8",
+  "fixtureName": "samples/IdeParityCounter",
+  "fixtureContentHash": "sha256:27f05dcedd02315f53d11fb429708fe95e22cab135c2acbe48010665f9ee0918",
+  "repositoryCommitSha": "c78605c7d8421b540e922f7f18015060d9d3779f",
   "generatedOutputPathContractVersion": "v1",
   "ideVersions": {
     "visualStudio": "Visual Studio 2022 17.13+",
@@ -11,7 +12,7 @@
   },
   "osOrContainerImage": "Contributor documentation validation",
   "validationCommandOrManualSteps": "Review CONTRIBUTING.md generator-host debugging guidance.",
-  "artifactHash": "sha256:0000000000000000000000000000000000000000000000000000000000000010",
+  "artifactHash": "sha256:458135563a5a8130923a270661635f56e3d0fe9c6136174adb96146fbadcdfc3",
   "owner": "SourceTools",
   "lastVerified": "2026-05-09",
   "expiresOn": "2026-11-09",

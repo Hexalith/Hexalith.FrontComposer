@@ -1,7 +1,8 @@
 {
   "rowId": "IDE-MUST-003",
-  "fixtureName": "IdeParityCounterFixture",
-  "repositoryCommitSha": "2b2ed62f89ea01af195c3a09764582cc528af3a8",
+  "fixtureName": "samples/IdeParityCounter",
+  "fixtureContentHash": "sha256:27f05dcedd02315f53d11fb429708fe95e22cab135c2acbe48010665f9ee0918",
+  "repositoryCommitSha": "c78605c7d8421b540e922f7f18015060d9d3779f",
   "generatedOutputPathContractVersion": "v1",
   "ideVersions": {
     "visualStudio": "Visual Studio 2022 17.13+",
@@ -11,7 +12,7 @@
   },
   "osOrContainerImage": "Debug and Release local CI path contract validation",
   "validationCommandOrManualSteps": "Validate obj/{Config}/{TFM}/generated/HexalithFrontComposer generated-source paths.",
-  "artifactHash": "sha256:0000000000000000000000000000000000000000000000000000000000000003",
+  "artifactHash": "sha256:e0bbcfcd2a82e14182dbf6f296720b0ac1b36ff3455a7c91dc444beaeec2a9f6",
   "owner": "SourceTools",
   "lastVerified": "2026-05-09",
   "expiresOn": "2026-11-09",

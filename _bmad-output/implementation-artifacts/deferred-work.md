@@ -1,5 +1,14 @@
 # Deferred Work
 
+## Deferred from: code review of 9-3-ide-parity-and-developer-experience (2026-05-09)
+
+- **DEF-9-3-1 — Sanitizer ESC → literal ``** [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityConformanceHelpers.cs` (`Sanitize`)] — `Replace("", "\\u001B")` keeps the literal six-char string in output. Acceptable for visibility; revisit only if output is consumed by a JSON-decoder downstream. Sources: blind.
+- **DEF-9-3-2 — `CONTRIBUTING.md` `Debugger.Launch()` guidance has no enforcement** [`CONTRIBUTING.md:12-14`] — Documentation-only safeguard against generator-host `Debugger.Launch()` leaks; no analyzer, pre-commit hook, or CI grep gates removal. Add a CI grep gate later if a leak ships. Sources: blind.
+- **DEF-9-3-3 — PowerShell file-write race for `$OutPath`** [`jobs/ide-parity-version-revalidation.ps1`] — Not an issue under serial release-gate execution; revisit if the script is invoked in parallel. Sources: edge.
+- **DEF-9-3-4 — `RepositoryRoot` walk via symlinked `AppContext.BaseDirectory`** [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs:2048-2059`] — Walks ancestors looking for `.sln`; if `AppContext.BaseDirectory` is symlinked or extracted from an artifact bundle, walk may overshoot or follow a wrong link. Not a realistic CI path today. Sources: edge.
+- **DEF-9-3-5 — Manifest extra-field tolerance / duplicate JSON keys** [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs`] — `System.Text.Json` silently keeps the last value for duplicate keys and ignores unknown fields; tampered manifests with duplicate keys would pass schema tests. Would require explicit allowlist or strict-schema parser. Low practical risk. Sources: edge.
+- **DEF-9-3-6 — UTF-8 BOM / trailing-comma read tolerance for manifest JSON** [`tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs`] — A manifest with a trailing comma raises `JsonException` without a friendly hint; current strict behavior is the correct fail-closed default for tamper detection. Sources: edge.
+
 ## Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)
 
 - **DEF-9-2-18 — README "JSON path schema" framing in change-log overstated** [`src/Hexalith.FrontComposer.Cli/README.md`] — README adds path-relativity + glob notes (P-16/P-22) but no actual schema, exit-code table, or field listing. Story 9-5 owns final docs; Story 9-2 wording in change-log inflates scope. Sources: auditor.

@@ -10,8 +10,8 @@ namespace Hexalith.FrontComposer.Contracts.Attributes;
 /// No custom display attribute is needed — the source generator reads DisplayAttribute
 /// via Roslyn symbol analysis.
 /// Generated projection files are written under
-/// <c>obj/{Config}/{TFM}/generated/HexalithFrontComposer</c> when compiler generated files
-/// are emitted. Diagnostics and IDE parity guidance are documented from
+/// <see cref="Hexalith.FrontComposer.Contracts.Conformance.GeneratedOutputPathContract.Directory"/>
+/// when compiler generated files are emitted. Diagnostics and IDE parity guidance are documented from
 /// <see href="https://hexalith.github.io/FrontComposer/diagnostics/">the FrontComposer diagnostics pages</see>.
 /// </remarks>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]

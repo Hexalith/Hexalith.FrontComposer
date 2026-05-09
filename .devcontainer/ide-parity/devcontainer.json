@@ -1,7 +1,9 @@
 {
   "name": "Hexalith FrontComposer IDE Parity",
   "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
-  "features": {},
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
   "customizations": {
     "vscode": {
       "extensions": [
@@ -12,6 +14,11 @@
       }
     }
   },
-  "postCreateCommand": "dotnet --info && dotnet restore Hexalith.FrontComposer.sln",
+  // Submodule init must happen before restore so referenced projects resolve. NuGet auth is
+  // expected to be configured by the host (NUGET_AUTH_TOKEN, ~/.nuget/NuGet.Config); the
+  // restore deliberately does not pass --interactive so failure is loud rather than blocking
+  // the container start. If a private feed is required, pre-seed `~/.nuget/NuGet.Config`
+  // via Codespaces secrets or a host-bind mount.
+  "postCreateCommand": "git submodule update --init --recursive --depth 1 || true; dotnet --info && dotnet restore Hexalith.FrontComposer.sln --locked-mode 2>/dev/null || dotnet restore Hexalith.FrontComposer.sln",
   "remoteUser": "vscode"
 }

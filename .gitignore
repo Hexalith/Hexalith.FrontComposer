@@ -84,7 +84,8 @@ artifacts/*
 !artifacts/ide-parity/
 !artifacts/ide-parity/**
 !artifacts/ide-parity/evidence/
-!artifacts/ide-parity/evidence/*.json
+!artifacts/ide-parity/evidence/**/*.json
+!artifacts/ide-parity/revalidation-dry-run.md
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt

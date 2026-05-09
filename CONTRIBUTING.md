@@ -12,7 +12,7 @@ For Visual Studio, use JIT attach or attach to the active compiler server proces
 dotnet build Hexalith.FrontComposer.sln -p:UseSharedCompilation=false
 ```
 
-For Rider and VS Code with C# Dev Kit, generated-code inspection and generator-host attach behavior can differ by vendor version. Treat generator-host attach as a contributor workflow, not an adopter parity promise. The adopter-facing contract is generated output under `obj/{Config}/{TFM}/generated/HexalithFrontComposer`, HFC diagnostics, XML docs, and documented fallback inspection through `frontcomposer inspect`.
+For Rider and VS Code with C# Dev Kit, generated-code inspection and generator-host attach behavior can differ by vendor version. Treat generator-host attach as a contributor workflow, not an adopter parity promise. The adopter-facing contract is the generated output layout published as `Hexalith.FrontComposer.Contracts.Conformance.GeneratedOutputPathContract.Template` (currently `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs`), HFC diagnostics, XML docs, and documented fallback inspection through `frontcomposer inspect`.
 
 The compiler server can cache analyzer and generator assemblies. If a change appears stale, close the IDE design-time build, run `dotnet build-server shutdown`, then rebuild. When debugging generated output layout, validate both Debug and Release because Story 9-3 treats `obj/{Config}/{TFM}/generated/HexalithFrontComposer` as a public path contract.
 

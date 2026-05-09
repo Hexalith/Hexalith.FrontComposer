@@ -65,11 +65,21 @@ dotnet_diagnostic.CA1014.severity = none
 # Story 9-3 / v1.0-rc1 plan: keep CS1591 as a warning before API freeze, then scope stricter
 # XML-doc enforcement to public API and generated-facing contracts instead of flipping the
 # whole repository at once. PublicAPI.Shipped.txt owns the final strict surface.
-[src/Hexalith.FrontComposer.Contracts/Attributes/*.cs]
+#
+# Globs use **/*.cs so files added under sub-namespaces (e.g. Attributes/Internal/Foo.cs)
+# inherit the same scoped severity. The matching `[*.cs]` block above leaves CS1591 at the
+# default project severity; these blocks intentionally relax it for the public-API folders
+# that will get the stricter set re-applied at API freeze.
+[src/Hexalith.FrontComposer.Contracts/Attributes/**/*.cs]
 dotnet_diagnostic.CS1591.severity = warning
 
-[src/Hexalith.FrontComposer.Contracts/Rendering/*.cs]
+[src/Hexalith.FrontComposer.Contracts/Rendering/**/*.cs]
 dotnet_diagnostic.CS1591.severity = warning
 
-[src/Hexalith.FrontComposer.Contracts/Mcp/*.cs]
+[src/Hexalith.FrontComposer.Contracts/Mcp/**/*.cs]
+dotnet_diagnostic.CS1591.severity = warning
+
+# Conformance contract is shipped public API consumed across stories; keep CS1591 as warning
+# pre-freeze so doc gaps are visible without breaking the build.
+[src/Hexalith.FrontComposer.Contracts/Conformance/**/*.cs]
 dotnet_diagnostic.CS1591.severity = warning

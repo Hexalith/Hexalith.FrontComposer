@@ -1,7 +1,8 @@
 {
   "rowId": "IDE-MUST-002",
-  "fixtureName": "IdeParityCounterFixture",
-  "repositoryCommitSha": "2b2ed62f89ea01af195c3a09764582cc528af3a8",
+  "fixtureName": "samples/IdeParityCounter",
+  "fixtureContentHash": "sha256:27f05dcedd02315f53d11fb429708fe95e22cab135c2acbe48010665f9ee0918",
+  "repositoryCommitSha": "c78605c7d8421b540e922f7f18015060d9d3779f",
   "generatedOutputPathContractVersion": "v1",
   "ideVersions": {
     "visualStudio": "Visual Studio 2022 17.13+",
@@ -11,7 +12,7 @@
   },
   "osOrContainerImage": "Windows calibration plus release-owner manual evidence for other IDEs",
   "validationCommandOrManualSteps": "Verify XML documentation on public attributes and generated-facing symbols; capture IDE hover evidence.",
-  "artifactHash": "sha256:0000000000000000000000000000000000000000000000000000000000000002",
+  "artifactHash": "sha256:1b34f0fdc3b419af62631e5715d25ef02fd1f58f16e3ba3a00e9e31c9163b0e5",
   "owner": "SourceTools",
   "lastVerified": "2026-05-09",
   "expiresOn": "2026-11-09",

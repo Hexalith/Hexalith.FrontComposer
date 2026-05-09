@@ -246,4 +246,78 @@ public partial class Bad { public string X { get }";
             "the developer sees generator-amplified noise on top of the real edit-in-progress error. " +
             $"New errors: [{string.Join("; ", newGeneratorErrors.Select(d => d.Id + " " + d.GetMessage()))}].");
     }
+
+    // Story 9-3 — IDE-MUST-006: NFR8 evidence row claims CI-blocking 500 ms warm-update
+    // budget for the IdeParity fixture. This test exercises the deterministic
+    // samples/IdeParityCounter sources and asserts both the cold first-run budget and the
+    // incremental warm-update budget. A cold run is intentionally given more headroom
+    // (Roslyn's first-time analyzer load is dominated by JIT and metadata parsing); the
+    // warm-update budget is the contract IDE adopters care about because that is what they
+    // experience on every edit.
+    [Fact]
+    [Trait("MatrixRowId", "IDE-MUST-006")]
+    public void IdeParityCounterFixture_WarmUpdateAndColdRunStayWithinNfr8Budgets() {
+        const long warmUpdateBudgetMs = 500;
+        const long coldRunBudgetMs = 5000;
+
+        CancellationToken ct = TestContext.Current.CancellationToken;
+
+        string fixtureSource = Hexalith.FrontComposer.SourceTools.Tests.IdeParity
+            .IdeParityConformanceUtilityTests.LoadIdeParityCounterFixtureSource();
+        CSharpCompilation initialCompilation = CompilationHelper.CreateCompilation(fixtureSource);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            [generator.AsSourceGenerator()],
+            driverOptions: new GeneratorDriverOptions(
+                disabledOutputs: IncrementalGeneratorOutputKind.None,
+                trackIncrementalGeneratorSteps: true));
+
+        // Cold run: first invocation against a fresh driver. This populates analyzer/JIT
+        // caches and is allowed a wider budget than the steady-state warm update.
+        var coldStopwatch = Stopwatch.StartNew();
+        driver = driver.RunGenerators(initialCompilation, ct);
+        coldStopwatch.Stop();
+        GeneratorDriverRunResult coldResult = driver.GetRunResult();
+        coldResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty(
+            "Cold run on the IdeParityCounter fixture must not emit error-severity diagnostics.");
+        coldStopwatch.ElapsedMilliseconds.ShouldBeLessThan(
+            coldRunBudgetMs,
+            $"Cold run for samples/IdeParityCounter took {coldStopwatch.ElapsedMilliseconds} ms; budget is {coldRunBudgetMs} ms.");
+
+        // Warm update: mutate the projection by adding one property and re-run. This is the
+        // NFR8 budget that IDE-MUST-006 gates.
+        string mutatedSource = fixtureSource.Replace(
+            "public string Status { get; set; } = string.Empty;",
+            "public string Status { get; set; } = string.Empty;\n    public int Version { get; set; }",
+            StringComparison.Ordinal);
+        CSharpCompilation mutatedCompilation = initialCompilation.ReplaceSyntaxTree(
+            initialCompilation.SyntaxTrees.First(t => t.GetText().ToString().Contains("IdeParityCounterProjection")),
+            CSharpSyntaxTree.ParseText(mutatedSource, cancellationToken: ct));
+
+        // Warmup pass to absorb the JIT cost of the delta path itself; not measured.
+        driver = driver.RunGenerators(mutatedCompilation, ct);
+        // Re-seed once so the next RunGenerators(initial) is a real delta.
+        driver = driver.RunGenerators(initialCompilation, ct);
+
+        const int sampleIterations = 5;
+        long[] samples = new long[sampleIterations];
+        GeneratorDriverRunResult lastDeltaResult = null!;
+        for (int i = 0; i < sampleIterations; i++) {
+            var sw = Stopwatch.StartNew();
+            driver = driver.RunGenerators(mutatedCompilation, ct);
+            sw.Stop();
+            samples[i] = sw.ElapsedMilliseconds;
+            lastDeltaResult = driver.GetRunResult();
+            // Re-seed to make the next iteration a real delta.
+            driver = driver.RunGenerators(initialCompilation, ct);
+        }
+
+        long medianMs = samples.OrderBy(x => x).ElementAt(sampleIterations / 2);
+        lastDeltaResult.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error).ShouldBeEmpty(
+            "Warm update on the IdeParityCounter fixture must not emit error-severity diagnostics.");
+        medianMs.ShouldBeLessThan(
+            warmUpdateBudgetMs,
+            $"Warm update median for samples/IdeParityCounter ({medianMs} ms across {sampleIterations} samples: " +
+            $"[{string.Join(", ", samples)}]) exceeds the {warmUpdateBudgetMs} ms NFR8 budget.");
+    }
 }

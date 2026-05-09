@@ -41,6 +41,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Cli"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Cli.Tests", "tests\Hexalith.FrontComposer.Cli.Tests\Hexalith.FrontComposer.Cli.Tests.csproj", "{933DB474-6F00-4CCE-BA01-3DB7F348B98E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IdeParityCounter", "samples\IdeParityCounter\IdeParityCounter.csproj", "{244816D9-F2B8-4463-B173-65691F355C06}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -231,6 +233,18 @@ Global
 		{933DB474-6F00-4CCE-BA01-3DB7F348B98E}.Release|x64.Build.0 = Release|Any CPU
 		{933DB474-6F00-4CCE-BA01-3DB7F348B98E}.Release|x86.ActiveCfg = Release|Any CPU
 		{933DB474-6F00-4CCE-BA01-3DB7F348B98E}.Release|x86.Build.0 = Release|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Debug|x64.Build.0 = Debug|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Debug|x86.Build.0 = Debug|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Release|x64.ActiveCfg = Release|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Release|x64.Build.0 = Release|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Release|x86.ActiveCfg = Release|Any CPU
+		{244816D9-F2B8-4463-B173-65691F355C06}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -252,5 +266,6 @@ Global
 		{7019EC74-B3BC-48A7-8A7F-BDEAE3847B19} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{55214CE9-5775-4EAE-A6A1-02336C0BE003} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{933DB474-6F00-4CCE-BA01-3DB7F348B98E} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{244816D9-F2B8-4463-B173-65691F355C06} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal

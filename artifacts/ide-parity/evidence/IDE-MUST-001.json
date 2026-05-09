@@ -1,7 +1,8 @@
 {
   "rowId": "IDE-MUST-001",
-  "fixtureName": "IdeParityCounterFixture",
-  "repositoryCommitSha": "2b2ed62f89ea01af195c3a09764582cc528af3a8",
+  "fixtureName": "samples/IdeParityCounter",
+  "fixtureContentHash": "sha256:27f05dcedd02315f53d11fb429708fe95e22cab135c2acbe48010665f9ee0918",
+  "repositoryCommitSha": "c78605c7d8421b540e922f7f18015060d9d3779f",
   "generatedOutputPathContractVersion": "v1",
   "ideVersions": {
     "visualStudio": "Visual Studio 2022 17.13+",
@@ -11,7 +12,7 @@
   },
   "osOrContainerImage": "Windows calibration plus release-owner manual evidence for other IDEs",
   "validationCommandOrManualSteps": "dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --filter FullyQualifiedName~IdeParity",
-  "artifactHash": "sha256:0000000000000000000000000000000000000000000000000000000000000001",
+  "artifactHash": "sha256:acb1dc2d32bdf61e8eea98fe4b8e63e3975058f8b3f76b51e1b60b8c1a962548",
   "owner": "SourceTools",
   "lastVerified": "2026-05-09",
   "expiresOn": "2026-11-09",

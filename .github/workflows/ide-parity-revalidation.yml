@@ -1,0 +1,63 @@
+name: IDE Parity Revalidation
+
+# Story 9-3 — Triggers a release-gate scan that compares configured IDE/SDK pins against
+# docs/ide-parity-matrix.json. On drift the job either files a GitHub issue (when gh
+# auth and labels are available) or writes a deterministic dry-run artifact and fails
+# the run. Either path blocks the release checklist.
+on:
+  schedule:
+    # Weekly Monday 06:00 UTC. Cron is intentionally pinned and not parameterized.
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      visual_studio_version:
+        description: 'Detected Visual Studio 2022 version (e.g. 17.13). Leave blank to skip.'
+        required: false
+        type: string
+      rider_version:
+        description: 'Detected JetBrains Rider version (e.g. 2026.1). Leave blank to skip.'
+        required: false
+        type: string
+      dotnet_sdk_version:
+        description: 'Detected .NET SDK version (e.g. 10.0.103). Leave blank to skip.'
+        required: false
+        type: string
+
+concurrency:
+  group: ide-parity-revalidation
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  revalidate:
+    name: Revalidate pinned IDE versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Run revalidation script
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRONTCOMPOSER_IDE_VERSION_VISUALSTUDIO: ${{ inputs.visual_studio_version }}
+          FRONTCOMPOSER_IDE_VERSION_RIDER: ${{ inputs.rider_version }}
+          FRONTCOMPOSER_DOTNET_SDK_VERSION: ${{ inputs.dotnet_sdk_version }}
+        shell: pwsh
+        run: |
+          ./jobs/ide-parity-version-revalidation.ps1
+
+      - name: Upload dry-run artifact (if drift detected without live issue)
+        if: failure()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: ide-parity-revalidation-dry-run
+          path: artifacts/ide-parity/revalidation-dry-run.md
+          if-no-files-found: ignore
+          retention-days: 30
