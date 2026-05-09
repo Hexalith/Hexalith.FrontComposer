@@ -71,6 +71,7 @@ HFC1069 | HexalithFrontComposer | Error | Generated UI drift diagnostic was supp
 HFC1070 | HexalithFrontComposer | Warning | Reflection action-queue projection catalog may be trim-incompatible (Story 9-1)
 HFCM0000 | HexalithFrontComposer.Migration | Info | Migration candidate was skipped by write-safety policy (Story 9-2)
 HFCM0001 | HexalithFrontComposer.Migration | Info | No fixable FrontComposer migration diagnostics were found (Story 9-2)
+HFCM0002 | HexalithFrontComposer.Migration | Warning | Diagnostic sidecar file is unreadable or malformed (Story 9-2)
 HFCM0004 | HexalithFrontComposer.Migration | Error | Migration apply failed because plan/write validation failed (Story 9-2)
 HFCM9001 | HexalithFrontComposer.Migration | Warning | Obsolete dev-mode overlay registration API can be migrated automatically (Story 9-2)
 HFCM9002 | HexalithFrontComposer.Migration | Warning | Custom FrontComposer migration requires manual review (Story 9-2)

@@ -11,25 +11,27 @@ public static class OutputSanitizer
         }
 
         StringBuilder builder = new(Math.Min(value.Length, maxLength) + 32);
-        int emitted = 0;
+        int emittedChars = 0;
+        int processedInputChars = 0;
         foreach (char ch in value) {
             string replacement = ch switch {
                 '\r' or '\n' or '\t' => ch.ToString(),
-                < ' ' or '' => "\\u" + ((int)ch).ToString("X4", System.Globalization.CultureInfo.InvariantCulture),
+                < ' ' or '\u007f' => "\\u" + ((int)ch).ToString("X4", System.Globalization.CultureInfo.InvariantCulture),
                 _ => ch.ToString(),
             };
 
-            if (emitted + replacement.Length > maxLength) {
+            if (emittedChars + replacement.Length > maxLength) {
                 break;
             }
 
             _ = builder.Append(replacement);
-            emitted += replacement.Length;
+            emittedChars += replacement.Length;
+            processedInputChars++;
         }
 
-        if (builder.Length < value.Length) {
+        if (processedInputChars < value.Length) {
             _ = builder.Append(" [truncated:");
-            _ = builder.Append(Math.Max(0, value.Length - emitted).ToString(System.Globalization.CultureInfo.InvariantCulture));
+            _ = builder.Append((value.Length - processedInputChars).ToString(System.Globalization.CultureInfo.InvariantCulture));
             _ = builder.Append(']');
         }
 
@@ -43,7 +45,8 @@ public static class OutputSanitizer
         }
 
         StringBuilder builder = new(Math.Min(value.Length, maxLength) + 32);
-        int emitted = 0;
+        int emittedChars = 0;
+        int processedInputChars = 0;
         foreach (char ch in value) {
             string replacement = ch switch {
                 '\r' => "\\r",
@@ -53,17 +56,18 @@ public static class OutputSanitizer
                 _ => ch.ToString(),
             };
 
-            if (emitted + replacement.Length > maxLength) {
+            if (emittedChars + replacement.Length > maxLength) {
                 break;
             }
 
             _ = builder.Append(replacement);
-            emitted += replacement.Length;
+            emittedChars += replacement.Length;
+            processedInputChars++;
         }
 
-        if (builder.Length < value.Length) {
+        if (processedInputChars < value.Length) {
             _ = builder.Append(" [truncated:");
-            _ = builder.Append(Math.Max(0, value.Length - emitted).ToString(System.Globalization.CultureInfo.InvariantCulture));
+            _ = builder.Append((value.Length - processedInputChars).ToString(System.Globalization.CultureInfo.InvariantCulture));
             _ = builder.Append(']');
         }
 

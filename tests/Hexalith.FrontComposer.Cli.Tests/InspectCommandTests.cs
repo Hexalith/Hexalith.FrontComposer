@@ -42,12 +42,28 @@ public sealed class InspectCommandTests
         root.GetProperty("summary").GetProperty("registrations").GetInt32().ShouldBe(1);
         root.GetProperty("summary").GetProperty("mcpManifestEntries").GetInt32().ShouldBe(1);
 
-        string[] paths = root.GetProperty("generatedFiles")
+        // AC21 (third-pass fix): JSON `generatedFiles` ordering matches the canonical load-order
+        // tri-key sort (RelatedType -> Family -> RelativePath). Files without a RelatedType
+        // (e.g., the MCP manifest) sort first because their RelatedType compares as the empty
+        // string ordinally. Text and JSON now share this exact ordering.
+        var entries = root.GetProperty("generatedFiles")
             .EnumerateArray()
-            .Select(x => x.GetProperty("path").GetString()!)
+            .Select(x => new {
+                Path = x.GetProperty("path").GetString()!,
+                Family = x.GetProperty("family").GetString()!,
+                RelatedType = x.GetProperty("relatedType").GetString() ?? string.Empty,
+            })
             .ToArray();
 
-        paths.ShouldBe(paths.Order(StringComparer.Ordinal).ToArray());
+        var triKeyExpected = entries
+            .OrderBy(x => x.RelatedType, StringComparer.Ordinal)
+            .ThenBy(x => x.Family, StringComparer.Ordinal)
+            .ThenBy(x => x.Path, StringComparer.Ordinal)
+            .Select(x => x.Path)
+            .ToArray();
+
+        string[] paths = entries.Select(x => x.Path).ToArray();
+        paths.ShouldBe(triKeyExpected);
         paths.ShouldAllBe(path => path.Contains('/', StringComparison.Ordinal));
         paths.ShouldAllBe(path => !Path.IsPathRooted(path));
         paths.ShouldContain("obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.ShipmentProjection.g.razor.cs");

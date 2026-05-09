@@ -1,5 +1,20 @@
 # Deferred Work
 
+## Deferred from: code review of 9-2-cli-inspection-and-migration-tools — third pass (2026-05-09)
+
+- **DEF-9-2-18 — README "JSON path schema" framing in change-log overstated** [`src/Hexalith.FrontComposer.Cli/README.md`] — README adds path-relativity + glob notes (P-16/P-22) but no actual schema, exit-code table, or field listing. Story 9-5 owns final docs; Story 9-2 wording in change-log inflates scope. Sources: auditor.
+- **DEF-9-2-19 — `OutputSanitizer.SanitizeMultiLine` breaks `git apply`/`patch` applicability when control chars are escaped inline** [`src/Hexalith.FrontComposer.Cli/OutputSanitizer.cs`] — Inline `\\uXXXX` replacement of control bytes inside a hunk turns a legitimate diff line into something `patch` cannot apply. T6 specifies "render unified diff", not "applicable diff"; trade-off favors AC27 safety. Sources: auditor.
+- **DEF-9-2-20 — `Distance` Levenshtein silent cap at 256 chars** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs`] — Already accepted as DoS guard during second-pass; no caller-side comment. Sources: blind.
+- **DEF-9-2-21 — `UnifiedDiff.DiffOps` 32-line lookahead degrades to delete-all/insert-all on widely-separated changes** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs` (`UnifiedDiff.DiffOps`)] — Documented limitation; bounded by Story 9-2 scope (small migration diffs only). Sources: blind+edge.
+- **DEF-9-2-22 — `SourceFile.DetectEncoding` strict UTF-8 fallback breaks legitimate Latin-1 files** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Intentional fail-closed per second-pass P-encoding; flagged for completeness. Sources: blind.
+- **DEF-9-2-23 — `DetectEncoding` UTF-32 LE BOM `FF FE 00 00` collides with a 4-byte UTF-16 LE file containing one U+0000** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Extreme edge case; no realistic .cs source matches. Sources: blind+edge.
+- **DEF-9-2-24 — `MigrationCatalog.BuildEdges` throws from a static field initializer** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:87-108`] — Defensive guard; only one edge currently and a duplicate would also fail tests at first instantiation. Sources: blind+edge.
+- **DEF-9-2-25 — Apply IOException during write leaves partial file** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Already covered by `DEF-9-2-2` atomic temp+rename; reaffirmed by third pass. Sources: edge.
+- **DEF-9-2-26 — `PathUtilities.Canonical` drive-root edge case (empty `Path.GetFileName`)** [`src/Hexalith.FrontComposer.Cli/PathUtilities.cs`] — Drive roots are not valid Compile Include targets. Sources: edge.
+- **DEF-9-2-27 — `SourceFile.ReadAsync` OOM on a multi-GB `.cs` file** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — No realistic adopter `.cs` source approaches OOM thresholds. Sources: edge.
+- **DEF-9-2-28 — `ToolPackagingSmokeTests.FindOnPath` PATHEXT casing (`extension.ToLowerInvariant()`)** [`tests/Hexalith.FrontComposer.Cli.Tests/ToolPackagingSmokeTests.cs:118`] — Works on Windows due to case-insensitive filesystem; minor. Sources: blind+edge.
+- **DEF-9-2-29 — `MigrationDiagnosticSidecarReader.NormalizePath` does not handle drive-relative paths like `C:foo.cs`** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Degrades to `RedactedPathSentinel` and silently drops; lookup misses. Sources: edge.
+
 ## Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)
 
 - **DEF-9-2-7 — `--project` / `ProjectSelection` does not canonicalize through symlinks/junctions before downstream use** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:14-19`] — Minor; downstream `WriteSafetyPolicy` re-canonicalizes. Sources: edge.

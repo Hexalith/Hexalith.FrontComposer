@@ -25,7 +25,7 @@ internal static class InspectCommand
 
         string configuration = options.Get("configuration", "Debug");
         string? framework = options.Get("framework");
-        InspectLoadResult load = await GeneratedOutputLoader.LoadAsync(project.ProjectPath!, configuration, framework, options.Has("build"), options.Has("absolute-paths"), cancellationToken)
+        InspectLoadResult load = await GeneratedOutputLoader.LoadAsync(project.ProjectPath!, configuration, framework, options.Has("build"), options.Has("absolute-paths"), error, cancellationToken)
             .ConfigureAwait(false);
         if (!load.Success) {
             await error.WriteLineAsync(load.Error).ConfigureAwait(false);
@@ -187,13 +187,14 @@ internal static class GeneratedOutputLoader
         string? framework,
         bool build,
         bool absolutePaths,
+        TextWriter error,
         CancellationToken cancellationToken)
     {
         string projectFullPath = Path.GetFullPath(projectPath);
         string projectDirectory = Path.GetDirectoryName(projectFullPath)!;
 
         if (build) {
-            int buildExit = await RunBuildAsync(projectFullPath, configuration, framework, cancellationToken).ConfigureAwait(false);
+            int buildExit = await RunBuildAsync(projectFullPath, configuration, framework, error, cancellationToken).ConfigureAwait(false);
             if (buildExit != 0) {
                 return InspectLoadResult.Fail(
                     "Build did not complete successfully; generated output may be stale. Re-run with a successful build before inspecting.",
@@ -249,6 +250,7 @@ internal static class GeneratedOutputLoader
         string projectPath,
         string configuration,
         string? framework,
+        TextWriter error,
         CancellationToken cancellationToken)
     {
         List<string> args = ["build", projectPath, "--configuration", configuration];
@@ -290,7 +292,7 @@ internal static class GeneratedOutputLoader
             _ = await standardOutput.ConfigureAwait(false);
             string stderr = await standardError.ConfigureAwait(false);
             if (process.ExitCode != 0 && !string.IsNullOrWhiteSpace(stderr)) {
-                Console.Error.WriteLine(OutputSanitizer.Sanitize(stderr, 4_000));
+                await error.WriteLineAsync(OutputSanitizer.Sanitize(stderr, 4_000)).ConfigureAwait(false);
             }
 
             return process.ExitCode;
@@ -614,8 +616,10 @@ internal static class InspectJson
                 warnings = report.Summary.Warnings,
                 errors = report.Summary.Errors,
             },
+            // AC21: text and JSON share the same iteration order. `report.Files` is already
+            // sorted tri-key (RelatedType -> Family -> RelativePath) at load time, which the
+            // text renderer relies on; do not re-sort here.
             generatedFiles = report.Files
-                .OrderBy(x => x.RelativePath, StringComparer.Ordinal)
                 .Select(x => new {
                     path = OutputSanitizer.Sanitize(x.RelativePath),
                     family = x.Family.ToString(),

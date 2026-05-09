@@ -60,6 +60,9 @@ internal sealed class CliFixture : IDisposable
         return path;
     }
 
+    public string WriteGeneratedDiagnosticSidecar(string projectName, string configuration, string framework, string fileName, string content)
+        => WriteGenerated(projectName, configuration, framework, fileName, content);
+
     public void Dispose()
     {
         try {

@@ -183,6 +183,8 @@ internal static class MigrationPlanner
     public static async Task<MigrationPlan> PlanAsync(string projectPath, MigrationEdge edge, CancellationToken cancellationToken)
     {
         ProjectDocumentSet documentSet = ProjectDocumentLoader.Load(projectPath);
+        IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> generatedDiagnostics =
+            MigrationDiagnosticSidecarReader.Read(documentSet.ProjectDirectory);
         HashSet<string> submoduleRoots = SubmoduleBoundaryReader.Read(documentSet.ProjectDirectory);
         List<MigrationEntry> entries = [];
         List<PlannedFileEdit> fileEdits = [];
@@ -250,14 +252,22 @@ internal static class MigrationPlanner
             Document document = workspace.CurrentSolution.GetDocument(documentId)!;
             SourceText originalText = await document.GetTextAsync(cancellationToken).ConfigureAwait(false);
             ImmutableArray<Diagnostic> diagnostics = await MigrationDiagnosticScanner.ScanAsync(document, cancellationToken).ConfigureAwait(false);
+            if (generatedDiagnostics.TryGetValue(projectDocument.RelativePath, out ImmutableArray<Diagnostic> sourceToolDiagnostics)) {
+                diagnostics = diagnostics.AddRange(sourceToolDiagnostics);
+            }
+
             List<MigrationEntry> fileEntries = [];
 
             foreach (Diagnostic manual in diagnostics.Where(x => x.Id == MigrationDiagnostics.ManualMigration.Id).OrderBy(x => x.Location.SourceSpan.Start)) {
+                // If the sidecar reader preserved the source-side `what`, surface it; otherwise fall back to the generic message.
+                string sidecarWhat = manual.Properties.TryGetValue("what", out string? value) && !string.IsNullOrWhiteSpace(value)
+                    ? value
+                    : "Customization-sensitive FrontComposer API requires manual migration.";
                 fileEntries.Add(new MigrationEntry(
                     manual.Id,
                     "manual-only",
                     projectDocument.RelativePath,
-                    "Customization-sensitive FrontComposer API requires manual migration.",
+                    sidecarWhat,
                     "Developer reviews customization semantics before changing behavior.",
                     "A manual-only migration diagnostic was found.",
                     "Review the migration guide and update the affected call site manually.",
@@ -268,6 +278,10 @@ internal static class MigrationPlanner
             List<TextChange> plannedChanges = [];
             List<MigrationEntry> fixEntries = [];
             bool unsupportedOperation = false;
+            // Track the *actual* failing diagnostic id for the AC28 strict-read ManualOnly entry,
+            // not the hardcoded ObsoleteDevOverlay id. Defaults to ObsoleteDevOverlay because that
+            // is currently the only fixable id, but will be correct when more fixers land.
+            string failingDiagnosticId = MigrationDiagnostics.ObsoleteDevOverlay.Id;
             foreach (Diagnostic diagnostic in diagnostics.Where(x => provider.FixableDiagnosticIds.Contains(x.Id)).OrderBy(x => x.Location.SourceSpan.Start)) {
                 List<CodeAction> actions = [];
                 CodeFixContext context = new(
@@ -290,6 +304,7 @@ internal static class MigrationPlanner
                 }
                 catch (Exception ex) when (ex is not OperationCanceledException) {
                     unsupportedOperation = true;
+                    failingDiagnosticId = diagnostic.Id;
                     continue;
                 }
 
@@ -302,6 +317,7 @@ internal static class MigrationPlanner
                     cancellationToken).ConfigureAwait(false);
                 if (changedText is null) {
                     unsupportedOperation = true;
+                    failingDiagnosticId = diagnostic.Id;
                     continue;
                 }
 
@@ -312,8 +328,9 @@ internal static class MigrationPlanner
 
             if (unsupportedOperation) {
                 // AC28 strict read: any rejected/non-allowlisted CodeActionOperation in this file
-                // discards every safe-fix planned for this file and emits a single ManualOnly entry.
-                entries.Add(ManualOnly(MigrationDiagnostics.ObsoleteDevOverlay.Id, projectDocument.RelativePath, edge));
+                // discards every safe-fix planned for this file and emits a single ManualOnly entry
+                // tagged with the diagnostic id that actually triggered the rejection.
+                entries.Add(ManualOnly(failingDiagnosticId, projectDocument.RelativePath, edge));
                 continue;
             }
 
@@ -383,7 +400,7 @@ internal static class MigrationPlanner
     public static string Hash(string text)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
-    private static async Task<SourceText?> TryExtractDocumentChangesAsync(
+    internal static async Task<SourceText?> TryExtractDocumentChangesAsync(
         Solution originalSolution,
         ImmutableArray<CodeActionOperation> operations,
         DocumentId documentId,
@@ -444,7 +461,7 @@ internal static class MigrationPlanner
         return await changedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
     }
 
-    private static bool HasOverlappingChanges(List<TextChange> changes)
+    internal static bool HasOverlappingChanges(List<TextChange> changes)
     {
         TextChange[] sorted = [.. changes.OrderBy(x => x.Span.Start).ThenBy(x => x.Span.Length).ThenBy(x => x.NewText, StringComparer.Ordinal)];
         for (int i = 1; i < sorted.Length; i++) {
@@ -562,6 +579,11 @@ internal static class ProjectDocumentLoader
                     }
 
                     string linkRelative = link.Replace('\\', '/').TrimStart('/');
+                    // Reject `..` traversal and rooted Link values; the link must be a clean project-relative path.
+                    if (Path.IsPathRooted(linkRelative) || linkRelative.Split('/').Any(s => s == "..")) {
+                        continue;
+                    }
+
                     yield return new ProjectDocument(path, linkRelative);
                     continue;
                 }
@@ -706,8 +728,6 @@ internal static class MigrationDiagnostics
 
 internal static class MigrationDiagnosticScanner
 {
-    private const string ManualApi = "ConfigureFrontComposerCustomMigration";
-
     public static async Task<ImmutableArray<Diagnostic>> ScanAsync(Document document, CancellationToken cancellationToken)
     {
         SyntaxNode? root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
@@ -726,9 +746,6 @@ internal static class MigrationDiagnosticScanner
             if (name == FrontComposerMigrationCodeFixProvider.ObsoleteApi) {
                 builder.Add(Diagnostic.Create(MigrationDiagnostics.ObsoleteDevOverlay, Location.Create(tree, identifier.Span)));
             }
-            else if (name == ManualApi) {
-                builder.Add(Diagnostic.Create(MigrationDiagnostics.ManualMigration, Location.Create(tree, identifier.Span)));
-            }
         }
 
         return builder.ToImmutable();
@@ -745,6 +762,139 @@ internal static class MigrationDiagnosticScanner
         }
 
         return false;
+    }
+}
+
+internal static class MigrationDiagnosticSidecarReader
+{
+    public static IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> Read(string projectDirectory)
+    {
+        // D7 (Story 9-2 third pass): manual-migration HFCM9002 sidecars are read here as a
+        // **test-only synthetic** contract until Story 9-4 governs the final HFC ID assignment
+        // and SourceTools generator emits real adopter sidecars. AC11 fires today only against
+        // hand-crafted fixtures (`tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs`).
+        // See Known Gaps row "P-D4 SourceTools-emitted manual-only diagnostic" — owner Story 9-4.
+        string objDirectory = Path.Combine(projectDirectory, "obj");
+        if (!Directory.Exists(objDirectory)) {
+            return new Dictionary<string, ImmutableArray<Diagnostic>>(PathUtilities.PathComparer);
+        }
+
+        Dictionary<string, ImmutableArray<Diagnostic>.Builder> builders = new(PathUtilities.PathComparer);
+        IEnumerable<string> sidecarPaths;
+        try {
+            sidecarPaths = Directory.EnumerateFiles(objDirectory, "*.diagnostics.json", SearchOption.AllDirectories)
+                .Where(IsGeneratedDiagnosticsSidecar)
+                .Order(StringComparer.Ordinal)
+                .ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            return new Dictionary<string, ImmutableArray<Diagnostic>>(PathUtilities.PathComparer);
+        }
+
+        foreach (string path in sidecarPaths) {
+            try {
+                using FileStream stream = File.OpenRead(path);
+                using JsonDocument document = JsonDocument.Parse(stream);
+                JsonElement root = document.RootElement;
+                IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
+                    ? root.EnumerateArray()
+                    : root.TryGetProperty("diagnostics", out JsonElement diagnostics) && diagnostics.ValueKind == JsonValueKind.Array
+                        ? diagnostics.EnumerateArray()
+                        : [];
+
+                foreach (JsonElement entry in entries) {
+                    if (!IsManualMigrationDiagnostic(entry)) {
+                        continue;
+                    }
+
+                    string relativePath = NormalizePath(Get(entry, "path"), projectDirectory);
+                    if (string.IsNullOrWhiteSpace(relativePath) || relativePath == PathUtilities.RedactedPathSentinel) {
+                        continue;
+                    }
+
+                    if (!builders.TryGetValue(relativePath, out ImmutableArray<Diagnostic>.Builder? builder)) {
+                        builder = ImmutableArray.CreateBuilder<Diagnostic>();
+                        builders.Add(relativePath, builder);
+                    }
+
+                    // Preserve the sidecar's source-side message in `Properties` so the planner
+                    // can surface it via the resulting MigrationEntry.What.
+                    string what = Get(entry, "what");
+                    ImmutableDictionary<string, string?> properties = string.IsNullOrEmpty(what)
+                        ? ImmutableDictionary<string, string?>.Empty
+                        : ImmutableDictionary<string, string?>.Empty.Add("what", what);
+                    builder.Add(Diagnostic.Create(
+                        MigrationDiagnostics.ManualMigration,
+                        Location.None,
+                        properties: properties,
+                        messageArgs: null));
+                }
+            }
+            catch (JsonException) {
+                // Surface a single sentinel entry per unreadable sidecar instead of silently dropping it.
+                AddSentinel(builders, path, projectDirectory);
+            }
+            catch (IOException) {
+                AddSentinel(builders, path, projectDirectory);
+            }
+            catch (UnauthorizedAccessException) {
+                AddSentinel(builders, path, projectDirectory);
+            }
+        }
+
+        return builders.ToDictionary(
+            x => x.Key,
+            x => x.Value.ToImmutable(),
+            PathUtilities.PathComparer);
+    }
+
+    private static void AddSentinel(
+        Dictionary<string, ImmutableArray<Diagnostic>.Builder> builders,
+        string sidecarPath,
+        string projectDirectory)
+    {
+        string sentinelKey = NormalizePath(sidecarPath, projectDirectory);
+        if (string.IsNullOrWhiteSpace(sentinelKey) || sentinelKey == PathUtilities.RedactedPathSentinel) {
+            return;
+        }
+
+        if (!builders.TryGetValue(sentinelKey, out ImmutableArray<Diagnostic>.Builder? builder)) {
+            builder = ImmutableArray.CreateBuilder<Diagnostic>();
+            builders.Add(sentinelKey, builder);
+        }
+
+        builder.Add(Diagnostic.Create(MigrationDiagnostics.ManualMigration, Location.None));
+    }
+
+    private static bool IsGeneratedDiagnosticsSidecar(string path)
+    {
+        string normalized = path.Replace('\\', '/');
+        return normalized.Contains("/generated/HexalithFrontComposer/", PathUtilities.PathComparison);
+    }
+
+    private static bool IsManualMigrationDiagnostic(JsonElement entry)
+        => string.Equals(Get(entry, "id"), MigrationDiagnostics.ManualMigration.Id, StringComparison.Ordinal);
+
+    private static string Get(JsonElement entry, string property)
+        => entry.TryGetProperty(property, out JsonElement value) && value.ValueKind == JsonValueKind.String
+            ? value.GetString() ?? string.Empty
+            : string.Empty;
+
+    private static string NormalizePath(string path, string projectDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(path)) {
+            return string.Empty;
+        }
+
+        string relative = Path.IsPathRooted(path)
+            ? PathUtilities.ToProjectRelative(projectDirectory, path)
+            : path.Replace('\\', '/').TrimStart('/');
+        // Reject `..` segments after normalization; AC23 disallows project-root escape.
+        if (relative.Split('/').Any(segment => segment == "..")) {
+            return PathUtilities.RedactedPathSentinel;
+        }
+
+        return OutputSanitizer.Sanitize(relative, 240);
     }
 }
 
@@ -835,7 +985,11 @@ internal static class MigrationApplier
 
         List<MigrationEntry> final = [.. entries, .. changed];
         final = [.. final.OrderBy(x => x.Path, StringComparer.Ordinal).ThenBy(x => x.DiagnosticId, StringComparer.Ordinal).ThenBy(x => x.Kind, StringComparer.Ordinal)];
-        return new MigrationResult(!cancelled, final, MigrationSummary.From(final));
+        // `Applied` reports whether apply ran to completion AND every planned write succeeded.
+        // Cancellation OR any per-file Failed entry flips it to false so callers cannot mistake
+        // a partial-write run for a clean apply.
+        bool appliedClean = !cancelled && !final.Any(x => x.Kind == "failed");
+        return new MigrationResult(appliedClean, final, MigrationSummary.From(final));
     }
 
     private static MigrationEntry Failed(PlannedFileEdit edit, MigrationEdge edge, string reason)
@@ -882,7 +1036,11 @@ internal static class WriteSafetyPolicy
 
 internal static class SubmoduleBoundaryReader
 {
-    private const int MaxAncestorWalk = 32;
+    // 64 ancestors covers every realistic checkout depth (Windows MAX_PATH is 260, average path
+    // segment length is well above 4 chars, so a 64-deep tree already exceeds Windows path limits).
+    // The cap prevents pathological filesystems from spinning forever; the limit is documented so
+    // future readers know it is intentional rather than arbitrary.
+    private const int MaxAncestorWalk = 64;
 
     public static HashSet<string> Read(string projectDirectory)
     {
@@ -897,8 +1055,19 @@ internal static class SubmoduleBoundaryReader
             return roots;
         }
 
+        IEnumerable<string> lines;
+        try {
+            // Materialize so that an IOException during enumeration cannot abort planning later.
+            lines = File.ReadAllLines(gitmodules);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            // Treat an unreadable .gitmodules as "no submodule boundaries detected"; planning continues
+            // and the WriteSafetyPolicy still excludes generated/bin/obj/etc. via PathUtilities.
+            return roots;
+        }
+
         bool inSubmoduleSection = false;
-        foreach (string line in File.ReadLines(gitmodules)) {
+        foreach (string line in lines) {
             string trimmed = line.Trim();
             if (trimmed.StartsWith("[", StringComparison.Ordinal)) {
                 inSubmoduleSection = trimmed.StartsWith("[submodule ", StringComparison.Ordinal);
@@ -915,9 +1084,13 @@ internal static class SubmoduleBoundaryReader
             }
 
             string relative = trimmed[(equals + 1)..].Trim().Trim('"');
-            if (relative.Length > 0) {
-                roots.Add(PathUtilities.Canonical(Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))));
+            // Reject `..` traversal and absolute paths in `.gitmodules` entries; a malicious or
+            // hand-edited file should not be able to mark arbitrary ancestors as submodules.
+            if (relative.Length == 0 || Path.IsPathRooted(relative) || relative.Replace('\\', '/').Split('/').Any(s => s == "..")) {
+                continue;
             }
+
+            roots.Add(PathUtilities.Canonical(Path.Combine(repositoryRoot, relative.Replace('/', Path.DirectorySeparatorChar))));
         }
 
         return roots;
@@ -961,15 +1134,21 @@ internal static class UnifiedDiff
         }
 
         foreach (var hunk in hunks) {
+            // Unified-diff convention: emit `0` only when the file is genuinely empty at that side
+            // (count==0 AND start==0 — no preceding content). Otherwise emit a 1-based line number.
+            int oldHeaderLine = hunk.OldCount == 0 && hunk.OldStart == 0 ? 0 : hunk.OldStart + 1;
+            int newHeaderLine = hunk.NewCount == 0 && hunk.NewStart == 0 ? 0 : hunk.NewStart + 1;
             _ = builder.Append("@@ -")
-                .Append(hunk.OldCount == 0 ? hunk.OldStart : hunk.OldStart + 1)
+                .Append(oldHeaderLine)
                 .Append(',').Append(hunk.OldCount)
                 .Append(" +")
-                .Append(hunk.NewCount == 0 ? hunk.NewStart : hunk.NewStart + 1)
+                .Append(newHeaderLine)
                 .Append(',').Append(hunk.NewCount)
                 .Append(" @@\n");
             foreach ((char prefix, string line) in hunk.Lines) {
-                _ = builder.Append(prefix).Append(line).Append('\n');
+                // AC27: sanitize each diff line to strip ANSI escapes, control bytes, and DEL while
+                // preserving \r\n\t so the hunk body remains line-structured.
+                _ = builder.Append(prefix).Append(OutputSanitizer.SanitizeMultiLine(line, 1_000)).Append('\n');
             }
         }
 
@@ -1145,8 +1324,15 @@ internal static class UnifiedDiff
 
 internal static class MigrationJson
 {
+    // Top-level cap on accumulated diff bytes across all entries; once exceeded subsequent diffs
+    // are emitted as a `[diff omitted: budget]` placeholder so JSON cannot grow unbounded.
+    private const int MaxAggregateDiffChars = 64_000;
+    private const int MaxPerEntryDiffChars = 8_000;
+
     public static object From(MigrationResult result)
-        => new {
+    {
+        int diffBudget = MaxAggregateDiffChars;
+        return new {
             schemaVersion = "frontcomposer.cli.migrate.v1",
             applied = result.Applied,
             summary = new {
@@ -1169,9 +1355,26 @@ internal static class MigrationJson
                     got = OutputSanitizer.Sanitize(x.Got),
                     fix = OutputSanitizer.Sanitize(x.Fix),
                     docsLink = OutputSanitizer.Sanitize(x.DocsLink),
-                    diff = OutputSanitizer.SanitizeMultiLine(x.Diff, 8_000),
+                    diff = TakeDiffWithBudget(x.Diff, ref diffBudget),
                     formattingApplied = x.FormattingApplied,
                 })
                 .ToArray(),
         };
+    }
+
+    private static string TakeDiffWithBudget(string? diff, ref int budget)
+    {
+        if (string.IsNullOrEmpty(diff)) {
+            return string.Empty;
+        }
+
+        if (budget <= 0) {
+            return "[diff omitted: aggregate diff budget exceeded]";
+        }
+
+        int allowed = Math.Min(budget, MaxPerEntryDiffChars);
+        string sanitized = OutputSanitizer.SanitizeMultiLine(diff, allowed);
+        budget -= sanitized.Length;
+        return sanitized;
+    }
 }

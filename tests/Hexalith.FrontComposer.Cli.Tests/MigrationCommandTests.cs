@@ -1,4 +1,9 @@
 using System.Text.Json;
+using System.Diagnostics;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeActions;
+using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.Text;
 using Shouldly;
 using Xunit;
 
@@ -98,7 +103,23 @@ public sealed class MigrationCommandTests
             "Program.cs",
             """
             services.AddFrontComposerDebugOverlay();
-            services.ConfigureFrontComposerCustomMigration();
+            """);
+        fixture.WriteGeneratedDiagnosticSidecar(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "frontcomposer.migration.diagnostics.json",
+            """
+            {
+              "diagnostics": [
+                {
+                  "id": "HFCM9002",
+                  "severity": "Warning",
+                  "path": "Program.cs",
+                  "what": "Custom FrontComposer migration requires manual review"
+                }
+              ]
+            }
             """);
         fixture.WriteSource("Acme.App", "bin/Debug/net10.0/Generated.cs", "services.AddFrontComposerDebugOverlay();");
 
@@ -202,11 +223,11 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
-    public async Task Migrate_LargeFixtureUsesProjectDocumentsAndRemainsDeterministic()
+    public async Task Migrate_LargeFixtureUsesProjectDocumentsAndStaysWithinCiBudget()
     {
         using CliFixture fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
-        for (int i = 0; i < 80; i++) {
+        for (int i = 0; i < 240; i++) {
             fixture.WriteSource("Acme.App", $"Features/F{i:000}.cs", "namespace Acme.App;");
         }
 
@@ -214,13 +235,16 @@ public sealed class MigrationCommandTests
 
         using StringWriter output = new();
         using StringWriter error = new();
+        Stopwatch stopwatch = Stopwatch.StartNew();
         int exitCode = await CliApplication.RunAsync(
             ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--dry-run", "--format", "json"],
             output,
             error,
             CancellationToken.None);
+        stopwatch.Stop();
 
         exitCode.ShouldBe(0, output + error.ToString());
+        stopwatch.Elapsed.ShouldBeLessThan(TimeSpan.FromSeconds(30));
         using JsonDocument document = JsonDocument.Parse(output.ToString());
         document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
         document.RootElement.GetProperty("entries").EnumerateArray()
@@ -271,5 +295,122 @@ public sealed class MigrationCommandTests
         error.ToString().ShouldContain("Supported edges");
         File.ReadAllText(source).ShouldContain("AddFrontComposerDebugOverlay");
         output.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void MigrationPlanner_DetectsOverlappingZeroLengthInsertions()
+    {
+        List<TextChange> changes = [
+            new(new TextSpan(12, 0), "first"),
+            new(new TextSpan(12, 0), "second"),
+        ];
+
+        MigrationPlanner.HasOverlappingChanges(changes).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task MigrationPlanner_RejectsUnsupportedCodeActionOperations()
+    {
+        using AdhocWorkspace workspace = new();
+        ProjectId projectId = ProjectId.CreateNewId();
+        DocumentId documentId = DocumentId.CreateNewId(projectId);
+        string projectDirectory = Path.GetTempPath();
+        string approvedPath = Path.Combine(projectDirectory, "Program.cs");
+
+        Solution solution = workspace.CurrentSolution
+            .AddProject(projectId, "Acme.App", "Acme.App", LanguageNames.CSharp)
+            .AddDocument(documentId, "Program.cs", SourceText.From("class C {}"), filePath: approvedPath);
+
+        SourceText? changedText = await MigrationPlanner.TryExtractDocumentChangesAsync(
+            solution,
+            [new UnsupportedCodeActionOperation()],
+            documentId,
+            projectDirectory,
+            approvedPath,
+            CancellationToken.None);
+
+        changedText.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task FrontComposerMigrationCodeFixProvider_ReplacesObsoleteDevOverlayApi()
+    {
+        using AdhocWorkspace workspace = new();
+        ProjectId projectId = ProjectId.CreateNewId();
+        DocumentId documentId = DocumentId.CreateNewId(projectId);
+        Solution solution = workspace.CurrentSolution
+            .AddProject(projectId, "Acme.App", "Acme.App", LanguageNames.CSharp)
+            .AddDocument(documentId, "Program.cs", SourceText.From("services.AddFrontComposerDebugOverlay();"));
+        _ = workspace.TryApplyChanges(solution);
+        Document document = workspace.CurrentSolution.GetDocument(documentId)!;
+        Diagnostic diagnostic = (await MigrationDiagnosticScanner.ScanAsync(document, CancellationToken.None)).Single();
+
+        FrontComposerMigrationCodeFixProvider provider = new();
+        List<CodeAction> actions = [];
+        CodeFixContext context = new(
+            document,
+            diagnostic.Location.SourceSpan,
+            [diagnostic],
+            (action, _) => actions.Add(action),
+            CancellationToken.None);
+
+        await provider.RegisterCodeFixesAsync(context);
+        CodeAction action = actions.Single();
+        ApplyChangesOperation operation = (ApplyChangesOperation)(await action.GetOperationsAsync(CancellationToken.None)).Single();
+        Document changedDocument = operation.ChangedSolution.GetDocument(documentId)!;
+        string changedText = (await changedDocument.GetTextAsync(CancellationToken.None)).ToString();
+
+        changedText.ShouldContain("AddFrontComposerDevMode");
+        changedText.ShouldNotContain("AddFrontComposerDebugOverlay");
+    }
+
+    [Fact]
+    public async Task MigrationPlanner_RejectsCodeActionsThatAddDocuments()
+    {
+        // Note: this test exercises the *any-added-document* rejection path
+        // (`projectChange.GetAddedDocuments().Any()`); it is not specifically
+        // about outside-project additions. See Known Gaps row "T8 code-action
+        // safety tests" for the still-pending true outside-project test (which
+        // requires a *different* project id and file path outside the
+        // approved write set).
+        using AdhocWorkspace workspace = new();
+        ProjectId projectId = ProjectId.CreateNewId();
+        DocumentId documentId = DocumentId.CreateNewId(projectId);
+        string projectDirectory = Path.Combine(Path.GetTempPath(), "hfc-approved");
+        string approvedPath = Path.Combine(projectDirectory, "Program.cs");
+
+        Solution solution = workspace.CurrentSolution
+            .AddProject(projectId, "Acme.App", "Acme.App", LanguageNames.CSharp)
+            .AddDocument(documentId, "Program.cs", SourceText.From("class C {}"), filePath: approvedPath);
+        Solution changedSolution = solution.AddDocument(
+            DocumentId.CreateNewId(projectId),
+            "Outside.cs",
+            SourceText.From("class Outside {}"),
+            filePath: Path.Combine(Path.GetTempPath(), "Outside.cs"));
+
+        SourceText? changedText = await MigrationPlanner.TryExtractDocumentChangesAsync(
+            solution,
+            [new ApplyChangesOperation(changedSolution)],
+            documentId,
+            projectDirectory,
+            approvedPath,
+            CancellationToken.None);
+
+        changedText.ShouldBeNull();
+    }
+
+    [Fact]
+    public void FrontComposerMigrationCodeFixProvider_DoesNotExposeUnsafeFixAll()
+    {
+        FrontComposerMigrationCodeFixProvider provider = new();
+
+        provider.GetFixAllProvider().ShouldBeNull();
+    }
+
+    private sealed class UnsupportedCodeActionOperation : CodeActionOperation
+    {
+        public override void Apply(Workspace workspace, CancellationToken cancellationToken)
+        {
+        }
     }
 }
