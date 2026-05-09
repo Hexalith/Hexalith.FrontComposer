@@ -44,6 +44,10 @@ An adopter should be able to trust that FrontComposer's generated command and pr
 | CI lane | Add or extend nightly CI for full mutation/property runs. PR CI may run a short smoke or changed-file subset only if it cannot hide nightly failures. Keep flaky quarantine and CI diet automation for Story 10-5. |
 | Package pins | Use central package management. Current repo already references `FsCheck.Xunit.v3`; verify whether to keep the current pin or update deliberately. Add `dotnet-stryker` tooling/config without broad package-train upgrades. |
 | Submodules | Do not initialize nested submodules. This story does not need EventStore provider internals unless a property fixture explicitly consumes a root-level submodule contract already checked out. |
+| Stryker segmentation | Do not rely on one aggregate score to prove both thresholds. Provide auditable happy-path and error-handling segmentation through separate config files, named test filters, or an equivalent documented mechanism, with separate artifacts. |
+| Report validity | Treat missing, malformed, empty, zero-mutant, or out-of-scope Stryker reports as failures unless the baseline explicitly documents why that target has no mutants. |
+| Property oracles | Each FsCheck property must name its reference model or oracle, observable invariant, preconditions, postconditions, and expected counterexample evidence. |
+| Counterexample governance | Persist only confirmed bug counterexamples as deterministic regression fixtures, with seed, size, property name, minimal sequence, replay command, and reason for retention. |
 
 Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 property model/vocabulary -> T4 CI/nightly wiring -> T5 report/redaction/regression fixtures -> T6 documentation and handoff.
 
@@ -78,6 +82,14 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
 | AC23 | Mutation or property checks are temporarily below target | Implementation cannot close the gap in this story | The story records the blocking survivor/counterexample, owner, follow-up story, and whether the gate is advisory or blocking; it does not silently mark the quality gate complete. |
 | AC24 | Property tests require random values | Generators are built | Generators avoid unbounded strings, unbounded payloads, wall-clock dependence, real network calls, thread sleeps, static mutable global state, and non-deterministic tenant/user fallbacks. |
 | AC25 | Mutation testing touches schema/drift Parse/Transform paths | Schema fixtures are used | Existing schema/drift fixtures are reused and extended only where they kill a meaningful mutant; fixture growth remains bounded and named by behavior. |
+| AC26 | Happy-path and error-handling mutation thresholds are evaluated | Stryker is configured | The implementation uses separate config files, named filters, or another auditable segmentation mechanism so the 80 percent happy-path threshold and 60 percent error-handling threshold produce distinct evidence instead of one blended score. |
+| AC27 | Stryker reports are validated | CI or local verification reads the JSON report | The run fails if the report is absent, malformed, empty, contains zero mutants for an expected target, mutates files outside the approved Parse/Transform scope, or drops below the approved mutant-count baseline without a documented rationale. |
+| AC28 | Mutation exclusions or disabled mutation kinds are introduced | The Stryker config is reviewed | Each exclusion is listed with rationale, and `Survived`, `NoCoverage`, `Timeout`, and `CompileError` mutants are counted separately with an explicit action: killed, equivalent accepted, deferred with owner, or blocking. |
+| AC29 | FsCheck properties are implemented | A property is reviewed | Each property declares its reference model or oracle, observable invariant, preconditions, postconditions, generated command distribution, and the fields retained for a minimal counterexample. |
+| AC30 | A property run fails or is replayed | CI or local output is inspected | The evidence includes FsCheck version, seed, size/max-size, sequence count, generated operation distribution, shrink result, and the exact local replay command. |
+| AC31 | A shrunk counterexample becomes a regression fixture | The fixture is committed | The fixture includes property name, seed, size, minimal sequence, expected terminal state/outcomes, related bug or rationale, and a retention reason; transient non-bug seeds are not committed. |
+| AC32 | A PR smoke is added | PR validation runs | The smoke declares triggers, timeout, blocking/non-blocking behavior, and artifact expectations. It must not replace the authoritative nightly thresholds or introduce flaky quarantine, retry policy, or CI diet governance owned by Story 10-5. |
+| AC33 | Mutation/property artifacts are uploaded | Artifact validation runs | Artifacts satisfy a bounded allowlist: no secrets, tokens, environment dumps, tenant/user identifiers, full payload bodies, unbounded generated source, or machine-local paths beyond normalized relative paths needed for review. |
 
 ---
 
@@ -89,6 +101,8 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
   - [ ] Mutate only Parse and Transform source paths by default.
   - [ ] Exclude `src/Hexalith.FrontComposer.SourceTools/Emitters/**`, generated files, snapshots, benchmarks, test fixtures, and unrelated packages.
   - [ ] Use reporters that produce console progress plus HTML and JSON artifacts.
+  - [ ] Provide auditable happy-path and error-handling segmentation through separate Stryker config files, named filters, or an equivalent documented mechanism with separate artifacts.
+  - [ ] Add a report-scope validation step that proves only approved Parse/Transform files were mutated and flags unexpected zero-mutant targets.
   - [ ] Document the local command and CI command in the story completion notes.
   - [ ] Ensure all CI checkout commands use only root-level submodules.
 
@@ -99,6 +113,8 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
   - [ ] Document equivalent mutants with rationale rather than adding brittle tests.
   - [ ] Keep new tests targeted to behavior. Do not approve huge snapshots solely to kill a trivial mutant.
   - [ ] Add report validation that fails if the mutation report is missing, empty, malformed, or shows zero mutants in the expected target set.
+  - [ ] Count `Survived`, `NoCoverage`, `Timeout`, and `CompileError` separately and assign each a triage action: `kill-test-added`, `equivalent-accepted`, `deferred-with-owner`, or `blocking`.
+  - [ ] List every Stryker exclusion with rationale in the handoff evidence so mutation score cannot be improved by silent scope reduction.
   - [ ] Redact or bound mutation artifacts before upload if report content includes machine-local paths or large generated-source bodies.
 
 - [ ] T3. Add command idempotency property model and generators (AC9-AC17, AC19, AC24)
@@ -110,17 +126,21 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
   - [ ] Assert exactly-one user-visible outcome per correlation across duplicate terminal and reconnect/retry observations.
   - [ ] Assert cross-correlation duplicate `MessageId` behavior matches the current `LifecycleStateService` warning/fresh-submission contract.
   - [ ] Avoid wall-clock nondeterminism by using `FakeTimeProvider` or deterministic timestamps where time matters.
+  - [ ] For each property, document the reference model or oracle, observable invariant, preconditions, postconditions, generated operation distribution, and expected counterexample evidence.
+  - [ ] Record FsCheck version, seed, size/max-size, sequence count, generated operation distribution, shrink result, and exact replay command for failures.
 
 - [ ] T4. Persist counterexamples as regression fixtures (AC15, AC16, AC17, AC22, AC23)
   - [ ] Add a small fixture format for shrunk command sequences, or deterministic xUnit theories when a file format would be unnecessary ceremony.
   - [ ] Capture seed, size, sequence steps, expected terminal states, expected visible notification count, and the original property name.
   - [ ] Add at least one representative regression fixture path and test harness even if the first implementation finds no real defect, so future counterexamples have an obvious home.
+  - [ ] Commit only counterexamples that reveal a confirmed bug or protected invariant; include property name, minimal sequence, related bug/rationale, and retention reason.
   - [ ] Redact failure messages and serialized fixtures for tenant/user IDs, tokens, command payloads, local paths, and oversized values.
   - [ ] Document how to replay a failing seed locally.
 
 - [ ] T5. Wire CI/nightly execution and artifacts without Story 10-5 governance (AC6-AC10, AC21-AC23)
   - [ ] Add or extend a nightly workflow for full Stryker plus 10000-sequence FsCheck execution.
   - [ ] Add a PR smoke only if it remains within the current full CI budget and is clearly not the authoritative mutation gate.
+  - [ ] If a PR smoke is added, define its triggers, timeout, blocking/non-blocking behavior, report expectations, and the exact reason it cannot be used as threshold authority.
   - [ ] Upload Stryker HTML/JSON reports and property-test seed/counterexample summaries with stable artifact names.
   - [ ] Fail the nightly lane on missing reports, zero mutants, threshold breach, untriaged survivors, missing seeds, or uncaptured counterexamples.
   - [ ] Keep flaky quarantine automation, quarantine labels, five-pass reintroduction, and CI diet issue creation out of this story.
@@ -130,6 +150,8 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
   - [ ] Document local mutation command, local property replay command, config paths, artifact paths, and threshold meaning.
   - [ ] Add a short "survived mutant triage" note explaining killed, equivalent, accepted, and deferred outcomes.
   - [ ] Add a "property counterexample handling" note explaining seed capture, shrink capture, regression-fixture conversion, and redaction.
+  - [ ] Add an "oracle contract" note that maps each property to its reference model, observable invariant, preconditions, postconditions, and replay command.
+  - [ ] Add an artifact allowlist/redaction checklist covering Stryker reports, FsCheck summaries, fixtures, seeds, relative paths, and bounded snippets.
   - [ ] Update completion notes with Stryker version, FsCheck version, mutation score, property counts, seeds, survivors, deferred work, and CI artifact names.
   - [ ] If the target thresholds are not met, record the exact blocking survivor/counterexample and whether the job remains advisory until the follow-up lands.
 
@@ -173,6 +195,9 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
 
 - Mutate Parse and Transform only for v1. Emission snapshots are expensive and brittle; emitter mutation coverage is a future expansion after Parse/Transform baselines stabilize.
 - Use separate evidence for happy-path and error-handling thresholds. A single aggregate score can hide untested diagnostics and rejection paths.
+- The segmentation mechanism must be executable and reviewable: separate config files, named filters, or an equivalent documented mechanism are acceptable; informal post-run interpretation is not.
+- Missing, malformed, empty, zero-mutant, or out-of-scope reports fail validation unless the initial baseline explicitly documents the exception.
+- Exclusions, disabled mutation kinds, `Timeout`, and `CompileError` outcomes must be visible in the evidence so the mutation score cannot be improved by silent scope reduction.
 - Equivalent mutants are allowed only with rationale. "Too hard to test" is not equivalent; it is a deferred test gap.
 - Do not change product behavior just to kill a mutant. If Stryker exposes ambiguous intended behavior, record the decision and add a focused test after the decision is clear.
 - Keep artifacts bounded. Mutation reports are useful evidence, but they should not become large generated-source archives.
@@ -184,6 +209,9 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
 - Same-correlation duplicate terminal transitions should not create a second visible outcome.
 - Cross-correlation duplicate `MessageId` behavior must match the existing service contract: warn and treat as a fresh submission rather than merging unrelated correlations.
 - Shrunk counterexamples become deterministic regression fixtures before closing the bug. Seeds alone are too easy to lose.
+- Every property must name its reference model or oracle, observable invariant, preconditions, postconditions, generated operation distribution, and replay evidence.
+- Replay evidence must include FsCheck version, seed, size or max-size, sequence count, generated operation distribution, shrink result, and the exact local replay command.
+- Persist only confirmed bug or protected-invariant counterexamples. Fixtures must carry property name, seed, size, minimal sequence, expected terminal state/outcomes, linked bug or rationale, and retention reason.
 - Generators must stay bounded and synthetic. Avoid unbounded payloads, real tenant/user IDs, live EventStore, network, sleeps, random wall-clock time, and shared static state.
 
 ### Cross-Story Contract Table
@@ -270,7 +298,42 @@ Do not implement these in Story 10-4:
 ### Completion Notes List
 
 - 2026-05-09: Story created via `/bmad-create-story 10-4-mutation-testing-and-property-based-testing` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-09: Party-mode review hardening applied. Added auditable Stryker segmentation, non-empty report validation, mutation exclusion/status governance, explicit FsCheck oracle contracts, seed/replay evidence, counterexample fixture governance, PR smoke semantics, and artifact redaction allowlists.
 
 ### File List
 
 (to be filled in by dev agent)
+
+---
+
+## Party-Mode Review
+
+- ISO date/time: 2026-05-09T19:04:29+02:00
+- Selected story key: `10-4-mutation-testing-and-property-based-testing`
+- Command/skill invocation used: `/bmad-party-mode 10-4-mutation-testing-and-property-based-testing; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+
+### Findings Summary
+
+- Winston: The story was close to ready but carried implicit architecture decisions around Stryker threshold segmentation, CI runtime, 10-5 boundary pressure, and the lifecycle replay oracle.
+- Amelia: The implementation needed clearer file/config ownership, explicit Parse/Transform include/exclude checks, separate mutation-threshold evidence, survivor triage format, deterministic FsCheck replay evidence, and PR-smoke semantics.
+- John: The adopter confidence job needed more concrete handoff evidence and clearer signals that advisory PR smoke cannot hide authoritative nightly failures.
+- Murat: The quality gates needed to fail on invalid or zero-mutant Stryker reports, prevent mutation score gaming, formalize property oracles, and govern shrunk fixture retention.
+
+### Changes Applied
+
+- Added AC26-AC33 for auditable Stryker segmentation, valid non-empty scoped reports, mutation status/exclusion governance, FsCheck oracle contracts, seed/replay evidence, shrunk fixture governance, PR smoke semantics, and bounded/redacted artifacts.
+- Hardened T1-T6 with report-scope validation, separate threshold evidence, survivor action categories, property oracle documentation, replay evidence capture, fixture retention criteria, PR smoke trigger/timeout semantics, and artifact allowlist/redaction checks.
+- Strengthened the Mutation Testing Contract with executable segmentation requirements, invalid/zero-mutant failure behavior, and visible exclusion/status evidence.
+- Strengthened the Property-Based Idempotency Contract with explicit reference model/oracle, invariant, precondition/postcondition, operation distribution, replay evidence, and fixture-retention requirements.
+
+### Findings Deferred
+
+- The initial per-file mutant baseline is deferred until the first controlled Stryker execution can measure the actual target set.
+- The exact policy for `Timeout` and `CompileError` mutants is deferred to implementation evidence, with the story requiring explicit triage instead of silent pass-through.
+- The acceptable nightly duration budget remains a product/architecture decision if the first implementation exceeds practical CI limits; Story 10-5 still owns broader quarantine and CI diet governance.
+- The precise FsCheck reference-model implementation style, such as mini-interpreter versus canonical snapshot projection, is left to the dev agent as long as the oracle contract is documented and observable.
+
+### Final Recommendation
+
+ready-for-dev
