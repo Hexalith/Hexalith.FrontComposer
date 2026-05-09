@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "1.0",
+  "category": "release-row-drift",
+  "exitCode": 2,
+  "inputs": {
+    "registry": "docs/diagnostics/diagnostic-registry.json",
+    "releaseFiles": [
+      "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+      "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Shipped.md",
+      "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md"
+    ]
+  },
+  "findings": [
+    {
+      "id": "HFC1058",
+      "reason": "missing-release-row",
+      "message": "Analyzer-emitted diagnostic HFC1058 is active in the registry but absent from release tracking."
+    }
+  ]
+}

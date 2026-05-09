@@ -1,0 +1,5 @@
+{
+  "schemaVersion": "1.0",
+  "baselinePolicy": "Package validation is enabled for packable FrontComposer projects. Intentional major-version breaks require a bounded suppression row here before release.",
+  "suppressions": []
+}

@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "1.0",
+  "category": "compatibility-drift",
+  "exitCode": 2,
+  "inputs": {
+    "packageId": "Hexalith.FrontComposer.Schema",
+    "tfm": "netstandard2.0",
+    "currentAssembly": "src/Hexalith.FrontComposer.Schema/bin/Release/netstandard2.0/Hexalith.FrontComposer.Schema.dll",
+    "baselineSource": "checked-in-or-restored-package-baseline",
+    "baselineVersion": "0.1.0",
+    "suppressionFile": "docs/diagnostics/compatibility-suppressions.json",
+    "validator": "dotnet-package-validation"
+  },
+  "findings": [
+    {
+      "reason": "binary-breaking-change",
+      "oldSignature": "Hexalith.FrontComposer.Schema.SchemaBaselineSnapshot::get_Entries()",
+      "newState": "removed",
+      "hfcId": "HFC0001",
+      "message": "Public API removal requires a major version and checked-in suppression evidence."
+    }
+  ]
+}

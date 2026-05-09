@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "category": "docs-stub-drift",
+  "exitCode": 2,
+  "inputs": {
+    "registry": "docs/diagnostics/diagnostic-registry.json",
+    "docsRoot": "docs/diagnostics"
+  },
+  "findings": [
+    {
+      "id": "HFC1058",
+      "reason": "missing-docs-stub",
+      "expectedPath": "docs/diagnostics/HFC1058.md",
+      "message": "Registry slug diagnostics/HFC1058 does not resolve to a checked-in stub."
+    }
+  ]
+}

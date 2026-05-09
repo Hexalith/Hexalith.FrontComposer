@@ -23,7 +23,7 @@ public sealed record McpSchemaNegotiationInput(
     SchemaFingerprint? ClientFingerprint,
     SchemaFingerprint? ServerFingerprint,
     bool HasTrustedBaseline,
-    [property: Obsolete("Use Baseline and Server snapshots; the negotiator derives compatibility via SchemaMigrationDeltaAnalyzer.")]
+    [property: Obsolete("HasCompatibleAdditiveDrift replaced by Baseline and Server in v0.2. See HFC4001. Removed in v1.0.")]
     bool HasCompatibleAdditiveDrift,
     bool HasSchemaIntegrityMismatch,
     SchemaBaselineSnapshot? Baseline = null,

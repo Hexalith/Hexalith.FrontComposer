@@ -19,4 +19,10 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
+    <ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>
+  </PropertyGroup>
+
 </Project>

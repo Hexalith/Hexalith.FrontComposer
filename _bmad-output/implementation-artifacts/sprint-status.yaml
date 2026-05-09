@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-09 (/bmad-code-review 9-3 applied all 35 patches resolved from 4 decisions + 31 originals: D1 live `gh issue create` path with auth/labels probe, dry-run + `exit 1` fallback, scheduled+workflow_dispatch CI; D2 NFR8 IdeParity benchmark wired into existing harness with cold/warm budgets; D3 GeneratedOutputPathContract extracted to Hexalith.FrontComposer.Contracts.Conformance and consumed from tests/matrix/CONTRIBUTING/attribute XML docs; D4 samples/IdeParityCounter project added to solution with deterministic projection+command, fixtureContentHash CR-stripped SHA-256 propagated to all 12 manifests; helper hardening: symlink resolution, NFC normalize, scheme-prefix and UNC and bidi/zero-width rejection, ResolveLinkTarget chain, runtime-derived caseSensitive default; sanitizer: full Markdown HTML escape with CRLF flatten, JWT/AKIA/ASIA/SAS/password/api_key redaction, Linux/UNC system-path redaction, OSC 8 hyperlink strip, surrogate-safe truncation with maxLength guard, IsCsvFormulaTrigger expanded to NBSP/ZWS/BOM and leading whitespace; version parser strict TryParse (rejects `v17`, overflow); manifest validators: hex commitSha, sha256-hex artifactHash, ISO yyyy-MM-dd dates with expiresOn>lastVerified; T3 HelpLinkUri+XML-doc tests added; T9 diagnostic surface test added; matrix-row IDs added as xunit Traits; .editorconfig `**/*.cs` globs + Conformance scope; .gitignore recursive evidence include; devcontainer submodule init + locked-mode restore + gh feature; OOS row evidenceArtifact dropped (fail-closed honored); BoundedContext docstring scoped to actual AttributeUsage; CONTRIBUTING and attribute XML docs reference shared Contract constant; CS1591 stricter-set deferral note added in Dev Notes. Solution build: 0 warnings, 0 errors. Test suite: 2,816 passed, 3 skipped, 0 failed. PowerShell smoke: pins-in-range exits 0; drift exits 1 with full dry-run artifact. 6 deferred entries recorded in deferred-work.md.)"
+last_updated: "2026-05-09 (/bmad-dev-story 9-4 completed Diagnostic ID System & Deprecation Policy. Build passed with 0 warnings/errors; solution tests passed 2,833 with 3 skipped.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -129,7 +129,7 @@ development_status:
   9-1-build-time-drift-detection: done
   9-2-cli-inspection-and-migration-tools: done
   9-3-ide-parity-and-developer-experience: done
-  9-4-diagnostic-id-system-and-deprecation-policy: ready-for-dev
+  9-4-diagnostic-id-system-and-deprecation-policy: review
   9-5-diataxis-documentation-site: ready-for-dev
   epic-9-retrospective: optional
 

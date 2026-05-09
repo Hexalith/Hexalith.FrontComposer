@@ -9,6 +9,9 @@
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
 HFC1601 | HexalithFrontComposer | Error       | Command manifest registration is invalid at startup (FrontComposerRegistry.ValidateManifests; Story 3-4 D21 placeholder — see `FrontComposerRegistry.HasFullPageRoute` XML doc for the documented-placeholder status)
+HFC2004 | HexalithFrontComposer | Warning     | Invalid lifecycle transition dropped to preserve the one-terminal-outcome invariant (Story 2-4 lifecycle state service)
+HFC2005 | HexalithFrontComposer | Information | Duplicate MessageId detected across CorrelationIds and treated as a fresh submission (Story 2-4 lifecycle state service)
+HFC2007 | HexalithFrontComposer | Information | Transition arrived for a CorrelationId without a prior Submitted observation (Story 2-4 lifecycle state service)
 HFC2108 | HexalithFrontComposer | Information | Duplicate shortcut registration replaced (last-writer-wins semantics per Story 3-4 D3; emitted by `ShortcutService.Register`)
 HFC2109 | HexalithFrontComposer | Warning     | Registered shortcut handler threw (Story 3-4 D1; emitted by `ShortcutService.TryInvokeBindingAsync` — exception is caught so it does not bubble to the Blazor error boundary)
 HFC2110 | HexalithFrontComposer | Warning     | Palette scoring fault — registry enumeration or per-manifest scoring threw (Story 3-4 ADR-043; emitted by `CommandPaletteEffects.HandlePaletteQueryChanged`)

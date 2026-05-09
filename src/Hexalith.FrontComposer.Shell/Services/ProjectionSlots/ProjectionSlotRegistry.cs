@@ -141,7 +141,7 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
 
         if (!IsCompatibleComponent(descriptor, out string? reason)) {
             _logger.LogWarning(
-                "HFC1039: Invalid Level 3 slot component for projection {Projection} field {Field}. Expected: Razor component with [Parameter] Context of type FieldSlotContext<{ExpectedProjection},{ExpectedFieldType}>. Got: {Component}. Fix: add the matching Context parameter or register a compatible component. Docs: https://hexalith.dev/frontcomposer/diagnostics/HFC1039. Reason: {Reason}",
+                "HFC1039: Invalid Level 3 slot component for projection {Projection} field {Field}. Expected: Razor component with [Parameter] Context of type FieldSlotContext<{ExpectedProjection},{ExpectedFieldType}>. Got: {Component}. Fix: add the matching Context parameter or register a compatible component. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1039. Reason: {Reason}",
                 descriptor.ProjectionType.FullName,
                 descriptor.FieldName,
                 descriptor.ProjectionType.FullName,
@@ -161,7 +161,7 @@ public sealed class ProjectionSlotRegistry : IProjectionSlotRegistry {
                 }
 
                 _logger.LogWarning(
-                    "HFC1040: Duplicate Level 3 slot overrides registered for projection {Projection} role {Role} field {Field}. Expected: one descriptor. Got: {Existing} and {New}. Fix: remove one registration or make one role-specific. Docs: https://hexalith.dev/frontcomposer/diagnostics/HFC1040.",
+                    "HFC1040: Duplicate Level 3 slot overrides registered for projection {Projection} role {Role} field {Field}. Expected: one descriptor. Got: {Existing} and {New}. Fix: remove one registration or make one role-specific. Docs: https://hexalith.github.io/FrontComposer/diagnostics/HFC1040.",
                     descriptor.ProjectionType.FullName,
                     descriptor.Role?.ToString() ?? "<any>",
                     descriptor.FieldName,

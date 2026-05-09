@@ -9,7 +9,7 @@ namespace Hexalith.FrontComposer.Contracts.Rendering;
 /// Parses refactor-safe Level 3 slot selector expressions.
 /// </summary>
 public static class ProjectionSlotSelector {
-    private const string DocsLink = "https://hexalith.dev/frontcomposer/diagnostics/HFC1038";
+    private const string DocsLink = "https://hexalith.github.io/FrontComposer/diagnostics/HFC1038";
 
     /// <summary>
     /// Parses a direct property selector.

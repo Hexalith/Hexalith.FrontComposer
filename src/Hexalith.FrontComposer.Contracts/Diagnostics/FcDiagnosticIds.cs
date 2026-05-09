@@ -10,6 +10,11 @@ namespace Hexalith.FrontComposer.Contracts.Diagnostics;
 /// </remarks>
 public static class FcDiagnosticIds {
     /// <summary>
+    /// Deprecation: <c>QueryRequest.Filter</c> is replaced by <c>QueryRequest.ColumnFilters</c>.
+    /// </summary>
+    public const string HFC0001_QueryRequestFilterDeprecated = "HFC0001";
+
+    /// <summary>
     /// Build-time Information: a customization metadata or descriptor edit requires a full rebuild/restart.
     /// </summary>
     public const string HFC1010_FullRebuildRequired = "HFC1010";
@@ -268,6 +273,16 @@ public static class FcDiagnosticIds {
     public const string HFC1055_CustomizationForcedColorsMissing = "HFC1055";
 
     /// <summary>
+    /// Build-time Error: a command authorization policy value is invalid.
+    /// </summary>
+    public const string HFC1056_CommandAuthorizationPolicyInvalid = "HFC1056";
+
+    /// <summary>
+    /// Build-time Error: a command declares duplicate authorization policies.
+    /// </summary>
+    public const string HFC1057_CommandAuthorizationPolicyDuplicate = "HFC1057";
+
+    /// <summary>
     /// Build-time Warning: drift detection is enabled but no trusted generated UI baseline is available.
     /// </summary>
     public const string HFC1058_GeneratedUiBaselineMissing = "HFC1058";
@@ -331,6 +346,21 @@ public static class FcDiagnosticIds {
     /// Build-time Warning: trim/AOT build may be using the reflection action-queue projection catalog.
     /// </summary>
     public const string HFC1070_TrimAotReflectionCatalogWarning = "HFC1070";
+
+    /// <summary>
+    /// Runtime Warning: invalid lifecycle transition dropped to preserve the one-terminal-outcome invariant.
+    /// </summary>
+    public const string HFC2004_InvalidLifecycleTransitionDropped = "HFC2004";
+
+    /// <summary>
+    /// Runtime Information: duplicate MessageId was detected across CorrelationIds and treated as fresh submission.
+    /// </summary>
+    public const string HFC2005_DuplicateMessageIdDetected = "HFC2005";
+
+    /// <summary>
+    /// Runtime Information: transition arrived for a CorrelationId without a prior Submitted observation.
+    /// </summary>
+    public const string HFC2007_TransitionWithoutSubmittedObservation = "HFC2007";
 
     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
     public const string HFC2100_UnknownCorrelationId = "HFC2100";
@@ -548,4 +578,9 @@ public static class FcDiagnosticIds {
     /// changed after the operation snapshot was accepted.
     /// </summary>
     public const string HFC2019_StaleTenantContext = "HFC2019";
+
+    /// <summary>
+    /// Deprecation: MCP schema negotiation no longer consults the legacy additive-drift flag.
+    /// </summary>
+    public const string HFC4001_McpCompatibleAdditiveDriftDeprecated = "HFC4001";
 }

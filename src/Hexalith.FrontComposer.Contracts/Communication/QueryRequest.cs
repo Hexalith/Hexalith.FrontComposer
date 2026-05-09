@@ -25,7 +25,7 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 public record QueryRequest(
     string ProjectionType,
     string? TenantId,
-    [property: System.Obsolete("Use ColumnFilters. Scheduled for removal in v1.0-rc2.", error: false)]
+    [property: System.Obsolete("Filter replaced by ColumnFilters in v0.2. See HFC0001. Removed in v1.0.", error: false)]
     string? Filter = null,
     int? Skip = null,
     int? Take = null,
