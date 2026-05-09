@@ -144,3 +144,4 @@
 2026-05-09T17:03:45+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-09T18:02:57+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-09T18:24:50+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
+2026-05-09T18:29:56+02:00	create-story	10-4-mutation-testing-and-property-based-testing	ok	created story artifact and marked ready-for-dev
