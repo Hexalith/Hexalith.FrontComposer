@@ -10,6 +10,11 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Extensions;
 
 public sealed class AddFrontComposerDevModeExtensionsTests {
+#if DEBUG
+    // D2 (Story 9-2): Development-time registrations are guarded by `#if DEBUG` for compile-time elimination
+    // in Release. This test exercises the Debug-build registration path and is therefore DEBUG-scoped.
+    // The Release-build behavior (no dev-mode services even in Development environment) is covered by the
+    // production / staging tests below, which pass under both configurations.
     [Fact]
     public void AddFrontComposerDevMode_RegistersDevModeServicesInDevelopment() {
         ServiceCollection services = [];
@@ -23,6 +28,7 @@ public sealed class AddFrontComposerDevModeExtensionsTests {
         services.ShouldContain(d => d.ServiceType == typeof(IClipboardJSModule) && d.Lifetime == ServiceLifetime.Scoped);
         services.ShouldContain(d => d.ServiceType == typeof(IDevModeAnnotationSnapshotVisitor) && d.Lifetime == ServiceLifetime.Scoped);
     }
+#endif
 
     [Fact]
     public void AddFrontComposerDevMode_IsNoOpOutsideDevelopment() {

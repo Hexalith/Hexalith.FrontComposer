@@ -26,6 +26,10 @@ public static class CliApplication
                 _ => Invalid(error, $"Unknown command '{OutputSanitizer.Sanitize(args[0])}'. Run 'frontcomposer --help'."),
             };
         }
+        catch (CommandLineException ex) {
+            await error.WriteLineAsync(OutputSanitizer.Sanitize(ex.Message, 240)).ConfigureAwait(false);
+            return ExitCodes.InvalidArguments;
+        }
         catch (OperationCanceledException) {
             await error.WriteLineAsync("Operation was cancelled. No further files were written.").ConfigureAwait(false);
             return ExitCodes.ApplyWriteFailure;

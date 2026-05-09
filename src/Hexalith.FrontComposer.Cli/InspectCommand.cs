@@ -94,7 +94,7 @@ internal static class InspectCommand
         output.WriteLine($"Framework: {OutputSanitizer.Sanitize(report.Framework)}");
         output.WriteLine($"Generated files: {report.Files.Count}");
         output.WriteLine($"Forms: {report.Summary.Forms}; Grids: {report.Summary.Grids}; Registrations: {report.Summary.Registrations}; MCP manifests: {report.Summary.McpManifestEntries}");
-        foreach (GeneratedFileInfo file in report.Files.OrderBy(x => x.RelativePath, StringComparer.Ordinal)) {
+        foreach (GeneratedFileInfo file in report.Files) {
             output.WriteLine($"- {file.Family}: {OutputSanitizer.Sanitize(file.RelativePath)}");
         }
 
@@ -274,9 +274,25 @@ internal static class GeneratedOutputLoader
             using Process process = Process.Start(start)!;
             Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
             Task<string> standardError = process.StandardError.ReadToEndAsync(cancellationToken);
-            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            try {
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) {
+                try {
+                    process.Kill(entireProcessTree: true);
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or NotSupportedException or System.ComponentModel.Win32Exception) {
+                }
+
+                throw;
+            }
+
             _ = await standardOutput.ConfigureAwait(false);
-            _ = await standardError.ConfigureAwait(false);
+            string stderr = await standardError.ConfigureAwait(false);
+            if (process.ExitCode != 0 && !string.IsNullOrWhiteSpace(stderr)) {
+                Console.Error.WriteLine(OutputSanitizer.Sanitize(stderr, 4_000));
+            }
+
             return process.ExitCode;
         }
         catch (Win32Exception) {
@@ -354,12 +370,26 @@ internal static class GeneratedOutputLoader
         }
     }
 
+    private static readonly char[] InvalidFrameworkChars = ['/', '\\', ':', ';', '*', '?', '<', '>', '|', '"', '\'', '\0'];
+
     private static bool IsValidFrameworkName(string framework)
-        => framework.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
-            && !framework.Contains('/', StringComparison.Ordinal)
-            && !framework.Contains('\\', StringComparison.Ordinal)
-            && !framework.Contains("..", StringComparison.Ordinal)
-            && framework.Length <= 80;
+    {
+        if (string.IsNullOrWhiteSpace(framework) || framework.Length > 80 || framework != framework.Trim()) {
+            return false;
+        }
+
+        if (framework.Contains("..", StringComparison.Ordinal)) {
+            return false;
+        }
+
+        foreach (char c in framework) {
+            if (char.IsControl(c) || Array.IndexOf(InvalidFrameworkChars, c) >= 0) {
+                return false;
+            }
+        }
+
+        return true;
+    }
 }
 
 internal sealed record FrameworkSelection(bool Success, string? Framework, string? GeneratedDirectory, string Error, int ExitCode)
@@ -462,27 +492,31 @@ internal static class TypeMatcher
         return index < 0 ? metadataName : metadataName[(index + 1)..];
     }
 
+    private const int MaxDistanceInputLength = 256;
+
     private static int Distance(string left, string right)
     {
-        int[,] costs = new int[left.Length + 1, right.Length + 1];
-        for (int i = 0; i <= left.Length; i++) {
+        ReadOnlySpan<char> l = left.AsSpan(0, Math.Min(left.Length, MaxDistanceInputLength));
+        ReadOnlySpan<char> r = right.AsSpan(0, Math.Min(right.Length, MaxDistanceInputLength));
+        int[,] costs = new int[l.Length + 1, r.Length + 1];
+        for (int i = 0; i <= l.Length; i++) {
             costs[i, 0] = i;
         }
 
-        for (int j = 0; j <= right.Length; j++) {
+        for (int j = 0; j <= r.Length; j++) {
             costs[0, j] = j;
         }
 
-        for (int i = 1; i <= left.Length; i++) {
-            for (int j = 1; j <= right.Length; j++) {
-                int substitution = left[i - 1] == right[j - 1] ? 0 : 1;
+        for (int i = 1; i <= l.Length; i++) {
+            for (int j = 1; j <= r.Length; j++) {
+                int substitution = l[i - 1] == r[j - 1] ? 0 : 1;
                 costs[i, j] = Math.Min(
                     Math.Min(costs[i - 1, j] + 1, costs[i, j - 1] + 1),
                     costs[i - 1, j - 1] + substitution);
             }
         }
 
-        return costs[left.Length, right.Length];
+        return costs[l.Length, r.Length];
     }
 }
 
@@ -529,13 +563,27 @@ internal static class DiagnosticFileReader
                 }
             }
             catch (JsonException) {
+                result.Add(SidecarUnreadable(path, projectDirectory, "Diagnostic sidecar JSON could not be parsed."));
             }
             catch (IOException) {
+                result.Add(SidecarUnreadable(path, projectDirectory, "Diagnostic sidecar could not be read."));
             }
         }
 
         return result;
     }
+
+    private static InspectDiagnostic SidecarUnreadable(string path, string projectDirectory, string what)
+        => new(
+            "HFCM0002",
+            "Warning",
+            null,
+            OutputSanitizer.Sanitize(NormalizePath(path, projectDirectory), 240),
+            what,
+            "Diagnostic sidecars must be valid JSON arrays or { diagnostics: [] } documents.",
+            "Sidecar parsing failed.",
+            "Re-run the build, or delete the corrupt sidecar.",
+            "docs/migrations/index.md");
 
     private static string Get(JsonElement entry, string property)
         => entry.TryGetProperty(property, out JsonElement value) && value.ValueKind == JsonValueKind.String

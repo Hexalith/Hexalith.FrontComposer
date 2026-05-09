@@ -37,12 +37,14 @@ public static class AddFrontComposerDevModeExtensions {
         ArgumentNullException.ThrowIfNull(environment);
 
         if (environment.IsDevelopment()) {
+#if DEBUG
             services.TryAddScoped<IDevModeOverlayController, DevModeOverlayController>();
             services.TryAddScoped<IRazorEmitter, RazorEmitter>();
             services.TryAddScoped<IClipboardJSModule, ClipboardJSModule>();
             services.TryAddScoped<IDevModeAnnotationSnapshotVisitor, DevModeAnnotationSnapshotVisitor>();
             services.TryAddSingleton<DevModeRegistrationLogMarker>();
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DevModeRegistrationLogger>());
+#endif
         }
         else {
             // HFC2010 — defensive log: AddFrontComposerDevMode invoked outside Development.

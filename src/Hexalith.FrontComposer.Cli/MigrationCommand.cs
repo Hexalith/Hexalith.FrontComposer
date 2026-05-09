@@ -74,7 +74,7 @@ internal static class MigrationCommand
         foreach (MigrationEntry entry in result.Entries.OrderBy(x => x.Path, StringComparer.Ordinal).ThenBy(x => x.DiagnosticId, StringComparer.Ordinal)) {
             output.WriteLine($"- {entry.Kind} {entry.DiagnosticId} {OutputSanitizer.Sanitize(entry.Path)}: {OutputSanitizer.Sanitize(entry.What)}");
             if (!string.IsNullOrWhiteSpace(entry.Diff)) {
-                output.WriteLine(OutputSanitizer.Sanitize(entry.Diff, 2_000));
+                output.Write(OutputSanitizer.SanitizeMultiLine(entry.Diff, 8_000));
             }
         }
     }
@@ -84,13 +84,28 @@ internal sealed record MigrationEdge(string FromVersion, string ToVersion, strin
 
 internal static class MigrationCatalog
 {
-    private static readonly MigrationEdge[] Edges = [
+    private static readonly MigrationEdge[] Edges = BuildEdges([
         new("9.1.0", "9.2.0", "docs/migrations/9.1-to-9.2.md"),
-    ];
+    ]);
 
     public static MigrationEdge? Resolve(string? from, string? to)
         => Edges.FirstOrDefault(edge => string.Equals(edge.FromVersion, from, StringComparison.Ordinal)
             && string.Equals(edge.ToVersion, to, StringComparison.Ordinal));
+
+    private static MigrationEdge[] BuildEdges(MigrationEdge[] edges)
+    {
+        IGrouping<(string From, string To), MigrationEdge>[] duplicates = edges
+            .GroupBy(edge => (edge.FromVersion, edge.ToVersion))
+            .Where(g => g.Count() > 1)
+            .ToArray();
+        if (duplicates.Length > 0) {
+            throw new InvalidOperationException(
+                "Migration catalog contains duplicate edge(s): "
+                    + string.Join(", ", duplicates.Select(g => g.Key.From + "->" + g.Key.To)));
+        }
+
+        return edges;
+    }
 
     public static string UnsupportedMessage(string? from, string? to)
         => "Unsupported FrontComposer migration edge '"
@@ -214,6 +229,10 @@ internal static class MigrationPlanner
                 entries.Add(Failed(document.RelativePath, edge, "Source file could not be read during migration planning."));
                 continue;
             }
+            catch (System.Text.DecoderFallbackException) {
+                entries.Add(Failed(document.RelativePath, edge, "Source file could not be decoded as UTF-8 / UTF-16 / UTF-32; refusing to migrate unknown encoding."));
+                continue;
+            }
 
             DocumentId documentId = DocumentId.CreateNewId(projectId, document.RelativePath);
             solution = solution.AddDocument(documentId, document.RelativePath, SourceText.From(content.Text, content.Encoding), filePath: document.FullPath);
@@ -265,16 +284,37 @@ internal static class MigrationPlanner
                     continue;
                 }
 
-                ImmutableArray<CodeActionOperation> operations = await action.GetOperationsAsync(cancellationToken).ConfigureAwait(false);
-                if (!TryExtractDocumentChanges(workspace.CurrentSolution, operations, documentId, documentSet.ProjectDirectory, projectDocument.FullPath, out SourceText? changedText)) {
+                ImmutableArray<CodeActionOperation> operations;
+                try {
+                    operations = await action.GetOperationsAsync(cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException) {
                     unsupportedOperation = true;
-                    fileEntries.Add(ManualOnly(diagnostic, projectDocument.RelativePath, edge));
                     continue;
                 }
 
-                foreach (TextChange change in changedText!.GetTextChanges(originalText)) {
+                SourceText? changedText = await TryExtractDocumentChangesAsync(
+                    workspace.CurrentSolution,
+                    operations,
+                    documentId,
+                    documentSet.ProjectDirectory,
+                    projectDocument.FullPath,
+                    cancellationToken).ConfigureAwait(false);
+                if (changedText is null) {
+                    unsupportedOperation = true;
+                    continue;
+                }
+
+                foreach (TextChange change in changedText.GetTextChanges(originalText)) {
                     plannedChanges.Add(change);
                 }
+            }
+
+            if (unsupportedOperation) {
+                // AC28 strict read: any rejected/non-allowlisted CodeActionOperation in this file
+                // discards every safe-fix planned for this file and emits a single ManualOnly entry.
+                entries.Add(ManualOnly(MigrationDiagnostics.ObsoleteDevOverlay.Id, projectDocument.RelativePath, edge));
+                continue;
             }
 
             if (plannedChanges.Count == 0) {
@@ -297,7 +337,7 @@ internal static class MigrationPlanner
                 continue;
             }
 
-            SourceText updatedText = originalText.WithChanges(plannedChanges.OrderBy(x => x.Span.Start));
+            SourceText updatedText = originalText.WithChanges(plannedChanges.OrderBy(x => x.Span.Start).ThenBy(x => x.Span.Length).ThenBy(x => x.NewText, StringComparer.Ordinal));
             string updated = updatedText.ToString();
             string diff = UnifiedDiff.Create(projectDocument.RelativePath, originalText.ToString(), updated);
             fixEntries.Add(new MigrationEntry(
@@ -322,10 +362,6 @@ internal static class MigrationPlanner
                 updated,
                 Hash(projectDocument.Content!.Text),
                 fixEntries));
-
-            if (unsupportedOperation) {
-                entries.Add(ManualOnly(MigrationDiagnostics.ObsoleteDevOverlay.Id, projectDocument.RelativePath, edge));
-            }
         }
 
         if (!entries.Any(x => x.Kind == "safe-fix" || x.Kind == "manual-only" || x.Kind == "failed" || x.Kind == "conflict")) {
@@ -347,37 +383,36 @@ internal static class MigrationPlanner
     public static string Hash(string text)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
 
-    private static bool TryExtractDocumentChanges(
+    private static async Task<SourceText?> TryExtractDocumentChangesAsync(
         Solution originalSolution,
         ImmutableArray<CodeActionOperation> operations,
         DocumentId documentId,
         string projectDirectory,
         string approvedPath,
-        out SourceText? changedText)
+        CancellationToken cancellationToken)
     {
-        changedText = null;
         ApplyChangesOperation? applyOperation = null;
         foreach (CodeActionOperation operation in operations) {
             if (operation is not ApplyChangesOperation applyChangesOperation) {
-                return false;
+                return null;
             }
 
             if (applyOperation is not null) {
-                return false;
+                return null;
             }
 
             applyOperation = applyChangesOperation;
         }
 
         if (applyOperation is null) {
-            return false;
+            return null;
         }
 
         Solution newSolution = applyOperation.ChangedSolution;
         SolutionChanges changes = newSolution.GetChanges(originalSolution);
         ProjectChanges[] projectChanges = changes.GetProjectChanges().ToArray();
         if (projectChanges.Length != 1) {
-            return false;
+            return null;
         }
 
         ProjectChanges projectChange = projectChanges[0];
@@ -391,33 +426,37 @@ internal static class MigrationPlanner
             || projectChange.GetRemovedMetadataReferences().Any()
             || projectChange.GetChangedAdditionalDocuments().Any()
             || projectChange.GetChangedAnalyzerConfigDocuments().Any()) {
-            return false;
+            return null;
         }
 
         DocumentId[] changedDocuments = projectChange.GetChangedDocuments().ToArray();
         if (changedDocuments.Length != 1 || changedDocuments[0] != documentId) {
-            return false;
+            return null;
         }
 
         Document changedDocument = newSolution.GetDocument(documentId)!;
-        if (!string.Equals(PathUtilities.Canonical(changedDocument.FilePath!), PathUtilities.Canonical(approvedPath), PathUtilities.PathComparison)
-            || PathUtilities.ToProjectRelative(projectDirectory, changedDocument.FilePath!) == "[redacted-path]") {
-            return false;
+        if (changedDocument.FilePath is null
+            || !string.Equals(PathUtilities.Canonical(changedDocument.FilePath), PathUtilities.Canonical(approvedPath), PathUtilities.PathComparison)
+            || PathUtilities.ToProjectRelative(projectDirectory, changedDocument.FilePath) == PathUtilities.RedactedPathSentinel) {
+            return null;
         }
 
-        changedText = changedDocument.GetTextAsync().GetAwaiter().GetResult();
-        return true;
+        return await changedDocument.GetTextAsync(cancellationToken).ConfigureAwait(false);
     }
 
     private static bool HasOverlappingChanges(List<TextChange> changes)
     {
-        TextSpan? previous = null;
-        foreach (TextSpan span in changes.Select(x => x.Span).OrderBy(x => x.Start)) {
-            if (previous.HasValue && span.Start < previous.Value.End) {
+        TextChange[] sorted = [.. changes.OrderBy(x => x.Span.Start).ThenBy(x => x.Span.Length).ThenBy(x => x.NewText, StringComparer.Ordinal)];
+        for (int i = 1; i < sorted.Length; i++) {
+            TextSpan previous = sorted[i - 1].Span;
+            TextSpan current = sorted[i].Span;
+            if (current.Start < previous.End) {
                 return true;
             }
 
-            previous = span;
+            if (current.Start == previous.End && previous.IsEmpty && current.IsEmpty) {
+                return true;
+            }
         }
 
         return false;
@@ -461,21 +500,34 @@ internal static class ProjectDocumentLoader
     {
         string projectFullPath = Path.GetFullPath(projectPath);
         string projectDirectory = Path.GetDirectoryName(projectFullPath)!;
-        XDocument project = XDocument.Load(projectFullPath);
+        XDocument project;
+        try {
+            project = XDocument.Load(projectFullPath);
+        }
+        catch (System.Xml.XmlException) {
+            return new ProjectDocumentSet(projectDirectory, []);
+        }
+        catch (IOException) {
+            return new ProjectDocumentSet(projectDirectory, []);
+        }
+
         List<ProjectDocument> documents = [];
-        List<(string Include, string Exclude)> compileItems = project
+        List<(string Include, string Exclude, string? Link)> compileItems = project
             .Descendants()
             .Where(x => string.Equals(x.Name.LocalName, "Compile", StringComparison.Ordinal))
-            .Select(x => ((string?)x.Attribute("Include") ?? string.Empty, (string?)x.Attribute("Exclude") ?? string.Empty))
+            .Select(x => (
+                (string?)x.Attribute("Include") ?? string.Empty,
+                (string?)x.Attribute("Exclude") ?? string.Empty,
+                (string?)x.Attribute("Link")))
             .Where(x => !string.IsNullOrWhiteSpace(x.Item1))
             .ToList();
 
         if (compileItems.Count == 0) {
-            documents.AddRange(EnumerateGlob(projectDirectory, "**/*.cs", "bin/**;obj/**"));
+            documents.AddRange(EnumerateGlob(projectDirectory, "**/*.cs", "bin/**;obj/**", link: null));
         }
         else {
-            foreach ((string include, string exclude) in compileItems) {
-                documents.AddRange(EnumerateGlob(projectDirectory, include, exclude));
+            foreach ((string include, string exclude, string? link) in compileItems) {
+                documents.AddRange(EnumerateGlob(projectDirectory, include, exclude, link));
             }
         }
 
@@ -488,13 +540,34 @@ internal static class ProjectDocumentLoader
                 .ToArray());
     }
 
-    private static IEnumerable<ProjectDocument> EnumerateGlob(string projectDirectory, string include, string exclude)
+    private static IEnumerable<ProjectDocument> EnumerateGlob(string projectDirectory, string include, string exclude, string? link)
     {
         string[] excludes = exclude.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        string projectRoot = PathUtilities.Canonical(projectDirectory);
+        string projectRootWithSep = projectRoot.EndsWith(Path.DirectorySeparatorChar)
+            ? projectRoot
+            : projectRoot + Path.DirectorySeparatorChar;
+
         foreach (string pattern in include.Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)) {
             foreach (string path in Expand(projectDirectory, pattern)) {
+                string canonical = PathUtilities.Canonical(path);
+                bool insideProject = string.Equals(canonical, projectRoot, PathUtilities.PathComparison)
+                    || canonical.StartsWith(projectRootWithSep, PathUtilities.PathComparison);
+
+                if (!insideProject) {
+                    // P-D5 / AC23: a Compile Include that resolves outside the project root is allowed only when the element
+                    // declares a Link attribute. The link target is then treated as project-relative for reporting.
+                    if (string.IsNullOrWhiteSpace(link)) {
+                        continue;
+                    }
+
+                    string linkRelative = link.Replace('\\', '/').TrimStart('/');
+                    yield return new ProjectDocument(path, linkRelative);
+                    continue;
+                }
+
                 string relative = PathUtilities.ToProjectRelative(projectDirectory, path);
-                if (relative == "[redacted-path]" || IsExcluded(relative, excludes)) {
+                if (relative == PathUtilities.RedactedPathSentinel || IsExcluded(relative, excludes)) {
                     continue;
                 }
 
@@ -507,7 +580,14 @@ internal static class ProjectDocumentLoader
     {
         string normalized = pattern.Replace('\\', '/');
         if (!normalized.Contains('*', StringComparison.Ordinal)) {
-            string path = Path.GetFullPath(normalized.Replace('/', Path.DirectorySeparatorChar), projectDirectory);
+            string path;
+            try {
+                path = Path.GetFullPath(normalized.Replace('/', Path.DirectorySeparatorChar), projectDirectory);
+            }
+            catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException) {
+                return [];
+            }
+
             return File.Exists(path) ? [path] : [];
         }
 
@@ -521,9 +601,16 @@ internal static class ProjectDocumentLoader
             ? SearchOption.AllDirectories
             : SearchOption.TopDirectoryOnly;
         string root = directoryPart.Replace("/**", string.Empty).TrimEnd('/');
-        string searchRoot = string.IsNullOrWhiteSpace(root)
-            ? projectDirectory
-            : Path.GetFullPath(root.Replace('/', Path.DirectorySeparatorChar), projectDirectory);
+        string searchRoot;
+        try {
+            searchRoot = string.IsNullOrWhiteSpace(root)
+                ? projectDirectory
+                : Path.GetFullPath(root.Replace('/', Path.DirectorySeparatorChar), projectDirectory);
+        }
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException) {
+            return [];
+        }
+
         return Directory.Exists(searchRoot) ? Directory.EnumerateFiles(searchRoot, filePattern, search) : [];
     }
 
@@ -533,11 +620,11 @@ internal static class ProjectDocumentLoader
             string normalized = exclude.Replace('\\', '/').Trim('/');
             if (normalized.EndsWith("/**", StringComparison.Ordinal)) {
                 string prefix = normalized[..^3].TrimEnd('/') + "/";
-                if (relativePath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)) {
+                if (relativePath.StartsWith(prefix, PathUtilities.PathComparison)) {
                     return true;
                 }
             }
-            else if (string.Equals(relativePath, normalized, StringComparison.OrdinalIgnoreCase)) {
+            else if (string.Equals(relativePath, normalized, PathUtilities.PathComparison)) {
                 return true;
             }
         }
@@ -561,6 +648,14 @@ internal static class SourceFile
 
     private static Encoding DetectEncoding(byte[] bytes)
     {
+        if (bytes.Length >= 4 && bytes[0] == 0x00 && bytes[1] == 0x00 && bytes[2] == 0xFE && bytes[3] == 0xFF) {
+            return new UTF32Encoding(bigEndian: true, byteOrderMark: true);
+        }
+
+        if (bytes.Length >= 4 && bytes[0] == 0xFF && bytes[1] == 0xFE && bytes[2] == 0x00 && bytes[3] == 0x00) {
+            return new UTF32Encoding(bigEndian: false, byteOrderMark: true);
+        }
+
         if (bytes.Length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
             return new UTF8Encoding(encoderShouldEmitUTF8Identifier: true);
         }
@@ -573,7 +668,8 @@ internal static class SourceFile
             return Encoding.BigEndianUnicode;
         }
 
-        return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        // Strict UTF-8: fail closed on invalid bytes rather than silently replacing with U+FFFD.
+        return new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
     }
 
     private static byte[] PreambleFree(byte[] bytes, Encoding encoding)
@@ -622,6 +718,10 @@ internal static class MigrationDiagnosticScanner
         SyntaxTree tree = root.SyntaxTree;
         ImmutableArray<Diagnostic>.Builder builder = ImmutableArray.CreateBuilder<Diagnostic>();
         foreach (IdentifierNameSyntax identifier in root.DescendantNodes().OfType<IdentifierNameSyntax>()) {
+            if (IsInsideNameOf(identifier)) {
+                continue;
+            }
+
             string name = identifier.Identifier.ValueText;
             if (name == FrontComposerMigrationCodeFixProvider.ObsoleteApi) {
                 builder.Add(Diagnostic.Create(MigrationDiagnostics.ObsoleteDevOverlay, Location.Create(tree, identifier.Span)));
@@ -632,6 +732,19 @@ internal static class MigrationDiagnosticScanner
         }
 
         return builder.ToImmutable();
+    }
+
+    private static bool IsInsideNameOf(IdentifierNameSyntax identifier)
+    {
+        for (SyntaxNode? parent = identifier.Parent; parent is not null; parent = parent.Parent) {
+            if (parent is InvocationExpressionSyntax invocation
+                && invocation.Expression is IdentifierNameSyntax target
+                && target.Identifier.ValueText == "nameof") {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 
@@ -666,7 +779,7 @@ internal sealed class FrontComposerMigrationCodeFixProvider : CodeFixProvider
         }
 
         SyntaxToken token = root.FindToken(diagnostic.Location.SourceSpan.Start);
-        if (token.ValueText != ObsoleteApi) {
+        if (token.ValueText != ObsoleteApi || token.Parent is not IdentifierNameSyntax) {
             return document;
         }
 
@@ -681,17 +794,27 @@ internal static class MigrationApplier
     {
         List<MigrationEntry> entries = [.. plan.Entries.Where(x => x.Kind != "safe-fix")];
         List<MigrationEntry> changed = [];
+        HashSet<string> submoduleSnapshot = SubmoduleBoundaryReader.Read(plan.ProjectDirectory);
+        bool cancelled = false;
         foreach (PlannedFileEdit edit in plan.FileEdits.OrderBy(x => x.RelativePath, StringComparer.Ordinal)) {
             try {
                 cancellationToken.ThrowIfCancellationRequested();
-                if (!string.Equals(PathUtilities.Canonical(edit.FullPath), edit.CanonicalPath, PathUtilities.PathComparison)
-                    || !string.Equals(PathUtilities.Canonical(Path.Combine(plan.ProjectDirectory, edit.RelativePath)), edit.CanonicalPath, PathUtilities.PathComparison)
-                    || !WriteSafetyPolicy.IsAllowed(plan.ProjectDirectory, edit.FullPath, SubmoduleBoundaryReader.Read(plan.ProjectDirectory))) {
+                string canonicalNow = PathUtilities.Canonical(edit.FullPath);
+                if (!string.Equals(canonicalNow, edit.CanonicalPath, PathUtilities.PathComparison)
+                    || !WriteSafetyPolicy.IsAllowed(plan.ProjectDirectory, edit.FullPath, submoduleSnapshot)) {
                     entries.Add(Failed(edit, plan.Edge, "Resolved write target changed or became unsafe between planning and apply."));
                     continue;
                 }
 
-                SourceFileContent current = await SourceFile.ReadAsync(edit.FullPath, cancellationToken).ConfigureAwait(false);
+                SourceFileContent current;
+                try {
+                    current = await SourceFile.ReadAsync(edit.FullPath, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Text.DecoderFallbackException) {
+                    entries.Add(Failed(edit, plan.Edge, "Source file could not be re-read during apply."));
+                    continue;
+                }
+
                 if (!string.Equals(MigrationPlanner.Hash(current.Text), edit.OriginalHash, StringComparison.Ordinal)) {
                     entries.Add(Failed(edit, plan.Edge, "Source content changed between planning and apply."));
                     continue;
@@ -701,6 +824,7 @@ internal static class MigrationApplier
                 changed.AddRange(edit.Entries);
             }
             catch (OperationCanceledException) {
+                cancelled = true;
                 entries.Add(Failed(edit, plan.Edge, "Migration apply was cancelled after writing " + changed.Count + " file(s)."));
                 break;
             }
@@ -709,8 +833,9 @@ internal static class MigrationApplier
             }
         }
 
-        entries.AddRange(changed);
-        return new MigrationResult(true, entries, MigrationSummary.From(entries));
+        List<MigrationEntry> final = [.. entries, .. changed];
+        final = [.. final.OrderBy(x => x.Path, StringComparer.Ordinal).ThenBy(x => x.DiagnosticId, StringComparer.Ordinal).ThenBy(x => x.Kind, StringComparer.Ordinal)];
+        return new MigrationResult(!cancelled, final, MigrationSummary.From(final));
     }
 
     private static MigrationEntry Failed(PlannedFileEdit edit, MigrationEdge edge, string reason)
@@ -731,20 +856,24 @@ internal static class WriteSafetyPolicy
     public static bool IsAllowed(string projectDirectory, string path, HashSet<string> submoduleRoots)
     {
         string relative = PathUtilities.ToProjectRelative(projectDirectory, path);
-        if (relative == "[redacted-path]" || PathUtilities.HasExcludedSegment(projectDirectory, path)) {
+        if (relative == PathUtilities.RedactedPathSentinel || PathUtilities.HasExcludedSegment(projectDirectory, path)) {
             return false;
         }
 
         string fullPath = PathUtilities.Canonical(path);
-        string fullDirectory = Path.GetDirectoryName(fullPath) ?? fullPath;
-        return !submoduleRoots.Any(root => IsSameOrUnder(fullDirectory, root) || string.Equals(fullPath, root, PathUtilities.PathComparison));
+        return !submoduleRoots.Any(root => IsSameOrUnder(fullPath, root));
     }
 
     private static bool IsSameOrUnder(string path, string root)
     {
-        string normalizedRoot = EnsureTrailingSeparator(PathUtilities.Canonical(root));
-        string normalizedPath = EnsureTrailingSeparator(PathUtilities.Canonical(path));
-        return normalizedPath.StartsWith(normalizedRoot, PathUtilities.PathComparison);
+        string normalizedRoot = PathUtilities.Canonical(root);
+        string normalizedPath = PathUtilities.Canonical(path);
+        if (string.Equals(normalizedPath, normalizedRoot, PathUtilities.PathComparison)) {
+            return true;
+        }
+
+        string rootWithSep = EnsureTrailingSeparator(normalizedRoot);
+        return normalizedPath.StartsWith(rootWithSep, PathUtilities.PathComparison);
     }
 
     private static string EnsureTrailingSeparator(string path)
@@ -753,6 +882,8 @@ internal static class WriteSafetyPolicy
 
 internal static class SubmoduleBoundaryReader
 {
+    private const int MaxAncestorWalk = 32;
+
     public static HashSet<string> Read(string projectDirectory)
     {
         HashSet<string> roots = new(PathUtilities.PathComparer);
@@ -795,12 +926,15 @@ internal static class SubmoduleBoundaryReader
     private static string? FindRepositoryRoot(string start)
     {
         DirectoryInfo? directory = new(Path.GetFullPath(start));
-        while (directory is not null) {
-            if (Directory.Exists(Path.Combine(directory.FullName, ".git")) || File.Exists(Path.Combine(directory.FullName, ".gitmodules"))) {
+        int walked = 0;
+        while (directory is not null && walked < MaxAncestorWalk) {
+            string gitMarker = Path.Combine(directory.FullName, ".git");
+            if (Directory.Exists(gitMarker) || File.Exists(gitMarker) || File.Exists(Path.Combine(directory.FullName, ".gitmodules"))) {
                 return directory.FullName;
             }
 
             directory = directory.Parent;
+            walked++;
         }
 
         return null;
@@ -809,47 +943,204 @@ internal static class SubmoduleBoundaryReader
 
 internal static class UnifiedDiff
 {
+    private const int ContextLines = 3;
+
     public static string Create(string relativePath, string original, string updated)
     {
         string[] oldLines = SplitLines(original);
         string[] newLines = SplitLines(updated);
         StringBuilder builder = new();
-        _ = builder.AppendLine("--- a/" + relativePath);
-        _ = builder.AppendLine("+++ b/" + relativePath);
-        _ = builder.AppendLine("@@ -1," + oldLines.Length + " +1," + newLines.Length + " @@");
+        _ = builder.Append("--- a/").Append(relativePath).Append('\n');
+        _ = builder.Append("+++ b/").Append(relativePath).Append('\n');
 
-        int commonPrefix = 0;
-        while (commonPrefix < oldLines.Length
-            && commonPrefix < newLines.Length
-            && oldLines[commonPrefix] == newLines[commonPrefix]) {
-            commonPrefix++;
+        // Compute LCS-based hunks; each hunk has its own @@ -L1,N1 +L2,N2 @@ header.
+        List<(int OldStart, int OldCount, int NewStart, int NewCount, List<(char Prefix, string Line)> Lines)> hunks =
+            ComputeHunks(oldLines, newLines, ContextLines);
+        if (hunks.Count == 0) {
+            return builder.ToString();
         }
 
-        int oldSuffix = oldLines.Length - 1;
-        int newSuffix = newLines.Length - 1;
-        while (oldSuffix >= commonPrefix
-            && newSuffix >= commonPrefix
-            && oldLines[oldSuffix] == newLines[newSuffix]) {
-            oldSuffix--;
-            newSuffix--;
+        foreach (var hunk in hunks) {
+            _ = builder.Append("@@ -")
+                .Append(hunk.OldCount == 0 ? hunk.OldStart : hunk.OldStart + 1)
+                .Append(',').Append(hunk.OldCount)
+                .Append(" +")
+                .Append(hunk.NewCount == 0 ? hunk.NewStart : hunk.NewStart + 1)
+                .Append(',').Append(hunk.NewCount)
+                .Append(" @@\n");
+            foreach ((char prefix, string line) in hunk.Lines) {
+                _ = builder.Append(prefix).Append(line).Append('\n');
+            }
         }
 
-        AppendContext(builder, " ", oldLines.Take(Math.Min(commonPrefix, 3)));
-        AppendContext(builder, "-", oldLines.Skip(commonPrefix).Take(oldSuffix - commonPrefix + 1));
-        AppendContext(builder, "+", newLines.Skip(commonPrefix).Take(newSuffix - commonPrefix + 1));
-        AppendContext(builder, " ", oldLines.Skip(Math.Max(oldSuffix + 1, oldLines.Length - 3)));
         return builder.ToString();
+    }
+
+    private static List<(int OldStart, int OldCount, int NewStart, int NewCount, List<(char, string)> Lines)> ComputeHunks(string[] oldLines, string[] newLines, int context)
+    {
+        // Identify diff segments via simple two-pointer walk — emit insert/delete groups with surrounding context.
+        List<(char Op, int OldIdx, int NewIdx, string Line)> ops = DiffOps(oldLines, newLines);
+        List<(int OldStart, int OldCount, int NewStart, int NewCount, List<(char, string)> Lines)> hunks = [];
+        if (ops.Count == 0) {
+            return hunks;
+        }
+
+        int i = 0;
+        while (i < ops.Count) {
+            // skip equals
+            while (i < ops.Count && ops[i].Op == '=') {
+                i++;
+            }
+
+            if (i >= ops.Count) {
+                break;
+            }
+
+            int hunkStart = Math.Max(0, i - context);
+            int j = i;
+            while (j < ops.Count) {
+                while (j < ops.Count && ops[j].Op != '=') {
+                    j++;
+                }
+
+                int trailingContext = 0;
+                while (j < ops.Count && ops[j].Op == '=' && trailingContext < context * 2) {
+                    j++;
+                    trailingContext++;
+                }
+
+                if (j >= ops.Count || ops[j].Op == '=') {
+                    break;
+                }
+            }
+
+            int hunkEnd = Math.Min(ops.Count, j);
+            // trim equals beyond context lines
+            int trailing = 0;
+            while (hunkEnd > 0 && ops[hunkEnd - 1].Op == '=' && trailing < context) {
+                hunkEnd--;
+                trailing++;
+                if (hunkEnd == 0) {
+                    break;
+                }
+            }
+
+            int oldStart = -1;
+            int newStart = -1;
+            int oldCount = 0;
+            int newCount = 0;
+            List<(char, string)> lines = [];
+            for (int k = hunkStart; k < hunkEnd; k++) {
+                (char op, int oldIdx, int newIdx, string line) = ops[k];
+                if (oldStart < 0 && oldIdx >= 0) {
+                    oldStart = oldIdx;
+                }
+
+                if (newStart < 0 && newIdx >= 0) {
+                    newStart = newIdx;
+                }
+
+                switch (op) {
+                    case '=':
+                        lines.Add((' ', line));
+                        oldCount++;
+                        newCount++;
+                        break;
+                    case '-':
+                        lines.Add(('-', line));
+                        oldCount++;
+                        break;
+                    case '+':
+                        lines.Add(('+', line));
+                        newCount++;
+                        break;
+                }
+            }
+
+            if (oldStart < 0) {
+                oldStart = 0;
+            }
+
+            if (newStart < 0) {
+                newStart = 0;
+            }
+
+            hunks.Add((oldStart, oldCount, newStart, newCount, lines));
+            i = hunkEnd;
+            // consume any equals between hunks
+            while (i < ops.Count && ops[i].Op == '=') {
+                i++;
+            }
+        }
+
+        return hunks;
+    }
+
+    private static List<(char Op, int OldIdx, int NewIdx, string Line)> DiffOps(string[] oldLines, string[] newLines)
+    {
+        // Simple O(N+M) walk anchored on line equality; conservative — emits all old as deletes and all new as inserts
+        // when the lines diverge, then re-syncs at the next match. Sufficient for the small migration diffs this CLI
+        // produces; not a full Myers diff.
+        List<(char, int, int, string)> ops = [];
+        int i = 0;
+        int j = 0;
+        while (i < oldLines.Length && j < newLines.Length) {
+            if (string.Equals(oldLines[i], newLines[j], StringComparison.Ordinal)) {
+                ops.Add(('=', i, j, oldLines[i]));
+                i++;
+                j++;
+                continue;
+            }
+
+            int nextMatchOld = -1;
+            int nextMatchNew = -1;
+            for (int k = 1; k <= 32 && (i + k < oldLines.Length || j + k < newLines.Length); k++) {
+                if (i + k < oldLines.Length && string.Equals(oldLines[i + k], newLines[j], StringComparison.Ordinal)) {
+                    nextMatchOld = i + k;
+                    break;
+                }
+
+                if (j + k < newLines.Length && string.Equals(oldLines[i], newLines[j + k], StringComparison.Ordinal)) {
+                    nextMatchNew = j + k;
+                    break;
+                }
+            }
+
+            if (nextMatchOld > 0) {
+                while (i < nextMatchOld) {
+                    ops.Add(('-', i, -1, oldLines[i]));
+                    i++;
+                }
+            }
+            else if (nextMatchNew > 0) {
+                while (j < nextMatchNew) {
+                    ops.Add(('+', -1, j, newLines[j]));
+                    j++;
+                }
+            }
+            else {
+                ops.Add(('-', i, -1, oldLines[i]));
+                ops.Add(('+', -1, j, newLines[j]));
+                i++;
+                j++;
+            }
+        }
+
+        while (i < oldLines.Length) {
+            ops.Add(('-', i, -1, oldLines[i]));
+            i++;
+        }
+
+        while (j < newLines.Length) {
+            ops.Add(('+', -1, j, newLines[j]));
+            j++;
+        }
+
+        return ops;
     }
 
     private static string[] SplitLines(string text)
         => text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
-
-    private static void AppendContext(StringBuilder builder, string prefix, IEnumerable<string> lines)
-    {
-        foreach (string line in lines) {
-            _ = builder.Append(prefix).AppendLine(OutputSanitizer.Sanitize(line, 400));
-        }
-    }
 }
 
 internal static class MigrationJson
@@ -878,7 +1169,7 @@ internal static class MigrationJson
                     got = OutputSanitizer.Sanitize(x.Got),
                     fix = OutputSanitizer.Sanitize(x.Fix),
                     docsLink = OutputSanitizer.Sanitize(x.DocsLink),
-                    diff = OutputSanitizer.Sanitize(x.Diff, 2_000),
+                    diff = OutputSanitizer.SanitizeMultiLine(x.Diff, 8_000),
                     formattingApplied = x.FormattingApplied,
                 })
                 .ToArray(),

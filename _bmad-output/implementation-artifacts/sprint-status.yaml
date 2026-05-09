@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-09 (story 9-2 CLI inspection/migration review follow-ups completed: Roslyn CodeFixProvider migration pipeline, project-document planning, write-safety hardening, inspect/CI fixes, expanded CLI tests, Release build/test/package smoke passed. Status in-progress → review.)"
+last_updated: "2026-05-09 (story 9-2 second-pass review: 32 of 36 patches applied (decisions D2/D3-FOLLOWUP/D5/D6 done, D4 deferred; AC21 regression, UnifiedDiff multi-hunk, async/cancellation fixes, write-safety hardening, encoding strict UTF-8/UTF-32, command-line validation, diagnostic sidecar sentinel, MigrationCatalog static validator). Tests: 2,785 passed, 3 skipped, 0 failed Release. Status remains in-progress for P-D4 + test backfill + P-16 glob.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -127,7 +127,7 @@ development_status:
   # Epic 9: Developer Tooling & Documentation
   epic-9: in-progress
   9-1-build-time-drift-detection: done
-  9-2-cli-inspection-and-migration-tools: review
+  9-2-cli-inspection-and-migration-tools: in-progress
   9-3-ide-parity-and-developer-experience: review
   9-4-diagnostic-id-system-and-deprecation-policy: ready-for-dev
   9-5-diataxis-documentation-site: ready-for-dev

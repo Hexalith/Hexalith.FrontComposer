@@ -178,7 +178,7 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
-    public async Task Inspect_IgnoresMalformedDiagnosticsSidecars()
+    public async Task Inspect_EmitsSentinelForMalformedDiagnosticsSidecars()
     {
         using CliFixture fixture = CliFixture.Create();
         string project = fixture.WriteProject("Acme.App", "net10.0");
@@ -193,10 +193,15 @@ public sealed class InspectCommandTests
             error,
             CancellationToken.None);
 
+        // P-12: Corrupted sidecars must surface a deterministic HFCM0002 sentinel rather than silently
+        // dropping diagnostics. The sentinel itself is a Warning (not Error), so default exit stays 0.
         exitCode.ShouldBe(0);
         error.ToString().ShouldBeEmpty();
         using JsonDocument document = JsonDocument.Parse(output.ToString());
-        document.RootElement.GetProperty("diagnostics").GetArrayLength().ShouldBe(0);
+        JsonElement diagnostics = document.RootElement.GetProperty("diagnostics");
+        diagnostics.GetArrayLength().ShouldBe(1);
+        diagnostics[0].GetProperty("id").GetString().ShouldBe("HFCM0002");
+        diagnostics[0].GetProperty("severity").GetString().ShouldBe("Warning");
     }
 
     [Fact]

@@ -1,5 +1,19 @@
 # Deferred Work
 
+## Deferred from: code review of 9-2-cli-inspection-and-migration-tools — second pass (2026-05-09)
+
+- **DEF-9-2-7 — `--project` / `ProjectSelection` does not canonicalize through symlinks/junctions before downstream use** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:14-19`] — Minor; downstream `WriteSafetyPolicy` re-canonicalizes. Sources: edge.
+- **DEF-9-2-8 — `.sln` parser does not robustly parse VS-format quoted paths with escaped quotes** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:1382-1390`] — Works on every test fixture; defer until a real adopter `.sln` breaks. Sources: edge.
+- **DEF-9-2-9 — `.slnx` and `.fsproj` not supported** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs`] — First-pass patch claim was partial; only the CSV-split brittleness was fixed. **Owner:** Story 9-3 IDE parity. Sources: auditor.
+- **DEF-9-2-10 — `formattingApplied` field is always `false`** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:721`] — No `Formatter.FormatAsync` is called. Field is technically truthful but constant. Revisit when a real formatting-required fix is added to the catalog. Sources: auditor.
+- **DEF-9-2-11 — No SIGTERM/SIGINT POSIX signal handler** [`src/Hexalith.FrontComposer.Cli/Program.cs`] — Ctrl-C path covered; SIGTERM is rare in dev workflows. Sources: edge.
+- **DEF-9-2-12 — No atomic temp+rename write** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1122-1123`] — Also recorded as first-pass DEF-9-2-2; reaffirmed by second-pass review. Sources: edge.
+- **DEF-9-2-13 — `MefHostServices` composition exception not surfaced cleanly** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:566-568`] — Only triggers on a misconfigured deploy. Catch `CompositionException` and surface a clear "Workspaces assemblies failed to load" error. Sources: edge.
+- **DEF-9-2-14 — `ProjectDocumentLoader.Load` does not evaluate `<Import>` items via MSBuild** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:875`] — Silently skips Compile items defined in shared MSBuild files. Requires `Microsoft.Build` dependency. Document as known limitation in README and emit a CLI warning when an `.csproj` has top-level `<Import>` elements. Sources: edge.
+- **DEF-9-2-15 — `.gitmodules` parser does not unescape `\"`, `\\`, or single-quoted paths** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1198`] — Git itself only emits double-quoted output; edge case for hand-written files. Sources: edge.
+- **DEF-9-2-16 — `PathUtilities.Canonical` `catch` is too narrow** [`src/Hexalith.FrontComposer.Cli/PathUtilities.cs:45-48`] — Does not catch `PathTooLongException`, `ArgumentException`, `NotSupportedException`. Hardening; rare on Windows long-path scenarios. Sources: edge.
+- **DEF-9-2-17 — Ctrl+C double-press does not force-exit** [`src/Hexalith.FrontComposer.Cli/Program.cs`] — Second press should restore the default handler. UX polish. Sources: blind+edge.
+
 ## Deferred from: code review of 9-2-cli-inspection-and-migration-tools (2026-05-09)
 
 - **DEF-9-2-1 — `fail-on-warning` vs `fail-on-error` precedence undocumented** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:678-685`] — Both flags are honored but the help text and JSON contract do not document precedence. Add to README and JSON `applied` payload. Sources: blind.
