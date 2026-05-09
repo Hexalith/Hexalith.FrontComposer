@@ -69,7 +69,7 @@ public sealed class InspectCommandTests
             error,
             CancellationToken.None);
 
-        exitCode.ShouldBe(ExitCodes.GeneratedOutputUnavailable);
+        exitCode.ShouldBe(ExitCodes.InvalidArguments);
         error.ToString().ShouldContain("PackageProjection");
         error.ToString().ShouldContain("Acme.Shipping.ShipmentProjection");
         error.ToString().ShouldNotContain(fixture.Root, Case.Sensitive);
@@ -155,5 +155,66 @@ public sealed class InspectCommandTests
         document.RootElement.GetProperty("summary").GetProperty("warnings").GetInt32().ShouldBe(0);
         JsonElement diagnostic = document.RootElement.GetProperty("diagnostics").EnumerateArray().Single();
         diagnostic.GetProperty("id").GetString().ShouldBe("HFC1003");
+    }
+
+    [Fact]
+    public async Task Inspect_RejectsFrameworkPathTraversal()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["inspect", "--project", project, "--configuration", "Debug", "--framework", "../../etc"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(ExitCodes.InvalidArguments);
+        error.ToString().ShouldContain("--framework");
+        output.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public async Task Inspect_IgnoresMalformedDiagnosticsSidecars()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Acme.Shipping.ShipmentProjection.g.razor.cs", "");
+        fixture.WriteGenerated("Acme.App", "Debug", "net10.0", "Broken.diagnostics.json", "{not-json");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["inspect", "--project", project, "--configuration", "Debug", "--framework", "net10.0", "--format", "json"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(0);
+        error.ToString().ShouldBeEmpty();
+        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        document.RootElement.GetProperty("diagnostics").GetArrayLength().ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task Inspect_RejectsProjectDirectoryArgument()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["inspect", "--project", Path.GetDirectoryName(project)!],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(ExitCodes.InvalidArguments);
+        error.ToString().ShouldContain(".csproj");
+        output.ToString().ShouldBeEmpty();
     }
 }

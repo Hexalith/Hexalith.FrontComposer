@@ -7,8 +7,14 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
         string? explicitProject = options.Get("project");
         if (!string.IsNullOrWhiteSpace(explicitProject)) {
             string fullPath = Path.GetFullPath(explicitProject, currentDirectory);
+            if (Directory.Exists(fullPath)) {
+                return new ProjectSelection(false, null, "--project must resolve to a .csproj file, not a directory: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(fullPath)));
+            }
+
             return File.Exists(fullPath)
-                ? new ProjectSelection(true, fullPath, string.Empty)
+                ? Path.GetExtension(fullPath).Equals(".csproj", StringComparison.OrdinalIgnoreCase)
+                    ? new ProjectSelection(true, fullPath, string.Empty)
+                    : new ProjectSelection(false, null, "--project must resolve to a .csproj file: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(fullPath)))
                 : new ProjectSelection(false, null, "Project file was not found: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(fullPath)));
         }
 
@@ -21,8 +27,7 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
 
             string solutionDirectory = Path.GetDirectoryName(solutionPath)!;
             string[] projects = File.ReadLines(solutionPath)
-                .Where(line => line.Contains(".csproj", StringComparison.OrdinalIgnoreCase))
-                .Select(line => line.Split(',').ElementAtOrDefault(1)?.Trim().Trim('"'))
+                .Select(TryReadProjectPath)
                 .Where(path => !string.IsNullOrWhiteSpace(path))
                 .Select(path => Path.GetFullPath(path!, solutionDirectory))
                 .Where(File.Exists)
@@ -43,5 +48,15 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
             0 => new ProjectSelection(false, null, "No project was specified and no project file was found in the current directory."),
             _ => new ProjectSelection(false, null, "Current directory contains multiple projects; pass --project."),
         };
+    }
+
+    private static string? TryReadProjectPath(string line)
+    {
+        if (!line.StartsWith("Project(", StringComparison.Ordinal) || !line.Contains(".csproj", StringComparison.OrdinalIgnoreCase)) {
+            return null;
+        }
+
+        string[] parts = line.Split('"');
+        return parts.FirstOrDefault(part => part.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase));
     }
 }

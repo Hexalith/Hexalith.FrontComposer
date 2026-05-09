@@ -1,5 +1,9 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.Json;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace Hexalith.FrontComposer.Cli;
 
@@ -21,7 +25,7 @@ internal static class InspectCommand
 
         string configuration = options.Get("configuration", "Debug");
         string? framework = options.Get("framework");
-        InspectLoadResult load = await GeneratedOutputLoader.LoadAsync(project.ProjectPath!, configuration, framework, options.Has("build"), cancellationToken)
+        InspectLoadResult load = await GeneratedOutputLoader.LoadAsync(project.ProjectPath!, configuration, framework, options.Has("build"), options.Has("absolute-paths"), cancellationToken)
             .ConfigureAwait(false);
         if (!load.Success) {
             await error.WriteLineAsync(load.Error).ConfigureAwait(false);
@@ -90,7 +94,7 @@ internal static class InspectCommand
         output.WriteLine($"Framework: {OutputSanitizer.Sanitize(report.Framework)}");
         output.WriteLine($"Generated files: {report.Files.Count}");
         output.WriteLine($"Forms: {report.Summary.Forms}; Grids: {report.Summary.Grids}; Registrations: {report.Summary.Registrations}; MCP manifests: {report.Summary.McpManifestEntries}");
-        foreach (GeneratedFileInfo file in report.Files) {
+        foreach (GeneratedFileInfo file in report.Files.OrderBy(x => x.RelativePath, StringComparer.Ordinal)) {
             output.WriteLine($"- {file.Family}: {OutputSanitizer.Sanitize(file.RelativePath)}");
         }
 
@@ -182,6 +186,7 @@ internal static class GeneratedOutputLoader
         string configuration,
         string? framework,
         bool build,
+        bool absolutePaths,
         CancellationToken cancellationToken)
     {
         string projectFullPath = Path.GetFullPath(projectPath);
@@ -211,7 +216,7 @@ internal static class GeneratedOutputLoader
 
         List<GeneratedFileInfo> files = Directory.EnumerateFiles(generatedDirectory, "*", SearchOption.TopDirectoryOnly)
             .Where(path => path.EndsWith(".g.cs", StringComparison.Ordinal) || path.EndsWith(".g.razor.cs", StringComparison.Ordinal))
-            .Select(path => GeneratedFileClassifier.Classify(projectDirectory, path))
+            .Select(path => GeneratedFileClassifier.Classify(projectDirectory, path, absolutePaths))
             .OrderBy(x => x.RelatedType ?? string.Empty, StringComparer.Ordinal)
             .ThenBy(x => x.Family.ToString(), StringComparer.Ordinal)
             .ThenBy(x => x.RelativePath, StringComparer.Ordinal)
@@ -265,9 +270,18 @@ internal static class GeneratedOutputLoader
             start.ArgumentList.Add(arg);
         }
 
-        using Process process = Process.Start(start)!;
-        await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-        return process.ExitCode;
+        try {
+            using Process process = Process.Start(start)!;
+            Task<string> standardOutput = process.StandardOutput.ReadToEndAsync(cancellationToken);
+            Task<string> standardError = process.StandardError.ReadToEndAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+            _ = await standardOutput.ConfigureAwait(false);
+            _ = await standardError.ConfigureAwait(false);
+            return process.ExitCode;
+        }
+        catch (Win32Exception) {
+            return ExitCodes.GeneratedOutputUnavailable;
+        }
     }
 
     private static FrameworkSelection SelectFramework(string projectDirectory, string configuration, string? framework)
@@ -280,6 +294,10 @@ internal static class GeneratedOutputLoader
         }
 
         if (!string.IsNullOrWhiteSpace(framework)) {
+            if (!IsValidFrameworkName(framework)) {
+                return FrameworkSelection.Fail("--framework must be a target framework moniker, not a path.", ExitCodes.InvalidArguments);
+            }
+
             string generatedDirectory = Path.Combine(configurationDirectory, framework, GeneratedRoot, FrontComposerGeneratedRoot);
             return Directory.Exists(generatedDirectory)
                 ? FrameworkSelection.Ok(framework, generatedDirectory)
@@ -313,13 +331,35 @@ internal static class GeneratedOutputLoader
         => Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
             .Where(path => !PathUtilities.HasExcludedSegment(projectDirectory, path))
             .Take(500)
-            .Any(path => {
-                string text = File.ReadAllText(path);
-                return text.Contains("ProjectionAttribute", StringComparison.Ordinal)
-                    || text.Contains("[Projection", StringComparison.Ordinal)
-                    || text.Contains("CommandAttribute", StringComparison.Ordinal)
-                    || text.Contains("[Command", StringComparison.Ordinal);
+            .Any(ContainsFrontComposerAttribute);
+
+    private static bool ContainsFrontComposerAttribute(string path)
+    {
+        try {
+            SyntaxTree tree = CSharpSyntaxTree.ParseText(File.ReadAllText(path));
+            return tree.GetRoot().DescendantNodes().OfType<AttributeSyntax>().Any(attribute => {
+                string name = attribute.Name.ToString();
+                return name is "Projection" or "ProjectionAttribute" or "Command" or "CommandAttribute"
+                    || name.EndsWith(".Projection", StringComparison.Ordinal)
+                    || name.EndsWith(".ProjectionAttribute", StringComparison.Ordinal)
+                    || name.EndsWith(".Command", StringComparison.Ordinal)
+                    || name.EndsWith(".CommandAttribute", StringComparison.Ordinal);
             });
+        }
+        catch (IOException) {
+            return false;
+        }
+        catch (UnauthorizedAccessException) {
+            return false;
+        }
+    }
+
+    private static bool IsValidFrameworkName(string framework)
+        => framework.IndexOfAny(Path.GetInvalidFileNameChars()) < 0
+            && !framework.Contains('/', StringComparison.Ordinal)
+            && !framework.Contains('\\', StringComparison.Ordinal)
+            && !framework.Contains("..", StringComparison.Ordinal)
+            && framework.Length <= 80;
 }
 
 internal sealed record FrameworkSelection(bool Success, string? Framework, string? GeneratedDirectory, string Error, int ExitCode)
@@ -347,15 +387,15 @@ internal static class GeneratedFileClassifier
         (".g.razor.cs", GeneratedSourceFamily.ProjectionRazor),
     ];
 
-    public static GeneratedFileInfo Classify(string projectDirectory, string path)
+    public static GeneratedFileInfo Classify(string projectDirectory, string path, bool absolutePaths = false)
     {
         string fileName = Path.GetFileName(path);
         if (fileName == "FrontComposerMcpManifest.g.cs") {
-            return New(path, projectDirectory, fileName, GeneratedSourceFamily.McpManifest, null);
+            return New(path, projectDirectory, fileName, GeneratedSourceFamily.McpManifest, null, absolutePaths);
         }
 
         if (fileName == "__FrontComposerProjectionTemplatesRegistration.g.cs") {
-            return New(path, projectDirectory, fileName, GeneratedSourceFamily.TemplateManifest, null);
+            return New(path, projectDirectory, fileName, GeneratedSourceFamily.TemplateManifest, null, absolutePaths);
         }
 
         foreach ((string suffix, GeneratedSourceFamily family) in Suffixes) {
@@ -366,15 +406,15 @@ internal static class GeneratedFileClassifier
                     related = related[..^".Command".Length];
                 }
 
-                return New(path, projectDirectory, fileName, family, string.IsNullOrWhiteSpace(related) ? null : related);
+                return New(path, projectDirectory, fileName, family, string.IsNullOrWhiteSpace(related) ? null : related, absolutePaths);
             }
         }
 
-        return New(path, projectDirectory, fileName, GeneratedSourceFamily.Unknown, null);
+        return New(path, projectDirectory, fileName, GeneratedSourceFamily.Unknown, null, absolutePaths);
     }
 
-    private static GeneratedFileInfo New(string path, string projectDirectory, string fileName, GeneratedSourceFamily family, string? relatedType)
-        => new(PathUtilities.ToProjectRelative(projectDirectory, path), fileName, family, relatedType);
+    private static GeneratedFileInfo New(string path, string projectDirectory, string fileName, GeneratedSourceFamily family, string? relatedType, bool absolutePaths)
+        => new(absolutePaths ? Path.GetFullPath(path) : PathUtilities.ToProjectRelative(projectDirectory, path), fileName, family, relatedType);
 }
 
 internal static class TypeMatcher
@@ -399,7 +439,7 @@ internal static class TypeMatcher
             string closest = string.Join(", ", known.OrderBy(x => Distance(x, requestedType)).ThenBy(x => x, StringComparer.Ordinal).Take(5).Select(x => OutputSanitizer.Sanitize(x)));
             return TypeMatchResult.Fail(
                 $"Generated output for type '{sanitized}' was not found. Closest known generated type names: {closest}.",
-                ExitCodes.GeneratedOutputUnavailable);
+                ExitCodes.InvalidArguments);
         }
 
         if (matches.Length > 1) {
@@ -424,15 +464,25 @@ internal static class TypeMatcher
 
     private static int Distance(string left, string right)
     {
-        int length = Math.Min(left.Length, right.Length);
-        int distance = Math.Abs(left.Length - right.Length);
-        for (int i = 0; i < length; i++) {
-            if (left[i] != right[i]) {
-                distance++;
+        int[,] costs = new int[left.Length + 1, right.Length + 1];
+        for (int i = 0; i <= left.Length; i++) {
+            costs[i, 0] = i;
+        }
+
+        for (int j = 0; j <= right.Length; j++) {
+            costs[0, j] = j;
+        }
+
+        for (int i = 1; i <= left.Length; i++) {
+            for (int j = 1; j <= right.Length; j++) {
+                int substitution = left[i - 1] == right[j - 1] ? 0 : 1;
+                costs[i, j] = Math.Min(
+                    Math.Min(costs[i - 1, j] + 1, costs[i, j - 1] + 1),
+                    costs[i - 1, j - 1] + substitution);
             }
         }
 
-        return distance;
+        return costs[left.Length, right.Length];
     }
 }
 
@@ -447,35 +497,44 @@ internal static class DiagnosticFileReader
 {
     public static IEnumerable<InspectDiagnostic> Read(string projectDirectory, string generatedDirectory)
     {
+        List<InspectDiagnostic> result = [];
         foreach (string path in Directory.EnumerateFiles(generatedDirectory, "*.diagnostics.json", SearchOption.TopDirectoryOnly)
                      .Order(StringComparer.Ordinal)) {
-            using FileStream stream = File.OpenRead(path);
-            using JsonDocument document = JsonDocument.Parse(stream);
-            JsonElement root = document.RootElement;
-            IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
-                ? root.EnumerateArray()
-                : root.TryGetProperty("diagnostics", out JsonElement diagnostics) && diagnostics.ValueKind == JsonValueKind.Array
-                    ? diagnostics.EnumerateArray()
-                    : [];
+            try {
+                using FileStream stream = File.OpenRead(path);
+                using JsonDocument document = JsonDocument.Parse(stream);
+                JsonElement root = document.RootElement;
+                IEnumerable<JsonElement> entries = root.ValueKind == JsonValueKind.Array
+                    ? root.EnumerateArray()
+                    : root.TryGetProperty("diagnostics", out JsonElement diagnostics) && diagnostics.ValueKind == JsonValueKind.Array
+                        ? diagnostics.EnumerateArray()
+                        : [];
 
-            foreach (JsonElement entry in entries) {
-                string id = Get(entry, "id");
-                if (!id.StartsWith("HFC", StringComparison.Ordinal)) {
-                    continue;
+                foreach (JsonElement entry in entries) {
+                    string id = Get(entry, "id");
+                    if (!id.StartsWith("HFC", StringComparison.Ordinal)) {
+                        continue;
+                    }
+
+                    result.Add(new InspectDiagnostic(
+                        OutputSanitizer.Sanitize(id, 32),
+                        OutputSanitizer.Sanitize(Get(entry, "severity"), 16),
+                        OutputSanitizer.Sanitize(Get(entry, "relatedType"), 160),
+                        OutputSanitizer.Sanitize(NormalizePath(Get(entry, "path"), projectDirectory), 240),
+                        OutputSanitizer.Sanitize(Get(entry, "what")),
+                        OutputSanitizer.Sanitize(Get(entry, "expected")),
+                        OutputSanitizer.Sanitize(Get(entry, "got")),
+                        OutputSanitizer.Sanitize(Get(entry, "fix")),
+                        OutputSanitizer.Sanitize(Get(entry, "docsLink"))));
                 }
-
-                yield return new InspectDiagnostic(
-                    OutputSanitizer.Sanitize(id, 32),
-                    OutputSanitizer.Sanitize(Get(entry, "severity"), 16),
-                    OutputSanitizer.Sanitize(Get(entry, "relatedType"), 160),
-                    OutputSanitizer.Sanitize(NormalizePath(Get(entry, "path"), projectDirectory), 240),
-                    OutputSanitizer.Sanitize(Get(entry, "what")),
-                    OutputSanitizer.Sanitize(Get(entry, "expected")),
-                    OutputSanitizer.Sanitize(Get(entry, "got")),
-                    OutputSanitizer.Sanitize(Get(entry, "fix")),
-                    OutputSanitizer.Sanitize(Get(entry, "docsLink")));
+            }
+            catch (JsonException) {
+            }
+            catch (IOException) {
             }
         }
+
+        return result;
     }
 
     private static string Get(JsonElement entry, string property)

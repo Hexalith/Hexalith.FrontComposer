@@ -126,10 +126,10 @@ jobs:
 
           (
             cd "$tool_home"
-            dotnet tool run frontcomposer -- --help
-            dotnet tool run frontcomposer -- inspect --project "$fixture/Acme.App/Acme.App.csproj" --configuration Debug --framework net10.0 --format json
-            dotnet tool run frontcomposer -- migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --dry-run --format json
-            dotnet tool run frontcomposer -- migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --apply --format json
+            dotnet tool run frontcomposer --help
+            dotnet tool run frontcomposer inspect --project "$fixture/Acme.App/Acme.App.csproj" --configuration Debug --framework net10.0 --format json
+            dotnet tool run frontcomposer migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --dry-run --format json
+            dotnet tool run frontcomposer migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --apply --format json
           )
 
       # Gate 2b: Infrastructure governance and telemetry contracts

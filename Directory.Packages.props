@@ -7,6 +7,8 @@
     <!-- MUST be exactly 4.12.0 — higher versions (5.x) break IDE analyzer load context.
          PrivateAssets="all" is set in the project file, not here. -->
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp" Version="4.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.12.0" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.Workspaces.Common" Version="4.12.0" />
   </ItemGroup>
 
   <ItemGroup Label="Runtime">

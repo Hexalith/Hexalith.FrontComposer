@@ -12,7 +12,7 @@ public static class CliApplication
         ArgumentNullException.ThrowIfNull(output);
         ArgumentNullException.ThrowIfNull(error);
 
-        if (args.Count == 0 || IsHelp(args[0])) {
+        if (args.Count == 0 || string.IsNullOrWhiteSpace(args[0]) || IsHelp(args[0])) {
             WriteHelp(output);
             return ExitCodes.Success;
         }
@@ -49,8 +49,8 @@ public static class CliApplication
         output.WriteLine("Hexalith FrontComposer CLI");
         output.WriteLine();
         output.WriteLine("Usage:");
-        output.WriteLine("  frontcomposer inspect [--summary] [--type <metadata-name>] [--project <path>] [--solution <path>] [--configuration <name>] [--framework <tfm>] [--build] [--format text|json]");
-        output.WriteLine("  frontcomposer migrate --from <version> --to <version> [--dry-run|--apply] [--project <path>] [--solution <path>] [--format text|json]");
+        output.WriteLine("  frontcomposer inspect [--summary] [--type <metadata-name>] [--project <path>] [--solution <path>] [--configuration <name>] [--framework <tfm>] [--build] [--format text|json] [--severity hidden|info|warning|error] [--fail-on-warning] [--fail-on-error] [--absolute-paths]");
+        output.WriteLine("  frontcomposer migrate --from <version> --to <version> [--dry-run|--apply] [--project <path>] [--solution <path>] [--format text|json] [--fail-on-findings]");
         output.WriteLine();
         output.WriteLine("Exit codes: 0 success, 1 explicit fail-on-findings, 2 invalid/ambiguous input, 3 generated output unavailable, 4 apply/write failure.");
     }

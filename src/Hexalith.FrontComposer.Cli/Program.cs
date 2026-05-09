@@ -1,4 +1,10 @@
 using Hexalith.FrontComposer.Cli;
 
-return await CliApplication.RunAsync(args, Console.Out, Console.Error, CancellationToken.None)
+using CancellationTokenSource cancellation = new();
+Console.CancelKeyPress += (_, eventArgs) => {
+    eventArgs.Cancel = true;
+    cancellation.Cancel();
+};
+
+return await CliApplication.RunAsync(args, Console.Out, Console.Error, cancellation.Token)
     .ConfigureAwait(false);
