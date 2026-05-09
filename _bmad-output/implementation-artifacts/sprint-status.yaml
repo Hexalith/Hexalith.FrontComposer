@@ -137,7 +137,7 @@ development_status:
   epic-10: in-progress
   10-1-adopter-test-host-and-component-testing-utilities: ready-for-dev
   10-2-accessibility-ci-gates-and-visual-specimen-verification: ready-for-dev
-  10-3-consumer-driven-contract-tests-pact: backlog
+  10-3-consumer-driven-contract-tests-pact: ready-for-dev
   10-4-mutation-testing-and-property-based-testing: backlog
   10-5-flaky-test-quarantine-and-ci-governance: backlog
   10-6-llm-benchmark-signed-releases-and-sbom: backlog

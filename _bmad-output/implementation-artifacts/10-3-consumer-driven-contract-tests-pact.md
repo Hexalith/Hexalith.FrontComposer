@@ -1,0 +1,283 @@
+# Story 10.3: Consumer-Driven Contract Tests (Pact)
+
+Status: ready-for-dev
+
+> **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR78** and **NFR55**. Adds file-based Pact contracts at the REST-to-generated-UI boundary so FrontComposer and Hexalith.EventStore cannot drift silently. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and the repository submodule rule.
+
+---
+
+## Executive Summary
+
+Story 10-3 makes the generated UI's EventStore assumptions executable:
+
+- Add file-based Pact consumer contracts under the Shell test project, not a floating repository folder and not Pact Broker.
+- Cover command dispatch, query execution, ETag/not-modified behavior, tenant propagation, ULID message IDs, response classification, and bounded/redacted contract artifacts.
+- Verify the provider against the local Hexalith.EventStore root-level submodule or a documented provider-verification handoff without requiring nested submodule initialization.
+- Keep this story focused on REST contract drift. Mutation testing, property-based idempotency, flaky quarantine, accessibility, release signing, SBOM, and LLM benchmark work stay in their named Epic 10 follow-up stories.
+
+---
+
+## Story
+
+As a developer,
+I want contract tests that verify generated UI components consume EventStore API contracts correctly,
+so that API changes never silently break the generated UI and I catch contract drift before deployment.
+
+### Adopter Job To Preserve
+
+An adopter should be able to update FrontComposer or EventStore with confidence that generated command forms and projection grids still send the request shapes EventStore accepts, still interpret response classes correctly, and still protect tenant/user boundaries without relying on a full end-to-end environment for every PR.
+
+---
+
+## Dev Agent Cheat Sheet
+
+| Area | Required outcome |
+| --- | --- |
+| Contract home | Store generated pact JSON under `tests/Hexalith.FrontComposer.Shell.Tests/Pact/`. Keep names stable and deterministic. Do not add Pact Broker or PactFlow requirements. |
+| Test project | Add PactNet to the smallest test project that owns the consumer boundary, currently `tests/Hexalith.FrontComposer.Shell.Tests`. Add a separate provider verification fixture only if it can run against a real TCP socket. |
+| Consumer under test | Exercise the actual FrontComposer EventStore adapters (`EventStoreCommandClient`, `EventStoreQueryClient`, `EventStoreResponseClassifier`, `EventStoreOptions`) through `ICommandService` and `IQueryService` behavior. Do not create a second HTTP client just for Pact. |
+| Command contract | POST `/api/v1/commands`, JSON body with `messageId`, `tenant`, `domain`, `aggregateId`, `commandType`, `payload`, optional `correlationId`, optional bounded `extensions`; bearer auth present when required; expect `202 Accepted`, `Location`, optional `X-Correlation-ID`, `Retry-After`, and typed failures for non-202 responses. |
+| Query contract | POST `/api/v1/queries`, JSON body with `tenant`, `domain`, `aggregateId`, `queryType`, `projectionType`, `payload`, optional `entityId`, optional `projectionActorType`; `If-None-Match` emitted only from validated ETags/cache; expect `200` with payload/ETag and `304 Not Modified` handling. |
+| Provider under test | Verify against Hexalith.EventStore's real ASP.NET Core pipeline on a TCP port. PactNet provider verification cannot use in-memory `TestServer`/`WebApplicationFactory` because the native verifier must call an HTTP endpoint. |
+| CI lane | Add a contract lane or step that fails when checked-in pact files change unexpectedly, provider verification fails, zero interactions are verified, or artifacts are missing. Keep runtime within the existing full CI budget. |
+| Submodules | Use root-level submodules only. Do not run recursive nested submodule initialization or scan nested submodule internals. |
+| Evidence | Contract JSON and verification output must be deterministic, bounded, and redacted. Do not persist bearer tokens, local paths, full business payloads, cookies, or environment secrets. |
+
+Start here: T1 dependency and folder shape -> T2 consumer command pact -> T3 consumer query/ETag pact -> T4 provider verification fixture -> T5 CI/artifact validation -> T6 docs/handoff.
+
+---
+
+## Acceptance Criteria
+
+| AC | Given | When | Then |
+| --- | --- | --- | --- |
+| AC1 | Pact contract testing setup is added | Consumer contracts are written | Pact JSON files are file-based, committed under `tests/Hexalith.FrontComposer.Shell.Tests/Pact/`, and no Pact Broker, PactFlow, or external contract service is required for v1. |
+| AC2 | A command dispatch consumer contract runs | The generated UI command adapter submits a command | The contract verifies `POST /api/v1/commands`, JSON content type, bearer authorization when required, ULID-shaped `messageId`, tenant value, domain, aggregate ID, command type, payload object, and bounded extension metadata. |
+| AC3 | EventStore accepts command dispatch | The consumer contract receives the response | The contract expects `202 Accepted`, a status `Location` header, `Retry-After` when present, optional `X-Correlation-ID`, and `CommandResult.Status == "Accepted"` with the original generated message ID preserved. |
+| AC4 | EventStore rejects or warns on command dispatch | Non-202 responses are modelled | Provider/consumer coverage includes at least 400 validation, 401 auth redirect, 403/404 warning, 409 domain rejection/conflict, 429 rate limit, and unexpected 5xx classification without leaking ProblemDetails payloads beyond bounded fields. |
+| AC5 | A query execution consumer contract runs | The generated UI query adapter requests projection data | The contract verifies `POST /api/v1/queries`, JSON content type, tenant, domain, aggregate ID, query type, projection type, payload shape, optional entity/projection actor fields, and bearer authorization when required. |
+| AC6 | A cached projection query runs | The adapter has a validated cache ETag | `If-None-Match` is sent with at most ten validators, rejects CRLF/control characters before send, and never derives validators from raw untrusted user input. |
+| AC7 | A query returns fresh data | EventStore responds with `200 OK` | The contract verifies an `ETag` response header, payload item shape, total-count handling when present, and deserialization through existing `QueryResult<T>` behavior. |
+| AC8 | A query returns no changes | EventStore responds with `304 Not Modified` | The contract verifies `QueryResult<T>.IsNotModified` behavior and distinguishes cached-payload reuse from an explicit no-change signal when no compatible cache entry exists. |
+| AC9 | Provider verification runs | The EventStore provider is started | Verification uses a real loopback TCP socket, not in-memory `TestServer` or `WebApplicationFactory`, and fails if the native Pact verifier cannot reach the provider endpoint. |
+| AC10 | Provider states are needed | Pact verifies interactions | Provider state setup is deterministic, reset per interaction, tenant-scoped, and uses EventStore testing fakes or local sample fixtures instead of live DAPR, external network, or persisted shared state unless an explicit provider lane documents the dependency. |
+| AC11 | Contract files are generated | The same tests are run twice | Pact JSON output is byte-stable aside from approved Pact metadata fields, uses deterministic interaction descriptions, and does not include local machine paths, random ports, tokens, or full production payload samples. |
+| AC12 | Contract verification is wired into CI | The lane runs on PR and main | Contract tests fail the build on changed-uncommitted pacts, provider verification failures, zero verified interactions, missing verification reports, or stale pact files for removed interactions. |
+| AC13 | The repo has submodules | Contract tests and CI checkout run | Only root-level submodules are initialized; no command uses recursive nested submodule initialization. |
+| AC14 | EventStore API contracts drift | FrontComposer or EventStore changes request/response shape | The failing contract names the interaction, endpoint, expected field/header/status, actual mismatch, and owning story/source path without dumping sensitive payloads. |
+| AC15 | PactNet is added | Package metadata is reviewed | `Directory.Packages.props` pins an explicit PactNet version, dependency usage is limited to test projects, and native verifier platform limitations are documented for Linux and Windows CI agents. |
+| AC16 | FrontComposer abstractions evolve | Contracts are updated | The story preserves the existing `ICommandService`, `IQueryService`, `CommandResult`, `QueryRequest`, `QueryResult<T>`, and `EventStoreOptions` public contracts unless a separate API-drift story explicitly approves changes. |
+| AC17 | Generated UI or SourceTools output drives the consumer | Contract tests build request payloads | The tests use generated command/query metadata or existing Shell adapters rather than hand-assembled JSON that could pass while generated UI is broken. |
+| AC18 | Provider verification cannot run in the current repository lane | The implementation reaches that constraint | The consumer pacts still land, and the provider-verification handoff records the exact EventStore project/command, required pact path, expected report artifact, and blocking reason instead of silently marking provider verification done. |
+| AC19 | Contract artifacts are uploaded | CI fails or succeeds | The lane retains pact JSON, verifier logs, and concise mismatch reports with bounded size and redaction; it does not upload bearer tokens, cookies, full DOM/browser traces, local user paths, or environment dumps. |
+| AC20 | Release readiness is assessed | A release branch is cut | NFR55 is satisfied only when all file-based pacts verify against the pinned EventStore provider version or the release is blocked with a named contract-drift issue. |
+
+---
+
+## Tasks / Subtasks
+
+- [ ] T1. Add Pact test dependency and file layout (AC1, AC11, AC15)
+  - [ ] Add `PactNet` as a centrally pinned test dependency in `Directory.Packages.props`; at story creation time NuGet lists PactNet `5.0.1` as latest stable.
+  - [ ] Reference PactNet only from the test project that owns the consumer boundary, preferably `tests/Hexalith.FrontComposer.Shell.Tests`.
+  - [ ] Create `tests/Hexalith.FrontComposer.Shell.Tests/Pact/` for committed pact files and a sibling deterministic verifier-output folder if needed.
+  - [ ] Add `.gitignore` exceptions or cleanup rules only for transient verifier logs, not for committed pact JSON.
+  - [ ] Document that PactNet 5.x uses native verifier/runtime pieces and requires supported CI OS/architecture lanes.
+
+- [ ] T2. Add command dispatch consumer pacts through existing adapters (AC2-AC4, AC14, AC16, AC17)
+  - [ ] Exercise `EventStoreCommandClient` through `ICommandService` or `ICommandServiceWithLifecycle`, configured with the Pact mock server base URI.
+  - [ ] Use the existing `IUlidFactory`, tenant/user context, `EventStoreIdentity`, `EventStoreRequestContent`, and `EventStoreResponseClassifier` behavior; do not build an unrelated JSON client in the test.
+  - [ ] Verify command body fields: `messageId`, `tenant`, `domain`, `aggregateId`, `commandType`, `payload`, optional `correlationId`, and optional bounded `extensions`.
+  - [ ] Verify request headers: `Content-Type: application/json`, bearer `Authorization` when `RequireAccessToken` is true, and no control/header-injection values.
+  - [ ] Verify accepted response behavior: `202`, `Location`, `Retry-After`, optional `X-Correlation-ID`, `CommandResult.MessageId`, `Status`, `CorrelationId`, `Location`, and `RetryAfter`.
+  - [ ] Add negative/edge interactions for validation, auth, forbidden/not-found, conflict/rejection, rate limit, and unexpected status classification using bounded ProblemDetails bodies.
+  - [ ] Assert command payload examples are synthetic and redacted; do not commit production tenant/user IDs or business data.
+
+- [ ] T3. Add query execution and ETag consumer pacts through existing adapters (AC5-AC8, AC14, AC16, AC17)
+  - [ ] Exercise `EventStoreQueryClient` through `IQueryService`, configured with the Pact mock server base URI.
+  - [ ] Verify query body fields: `tenant`, `domain`, `aggregateId`, `queryType`, `projectionType`, `payload`, optional `entityId`, and optional `projectionActorType`.
+  - [ ] Verify cache-enabled requests send `If-None-Match` only after `IETagCache` and `QueryRequest.CacheDiscriminator` allowlist behavior accepts the value.
+  - [ ] Add tests for a single validator, multiple validators up to the configured max, too many validators, and CRLF/control-character rejection before HTTP send.
+  - [ ] Verify `200 OK` response behavior: `ETag`, payload item shape, total-count defaulting, schema mismatch handling, and cache write-through when applicable.
+  - [ ] Verify `304 Not Modified` behavior for both no-cache caller-owned cases and framework-cache reuse through `QueryResult<T>.NotModifiedFromCache`.
+  - [ ] Include the mixed-projection/self-routing ETag safety expectation from EventStore provider behavior where relevant.
+
+- [ ] T4. Add provider verification against EventStore without in-memory hosting (AC9, AC10, AC13, AC18, AC20)
+  - [ ] Start a provider on a real loopback TCP port using Hexalith.EventStore's available host/sample/test fixture, or document the exact EventStore-side verification command if the provider lane must live in the submodule.
+  - [ ] Do not use `WebApplicationFactory` or ASP.NET Core `TestServer` for Pact provider verification.
+  - [ ] Use deterministic provider states for command accepted, validation failure, unauthorized, forbidden, not found, conflict/rejection, rate limit, query 200, and query 304.
+  - [ ] Reset provider state per interaction and keep tenant/user fixtures explicit.
+  - [ ] Avoid live DAPR, Aspire, Keycloak, external network, or persistent state for default PR verification unless the lane is explicitly marked as integration/provider and has a documented fallback.
+  - [ ] If provider verification cannot be implemented in this repository without broader EventStore changes, add a blocking handoff note with the exact project, command, pact path, and missing provider-state hook.
+
+- [ ] T5. Add CI contract lane and artifact validation (AC11-AC15, AC19, AC20)
+  - [ ] Add a contract test step or lane in `.github/workflows/ci.yml` after build and before release-readiness checks.
+  - [ ] Ensure checkout uses root-level submodules only; do not add recursive nested submodule commands.
+  - [ ] Fail if Pact tests produce uncommitted pact JSON changes, delete expected pacts, or verify zero interactions.
+  - [ ] Upload bounded pact/verifier artifacts on failure with stable names and retention.
+  - [ ] Add a concise summary to the GitHub job output listing pact files, interaction count, provider verification result, and any mismatch categories.
+  - [ ] Keep the lane within the existing full CI budget; if provider verification is too slow or infrastructure-dependent, split PR consumer-pact generation from main/release provider verification and document the gate split.
+
+- [ ] T6. Add documentation and adopter-facing contract evidence (AC1, AC12, AC18-AC20)
+  - [ ] Document how to regenerate pacts intentionally, how to review pact diffs, and how to run provider verification locally.
+  - [ ] Add a short docs/reference section explaining that file-based pacts are the v1 source of truth for the FrontComposer/EventStore REST contract.
+  - [ ] Document the release rule: NFR55 blocks release when checked-in pacts do not verify against the pinned EventStore provider version.
+  - [ ] Include troubleshooting for native verifier/platform failures, provider state failures, and stale pact file cleanup.
+  - [ ] Document that this story does not introduce Pact Broker, PactFlow, mutation testing, property-based idempotency, flaky quarantine, accessibility/visual gates, SBOM, signing, or LLM benchmark governance.
+
+- [ ] T7. Final verification and handoff (AC1-AC20)
+  - [ ] Run `dotnet restore Hexalith.FrontComposer.sln`.
+  - [ ] Run the Shell contract tests that generate/verify consumer pacts.
+  - [ ] Run provider verification against the local provider or record the blocking provider-verification handoff.
+  - [ ] Run `git diff -- tests/Hexalith.FrontComposer.Shell.Tests/Pact/` and confirm pact file changes are intentional.
+  - [ ] Run the default .NET test lane touched by EventStore adapter or contract test changes.
+  - [ ] Run `dotnet build Hexalith.FrontComposer.sln --configuration Release`.
+  - [ ] Record PactNet version, pact files, provider command/URL, interaction count, CI lane name, artifact paths, submodule behavior, and any deferred provider-state hooks in completion notes.
+
+---
+
+## Dev Notes
+
+### Current Repository State
+
+- `EventStoreOptions` already defines the default REST paths: `/api/v1/commands` and `/api/v1/queries`, plus `/hubs/projection-changes` for SignalR notifications. This story covers only the REST contracts.
+- `EventStoreCommandClient` currently serializes a private command request shape containing `messageId`, `tenant`, `domain`, `aggregateId`, `commandType`, `payload`, optional `correlationId`, and optional `extensions`, sends it through `HttpClientName = "Hexalith.FrontComposer.EventStore.Commands"`, and expects `202 Accepted`.
+- `EventStoreQueryClient` currently serializes a private query request shape containing `tenant`, `domain`, `aggregateId`, `queryType`, `projectionType`, `payload`, optional `entityId`, and optional `projectionActorType`, sends it through `HttpClientName = "Hexalith.FrontComposer.EventStore.Queries"`, and classifies `200 OK` and `304 Not Modified`.
+- `EventStoreResponseClassifier` is the shared Shell-side response taxonomy. Contract tests should lock this behavior rather than duplicating status parsing in separate test helpers.
+- `QueryRequest` includes `ETag`, `ETags`, `CacheDiscriminator`, and `CachePayloadVersion`; `EventStoreQueryClient` adds cached validators only after cache-key allowlisting and rejects control characters before send.
+- `EventStoreValidation` already enforces maximum ETag count and no-colon route segments. Keep those checks in the contract path.
+- `Hexalith.EventStore` is a root-level git submodule pinned in this repository. Its controllers currently expose `api/v1/commands` and `api/v1/queries`; do not initialize nested submodules.
+- Current CI uses `actions/checkout` with `submodules: true` in the build/test lane, which initializes root-level submodules. Keep that pattern and do not add recursive submodule commands.
+- `tests/e2e` is for Playwright/browser gates and belongs primarily to Story 10-2. Pact contracts should live with .NET Shell/EventStore adapter tests unless implementation proves a browser consumer contract is needed.
+- `tests/Hexalith.FrontComposer.E2E` currently contains MCP/prerender evidence, not the primary Pact home.
+
+### Architecture and Package Boundaries
+
+| Surface | Story 10-3 responsibility |
+| --- | --- |
+| `tests/Hexalith.FrontComposer.Shell.Tests/Pact/` | File-based pact JSON generated by consumer tests and committed for review. |
+| `tests/Hexalith.FrontComposer.Shell.Tests` | Consumer Pact tests for FrontComposer EventStore adapters and response classification. |
+| `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore` | Existing HTTP adapters under test; change only if a real contract mismatch is found. |
+| `src/Hexalith.FrontComposer.Contracts/Communication` | Public command/query abstractions must stay stable unless a separate API-drift decision is made. |
+| `Hexalith.EventStore` root submodule | Provider verification target or provider-verification handoff source. Do not package or scan nested internals beyond the files needed for verification. |
+| `.github/workflows/ci.yml` | Contract lane, artifact upload, root-level submodule checkout, and stale-pact detection. |
+| Documentation | How to regenerate, verify, review, and release-gate file-based pacts. |
+
+### REST Contract Details To Lock
+
+| Interaction | Required request | Required response |
+| --- | --- | --- |
+| Command accepted | `POST /api/v1/commands`, JSON command envelope, bearer token when required | `202 Accepted`, `Location`, optional `X-Correlation-ID`, `Retry-After`, body with correlation metadata when present |
+| Command validation failure | Same endpoint with invalid payload or route data | `400` ProblemDetails bounded to title/detail/status/errors/globalErrors/entityLabel |
+| Command auth failure | Missing/invalid bearer context | `401` mapped to auth redirect requirement |
+| Command forbidden/not found | Valid auth but invalid tenant/resource | `403` or `404` mapped to command warning kinds |
+| Command conflict/rejection | Domain conflict or rejection | `409`/rejection path mapped to `CommandRejectedException` or the current classifier taxonomy |
+| Command rate limit | Too many submissions | `429` plus optional `Retry-After` |
+| Query fresh data | `POST /api/v1/queries`, query envelope, optional `If-None-Match` | `200 OK`, optional `ETag`, payload object/array, total-count handling |
+| Query not modified | Same query with matching validator | `304 Not Modified`, optional `ETag`, no payload required |
+| Query auth/forbidden/not found/rate limit | Invalid or unauthorized query context | Existing `QueryFailureException`/auth taxonomy |
+
+### Cross-Story Contract Table
+
+| Producer | Consumer | Contract |
+| --- | --- | --- |
+| Stories 2-3 and 2-4 | Story 10-3 | Command lifecycle, correlation/message IDs, `CommandResult`, and accepted/rejected outcomes must remain contract-visible. |
+| Stories 4-1 through 4-6 | Story 10-3 | Generated DataGrid/query payload shape and formatting metadata must flow through `IQueryService` rather than bespoke test JSON. |
+| Stories 5-1 through 5-7 | Story 10-3 | EventStore REST adapters, ETag cache, response classifier, SignalR/reconciliation assumptions, and failure taxonomy are the primary contract surface. |
+| Stories 7-1 through 7-3 | Story 10-3 | Tenant/user context, bearer authorization, policy enforcement, and redacted diagnostics must remain fail-closed. |
+| Story 10-1 | Story 10-3 | Testing package fakes/builders may help create deterministic command/query payloads; Pact remains this story's responsibility. |
+| Story 10-2 | Story 10-3 | Accessibility/visual specimen gates stay separate from REST contract verification. |
+| Story 10-4 | Story 10-3 | Property-based idempotency and mutation testing must not be folded into Pact setup. |
+| Story 10-5 | Story 10-3 | Flaky quarantine and CI duration governance remain later work; this story only adds contract-lane basics. |
+| Story 10-6 | Story 10-3 | Release signing, SBOM, and LLM benchmark provenance are outside Pact scope. |
+
+### Security and Redaction Requirements
+
+- Contract examples must use synthetic tenants, users, domains, aggregate IDs, commands, and projections.
+- Pact files must not include bearer tokens, cookies, local machine paths, environment variables, real customer payloads, or full production ProblemDetails bodies.
+- Mismatch output should include endpoint, status, field/header path, and interaction name, but bound long strings and redact tenant/user/token-like values.
+- Provider state setup must reset tenant/user state between interactions and must not depend on ambient static state.
+- Preserve `CommandEnvelope.ToString()` payload redaction and existing telemetry redaction patterns; do not loosen them to make tests easier.
+
+### Latest Technical Notes
+
+- PactNet `5.0.1` is the latest stable release visible from NuGet and GitHub at story creation time.
+- PactNet 5.x supports Pact specification versions 2, 3, and 4 and uses the current `Pact.V4(...)`, `IPactBuilderV4`, and `PactVerifier` APIs.
+- PactNet's provider verifier must call a real HTTP endpoint. Do not host provider verification through ASP.NET Core in-memory test infrastructure.
+- PactNet supports `WithFileSource(new FileInfo(...))` for verifying local pact JSON files, which matches this story's file-based/no-broker requirement.
+- PactNet has native runtime support limits by OS/architecture. CI should use supported Windows x64 or Linux x64/ARM64 runners and fail with a clear message otherwise.
+
+### Scope Guardrails
+
+Do not implement these in Story 10-3:
+
+- Pact Broker, PactFlow, can-i-deploy, pending pacts, branch selectors, or hosted contract services.
+- Browser-level Playwright contract tests unless a specific generated UI request cannot be covered through the Shell/EventStore adapters.
+- Story 10-2 accessibility/visual specimen gates.
+- Story 10-4 Stryker.NET mutation testing or FsCheck command idempotency suites.
+- Story 10-5 flaky quarantine automation, reintroduction PRs, or CI diet governance.
+- Story 10-6 LLM benchmark, signed releases, SBOM, symbol publishing, or provenance work.
+- Broad EventStore API redesign, GraphQL/gRPC/OpenAPI generation, or a new transport abstraction.
+- Public changes to `ICommandService`, `IQueryService`, `CommandResult`, `QueryRequest`, or `QueryResult<T>` solely to make Pact easier.
+- Recursive or nested submodule initialization.
+- Live external EventStore, DAPR, Keycloak, cloud service, or network dependency in the default PR contract lane.
+
+### Known Gaps / Follow-Ups
+
+| Gap | Owner |
+| --- | --- |
+| Provider verification may need a provider-state endpoint or fixture in the EventStore submodule if no current test host can expose deterministic states on TCP. | Story 10-3 implementation handoff if blocked |
+| Pact Broker / PactFlow workflow, branch selectors, and can-i-deploy. | Future release-governance story after file-based pacts stabilize |
+| Mutation and property-based command idempotency proof. | Story 10-4 |
+| Flaky quarantine and CI duration governance. | Story 10-5 |
+| Release signing, SBOM, and LLM benchmark provenance. | Story 10-6 |
+
+---
+
+## References
+
+- [Source: `_bmad-output/planning-artifacts/epics/epic-10-framework-quality-adopter-confidence.md#Story-10.3`] - story statement and acceptance criteria foundation.
+- [Source: `_bmad-output/planning-artifacts/epics/requirements-inventory.md#FR78`] - Pact consumer-driven contract requirement.
+- [Source: `_bmad-output/planning-artifacts/epics/requirements-inventory.md#NFR55`] - contract violations fail build.
+- [Source: `_bmad-output/planning-artifacts/architecture.md#Test-Infrastructure-Conventions`] - Pact anchored to Shell.Tests and provider verification expectations.
+- [Source: `_bmad-output/planning-artifacts/architecture.md#EventStore-communication-contract`] - REST commands/queries, 202/200/304, ETag, ULID, tenant constraints.
+- [Source: `_bmad-output/process-notes/story-creation-lessons.md#L01`] - cross-story contract clarity.
+- [Source: `_bmad-output/process-notes/story-creation-lessons.md#L06-L08`] - review/elicitation budget and testing-cost discipline.
+- [Source: `_bmad-output/implementation-artifacts/10-1-adopter-test-host-and-component-testing-utilities.md`] - Testing package boundaries and Pact deferral.
+- [Source: `_bmad-output/implementation-artifacts/10-2-accessibility-ci-gates-and-visual-specimen-verification.md`] - accessibility/visual scope boundary and Pact deferral.
+- [Source: `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs`] - current command adapter behavior.
+- [Source: `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs`] - current query adapter and cache behavior.
+- [Source: `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreResponseClassifier.cs`] - current response taxonomy.
+- [Source: `src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreOptions.cs`] - default endpoint paths and auth options.
+- [Source: `src/Hexalith.FrontComposer.Contracts/Communication/CommandResult.cs`] - command result contract.
+- [Source: `src/Hexalith.FrontComposer.Contracts/Communication/QueryRequest.cs`] - query request and ETag contract.
+- [Source: `src/Hexalith.FrontComposer.Contracts/Communication/QueryResult.cs`] - query result and 304 behavior.
+- [Source: `Hexalith.EventStore/src/Hexalith.EventStore/Controllers/CommandsController.cs`] - provider command endpoint shape.
+- [Source: `Hexalith.EventStore/src/Hexalith.EventStore/Controllers/QueriesController.cs`] - provider query endpoint shape and ETag behavior.
+- [Source: `Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Commands/CommandEnvelope.cs`] - provider command envelope contract and payload redaction.
+- [Source: `Hexalith.EventStore/src/Hexalith.EventStore.Contracts/Queries/SubmitQueryRequest.cs`] - provider query request contract.
+- [Source: `Directory.Packages.props`] - current central package version style.
+- [Source: `.github/workflows/ci.yml`] - current checkout, build, test, and artifact lanes.
+- [Source: `git submodule status`] - root-level submodule pins for EventStore and Tenants.
+- [Source: PactNet README](https://github.com/pact-foundation/pact-net) - current PactNet consumer/provider APIs and TCP provider-verification warning.
+- [Source: PactNet 5 upgrade guide](https://docs.pact.io/implementation_guides/net/docs/upgrading-to-5) - PactNet 5 API changes.
+- [Source: NuGet PactNet](https://www.nuget.org/packages/PactNet/) - current package version.
+
+---
+
+## Dev Agent Record
+
+### Agent Model Used
+
+(to be filled in by dev agent)
+
+### Debug Log References
+
+(to be filled in by dev agent)
+
+### Completion Notes List
+
+- 2026-05-09: Story created via `/bmad-create-story 10-3-consumer-driven-contract-tests-pact` during recurring pre-dev hardening job. Ready for later BMAD hardening.
+
+### File List
+
+(to be filled in by dev agent)

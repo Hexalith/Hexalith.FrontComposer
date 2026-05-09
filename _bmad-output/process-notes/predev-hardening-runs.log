@@ -131,3 +131,4 @@
 2026-05-08T10:11:10+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-08T11:12:14+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-09T11:03:10+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
+2026-05-09T11:55:02+02:00	create-story	10-3-consumer-driven-contract-tests-pact	ok	created Pact contract testing story and marked it ready-for-dev
