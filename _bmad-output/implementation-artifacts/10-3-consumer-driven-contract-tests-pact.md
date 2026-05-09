@@ -78,6 +78,10 @@ Start here: T1 dependency and folder shape -> T2 consumer command pact -> T3 con
 | AC25 | Pact files and logs are scanned | Contract artifacts are committed or uploaded | Automated checks reject bearer tokens, raw `Authorization` headers, API keys, cookies, tenant secrets, connection strings, local user paths, environment dumps, authorization payloads, and user PII; only allowlisted synthetic fixture values may appear. |
 | AC26 | Native Pact verifier startup is validated | CI and local verification run | PactNet and native verifier/runtime versions are pinned, verification runs on the same supported OS image used by CI, and a containerized or documented fallback is recorded if native verifier startup fails before interactions are evaluated. |
 | AC27 | A contract mismatch is discovered | Implementation decides how to fix it | The smallest compatible adapter/test/provider-state correction is attempted first; public FrontComposer API changes or EventStore contract changes require an explicit story update, follow-up story, or product/architecture approval before implementation proceeds. |
+| AC28 | Provider verification is repeated or parallelized | Pact provider states are exercised | Provider state setup is isolated by run/interactions, proves teardown of tenant/user/aggregate/cache data, avoids ambient static state, detects stale provider processes, and fails on port collision, failed health probe, or provider startup race before reporting green verification. |
+| AC29 | Pact interactions are generated | The test suite writes pact files | Each committed interaction is mapped in a small manifest or test metadata record to the generated command/query source, adapter path, provider state, owning AC, and expected request/response classifier; CI fails orphaned, duplicate, or unowned interactions. |
+| AC30 | Redaction scanning is implemented | Scanner tests run against pact and verifier artifacts | Negative fixtures cover tokens in headers, bodies, query strings, encoded/JWT-like strings, ProblemDetails, local paths, and environment-shaped values; synthetic allowlisted values are the only permitted identifiers. |
+| AC31 | Contract evidence is reviewed | A PR changes pacts or provider verification behavior | The job summary includes the provider commit/version, Pact specification/version metadata, interaction manifest, stale-diff result, redaction result, and release-blocking status when provider verification is deferred or handed off. |
 
 ---
 
@@ -111,42 +115,49 @@ Start here: T1 dependency and folder shape -> T2 consumer command pact -> T3 con
   - [ ] Include empty result, max page size, malformed query payload, and large-but-valid metadata cases as named interactions or provider states.
   - [ ] Include the mixed-projection/self-routing ETag safety expectation from EventStore provider behavior where relevant.
 
-- [ ] T4. Add provider verification against EventStore without in-memory hosting (AC9, AC10, AC13, AC18, AC20)
+- [ ] T4. Add provider verification against EventStore without in-memory hosting (AC9, AC10, AC13, AC18, AC20, AC28)
   - [ ] Start a provider on a real loopback TCP port using Hexalith.EventStore's available host/sample/test fixture, or document the exact EventStore-side verification command if the provider lane must live in the submodule.
   - [ ] Do not use `WebApplicationFactory` or ASP.NET Core `TestServer` for Pact provider verification.
   - [ ] Define the provider-state seam before implementation proceeds: add minimal EventStore test-only hooks if allowed, or record the exact owning repo/work item and verification adapter/handoff strategy if hooks cannot land here.
   - [ ] Use deterministic provider states for command accepted, validation failure, unauthorized, forbidden, not found, conflict/rejection, rate limit, tenant mismatch, query 200, query empty result, query malformed payload, query ETag match, and query ETag non-match.
   - [ ] For each provider state, document setup, teardown, seeded IDs, expected status/result mapping, and whether persistence is isolated per interaction.
   - [ ] Reset provider state per interaction and keep tenant/user fixtures explicit.
+  - [ ] Isolate provider-state data by verification run and interaction so parallel or retried verifier execution cannot reuse tenant/user/aggregate/cache data from a previous interaction.
+  - [ ] Add provider startup guards: unique loopback port allocation, health probe before verification, bounded startup timeout, process cleanup on failure, and stale-process detection before reporting success.
   - [ ] Include at least one intentionally mismatched provider-state verification check during implementation to prove the verifier fails before the final green path is recorded.
   - [ ] Avoid live DAPR, Aspire, Keycloak, external network, or persistent state for default PR verification unless the lane is explicitly marked as integration/provider and has a documented fallback.
   - [ ] If provider verification cannot be implemented in this repository without broader EventStore changes, add a blocking handoff note with the exact project, command, pact path, and missing provider-state hook.
 
-- [ ] T5. Add CI contract lane and artifact validation (AC11-AC15, AC19, AC20)
+- [ ] T5. Add CI contract lane and artifact validation (AC11-AC15, AC19, AC20, AC29-AC31)
   - [ ] Add a contract test step or lane in `.github/workflows/ci.yml` after build and before release-readiness checks, ordered as build, consumer pact generation, stale-pact diff, provider verification or explicit blocked handoff, redaction scan, artifact publication, and job summary.
   - [ ] Ensure checkout and any helper scripts use root-level submodules only; do not add recursive nested submodule commands.
   - [ ] Fail if Pact tests produce uncommitted pact JSON changes, delete expected pacts, verify zero interactions, leave unmatched/unused interactions, skip provider verification, or omit verifier output.
+  - [ ] Validate a small interaction manifest or equivalent test metadata that maps every pact interaction to its generated command/query source, adapter path, provider state, owning AC, and classifier expectation.
   - [ ] Upload bounded pact JSON, verifier output, provider-state logs, stale-pact check results, and concise mismatch reports with stable names and retention.
   - [ ] Add a redaction check over committed pact JSON and uploaded artifact candidates that rejects raw `Authorization` headers, bearer tokens, API keys, cookies, tenant secrets, connection strings, local user paths, environment dumps, authorization payloads, and user PII.
+  - [ ] Include negative scanner fixtures for header, body, query-string, JWT-like, base64-like, ProblemDetails, local path, and environment-shaped secret leaks, plus allowlisted synthetic identifiers to prevent false-positive workarounds.
   - [ ] Add a concise summary to the GitHub job output listing pact files, interaction count, provider verification result, and any mismatch categories.
+  - [ ] Include provider commit/version, Pact specification/version metadata, interaction manifest location, stale-diff result, redaction result, and release-blocking status in the job summary.
   - [ ] Keep the lane within the existing full CI budget; if provider verification is too slow or infrastructure-dependent, split PR consumer-pact generation from main/release provider verification and document the gate split.
 
-- [ ] T6. Add documentation and adopter-facing contract evidence (AC1, AC12, AC18-AC20)
+- [ ] T6. Add documentation and adopter-facing contract evidence (AC1, AC12, AC18-AC20, AC31)
   - [ ] Document how to regenerate pacts intentionally, how to review pact diffs, and how to run provider verification locally.
   - [ ] Add a short docs/reference section explaining that file-based pacts are the v1 source of truth for the FrontComposer/EventStore REST contract.
   - [ ] Document the release rule: NFR55 blocks release when checked-in pacts do not verify against the pinned EventStore provider version.
   - [ ] Include troubleshooting for native verifier/platform failures, provider state failures, and stale pact file cleanup.
+  - [ ] Document provider startup failure modes: port collision, failed health probe, stale provider process, verifier timeout, provider-state teardown failure, and how each blocks or hands off release evidence.
   - [ ] Document the Pact Broker/PactFlow migration trigger: reconsider only when multiple provider versions, external consumers, or cross-repo release coordination require it.
+  - [ ] Record a lightweight ADR note for the file-based Pact and real-TCP provider-verification decision, including rejected alternatives: broker-first workflow, in-memory provider verification, hand-built JSON-only tests, and browser-only contract coverage.
   - [ ] Document that this story does not introduce Pact Broker, PactFlow, mutation testing, property-based idempotency, flaky quarantine, accessibility/visual gates, SBOM, signing, or LLM benchmark governance.
 
-- [ ] T7. Final verification and handoff (AC1-AC27)
+- [ ] T7. Final verification and handoff (AC1-AC31)
   - [ ] Run `dotnet restore Hexalith.FrontComposer.sln`.
   - [ ] Run the Shell contract tests that generate/verify consumer pacts.
   - [ ] Run provider verification against the local provider or record the blocking provider-verification handoff.
   - [ ] Run `git diff -- tests/Hexalith.FrontComposer.Shell.Tests/Pact/` and confirm pact file changes are intentional.
   - [ ] Run the default .NET test lane touched by EventStore adapter or contract test changes.
   - [ ] Run `dotnet build Hexalith.FrontComposer.sln --configuration Release`.
-  - [ ] Record PactNet version, native verifier runtime/platform, pact files, provider command/URL, provider-state catalog location, interaction count, stale-pact result, redaction scan result, CI lane name, artifact paths, submodule behavior, public API mismatch decisions, and any deferred provider-state hooks in completion notes.
+  - [ ] Record PactNet version, native verifier runtime/platform, Pact specification/version metadata, provider commit/version, pact files, provider command/URL, provider-state catalog location, interaction manifest location, interaction count, stale-pact result, redaction scan result, CI lane name, artifact paths, submodule behavior, public API mismatch decisions, and any deferred provider-state hooks in completion notes.
 
 ---
 
@@ -184,6 +195,8 @@ Story 10-3 is ready for development only if the implementation treats Pact outpu
 - **Provider-state ownership:** Provider states must be declared in a catalog before verifier work proceeds. The catalog must cover command accepted/rejected, validation failure, unauthorized, forbidden, not found, rate limit, tenant mismatch, query fresh result, query empty result, ETag match, ETag non-match, malformed query payload, and large-but-valid metadata.
 - **Generated adapter path:** Consumer tests must exercise the production FrontComposer EventStore adapter path through DI/configuration where possible. Hand-built JSON may support assertions but must not be the only contract producer.
 - **Zero-interaction guard:** The lane must fail on no requests, wrong method/path, omitted required headers, unmatched interactions, unused interactions, skipped verifier execution, or missing verifier output.
+- **Interaction ownership:** Every interaction must have an explicit generated command/query source, adapter path, provider state, owning AC, and classifier expectation. Orphaned or duplicate interactions should fail the lane instead of silently expanding pact files.
+- **Provider process isolation:** Provider verification must fail on startup races, port collisions, failed health probes, stale provider processes, or state teardown failures. Retried or parallel verification cannot reuse tenant/user/aggregate/cache data from another interaction.
 - **CI evidence:** CI must publish bounded pact JSON, verifier output, provider-state logs, stale-pact check results, redaction scan results, and concise mismatch summaries with stable artifact names.
 - **Redaction scan:** Contract files and uploaded logs must be scanned for bearer tokens, raw `Authorization` headers, API keys, cookies, tenant secrets, connection strings, local user paths, environment dumps, authorization payloads, and user PII.
 - **Verifier platform control:** PactNet and verifier runtime versions must be pinned, run on the supported CI OS image, and document a containerized or explicit fallback if native startup fails.
@@ -223,6 +236,7 @@ Story 10-3 is ready for development only if the implementation treats Pact outpu
 - Pact files must not include bearer tokens, cookies, local machine paths, environment variables, real customer payloads, or full production ProblemDetails bodies.
 - Mismatch output should include endpoint, status, field/header path, and interaction name, but bound long strings and redact tenant/user/token-like values.
 - Provider state setup must reset tenant/user state between interactions and must not depend on ambient static state.
+- Redaction scanner tests must include encoded and disguised leak cases, including JWT-like strings, base64-like payloads, query-string credentials, ProblemDetails echo fields, local paths, and environment-shaped key/value dumps.
 - Preserve `CommandEnvelope.ToString()` payload redaction and existing telemetry redaction patterns; do not loosen them to make tests easier.
 
 ### Latest Technical Notes
@@ -315,6 +329,30 @@ Do not implement these in Story 10-3:
 
 ---
 
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-09T13:02:47+02:00
+- Selected story key: `10-3-consumer-driven-contract-tests-pact`
+- Command/skill invocation used: `/bmad-advanced-elicitation 10-3-consumer-driven-contract-tests-pact`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records
+- Findings summary:
+  - Provider verification could report false confidence if startup races, port collisions, stale processes, static provider state, or retry/parallel bleed are not first-class failure cases.
+  - Pact files could grow without clear ownership unless each interaction maps back to generated metadata, adapter path, provider state, acceptance criterion, and classifier expectation.
+  - Redaction checks needed adversarial fixtures for encoded, query-string, ProblemDetails, local-path, and environment-shaped leaks, not only obvious bearer-token text.
+  - CI evidence needed enough metadata to review release impact: provider version/commit, Pact spec metadata, manifest, stale-diff result, redaction result, and release-blocking status for handoffs.
+  - The story should keep the provider-state catalog and decision record lightweight to avoid turning contract testing into a governance framework.
+- Changes applied:
+  - Added AC28-AC31 covering provider process/state isolation, interaction ownership metadata, adversarial redaction scanner tests, and PR/release evidence summary requirements.
+  - Hardened T4-T7 with startup health probes, unique port/process cleanup, interaction manifest validation, redaction fixture coverage, provider/Pact metadata evidence, and a lightweight ADR note.
+  - Expanded `Contract Quality Gates` and `Security and Redaction Requirements` with interaction ownership, provider process isolation, and encoded/disguised secret leak checks.
+- Findings deferred:
+  - Exact manifest file format remains an implementation choice; the required fields and CI behavior are now specified.
+  - Exact ADR location remains an implementation choice as long as the decision and rejected alternatives are captured in story completion evidence or docs.
+- Final recommendation: ready-for-dev
+
+---
+
 ## Dev Agent Record
 
 ### Agent Model Used
@@ -332,6 +370,12 @@ Do not implement these in Story 10-3:
   - Findings summary: Provider-state ownership, generated-adapter coverage, zero-interaction guards, CI stale-pact/artifact rules, redaction scans, verifier platform fallback, and public API mismatch escalation needed clearer pre-dev constraints.
   - Changes applied: Added AC21-AC27; hardened T1-T7; added Contract Quality Gates; preserved `ready-for-dev` because changes clarify implementation constraints without changing product scope.
   - Findings deferred: Exact provider-state catalog schema and future Pact Broker/PactFlow workflow remain implementation/follow-up decisions.
+  - Final recommendation: ready-for-dev
+- 2026-05-09T13:02:47+02:00: Advanced elicitation completed via `/bmad-advanced-elicitation 10-3-consumer-driven-contract-tests-pact`.
+  - Batch 1 methods: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+  - Batch 2 methods: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+  - Changes applied: Added AC28-AC31; hardened T4-T7; added interaction ownership, provider process isolation, adversarial redaction fixtures, and release evidence metadata requirements.
+  - Findings deferred: Exact interaction manifest format and ADR file location remain implementation choices.
   - Final recommendation: ready-for-dev
 
 ### File List
