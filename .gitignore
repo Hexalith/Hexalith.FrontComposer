@@ -80,7 +80,11 @@ BenchmarkDotNet.Artifacts/
 # .NET Core
 project.lock.json
 project.fragment.lock.json
-artifacts/
+artifacts/*
+!artifacts/ide-parity/
+!artifacts/ide-parity/**
+!artifacts/ide-parity/evidence/
+!artifacts/ide-parity/evidence/*.json
 
 # ASP.NET Scaffolding
 ScaffoldingReadMe.txt

@@ -1,9 +1,15 @@
 namespace Hexalith.FrontComposer.Contracts.Attributes;
 
 /// <summary>
-/// Marks a class as belonging to a specific bounded context within the domain model.
-/// Used by the source generator to group projections and commands under a domain.
+/// Marks a projection or command as belonging to a specific bounded context within the domain model.
+/// The FrontComposer source generator uses the bounded context to group generated UI, Fluxor,
+/// MCP metadata, and registration artifacts under the correct domain.
 /// </summary>
+/// <remarks>
+/// The bounded context name appears in generated registration metadata and in IDE-visible
+/// generated-source navigation. Diagnostics and IDE parity guidance are documented from
+/// <see href="https://hexalith.github.io/FrontComposer/diagnostics/">the FrontComposer diagnostics pages</see>.
+/// </remarks>
 [AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
 public sealed class BoundedContextAttribute : Attribute {
     /// <summary>

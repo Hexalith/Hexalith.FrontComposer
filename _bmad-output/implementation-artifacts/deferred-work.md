@@ -1,5 +1,14 @@
 # Deferred Work
 
+## Deferred from: code review of 9-2-cli-inspection-and-migration-tools (2026-05-09)
+
+- **DEF-9-2-1 — `fail-on-warning` vs `fail-on-error` precedence undocumented** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:678-685`] — Both flags are honored but the help text and JSON contract do not document precedence. Add to README and JSON `applied` payload. Sources: blind.
+- **DEF-9-2-2 — Apply does not write to temp + atomic rename** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1411-1416`] — `WriteAllTextAsync` is a single-shot write but disk-full / power loss can still leave a partially truncated file. Industry pattern is write-to-`*.tmp` + `File.Replace` (or `Move` with `replace=true`). Owner: hardening pass when next migration provider lands. Sources: edge.
+- **DEF-9-2-3 — Race between `Directory.Exists` and `EnumerateFiles` returns generic IO error** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:106-116`] — TOCTOU on the generated-output directory yields `DirectoryNotFoundException` propagated to the top-level catch (exit 4 instead of 3). Vanishingly rare in practice. Sources: edge.
+- **DEF-9-2-4 — `ProjectLooksFrontComposerAnnotated` does not catch `IOException`** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:200-215`] — A locked or unreadable `.cs` file in the probe path surfaces as a generic IO error from inspect rather than "no annotations". Defensive try/catch in the predicate. Sources: edge.
+- **DEF-9-2-5 — `MigrationCatalog.Resolve` uses `SingleOrDefault`** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:88`] — Throws `InvalidOperationException` if a future contributor adds a duplicate `(from,to)` edge. Switch to `FirstOrDefault` plus a startup uniqueness assertion. Sources: edge.
+- **DEF-9-2-6 — `--build` hint not always emitted in inspect error messages** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:885-915`] — The "no FrontComposer-annotated source" branch returns a different message that lacks the `--build` suggestion. Minor UX gap. Sources: blind.
+
 ## Deferred from: code review of 9-1-build-time-drift-detection chunk C (2026-05-07)
 
 - **DEF-9-1C-2 — AC14 PublishAot=true alone does not fire HFC1070** [`src/Hexalith.FrontComposer.SourceTools/FrontComposerGenerator.cs:116`] — Production gates the HFC1070 emit on `optionsResult.Options.PublishTrimmed` only. AC14 reads "trim-enabled OR native-AOT host", so a project with `PublishAot=true` and `PublishTrimmed=false` (uncommon but valid for some AOT scenarios) silently skips the advisory. The chunk-C test theory was reduced to the `PublishTrimmed`-only matrix; restore the `(false, true)` case once production also gates on `PublishAot`. **Owner:** Story 9-1 follow-up production patch. Sources: edge.

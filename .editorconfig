@@ -61,3 +61,15 @@ dotnet_diagnostic.CA2007.severity = warning
 
 # Suppress specific analyzers that conflict with scaffolding
 dotnet_diagnostic.CA1014.severity = none
+
+# Story 9-3 / v1.0-rc1 plan: keep CS1591 as a warning before API freeze, then scope stricter
+# XML-doc enforcement to public API and generated-facing contracts instead of flipping the
+# whole repository at once. PublicAPI.Shipped.txt owns the final strict surface.
+[src/Hexalith.FrontComposer.Contracts/Attributes/*.cs]
+dotnet_diagnostic.CS1591.severity = warning
+
+[src/Hexalith.FrontComposer.Contracts/Rendering/*.cs]
+dotnet_diagnostic.CS1591.severity = warning
+
+[src/Hexalith.FrontComposer.Contracts/Mcp/*.cs]
+dotnet_diagnostic.CS1591.severity = warning

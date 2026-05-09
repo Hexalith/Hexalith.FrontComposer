@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-07 (story 9-2 CLI inspection and migration tools implemented; status flipped to review. Validation: CLI tests 11 passed; full solution build TreatWarningsAsErrors=true 0 warnings / 0 errors; full solution tests 2,767 passing / 3 skipped / 0 failed; local tool pack/install smoke passed.)"
+last_updated: "2026-05-09 (story 9-2 CLI inspection/migration code review (`/bmad-code-review`) flipped Status `review → in-progress`: 3 decisions resolved (D1 Roslyn CodeFixProvider rewrite, D2 revert Shell `#if DEBUG` removal, D3 uncheck T5/T6/T8 sub-tasks without supporting code/tests), 35 patches recorded as action items, 6 deferred. Findings written to `_bmad-output/implementation-artifacts/9-2-cli-inspection-and-migration-tools.md` Review Findings section.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -127,8 +127,8 @@ development_status:
   # Epic 9: Developer Tooling & Documentation
   epic-9: in-progress
   9-1-build-time-drift-detection: done
-  9-2-cli-inspection-and-migration-tools: review
-  9-3-ide-parity-and-developer-experience: ready-for-dev
+  9-2-cli-inspection-and-migration-tools: in-progress
+  9-3-ide-parity-and-developer-experience: review
   9-4-diagnostic-id-system-and-deprecation-policy: ready-for-dev
   9-5-diataxis-documentation-site: ready-for-dev
   epic-9-retrospective: optional

@@ -1,0 +1,17 @@
+{
+  "name": "Hexalith FrontComposer IDE Parity",
+  "image": "mcr.microsoft.com/devcontainers/dotnet:10.0",
+  "features": {},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit"
+      ],
+      "settings": {
+        "dotnet.completion.showCompletionItemsFromUnimportedNamespaces": true
+      }
+    }
+  },
+  "postCreateCommand": "dotnet --info && dotnet restore Hexalith.FrontComposer.sln",
+  "remoteUser": "vscode"
+}
