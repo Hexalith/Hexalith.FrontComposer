@@ -75,13 +75,13 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private const string BeforeUnloadModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-beforeunload.js";
     private const string KeyboardModulePath = "./_content/Hexalith.FrontComposer.Shell/js/fc-keyboard.js";
 
-    // DN2 — compile-time flag for dev-mode markup gating in FrontComposerShell.razor. Pairs with
+    // DN2 — build-symbol flag for dev-mode markup gating in FrontComposerShell.razor. Pairs with
     // the runtime IsDevelopment() gate on AddFrontComposerDevMode() so a Release build with an
     // inadvertent symbol leak still cannot expose the dev-mode shell-header icon or overlay.
 #if DEBUG
-    private const bool IsDevModeBuild = true;
+    private static bool IsDevModeBuild => true;
 #else
-    private const bool IsDevModeBuild = false;
+    private static bool IsDevModeBuild => false;
 #endif
 
     private IJSObjectReference? _beforeUnloadModule;

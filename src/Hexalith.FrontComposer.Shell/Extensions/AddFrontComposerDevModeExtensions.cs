@@ -19,12 +19,10 @@ public static class AddFrontComposerDevModeExtensions {
     public static IServiceCollection AddFrontComposerDevMode(this IServiceCollection services) {
         ArgumentNullException.ThrowIfNull(services);
 
-#if DEBUG
         IHostEnvironment? environment = FindRegisteredEnvironment(services);
         if (environment is not null) {
             _ = services.AddFrontComposerDevMode(environment);
         }
-#endif
         return services;
     }
 
@@ -38,7 +36,6 @@ public static class AddFrontComposerDevModeExtensions {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(environment);
 
-#if DEBUG
         if (environment.IsDevelopment()) {
             services.TryAddScoped<IDevModeOverlayController, DevModeOverlayController>();
             services.TryAddScoped<IRazorEmitter, RazorEmitter>();
@@ -53,11 +50,9 @@ public static class AddFrontComposerDevModeExtensions {
             services.TryAddSingleton<DevModeNonDevelopmentMarker>();
             services.TryAddEnumerable(ServiceDescriptor.Singleton<IHostedService, DevModeNonDevelopmentLogger>());
         }
-#endif
         return services;
     }
 
-#if DEBUG
     private static IHostEnvironment? FindRegisteredEnvironment(IServiceCollection services) {
         for (int i = services.Count - 1; i >= 0; i--) {
             ServiceDescriptor descriptor = services[i];
@@ -116,5 +111,4 @@ public static class AddFrontComposerDevModeExtensions {
 
         public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
-#endif
 }

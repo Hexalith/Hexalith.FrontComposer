@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>frontcomposer</ToolCommandName>
+    <PackageId>Hexalith.FrontComposer.Cli</PackageId>
+    <Title>Hexalith FrontComposer CLI</Title>
+    <Description>Command-line inspection and migration tooling for Hexalith FrontComposer generated output.</Description>
+    <Authors>Hexalith</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <RepositoryUrl>https://github.com/Hexalith/Hexalith.FrontComposer</RepositoryUrl>
+    <PackageTags>Hexalith;FrontComposer;CLI;source-generator;dotnet-tool</PackageTags>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Hexalith.FrontComposer.Cli.Tests" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

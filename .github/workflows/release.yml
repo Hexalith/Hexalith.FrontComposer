@@ -21,7 +21,7 @@ jobs:
         with:
           fetch-depth: 0 # semantic-release needs full history
           persist-credentials: false
-          submodules: recursive
+          submodules: true
 
       - name: Require bootstrap tag before first release
         shell: bash

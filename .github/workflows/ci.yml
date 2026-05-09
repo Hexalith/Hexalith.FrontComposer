@@ -61,7 +61,7 @@ jobs:
           # fetch-depth: 1 (shallow) to keep checkout fast with nested submodules.
           fetch-depth: 1
           persist-credentials: false
-          submodules: recursive
+          submodules: true
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
@@ -93,6 +93,44 @@ jobs:
       # Gate 2: Full solution builds
       - name: 'Gate 2: Solution Build'
         run: dotnet build Hexalith.FrontComposer.sln --configuration Release --no-restore
+
+      # Gate 2a: CLI tool packaging and local-tool smoke
+      - name: 'Gate 2a: CLI Tool Package Smoke'
+        shell: bash
+        run: |
+          dotnet pack src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj --configuration Release --no-build --output ./nupkgs -p:PackageVersion=0.0.0-ci
+
+          tool_home="$(mktemp -d)"
+          fixture="$(mktemp -d)"
+
+          dotnet new tool-manifest --force --output "$tool_home"
+          (
+            cd "$tool_home"
+            dotnet tool install Hexalith.FrontComposer.Cli --add-source "$GITHUB_WORKSPACE/nupkgs" --version 0.0.0-ci --ignore-failed-sources
+          )
+
+          mkdir -p "$fixture/Acme.App/obj/Debug/net10.0/generated/HexalithFrontComposer"
+          cat > "$fixture/Acme.App/Acme.App.csproj" <<'EOF'
+          <Project Sdk="Microsoft.NET.Sdk">
+            <PropertyGroup>
+              <TargetFramework>net10.0</TargetFramework>
+            </PropertyGroup>
+          </Project>
+          EOF
+          cat > "$fixture/Acme.App/Program.cs" <<'EOF'
+          services.AddFrontComposerDebugOverlay();
+          EOF
+          cat > "$fixture/Acme.App/obj/Debug/net10.0/generated/HexalithFrontComposer/Acme.Shipping.ShipmentProjection.g.razor.cs" <<'EOF'
+          namespace Acme.Shipping { }
+          EOF
+
+          (
+            cd "$tool_home"
+            dotnet tool run frontcomposer -- --help
+            dotnet tool run frontcomposer -- inspect --project "$fixture/Acme.App/Acme.App.csproj" --configuration Debug --framework net10.0 --format json
+            dotnet tool run frontcomposer -- migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --dry-run --format json
+            dotnet tool run frontcomposer -- migrate --project "$fixture/Acme.App/Acme.App.csproj" --from 9.1.0 --to 9.2.0 --apply --format json
+          )
 
       # Gate 2b: Infrastructure governance and telemetry contracts
       - name: 'Gate 2b: Infrastructure governance and telemetry contracts'

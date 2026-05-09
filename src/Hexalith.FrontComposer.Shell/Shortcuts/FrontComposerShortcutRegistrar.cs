@@ -66,6 +66,7 @@ public sealed class FrontComposerShortcutRegistrar(
     /// <returns>A completed task — registration is synchronous; the async signature exists so the shell can <c>await</c> alongside other bootstrap work.</returns>
     public Task RegisterShellDefaultsAsync()
     {
+        _ = services;
         if (Interlocked.Exchange(ref _registered, 1) == 1)
         {
             return Task.CompletedTask;
