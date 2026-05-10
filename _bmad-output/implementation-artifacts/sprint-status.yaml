@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (Epic 8 and Epic 10 retrospectives completed; Epic 11 deferred-work backlog added.)"
+last_updated: "2026-05-10 (Created Story 11.1 deferred-work ledger reconciliation and marked it ready-for-dev.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -144,8 +144,8 @@ development_status:
   epic-10-retrospective: done
 
   # Epic 11: Deferred Hardening & Release Readiness
-  epic-11: backlog
-  11-1-deferred-work-ledger-reconciliation-and-ownership: backlog
+  epic-11: in-progress
+  11-1-deferred-work-ledger-reconciliation-and-ownership: ready-for-dev
   11-2-diagnostic-registry-and-documentation-governance-follow-ups: backlog
   11-3-cli-migration-and-ide-edge-case-hardening: backlog
   11-4-drift-detection-and-source-generator-coverage-hardening: backlog
