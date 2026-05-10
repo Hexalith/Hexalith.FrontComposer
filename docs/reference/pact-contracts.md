@@ -22,7 +22,7 @@ FrontComposer v1 contract evidence is file based. The source of truth lives in `
 - `provider-state-catalog.json`
 - `provider-verification-handoff.md`
 
-The contract tests exercise the production `EventStoreCommandClient` and `EventStoreQueryClient` paths through the existing command/query abstractions. They do not use Pact Broker, PactFlow, browser-only coverage, mutation testing, property-based idempotency, flaky-test quarantine, accessibility gates, release signing, SBOM, or LLM benchmark governance.
+The contract tests exercise the production `EventStoreCommandClient` and `EventStoreQueryClient` paths through the existing command/query abstractions and replay each committed interaction through PactNet's mock HTTP server. They do not use Pact Broker, PactFlow, browser-only coverage, mutation testing, property-based idempotency, flaky-test quarantine, accessibility gates, release signing, SBOM, or LLM benchmark governance.
 
 ## Regenerate Pacts
 
@@ -36,11 +36,15 @@ git diff -- tests/Hexalith.FrontComposer.Shell.Tests/Pact
 
 Review pact diffs as API evidence. Expected diffs should name the interaction, method/path, expected status/header/body shape, provider state, owning acceptance criteria, adapter path, and classifier expectation. Unexpected diffs block the change until the adapter, test, or provider-state fixture is corrected.
 
+The validator checks that `interaction-manifest.json` exactly matches the committed pact interactions by description, provider state, method, and path. Missing or orphaned manifest entries fail the lane.
+
 ## Provider Verification
 
 Provider verification belongs beside the `Hexalith.EventStore` provider host because PactNet's native verifier must call a real loopback TCP endpoint. Do not use ASP.NET Core `TestServer` or `WebApplicationFactory` for Pact verifier playback.
 
 The handoff command shape is recorded in `provider-verification-handoff.md`. It must produce a bounded report artifact and use the committed pacts plus `provider-state-catalog.json`.
+
+CI is split deliberately: PRs run consumer pact generation, stale-pact detection, manifest validation, redaction scanning, and artifact upload. Pushes to `main` additionally require a provider verification report at `artifacts/contracts/provider-verification.json`; without that real TCP verifier output, the provider gate fails. Releases remain blocked unless the checked-in pacts verify against the pinned EventStore provider version.
 
 NFR55 release rule: a release is blocked unless the checked-in pacts verify against the pinned EventStore provider version, or a named contract-drift issue explicitly blocks the release.
 

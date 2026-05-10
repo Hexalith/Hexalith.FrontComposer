@@ -1,6 +1,6 @@
 # Story 10.3: Consumer-Driven Contract Tests (Pact)
 
-Status: review
+Status: done
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR78** and **NFR55**. Adds file-based Pact contracts at the REST-to-generated-UI boundary so FrontComposer and Hexalith.EventStore cannot drift silently. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and the repository submodule rule.
 
@@ -158,6 +158,13 @@ Start here: T1 dependency and folder shape -> T2 consumer command pact -> T3 con
   - [x] Run the default .NET test lane touched by EventStore adapter or contract test changes.
   - [x] Run `dotnet build Hexalith.FrontComposer.sln --configuration Release`.
   - [x] Record PactNet version, native verifier runtime/platform, Pact specification/version metadata, provider commit/version, pact files, provider command/URL, provider-state catalog location, interaction manifest location, interaction count, stale-pact result, redaction scan result, CI lane name, artifact paths, submodule behavior, public API mismatch decisions, and any deferred provider-state hooks in completion notes.
+
+### Review Findings - 2026-05-10 (bmad-code-review)
+
+- [x] [Review][Decision] **Provider verification handoff is accepted by CI even though the story also says skipped provider verification must fail** — Resolved with option 3: PR CI remains consumer-pact-only, while push/main provider verification is blocking and fails without `artifacts/contracts/provider-verification.json`. Release remains blocked unless provider verification runs against the pinned EventStore provider version.
+- [x] [Review][Patch] **PactNet is pinned but the consumer contracts are hand-rolled JSON instead of PactNet interactions** [tests/Hexalith.FrontComposer.Shell.Tests/Pact/EventStorePactContractTests.cs:396] — fixed by replaying every generated interaction through PactNet's V4 mock HTTP server.
+- [x] [Review][Patch] **Contract tests bypass the registered `ICommandService`/`IQueryService` and generated metadata path** [tests/Hexalith.FrontComposer.Shell.Tests/Pact/EventStorePactContractTests.cs:517] — fixed by exercising the production EventStore adapters through the public command/query service interfaces while retaining the existing adapter metadata in the manifest.
+- [x] [Review][Patch] **Artifact validation does not prove the manifest exactly matches the committed pact interactions** [eng/validate-contract-artifacts.ps1:80] — fixed by validating exact description/provider-state/method/path membership both from pact files to manifest and from manifest back to pact files.
 
 ---
 

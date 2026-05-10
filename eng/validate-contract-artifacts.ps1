@@ -1,6 +1,8 @@
 param(
   [string] $PactDir = "tests/Hexalith.FrontComposer.Shell.Tests/Pact",
-  [string] $ArtifactDir = "artifacts/contracts"
+  [string] $ArtifactDir = "artifacts/contracts",
+  [string] $ProviderVerificationReport = "",
+  [switch] $RequireProviderVerification
 )
 
 $ErrorActionPreference = "Stop"
@@ -39,6 +41,7 @@ function Read-Json($path) {
 }
 
 $interactionDescriptions = New-Object System.Collections.Generic.List[string]
+$pactInteractionKeys = New-Object System.Collections.Generic.HashSet[string]
 $providerStates = New-Object System.Collections.Generic.HashSet[string]
 
 foreach ($file in $expectedPacts) {
@@ -61,9 +64,23 @@ foreach ($file in $expectedPacts) {
   }
 
   foreach ($interaction in @($pact.interactions)) {
-    $interactionDescriptions.Add([string] $interaction.description)
-    foreach ($state in @($interaction.providerStates)) {
-      [void] $providerStates.Add([string] $state.name)
+    $description = [string] $interaction.description
+    $stateNames = @($interaction.providerStates | ForEach-Object { [string] $_.name })
+    if ($stateNames.Count -ne 1) {
+      $errors.Add("$file interaction '$description' must declare exactly one provider state.")
+      continue
+    }
+
+    $providerState = [string] $stateNames[0]
+    $method = [string] $interaction.request.method
+    $path = [string] $interaction.request.path
+    $interactionDescriptions.Add($description)
+    [void] $providerStates.Add($providerState)
+
+    if ([string]::IsNullOrWhiteSpace($description) -or [string]::IsNullOrWhiteSpace($method) -or [string]::IsNullOrWhiteSpace($path)) {
+      $errors.Add("$file contains an interaction with a missing description, method, or path.")
+    } else {
+      [void] $pactInteractionKeys.Add("$description|$providerState|$method|$path")
     }
   }
 }
@@ -84,11 +101,29 @@ if (Test-Path -LiteralPath $manifestPath) {
     $errors.Add("Manifest interactionCount $($manifest.interactionCount) does not match pact count $($interactionDescriptions.Count).")
   }
 
+  $manifestInteractionKeys = New-Object System.Collections.Generic.HashSet[string]
   foreach ($entry in @($manifest.interactions)) {
-    foreach ($field in @("description", "providerState", "generatedSource", "adapterPath", "owningAcceptanceCriteria", "classifierExpectation")) {
+    foreach ($field in @("description", "providerState", "method", "path", "generatedSource", "adapterPath", "owningAcceptanceCriteria", "classifierExpectation")) {
       if ([string]::IsNullOrWhiteSpace([string] $entry.$field)) {
         $errors.Add("Manifest entry '$($entry.description)' is missing $field.")
       }
+    }
+
+    $key = "$($entry.description)|$($entry.providerState)|$($entry.method)|$($entry.path)"
+    if (!$manifestInteractionKeys.Add($key)) {
+      $errors.Add("Duplicate manifest interaction: $key")
+    }
+  }
+
+  foreach ($key in $pactInteractionKeys) {
+    if (!$manifestInteractionKeys.Contains($key)) {
+      $errors.Add("Pact interaction missing from manifest: $key")
+    }
+  }
+
+  foreach ($key in $manifestInteractionKeys) {
+    if (!$pactInteractionKeys.Contains($key)) {
+      $errors.Add("Manifest interaction missing from pact files: $key")
     }
   }
 }
@@ -167,26 +202,49 @@ foreach ($file in $requiredFiles) {
 
 $redactionLines | Set-Content -LiteralPath (Join-Path $ArtifactDir "redaction-scan.txt") -Encoding utf8
 
-$providerReport = @"
+if ([string]::IsNullOrWhiteSpace($ProviderVerificationReport)) {
+  $ProviderVerificationReport = Join-Path $ArtifactDir "provider-verification.json"
+}
+
+$providerStatus = "BLOCKED_HANDOFF"
+if ($RequireProviderVerification) {
+  if (!(Test-Path -LiteralPath $ProviderVerificationReport)) {
+    $errors.Add("Provider verification is required for this lane but '$ProviderVerificationReport' was not found.")
+  } elseif ((Get-Item -LiteralPath $ProviderVerificationReport).Length -eq 0) {
+    $errors.Add("Provider verification report is empty: $ProviderVerificationReport")
+  } else {
+    $providerStatus = "VERIFICATION_REPORT_PRESENT"
+    $providerText = Get-Content -LiteralPath $ProviderVerificationReport -Raw
+    $providerLeaks = Find-RedactionLeaks $providerText
+    if ($providerLeaks.Count -gt 0) {
+      $errors.Add("Redaction scan failed for provider verification report: $($providerLeaks -join ', ')")
+    }
+  }
+}
+
+if (!$RequireProviderVerification) {
+  $providerReport = @"
 Provider verification result: BLOCKED_HANDOFF
 Provider: Hexalith.EventStore
 Reason: deterministic provider-state setup, teardown, TCP startup, health probe, port isolation, and stale-process detection must run beside the EventStore provider host.
 Handoff: tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
 "@
-$providerReport | Set-Content -LiteralPath (Join-Path $ArtifactDir "provider-verification-blocked.txt") -Encoding utf8
+  $providerReport | Set-Content -LiteralPath (Join-Path $ArtifactDir "provider-verification-blocked.txt") -Encoding utf8
+}
 
 $summary = @"
 ## Contract Evidence
 
 - Pact files: $($expectedPacts -join ', ')
 - Interaction count: $($interactionDescriptions.Count)
-- Provider verification: BLOCKED_HANDOFF until Hexalith.EventStore runs the real TCP verifier
+- Provider verification: $providerStatus
 - Pact specification: 4.0
 - PactNet package: 5.0.1
 - Manifest: tests/Hexalith.FrontComposer.Shell.Tests/Pact/interaction-manifest.json
 - Provider states: tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json
 - Redaction scan: $(if ($errors.Count -eq 0) { "clean" } else { "failed" })
 - Submodules: root-level checkout only; no recursive nested submodule command is used by this lane
+- Provider verification required in this lane: $RequireProviderVerification
 - Release status: blocked unless pacts verify against the pinned EventStore provider version
 "@
 $summary | Set-Content -LiteralPath (Join-Path $ArtifactDir "job-summary.md") -Encoding utf8

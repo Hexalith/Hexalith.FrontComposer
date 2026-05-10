@@ -14,6 +14,8 @@ using Hexalith.FrontComposer.Shell.Tests.Infrastructure.EventStore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
+using PactNet;
+
 using Shouldly;
 
 using Xunit;
@@ -125,7 +127,7 @@ public sealed class EventStorePactContractTests {
     [Trait("Category", "Contract")]
     public async Task ETagContractGuards_RejectUnsafeValidatorsBeforeSend() {
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK));
-        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
+        IQueryService sut = NewQueryClient(handler, new NoCache());
 
         QueryRequest tooMany = QueryRequest(ETags: Enumerable.Range(0, 11).Select(i => $"\"etag-{i}\"").ToArray());
         _ = await Should.ThrowAsync<ArgumentException>(() => sut.QueryAsync<OrderProjection>(tooMany, TestContext.Current.CancellationToken));
@@ -166,7 +168,7 @@ public sealed class EventStorePactContractTests {
                 headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(2));
                 headers.Add("X-Correlation-ID", "corr-command-accepted");
             }));
-        EventStoreCommandClient sut = NewCommandClient(handler);
+        ICommandService sut = NewCommandClient(handler);
 
         CommandResult result = await sut.DispatchAsync(Command(), TestContext.Current.CancellationToken);
 
@@ -176,7 +178,7 @@ public sealed class EventStorePactContractTests {
         result.Location!.AbsoluteUri.ShouldBe("https://eventstore.test/api/v1/commands/status/corr-command-accepted");
         result.RetryAfter.ShouldBe(TimeSpan.FromSeconds(2));
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             "command dispatch accepted preserves generated message identity",
             "command-accepted",
             handler.Requests.Single(),
@@ -190,6 +192,20 @@ public sealed class EventStorePactContractTests {
                 ]),
                 Json("""{"correlationId":"corr-command-accepted"}""")),
             "CommandResult.Status=Accepted; CommandResult.MessageId preserved");
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                ICommandService mockSut = NewCommandClient(mockServerUri);
+                CommandResult mockResult = await mockSut.DispatchAsync(Command(), TestContext.Current.CancellationToken);
+                mockResult.MessageId.ShouldBe(SyntheticMessageId);
+                mockResult.Status.ShouldBe("Accepted");
+                mockResult.CorrelationId.ShouldBe("corr-command-accepted");
+                mockResult.Location!.AbsoluteUri.ShouldBe("https://eventstore.test/api/v1/commands/status/corr-command-accepted");
+                mockResult.RetryAfter.ShouldBe(TimeSpan.FromSeconds(2));
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildCommandFailureInteraction(
@@ -207,12 +223,12 @@ public sealed class EventStorePactContractTests {
                     headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(TimeSpan.FromSeconds(5));
                 }
             }));
-        EventStoreCommandClient sut = NewCommandClient(handler);
+        ICommandService sut = NewCommandClient(handler);
 
         Exception ex = await Should.ThrowAsync<Exception>(() => sut.DispatchAsync(Command(), TestContext.Current.CancellationToken));
         ex.GetType().Name.ShouldBe(classifierExpectation);
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             description,
             providerState,
             handler.Requests.Single(),
@@ -221,6 +237,16 @@ public sealed class EventStorePactContractTests {
                 ResponseHeaders(status, includeProblemDetails),
                 body is null ? null : Json(body)),
             classifierExpectation);
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                ICommandService mockSut = NewCommandClient(mockServerUri);
+                Exception mockEx = await Should.ThrowAsync<Exception>(() => mockSut.DispatchAsync(Command(), TestContext.Current.CancellationToken));
+                mockEx.GetType().Name.ShouldBe(classifierExpectation);
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildQueryOkInteraction(string description, string providerState, string payload) {
@@ -228,13 +254,13 @@ public sealed class EventStorePactContractTests {
             HttpStatusCode.OK,
             payload,
             headers => headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"etag-query-1\"")));
-        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
+        IQueryService sut = NewQueryClient(handler, new NoCache());
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken);
 
         result.ETag.ShouldBe("\"etag-query-1\"");
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             description,
             providerState,
             handler.Requests.Single(),
@@ -243,6 +269,16 @@ public sealed class EventStorePactContractTests {
                 Headers([("ETag", "\"etag-query-1\""), ("Content-Type", "application/json")]),
                 Json(payload)),
             "QueryResult<T>.IsNotModified=false; QueryResult<T>.TotalCount preserved");
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                QueryResult<OrderProjection> mockResult = await mockSut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken);
+                mockResult.ETag.ShouldBe("\"etag-query-1\"");
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildQueryFailureInteraction(
@@ -252,17 +288,27 @@ public sealed class EventStorePactContractTests {
         string classifierExpectation) {
         string body = ProblemDetails((int)status, providerState);
         RecordingHandler handler = new(_ => Response(status, body));
-        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
+        IQueryService sut = NewQueryClient(handler, new NoCache());
 
         Exception ex = await Should.ThrowAsync<Exception>(() => sut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken));
         ex.GetType().Name.ShouldBe(classifierExpectation);
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             description,
             providerState,
             handler.Requests.Single(),
             new ContractHttpResponse((int)status, ResponseHeaders(status, includeProblemDetails: true), Json(body)),
             classifierExpectation);
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                Exception mockEx = await Should.ThrowAsync<Exception>(() => mockSut.QueryAsync<OrderProjection>(QueryRequest(), TestContext.Current.CancellationToken));
+                mockEx.GetType().Name.ShouldBe(classifierExpectation);
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildQueryCachedNotModifiedInteraction() {
@@ -271,7 +317,7 @@ public sealed class EventStorePactContractTests {
             HttpStatusCode.NotModified,
             body: null,
             headers => headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"etag-cache-1\"")));
-        EventStoreQueryClient sut = NewQueryClient(
+        IQueryService sut = NewQueryClient(
             handler,
             new SeededCache("\"etag-cache-1\"", cachedPayload));
 
@@ -283,12 +329,27 @@ public sealed class EventStorePactContractTests {
         result.Items.Single().Status.ShouldBe("Cached");
         handler.Requests.Single().Headers["If-None-Match"].ShouldBe("\"etag-cache-1\"");
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             "query cache validation reuses framework cache on 304",
             "query-etag-match",
             handler.Requests.Single(),
             new ContractHttpResponse(304, Headers([("ETag", "\"etag-cache-1\"")]), null),
             "QueryResult<T>.NotModifiedFromCache");
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                IQueryService mockSut = NewQueryClient(
+                    mockServerUri,
+                    new SeededCache("\"etag-cache-1\"", cachedPayload));
+                QueryResult<OrderProjection> mockResult = await mockSut.QueryAsync<OrderProjection>(
+                    QueryRequest(CacheDiscriminator: "orders-grid"),
+                    TestContext.Current.CancellationToken);
+                mockResult.IsNotModified.ShouldBeTrue();
+                mockResult.Items.Single().Status.ShouldBe("Cached");
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildQueryCallerOwnedNotModifiedInteraction() {
@@ -296,7 +357,7 @@ public sealed class EventStorePactContractTests {
             HttpStatusCode.NotModified,
             body: null,
             headers => headers.ETag = new System.Net.Http.Headers.EntityTagHeaderValue("\"etag-caller-1\"")));
-        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
+        IQueryService sut = NewQueryClient(handler, new NoCache());
 
         QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
             QueryRequest(ETag: "\"etag-caller-1\""),
@@ -306,17 +367,30 @@ public sealed class EventStorePactContractTests {
         result.Items.ShouldBeEmpty();
         handler.Requests.Single().Headers["If-None-Match"].ShouldBe("\"etag-caller-1\"");
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             "query caller-owned etag returns explicit no-change signal on 304",
             "query-etag-no-cache",
             handler.Requests.Single(),
             new ContractHttpResponse(304, Headers([("ETag", "\"etag-caller-1\"")]), null),
             "QueryResult<T>.NotModified");
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                QueryResult<OrderProjection> mockResult = await mockSut.QueryAsync<OrderProjection>(
+                    QueryRequest(ETag: "\"etag-caller-1\""),
+                    TestContext.Current.CancellationToken);
+                mockResult.IsNotModified.ShouldBeTrue();
+                mockResult.Items.ShouldBeEmpty();
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildQueryMultipleValidatorsInteraction() {
         RecordingHandler handler = new(_ => Response(HttpStatusCode.OK, """{"payload":[{"id":"order-1","status":"Pending"}],"totalCount":1}"""));
-        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache());
+        IQueryService sut = NewQueryClient(handler, new NoCache());
 
         _ = await sut.QueryAsync<OrderProjection>(
             QueryRequest(ETags: ["\"etag-1\"", "\"etag-2\"", "\"etag-3\""]),
@@ -324,17 +398,28 @@ public sealed class EventStorePactContractTests {
 
         handler.Requests.Single().Headers["If-None-Match"].ShouldBe("\"etag-1\", \"etag-2\", \"etag-3\"");
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             "query emits bounded multiple etag validators",
             "query-large-valid-metadata",
             handler.Requests.Single(),
             new ContractHttpResponse(200, Headers([("Content-Type", "application/json")]), Json("""{"payload":[{"id":"order-1","status":"Pending"}],"totalCount":1}""")),
             "If-None-Match validator count <= EventStoreOptions.MaxETagCount");
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache());
+                _ = await mockSut.QueryAsync<OrderProjection>(
+                    QueryRequest(ETags: ["\"etag-1\"", "\"etag-2\"", "\"etag-3\""]),
+                    TestContext.Current.CancellationToken);
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildCommandAuthTenantPropagationInteraction() {
         RecordingHandler handler = new(_ => Response(HttpStatusCode.Accepted, """{"correlationId":"corr-auth-tenant"}"""));
-        EventStoreCommandClient sut = NewCommandClient(handler, tenant: "Tenant_Contract_Case");
+        ICommandService sut = NewCommandClient(handler, tenant: "Tenant_Contract_Case");
 
         _ = await sut.DispatchAsync(Command(tenantId: "Tenant_Contract_Case"), TestContext.Current.CancellationToken);
 
@@ -343,17 +428,26 @@ public sealed class EventStorePactContractTests {
         JsonElement body = request.Body!.Value;
         body.GetProperty("tenant").GetString().ShouldBe("Tenant_Contract_Case");
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             "command propagates authenticated tenant and bearer requirement",
             "tenant-mismatch",
             request,
             new ContractHttpResponse(202, Headers([("Content-Type", "application/json")]), Json("""{"correlationId":"corr-auth-tenant"}""")),
             "Authorization required; tenant comes from authenticated context");
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                ICommandService mockSut = NewCommandClient(mockServerUri, tenant: "Tenant_Contract_Case");
+                _ = await mockSut.DispatchAsync(Command(tenantId: "Tenant_Contract_Case"), TestContext.Current.CancellationToken);
+            });
+
+        return interaction;
     }
 
     private static async Task<ContractInteraction> BuildQueryAuthTenantPropagationInteraction() {
         RecordingHandler handler = new(_ => Response(HttpStatusCode.OK, """{"payload":[{"id":"order-1","status":"Pending"}],"totalCount":1}"""));
-        EventStoreQueryClient sut = NewQueryClient(handler, new NoCache(), tenant: "Tenant_Contract_Case");
+        IQueryService sut = NewQueryClient(handler, new NoCache(), tenant: "Tenant_Contract_Case");
 
         _ = await sut.QueryAsync<OrderProjection>(
             QueryRequest(TenantId: "Tenant_Contract_Case"),
@@ -363,12 +457,74 @@ public sealed class EventStorePactContractTests {
         request.Headers["Authorization"].ShouldBe($"Bearer {SyntheticBearerToken}");
         request.Body!.Value.GetProperty("tenant").GetString().ShouldBe("Tenant_Contract_Case");
 
-        return Interaction(
+        ContractInteraction interaction = Interaction(
             "query propagates authenticated tenant and bearer requirement",
             "query-auth-tenant",
             request,
             new ContractHttpResponse(200, Headers([("Content-Type", "application/json")]), Json("""{"payload":[{"id":"order-1","status":"Pending"}],"totalCount":1}""")),
             "Authorization required; tenant comes from authenticated context");
+
+        await VerifyPactNetInteractionAsync(
+            interaction,
+            async mockServerUri => {
+                IQueryService mockSut = NewQueryClient(mockServerUri, new NoCache(), tenant: "Tenant_Contract_Case");
+                _ = await mockSut.QueryAsync<OrderProjection>(
+                    QueryRequest(TenantId: "Tenant_Contract_Case"),
+                    TestContext.Current.CancellationToken);
+            });
+
+        return interaction;
+    }
+
+    private static async Task VerifyPactNetInteractionAsync(ContractInteraction interaction, Func<Uri, Task> exerciseAsync) {
+        string scratchDir = Path.Combine(Path.GetTempPath(), "frontcomposer-pactnet", Guid.NewGuid().ToString("N"));
+        try {
+            IPactBuilderV4 builder = global::PactNet.Pact
+                .V4(ConsumerName, ProviderName, new PactConfig {
+                    PactDir = scratchDir,
+                    DefaultJsonSettings = JsonOptions,
+                })
+                .WithHttpInteractions();
+
+            IRequestBuilderV4 request = builder
+                .UponReceiving(interaction.Description)
+                .Given(interaction.ProviderStates.Single().Name)
+                .WithRequest(new HttpMethod(interaction.Request.Method), interaction.Request.Path);
+
+            foreach (KeyValuePair<string, string> header in interaction.Request.Headers) {
+                request = request.WithHeader(header.Key, header.Value);
+            }
+
+            if (interaction.Request.Body is { } requestBody) {
+                request = request.WithJsonBody(requestBody, JsonOptions);
+            }
+
+            IResponseBuilderV4 response = request.WillRespond().WithStatus((ushort)interaction.Response.Status);
+            foreach (KeyValuePair<string, string> header in interaction.Response.Headers) {
+                response = response.WithHeader(header.Key, header.Value);
+            }
+
+            if (interaction.Response.Body is { } responseBody) {
+                response = response.WithJsonBody(responseBody, JsonOptions);
+            }
+
+            await builder.VerifyAsync(ctx => exerciseAsync(ctx.MockServerUri));
+        }
+        finally {
+            TryDeleteDirectory(scratchDir);
+        }
+    }
+
+    private static void TryDeleteDirectory(string path) {
+        try {
+            if (Directory.Exists(path)) {
+                Directory.Delete(path, recursive: true);
+            }
+        }
+        catch (IOException) {
+        }
+        catch (UnauthorizedAccessException) {
+        }
     }
 
     private static ContractInteraction Interaction(
@@ -514,8 +670,8 @@ public sealed class EventStorePactContractTests {
         File.WriteAllText(Path.Combine(pactDirectory, "provider-verification-handoff.md"), text, Encoding.UTF8);
     }
 
-    private static EventStoreCommandClient NewCommandClient(RecordingHandler handler, string tenant = SyntheticTenant)
-        => new(
+    private static ICommandService NewCommandClient(RecordingHandler handler, string tenant = SyntheticTenant)
+        => new EventStoreCommandClient(
             new SingleClientFactory(handler),
             Options(),
             new FixedUlidFactory(),
@@ -523,9 +679,28 @@ public sealed class EventStorePactContractTests {
             EventStoreTestSupport.CreateClassifier(),
             NullLogger<EventStoreCommandClient>.Instance);
 
-    private static EventStoreQueryClient NewQueryClient(RecordingHandler handler, IETagCache cache, string tenant = SyntheticTenant)
-        => new(
+    private static ICommandService NewCommandClient(Uri baseAddress, string tenant = SyntheticTenant)
+        => new EventStoreCommandClient(
+            new BaseAddressClientFactory(baseAddress),
+            Options(),
+            new FixedUlidFactory(),
+            new TestUserContextAccessor(tenant, SyntheticUser),
+            EventStoreTestSupport.CreateClassifier(),
+            NullLogger<EventStoreCommandClient>.Instance);
+
+    private static IQueryService NewQueryClient(RecordingHandler handler, IETagCache cache, string tenant = SyntheticTenant)
+        => new EventStoreQueryClient(
             new SingleClientFactory(handler),
+            Options(),
+            new TestUserContextAccessor(tenant, SyntheticUser),
+            EventStoreTestSupport.CreateClassifier(),
+            cache,
+            new EventStoreTestSupport.RecordingAuthRedirector(),
+            NullLogger<EventStoreQueryClient>.Instance);
+
+    private static IQueryService NewQueryClient(Uri baseAddress, IETagCache cache, string tenant = SyntheticTenant)
+        => new EventStoreQueryClient(
+            new BaseAddressClientFactory(baseAddress),
             Options(),
             new TestUserContextAccessor(tenant, SyntheticUser),
             EventStoreTestSupport.CreateClassifier(),
@@ -650,6 +825,11 @@ public sealed class EventStorePactContractTests {
     private sealed class SingleClientFactory(HttpMessageHandler handler) : IHttpClientFactory {
         public HttpClient CreateClient(string name)
             => new(handler, disposeHandler: false) { BaseAddress = new Uri("https://eventstore.test") };
+    }
+
+    private sealed class BaseAddressClientFactory(Uri baseAddress) : IHttpClientFactory {
+        public HttpClient CreateClient(string name)
+            => new() { BaseAddress = baseAddress };
     }
 
     private sealed class RecordingHandler(Func<HttpRequestMessage, HttpResponseMessage> responseFactory) : HttpMessageHandler {

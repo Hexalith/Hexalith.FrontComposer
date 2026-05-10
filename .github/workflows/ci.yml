@@ -152,7 +152,9 @@ jobs:
 
       - name: 'Gate 2c: Validate contract artifacts'
         shell: pwsh
-        run: ./eng/validate-contract-artifacts.ps1
+        run: |
+          $requireProvider = '${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}' -eq 'true'
+          ./eng/validate-contract-artifacts.ps1 -RequireProviderVerification:$requireProvider
 
       - name: 'Gate 2c: Fail on stale pact diff'
         shell: bash
