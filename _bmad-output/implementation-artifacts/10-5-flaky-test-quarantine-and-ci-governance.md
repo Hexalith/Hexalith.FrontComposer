@@ -83,6 +83,12 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 | AC28 | Quarantine evidence references failed assertions | Failure text is copied into summaries | Evidence retains test name, outcome, attempt number, category, seed when present, and normalized relative path only; sensitive payloads are redacted. |
 | AC29 | The implementation adds workflow permissions | GitHub token scope is reviewed | Workflows use the minimum needed permissions: `contents: read` for read-only jobs, and narrowly scoped `issues: write` / `pull-requests: write` / `contents: write` only for PR or issue automation. |
 | AC30 | Story 10-4 mutation/property gates fail intermittently | Story 10-5 quarantine evaluates them | Quarantine may isolate flaky test cases but must not suppress invalid mutation/property evidence, missing reports, or threshold failures that Story 10-4 marks blocking. |
+| AC31 | Flaky detection evaluates run history | Evidence comes from multiple runs or attempts | `same code revision` means the same protected-branch commit SHA for both pass and fail evidence unless an explicitly approved evidence window names the accepted SHA range and owner. |
+| AC32 | A quarantined test is evaluated for reintroduction | Nightly evidence is counted | A valid nightly pass requires the same stable test identity, protected-branch SHA context, expected quarantine filter, complete evidence artifacts, no cancellation, no partial run, and no dynamic skip. Any failed, canceled, missing, malformed, rerun-only, or changed-identity evidence resets the pass count. |
+| AC33 | Quarantine automation has insufficient GitHub permissions | It needs to create or update an issue or PR | The run fails closed with a governance diagnostic; it must not push directly, silently skip the action, or treat missing write permissions as success. |
+| AC34 | Quarantine or CI-diet issue automation runs repeatedly | An existing governance issue is found | Automation uses canonical issue titles or stable markers, updates the existing issue body/comment with current evidence, records unavailable labels, and avoids duplicate noise. |
+| AC35 | Evidence summaries are generated | TRX, workflow summaries, logs, or duration data are normalized | Output follows an allowlist of bounded fields and size limits; fake or real secrets, local absolute paths, tenant/user identifiers, command payload bodies, and unbounded logs are rejected or redacted before upload. |
+| AC36 | A developer reads the CI result summary | Blocking and advisory lanes completed with mixed outcomes | The summary clearly classifies `blocking failure`, `advisory quarantine failure`, `invalid evidence`, and `ci-diet breach` so a red main lane cannot be confused with tracked quarantine debt. |
 
 ---
 
@@ -102,26 +108,29 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
   - [ ] Validate artifacts before upload or sanitize during generation.
   - [ ] Ensure quarantine lane result cannot rewrite or mask the status of blocking lanes.
 
-- [ ] T3. Implement flake detection and quarantine proposal tooling (AC5-AC8, AC20, AC25-AC29)
+- [ ] T3. Implement flake detection and quarantine proposal tooling (AC5-AC8, AC20, AC25-AC29, AC31, AC33-AC35)
   - [ ] Add script(s) under `jobs/` or `.github/scripts/` that parse TRX/workflow evidence and classify a candidate as flaky only from mixed pass/fail evidence.
-  - [ ] Use stable test identity: fully qualified name, display name, project, optional trait set, and normalized source path if discoverable.
+  - [ ] Use stable test identity: fully qualified name, display name, assembly/project, optional trait set, normalized source path if discoverable, and quarantine metadata signature.
+  - [ ] Reject mixed pass/fail evidence from unrelated SHAs unless an approved evidence window names the accepted range, evidence source, and owner.
   - [ ] Open/update a GitHub issue with root-cause hypothesis, failure window, run links, owner marker, recurrence count, and proposed patch.
   - [ ] Open a PR that adds `[Trait("Category", "Quarantined")]` and metadata. Do not commit directly to `main`.
   - [ ] Add governance tests for manual and automated quarantine metadata.
+  - [ ] Add fixtures for pass/fail same SHA, pass/fail outside approved window, malformed evidence, contradictory evidence, unavailable permissions, missing labels, and redaction failures.
   - [ ] Label with `flaky-test`, `ci-governance`, and `codex-automation` when labels are available.
 
-- [ ] T4. Implement reintroduction gate (AC9-AC11, AC20, AC24, AC27-AC29)
+- [ ] T4. Implement reintroduction gate (AC9-AC11, AC20, AC24, AC27-AC29, AC32, AC34)
   - [ ] Add or extend a scheduled/manual workflow for quarantine reintroduction. There is no general `nightly.yml` today, so create one only if that is the cleanest owner.
   - [ ] Persist reintroduction state in a reviewable file or issue comment, keyed by stable test identity and protected-branch evidence.
   - [ ] Count 5 consecutive valid nightly passes before opening a removal PR.
-  - [ ] Reset pass count on failure, cancellation, missing evidence, malformed evidence, or changed test identity.
+  - [ ] Reset pass count on failure, cancellation, partial run, dynamic skip, rerun-only evidence, missing evidence, malformed evidence, wrong filter, or changed test identity.
   - [ ] If a reintroduced test fails again, open/update a repeat-flake issue and quarantine PR with increased scrutiny.
 
-- [ ] T5. Add CI duration budget governance (AC17-AC20, AC29)
+- [ ] T5. Add CI duration budget governance (AC17-AC20, AC29, AC34, AC36)
   - [ ] Record inner-loop, full-CI, and nightly durations with run id, lane, commit, and timestamp.
   - [ ] Compare against budgets: inner loop under 5 minutes, full CI under 12 minutes, nightly under 45 minutes.
   - [ ] Open/update a mandatory `ci-diet` issue when full CI exceeds 15 minutes for 3 consecutive days.
   - [ ] Include suspected slow lanes and links to run summaries.
+  - [ ] Define the authority for full-CI duration as protected-branch workflow evidence; document whether reruns and canceled runs are excluded or recorded as invalid evidence.
   - [ ] Keep advisory performance and quarantine lanes visible but separate from blocking failure accounting.
 
 - [ ] T6. Preserve E2E and cross-story quality boundaries (AC23, AC30)
@@ -136,10 +145,10 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
   - [ ] Document evidence retention and redaction rules.
   - [ ] Add troubleshooting guidance for malformed TRX, zero-test discovery, and missing GitHub labels.
 
-- [ ] T8. Validate and hand off (AC1-AC30)
+- [ ] T8. Validate and hand off (AC1-AC36)
   - [ ] Run targeted governance tests.
   - [ ] Run local command(s) proving `Category!=Quarantined` and `Category=Quarantined` behavior.
-  - [ ] Run scripts in dry-run mode against sample TRX fixtures for pass, fail, mixed, zero-test, malformed, and repeat-flake cases.
+  - [ ] Run scripts in dry-run mode against sample TRX/workflow fixtures for pass, fail, mixed same SHA, mixed outside approved window, zero-test, malformed, canceled, missing, invalid permission, redaction, duration-breach, and repeat-flake cases.
   - [ ] Record final workflow paths, script paths, command examples, labels, issue/PR behavior, and any deferred decisions in completion notes.
 
 ---
@@ -168,6 +177,10 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 | D5 | Quarantine metadata is required. | Every quarantined test needs issue link, owner marker, root-cause hypothesis, and reintroduction path. |
 | D6 | CI-diet automation opens issues, not silent workflow rewrites. | Duration pressure is a product/process decision; automation should surface evidence and force prioritization. |
 | D7 | Story 10-5 cannot weaken Story 10-4 quality gates. | Flaky isolation is not a license to ignore invalid mutation/property evidence or threshold failures. |
+| D8 | Valid nightly pass is evidence-defined, not just a green warning-only job. | Reintroduction must not count canceled, partial, skipped, malformed, wrong-filter, rerun-only, or changed-identity evidence. |
+| D9 | Automation failure to create required issue/PR is a governance failure. | Missing permissions or labels should be visible and fail closed rather than silently losing quarantine or CI-diet work. |
+| D10 | CI summaries must separate blocking failures, advisory quarantine failures, invalid evidence, and budget breaches. | Developers need to interpret a red build or warning in one pass without reverse-engineering workflow logs. |
+| D11 | Flake detection uses existing CI evidence, not a new analytics service. | Keeps the story within the decision budget and avoids building a parallel observability platform. |
 
 ### Architecture and Package Boundaries
 
@@ -185,11 +198,15 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 - Trait key/value is `Category=Quarantined`.
 - Blocking main lane uses `Category!=Quarantined` and retains existing exclusions for `Performance` and `e2e-palette` where applicable.
 - Quarantine lane uses `Category=Quarantined` and is warning-only.
-- A quarantine PR must link an issue and identify the root-cause hypothesis. If ownership is unknown, use an explicit `owner-needed` marker rather than omitting ownership.
+- A quarantine PR must link an issue and identify the root-cause hypothesis, evidence window, owner or explicit `owner-needed` marker, and reintroduction criterion. Missing metadata fails governance.
 - Every quarantined test must have a reintroduction path. "Quarantine forever" is not an allowed final state.
-- Reintroduction PRs remove the trait only after 5 consecutive valid nightly passes.
+- Reintroduction PRs remove the trait only after 5 consecutive valid nightly passes for the same stable test identity.
 - A repeat flake after reintroduction must carry recurrence history; do not overwrite the original issue evidence.
 - Missing or malformed evidence fails closed for automation decisions.
+- Stable test identity includes fully qualified test name, display name when available, assembly/project, optional trait set, normalized source path if discoverable, and quarantine metadata signature.
+- `Same code revision` means the same protected-branch commit SHA for pass/fail evidence unless an approved evidence window names the accepted range, source, and owner.
+- Quarantine may isolate unstable execution, but it never changes Story 10-4 mutation/property thresholds, report validity, missing-evidence handling, or blocking gate status.
+- Automation that cannot create or update a required issue or PR because of permissions must emit a governance failure and avoid direct pushes or silent success.
 
 ### CI Duration Governance Contract
 
@@ -201,6 +218,8 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 - Duration summaries must include run id, commit, workflow, job/lane, start/end or duration, conclusion, and whether the lane is blocking or advisory.
 - Existing advisory lanes remain visible. They must not pollute blocking-lane duration accounting unless the story explicitly documents why.
 - Duplicate issue prevention is required. Repeated breaches update the existing `ci-diet` issue.
+- Full-CI duration authority comes from protected-branch workflow evidence. Reruns, canceled runs, and partial evidence must be explicitly excluded from the 3-day breach count or recorded as invalid evidence.
+- The `ci-diet` issue uses a canonical title or stable marker, carries the current duration history, suspected slow lanes, labels when available, and the reason labels or writes were unavailable when permissions are missing.
 
 ### Latest Technical Notes
 
@@ -242,6 +261,9 @@ Do not implement these in Story 10-5:
 | Long-term ownership rotation for quarantined tests. | Process follow-up after first quarantine cycle |
 | Automatic source-code trait insertion for complex test declarations where method/class mapping is ambiguous. | Story 10-5 implementation decision; may require safe manual patch mode |
 | Release evidence rollup across Pact, mutation, accessibility, quarantine, SBOM, and signing. | Story 10-6 |
+| Maximum quarantine age before automatic escalation. | Process follow-up after first quarantine cycle |
+| Approval authority for cross-boundary quarantine evidence windows. | Story 10-5 implementation decision; recommend CODEOWNERS or maintainer approval |
+| Automatic closure policy for `ci-diet` issues after sustained recovery. | Future CI observability story |
 
 ---
 
@@ -276,7 +298,42 @@ Do not implement these in Story 10-5:
 ### Completion Notes List
 
 - 2026-05-10: Story created via `/bmad-create-story 10-5-flaky-test-quarantine-and-ci-governance` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-10: Party-mode review hardening applied. Added valid nightly pass semantics, stable test identity, evidence-window governance, fail-closed GitHub permission handling, CI-result interpretation, duplicate issue controls, redaction/fixture expectations, and stronger Story 10-4 quality-gate boundaries.
 
 ### File List
 
 (to be filled in by dev agent)
+
+---
+
+## Party-Mode Review
+
+- ISO date/time: 2026-05-10T12:14:32+02:00
+- Selected story key: `10-5-flaky-test-quarantine-and-ci-governance`
+- Command/skill invocation used: `/bmad-party-mode 10-5-flaky-test-quarantine-and-ci-governance; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+
+### Findings Summary
+
+- Winston: The story was close, but the contract between flaky execution quarantine, Story 10-4 quality evidence, and CI/release governance needed clearer boundaries so quarantine cannot become a quiet bypass for required gates.
+- Amelia: The implementation needed stricter file ownership and exact workflow/script behavior, especially fail-closed parsing, xUnit filter composition, root-level submodule checks, and local governance-test fixtures.
+- John: The adopter value depends on immediately readable CI outcomes. The story needed explicit labels for blocking failure, advisory quarantine failure, invalid evidence, and CI budget breach.
+- Murat: The largest test risk was weak evidence normalization. Flake classification, reintroduction, redaction, permission failures, and repeat-flake history all needed executable fixtures and fail-closed behavior.
+
+### Changes Applied
+
+- Added AC31-AC36 for same-SHA or approved-window evidence, valid nightly pass semantics, fail-closed permission handling, canonical duplicate-issue controls, bounded/redacted evidence allowlists, and explicit CI result interpretation.
+- Hardened T3-T5 and T8 with fixtures for mixed pass/fail evidence, malformed or contradictory artifacts, canceled or missing nightly evidence, permission failures, redaction checks, duration breaches, and repeat flakes.
+- Added Decisions D8-D11 for valid-pass evidence rules, permission failures as governance failures, readable CI summaries, and keeping detection limited to existing CI evidence rather than a new analytics service.
+- Strengthened the Flaky Quarantine Contract and CI Duration Governance Contract with stable test identity, approved evidence windows, Story 10-4 quality-gate boundaries, protected-branch duration authority, and canonical `ci-diet` issue behavior.
+
+### Findings Deferred
+
+- Maximum quarantine age before automatic escalation is deferred to a process follow-up after the first quarantine cycle.
+- Approval authority for cross-boundary evidence windows is deferred to Story 10-5 implementation, with CODEOWNERS or maintainer approval recommended.
+- Automatic closure policy for `ci-diet` issues after sustained recovery is deferred to a future CI observability story.
+- Reintroduction automation may open PRs automatically, but auto-merge remains out of scope unless a human product/architecture decision adds it later.
+
+### Final Recommendation
+
+ready-for-dev
