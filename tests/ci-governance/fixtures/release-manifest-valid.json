@@ -3,7 +3,7 @@
   "tag": "v1.2.3",
   "run_id": "42",
   "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
-  "sbom_hash": "sbom",
+  "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "benchmark_summary_hash": "benchmark",
   "packages": [
     {
@@ -11,7 +11,7 @@
       "version": "1.2.3",
       "commit_sha": "abc123",
       "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-      "checksum": "checksum",
+      "checksum": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
       "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
       "sbom_component": "Hexalith.FrontComposer.Contracts",
       "signing_status": "verified",

@@ -99,11 +99,27 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("contents: read");
         workflow.ShouldContain("submodules: true");
         workflow.ShouldContain("eng/llm_benchmark.py validate-prompt-set");
+        workflow.ShouldContain("eng/llm_benchmark.py run-benchmark");
         workflow.ShouldContain("SkillBenchmarkPromptSet.LoadEmbeddedV1");
         workflow.ShouldContain("budget-status");
         workflow.ShouldContain("BenchmarkHarnessTests");
         workflow.ShouldContain("candidate evidence only");
         workflow.ShouldContain("28-day ratchet");
+
+        string budget = Path.Combine(Path.GetTempPath(), $"fc-budget-{Guid.NewGuid():N}.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-benchmark-run-{Guid.NewGuid():N}.json");
+        File.WriteAllText(budget, """{"status":"budget-unknown","api_spend_allowed":false}""");
+        ProcessResult run = RunPython(root, [
+            "eng/llm_benchmark.py",
+            "run-benchmark",
+            "--root", ".",
+            "--budget-artifact", budget,
+            "--output", output,
+        ]);
+        run.ExitCode.ShouldNotBe(0);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("prompt_count").GetInt32().ShouldBe(20);
+        doc.RootElement.GetProperty("classification").GetString().ShouldBe("budget-blocked");
     }
 
     [Fact]
@@ -120,10 +136,13 @@ public sealed class CiGovernanceTests {
         workflow.ShouldNotContain("submodules: recursive");
 
         workflow.IndexOf("Run All Tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.IndexOf("Record approved attestation fallback before publish", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
         workflow.ShouldContain("Preflight package inventory");
-        workflow.ShouldContain("actions/attest-build-provenance");
+        workflow.ShouldContain("Require governed attestation fallback before publish");
         workflow.ShouldContain("attestation-unavailable.md");
         workflow.ShouldContain("release-budget");
+        workflow.ShouldContain("--append-current");
+        workflow.ShouldNotContain("|| true");
 
         releaseConfig.ShouldContain("--include-symbols");
         releaseConfig.ShouldContain("CycloneDX");
@@ -136,6 +155,7 @@ public sealed class CiGovernanceTests {
         releaseConfig.ShouldContain("nupkgs-signed/*.nupkg");
         releaseConfig.ShouldContain("nupkgs/*.snupkg");
         releaseConfig.ShouldContain("release-evidence/checksums.json");
+        releaseConfig.ShouldContain("release-evidence/release-budget-summary.json");
         releaseConfig.ShouldContain("partial-publish-incident.json");
     }
 
@@ -172,6 +192,27 @@ public sealed class CiGovernanceTests {
         using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
         doc.RootElement.GetProperty("status").GetString().ShouldBe("valid");
         doc.RootElement.GetProperty("expected_version_source").GetString().ShouldBe("semantic-release");
+
+        string unexpectedRoot = Path.Combine(Path.GetTempPath(), $"fc-release-inventory-root-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(unexpectedRoot, "src", "Unexpected"));
+        File.Copy(Path.Combine(root, "eng", "release-package-inventory.json"), Path.Combine(unexpectedRoot, "expected.json"));
+        File.WriteAllText(Path.Combine(unexpectedRoot, "src", "Unexpected", "Unexpected.csproj"), """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+                <IsPackable>true</IsPackable>
+                <PackageId>Unexpected.Package</PackageId>
+              </PropertyGroup>
+            </Project>
+            """);
+        ProcessResult unexpectedInventory = RunPython(root, [
+            "eng/release_evidence.py",
+            "inventory",
+            "--root", unexpectedRoot,
+            "--expected", Path.Combine(unexpectedRoot, "expected.json"),
+        ]);
+        unexpectedInventory.ExitCode.ShouldNotBe(0);
+        unexpectedInventory.Error.ShouldBeEmpty();
     }
 
     [Fact]
@@ -218,6 +259,38 @@ public sealed class CiGovernanceTests {
         ]);
         invalidManifest.ExitCode.ShouldNotBe(0);
         invalidManifest.Error.ShouldBeEmpty();
+
+        string placeholderManifestPath = Path.Combine(Path.GetTempPath(), $"fc-release-placeholder-{Guid.NewGuid():N}.json");
+        File.WriteAllText(placeholderManifestPath, """
+            {
+              "commit_sha": "abc123",
+              "tag": "v1.2.3",
+              "run_id": "42",
+              "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
+              "sbom_hash": "pending-sbom-hash",
+              "benchmark_summary_hash": "benchmark",
+              "packages": [
+                {
+                  "package_id": "Hexalith.FrontComposer.Contracts",
+                  "version": "1.2.3",
+                  "commit_sha": "abc123",
+                  "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+                  "checksum": "pending-checksum",
+                  "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+                  "sbom_component": "Hexalith.FrontComposer.Contracts",
+                  "signing_status": "verified",
+                  "attestation_status": "approved-unsupported",
+                  "publish_status": "pending"
+                }
+              ]
+            }
+            """);
+        ProcessResult placeholderManifest = RunPython(root, [
+            "eng/release_evidence.py",
+            "verify-manifest",
+            "--manifest", placeholderManifestPath,
+        ]);
+        placeholderManifest.ExitCode.ShouldNotBe(0);
 
         string evidenceRoot = Path.Combine(Path.GetTempPath(), $"fc-evidence-{Guid.NewGuid():N}");
         ProcessResult pathEscape = RunPython(root, [

@@ -40,12 +40,17 @@ jobs:
         continue-on-error: true
         run: python3 eng/llm_benchmark.py budget-status --budget .github/benchmark-budget.json --output artifacts/benchmark/budget.json
 
+      - name: Run 20-prompt LLM benchmark gate
+        run: python3 eng/llm_benchmark.py run-benchmark --root . --budget-artifact artifacts/benchmark/budget.json --output artifacts/benchmark/run-summary.json
+
       - name: Run benchmark contract tests
+        if: always()
         env:
           DiffEngine_Disabled: true
         run: dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter FullyQualifiedName~BenchmarkHarnessTests --results-directory ./TestResults --logger "trx;LogFileName=benchmark-results.trx"
 
       - name: Publish bounded benchmark summary
+        if: always()
         shell: bash
         run: |
           {

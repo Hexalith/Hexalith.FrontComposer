@@ -1,6 +1,6 @@
 # Story 10.6: LLM Benchmark, Signed Releases & SBOM
 
-Status: review
+Status: done
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR73**, **FR75**, **NFR24-NFR26**, **NFR60-NFR63**, and **NFR100**. Builds on Stories **8-5**, **9-5**, and **10-1** through **10-5**. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -176,6 +176,15 @@ Start here: T1 benchmark workflow and config -> T2 benchmark cache/redaction/bud
   - [x] Add MCP benchmark tests for baseline capture/update, cache mismatch, invalid evidence, budget-blocked status, unsupported seed/fingerprint metadata, redaction failures, stale/malformed evidence, and exact threshold boundaries.
   - [x] Add governance tests for trusted-context writes, sealed-manifest publication, partial-publish incident records, secret scan failures, external outage states, and evidence path containment.
   - [x] Update `tests/README.md`, release docs, or process notes with local dry-run commands for benchmark, SBOM, signature verification, and release evidence review.
+
+### Review Findings
+
+- [x] [Review][Patch] Nightly workflow never runs the 20-prompt LLM benchmark [.github/workflows/nightly.yml:35]
+- [x] [Review][Patch] Release manifest verification accepts placeholder checksums and SBOM hashes [eng/release_evidence.py:210]
+- [x] [Review][Patch] Attestation evidence is generated after semantic-release has already published assets [.github/workflows/release.yml:91]
+- [x] [Review][Patch] Release budget governance reads a missing history file and suppresses the failure [.github/workflows/release.yml:122]
+- [x] [Review][Patch] Package inventory does not discover unexpected packable projects [eng/release_evidence.py:106]
+- [x] [Review][Patch] Benchmark artifact/gate paths can accept missing provider metadata [src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs:1501]
 
 ---
 
@@ -359,6 +368,11 @@ GPT-5 Codex
 - 2026-05-10: `python eng\release_evidence.py inventory --root . --expected eng\release-package-inventory.json --output artifacts\release\package-inventory.json` passed.
 - 2026-05-10: `python eng\release_evidence.py verify-manifest --manifest tests\ci-governance\fixtures\release-manifest-valid.json` passed.
 - 2026-05-10: `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-restore` passed (2909 passed, 3 skipped).
+- 2026-05-10: `python -m py_compile eng\llm_benchmark.py eng\release_evidence.py` passed.
+- 2026-05-10: `python eng\llm_benchmark.py run-benchmark --root . --budget-artifact <temp-budget> --output <temp-output>` produced 20 prompt results and failed closed as budget-blocked.
+- 2026-05-10: `python eng\release_evidence.py verify-manifest --manifest tests\ci-governance\fixtures\release-manifest-valid.json` passed; invalid manifest failed.
+- 2026-05-10: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter FullyQualifiedName~BenchmarkHarnessTests --no-restore` passed (18 tests).
+- 2026-05-10: `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter FullyQualifiedName~CiGovernanceTests --no-restore` passed (18 tests).
 
 ### Completion Notes List
 
@@ -371,10 +385,12 @@ GPT-5 Codex
   - Findings deferred: multi-destination rollback automation remains future release-operations work; certificate provider selection still belongs to implementation documentation.
   - Final recommendation: ready-for-dev
 - 2026-05-10: Implemented nightly benchmark orchestration, deterministic provider/budget/baseline gates, release package inventory and sealed-manifest evidence scripts, SBOM/signing/symbol/checksum workflow wiring, attestation fallback evidence, release budget NFR100 governance, package metadata lockstep updates, governance fixtures, and local verification docs. Full solution regression suite passed.
+- 2026-05-10: Code review patches applied. Nightly now executes a 20-prompt benchmark gate; release manifests reject pending checksum/SBOM evidence; attestation fallback is recorded before publish; release budget history is appended from the current run; package inventory discovers unexpected projects; benchmark artifact/gate validation requires provider metadata.
 
 ### Change Log
 
 - 2026-05-10: Added benchmark and release governance implementation for Story 10-6; status moved to review after full validation.
+- 2026-05-10: Resolved six code-review findings and moved Story 10-6 to done.
 
 ### File List
 

@@ -85,12 +85,12 @@ public sealed class BenchmarkHarnessTests {
 
     [Fact]
     public void ResultPersistence_BlocksWhenRedactionFails() {
-        SkillBenchmarkResult result = new(
+        SkillBenchmarkResult result = WithProviderMetadata(new SkillBenchmarkResult(
             PromptId: "p01",
             FrameworkVersion: "1.0.0",
             CorpusVersion: "1.0.0",
             ModelId: "model",
-            ProviderConfigHash: "hash",
+            ProviderConfigHash: ProviderConfig().ConfigHash(),
             ScorerVersion: "scorer-v1",
             ValidatorVersion: "validator-v1",
             CompileSucceeded: false,
@@ -98,7 +98,7 @@ public sealed class BenchmarkHarnessTests {
             FailureCategory: GeneratedCodeFailureCategory.Unknown,
             RedactionStatus: SkillBenchmarkRedactionStatus.Failed,
             GeneratedArtifactToken: "artifact:one",
-            SanitizedDiagnostics: ["diagnostic"]);
+            SanitizedDiagnostics: ["diagnostic"]));
 
         SkillBenchmarkArtifactWriter.CanPersist(result).ShouldBeFalse();
         SkillBenchmarkArtifactWriter.TryBuildArtifact(result).Diagnostics.ShouldContain(SkillBenchmarkArtifactWriter.RedactionFailedDiagnostic);
@@ -109,12 +109,12 @@ public sealed class BenchmarkHarnessTests {
         // P-15: even when the caller asserts redaction passed, persistence is blocked when the
         // sanitized diagnostics still contain raw filesystem paths. This prevents a producer
         // bug from leaking through the persistence gate.
-        SkillBenchmarkResult result = new(
+        SkillBenchmarkResult result = WithProviderMetadata(new SkillBenchmarkResult(
             PromptId: "p01",
             FrameworkVersion: "1.0.0",
             CorpusVersion: "1.0.0",
             ModelId: "model",
-            ProviderConfigHash: "hash",
+            ProviderConfigHash: ProviderConfig().ConfigHash(),
             ScorerVersion: "scorer-v1",
             ValidatorVersion: "validator-v1",
             CompileSucceeded: false,
@@ -122,7 +122,7 @@ public sealed class BenchmarkHarnessTests {
             FailureCategory: GeneratedCodeFailureCategory.Unknown,
             RedactionStatus: SkillBenchmarkRedactionStatus.Passed,
             GeneratedArtifactToken: "artifact:one",
-            SanitizedDiagnostics: ["error in C:\\Users\\jpiquot\\repo\\Bad.cs"]);
+            SanitizedDiagnostics: ["error in C:\\Users\\jpiquot\\repo\\Bad.cs"]));
 
         SkillBenchmarkArtifactWriter.CanPersist(result).ShouldBeFalse();
         SkillBenchmarkArtifactWriter.TryBuildArtifact(result).Diagnostics.ShouldContain(SkillBenchmarkArtifactWriter.SanitizationShapeDiagnostic);
@@ -130,12 +130,12 @@ public sealed class BenchmarkHarnessTests {
 
     [Fact]
     public void ResultPersistence_PersistsWhenRedactionPassedAndSanitizationLooksClean() {
-        SkillBenchmarkResult result = new(
+        SkillBenchmarkResult result = WithProviderMetadata(new SkillBenchmarkResult(
             PromptId: "p01",
             FrameworkVersion: "1.0.0",
             CorpusVersion: "1.0.0",
             ModelId: "model",
-            ProviderConfigHash: "hash",
+            ProviderConfigHash: ProviderConfig().ConfigHash(),
             ScorerVersion: "scorer-v1",
             ValidatorVersion: "validator-v1",
             CompileSucceeded: true,
@@ -143,7 +143,7 @@ public sealed class BenchmarkHarnessTests {
             FailureCategory: GeneratedCodeFailureCategory.None,
             RedactionStatus: SkillBenchmarkRedactionStatus.Passed,
             GeneratedArtifactToken: "artifact:abcd",
-            SanitizedDiagnostics: ["validator-passed", "compile-succeeded"]);
+            SanitizedDiagnostics: ["validator-passed", "compile-succeeded"]));
 
         SkillBenchmarkArtifactWriter.CanPersist(result).ShouldBeTrue();
         SkillBenchmarkArtifactBuildResult artifact = SkillBenchmarkArtifactWriter.TryBuildArtifact(result);
@@ -309,6 +309,17 @@ public sealed class BenchmarkHarnessTests {
     }
 
     [Fact]
+    public void ResultPersistenceAndGate_BlockMissingProviderMetadata() {
+        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        SkillBenchmarkResult[] results = [.. promptSet.Prompts.Select((prompt, index) => BenchmarkResultFor(prompt.Id, index < 16))];
+        SkillBenchmarkResult missingMetadata = results[0] with { ProviderId = string.Empty };
+
+        SkillBenchmarkArtifactWriter.CanPersist(missingMetadata).ShouldBeFalse();
+        SkillBenchmarkArtifactWriter.TryBuildArtifact(missingMetadata).Diagnostics.ShouldContain(SkillBenchmarkArtifactWriter.MissingProviderMetadataDiagnostic);
+        SkillBenchmarkGate.Evaluate(promptSet, [missingMetadata, .. results.Skip(1)], ApprovedBaseline()).Diagnostics.ShouldContain("provider-metadata-required");
+    }
+
+    [Fact]
     public void EvidencePath_NormalizesUnderApprovedRootAndRejectsEscapes() {
         string root = Path.Combine(Path.GetTempPath(), $"fc-benchmark-{Guid.NewGuid():N}");
         string safe = SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, "summaries/result.json");
@@ -329,12 +340,12 @@ public sealed class BenchmarkHarnessTests {
     }
 
     private static SkillBenchmarkResult BenchmarkResultFor(string promptId, bool passed)
-        => new SkillBenchmarkResult(
+        => WithProviderMetadata(new SkillBenchmarkResult(
             PromptId: promptId,
             FrameworkVersion: "1.0.0",
             CorpusVersion: "1.0.0",
             ModelId: "model",
-            ProviderConfigHash: new SkillBenchmarkModelConfig("provider", "model", 0, 123, 60, 0).ConfigHash(),
+            ProviderConfigHash: ProviderConfig().ConfigHash(),
             ScorerVersion: "scorer-v1",
             ValidatorVersion: "validator-v1",
             CompileSucceeded: passed,
@@ -342,7 +353,7 @@ public sealed class BenchmarkHarnessTests {
             FailureCategory: passed ? GeneratedCodeFailureCategory.None : GeneratedCodeFailureCategory.PackageBoundary,
             RedactionStatus: SkillBenchmarkRedactionStatus.Passed,
             GeneratedArtifactToken: $"artifact:{promptId}",
-            SanitizedDiagnostics: [passed ? "validator-passed" : "legitimate-miss"]) with {
+            SanitizedDiagnostics: [passed ? "validator-passed" : "legitimate-miss"])) with {
             ProviderId = "provider",
             Temperature = 0,
             Seed = 123,
@@ -353,4 +364,34 @@ public sealed class BenchmarkHarnessTests {
             ProviderFingerprint = "fp-test",
             EvidenceStatus = passed ? SkillBenchmarkEvidenceStatus.Valid : SkillBenchmarkEvidenceStatus.LegitimateMiss,
         };
+
+    private static SkillBenchmarkModelConfig ProviderConfig()
+        => new("provider", "model", 0, 123, 60, 0);
+
+    private static SkillBenchmarkResult WithProviderMetadata(SkillBenchmarkResult result)
+        => result with {
+            ProviderId = "provider",
+            Temperature = 0,
+            Seed = 123,
+            TimeoutSeconds = 60,
+            RetryCount = 0,
+            SeedSupported = true,
+            FingerprintSupported = true,
+            ProviderFingerprint = "fp-test",
+            CacheKey = "cache-key",
+            SanitizedArtifactToken = result.GeneratedArtifactToken,
+        };
+
+    private static SkillBenchmarkBaselineArtifact ApprovedBaseline()
+        => new(
+            InitialPassRate: 0.80,
+            CorpusHash: "corpus",
+            ScorerVersion: "scorer-v1",
+            ValidatorVersion: "validator-v1",
+            RedactionPolicyVersion: "redaction-v1",
+            ProviderConfigHash: ProviderConfig().ConfigHash(),
+            CommitSha: "abc123",
+            ApproverMarker: "approved-by-release-owner",
+            SanitizedSummaryHash: "summary",
+            CapturedAt: DateTimeOffset.Parse("2026-05-10T12:00:00Z"));
 }

@@ -1671,6 +1671,10 @@ public static class SkillBenchmarkGate {
             diagnostics.Add("invalid-evidence-present");
         }
 
+        if (results.Any(r => !SkillBenchmarkArtifactWriter.HasProviderMetadata(r))) {
+            diagnostics.Add("provider-metadata-required");
+        }
+
         int passed = results.Count(r => r.EvidenceStatus == SkillBenchmarkEvidenceStatus.Valid && r.CompileSucceeded && r.ValidatorSucceeded);
         double passRate = results.Count == 0 ? 0d : (double)passed / results.Count;
         double threshold = Math.Max(SkillBenchmarkOfflineScorer.OneShotPassTarget, approvedBaseline?.InitialPassRate ?? SkillBenchmarkOfflineScorer.OneShotPassTarget);
@@ -1774,6 +1778,7 @@ public static class SkillBenchmarkArtifactWriter {
     public const string RedactionFailedDiagnostic = "redaction-not-passed";
     public const string SanitizationShapeDiagnostic = "sanitized-diagnostic-contains-raw-path";
     public const string UnsafeSummaryDiagnostic = "sanitized-diagnostic-contains-unsafe-summary";
+    public const string MissingProviderMetadataDiagnostic = "benchmark-result-missing-provider-metadata";
 
     private static readonly Regex LooksLikeLocalPathRegex = new(
         @"(?:[A-Za-z]:[\\/])|(?:^|\s)[/\\][A-Za-z][^\s]*[/\\]",
@@ -1792,8 +1797,7 @@ public static class SkillBenchmarkArtifactWriter {
         // just block obvious local-path leaks.
         return !ContainsRawLocalPath(result.SanitizedDiagnostics)
             && !ContainsUnsafeSummary(result.SanitizedDiagnostics)
-            && !string.IsNullOrWhiteSpace(result.ProviderConfigHash)
-            && result.ProviderConfigHash.Length is 4 or 64;
+            && HasProviderMetadata(result);
     }
 
     public static SkillBenchmarkArtifactBuildResult TryBuildArtifact(SkillBenchmarkResult result) {
@@ -1809,6 +1813,10 @@ public static class SkillBenchmarkArtifactWriter {
 
         if (ContainsUnsafeSummary(result.SanitizedDiagnostics)) {
             return new SkillBenchmarkArtifactBuildResult(false, [UnsafeSummaryDiagnostic], null);
+        }
+
+        if (!HasProviderMetadata(result)) {
+            return new SkillBenchmarkArtifactBuildResult(false, [MissingProviderMetadataDiagnostic], null);
         }
 
         // P-5: serialize via the source-gen context to avoid reflection-based metadata, which
@@ -1838,6 +1846,24 @@ public static class SkillBenchmarkArtifactWriter {
         }
 
         return false;
+    }
+
+    public static bool HasProviderMetadata(SkillBenchmarkResult result) {
+        ArgumentNullException.ThrowIfNull(result);
+
+        return !string.IsNullOrWhiteSpace(result.ProviderId)
+            && !string.IsNullOrWhiteSpace(result.ModelId)
+            && !string.IsNullOrWhiteSpace(result.ProviderConfigHash)
+            && result.ProviderConfigHash.Length == 64
+            && !string.IsNullOrWhiteSpace(result.FrameworkVersion)
+            && !string.IsNullOrWhiteSpace(result.CorpusVersion)
+            && !string.IsNullOrWhiteSpace(result.ScorerVersion)
+            && !string.IsNullOrWhiteSpace(result.ValidatorVersion)
+            && !string.IsNullOrWhiteSpace(result.GeneratedArtifactToken)
+            && !string.IsNullOrWhiteSpace(result.SanitizedArtifactToken)
+            && !string.IsNullOrWhiteSpace(result.CacheKey)
+            && result.TimeoutSeconds > 0
+            && result.RetryCount >= 0;
     }
 }
 

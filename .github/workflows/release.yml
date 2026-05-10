@@ -15,7 +15,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 120
     permissions:
       contents: write # For tag creation and GitHub Release
       packages: write
@@ -83,6 +83,30 @@ jobs:
       - name: Preflight package inventory
         run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory-preflight.json
 
+      - name: Start release budget timer
+        run: echo "RELEASE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Require governed attestation fallback before publish
+        if: ${{ vars.ATTESTATION_UNSUPPORTED != 'true' }}
+        run: |
+          {
+            echo '## Release attestation mode required'
+            echo
+            echo 'Set ATTESTATION_UNSUPPORTED=true only after approving the unsupported-attestation fallback, or wire pre-publish attestations into the sealed manifest before release.'
+          } >> "$GITHUB_STEP_SUMMARY"
+          exit 1
+
+      - name: Record approved attestation fallback before publish
+        if: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' }}
+        run: |
+          mkdir -p release-evidence
+          cat > release-evidence/attestation-unavailable.md <<'NOTE'
+          # Artifact Attestation Unavailable
+
+          GitHub artifact/SBOM attestation is unavailable for this repository plan, visibility, or permission context.
+          Checksums, NuGet author signatures, RFC 3161 timestamps, SBOM, commit SHA, tag, run id, and workflow ref remain the blocking provenance evidence.
+          NOTE
+
       - name: Configure git credentials
         run: git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/Hexalith/Hexalith.FrontComposer.git
         env:
@@ -97,28 +121,6 @@ jobs:
           NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
           NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
 
-      - name: Attest release artifacts when supported
-        if: ${{ hashFiles('release-evidence/sealed-manifest.json') != '' && vars.ATTESTATION_UNSUPPORTED != 'true' }}
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
-        with:
-          subject-path: |
-            release-evidence/sealed-manifest.json
-            release-evidence/checksums.json
-            release-evidence/sbom/**/*.json
-            nupkgs-signed/*.nupkg
-            nupkgs/*.snupkg
-
-      - name: Record approved attestation fallback
-        if: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' }}
-        run: |
-          mkdir -p release-evidence
-          cat > release-evidence/attestation-unavailable.md <<'NOTE'
-          # Artifact Attestation Unavailable
-
-          GitHub artifact/SBOM attestation is unavailable for this repository plan, visibility, or permission context.
-          Checksums, NuGet author signatures, RFC 3161 timestamps, SBOM, commit SHA, tag, run id, and workflow ref remain the blocking provenance evidence.
-          NOTE
-
       - name: Release budget monitor
         if: always()
-        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "false" || true
+        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "false" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"

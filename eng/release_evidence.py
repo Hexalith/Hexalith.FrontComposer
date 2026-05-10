@@ -18,6 +18,7 @@ from typing import Any
 
 PACKAGE_COLLAPSE_MARKER = "<!-- frontcomposer:package-count-collapse -->"
 MAX_FIELD = 600
+SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
 REQUIRED_ROW_FIELDS = [
     "package_id",
     "version",
@@ -103,13 +104,50 @@ def is_packable(project: pathlib.Path) -> bool:
     return value.lower() != "false"
 
 
+def discover_projects(repo: pathlib.Path) -> list[pathlib.Path]:
+    src = repo / "src"
+    projects = []
+    for project in src.rglob("*.csproj"):
+        parts = {p.lower() for p in project.parts}
+        if "bin" not in parts and "obj" not in parts:
+            projects.append(project)
+    return sorted(projects, key=lambda p: str(p.relative_to(repo)).replace("\\", "/"))
+
+
+def is_placeholder(value: Any) -> bool:
+    text = str(value or "")
+    return not text or text.startswith("pending-")
+
+
+def looks_like_sha256(value: Any) -> bool:
+    return bool(SHA256_RE.fullmatch(str(value or "")))
+
+
 def inventory(args: argparse.Namespace) -> int:
     repo = pathlib.Path(args.root)
     expected = read_json(args.expected)
     rows: list[dict[str, Any]] = []
     diagnostics: list[str] = []
-    for item in expected.get("packages", []):
+    expected_items = expected.get("packages", [])
+    expected_by_path = {
+        str(item["project"]).replace("\\", "/"): item
+        for item in expected_items
+        if isinstance(item, dict) and item.get("project")
+    }
+    discovered_by_path = {
+        str(project.relative_to(repo)).replace("\\", "/"): project
+        for project in discover_projects(repo)
+    }
+    for path in sorted(discovered_by_path):
+        if path not in expected_by_path:
+            state = "packable" if is_packable(discovered_by_path[path]) else "non-packable"
+            diagnostics.append(f"{path}: unexpected {state} project missing from release package inventory")
+    for path in sorted(expected_by_path):
+        item = expected_by_path[path]
         project = repo / item["project"]
+        if not project.exists():
+            diagnostics.append(f"{item['project']}: expected project missing")
+            continue
         actual_packable = is_packable(project)
         actual_id = package_id(project)
         expected_packable = bool(item.get("packable"))
@@ -164,9 +202,17 @@ def verify_manifest(args: argparse.Namespace) -> int:
             diagnostics.append(f"{row.get('package_id')}: signing not verified")
         if row.get("attestation_status") not in {"attested", "approved-unsupported"}:
             diagnostics.append(f"{row.get('package_id')}: attestation state invalid")
+        if str(row.get("checksum", "")).startswith("pending-") or not looks_like_sha256(row.get("checksum")):
+            diagnostics.append(f"{row.get('package_id')}: checksum must be a concrete sha256")
+        if str(row.get("artifact_path", "")).startswith("nupkgs/"):
+            diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
     for field in ["commit_sha", "tag", "run_id", "workflow_ref", "sbom_hash", "benchmark_summary_hash"]:
         if not manifest.get(field):
             diagnostics.append(f"manifest missing {field}")
+    if str(manifest.get("sbom_hash", "")).startswith("pending-") or not looks_like_sha256(manifest.get("sbom_hash")):
+        diagnostics.append("manifest sbom_hash must be a concrete sha256")
+    if str(manifest.get("benchmark_summary_hash", "")).startswith("pending-"):
+        diagnostics.append("manifest benchmark_summary_hash must not be pending")
     if args.output:
         write_json(args.output, {"status": "valid" if not diagnostics else "invalid", "diagnostics": diagnostics})
     return 0 if not diagnostics else 1
@@ -193,21 +239,29 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         if isinstance(item, dict)
     }
     packages = []
+    diagnostics: list[str] = []
     sbom_hash = args.sbom_hash
     if not sbom_hash:
         sbom_hash = next((v for k, v in checksums_by_path.items() if k.startswith("release-evidence/sbom/")), "")
+    if not looks_like_sha256(sbom_hash):
+        diagnostics.append("sbom checksum evidence is required before sealing the manifest")
     for row in inventory_payload.get("rows", []):
         if not row.get("packable"):
             continue
         package_id = row["package_id"]
         nupkg = f"nupkgs-signed/{package_id}.{args.version}.nupkg"
         snupkg = f"nupkgs/{package_id}.{args.version}.snupkg"
+        checksum = checksums_by_path.get(nupkg, "")
+        if not looks_like_sha256(checksum):
+            diagnostics.append(f"{package_id}: signed package checksum is missing")
+        if row.get("symbol_required") and snupkg not in checksums_by_path:
+            diagnostics.append(f"{package_id}: symbol package checksum is missing")
         packages.append({
             "package_id": package_id,
             "version": args.version,
             "commit_sha": args.commit_sha,
             "artifact_path": nupkg,
-            "checksum": checksums_by_path.get(nupkg, "pending-checksum"),
+            "checksum": checksum,
             "symbol_artifact": snupkg if row.get("symbol_required") else row.get("exception", "not-required"),
             "sbom_component": package_id,
             "signing_status": "verified",
@@ -224,14 +278,43 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         "packages": packages,
     }
     write_json(args.output, manifest)
+    if diagnostics:
+        if args.diagnostics_output:
+            write_json(args.diagnostics_output, {"status": "invalid", "diagnostics": diagnostics})
+        return 1
     return 0
 
 
 def release_budget(args: argparse.Namespace) -> int:
-    raw = read_json(args.evidence)
+    if pathlib.Path(args.evidence).exists():
+        raw = read_json(args.evidence)
+    elif args.append_current:
+        raw = []
+    else:
+        raise SystemExit(f"release budget evidence is missing: {args.evidence}")
     releases = raw.get("releases", raw) if isinstance(raw, dict) else raw
     if not isinstance(releases, list):
         raise SystemExit("invalid release budget evidence: expected releases list")
+    if args.append_current:
+        started = dt.datetime.fromisoformat(args.started_at.replace("Z", "+00:00"))
+        ended = dt.datetime.fromisoformat(args.ended_at.replace("Z", "+00:00")) if args.ended_at else dt.datetime.now(dt.timezone.utc)
+        minutes = max(0, (ended - started).total_seconds() / 60)
+        package_count = int(args.package_count)
+        if args.manifest and pathlib.Path(args.manifest).exists():
+            manifest = read_json(args.manifest)
+            package_count = len(manifest.get("packages", []))
+        releases = [
+            *releases,
+            {
+                "tag": args.tag,
+                "run_id": args.run_id,
+                "package_count": package_count,
+                "slow_jobs": args.slow_job or [],
+                "publish_status": args.publish_status,
+                "billable_minutes": minutes,
+                "publish_latency_minutes": args.publish_latency_minutes if args.publish_latency_minutes is not None else minutes,
+            },
+        ]
     normalized = []
     for release in releases:
         minutes = float(release.get("billable_minutes", 0))
@@ -307,12 +390,23 @@ def main() -> int:
     prep.add_argument("--sbom-hash", default="")
     prep.add_argument("--benchmark-summary-hash", default="candidate-benchmark-summary")
     prep.add_argument("--attestation-status", default="approved-unsupported")
+    prep.add_argument("--diagnostics-output")
     prep.set_defaults(func=prepare_manifest)
 
     budget = sub.add_parser("release-budget")
     budget.add_argument("--evidence", required=True)
     budget.add_argument("--output")
     budget.add_argument("--apply", action="store_true")
+    budget.add_argument("--append-current", action="store_true")
+    budget.add_argument("--started-at", default=os.environ.get("RELEASE_STARTED_AT", ""))
+    budget.add_argument("--ended-at")
+    budget.add_argument("--tag", default=os.environ.get("GITHUB_REF_NAME", "local"))
+    budget.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
+    budget.add_argument("--package-count", type=int, default=0)
+    budget.add_argument("--manifest")
+    budget.add_argument("--publish-status", default="unknown")
+    budget.add_argument("--publish-latency-minutes", type=float)
+    budget.add_argument("--slow-job", action="append")
     budget.add_argument("--event-name", default=os.environ.get("GITHUB_EVENT_NAME", ""))
     budget.add_argument("--ref", default=os.environ.get("GITHUB_REF", ""))
     budget.add_argument("--ref-protected", default=os.environ.get("GITHUB_REF_PROTECTED", "false"))
