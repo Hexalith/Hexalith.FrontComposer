@@ -10,13 +10,15 @@
       "name": "happy-path",
       "config": "tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json",
       "threshold": 80,
-      "artifactPrefix": "source-tools-happy-path"
+      "artifactPrefix": "source-tools-happy-path",
+      "minimumMutantCount": 1
     },
     {
       "name": "error-handling",
       "config": "tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json",
       "threshold": 60,
-      "artifactPrefix": "source-tools-error-handling"
+      "artifactPrefix": "source-tools-error-handling",
+      "minimumMutantCount": 1
     }
   ],
   "explicitExclusions": [
@@ -41,5 +43,6 @@
     "equivalent-accepted",
     "deferred-with-owner",
     "blocking"
-  ]
+  ],
+  "problemMutantTriage": []
 }

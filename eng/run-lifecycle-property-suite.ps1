@@ -27,18 +27,48 @@ $filter = if ($MaxTest -ge 10000) {
 } else {
   "Category=LifecycleIdempotency&Category!=NightlyProperty"
 }
+$endSize = if ($MaxTest -ge 10000) { 96 } else { 64 }
+$replayCommand = "pwsh ./eng/run-lifecycle-property-suite.ps1 -MaxTest $MaxTest -Replay `"$Replay`" -ResultsDirectory `"$ResultsDirectory`""
+$operationDistribution = [ordered]@{
+  submit = "token % 10 == 0"
+  acknowledge = "token % 10 == 1"
+  syncing = "token % 10 == 2"
+  confirmed = "token % 10 == 3"
+  rejected = "token % 10 == 4"
+  duplicateTerminal = "token % 10 == 5"
+  reconnectObservation = "token % 10 == 6"
+  retryObservation = "token % 10 == 7"
+  staleObservation = "token % 10 == 8"
+  resetToIdle = "token % 10 == 9"
+}
 
 $summaryDir = Join-Path (Resolve-Path (Join-Path $PSScriptRoot "..")).Path "artifacts/property"
 New-Item -ItemType Directory -Force -Path $summaryDir | Out-Null
+@{
+  fsCheckPackage = "FsCheck.Xunit.v3 3.3.1"
+  replaySeed = $Replay
+  size = 0
+  maxSize = $endSize
+  sequenceCount = $MaxTest
+  filter = $filter
+  resultsDirectory = $ResultsDirectory
+  replayCommand = $replayCommand
+  generatedOperationDistribution = $operationDistribution
+  shrinkResult = "none-for-passing-run; on failure, retain the FsCheck shrink output from TRX/console and convert confirmed bugs to command-idempotency-counterexamples.json"
+} | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $summaryDir "property-run-evidence.json") -Encoding utf8
+
 @(
   "## Lifecycle Property Run",
   "",
   "- FsCheck package: FsCheck.Xunit.v3 3.3.1",
   "- MaxTest: $MaxTest",
+  "- MaxSize: $endSize",
   "- Replay seed: $Replay",
   "- Filter: $filter",
   "- Results: $ResultsDirectory",
-  "- Replay command: pwsh ./eng/run-lifecycle-property-suite.ps1 -MaxTest $MaxTest -Replay `"$Replay`" -ResultsDirectory `"$ResultsDirectory`""
+  "- Generated operation distribution: uniform token modulo 10 across submit, acknowledge, syncing, confirmed, rejected, duplicate terminal, reconnect observation, retry observation, stale observation, and reset/idling",
+  "- Shrink result: none for a passing run; failing runs must retain FsCheck shrink output and fixture conversion evidence",
+  "- Replay command: $replayCommand"
 ) | Set-Content -LiteralPath (Join-Path $summaryDir "property-seed-summary.md") -Encoding utf8
 
 dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj `

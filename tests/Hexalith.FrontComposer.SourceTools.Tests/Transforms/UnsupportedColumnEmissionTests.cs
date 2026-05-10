@@ -5,8 +5,11 @@ using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
 
+using Xunit;
+
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
+[Trait("Category", "MutationErrorHandling")]
 public sealed class UnsupportedColumnEmissionTests {
     private static readonly EquatableArray<BadgeMappingEntry> EmptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
 

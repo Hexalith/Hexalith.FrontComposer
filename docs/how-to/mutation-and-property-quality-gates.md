@@ -28,7 +28,7 @@ Run the deterministic command idempotency property suite:
 pwsh ./eng/run-lifecycle-property-suite.ps1 -MaxTest 1000 -Replay "15485863,32452843,0"
 ```
 
-Omit `-Replay` for a random nightly-style seed. The script writes the actual seed and replay command to `artifacts/property/property-seed-summary.md`.
+Omit `-Replay` for a random nightly-style seed. The script writes the actual seed and replay command to `artifacts/property/property-seed-summary.md`, plus structured max-size, sequence-count, operation-distribution, shrink-policy, and replay-command evidence to `artifacts/property/property-run-evidence.json`.
 
 Run Stryker segments from the SourceTools test project:
 
@@ -50,6 +50,8 @@ Every `Survived`, `NoCoverage`, `Timeout`, and `CompileError` mutant needs one a
 - `equivalent-accepted`: the mutant is equivalent or non-actionable, with rationale.
 - `deferred-with-owner`: the gap is real and has an owner/follow-up story.
 - `blocking`: the gate cannot pass until the mutant is addressed.
+
+Record accepted or deferred problem mutants in `tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/mutation-target-manifest.json` under `problemMutantTriage`; validation fails when report counts exceed reviewed triage entries.
 
 ## Property Counterexamples
 

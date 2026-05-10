@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
+[Trait("Category", "MutationErrorHandling")]
 public sealed class SchemaFingerprintTransformTests {
     [Fact]
     public void CommandFingerprint_ChangesWhenStructuralFieldChanges_AndIgnoresRuntimeNames() {

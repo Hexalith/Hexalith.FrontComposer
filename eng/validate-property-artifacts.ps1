@@ -70,6 +70,24 @@ $seedSummary = if (Test-Path -LiteralPath $seedSummaryPath) {
   "- Seed summary: missing before validation; this is allowed only for fixture-only validation."
 }
 
+$runEvidencePath = Join-Path $ArtifactFullPath "property-run-evidence.json"
+if (Test-Path -LiteralPath $runEvidencePath) {
+  try {
+    $runEvidence = Get-Content -LiteralPath $runEvidencePath -Raw | ConvertFrom-Json -Depth 32
+    foreach ($field in @("fsCheckPackage", "replaySeed", "size", "maxSize", "sequenceCount", "generatedOperationDistribution", "shrinkResult", "replayCommand")) {
+      if ($null -eq $runEvidence.$field -or [string]::IsNullOrWhiteSpace([string] $runEvidence.$field)) {
+        Add-Failure "Property run evidence is missing $field."
+      }
+    }
+  }
+  catch {
+    Add-Failure "Property run evidence JSON is malformed: $($_.Exception.Message)"
+  }
+}
+elseif ($artifactFiles.Count -gt 0) {
+  Add-Failure "Property artifacts exist but property-run-evidence.json is missing."
+}
+
 $summary = @"
 ## Property Evidence
 

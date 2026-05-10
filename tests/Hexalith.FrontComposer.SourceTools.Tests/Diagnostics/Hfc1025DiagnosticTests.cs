@@ -5,6 +5,8 @@ using Microsoft.CodeAnalysis.CSharp;
 
 using Shouldly;
 
+using Xunit;
+
 namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 
 /// <summary>
@@ -12,6 +14,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 /// diagnostic. Validates that the diagnostic fires only for partial enum coverage, names the
 /// offending property + unannotated members, and stays silent for zero / full coverage.
 /// </summary>
+[Trait("Category", "MutationErrorHandling")]
 public class Hfc1025DiagnosticTests {
     private const string FullyAnnotatedSource = @"
 namespace TestDomain

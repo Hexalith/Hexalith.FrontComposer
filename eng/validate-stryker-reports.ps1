@@ -75,6 +75,25 @@ function Test-UnsafeText([string] $Text) {
   return $null
 }
 
+function Test-WildcardRepoPath([string] $Path, [string] $Pattern) {
+  $normalizedPattern = $Pattern.Replace('\', '/')
+  return $Path -like $normalizedPattern
+}
+
+function Test-ExplicitlyExcluded([string] $Path, $Exclusions) {
+  foreach ($exclusion in @($Exclusions)) {
+    if (Test-WildcardRepoPath $Path ([string] $exclusion.path)) {
+      if ([string]::IsNullOrWhiteSpace([string] $exclusion.reason) -or [string]::IsNullOrWhiteSpace([string] $exclusion.owner)) {
+        Add-Failure "Exclusion '$($exclusion.path)' must include reason and owner."
+      }
+
+      return $true
+    }
+  }
+
+  return $false
+}
+
 function Get-MutatedFiles($Report) {
   $items = New-Object System.Collections.Generic.List[object]
 
@@ -95,6 +114,27 @@ function Get-MutatedFiles($Report) {
   return $items
 }
 
+function Get-TriageCount($TriageEntries, [string] $SegmentName, [string] $Status) {
+  $count = 0
+  foreach ($entry in @($TriageEntries)) {
+    if ([string] $entry.segment -ne $SegmentName -or [string] $entry.status -ne $Status) {
+      continue
+    }
+
+    if ([string]::IsNullOrWhiteSpace([string] $entry.action) -or @($manifest.triageActions) -notcontains [string] $entry.action) {
+      Add-Failure "Problem-mutant triage for segment '$SegmentName' status '$Status' has invalid action '$($entry.action)'."
+    }
+
+    if ([string]::IsNullOrWhiteSpace([string] $entry.owner) -or [string]::IsNullOrWhiteSpace([string] $entry.rationale)) {
+      Add-Failure "Problem-mutant triage for segment '$SegmentName' status '$Status' must include owner and rationale."
+    }
+
+    $count += [int] $entry.count
+  }
+
+  return $count
+}
+
 if (!(Test-Path -LiteralPath $ManifestFullPath)) {
   throw "Missing mutation target manifest: $ManifestPath"
 }
@@ -104,8 +144,12 @@ New-Item -ItemType Directory -Force -Path (Split-Path -Parent $OutputFullPath) |
 
 $approvedRoots = @($manifest.approvedTargetRoots | ForEach-Object { [string] $_ })
 $segments = @($manifest.segments)
+$explicitExclusions = @($manifest.explicitExclusions)
+$problemMutantTriage = @($manifest.problemMutantTriage)
 $allTargetFiles = New-Object System.Collections.Generic.HashSet[string]
+$reportedTargetFiles = New-Object System.Collections.Generic.HashSet[string]
 $combinedConfigText = ""
+$hasAllRequiredReports = $true
 
 foreach ($root in $approvedRoots) {
   $fullRoot = Join-Path $RepoRoot $root
@@ -128,6 +172,7 @@ foreach ($segment in $segments) {
 
   $combinedConfigText += "`n" + (Get-Content -LiteralPath $configPath -Raw)
   $config = Read-Json $configPath
+  $projectDirectory = (Split-Path -Parent ([string] $config."stryker-config".project)).Replace('\', '/')
   foreach ($field in @("solution", "project", "reporters", "coverage-analysis", "thresholds", "mutate")) {
     if ($null -eq $config."stryker-config".$field) {
       Add-Failure "Stryker config '$($segment.config)' is missing '$field'."
@@ -152,6 +197,7 @@ foreach ($segment in $segments) {
   if ($null -eq $jsonReport) {
     if ($AllowMissingReports) {
       $summaryLines.Add("- $($segment.name): report missing (allowed for local config validation only)") | Out-Null
+      $hasAllRequiredReports = $false
       continue
     }
 
@@ -184,6 +230,14 @@ foreach ($segment in $segments) {
     if ([System.IO.Path]::IsPathRooted($repoPath)) {
       $repoPath = ConvertTo-RepoPath $repoPath
     }
+    else {
+      $repoPath = $repoPath.TrimStart('.', '/', '\')
+      $isRepoRelative = $repoPath.StartsWith("src/", [System.StringComparison]::OrdinalIgnoreCase) `
+        -or $repoPath.StartsWith("tests/", [System.StringComparison]::OrdinalIgnoreCase)
+      if (!$isRepoRelative -and ![string]::IsNullOrWhiteSpace($projectDirectory)) {
+        $repoPath = "$projectDirectory/$repoPath"
+      }
+    }
 
     $inScope = $false
     foreach ($root in $approvedRoots) {
@@ -196,6 +250,10 @@ foreach ($segment in $segments) {
     if (!$inScope -and $activeStatuses.Count -gt 0) {
       Add-Failure "Mutation report '$($jsonReport.Name)' includes out-of-scope file '$repoPath'."
     }
+
+    if ($inScope -and $activeStatuses.Count -gt 0) {
+      [void] $reportedTargetFiles.Add($repoPath)
+    }
   }
 
   $statuses = @(Get-JsonValuesByName $report "status" | ForEach-Object { [string] $_ })
@@ -204,16 +262,48 @@ foreach ($segment in $segments) {
     Add-Failure "Mutation report '$($jsonReport.Name)' contains zero mutants."
   }
 
+  $minimumMutantCount = if ($null -ne $segment.minimumMutantCount) { [int] $segment.minimumMutantCount } else { 1 }
+  if ($mutantCount -lt $minimumMutantCount) {
+    Add-Failure "Mutation report '$($jsonReport.Name)' mutant count $mutantCount is below manifest baseline $minimumMutantCount for segment '$($segment.name)'."
+  }
+
   $survived = @($statuses | Where-Object { $_ -eq "Survived" }).Count
   $noCoverage = @($statuses | Where-Object { $_ -eq "NoCoverage" }).Count
   $timeout = @($statuses | Where-Object { $_ -eq "Timeout" }).Count
   $compileError = @($statuses | Where-Object { $_ -eq "CompileError" }).Count
+  foreach ($problem in @(
+      @{ Status = "Survived"; Count = $survived },
+      @{ Status = "NoCoverage"; Count = $noCoverage },
+      @{ Status = "Timeout"; Count = $timeout },
+      @{ Status = "CompileError"; Count = $compileError }
+    )) {
+    if ($problem.Count -gt (Get-TriageCount $problemMutantTriage ([string] $segment.name) ([string] $problem.Status))) {
+      Add-Failure "Mutation report '$($jsonReport.Name)' has untriaged $($problem.Status) mutants in segment '$($segment.name)': count=$($problem.Count)."
+    }
+  }
+
   $summaryLines.Add("- $($segment.name): report $(ConvertTo-RepoPath $jsonReport.FullName), mutants=$mutantCount, survived=$survived, noCoverage=$noCoverage, timeout=$timeout, compileError=$compileError") | Out-Null
 }
 
-foreach ($targetFile in $allTargetFiles) {
-  if (!$combinedConfigText.Contains("Parsing/**/*.cs") -and !$combinedConfigText.Contains("Transforms/**/*.cs")) {
-    Add-Failure "Manifest/config drift check cannot prove glob coverage for $targetFile."
+if (Test-Path -LiteralPath $ReportRootFullPath) {
+  $textExtensions = @(".json", ".html", ".htm", ".md", ".txt", ".xml", ".log", ".js", ".css")
+  Get-ChildItem -LiteralPath $ReportRootFullPath -Recurse -File -ErrorAction SilentlyContinue |
+    Where-Object { $textExtensions -contains $_.Extension.ToLowerInvariant() } |
+    ForEach-Object {
+      $artifactText = Normalize-ArtifactText (Get-Content -LiteralPath $_.FullName -Raw)
+      $artifactText | Set-Content -LiteralPath $_.FullName -Encoding utf8
+      $unsafe = Test-UnsafeText $artifactText
+      if ($unsafe) {
+        Add-Failure "Mutation artifact '$(ConvertTo-RepoPath $_.FullName)' failed redaction scan: $unsafe."
+      }
+    }
+}
+
+if ($hasAllRequiredReports) {
+  foreach ($targetFile in $allTargetFiles) {
+    if (!$reportedTargetFiles.Contains($targetFile) -and !(Test-ExplicitlyExcluded $targetFile $explicitExclusions)) {
+      Add-Failure "Target drift: '$targetFile' did not appear in mutation reports and is not explicitly excluded with rationale."
+    }
   }
 }
 

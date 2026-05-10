@@ -1,6 +1,6 @@
 # Story 10.4: Mutation Testing & Property-Based Testing
 
-Status: review
+Status: done
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR79**, **FR81**, **NFR56**, and **NFR58**. Adds mutation testing for SourceTools Parse/Transform logic and property-based command idempotency checks without absorbing Pact, accessibility, flaky quarantine, release, or LLM benchmark scope. Applies lessons **L01**, **L06**, **L07**, **L08**, and **L10**.
 
@@ -179,6 +179,14 @@ Start here: T1 Stryker config and target map -> T2 mutation baseline -> T3 prope
   - [x] Verify the Stryker run did not leave mutated source files, stale generated outputs, untracked raw reports, or nested submodule state in the working tree.
   - [x] Review git diff to ensure this story did not modify unrelated Epic 10 scopes or nested submodule state.
 
+### Review Findings
+
+- [x] [Review][Patch] Error-handling Stryker segment is not isolated to error-handling evidence — `stryker-error-handling.json` uses `Category!=Performance`, while the happy-path config merely excludes `MutationErrorHandling`; there are no SourceTools tests tagged `MutationErrorHandling`, so the 60 percent error-handling gate can be satisfied by the same broad happy-path suite instead of diagnostics/rejection-path evidence. Violates AC4 and AC26. [`tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json:23`]
+- [x] [Review][Patch] Mutation report validation does not fail on untriaged surviving/problem mutants — the validator counts `Survived`, `NoCoverage`, `Timeout`, and `CompileError` statuses but does not require a triage action or fail when any remain untriaged, so a Stryker run above threshold can pass without satisfying AC5, AC28, or T5's "fail on untriaged survivors" requirement. [`eng/validate-stryker-reports.ps1:207`]
+- [x] [Review][Patch] Target drift guard does not prove every Parse/Transform file is mutated or explicitly excluded — the validator only checks whether the combined config text contains the broad glob strings, not whether every approved production file appears in reports or an exclusion manifest with rationale; new files or mutant-count drops can silently escape the AC27/AC34 baseline guard. [`eng/validate-stryker-reports.ps1:214`]
+- [x] [Review][Patch] Mutation artifact redaction validates only JSON while uploading the entire Stryker artifact tree — `Normalize-ArtifactText` is applied to the selected JSON report, but the workflow uploads `artifacts/mutation/**`, including HTML reports, without equivalent path/secret/source-size validation. This leaves AC8/AC33 artifact allowlist enforcement incomplete. [`eng/validate-stryker-reports.ps1:162`]
+- [x] [Review][Patch] Property evidence omits operation distribution and shrink metadata required by AC30 — `run-lifecycle-property-suite.ps1` records package, max test count, seed, filter, results path, and replay command, but no generated operation distribution, shrink result, size/max-size detail, or counterexample capture metadata; `validate-property-artifacts.ps1` also accepts fixture-only validation without requiring those fields. [`eng/run-lifecycle-property-suite.ps1:33`]
+
 ---
 
 ## Dev Notes
@@ -332,6 +340,7 @@ GPT-5 Codex
 - 2026-05-10: Added FsCheck command lifecycle/idempotency property coverage with deterministic CI replay seed `15485863,32452843,0`, CI `MaxTest=1000`, nightly `MaxTest=10000` with generated replay seed persisted to `artifacts/property/property-seed-summary.md`, bounded synthetic command vocabulary, fresh service/model state per sequence, deterministic time, fixture replay, and redacted counterexample fixture format. FsCheck.Xunit.v3 package pin remains 3.3.1.
 - 2026-05-10: Added nightly mutation/property workflow with root-level submodule checkout only, stable report artifacts, blocking validation for missing/empty/out-of-scope/zero-mutant mutation reports, property seed/counterexample summary validation, and sanitized failure envelopes. Authoritative gate: blocking nightly workflow. Last successful local property nightly-equivalent run: `TestResults/property-nightly-local-random` using generated replay seed `15205021803337022758,8418328038012843391,0`.
 - 2026-05-10: Local Stryker baseline was attempted but not accepted as passing evidence. The first completed report had zero tested mutants and was rejected by validation; the tightened Parse/Transform run exceeded the local 5 minute bound and was canceled after verifying no SourceTools source mutations remained. Blocking owner for mutation score, survivors, timeouts, and per-segment mutant-count baseline: `.github/workflows/mutation-property-nightly.yml`. No accepted/deferred survivors are recorded from local evidence.
+- 2026-05-10: Code review patch batch applied. The error-handling Stryker segment now targets tests tagged `MutationErrorHandling`; mutation validation now requires problem-mutant triage, minimum mutant baselines, per-target report presence or explicit exclusions, project-relative report path normalization, and redaction scanning across uploaded text artifacts. Property runs now emit structured `property-run-evidence.json` with max size, sequence count, operation distribution, shrink policy, and replay command. Verification: `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=MutationErrorHandling"` (52 passed); `pwsh ./eng/run-lifecycle-property-suite.ps1 -MaxTest 1000 -Replay "15485863,32452843,0" -ResultsDirectory "TestResults/property-review"` (5 passed); `./eng/validate-stryker-reports.ps1 -AllowMissingReports`; `./eng/validate-property-artifacts.ps1`.
 
 ### File List
 
@@ -346,9 +355,14 @@ GPT-5 Codex
 - `eng/validate-stryker-reports.ps1`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Lifecycle/CommandIdempotencyPropertyTests.cs`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/Lifecycle/Fixtures/command-idempotency-counterexamples.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/Hfc1025DiagnosticTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Drift/Regression/DriftByteStabilityRegressionTests.cs`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/mutation-target-manifest.json`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/RazorModelTransformTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/SchemaFingerprintTransformTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Transforms/UnsupportedColumnEmissionTests.cs`
 
 ### Change Log
 

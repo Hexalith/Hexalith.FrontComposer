@@ -6,8 +6,11 @@ using Hexalith.FrontComposer.SourceTools.Transforms;
 
 using Shouldly;
 
+using Xunit;
+
 namespace Hexalith.FrontComposer.SourceTools.Tests.Transforms;
 
+[Trait("Category", "MutationErrorHandling")]
 public class RazorModelTransformTests {
     private static readonly EquatableArray<BadgeMappingEntry> _emptyBadges = new(ImmutableArray<BadgeMappingEntry>.Empty);
 

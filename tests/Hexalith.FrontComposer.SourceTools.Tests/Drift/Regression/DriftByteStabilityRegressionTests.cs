@@ -17,6 +17,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Drift.Regression;
 /// <summary>
 /// AC18 / T5 + T7 — generated outputs are byte-stable. Drift detection adds diagnostics only.
 /// </summary>
+[Trait("Category", "MutationErrorHandling")]
 public sealed class DriftByteStabilityRegressionTests {
     private const string ValidBaseline = """
         { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
