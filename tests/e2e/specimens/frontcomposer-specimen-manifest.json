@@ -1,0 +1,60 @@
+{
+  "ownerStory": "10-2-accessibility-ci-gates-and-visual-specimen-verification",
+  "routes": [
+    {
+      "name": "type",
+      "path": "/__frontcomposer/specimens/type",
+      "readySelector": "[data-testid='fc-type-specimen'][data-specimen-ready='true']",
+      "landmarkRoot": "[data-testid='fc-type-specimen']",
+      "requiredSections": [
+        "[data-testid='fc-type-ramp']",
+        "[data-testid='fc-color-tokens']",
+        "[data-testid='fc-density-states']",
+        "[data-testid='fc-badge-grid']",
+        "[data-testid='fc-command-lifecycle']",
+        "[data-testid='fc-expanded-detail']",
+        "[data-testid='fc-multi-level-nav']"
+      ],
+      "expectedArtifacts": [
+        "axe-type.json",
+        "focus-type-command-submit.png",
+        "frontcomposer-type-light-compact.png",
+        "frontcomposer-type-light-comfortable.png",
+        "frontcomposer-type-light-roomy.png",
+        "frontcomposer-type-dark-compact.png",
+        "frontcomposer-type-dark-comfortable.png",
+        "frontcomposer-type-dark-roomy.png"
+      ]
+    },
+    {
+      "name": "data-formatting",
+      "path": "/__frontcomposer/specimens/data-formatting",
+      "readySelector": "[data-testid='fc-data-formatting-specimen'][data-specimen-ready='true']",
+      "landmarkRoot": "[data-testid='fc-data-formatting-specimen']",
+      "requiredSections": [
+        "[data-testid='fc-data-formatting-grid']",
+        "[data-testid='fc-format-row-locale-number']",
+        "[data-testid='fc-format-row-absolute-timestamp']",
+        "[data-testid='fc-format-row-relative-timestamp']",
+        "[data-testid='fc-format-row-truncated-id']",
+        "[data-testid='fc-format-row-null-value']",
+        "[data-testid='fc-format-row-collection-count']",
+        "[data-testid='fc-format-row-currency']",
+        "[data-testid='fc-format-row-boolean']",
+        "[data-testid='fc-format-row-truncated-enum']",
+        "[data-testid='fc-format-row-unsupported']"
+      ],
+      "expectedArtifacts": [
+        "axe-data-formatting.json"
+      ]
+    }
+  ],
+  "themeDensityCombinations": [
+    { "theme": "light", "density": "compact", "artifact": "frontcomposer-type-light-compact.png" },
+    { "theme": "light", "density": "comfortable", "artifact": "frontcomposer-type-light-comfortable.png" },
+    { "theme": "light", "density": "roomy", "artifact": "frontcomposer-type-light-roomy.png" },
+    { "theme": "dark", "density": "compact", "artifact": "frontcomposer-type-dark-compact.png" },
+    { "theme": "dark", "density": "comfortable", "artifact": "frontcomposer-type-dark-comfortable.png" },
+    { "theme": "dark", "density": "roomy", "artifact": "frontcomposer-type-dark-roomy.png" }
+  ]
+}

@@ -300,3 +300,72 @@ jobs:
         with:
           name: coverage-reports
           path: '**/coverage.cobertura.xml'
+
+  accessibility-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          # Root-level submodules only; do not use recursive nested submodule checkout.
+          submodules: true
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: 'lts/*'
+          cache: 'npm'
+
+      - name: Install root npm dependencies
+        env:
+          HUSKY: 0
+        run: npm ci
+
+      - name: Install Playwright workspace dependencies
+        working-directory: tests/e2e
+        run: npm install
+
+      - name: Install Chromium browser
+        working-directory: tests/e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Build Counter specimen host
+        run: dotnet build samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release
+
+      - name: Typecheck Playwright accessibility lane
+        working-directory: tests/e2e
+        run: npm run typecheck
+
+      - name: Run accessibility, keyboard, media, zoom, and visual specimen gate
+        working-directory: tests/e2e
+        env:
+          CI: true
+          ASPNETCORE_ENVIRONMENT: Test
+          Hexalith__FrontComposer__Specimens__Enabled: true
+        run: npm run test:a11y
+
+      - name: Validate visual baseline governance
+        if: always()
+        working-directory: tests/e2e
+        run: npm run validate:visual-governance
+
+      - name: Validate accessibility artifacts
+        if: always()
+        working-directory: tests/e2e
+        run: npm run validate:a11y-artifacts
+
+      - name: Upload accessibility and visual artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: accessibility-visual-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            tests/e2e/playwright-report/**
+            tests/e2e/test-results/**

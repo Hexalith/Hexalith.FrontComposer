@@ -1,0 +1,70 @@
+@page "/__frontcomposer/specimens/data-formatting"
+@namespace Counter.Specimens
+@using Hexalith.FrontComposer.Shell.Components.Specimens
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>FrontComposer data-formatting specimen</PageTitle>
+
+<main class="fc-specimen fc-specimen--data"
+      aria-labelledby="fc-data-specimen-title"
+      data-testid="fc-data-formatting-specimen"
+      data-specimen-ready="true"
+      data-owner-story="@FrontComposerSpecimenRoutes.OwnerStoryKey"
+      data-culture="@CultureName"
+      data-timezone="UTC">
+    <header class="fc-specimen__header" data-testid="fc-data-specimen-header">
+        <p class="fc-specimen__eyebrow">FrontComposer accessibility specimen</p>
+        <h1 id="fc-data-specimen-title">Data-formatting specimen</h1>
+        <p>Frozen fixture data rendered with a fixed non-default culture and UTC time base.</p>
+    </header>
+
+    <section aria-labelledby="fc-data-grid-title" data-testid="fc-data-formatting-grid">
+        <h2 id="fc-data-grid-title">Projection formatting DataGrid</h2>
+        <table class="fc-specimen__table">
+            <caption>One deterministic row per generated formatting rule</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Formatting class</th>
+                    <th scope="col">Generated label</th>
+                    <th scope="col">Rendered value</th>
+                    <th scope="col">Accessible name</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (FormattingRow row in Rows) {
+                    <tr data-testid="@($"fc-format-row-{row.Key}")">
+                        <th scope="row">@row.Category</th>
+                        <td>@row.Label</td>
+                        <td aria-label="@row.AccessibleName">@((MarkupString)row.Value)</td>
+                        <td>@row.AccessibleName</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+</main>
+
+@code {
+    private const string CultureName = "fr-FR";
+
+    private static readonly FormattingRow[] Rows = [
+        new("locale-number", "Locale number", "Total Orders", "12 345,67", "Total Orders: 12 345,67"),
+        new("absolute-timestamp", "Absolute timestamp", "Submitted At", "15/01/2026 13:45 UTC", "Submitted At: 15/01/2026 13:45 UTC"),
+        new("relative-timestamp", "Relative timestamp", "Last Sync", "3 hours ago", "Last Sync: 3 hours ago"),
+        new("truncated-id", "Truncated identifier", "Correlation Id", "fc-correlation-0002...", "Correlation Id: fc-correlation-0002..."),
+        new("null-value", "Null value", "Optional Comment", "&mdash;", "Optional Comment: no value"),
+        new("collection-count", "Collection count", "Approvers", "3 items", "Approvers: 3 items"),
+        new("currency", "Currency", "Budget", "1 234,50 EUR", "Budget: 1 234,50 EUR"),
+        new("boolean", "Boolean", "Is Active", "Yes", "Is Active: Yes"),
+        new("truncated-enum", "Truncated enum", "Lifecycle State", "Awaiting Manual Re...", "Lifecycle State: Awaiting Manual Review"),
+        new("unsupported", "Unsupported field", "Opaque Payload", "Unsupported field", "Opaque Payload: Unsupported field"),
+    ];
+
+    private sealed record FormattingRow(
+        string Key,
+        string Category,
+        string Label,
+        string Value,
+        string AccessibleName);
+}

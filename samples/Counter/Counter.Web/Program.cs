@@ -1,10 +1,12 @@
 using Counter.Domain;
+using Counter.Specimens;
 using Counter.Web;
 using Counter.Web.Components.Replacements;
 using Counter.Web.Components.Slots;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Rendering;
+using Hexalith.FrontComposer.Shell.Components.Specimens;
 using Hexalith.FrontComposer.Shell.Extensions;
 using Hexalith.FrontComposer.Shell.Services;
 
@@ -101,8 +103,15 @@ app.UseStaticFiles();
 app.UseRequestLocalization();
 app.UseAntiforgery();
 
-app.MapRazorComponents<Counter.Web.Components.App>()
-    .AddAdditionalAssemblies(typeof(IncrementCommand).Assembly)
+var razorComponents = app.MapRazorComponents<Counter.Web.Components.App>();
+if (FrontComposerSpecimenRoutes.IsEnabled(app.Configuration, app.Environment)) {
+    razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly, typeof(FrontComposerTypeSpecimen).Assembly);
+}
+else {
+    razorComponents.AddAdditionalAssemblies(typeof(IncrementCommand).Assembly);
+}
+
+razorComponents
     .AddInteractiveServerRenderMode();
 
 app.Run();

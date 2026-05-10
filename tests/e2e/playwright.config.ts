@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const BASE_URL = process.env.BASE_URL ?? 'https://localhost:7000';
+const BASE_URL = process.env.BASE_URL ?? 'http://127.0.0.1:5070';
 const IS_CI = !!process.env.CI;
 
 export default defineConfig({
@@ -43,4 +43,16 @@ export default defineConfig({
     },
   ],
   outputDir: 'test-results',
+  webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
+    ? undefined
+    : {
+        command: 'dotnet run --project ../../samples/Counter/Counter.Web/Counter.Web.csproj --configuration Release --no-build --no-launch-profile --urls http://127.0.0.1:5070',
+        url: BASE_URL,
+        reuseExistingServer: !IS_CI,
+        timeout: 120_000,
+        env: {
+          ASPNETCORE_ENVIRONMENT: 'Test',
+          Hexalith__FrontComposer__Specimens__Enabled: 'true',
+        },
+      },
 });

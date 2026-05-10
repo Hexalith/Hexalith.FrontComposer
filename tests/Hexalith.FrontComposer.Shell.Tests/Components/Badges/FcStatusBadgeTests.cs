@@ -39,6 +39,7 @@ public sealed class FcStatusBadgeTests : LayoutComponentTestBase {
         cut.WaitForAssertion(() => {
             cut.Markup.ShouldContain($"color=\"{expectedColor}\"", Case.Insensitive);
             cut.Markup.ShouldContain($"appearance=\"{expectedAppearance}\"", Case.Insensitive);
+            cut.Markup.ShouldContain("role=\"status\"", Case.Insensitive);
             cut.Markup.ShouldContain($"data-fc-badge-slot=\"{slot}\"", Case.Insensitive);
             cut.Markup.ShouldContain("Pending");
         });

@@ -1,0 +1,36 @@
+.fc-specimen--data {
+    color: #141414;
+    background: #f8f8f4;
+    min-height: 100vh;
+    padding: 1rem;
+}
+
+.fc-specimen--data .fc-specimen__header,
+.fc-specimen--data section { margin-block-end: 1rem; }
+.fc-specimen--data .fc-specimen__eyebrow { font-size: .875rem; }
+
+.fc-specimen--data .fc-specimen__table {
+    border-collapse: collapse;
+    inline-size: 100%;
+}
+
+.fc-specimen--data .fc-specimen__table caption {
+    text-align: start;
+    margin-block-end: .5rem;
+}
+
+.fc-specimen--data .fc-specimen__table th,
+.fc-specimen--data .fc-specimen__table td {
+    border: 1px solid currentColor;
+    padding: .625rem;
+    text-align: start;
+}
+
+.fc-specimen--data :focus-visible {
+    outline: 4px solid #005a9e;
+    outline-offset: 3px;
+}
+
+@media (forced-colors: active) {
+    .fc-specimen--data :focus-visible { outline-color: Highlight; }
+}

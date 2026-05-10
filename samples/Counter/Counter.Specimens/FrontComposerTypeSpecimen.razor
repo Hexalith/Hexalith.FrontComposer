@@ -1,0 +1,226 @@
+@page "/__frontcomposer/specimens/type"
+@namespace Counter.Specimens
+@using Hexalith.FrontComposer.Contracts.Attributes
+@using Hexalith.FrontComposer.Shell.Components.Badges
+@using Hexalith.FrontComposer.Shell.Components.Specimens
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>FrontComposer type specimen</PageTitle>
+
+<main class="fc-specimen fc-specimen--@ResolvedTheme fc-specimen--@ResolvedDensity"
+      aria-labelledby="fc-type-specimen-title"
+      data-testid="fc-type-specimen"
+      data-specimen-ready="true"
+      data-owner-story="@FrontComposerSpecimenRoutes.OwnerStoryKey"
+      data-theme="@ResolvedTheme"
+      data-density="@ResolvedDensity">
+    <header class="fc-specimen__header" data-testid="fc-specimen-header">
+        <p class="fc-specimen__eyebrow">FrontComposer accessibility specimen</p>
+        <h1 id="fc-type-specimen-title">Type, theme, density, lifecycle, and navigation specimen</h1>
+        <p>Generated shell surfaces rendered with deterministic local data.</p>
+        <a class="fc-specimen__skip" href="#fc-specimen-command-form" data-testid="fc-specimen-skip">Skip to command form</a>
+    </header>
+
+    <section aria-labelledby="fc-specimen-controls-title" data-testid="fc-specimen-controls">
+        <h2 id="fc-specimen-controls-title">Theme and density controls</h2>
+        <div class="fc-specimen__controls">
+            @foreach (string theme in Themes) {
+                <a class="fc-specimen__control"
+                   aria-current="@(ResolvedTheme == theme ? "true" : null)"
+                   href="@BuildHref(theme, ResolvedDensity)"
+                   data-testid="@($"fc-theme-control-{theme}")">@theme</a>
+            }
+            @foreach (string density in Densities) {
+                <a class="fc-specimen__control"
+                   aria-current="@(ResolvedDensity == density ? "true" : null)"
+                   href="@BuildHref(ResolvedTheme, density)"
+                   data-testid="@($"fc-density-control-{density}")">@density</a>
+            }
+        </div>
+    </section>
+
+    <section aria-labelledby="fc-type-ramp-title" data-testid="fc-type-ramp">
+        <h2 id="fc-type-ramp-title">Type ramp</h2>
+        <div class="fc-specimen__type-ramp">
+            @foreach (TypeRampSlot slot in TypeRamp) {
+                <article class="fc-specimen__tile" data-testid="@($"fc-type-slot-{slot.Key}")">
+                    <p>@slot.Name</p>
+                    <div class="@slot.CssClass">@slot.Sample</div>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section aria-labelledby="fc-color-token-title" data-testid="fc-color-tokens">
+        <h2 id="fc-color-token-title">Semantic color tokens</h2>
+        <div class="fc-specimen__tokens">
+            @foreach (string theme in Themes) {
+                <article class="fc-specimen__token-group fc-specimen--@theme" data-testid="@($"fc-token-theme-{theme}")">
+                    <h3>@theme theme</h3>
+                    @foreach (ColorToken token in ColorTokens) {
+                        <div class="fc-specimen__token" data-testid="@($"fc-color-token-{theme}-{token.Key}")">
+                            <span class="@($"fc-specimen__swatch fc-specimen__swatch--{token.Key}")" aria-hidden="true"></span>
+                            <span>@token.Name</span>
+                            <strong>@token.StateText</strong>
+                        </div>
+                    }
+                </article>
+            }
+        </div>
+    </section>
+
+    <section aria-labelledby="fc-density-title" data-testid="fc-density-states">
+        <h2 id="fc-density-title">Density states</h2>
+        <div class="fc-specimen__density-grid">
+            @foreach (string density in Densities) {
+                <article class="fc-specimen__density-card fc-specimen--@density" data-testid="@($"fc-density-state-{density}")">
+                    <h3>@density density</h3>
+                    <button type="button" tabindex="-1">Primary action</button>
+                    <label>
+                        Label
+                        <input value="@density sample" aria-label="@($"{density} density text input")" tabindex="-1" />
+                    </label>
+                </article>
+            }
+        </div>
+    </section>
+
+    <section aria-labelledby="fc-badge-grid-title" data-testid="fc-badge-grid">
+        <h2 id="fc-badge-grid-title">Projection DataGrid and badge states</h2>
+        <table class="fc-specimen__table">
+            <caption>Canonical status rows with all badge states</caption>
+            <thead>
+                <tr>
+                    <th scope="col">Identifier</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Owner</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (BadgeRow row in BadgeRows) {
+                    <tr>
+                        <td>@row.Id</td>
+                        <td>@row.Name</td>
+                        <td><FcStatusBadge Slot="@row.Slot" Label="@row.Label" ColumnHeader="Status" /></td>
+                        <td>@row.Owner</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </section>
+
+    <section aria-labelledby="fc-specimen-command-title" data-testid="fc-command-lifecycle">
+        <h2 id="fc-specimen-command-title">Command form and lifecycle states</h2>
+        <form id="fc-specimen-command-form" class="fc-specimen__form" aria-label="Specimen command form">
+            <label>Counter name <input name="counterName" value="Specimen counter" data-testid="fc-command-input" /></label>
+            <label>Amount <input name="amount" type="number" value="3" data-testid="fc-command-number" /></label>
+            <button type="button" data-testid="fc-command-submit">Submit command</button>
+            <button type="button" data-testid="fc-command-cancel">Cancel</button>
+        </form>
+        <ol class="fc-specimen__lifecycle" aria-label="Five command lifecycle states">
+            @foreach (LifecycleSpecimenState state in LifecycleStates) {
+                <li data-fc-phase="@state.Key" data-testid="@($"fc-lifecycle-{state.Key}")">
+                    <strong>@state.Name</strong>
+                    <span>@state.Message</span>
+                </li>
+            }
+        </ol>
+    </section>
+
+    <section aria-labelledby="fc-detail-title" data-testid="fc-expanded-detail">
+        <h2 id="fc-detail-title">Expanded detail view</h2>
+        <details open>
+            <summary data-testid="fc-expanded-detail-summary">Open projection details for FC-1002</summary>
+            <dl>
+                <dt>Correlation</dt>
+                <dd>fc-correlation-0002</dd>
+                <dt>Last synchronized</dt>
+                <dd>2026-01-15 13:45 UTC</dd>
+            </dl>
+        </details>
+    </section>
+
+    <nav aria-label="Specimen multi-level navigation" data-testid="fc-multi-level-nav">
+        <h2>Multi-level navigation</h2>
+        <ul>
+            <li><a href="#fc-type-ramp-title" data-testid="fc-nav-foundation">Foundation</a></li>
+            <li>
+                <button type="button" aria-expanded="true" data-testid="fc-nav-group-generated">Generated surfaces</button>
+                <ul>
+                    <li><a href="#fc-badge-grid-title">Projection grid</a></li>
+                    <li><a href="#fc-specimen-command-title">Command lifecycle</a></li>
+                </ul>
+            </li>
+        </ul>
+    </nav>
+</main>
+
+@code {
+    private static readonly string[] Themes = ["light", "dark"];
+    private static readonly string[] Densities = ["compact", "comfortable", "roomy"];
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "theme")]
+    public string? Theme { get; set; }
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "density")]
+    public string? Density { get; set; }
+
+    private string ResolvedTheme => Resolve(Theme, Themes, "light");
+
+    private string ResolvedDensity => Resolve(Density, Densities, "comfortable");
+
+    private static string Resolve(string? value, IReadOnlyCollection<string> allowed, string fallback)
+        => value is not null && allowed.Contains(value, StringComparer.OrdinalIgnoreCase)
+            ? value.ToLowerInvariant()
+            : fallback;
+
+    private static string BuildHref(string theme, string density)
+        => $"{FrontComposerSpecimenRoutes.TypeSpecimen}?theme={theme}&density={density}";
+
+    private static readonly TypeRampSlot[] TypeRamp = [
+        new("display", "Display", "FrontComposer Display", "fc-specimen__display"),
+        new("title", "Title", "Generated command title", "fc-specimen__title"),
+        new("subtitle", "Subtitle", "Projection subtitle and context", "fc-specimen__subtitle"),
+        new("body", "Body", "Readable generated body text", "fc-specimen__body"),
+        new("caption", "Caption", "Supplemental metadata caption", "fc-specimen__caption"),
+        new("code", "Code", "FC-STATIC-0001", "fc-specimen__code"),
+    ];
+
+    private static readonly ColorToken[] ColorTokens = [
+        new("neutral", "Neutral", "Available"),
+        new("info", "Informational", "Queued"),
+        new("success", "Success", "Confirmed"),
+        new("warning", "Warning", "Needs review"),
+        new("danger", "Danger", "Rejected"),
+        new("accent", "Accent", "Selected"),
+    ];
+
+    private static readonly BadgeRow[] BadgeRows = [
+        new("FC-1000", "Neutral projection", BadgeSlot.Neutral, "Neutral", "Shell"),
+        new("FC-1001", "Info projection", BadgeSlot.Info, "Info", "SourceTools"),
+        new("FC-1002", "Success projection", BadgeSlot.Success, "Success", "Contracts"),
+        new("FC-1003", "Warning projection", BadgeSlot.Warning, "Warning", "Testing"),
+        new("FC-1004", "Danger projection", BadgeSlot.Danger, "Danger", "CI"),
+        new("FC-1005", "Accent projection", BadgeSlot.Accent, "Accent", "Docs"),
+    ];
+
+    private static readonly LifecycleSpecimenState[] LifecycleStates = [
+        new("idle", "Idle", "Ready to submit."),
+        new("submitting", "Submitting", "Submitting command."),
+        new("acknowledged", "Acknowledged", "Command accepted by the host."),
+        new("syncing", "Syncing", "Waiting for projection synchronization."),
+        new("confirmed-rejected", "Confirmed or rejected", "Terminal confirmation and rejection states remain text-visible."),
+    ];
+
+    private sealed record TypeRampSlot(string Key, string Name, string Sample, string CssClass);
+
+    private sealed record ColorToken(string Key, string Name, string StateText);
+
+    private sealed record BadgeRow(string Id, string Name, BadgeSlot Slot, string Label, string Owner);
+
+    private sealed record LifecycleSpecimenState(string Key, string Name, string Message);
+}
