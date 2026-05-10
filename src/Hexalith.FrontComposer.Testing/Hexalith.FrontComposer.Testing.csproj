@@ -3,7 +3,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <PackageId>Hexalith.FrontComposer.Testing</PackageId>
-    <Version>0.2.0-preview.1</Version>
     <Authors>Hexalith</Authors>
     <Description>Adopter-facing bUnit test host, fakes, builders, and assertions for Hexalith FrontComposer components.</Description>
     <PackageTags>Hexalith;FrontComposer;Testing;bUnit;Blazor</PackageTags>

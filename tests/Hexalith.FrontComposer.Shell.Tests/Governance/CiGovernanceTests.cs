@@ -90,6 +90,147 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void NightlyBenchmarkWorkflow_UsesEmbeddedPromptContractAndReadOnlyEvidence() {
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/nightly.yml"));
+
+        workflow.ShouldContain("schedule:");
+        workflow.ShouldContain("workflow_dispatch:");
+        workflow.ShouldContain("contents: read");
+        workflow.ShouldContain("submodules: true");
+        workflow.ShouldContain("eng/llm_benchmark.py validate-prompt-set");
+        workflow.ShouldContain("SkillBenchmarkPromptSet.LoadEmbeddedV1");
+        workflow.ShouldContain("budget-status");
+        workflow.ShouldContain("BenchmarkHarnessTests");
+        workflow.ShouldContain("candidate evidence only");
+        workflow.ShouldContain("28-day ratchet");
+    }
+
+    [Fact]
+    public void ReleaseWorkflow_AddsSbomSigningAttestationAndManifestGatesAfterBlockingTests() {
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
+
+        workflow.ShouldContain("contents: read");
+        workflow.ShouldContain("contents: write");
+        workflow.ShouldContain("id-token: write");
+        workflow.ShouldContain("attestations: write");
+        workflow.ShouldContain("submodules: true");
+        workflow.ShouldNotContain("submodules: recursive");
+
+        workflow.IndexOf("Run All Tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.ShouldContain("Preflight package inventory");
+        workflow.ShouldContain("actions/attest-build-provenance");
+        workflow.ShouldContain("attestation-unavailable.md");
+        workflow.ShouldContain("release-budget");
+
+        releaseConfig.ShouldContain("--include-symbols");
+        releaseConfig.ShouldContain("CycloneDX");
+        releaseConfig.ShouldContain("dotnet nuget sign");
+        releaseConfig.ShouldContain("--timestamper");
+        releaseConfig.ShouldContain("dotnet nuget verify");
+        releaseConfig.ShouldContain("prepare-manifest");
+        releaseConfig.ShouldContain("seal-manifest");
+        releaseConfig.ShouldContain("verify-manifest");
+        releaseConfig.ShouldContain("nupkgs-signed/*.nupkg");
+        releaseConfig.ShouldContain("nupkgs/*.snupkg");
+        releaseConfig.ShouldContain("release-evidence/checksums.json");
+        releaseConfig.ShouldContain("partial-publish-incident.json");
+    }
+
+    [Fact]
+    public void PackageInventory_IsExplicitLockstepAndReviewable() {
+        string root = RepositoryRoot();
+        string inventory = File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"));
+        string directoryProps = File.ReadAllText(Path.Combine(root, "Directory.Build.props"));
+        string testingProject = File.ReadAllText(Path.Combine(root, "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"));
+
+        inventory.ShouldContain("Hexalith.FrontComposer.Cli");
+        inventory.ShouldContain("Hexalith.FrontComposer.Contracts");
+        inventory.ShouldContain("Hexalith.FrontComposer.Mcp");
+        inventory.ShouldContain("Hexalith.FrontComposer.Schema");
+        inventory.ShouldContain("Hexalith.FrontComposer.Shell");
+        inventory.ShouldContain("Hexalith.FrontComposer.Testing");
+        inventory.ShouldContain("Hexalith.FrontComposer.SourceTools");
+        inventory.ShouldContain("\"packable\": false");
+        inventory.ShouldContain("exception");
+        directoryProps.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
+        directoryProps.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");
+        testingProject.ShouldNotContain("<Version>");
+
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-inventory-{Guid.NewGuid():N}.json");
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "inventory",
+            "--root", ".",
+            "--expected", "eng/release-package-inventory.json",
+            "--output", output,
+        ]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("status").GetString().ShouldBe("valid");
+        doc.RootElement.GetProperty("expected_version_source").GetString().ShouldBe("semantic-release");
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_VerifiesSealedManifestBudgetAndPathContainment() {
+        string root = RepositoryRoot();
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-budget-{Guid.NewGuid():N}.json");
+
+        ProcessResult budget = RunPython(root, [
+            "eng/release_evidence.py",
+            "release-budget",
+            "--evidence", "tests/ci-governance/fixtures/release-budget-three-breaches.json",
+            "--output", output,
+        ]);
+        budget.ExitCode.ShouldBe(0, budget.Error);
+        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output))) {
+            (doc.RootElement.GetProperty("marker").GetString() ?? string.Empty).ShouldContain("frontcomposer:package-count-collapse");
+            doc.RootElement.GetProperty("action").GetString().ShouldBe("open-or-update-package-count-collapse-issue");
+            (doc.RootElement.GetProperty("recommendation").GetString() ?? string.Empty).ShouldContain("8 packages to 5");
+        }
+
+        ProcessResult untrustedApply = RunPython(root, [
+            "eng/release_evidence.py",
+            "release-budget",
+            "--evidence", "tests/ci-governance/fixtures/release-budget-three-breaches.json",
+            "--apply",
+            "--event-name", "pull_request",
+            "--ref", "refs/pull/1/merge",
+            "--from-fork", "true",
+        ]);
+        untrustedApply.ExitCode.ShouldNotBe(0);
+        untrustedApply.Error.ShouldContain("trusted release/main context required");
+
+        ProcessResult validManifest = RunPython(root, [
+            "eng/release_evidence.py",
+            "verify-manifest",
+            "--manifest", "tests/ci-governance/fixtures/release-manifest-valid.json",
+        ]);
+        validManifest.ExitCode.ShouldBe(0, validManifest.Error);
+
+        ProcessResult invalidManifest = RunPython(root, [
+            "eng/release_evidence.py",
+            "verify-manifest",
+            "--manifest", "tests/ci-governance/fixtures/release-manifest-invalid.json",
+        ]);
+        invalidManifest.ExitCode.ShouldNotBe(0);
+        invalidManifest.Error.ShouldBeEmpty();
+
+        string evidenceRoot = Path.Combine(Path.GetTempPath(), $"fc-evidence-{Guid.NewGuid():N}");
+        ProcessResult pathEscape = RunPython(root, [
+            "eng/release_evidence.py",
+            "path-check",
+            "--root", evidenceRoot,
+            "--name", "../outside.json",
+        ]);
+        pathEscape.ExitCode.ShouldNotBe(0);
+        pathEscape.Error.ShouldContain("escapes approved root");
+    }
+
+    [Fact]
     public void GovernanceAutomation_UsesTrustedWriteContextsAndStableMarkers() {
         string root = RepositoryRoot();
         string flaky = File.ReadAllText(Path.Combine(root, ".github/workflows/flaky-test-governance.yml"));
@@ -359,6 +500,11 @@ public sealed class CiGovernanceTests {
     }
 
     private static ProcessResult RunGovernance(string root, IReadOnlyList<string> arguments) {
+        List<string> fullArguments = [".github/scripts/ci_governance.py", .. arguments];
+        return RunPython(root, fullArguments);
+    }
+
+    private static ProcessResult RunPython(string root, IReadOnlyList<string> arguments) {
         string executable = OperatingSystem.IsWindows() ? "python" : "python3";
         ProcessStartInfo startInfo = new(executable) {
             WorkingDirectory = root,
@@ -367,7 +513,6 @@ public sealed class CiGovernanceTests {
             UseShellExecute = false,
         };
 
-        startInfo.ArgumentList.Add(".github/scripts/ci_governance.py");
         foreach (string argument in arguments) {
             startInfo.ArgumentList.Add(argument);
         }

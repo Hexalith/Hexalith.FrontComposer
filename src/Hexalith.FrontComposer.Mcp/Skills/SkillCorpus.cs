@@ -1497,7 +1497,268 @@ public sealed record SkillBenchmarkResult(
     GeneratedCodeFailureCategory FailureCategory,
     SkillBenchmarkRedactionStatus RedactionStatus,
     string GeneratedArtifactToken,
-    IReadOnlyList<string> SanitizedDiagnostics);
+    IReadOnlyList<string> SanitizedDiagnostics) {
+    public string ProviderId { get; init; } = string.Empty;
+
+    public double Temperature { get; init; }
+
+    public int? Seed { get; init; }
+
+    public int TimeoutSeconds { get; init; }
+
+    public int RetryCount { get; init; }
+
+    public bool SeedSupported { get; init; }
+
+    public bool FingerprintSupported { get; init; }
+
+    public string? ProviderFingerprint { get; init; }
+
+    public string CacheKey { get; init; } = string.Empty;
+
+    public string SanitizedArtifactToken { get; init; } = string.Empty;
+
+    public SkillBenchmarkEvidenceStatus EvidenceStatus { get; init; } = SkillBenchmarkEvidenceStatus.Valid;
+}
+
+public enum SkillBenchmarkEvidenceStatus {
+    Valid,
+    LegitimateMiss,
+    InvalidEvidence,
+    ProviderUnavailable,
+    BudgetBlocked,
+}
+
+public enum SkillBenchmarkBudgetStatus {
+    Available,
+    BudgetExhausted,
+    BudgetUnknown,
+}
+
+public enum SkillBenchmarkBaselineWriteDecision {
+    WriteApprovedBaseline,
+    CandidateEvidenceOnly,
+}
+
+public enum SkillBenchmarkGateStatus {
+    Passed,
+    Failed,
+    CandidateOnly,
+    InvalidEvidence,
+}
+
+public sealed record SkillBenchmarkProviderCapabilities(
+    bool SupportsSeed,
+    bool SupportsFingerprint);
+
+public sealed record SkillBenchmarkProviderRequest(
+    SkillBenchmarkModelConfig Config,
+    bool SeedSent,
+    bool FingerprintExpected,
+    IReadOnlyList<string> UnsupportedCapabilities);
+
+public sealed record SkillBenchmarkBudgetState(
+    decimal MonthlyCap,
+    decimal Consumed,
+    DateTimeOffset ExpiresAt,
+    bool ProviderCostMetadataAvailable,
+    bool RetryStormDetected);
+
+public sealed record SkillBenchmarkGateResult(
+    SkillBenchmarkGateStatus Status,
+    int PromptCount,
+    int PassedCount,
+    int InvalidEvidenceCount,
+    double PassRate,
+    double Threshold,
+    IReadOnlyList<string> Diagnostics);
+
+public sealed record SkillBenchmarkBaselineArtifact(
+    double InitialPassRate,
+    string CorpusHash,
+    string ScorerVersion,
+    string ValidatorVersion,
+    string RedactionPolicyVersion,
+    string ProviderConfigHash,
+    string CommitSha,
+    string ApproverMarker,
+    string SanitizedSummaryHash,
+    DateTimeOffset CapturedAt);
+
+public static class SkillBenchmarkDeterminismPolicy {
+    public static SkillBenchmarkProviderRequest CreateRequest(
+        SkillBenchmarkModelConfig desiredConfig,
+        SkillBenchmarkProviderCapabilities capabilities) {
+        ArgumentNullException.ThrowIfNull(desiredConfig);
+        ArgumentNullException.ThrowIfNull(capabilities);
+
+        List<string> unsupported = [];
+        int? seed = desiredConfig.Seed;
+        if (seed.HasValue && !capabilities.SupportsSeed) {
+            seed = null;
+            unsupported.Add("seed-unsupported");
+        }
+
+        if (!capabilities.SupportsFingerprint) {
+            unsupported.Add("fingerprint-unsupported");
+        }
+
+        return new SkillBenchmarkProviderRequest(
+            desiredConfig with {
+                Temperature = 0d,
+                Seed = seed,
+            },
+            SeedSent: seed.HasValue,
+            FingerprintExpected: capabilities.SupportsFingerprint,
+            UnsupportedCapabilities: unsupported);
+    }
+}
+
+public static class SkillBenchmarkBudgetPolicy {
+    public static SkillBenchmarkBudgetStatus Evaluate(SkillBenchmarkBudgetState? state, DateTimeOffset now) {
+        if (state is null
+            || state.MonthlyCap <= 0
+            || state.Consumed < 0
+            || state.ExpiresAt <= now
+            || !state.ProviderCostMetadataAvailable
+            || state.RetryStormDetected) {
+            return SkillBenchmarkBudgetStatus.BudgetUnknown;
+        }
+
+        return state.Consumed >= state.MonthlyCap
+            ? SkillBenchmarkBudgetStatus.BudgetExhausted
+            : SkillBenchmarkBudgetStatus.Available;
+    }
+}
+
+public static class SkillBenchmarkBaselinePolicy {
+    public static SkillBenchmarkBaselineWriteDecision DecideWrite(
+        bool trustedContext,
+        bool approvedMarkerPresent,
+        SkillBenchmarkGateResult candidate)
+    {
+        ArgumentNullException.ThrowIfNull(candidate);
+
+        return trustedContext
+            && approvedMarkerPresent
+            && candidate.Status == SkillBenchmarkGateStatus.Passed
+                ? SkillBenchmarkBaselineWriteDecision.WriteApprovedBaseline
+                : SkillBenchmarkBaselineWriteDecision.CandidateEvidenceOnly;
+    }
+}
+
+public static class SkillBenchmarkGate {
+    public static SkillBenchmarkGateResult Evaluate(
+        SkillBenchmarkPromptSet promptSet,
+        IReadOnlyList<SkillBenchmarkResult> results,
+        SkillBenchmarkBaselineArtifact? approvedBaseline) {
+        ArgumentNullException.ThrowIfNull(promptSet);
+        ArgumentNullException.ThrowIfNull(results);
+
+        List<string> diagnostics = [];
+        if (promptSet.Prompts.Count != 20) {
+            diagnostics.Add("prompt-set-must-contain-exactly-20-prompts");
+        }
+
+        string[] expectedIds = [.. promptSet.Prompts.Select(p => p.Id).Order(StringComparer.Ordinal)];
+        string[] actualIds = [.. results.Select(r => r.PromptId).Order(StringComparer.Ordinal)];
+        if (!expectedIds.SequenceEqual(actualIds, StringComparer.Ordinal)) {
+            diagnostics.Add("result-prompt-ids-must-match-v1-corpus");
+        }
+
+        int invalid = results.Count(r => r.EvidenceStatus is not SkillBenchmarkEvidenceStatus.Valid and not SkillBenchmarkEvidenceStatus.LegitimateMiss);
+        if (invalid > 0) {
+            diagnostics.Add("invalid-evidence-present");
+        }
+
+        int passed = results.Count(r => r.EvidenceStatus == SkillBenchmarkEvidenceStatus.Valid && r.CompileSucceeded && r.ValidatorSucceeded);
+        double passRate = results.Count == 0 ? 0d : (double)passed / results.Count;
+        double threshold = Math.Max(SkillBenchmarkOfflineScorer.OneShotPassTarget, approvedBaseline?.InitialPassRate ?? SkillBenchmarkOfflineScorer.OneShotPassTarget);
+
+        if (diagnostics.Count > 0) {
+            return new SkillBenchmarkGateResult(
+                SkillBenchmarkGateStatus.InvalidEvidence,
+                results.Count,
+                passed,
+                invalid,
+                passRate,
+                threshold,
+                diagnostics);
+        }
+
+        if (approvedBaseline is null) {
+            return new SkillBenchmarkGateResult(
+                SkillBenchmarkGateStatus.CandidateOnly,
+                results.Count,
+                passed,
+                invalid,
+                passRate,
+                threshold,
+                ["baseline-capture-marker-required"]);
+        }
+
+        bool passedGate = passRate >= threshold;
+        return new SkillBenchmarkGateResult(
+            passedGate ? SkillBenchmarkGateStatus.Passed : SkillBenchmarkGateStatus.Failed,
+            results.Count,
+            passed,
+            invalid,
+            passRate,
+            threshold,
+            passedGate ? [] : ["one-shot-pass-rate-below-approved-threshold"]);
+    }
+}
+
+public static class SkillBenchmarkEvidencePath {
+    public static string NormalizeUnderRoot(string evidenceRoot, string artifactName) {
+        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceRoot);
+        ArgumentException.ThrowIfNullOrWhiteSpace(artifactName);
+
+        if (Path.IsPathRooted(artifactName)) {
+            throw new InvalidOperationException("evidence path must be relative");
+        }
+
+        string root = Path.GetFullPath(evidenceRoot);
+        string candidate = Path.GetFullPath(Path.Combine(root, artifactName));
+        string comparisonRoot = root.EndsWith(Path.DirectorySeparatorChar)
+            ? root
+            : root + Path.DirectorySeparatorChar;
+        if (!candidate.StartsWith(comparisonRoot, OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal)) {
+            throw new InvalidOperationException("evidence path escapes approved root");
+        }
+
+        return candidate;
+    }
+}
+
+public static partial class SkillBenchmarkSummarySanitizer {
+    private const int MaxFieldLength = 600;
+
+    public static string Sanitize(string? value) {
+        string text = value ?? string.Empty;
+        text = text.Replace("\r", " ", StringComparison.Ordinal).Replace("\n", " ", StringComparison.Ordinal);
+        text = SecretRegex().Replace(text, "[REDACTED]");
+        text = LocalPathRegex().Replace(text, "[LOCAL_PATH]");
+        text = TenantRegex().Replace(text, "$1=[REDACTED]");
+        text = text.Replace("|", "\\|", StringComparison.Ordinal)
+            .Replace("<script", "&lt;script", StringComparison.OrdinalIgnoreCase)
+            .Replace("</script", "&lt;/script", StringComparison.OrdinalIgnoreCase);
+        if (text.StartsWith("::", StringComparison.Ordinal)) {
+            text = "\\" + text;
+        }
+
+        return text.Length > MaxFieldLength ? text[..MaxFieldLength] + "..." : text;
+    }
+
+    [GeneratedRegex(@"(?i)\b(?:sk-[A-Za-z0-9_-]{12,}|ghp_[A-Za-z0-9_]{12,}|github_pat_[A-Za-z0-9_]{12,}|xox[baprs]-[A-Za-z0-9-]{12,}|bearer\s+[A-Za-z0-9._~+/=-]+)\b", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+    private static partial Regex SecretRegex();
+
+    [GeneratedRegex(@"(?:[A-Za-z]:[\\/][^\s]+)|(?<![\w/])/(?:home|Users|tmp|var)/[^\s]+", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+    private static partial Regex LocalPathRegex();
+
+    [GeneratedRegex(@"(?i)\b(tenant|tenantid|user|userid|commandpayload)\s*[:=]\s*[^,; ]+", RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 500)]
+    private static partial Regex TenantRegex();
+}
 
 public sealed record SkillBenchmarkArtifactBuildResult(
     bool CanPersist,
@@ -1512,6 +1773,7 @@ public static class SkillBenchmarkArtifactWriter {
     /// </summary>
     public const string RedactionFailedDiagnostic = "redaction-not-passed";
     public const string SanitizationShapeDiagnostic = "sanitized-diagnostic-contains-raw-path";
+    public const string UnsafeSummaryDiagnostic = "sanitized-diagnostic-contains-unsafe-summary";
 
     private static readonly Regex LooksLikeLocalPathRegex = new(
         @"(?:[A-Za-z]:[\\/])|(?:^|\s)[/\\][A-Za-z][^\s]*[/\\]",
@@ -1528,7 +1790,10 @@ public static class SkillBenchmarkArtifactWriter {
         // P-15: sanity-check the SanitizedDiagnostics shape so a producer that mis-sets the
         // status can't bypass the persistence gate. We don't try to be a complete redactor —
         // just block obvious local-path leaks.
-        return !ContainsRawLocalPath(result.SanitizedDiagnostics);
+        return !ContainsRawLocalPath(result.SanitizedDiagnostics)
+            && !ContainsUnsafeSummary(result.SanitizedDiagnostics)
+            && !string.IsNullOrWhiteSpace(result.ProviderConfigHash)
+            && result.ProviderConfigHash.Length is 4 or 64;
     }
 
     public static SkillBenchmarkArtifactBuildResult TryBuildArtifact(SkillBenchmarkResult result) {
@@ -1542,6 +1807,10 @@ public static class SkillBenchmarkArtifactWriter {
             return new SkillBenchmarkArtifactBuildResult(false, [SanitizationShapeDiagnostic], null);
         }
 
+        if (ContainsUnsafeSummary(result.SanitizedDiagnostics)) {
+            return new SkillBenchmarkArtifactBuildResult(false, [UnsafeSummaryDiagnostic], null);
+        }
+
         // P-5: serialize via the source-gen context to avoid reflection-based metadata, which
         // is a known AOT/trim hazard.
         return new SkillBenchmarkArtifactBuildResult(
@@ -1553,6 +1822,17 @@ public static class SkillBenchmarkArtifactWriter {
     private static bool ContainsRawLocalPath(IReadOnlyList<string> diagnostics) {
         foreach (string diagnostic in diagnostics) {
             if (LooksLikeLocalPathRegex.IsMatch(diagnostic)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool ContainsUnsafeSummary(IReadOnlyList<string> diagnostics) {
+        foreach (string diagnostic in diagnostics) {
+            string sanitized = SkillBenchmarkSummarySanitizer.Sanitize(diagnostic);
+            if (!string.Equals(diagnostic, sanitized, StringComparison.Ordinal)) {
                 return true;
             }
         }

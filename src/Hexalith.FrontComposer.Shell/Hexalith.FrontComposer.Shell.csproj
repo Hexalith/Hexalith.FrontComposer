@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
+    <PackageId>Hexalith.FrontComposer.Shell</PackageId>
     <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
   <ItemGroup>

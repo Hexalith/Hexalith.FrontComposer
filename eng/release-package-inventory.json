@@ -1,0 +1,46 @@
+{
+  "packages": [
+    {
+      "project": "src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj",
+      "package_id": "Hexalith.FrontComposer.Cli",
+      "packable": true,
+      "symbol_required": true
+    },
+    {
+      "project": "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
+      "package_id": "Hexalith.FrontComposer.Contracts",
+      "packable": true,
+      "symbol_required": true
+    },
+    {
+      "project": "src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj",
+      "package_id": "Hexalith.FrontComposer.Mcp",
+      "packable": true,
+      "symbol_required": true
+    },
+    {
+      "project": "src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj",
+      "package_id": "Hexalith.FrontComposer.Schema",
+      "packable": true,
+      "symbol_required": true
+    },
+    {
+      "project": "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
+      "package_id": "Hexalith.FrontComposer.Shell",
+      "packable": true,
+      "symbol_required": true
+    },
+    {
+      "project": "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",
+      "package_id": "Hexalith.FrontComposer.SourceTools",
+      "packable": false,
+      "exception": "Roslyn source-generator implementation package is intentionally not published; generated-output contracts ship through Contracts, Schema, Shell, MCP, CLI, and Testing."
+    },
+    {
+      "project": "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj",
+      "package_id": "Hexalith.FrontComposer.Testing",
+      "packable": true,
+      "symbol_required": true
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+name: Nightly Quality
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+    inputs:
+      capture_benchmark_baseline:
+        description: 'Approved release-owner marker for durable benchmark baseline capture'
+        required: false
+        default: 'false'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-quality
+  cancel-in-progress: false
+
+jobs:
+  llm-benchmark:
+    name: LLM benchmark dry run
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Validate embedded v1 prompt contract
+        run: python3 eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benchmark/prompt-set.json
+
+      - name: Check monthly LLM budget before provider spend
+        id: budget
+        continue-on-error: true
+        run: python3 eng/llm_benchmark.py budget-status --budget .github/benchmark-budget.json --output artifacts/benchmark/budget.json
+
+      - name: Run benchmark contract tests
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter FullyQualifiedName~BenchmarkHarnessTests --results-directory ./TestResults --logger "trx;LogFileName=benchmark-results.trx"
+
+      - name: Publish bounded benchmark summary
+        shell: bash
+        run: |
+          {
+            echo '## LLM benchmark evidence'
+            echo
+            echo '- Prompt loader: SkillBenchmarkPromptSet.LoadEmbeddedV1'
+            echo '- Prompt corpus: docs/skills/frontcomposer/benchmark-prompts/v1/prompt-set.json'
+            echo '- Baseline writes: trusted main/release contexts only; PR, fork, local dry-run, and unapproved scheduled runs emit candidate evidence only'
+            echo '- Deferred policy: 28-day ratchet and provider/model transition rules remain v1.x follow-ups'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874 # v4.6.2
+        if: always()
+        with:
+          name: llm-benchmark-evidence
+          path: |
+            artifacts/benchmark/**
+            TestResults/**

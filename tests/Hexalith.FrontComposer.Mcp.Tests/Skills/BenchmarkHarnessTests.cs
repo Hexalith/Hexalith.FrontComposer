@@ -216,6 +216,109 @@ public sealed class BenchmarkHarnessTests {
     }
 
     [Fact]
+    public void DeterminismPolicy_SendsTemperatureZeroAndSeedOnlyWhenSupported() {
+        var desired = new SkillBenchmarkModelConfig("openai", "gpt-test", Temperature: 0.7, Seed: 123, TimeoutSeconds: 90, RetryCount: 1);
+
+        SkillBenchmarkProviderRequest supported = SkillBenchmarkDeterminismPolicy.CreateRequest(
+            desired,
+            new SkillBenchmarkProviderCapabilities(SupportsSeed: true, SupportsFingerprint: true));
+        SkillBenchmarkProviderRequest unsupported = SkillBenchmarkDeterminismPolicy.CreateRequest(
+            desired,
+            new SkillBenchmarkProviderCapabilities(SupportsSeed: false, SupportsFingerprint: false));
+
+        supported.Config.Temperature.ShouldBe(0d);
+        supported.Config.Seed.ShouldBe(123);
+        supported.SeedSent.ShouldBeTrue();
+        supported.FingerprintExpected.ShouldBeTrue();
+        supported.UnsupportedCapabilities.ShouldBeEmpty();
+
+        unsupported.Config.Temperature.ShouldBe(0d);
+        unsupported.Config.Seed.ShouldBeNull();
+        unsupported.SeedSent.ShouldBeFalse();
+        unsupported.FingerprintExpected.ShouldBeFalse();
+        unsupported.UnsupportedCapabilities.ShouldContain("seed-unsupported");
+        unsupported.UnsupportedCapabilities.ShouldContain("fingerprint-unsupported");
+    }
+
+    [Fact]
+    public void BudgetPolicy_FailsClosedForMissingAtLimitExpiredMalformedAndRetryStormState() {
+        DateTimeOffset now = DateTimeOffset.Parse("2026-05-10T12:00:00Z");
+        var available = new SkillBenchmarkBudgetState(100, 99, now.AddDays(1), ProviderCostMetadataAvailable: true, RetryStormDetected: false);
+
+        SkillBenchmarkBudgetPolicy.Evaluate(available, now).ShouldBe(SkillBenchmarkBudgetStatus.Available);
+        SkillBenchmarkBudgetPolicy.Evaluate(available with { Consumed = 100 }, now).ShouldBe(SkillBenchmarkBudgetStatus.BudgetExhausted);
+        SkillBenchmarkBudgetPolicy.Evaluate(null, now).ShouldBe(SkillBenchmarkBudgetStatus.BudgetUnknown);
+        SkillBenchmarkBudgetPolicy.Evaluate(available with { MonthlyCap = 0 }, now).ShouldBe(SkillBenchmarkBudgetStatus.BudgetUnknown);
+        SkillBenchmarkBudgetPolicy.Evaluate(available with { ExpiresAt = now.AddSeconds(-1) }, now).ShouldBe(SkillBenchmarkBudgetStatus.BudgetUnknown);
+        SkillBenchmarkBudgetPolicy.Evaluate(available with { ProviderCostMetadataAvailable = false }, now).ShouldBe(SkillBenchmarkBudgetStatus.BudgetUnknown);
+        SkillBenchmarkBudgetPolicy.Evaluate(available with { RetryStormDetected = true }, now).ShouldBe(SkillBenchmarkBudgetStatus.BudgetUnknown);
+    }
+
+    [Fact]
+    public void BenchmarkGate_RequiresExactlyTwentyValidPromptResultsAndApprovedBaseline() {
+        SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
+        SkillBenchmarkResult[] results = [.. promptSet.Prompts.Select((prompt, index) => BenchmarkResultFor(prompt.Id, index < 16))];
+
+        SkillBenchmarkGateResult candidate = SkillBenchmarkGate.Evaluate(promptSet, results, approvedBaseline: null);
+        candidate.Status.ShouldBe(SkillBenchmarkGateStatus.CandidateOnly);
+        candidate.PassedCount.ShouldBe(16);
+        candidate.Threshold.ShouldBe(0.80, tolerance: 0.0001);
+
+        var baseline = new SkillBenchmarkBaselineArtifact(
+            InitialPassRate: 0.80,
+            CorpusHash: "corpus",
+            ScorerVersion: "scorer-v1",
+            ValidatorVersion: "validator-v1",
+            RedactionPolicyVersion: "redaction-v1",
+            ProviderConfigHash: "provider",
+            CommitSha: "abc123",
+            ApproverMarker: "approved-by-release-owner",
+            SanitizedSummaryHash: "summary",
+            CapturedAt: DateTimeOffset.Parse("2026-05-10T12:00:00Z"));
+
+        SkillBenchmarkGateResult gate = SkillBenchmarkGate.Evaluate(promptSet, results, baseline);
+        gate.Status.ShouldBe(SkillBenchmarkGateStatus.Passed);
+        SkillBenchmarkBaselinePolicy.DecideWrite(trustedContext: false, approvedMarkerPresent: true, gate)
+            .ShouldBe(SkillBenchmarkBaselineWriteDecision.CandidateEvidenceOnly);
+        SkillBenchmarkBaselinePolicy.DecideWrite(trustedContext: true, approvedMarkerPresent: true, gate)
+            .ShouldBe(SkillBenchmarkBaselineWriteDecision.WriteApprovedBaseline);
+
+        SkillBenchmarkGate.Evaluate(promptSet, results[..19], baseline).Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
+        SkillBenchmarkGate.Evaluate(promptSet, [.. results.Select((r, i) => i == 0 ? r with { EvidenceStatus = SkillBenchmarkEvidenceStatus.BudgetBlocked } : r)], baseline)
+            .Status.ShouldBe(SkillBenchmarkGateStatus.InvalidEvidence);
+        SkillBenchmarkGate.Evaluate(promptSet, [.. results.Select((r, i) => i < 15 ? r with { CompileSucceeded = true, ValidatorSucceeded = true } : r with { CompileSucceeded = false, ValidatorSucceeded = false, EvidenceStatus = SkillBenchmarkEvidenceStatus.LegitimateMiss })], baseline)
+            .Status.ShouldBe(SkillBenchmarkGateStatus.Failed);
+    }
+
+    [Fact]
+    public void SummarySanitizerAndArtifactWriter_BlockHostileEvidenceContent() {
+        string sanitized = SkillBenchmarkSummarySanitizer.Sanitize("::warning:: <script>x</script> C:\\repo\\secret.cs tenantId=abc sk-1234567890123456");
+
+        sanitized.ShouldStartWith("\\::warning");
+        sanitized.ShouldNotContain("<script>");
+        sanitized.ShouldNotContain("C:\\repo");
+        sanitized.ShouldNotContain("tenantId=abc");
+        sanitized.ShouldNotContain("sk-1234567890123456");
+
+        SkillBenchmarkResult result = BenchmarkResultFor("p01", passed: false) with {
+            SanitizedDiagnostics = ["::warning:: injected workflow command"],
+        };
+
+        SkillBenchmarkArtifactWriter.CanPersist(result).ShouldBeFalse();
+        SkillBenchmarkArtifactWriter.TryBuildArtifact(result).Diagnostics.ShouldContain(SkillBenchmarkArtifactWriter.UnsafeSummaryDiagnostic);
+    }
+
+    [Fact]
+    public void EvidencePath_NormalizesUnderApprovedRootAndRejectsEscapes() {
+        string root = Path.Combine(Path.GetTempPath(), $"fc-benchmark-{Guid.NewGuid():N}");
+        string safe = SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, "summaries/result.json");
+
+        safe.ShouldStartWith(Path.GetFullPath(root));
+        Should.Throw<InvalidOperationException>(() => SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, "../outside.json"));
+        Should.Throw<InvalidOperationException>(() => SkillBenchmarkEvidencePath.NormalizeUnderRoot(root, Path.Combine(Path.GetPathRoot(root)!, "outside.json")));
+    }
+
+    [Fact]
     public void PromptSet_LoadsExpectedTwentyIdsByOrdinalOrderingFromFixture() {
         // Better than asserting "the loader sorted its own output": pin the actual 20 IDs.
         SkillBenchmarkPromptSet promptSet = SkillBenchmarkPromptSet.LoadEmbeddedV1();
@@ -224,4 +327,30 @@ public sealed class BenchmarkHarnessTests {
         promptSet.Prompts[0].Id.ShouldStartWith("p");
         promptSet.Prompts.Select(p => p.Id).Distinct().Count().ShouldBe(20);
     }
+
+    private static SkillBenchmarkResult BenchmarkResultFor(string promptId, bool passed)
+        => new SkillBenchmarkResult(
+            PromptId: promptId,
+            FrameworkVersion: "1.0.0",
+            CorpusVersion: "1.0.0",
+            ModelId: "model",
+            ProviderConfigHash: new SkillBenchmarkModelConfig("provider", "model", 0, 123, 60, 0).ConfigHash(),
+            ScorerVersion: "scorer-v1",
+            ValidatorVersion: "validator-v1",
+            CompileSucceeded: passed,
+            ValidatorSucceeded: passed,
+            FailureCategory: passed ? GeneratedCodeFailureCategory.None : GeneratedCodeFailureCategory.PackageBoundary,
+            RedactionStatus: SkillBenchmarkRedactionStatus.Passed,
+            GeneratedArtifactToken: $"artifact:{promptId}",
+            SanitizedDiagnostics: [passed ? "validator-passed" : "legitimate-miss"]) with {
+            ProviderId = "provider",
+            Temperature = 0,
+            Seed = 123,
+            TimeoutSeconds = 60,
+            RetryCount = 0,
+            SeedSupported = true,
+            FingerprintSupported = true,
+            ProviderFingerprint = "fp-test",
+            EvidenceStatus = passed ? SkillBenchmarkEvidenceStatus.Valid : SkillBenchmarkEvidenceStatus.LegitimateMiss,
+        };
 }

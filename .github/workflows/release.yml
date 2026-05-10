@@ -10,12 +10,17 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write # For tag creation and GitHub Release
+  contents: read
 
 jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: write # For tag creation and GitHub Release
+      packages: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -72,6 +77,12 @@ jobs:
           HUSKY: 0
         run: npm ci
 
+      - name: Install CycloneDX .NET tool
+        run: dotnet tool install --global CycloneDX --version 5.*
+
+      - name: Preflight package inventory
+        run: python3 eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output release-evidence/package-inventory-preflight.json
+
       - name: Configure git credentials
         run: git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/Hexalith/Hexalith.FrontComposer.git
         env:
@@ -82,3 +93,32 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_SIGNING_CERTIFICATE_PATH: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PATH }}
+          NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
+          NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
+
+      - name: Attest release artifacts when supported
+        if: ${{ hashFiles('release-evidence/sealed-manifest.json') != '' && vars.ATTESTATION_UNSUPPORTED != 'true' }}
+        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        with:
+          subject-path: |
+            release-evidence/sealed-manifest.json
+            release-evidence/checksums.json
+            release-evidence/sbom/**/*.json
+            nupkgs-signed/*.nupkg
+            nupkgs/*.snupkg
+
+      - name: Record approved attestation fallback
+        if: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' }}
+        run: |
+          mkdir -p release-evidence
+          cat > release-evidence/attestation-unavailable.md <<'NOTE'
+          # Artifact Attestation Unavailable
+
+          GitHub artifact/SBOM attestation is unavailable for this repository plan, visibility, or permission context.
+          Checksums, NuGet author signatures, RFC 3161 timestamps, SBOM, commit SHA, tag, run id, and workflow ref remain the blocking provenance evidence.
+          NOTE
+
+      - name: Release budget monitor
+        if: always()
+        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "false" || true

@@ -1,6 +1,6 @@
 # Story 10.6: LLM Benchmark, Signed Releases & SBOM
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR73**, **FR75**, **NFR24-NFR26**, **NFR60-NFR63**, and **NFR100**. Builds on Stories **8-5**, **9-5**, and **10-1** through **10-5**. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -116,66 +116,66 @@ Start here: T1 benchmark workflow and config -> T2 benchmark cache/redaction/bud
 
 ## Tasks / Subtasks
 
-- [ ] T1. Add nightly LLM benchmark orchestration (AC1-AC6, AC9-AC15, AC37-AC38, AC41-AC42, AC49)
-  - [ ] Add or extend `.github/workflows/nightly.yml` with scheduled/manual benchmark execution.
-  - [ ] Load the embedded v1 prompt set through `SkillBenchmarkPromptSet.LoadEmbeddedV1()` instead of parsing a second prompt format.
-  - [ ] Add benchmark runner script or CLI command under `jobs/`, `eng/`, or the existing MCP test/tooling surface.
-  - [ ] Persist provider/model/scorer/validator/redaction versions and provider config hash with every result.
-  - [ ] Implement cache lookup/reuse using `SkillBenchmarkCacheKey` and reject cache mismatches.
-  - [ ] Enforce the AC41 aggregate 20-prompt one-shot pass rule only after valid evidence exists; handle baseline capture/update through the AC42 approved artifact path.
-  - [ ] Make baseline capture/update a trusted-context write only; fork/PR/local dry-run executions may report candidate evidence but must not update durable baseline markers.
-  - [ ] Keep 28-day rolling ratchet and model-transition rules documented as v1.x deferrals.
+- [x] T1. Add nightly LLM benchmark orchestration (AC1-AC6, AC9-AC15, AC37-AC38, AC41-AC42, AC49)
+  - [x] Add or extend `.github/workflows/nightly.yml` with scheduled/manual benchmark execution.
+  - [x] Load the embedded v1 prompt set through `SkillBenchmarkPromptSet.LoadEmbeddedV1()` instead of parsing a second prompt format.
+  - [x] Add benchmark runner script or CLI command under `jobs/`, `eng/`, or the existing MCP test/tooling surface.
+  - [x] Persist provider/model/scorer/validator/redaction versions and provider config hash with every result.
+  - [x] Implement cache lookup/reuse using `SkillBenchmarkCacheKey` and reject cache mismatches.
+  - [x] Enforce the AC41 aggregate 20-prompt one-shot pass rule only after valid evidence exists; handle baseline capture/update through the AC42 approved artifact path.
+  - [x] Make baseline capture/update a trusted-context write only; fork/PR/local dry-run executions may report candidate evidence but must not update durable baseline markers.
+  - [x] Keep 28-day rolling ratchet and model-transition rules documented as v1.x deferrals.
 
-- [ ] T2. Harden benchmark evidence, cost, and provider failure behavior (AC3-AC8, AC13-AC15, AC39-AC42, AC45, AC47, AC49, AC52-AC54)
-  - [ ] Send temperature 0 and seed only when provider/API supports those controls; record unsupported determinism explicitly.
-  - [ ] Capture `system_fingerprint` or provider-equivalent metadata when available.
-  - [ ] Add monthly budget cap state and fail-closed handling for at-limit, over-limit, missing, malformed, expired, provider-cost-failed, and retry-storm budget metadata.
-  - [ ] Reuse `SkillBenchmarkArtifactWriter` redaction gates and add fixtures for secrets, local paths, tenant/user ids, command payload fragments, markdown injection, workflow-command injection, oversized diagnostics, cancellation, and partial results.
-  - [ ] Add cache-key fixtures that independently mutate provider id, model id/version, provider config hash, corpus hash, prompt template hash, scorer version, validator version, redaction policy version, framework version, and runtime config.
-  - [ ] Add baseline fixtures for creation, approved update, stale baseline hash, missing approver marker, malformed baseline JSON, invalid evidence, and grace-threshold boundaries.
-  - [ ] Add fixtures proving read-only contexts cannot mutate baselines and provider/API outages cannot reuse stale evidence as fresh passing evidence.
-  - [ ] Ensure raw provider outputs are never uploaded when redaction or artifact-shape checks fail.
-  - [ ] Normalize benchmark evidence paths under the approved evidence root before writing or summarizing artifacts.
+- [x] T2. Harden benchmark evidence, cost, and provider failure behavior (AC3-AC8, AC13-AC15, AC39-AC42, AC45, AC47, AC49, AC52-AC54)
+  - [x] Send temperature 0 and seed only when provider/API supports those controls; record unsupported determinism explicitly.
+  - [x] Capture `system_fingerprint` or provider-equivalent metadata when available.
+  - [x] Add monthly budget cap state and fail-closed handling for at-limit, over-limit, missing, malformed, expired, provider-cost-failed, and retry-storm budget metadata.
+  - [x] Reuse `SkillBenchmarkArtifactWriter` redaction gates and add fixtures for secrets, local paths, tenant/user ids, command payload fragments, markdown injection, workflow-command injection, oversized diagnostics, cancellation, and partial results.
+  - [x] Add cache-key fixtures that independently mutate provider id, model id/version, provider config hash, corpus hash, prompt template hash, scorer version, validator version, redaction policy version, framework version, and runtime config.
+  - [x] Add baseline fixtures for creation, approved update, stale baseline hash, missing approver marker, malformed baseline JSON, invalid evidence, and grace-threshold boundaries.
+  - [x] Add fixtures proving read-only contexts cannot mutate baselines and provider/API outages cannot reuse stale evidence as fresh passing evidence.
+  - [x] Ensure raw provider outputs are never uploaded when redaction or artifact-shape checks fail.
+  - [x] Normalize benchmark evidence paths under the approved evidence root before writing or summarizing artifacts.
 
-- [ ] T3. Inventory package output and lockstep release shape (AC16-AC18, AC24, AC29-AC30, AC43-AC44, AC50-AC51)
-  - [ ] Define the expected package inventory from evaluated packable projects. Explicit package metadata exists for `Hexalith.FrontComposer.Cli`, `Hexalith.FrontComposer.Mcp`, `Hexalith.FrontComposer.Schema`, and `Hexalith.FrontComposer.Testing`; verify actual MSBuild packability for `Contracts`, `Shell`, and `SourceTools` and record package or exception status for each.
-  - [ ] Update `Directory.Build.props`, project metadata, or release scripts so all intended packages use the semantic-release version without per-project drift.
-  - [ ] Add governance tests that packable projects produce expected package ids and lockstep versions.
-  - [ ] Generate a release inventory manifest containing package id, version, commit SHA, artifact path, checksum, symbol package or exception, SBOM component reference, signing status, attestation status, and publish status.
-  - [ ] Seal the manifest before publish and verify no package, symbol, SBOM, checksum, signature, attestation, benchmark, tag, run id, or workflow ref changes between sealing and publication.
-  - [ ] Ensure release tests run before `dotnet pack`, signing, attestation, and publish.
+- [x] T3. Inventory package output and lockstep release shape (AC16-AC18, AC24, AC29-AC30, AC43-AC44, AC50-AC51)
+  - [x] Define the expected package inventory from evaluated packable projects. Explicit package metadata exists for `Hexalith.FrontComposer.Cli`, `Hexalith.FrontComposer.Mcp`, `Hexalith.FrontComposer.Schema`, and `Hexalith.FrontComposer.Testing`; verify actual MSBuild packability for `Contracts`, `Shell`, and `SourceTools` and record package or exception status for each.
+  - [x] Update `Directory.Build.props`, project metadata, or release scripts so all intended packages use the semantic-release version without per-project drift.
+  - [x] Add governance tests that packable projects produce expected package ids and lockstep versions.
+  - [x] Generate a release inventory manifest containing package id, version, commit SHA, artifact path, checksum, symbol package or exception, SBOM component reference, signing status, attestation status, and publish status.
+  - [x] Seal the manifest before publish and verify no package, symbol, SBOM, checksum, signature, attestation, benchmark, tag, run id, or workflow ref changes between sealing and publication.
+  - [x] Ensure release tests run before `dotnet pack`, signing, attestation, and publish.
 
-- [ ] T4. Add SBOM, signing, symbols, checksums, and verification (AC17, AC19-AC24, AC27-AC30, AC43-AC46, AC50-AC53)
-  - [ ] Extend `.github/workflows/release.yml` and `.releaserc.json` to generate `.snupkg` symbol packages where appropriate.
-  - [ ] Add CycloneDX SBOM generation for the solution or package output and fail closed on incomplete SBOM evidence.
-  - [ ] Sign every `.nupkg` with the approved certificate and RFC 3161 timestamp; verify signatures before push.
-  - [ ] Generate checksum manifests for `.nupkg`, `.snupkg`, SBOM, and evidence files before publication.
-  - [ ] Add a release verification script or governance test that fails before publish when package inventory, lockstep versions, symbols, SBOM, checksums, signatures, timestamps, or required evidence do not match the manifest.
-  - [ ] Keep certificate path/password/key material out of logs, summaries, artifacts, and issue bodies.
-  - [ ] Treat timestamp-authority, NuGet, GitHub Release, and SBOM metadata outages as explicit fail-closed or approved-fallback states; do not publish unsigned, stale, or partial evidence as complete.
-  - [ ] Record partial-publish incidents and rerun guidance when any destination accepts only part of the sealed manifest.
+- [x] T4. Add SBOM, signing, symbols, checksums, and verification (AC17, AC19-AC24, AC27-AC30, AC43-AC46, AC50-AC53)
+  - [x] Extend `.github/workflows/release.yml` and `.releaserc.json` to generate `.snupkg` symbol packages where appropriate.
+  - [x] Add CycloneDX SBOM generation for the solution or package output and fail closed on incomplete SBOM evidence.
+  - [x] Sign every `.nupkg` with the approved certificate and RFC 3161 timestamp; verify signatures before push.
+  - [x] Generate checksum manifests for `.nupkg`, `.snupkg`, SBOM, and evidence files before publication.
+  - [x] Add a release verification script or governance test that fails before publish when package inventory, lockstep versions, symbols, SBOM, checksums, signatures, timestamps, or required evidence do not match the manifest.
+  - [x] Keep certificate path/password/key material out of logs, summaries, artifacts, and issue bodies.
+  - [x] Treat timestamp-authority, NuGet, GitHub Release, and SBOM metadata outages as explicit fail-closed or approved-fallback states; do not publish unsigned, stale, or partial evidence as complete.
+  - [x] Record partial-publish incidents and rerun guidance when any destination accepts only part of the sealed manifest.
 
-- [ ] T5. Add provenance and release evidence publication (AC25-AC30, AC39-AC40, AC43-AC46, AC49-AC54)
-  - [ ] Add GitHub artifact/SBOM attestation where available using minimum required permissions.
-  - [ ] Detect attestation capability before publish and distinguish supported attestation, approved unsupported-attestation fallback, and unexpected attestation failure.
-  - [ ] Publish an explicit unsupported-attestation note when repository plan, visibility, or permissions prevent attestation, including what adopters can still verify through checksum, signature, SBOM, and commit provenance.
-  - [ ] Attach release evidence to the GitHub Release: package inventory, checksums, SBOM, signing verification, symbols, benchmark summary, and publish outcome.
-  - [ ] Add summary escaping/truncation around all markdown/JSON evidence publication.
-  - [ ] Bind every attached evidence artifact to the sealed manifest, commit SHA, tag, run id, and workflow ref.
-  - [ ] Reject generated filenames, paths, or links that escape the approved evidence root or expose local filesystem paths.
+- [x] T5. Add provenance and release evidence publication (AC25-AC30, AC39-AC40, AC43-AC46, AC49-AC54)
+  - [x] Add GitHub artifact/SBOM attestation where available using minimum required permissions.
+  - [x] Detect attestation capability before publish and distinguish supported attestation, approved unsupported-attestation fallback, and unexpected attestation failure.
+  - [x] Publish an explicit unsupported-attestation note when repository plan, visibility, or permissions prevent attestation, including what adopters can still verify through checksum, signature, SBOM, and commit provenance.
+  - [x] Attach release evidence to the GitHub Release: package inventory, checksums, SBOM, signing verification, symbols, benchmark summary, and publish outcome.
+  - [x] Add summary escaping/truncation around all markdown/JSON evidence publication.
+  - [x] Bind every attached evidence artifact to the sealed manifest, commit SHA, tag, run id, and workflow ref.
+  - [x] Reject generated filenames, paths, or links that escape the approved evidence root or expose local filesystem paths.
 
-- [ ] T6. Add release budget governance and NFR100 trigger (AC31-AC34, AC47, AC49)
-  - [ ] Measure billable minutes per release tag and wall-clock tag-to-nuget.org duration.
-  - [ ] Persist release budget history in a reviewable JSON/markdown artifact or stable issue marker.
-  - [ ] Open/update a package-count collapse evaluation issue after 3 consecutive breaches of 90 billable minutes or 2-hour publish latency; this is warn-only governance evidence, not an automatic release block.
-  - [ ] Update package-count evaluation issues only from trusted release/main contexts using a stable marker; PR/fork/dry-run contexts report what would change without writing it.
-  - [ ] Include tag, run id, package count, slow jobs, publish status, and suspected package-count pressure.
+- [x] T6. Add release budget governance and NFR100 trigger (AC31-AC34, AC47, AC49)
+  - [x] Measure billable minutes per release tag and wall-clock tag-to-nuget.org duration.
+  - [x] Persist release budget history in a reviewable JSON/markdown artifact or stable issue marker.
+  - [x] Open/update a package-count collapse evaluation issue after 3 consecutive breaches of 90 billable minutes or 2-hour publish latency; this is warn-only governance evidence, not an automatic release block.
+  - [x] Update package-count evaluation issues only from trusted release/main contexts using a stable marker; PR/fork/dry-run contexts report what would change without writing it.
+  - [x] Include tag, run id, package count, slow jobs, publish status, and suspected package-count pressure.
 
-- [ ] T7. Add governance tests and docs (AC27-AC54)
-  - [ ] Extend `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` or add focused release governance tests for no recursive submodules, release test ordering, least-privilege permissions, expected evidence files, package inventory, lockstep versions, signing verification, SBOM generation, attestation fallback, and hostile evidence summaries.
-  - [ ] Add MCP benchmark tests for baseline capture/update, cache mismatch, invalid evidence, budget-blocked status, unsupported seed/fingerprint metadata, redaction failures, stale/malformed evidence, and exact threshold boundaries.
-  - [ ] Add governance tests for trusted-context writes, sealed-manifest publication, partial-publish incident records, secret scan failures, external outage states, and evidence path containment.
-  - [ ] Update `tests/README.md`, release docs, or process notes with local dry-run commands for benchmark, SBOM, signature verification, and release evidence review.
+- [x] T7. Add governance tests and docs (AC27-AC54)
+  - [x] Extend `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` or add focused release governance tests for no recursive submodules, release test ordering, least-privilege permissions, expected evidence files, package inventory, lockstep versions, signing verification, SBOM generation, attestation fallback, and hostile evidence summaries.
+  - [x] Add MCP benchmark tests for baseline capture/update, cache mismatch, invalid evidence, budget-blocked status, unsupported seed/fingerprint metadata, redaction failures, stale/malformed evidence, and exact threshold boundaries.
+  - [x] Add governance tests for trusted-context writes, sealed-manifest publication, partial-publish incident records, secret scan failures, external outage states, and evidence path containment.
+  - [x] Update `tests/README.md`, release docs, or process notes with local dry-run commands for benchmark, SBOM, signature verification, and release evidence review.
 
 ---
 
@@ -349,11 +349,16 @@ Do not implement these in Story 10-6:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-05-10: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter FullyQualifiedName~BenchmarkHarnessTests --no-restore` passed (17 tests).
+- 2026-05-10: `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter FullyQualifiedName~CiGovernanceTests --no-restore` passed (18 tests).
+- 2026-05-10: `python eng\llm_benchmark.py validate-prompt-set --root . --output artifacts\benchmark\prompt-set.json` passed.
+- 2026-05-10: `python eng\release_evidence.py inventory --root . --expected eng\release-package-inventory.json --output artifacts\release\package-inventory.json` passed.
+- 2026-05-10: `python eng\release_evidence.py verify-manifest --manifest tests\ci-governance\fixtures\release-manifest-valid.json` passed.
+- 2026-05-10: `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-restore` passed (2909 passed, 3 skipped).
 
 ### Completion Notes List
 
@@ -365,10 +370,33 @@ Do not implement these in Story 10-6:
   - Changes applied: Added AC49-AC54; hardened T1-T7; added trusted-context writes, sealed manifest publication, partial-publish incident handling, external outage states, secret handling, and evidence path confinement.
   - Findings deferred: multi-destination rollback automation remains future release-operations work; certificate provider selection still belongs to implementation documentation.
   - Final recommendation: ready-for-dev
+- 2026-05-10: Implemented nightly benchmark orchestration, deterministic provider/budget/baseline gates, release package inventory and sealed-manifest evidence scripts, SBOM/signing/symbol/checksum workflow wiring, attestation fallback evidence, release budget NFR100 governance, package metadata lockstep updates, governance fixtures, and local verification docs. Full solution regression suite passed.
+
+### Change Log
+
+- 2026-05-10: Added benchmark and release governance implementation for Story 10-6; status moved to review after full validation.
 
 ### File List
 
-(to be filled in by dev agent)
+- `.github/workflows/nightly.yml`
+- `.github/workflows/release.yml`
+- `.releaserc.json`
+- `Directory.Build.props`
+- `eng/llm_benchmark.py`
+- `eng/release-package-inventory.json`
+- `eng/release_evidence.py`
+- `src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj`
+- `src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj`
+- `src/Hexalith.FrontComposer.Mcp/Skills/SkillCorpus.cs`
+- `src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj`
+- `src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj`
+- `src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`
+- `tests/Hexalith.FrontComposer.Mcp.Tests/Skills/BenchmarkHarnessTests.cs`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+- `tests/README.md`
+- `tests/ci-governance/fixtures/release-budget-three-breaches.json`
+- `tests/ci-governance/fixtures/release-manifest-invalid.json`
+- `tests/ci-governance/fixtures/release-manifest-valid.json`
 
 ---
 

@@ -1,0 +1,22 @@
+{
+  "commit_sha": "abc123",
+  "tag": "v1.2.3",
+  "run_id": "42",
+  "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
+  "sbom_hash": "sbom",
+  "benchmark_summary_hash": "benchmark",
+  "packages": [
+    {
+      "package_id": "Hexalith.FrontComposer.Contracts",
+      "version": "1.2.3",
+      "commit_sha": "abc123",
+      "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+      "checksum": "checksum",
+      "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+      "sbom_component": "Hexalith.FrontComposer.Contracts",
+      "signing_status": "verified",
+      "attestation_status": "approved-unsupported",
+      "publish_status": "pending"
+    }
+  ]
+}

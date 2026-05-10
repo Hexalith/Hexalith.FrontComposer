@@ -65,6 +65,28 @@ Duration governance records inner-loop, full-CI, and nightly lane evidence with 
 
 Quarantine evidence is published as bounded TRX, JSON, and markdown summaries. Summaries keep only allowlisted fields such as test identity, outcome, attempt number, category, seed when present, and normalized relative paths. Raw dumps, bearer tokens, workflow commands, HTML/script fragments, tenant/user identifiers, command payload bodies, local absolute paths, and unbounded logs are redacted, escaped, truncated, or rejected before publication.
 
+### LLM Benchmark And Release Evidence
+
+```bash
+# Validate the embedded v1 benchmark prompt corpus before any provider spend.
+python eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benchmark/prompt-set.json
+
+# Check monthly provider budget metadata. Non-zero exit means no API spend is allowed.
+python eng/llm_benchmark.py budget-status --budget .github/benchmark-budget.json --output artifacts/benchmark/budget.json
+
+# Run the benchmark contract tests.
+dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --filter FullyQualifiedName~BenchmarkHarnessTests
+
+# Dry-run package inventory and release evidence gates.
+python eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output artifacts/release/package-inventory.json
+python eng/release_evidence.py verify-manifest --manifest tests/ci-governance/fixtures/release-manifest-valid.json
+python eng/release_evidence.py release-budget --evidence tests/ci-governance/fixtures/release-budget-three-breaches.json --output artifacts/release/release-budget-summary.json
+```
+
+Release verification is intentionally fail-closed: package inventory, lockstep versions, `.snupkg` symbols, CycloneDX SBOM, checksums, NuGet author signatures, RFC 3161 timestamps, attestation or approved unsupported-attestation evidence, benchmark summary hash, commit SHA, tag, run id, and workflow ref must be bound into the sealed manifest before publish. Forks, PRs, local dry runs, and unapproved scheduled runs can emit candidate evidence, but cannot update durable benchmark baselines, release markers, publish state, or package-count-collapse issues.
+
+Local signature verification uses `dotnet nuget verify <package>.nupkg --all`. Local SBOM review uses the CycloneDX output under `release-evidence/sbom/`. Attestation verification is available only when GitHub artifact attestations are supported for the repository; otherwise the release publishes `attestation-unavailable.md` explaining the checksum, signature, SBOM, commit, tag, run, and workflow evidence that remains available.
+
 Troubleshooting:
 
 - **Malformed TRX**: treat the decision as invalid evidence, regenerate the run, and do not count it toward quarantine or reintroduction.

@@ -1,0 +1,31 @@
+{
+  "releases": [
+    {
+      "tag": "v0.1.0",
+      "run_id": "1001",
+      "billable_minutes": 91,
+      "publish_latency_minutes": 30,
+      "package_count": 8,
+      "slow_jobs": ["release"],
+      "publish_status": "published"
+    },
+    {
+      "tag": "v0.1.1",
+      "run_id": "1002",
+      "billable_minutes": 60,
+      "publish_latency_minutes": 121,
+      "package_count": 8,
+      "slow_jobs": ["nuget-publish"],
+      "publish_status": "published"
+    },
+    {
+      "tag": "v0.1.2",
+      "run_id": "1003",
+      "billable_minutes": 92,
+      "publish_latency_minutes": 140,
+      "package_count": 8,
+      "slow_jobs": ["release", "nuget-publish"],
+      "publish_status": "published"
+    }
+  ]
+}
