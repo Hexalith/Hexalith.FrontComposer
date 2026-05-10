@@ -138,6 +138,13 @@ jobs:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
 
+      # Gate 2c: DocFX documentation publication and validation
+      - name: 'Gate 2c: Docs Validation'
+        shell: pwsh
+        run: |
+          dotnet tool restore
+          ./eng/validate-docs.ps1
+
       # Gate 3: All tests pass
       # DIVERGENCE 4: Solution-level testing -- FrontComposer runs a single `dotnet test` on the
       # whole solution (all tests are Tier 1, no DAPR/Aspire tiers). EventStore runs 12 separate

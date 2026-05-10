@@ -440,3 +440,9 @@ nupkgs/
 # BMAD scratch output (test redirects, intermediate artifacts)
 _bmad-output/**/_tmp/
 
+# Story 9-5 DocFX and docs validation derived output
+docs/_site/
+docs/reference/api/*.yml
+docs/reference/api/.manifest
+artifacts/docs/
+

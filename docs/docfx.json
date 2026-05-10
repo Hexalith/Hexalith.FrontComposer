@@ -1,0 +1,60 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "..",
+          "files": [
+            "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj",
+            "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj",
+            "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",
+            "src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj"
+          ]
+        }
+      ],
+      "dest": "reference/api",
+      "disableGitFeatures": true,
+      "disableDefaultFilter": false
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "index.md",
+          "toc.yml",
+          "tutorials/**.md",
+          "how-to/**.md",
+          "reference/**.md",
+          "concepts/**.md",
+          "diagnostics/HFC*.md",
+          "migrations/**.md"
+        ]
+      },
+      {
+        "files": [
+          "reference/api/**.yml"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "assets/**"
+        ]
+      }
+    ],
+    "dest": "_site",
+    "globalMetadata": {
+      "_appTitle": "Hexalith FrontComposer",
+      "_disableContribution": true
+    },
+    "template": [
+      "default",
+      "modern"
+    ],
+    "xref": [],
+    "warningsAsErrors": true
+  }
+}

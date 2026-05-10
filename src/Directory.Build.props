@@ -3,6 +3,8 @@
   <PropertyGroup>
     <Authors>Hexalith</Authors>
     <Company>Hexalith</Company>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);0419;1570;1572;1573;1574;1591;1734</NoWarn>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/Hexalith/Hexalith.FrontComposer</RepositoryUrl>
     <RepositoryType>git</RepositoryType>

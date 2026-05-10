@@ -1,6 +1,6 @@
 # Story 10.1: Adopter Test Host & Component Testing Utilities
 
-Status: ready-for-dev
+Status: in-progress
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR71**, **NFR51**, **NFR52**, and **NFR53**. Promotes existing internal test-host patterns into an adopter-facing testing package while preserving the current Shell and SourceTools test infrastructure. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and **L11**.
 
