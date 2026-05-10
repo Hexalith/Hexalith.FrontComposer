@@ -1,0 +1,40 @@
+{
+  "runs": [
+    {
+      "timestamp": "2026-05-06T03:00:00Z",
+      "run_id": "1001",
+      "commit": "aaa111",
+      "workflow": "CI",
+      "lane": "build-and-test",
+      "lane_type": "full-ci",
+      "duration_seconds": 961,
+      "conclusion": "success",
+      "blocking": true,
+      "protected_branch": true
+    },
+    {
+      "timestamp": "2026-05-08T03:00:00Z",
+      "run_id": "1002",
+      "commit": "bbb222",
+      "workflow": "CI",
+      "lane": "build-and-test",
+      "lane_type": "full-ci",
+      "duration_seconds": 992,
+      "conclusion": "success",
+      "blocking": true,
+      "protected_branch": true
+    },
+    {
+      "timestamp": "2026-05-10T03:00:00Z",
+      "run_id": "1003",
+      "commit": "ccc333",
+      "workflow": "CI",
+      "lane": "build-and-test",
+      "lane_type": "full-ci",
+      "duration_seconds": 1004,
+      "conclusion": "success",
+      "blocking": true,
+      "protected_branch": true
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "evidences": [
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.FirstQuarantined",
+      "outcome": "passed",
+      "filter": "Category=Quarantined",
+      "protected_branch_sha": "abc123",
+      "canceled": false,
+      "partial": false,
+      "dynamic_skip": false,
+      "rerun_only": false,
+      "malformed": false,
+      "missing_evidence": false,
+      "changed_identity": false
+    },
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.SecondQuarantined",
+      "outcome": "failed",
+      "filter": "Category=Quarantined",
+      "protected_branch_sha": "abc123",
+      "canceled": false,
+      "partial": false,
+      "dynamic_skip": false,
+      "rerun_only": false,
+      "malformed": false,
+      "missing_evidence": false,
+      "changed_identity": false
+    }
+  ]
+}

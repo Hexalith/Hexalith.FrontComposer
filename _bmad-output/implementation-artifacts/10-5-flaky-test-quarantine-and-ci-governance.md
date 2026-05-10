@@ -1,6 +1,6 @@
 # Story 10.5: Flaky Test Quarantine & CI Governance
 
-Status: review
+Status: done
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR80**, **NFR54**, **NFR57**, and **NFR64-NFR67**. Builds on Stories **10-1** through **10-4** and the current CI gates. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -286,6 +286,12 @@ Do not implement these in Story 10-5:
 | Approval authority for cross-boundary quarantine evidence windows. | Story 10-5 implementation decision; recommend CODEOWNERS or maintainer approval |
 | Automatic closure policy for `ci-diet` issues after sustained recovery. | Future CI observability story |
 
+### Review Findings
+
+- [x] [Review][Patch] Reintroduction evidence only tracks the first quarantined test [.github/workflows/quarantine-governance-nightly.yml:83]
+- [x] [Review][Patch] CI-diet trigger counts any three slow runs instead of three consecutive days [.github/scripts/ci_governance.py:560]
+- [x] [Review][Patch] Approved evidence windows accept unrelated SHAs without checking the named range [.github/scripts/ci_governance.py:234]
+
 ---
 
 ## References
@@ -321,6 +327,7 @@ GPT-5 Codex
 - `python .github/scripts/ci_governance.py classify-flake ...`, `reintroduction ...`, `duration-monitor ...`, and `validate-quarantine-metadata ...` were exercised through governance tests and direct dry-run fixture checks.
 - `dotnet format whitespace tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --include tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs --verify-no-changes --no-restore` passed for the changed C# governance test file.
 - `dotnet format --verify-no-changes --no-restore` failed on pre-existing whitespace/EOL drift across unrelated source files; no unrelated formatting churn was applied.
+- `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"` passed after review patches: 51 tests.
 
 ### Completion Notes List
 
@@ -330,6 +337,7 @@ GPT-5 Codex
 - 2026-05-10: Implemented and validated flaky-test quarantine governance. Main CI and release exclude `Category=Quarantined`; CI and nightly quarantine lanes run warning-only with bounded evidence; flaky classification, metadata validation, reintroduction, and CI-duration budget automation live in `.github/scripts/ci_governance.py`; governance tests now execute the helper against fixtures for same-SHA flakes, outside-window rejection, malformed/contradictory evidence, untrusted contexts, ambiguous source mapping, repeat flakes, redaction, and duration breaches.
 - 2026-05-10: Hardened quarantine TRX publishing to use `LogFilePrefix=test-results-quarantine` so solution-level quarantine runs preserve per-project evidence instead of overwriting a fixed TRX file.
 - 2026-05-10: Added timeout-safe stdout/stderr handling to the governance-test process helper after a local rerun exposed a possible child-process output deadlock.
+- 2026-05-10: Code review patches applied. Reintroduction now processes all quarantined test identities in one evidence batch, CI-diet enforcement requires three consecutive breach days, and approved evidence windows reject SHAs outside the named window.
 
 ### File List
 
@@ -346,13 +354,16 @@ GPT-5 Codex
 - `tests/ci-governance/fixtures/concurrent-update-marker.json`
 - `tests/ci-governance/fixtures/contradictory-evidence.json`
 - `tests/ci-governance/fixtures/duration-breach-three-days.json`
+- `tests/ci-governance/fixtures/duration-breach-nonconsecutive.json`
 - `tests/ci-governance/fixtures/flake-approved-window.json`
+- `tests/ci-governance/fixtures/flake-approved-window-outside.json`
 - `tests/ci-governance/fixtures/flake-pass-fail-outside-window.json`
 - `tests/ci-governance/fixtures/flake-pass-fail-same-sha.json`
 - `tests/ci-governance/fixtures/hostile-output-redaction.json`
 - `tests/ci-governance/fixtures/malformed-evidence.json`
 - `tests/ci-governance/fixtures/missing-labels.json`
 - `tests/ci-governance/fixtures/permission-untrusted-context.json`
+- `tests/ci-governance/fixtures/reintroduction-batch-mixed.json`
 - `tests/ci-governance/fixtures/reintroduction-invalid-reset.json`
 - `tests/ci-governance/fixtures/reintroduction-valid-pass.json`
 - `tests/ci-governance/fixtures/repeat-flake.json`
@@ -361,6 +372,7 @@ GPT-5 Codex
 ### Change Log
 
 - 2026-05-10: Completed Story 10.5 implementation and moved status to review. Added executable governance coverage for CI quarantine automation, completed reintroduction PR support, expanded fixture coverage, documented local/CI operations, and validated story acceptance criteria with governance, filtered, quarantine, and full solution test runs.
+- 2026-05-10: Review findings resolved and story moved to done. Tightened batch reintroduction, consecutive-day CI-diet detection, and approved-window SHA validation with targeted fixtures.
 
 ---
 

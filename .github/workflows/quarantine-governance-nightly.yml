@@ -80,21 +80,22 @@ jobs:
               "reason": "The quarantine lane discovered zero quarantined tests."
             }, indent=2) + "\n")
             raise SystemExit(0)
-          first = results[0]
-          evidence = {
-            "identity": first["identity"],
-            "outcome": "passed" if summary["failed"] == 0 and summary["total"] > 0 else "failed",
-            "filter": "Category=Quarantined",
-            "protected_branch_sha": "${{ github.sha }}",
-            "canceled": False,
-            "partial": False,
-            "dynamic_skip": False,
-            "rerun_only": False,
-            "malformed": summary["classification"] == "invalid evidence",
-            "missing_evidence": False,
-            "changed_identity": False
-          }
-          Path("artifacts/quarantine/reintroduction-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
+          evidences = []
+          for result in results:
+            evidences.append({
+              "identity": result["identity"],
+              "outcome": str(result.get("outcome", "")).lower(),
+              "filter": "Category=Quarantined",
+              "protected_branch_sha": "${{ github.sha }}",
+              "canceled": False,
+              "partial": False,
+              "dynamic_skip": False,
+              "rerun_only": False,
+              "malformed": summary["classification"] == "invalid evidence",
+              "missing_evidence": False,
+              "changed_identity": False
+            })
+          Path("artifacts/quarantine/reintroduction-evidence.json").write_text(json.dumps({"evidences": evidences}, indent=2) + "\n")
           PY
           if [ -f artifacts/quarantine/reintroduction-evidence.json ]; then
             python3 .github/scripts/ci_governance.py reintroduction \

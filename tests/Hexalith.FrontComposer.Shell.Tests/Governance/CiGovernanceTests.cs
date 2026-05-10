@@ -281,14 +281,17 @@ public sealed class CiGovernanceTests {
             "flake-pass-fail-same-sha.json",
             "flake-pass-fail-outside-window.json",
             "flake-approved-window.json",
+            "flake-approved-window-outside.json",
             "reintroduction-valid-pass.json",
             "reintroduction-invalid-reset.json",
             "duration-breach-three-days.json",
+            "duration-breach-nonconsecutive.json",
             "hostile-output-redaction.json",
             "ambiguous-source-mapping.json",
             "malformed-evidence.json",
             "permission-untrusted-context.json",
             "concurrent-update-marker.json",
+            "reintroduction-batch-mixed.json",
             "contradictory-evidence.json",
             "missing-labels.json",
             "repeat-flake.json",
@@ -358,6 +361,24 @@ public sealed class CiGovernanceTests {
         doc.RootElement.GetProperty("classification").GetString().ShouldBe("flaky");
         doc.RootElement.GetProperty("decision").GetString().ShouldBe("open-or-update-issue-and-pr");
         doc.RootElement.GetProperty("manual_patch_required").GetBoolean().ShouldBeTrue();
+
+        ProcessResult approvedWindow = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/flake-approved-window.json",
+            "--output", output,
+        ]);
+        approvedWindow.ExitCode.ShouldBe(0, approvedWindow.Error);
+        using JsonDocument approvedDoc = JsonDocument.Parse(File.ReadAllText(output));
+        approvedDoc.RootElement.GetProperty("classification").GetString().ShouldBe("flaky");
+
+        ProcessResult outsideApprovedWindow = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/flake-approved-window-outside.json",
+            "--output", output,
+        ]);
+        outsideApprovedWindow.ExitCode.ShouldBe(0, outsideApprovedWindow.Error);
+        using JsonDocument outsideApprovedDoc = JsonDocument.Parse(File.ReadAllText(output));
+        outsideApprovedDoc.RootElement.GetProperty("classification").GetString().ShouldBe("not-flaky");
     }
 
     [Fact]
@@ -429,6 +450,33 @@ public sealed class CiGovernanceTests {
         using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(durationOutput))) {
             doc.RootElement.GetProperty("action").GetString().ShouldBe("open-or-update-ci-diet-issue");
         }
+
+        ProcessResult nonconsecutiveDuration = RunGovernance(root, [
+            "duration-monitor",
+            "--evidence", "tests/ci-governance/fixtures/duration-breach-nonconsecutive.json",
+            "--output", durationOutput,
+        ]);
+        nonconsecutiveDuration.ExitCode.ShouldBe(0, nonconsecutiveDuration.Error);
+        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(durationOutput))) {
+            doc.RootElement.GetProperty("action").GetString().ShouldBe("record-only");
+        }
+
+        string batchOutput = Path.Combine(Path.GetTempPath(), $"fc-reintro-batch-{Guid.NewGuid():N}.json");
+        string batchState = Path.Combine(Path.GetTempPath(), $"fc-reintro-batch-state-{Guid.NewGuid():N}.json");
+        ProcessResult batchReintro = RunGovernance(root, [
+            "reintroduction",
+            "--evidence", "tests/ci-governance/fixtures/reintroduction-batch-mixed.json",
+            "--output-state", batchState,
+            "--output", batchOutput,
+        ]);
+        batchReintro.ExitCode.ShouldBe(0, batchReintro.Error);
+        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(batchOutput))) {
+            JsonElement items = doc.RootElement.GetProperty("items");
+            items.GetArrayLength().ShouldBe(2);
+        }
+        string stateJson = File.ReadAllText(batchState);
+        stateJson.ShouldContain("FirstQuarantined");
+        stateJson.ShouldContain("SecondQuarantined");
 
         string repeatOutput = Path.Combine(Path.GetTempPath(), $"fc-repeat-{Guid.NewGuid():N}.json");
         ProcessResult repeat = RunGovernance(root, [

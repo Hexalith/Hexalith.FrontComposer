@@ -238,7 +238,16 @@ def same_revision_or_window(results: list[TestResult], window: dict[str, Any] | 
     if not window:
         return False
     required = ["from_sha", "to_sha", "source", "owner"]
-    return all(sanitize(window.get(k, "")) for k in required)
+    if not all(sanitize(window.get(k, "")) for k in required):
+        return False
+    approved_shas = {
+        sanitize(window.get("from_sha", "")),
+        sanitize(window.get("to_sha", "")),
+    }
+    if isinstance(window.get("shas"), list):
+        approved_shas.update(sanitize(sha) for sha in window["shas"])
+    approved_shas.discard("")
+    return shas.issubset(approved_shas)
 
 
 def classify_flake(args: argparse.Namespace) -> int:
@@ -397,34 +406,50 @@ def apply_github_proposal(payload: dict[str, Any], branch_prefix: str) -> None:
 
 def reintroduction(args: argparse.Namespace) -> int:
     raw = read_json(args.evidence)
-    evidence = raw if isinstance(raw, dict) else {}
-    identity = sanitize(evidence.get("identity", ""))
-    if not identity:
-        raise SystemExit("invalid reintroduction evidence: identity is required")
-    state = read_json(args.state) if args.state and pathlib.Path(args.state).exists() else {}
-    current = state.get(identity, {"pass_count": 0, "recurrence_count": 0, "last_sha": ""})
-    invalid_reasons = []
-    if evidence.get("outcome") != "passed":
-        invalid_reasons.append("outcome-not-passed")
-    if evidence.get("filter") != QUARANTINE_FILTER:
-        invalid_reasons.append("wrong-filter")
-    for key in ["canceled", "partial", "dynamic_skip", "rerun_only", "malformed", "missing_evidence", "changed_identity"]:
-        if evidence.get(key):
-            invalid_reasons.append(key.replace("_", "-"))
-    if not evidence.get("protected_branch_sha"):
-        invalid_reasons.append("missing-protected-branch-sha")
-
-    if invalid_reasons:
-        current["pass_count"] = 0
-        action = "reset"
+    evidence_items: list[dict[str, Any]]
+    if isinstance(raw, dict) and isinstance(raw.get("evidences"), list):
+        evidence_items = [item for item in raw["evidences"] if isinstance(item, dict)]
+    elif isinstance(raw, list):
+        evidence_items = [item for item in raw if isinstance(item, dict)]
+    elif isinstance(raw, dict):
+        evidence_items = [raw]
     else:
-        current["pass_count"] = int(current.get("pass_count", 0)) + 1
-        current["last_sha"] = sanitize(evidence["protected_branch_sha"])
-        action = "open-reintroduction-pr" if current["pass_count"] >= 5 else "track"
-    current["last_updated"] = dt.datetime.now(dt.timezone.utc).isoformat()
-    current["invalid_reasons"] = invalid_reasons
-    state[identity] = current
-    payload = {REINTRO_MARKER: True, "identity": identity, "action": action, "state": state}
+        evidence_items = []
+    if not evidence_items:
+        raise SystemExit("invalid reintroduction evidence: at least one evidence item is required")
+
+    state = read_json(args.state) if args.state and pathlib.Path(args.state).exists() else {}
+    decisions = []
+    for evidence in evidence_items:
+        identity = sanitize(evidence.get("identity", ""))
+        if not identity:
+            raise SystemExit("invalid reintroduction evidence: identity is required")
+        current = state.get(identity, {"pass_count": 0, "recurrence_count": 0, "last_sha": ""})
+        invalid_reasons = []
+        if evidence.get("outcome") != "passed":
+            invalid_reasons.append("outcome-not-passed")
+        if evidence.get("filter") != QUARANTINE_FILTER:
+            invalid_reasons.append("wrong-filter")
+        for key in ["canceled", "partial", "dynamic_skip", "rerun_only", "malformed", "missing_evidence", "changed_identity"]:
+            if evidence.get(key):
+                invalid_reasons.append(key.replace("_", "-"))
+        if not evidence.get("protected_branch_sha"):
+            invalid_reasons.append("missing-protected-branch-sha")
+
+        if invalid_reasons:
+            current["pass_count"] = 0
+            action = "reset"
+        else:
+            current["pass_count"] = int(current.get("pass_count", 0)) + 1
+            current["last_sha"] = sanitize(evidence["protected_branch_sha"])
+            action = "open-reintroduction-pr" if current["pass_count"] >= 5 else "track"
+        current["last_updated"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        current["invalid_reasons"] = invalid_reasons
+        state[identity] = current
+        decisions.append({"identity": identity, "action": action, "invalid_reasons": invalid_reasons})
+
+    overall_action = "open-reintroduction-pr" if any(item["action"] == "open-reintroduction-pr" for item in decisions) else decisions[-1]["action"]
+    payload = {REINTRO_MARKER: True, "identity": decisions[0]["identity"], "action": overall_action, "items": decisions, "state": state}
     if args.output_state:
         write_json(args.output_state, state)
     if args.output:
@@ -499,39 +524,72 @@ def apply_reintroduction_update(payload: dict[str, Any], state: dict[str, Any], 
         if created.returncode != 0:
             raise SystemExit("governance write failure: could not create quarantine reintroduction state issue")
 
-    if payload.get("action") != "open-reintroduction-pr":
+    reintroduction_items = [
+        item for item in payload.get("items", [])
+        if item.get("action") == "open-reintroduction-pr"
+    ]
+    if not reintroduction_items:
         return
     if not args.source_root:
         raise SystemExit("governance write failure: source root is required to open a reintroduction PR")
 
-    patch = build_reintroduction_patch(pathlib.Path(args.source_root), payload["identity"])
-    if patch.get("manual_patch_required"):
-        raise SystemExit(f"governance write failure: {patch.get('manual_patch_reason')}")
+    base_ref = subprocess.run(["git", "rev-parse", "HEAD"], text=True, check=True, capture_output=True).stdout.strip()
+    for item in reintroduction_items:
+        identity = item["identity"]
+        patch = build_reintroduction_patch(pathlib.Path(args.source_root), identity)
+        if patch.get("manual_patch_required"):
+            raise SystemExit(f"governance write failure: {patch.get('manual_patch_reason')}")
 
-    stable_id = hashlib.sha256(payload["identity"].encode("utf-8")).hexdigest()[:12]
-    branch = f"{args.branch_prefix}{stable_id}"
-    subprocess.run(["git", "checkout", "-B", branch], check=True)
-    source_path = pathlib.Path(patch["source_path"])
-    source_path.write_text(patch["patch"], encoding="utf-8")
-    if args.output_state:
-        state_path = pathlib.Path(args.output_state)
-        if state_path.exists():
-            subprocess.run(["git", "add", str(state_path)], check=False)
-    subprocess.run(["git", "add", str(source_path)], check=True)
-    subprocess.run(["git", "commit", "-m", f"test: reintroduce stable quarantine {stable_id}"], check=True)
-    subprocess.run(["git", "push", "-u", "origin", branch], check=True)
-    pr_body = "\n".join(
-        [
-            f"{REINTRO_MARKER} id={stable_id}",
-            "",
-            f"Removes quarantine metadata for `{sanitize(payload['identity'])}` after 5 valid nightly passes.",
-            "",
-            "The reintroduction state issue has been updated before this PR was opened.",
-        ]
-    )
-    pr = gh(["pr", "create", "--title", f"test: reintroduce quarantined test {stable_id}", "--body", pr_body])
-    if pr.returncode != 0:
-        raise SystemExit("governance write failure: could not create reintroduction PR")
+        stable_id = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:12]
+        branch = f"{args.branch_prefix}{stable_id}"
+        subprocess.run(["git", "checkout", "-B", branch, base_ref], check=True)
+        source_path = pathlib.Path(patch["source_path"])
+        source_path.write_text(patch["patch"], encoding="utf-8")
+        if args.output_state:
+            state_path = pathlib.Path(args.output_state)
+            if state_path.exists():
+                subprocess.run(["git", "add", str(state_path)], check=False)
+        subprocess.run(["git", "add", str(source_path)], check=True)
+        subprocess.run(["git", "commit", "-m", f"test: reintroduce stable quarantine {stable_id}"], check=True)
+        subprocess.run(["git", "push", "-u", "origin", branch], check=True)
+        pr_body = "\n".join(
+            [
+                f"{REINTRO_MARKER} id={stable_id}",
+                "",
+                f"Removes quarantine metadata for `{sanitize(identity)}` after 5 valid nightly passes.",
+                "",
+                "The reintroduction state issue has been updated before this PR was opened.",
+            ]
+        )
+        pr = gh(["pr", "create", "--title", f"test: reintroduce quarantined test {stable_id}", "--body", pr_body])
+        if pr.returncode != 0:
+            raise SystemExit("governance write failure: could not create reintroduction PR")
+
+
+def parse_run_date(value: str) -> dt.date | None:
+    try:
+        return dt.datetime.fromisoformat(value.replace("Z", "+00:00")).date()
+    except ValueError:
+        return None
+
+
+def has_three_consecutive_breach_days(runs: list[dict[str, Any]]) -> bool:
+    breached_days = {
+        day
+        for run in runs
+        if (day := parse_run_date(run["timestamp"])) is not None
+        and run["duration_seconds"] > 15 * 60
+    }
+    if len(breached_days) < 3:
+        return False
+    streak = 0
+    previous: dt.date | None = None
+    for day in sorted(breached_days):
+        streak = streak + 1 if previous and day == previous + dt.timedelta(days=1) else 1
+        if streak >= 3:
+            return True
+        previous = day
+    return False
 
 
 def duration_monitor(args: argparse.Namespace) -> int:
@@ -560,7 +618,7 @@ def duration_monitor(args: argparse.Namespace) -> int:
     full_ci = [r for r in valid_runs if r["lane_type"] == "full-ci" and r["protected_branch"] and r["conclusion"] not in {"cancelled", "skipped"}]
     breaches = [r for r in full_ci if r["duration_seconds"] > 15 * 60]
     suspected = sorted(full_ci, key=lambda r: r["duration_seconds"], reverse=True)[:5]
-    action = "open-or-update-ci-diet-issue" if len(breaches[-3:]) >= 3 else "record-only"
+    action = "open-or-update-ci-diet-issue" if has_three_consecutive_breach_days(full_ci) else "record-only"
     payload = {
         "marker": CI_DIET_MARKER,
         "action": action,
