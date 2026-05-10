@@ -214,6 +214,10 @@ public sealed partial class DiagnosticRegistryTests {
         Regex frontMatterOwnerPackageLine = FrontMatterOwnerPackageLineRegex();
         Regex frontMatterLifecycleLine = FrontMatterLifecycleLineRegex();
         Regex frontMatterDocsSlugLine = FrontMatterDocsSlugLineRegex();
+        Regex frontMatterSeverityLine = FrontMatterSeverityLineRegex();
+        Regex frontMatterStoryOwnerLine = FrontMatterStoryOwnerLineRegex();
+        Regex frontMatterIntroducedInLine = FrontMatterIntroducedInLineRegex();
+        Regex frontMatterRelatedIdsLine = FrontMatterRelatedIdsLineRegex();
         string[] forbiddenInjectionPatterns = [
             "<script", "</script", "<iframe", "<img onerror", "javascript:", "data:text/html",
             "vbscript:", "&#x", "%3cscript", "‮script",
@@ -239,6 +243,26 @@ public sealed partial class DiagnosticRegistryTests {
             frontMatterOwnerPackageLine.Match(frontMatter).Groups["owner"].Value.ShouldBe(diagnostic.OwnerPackage, $"{diagnostic.Id} stub front-matter ownerPackage drift.");
             frontMatterLifecycleLine.Match(frontMatter).Groups["lifecycle"].Value.ShouldBe(diagnostic.Lifecycle, $"{diagnostic.Id} stub front-matter lifecycle drift.");
             frontMatterDocsSlugLine.Match(frontMatter).Groups["slug"].Value.ShouldBe(diagnostic.DocsSlug, $"{diagnostic.Id} stub front-matter docsSlug drift.");
+
+            // Story 9-4 chunk-C P3: parity matchers for severity / storyOwner / introducedIn / relatedIds.
+            // Retired stubs intentionally omit `severity` per the retired-stub convention (chunk-C P14).
+            Match severityMatch = frontMatterSeverityLine.Match(frontMatter);
+            if (diagnostic.Lifecycle == "retired") {
+                severityMatch.Success.ShouldBeFalse($"{diagnostic.Id} retired stub must omit `severity` front-matter field.");
+            } else {
+                severityMatch.Success.ShouldBeTrue($"{diagnostic.Id} stub missing `severity` front-matter field.");
+                string expectedSeverity = diagnostic.CompilerSeverity ?? diagnostic.PanelSeverity ?? diagnostic.RuntimeLogLevel ?? "Info";
+                if (expectedSeverity == "Information") {
+                    expectedSeverity = "Info";
+                }
+                severityMatch.Groups["severity"].Value.ShouldBe(expectedSeverity, $"{diagnostic.Id} stub front-matter severity drift (canonical token is `Info`, not `Information`).");
+            }
+
+            frontMatterStoryOwnerLine.Match(frontMatter).Groups["story"].Value.ShouldBe(diagnostic.OwnerStory ?? string.Empty, $"{diagnostic.Id} stub front-matter storyOwner drift from registry ownerStory.");
+            frontMatterIntroducedInLine.Match(frontMatter).Groups["version"].Value.ShouldBe(diagnostic.IntroducedIn ?? string.Empty, $"{diagnostic.Id} stub front-matter introducedIn drift from registry.");
+
+            Match relatedMatch = frontMatterRelatedIdsLine.Match(frontMatter);
+            relatedMatch.Success.ShouldBeTrue($"{diagnostic.Id} stub missing `relatedIds:` array.");
 
             foreach (string line in frontMatter.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) {
                 if (line.Length > 0 && forbiddenFrontMatterFormulaLeads.Contains(line[0])) {
@@ -958,6 +982,18 @@ public sealed partial class DiagnosticRegistryTests {
 
     [GeneratedRegex(@"^docsSlug:\s*(?<slug>\S+)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
     private static partial Regex FrontMatterDocsSlugLineRegex();
+
+    [GeneratedRegex(@"^severity:\s*(?<severity>\S+)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex FrontMatterSeverityLineRegex();
+
+    [GeneratedRegex(@"^storyOwner:\s*(?<story>\S+)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex FrontMatterStoryOwnerLineRegex();
+
+    [GeneratedRegex(@"^introducedIn:\s*(?<version>\S+)\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex FrontMatterIntroducedInLineRegex();
+
+    [GeneratedRegex(@"^relatedIds:\s*\[(?<ids>[^\]]*)\]\s*$", RegexOptions.Multiline | RegexOptions.CultureInvariant)]
+    private static partial Regex FrontMatterRelatedIdsLineRegex();
 
     [GeneratedRegex(@"\[submodule\s+""[^""]+""\]\s*\n(?:[^\n]*\n)*?\s*path\s*=\s*(?<path>[^\n]+)", RegexOptions.CultureInvariant)]
     private static partial Regex SubmodulePathRegex();

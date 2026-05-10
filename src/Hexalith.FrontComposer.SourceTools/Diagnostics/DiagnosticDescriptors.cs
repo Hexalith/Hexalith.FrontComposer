@@ -365,7 +365,7 @@ public static class DiagnosticDescriptors {
     /// </summary>
     public static readonly DiagnosticDescriptor ColumnPrioritizerActivated = Create(
         id: "HFC1029",
-        title: "Projection exceeds 15 columns — FcColumnPrioritizer activates",
+        title: "Projection exceeds 15 columns - FcColumnPrioritizer activates",
         messageFormat: "{0}",
         category: "HexalithFrontComposer",
         defaultSeverity: DiagnosticSeverity.Info,
