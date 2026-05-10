@@ -352,13 +352,13 @@ public sealed class EventStoreQueryClient(
     }
 
     private static bool HasCacheUnsafeQueryShape(QueryRequest request) {
-#pragma warning disable CS0618 // Legacy Filter remains part of cache-safety gating until v1.0-rc2.
+#pragma warning disable CS0618, HFC0001 // Legacy Filter remains part of cache-safety gating until removal in v0.4.
         return !string.IsNullOrWhiteSpace(request.Filter)
             || (request.ColumnFilters is { Count: > 0 })
             || (request.StatusFilters is { Count: > 0 })
             || !string.IsNullOrWhiteSpace(request.SearchQuery)
             || !string.IsNullOrWhiteSpace(request.SortColumn);
-#pragma warning restore CS0618
+#pragma warning restore CS0618, HFC0001
     }
 
     private static IReadOnlyList<string> GetRequestEtags(QueryRequest request) {
@@ -467,7 +467,7 @@ public sealed class EventStoreQueryClient(
         "IL2026:RequiresUnreferencedCode",
         Justification = "EventStore adapter serializes query payload metadata through System.Text.Json web defaults.")]
     private static JsonElement SerializeQueryPayload(QueryRequest request) {
-#pragma warning disable CS0618 // Filter remains part of the compatibility payload until v1.0-rc2.
+#pragma warning disable CS0618, HFC4001, HFC0001 // Filter remains part of the compatibility payload until removal in v0.4.
         return JsonSerializer.SerializeToElement(
             new QueryPayload(
                 request.Filter,
@@ -479,7 +479,7 @@ public sealed class EventStoreQueryClient(
                 request.SortColumn,
                 request.SortDescending),
             EventStoreRequestContent.JsonOptions);
-#pragma warning restore CS0618
+#pragma warning restore CS0618, HFC4001, HFC0001
     }
 
     private static async Task ApplyAuthorizationAsync(

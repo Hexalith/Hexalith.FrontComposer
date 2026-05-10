@@ -23,7 +23,7 @@ public static class DiagnosticDescriptors {
             category,
             defaultSeverity,
             isEnabledByDefault,
-            helpLinkUri: DocsLinkPrefix + id);
+            helpLinkUri: helpLinkUri ?? DocsLinkPrefix + id);
 
     /// <summary>
     /// HFC1001: No [Command] or [Projection] types found in compilation.
@@ -124,7 +124,7 @@ public static class DiagnosticDescriptors {
 
     /// <summary>
     /// HFC1009: [Command] type has no public parameterless constructor. The generated form initialises
-    /// <c>_model = Create()</c>, which fails to compile for positional records and for classes without a default ctor.
+    /// <c>_model = new()</c>, which fails to compile for positional records and for classes without a default ctor.
     /// Add a parameterless ctor, or provide defaults on every positional parameter.
     /// </summary>
     public static readonly DiagnosticDescriptor CommandMissingParameterlessCtor = Create(

@@ -1,6 +1,7 @@
 {
   "schemaVersion": "1.0",
   "canonicalHelpLinkFormat": "https://hexalith.github.io/FrontComposer/diagnostics/{0}",
+  "messageTemplatePolicy": "auto-synthesized-placeholder-pending-authoring; per-diagnostic templates are authored by Story 9-5 (Diataxis docs) and validated then. Until then, runtime emission relies on the analyzer messageFormat / runtime logger templates and the docs stub at docsSlug.",
   "ranges": [
     {
       "ownerPackage": "Contracts",
@@ -41,12 +42,11 @@
     {
       "id": "HFC0001",
       "ownerPackage": "Contracts",
-      "range": "HFC0001-HFC0999",
       "title": "HFC0001 Query Request Filter Deprecated",
-      "lifecycle": "active",
+      "lifecycle": "deprecated",
       "introducedIn": "0.1.0",
       "deprecatedIn": "0.2.0",
-      "removedIn": "1.0.0",
+      "removedIn": "0.4.0",
       "compilerSeverity": null,
       "runtimeLogLevel": "Information",
       "panelSeverity": "Information",
@@ -65,7 +65,6 @@
     {
       "id": "HFC1001",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "No [Command] or [Projection] types found",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -89,7 +88,6 @@
     {
       "id": "HFC1002",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Unsupported field type",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -113,7 +111,6 @@
     {
       "id": "HFC1003",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Projection type should be partial",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -137,7 +134,6 @@
     {
       "id": "HFC1004",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Projection on unsupported type kind",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -161,7 +157,6 @@
     {
       "id": "HFC1005",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Invalid attribute argument",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -185,7 +180,6 @@
     {
       "id": "HFC1006",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command missing MessageId property",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -209,7 +203,6 @@
     {
       "id": "HFC1007",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command has too many non-derivable properties",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -233,7 +226,6 @@
     {
       "id": "HFC1008",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[Flags] enum in a single-value UI context",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -257,7 +249,6 @@
     {
       "id": "HFC1009",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command type has no parameterless constructor",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -276,14 +267,13 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1010",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Full rebuild or restart required for customization metadata change",
-      "lifecycle": "reserved",
+      "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
       "removedIn": null,
@@ -305,7 +295,6 @@
     {
       "id": "HFC1011",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command exceeds 200-property hard limit",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -324,12 +313,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1012",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[DefaultValue] value type does not match property type",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -348,12 +336,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1013",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "HFC1013 Reserved generator diagnostic placeholder",
       "lifecycle": "retired",
       "introducedIn": "0.1.0",
@@ -362,7 +349,7 @@
       "compilerSeverity": null,
       "runtimeLogLevel": null,
       "panelSeverity": null,
-      "cliExitBehavior": "diagnostic",
+      "cliExitBehavior": "non-blocking",
       "mcpCategory": null,
       "messageTemplate": "What: HFC1013 is a retired generator diagnostic placeholder. Expected: The ID remains reserved and is not reused. Got: A reference to the retired ID. Fix: Allocate a new SourceTools diagnostic ID and keep HFC1013 documented. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1013",
       "docsSlug": "diagnostics/HFC1013",
@@ -372,12 +359,11 @@
       "releaseRow": "retired-placeholder",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1014",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Nested [Command] type is unsupported",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -396,12 +382,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1015",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "RenderMode incompatible with command density",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -420,12 +405,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1016",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command non-derivable property is read-only or init-only",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -444,12 +428,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1017",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command type is generic",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -468,12 +451,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "2-2-action-density-rules-and-rendering-modes"
     },
     {
       "id": "HFC1020",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command appears destructive by name but is missing [Destructive] attribute",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -497,7 +479,6 @@
     {
       "id": "HFC1021",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Destructive command must have at least one non-derivable property",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -521,7 +502,6 @@
     {
       "id": "HFC1022",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "ProjectionRole.WhenState references unknown enum member",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -545,7 +525,6 @@
     {
       "id": "HFC1023",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Dashboard projection rendering is deferred",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -569,7 +548,6 @@
     {
       "id": "HFC1024",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Unknown ProjectionRole value",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -593,7 +571,6 @@
     {
       "id": "HFC1025",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Projection enum has partial [ProjectionBadge] coverage",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -617,9 +594,8 @@
     {
       "id": "HFC1026",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Color-only badge detected (reserved)",
-      "lifecycle": "reserved",
+      "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
       "removedIn": null,
@@ -641,7 +617,6 @@
     {
       "id": "HFC1027",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Collection column does not support automatic filtering",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -665,7 +640,6 @@
     {
       "id": "HFC1028",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[ColumnPriority] collision on projection",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -689,7 +663,6 @@
     {
       "id": "HFC1029",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Projection exceeds 15 columns — FcColumnPrioritizer activates",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -713,7 +686,6 @@
     {
       "id": "HFC1030",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[ProjectionFieldGroup] name collides with reserved catch-all label",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -737,7 +709,6 @@
     {
       "id": "HFC1031",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[ProjectionFieldGroup] is ignored for the projection role",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -761,7 +732,6 @@
     {
       "id": "HFC1032",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Invalid Level 1 format annotation",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -785,7 +755,6 @@
     {
       "id": "HFC1033",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[ProjectionTemplate] references an invalid projection type",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -809,7 +778,6 @@
     {
       "id": "HFC1034",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[ProjectionTemplate] component is not a valid typed template component",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -833,7 +801,6 @@
     {
       "id": "HFC1035",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[ProjectionTemplate] contract version is incompatible",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -857,7 +824,6 @@
     {
       "id": "HFC1036",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "[ProjectionTemplate] contract version is out of date",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -881,7 +847,6 @@
     {
       "id": "HFC1037",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Duplicate [ProjectionTemplate] for the same projection and role",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -905,7 +870,6 @@
     {
       "id": "HFC1038",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Invalid Level 3 slot selector",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -929,7 +893,6 @@
     {
       "id": "HFC1039",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Invalid Level 3 slot component",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -953,7 +916,6 @@
     {
       "id": "HFC1040",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Duplicate Level 3 slot override",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -977,7 +939,6 @@
     {
       "id": "HFC1041",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Level 3 slot contract version is incompatible",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1001,9 +962,8 @@
     {
       "id": "HFC1042",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Invalid Level 4 view override projection type",
-      "lifecycle": "reserved",
+      "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
       "removedIn": null,
@@ -1025,7 +985,6 @@
     {
       "id": "HFC1043",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Invalid Level 4 view override component",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1049,7 +1008,6 @@
     {
       "id": "HFC1044",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Duplicate Level 4 view override",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1073,7 +1031,6 @@
     {
       "id": "HFC1045",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Level 4 view override contract version is incompatible",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1097,9 +1054,8 @@
     {
       "id": "HFC1046",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Level 4 view override accessibility contract warning",
-      "lifecycle": "reserved",
+      "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
       "removedIn": null,
@@ -1121,7 +1077,6 @@
     {
       "id": "HFC1047",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Invalid dev-mode annotation site",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1140,12 +1095,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
+      "ownerStory": "6-5-customization-gradient-level-3-template-overrides"
     },
     {
       "id": "HFC1048",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Unsupported dev-mode starter emission level",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1164,12 +1118,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
+      "ownerStory": "6-5-customization-gradient-level-3-template-overrides"
     },
     {
       "id": "HFC1049",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Dev-mode starter contract metadata is stale",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1188,12 +1141,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
+      "ownerStory": "6-5-customization-gradient-level-3-template-overrides"
     },
     {
       "id": "HFC1050",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Custom override interactive element is missing an accessible name",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1217,7 +1169,6 @@
     {
       "id": "HFC1051",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Custom override has a keyboard reachability issue",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1241,7 +1192,6 @@
     {
       "id": "HFC1052",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Custom override suppresses focus visibility",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1265,7 +1215,6 @@
     {
       "id": "HFC1053",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Custom override is missing aria-live parity",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1289,7 +1238,6 @@
     {
       "id": "HFC1054",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Custom override motion has no reduced-motion fallback",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1313,7 +1261,6 @@
     {
       "id": "HFC1055",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Custom override color styling has no forced-colors fallback",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1337,7 +1284,6 @@
     {
       "id": "HFC1056",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command authorization policy is invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1356,12 +1302,12 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "7-3-command-authorization-policies"
+      "ownerStory": "7-3-command-authorization-policies",
+      "lifecycleNote": "helpLinkUri rebased from legacy hexalith.io host to canonical github.io host in 0.2.0 per registry canonicalHelpLinkFormat alignment (AC22)."
     },
     {
       "id": "HFC1057",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Command declares duplicate authorization policies",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1380,12 +1326,12 @@
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "7-3-command-authorization-policies"
+      "ownerStory": "7-3-command-authorization-policies",
+      "lifecycleNote": "helpLinkUri rebased from legacy hexalith.io host to canonical github.io host in 0.2.0 per registry canonicalHelpLinkFormat alignment (AC22)."
     },
     {
       "id": "HFC1058",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift baseline is missing",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1409,7 +1355,6 @@
     {
       "id": "HFC1059",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift baseline path is invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1433,7 +1378,6 @@
     {
       "id": "HFC1060",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift baseline content is invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1457,7 +1401,6 @@
     {
       "id": "HFC1061",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift baseline schema version is unsupported",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1481,7 +1424,6 @@
     {
       "id": "HFC1062",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift baseline algorithm version is unsupported",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1505,7 +1447,6 @@
     {
       "id": "HFC1063",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift baseline exceeds configured bounds",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1529,7 +1470,6 @@
     {
       "id": "HFC1064",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift baseline identity is invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1553,7 +1493,6 @@
     {
       "id": "HFC1065",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI structural drift detected",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1577,7 +1516,6 @@
     {
       "id": "HFC1066",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI metadata drift detected",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1601,7 +1539,6 @@
     {
       "id": "HFC1067",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift option is invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1625,7 +1562,6 @@
     {
       "id": "HFC1068",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift diagnostics truncated",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1649,7 +1585,6 @@
     {
       "id": "HFC1069",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Generated UI drift diagnostic suppressed for redaction",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1673,7 +1608,6 @@
     {
       "id": "HFC1070",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "Reflection action-queue projection catalog may be trim-incompatible",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1697,7 +1631,6 @@
     {
       "id": "HFC1601",
       "ownerPackage": "SourceTools",
-      "range": "HFC1000-HFC1999",
       "title": "HFC1601 Manifest Invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1713,15 +1646,15 @@
       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
       "redactionClass": "source-metadata-only",
       "suppressionPolicy": "allowed-with-rationale",
-      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
+      "releaseRow": "runtime-only",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "3-4-fccommandpalette-and-keyboard-shortcuts",
+      "lifecycleNote": "Cross-package emission: HFC1601 is allocated in the SourceTools numeric range but emitted at runtime exclusively from the Shell project (FrontComposerRegistry / CustomizationContractValidationGate). releaseRow=runtime-only because no Roslyn analyzer descriptor backs this id. Documented inconsistency between ownerPackage and emit location; chunk-B test should add an emit-location-vs-range check (see deferred-work DEF-9-4-A14)."
     },
     {
       "id": "HFC2004",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2004 Invalid Lifecycle Transition Dropped",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1745,7 +1678,6 @@
     {
       "id": "HFC2005",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2005 Duplicate Message Id Detected",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1769,7 +1701,6 @@
     {
       "id": "HFC2007",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2007 Transition Without Submitted Observation",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1793,7 +1724,6 @@
     {
       "id": "HFC2010",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2010 Dev Mode Activation Outside Development",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1812,12 +1742,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
+      "ownerStory": "6-5-customization-gradient-level-3-template-overrides"
     },
     {
       "id": "HFC2011",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2011 Authentication Configuration Invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1836,12 +1765,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "7-1-oidc-saml-authentication-integration"
+      "ownerStory": "7-1-host-authentication-and-authorization-bridge"
     },
     {
       "id": "HFC2012",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2012 Authentication Claim Extraction Failed",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1860,12 +1788,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "7-1-oidc-saml-authentication-integration"
+      "ownerStory": "7-1-host-authentication-and-authorization-bridge"
     },
     {
       "id": "HFC2013",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2013 Authentication Token Relay Failed",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1884,13 +1811,12 @@
       "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "7-1-oidc-saml-authentication-integration"
+      "ownerStory": "7-1-host-authentication-and-authorization-bridge"
     },
     {
       "id": "HFC2014",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
-      "title": "HFC2014 Git Hub Token Exchange Required",
+      "title": "HFC2014 GitHub Token Exchange Required",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
@@ -1908,12 +1834,11 @@
       "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
       "relatedIds": [],
-      "ownerStory": "7-1-oidc-saml-authentication-integration"
+      "ownerStory": "7-1-host-authentication-and-authorization-bridge"
     },
     {
       "id": "HFC2015",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2015 Tenant Context Missing",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1937,7 +1862,6 @@
     {
       "id": "HFC2016",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2016 Tenant Context Malformed Segment",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1961,7 +1885,6 @@
     {
       "id": "HFC2017",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2017 Tenant Context Mismatch",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -1985,7 +1908,6 @@
     {
       "id": "HFC2018",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2018 Demo Tenant Context Rejected",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2009,7 +1931,6 @@
     {
       "id": "HFC2019",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2019 Stale Tenant Context",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2033,7 +1954,6 @@
     {
       "id": "HFC2100",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2100 Unknown Correlation Id",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2057,7 +1977,6 @@
     {
       "id": "HFC2101",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2101 Idempotency Resolved Observed",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2081,7 +2000,6 @@
     {
       "id": "HFC2102",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2102 Threshold Timer Off UI Thread",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2105,7 +2023,6 @@
     {
       "id": "HFC2103",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2103 Abandonment During Submitting",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2129,7 +2046,6 @@
     {
       "id": "HFC2104",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2104 Idempotent Info Bar Rendered",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2153,7 +2069,6 @@
     {
       "id": "HFC2105",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2105 Storage Persistence Skipped",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2177,7 +2092,6 @@
     {
       "id": "HFC2106",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2106 Theme Hydration Empty",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2201,7 +2115,6 @@
     {
       "id": "HFC2107",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2107 Navigation Hydration Empty",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2225,7 +2138,6 @@
     {
       "id": "HFC2108",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2108 Shortcut Conflict",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2249,7 +2161,6 @@
     {
       "id": "HFC2109",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2109 Shortcut Handler Fault",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2273,7 +2184,6 @@
     {
       "id": "HFC2110",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2110 Palette Scoring Fault",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2297,7 +2207,6 @@
     {
       "id": "HFC2111",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2111 Palette Hydration Empty",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2321,7 +2230,6 @@
     {
       "id": "HFC2112",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2112 Badge Initial Fetch Fault",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2345,7 +2253,6 @@
     {
       "id": "HFC2113",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2113 Projection Type Unresolvable",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2369,7 +2276,6 @@
     {
       "id": "HFC2114",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2114 Data Grid Hydration Empty",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2393,7 +2299,6 @@
     {
       "id": "HFC2115",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2115 Customization Override Render Fault",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2417,7 +2322,6 @@
     {
       "id": "HFC2116",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2116 Customization Stale Descriptor Manifest",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2441,7 +2345,6 @@
     {
       "id": "HFC2117",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2117 Customization Panel Recovery Failure",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2465,7 +2368,6 @@
     {
       "id": "HFC2118",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2118 Customization Runtime Accessibility Fallback",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2489,7 +2391,6 @@
     {
       "id": "HFC2119",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2119 Customization Redaction Fallback",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2513,7 +2414,6 @@
     {
       "id": "HFC2120",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2120 Projection Slot Host Missing Parameter",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2537,7 +2437,6 @@
     {
       "id": "HFC2121",
       "ownerPackage": "Shell",
-      "range": "HFC2000-HFC2999",
       "title": "HFC2121 Projection View Override Render Fault",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
@@ -2561,12 +2460,11 @@
     {
       "id": "HFC4001",
       "ownerPackage": "Mcp",
-      "range": "HFC4000-HFC4999",
       "title": "HFC4001 Mcp Compatible Additive Drift Deprecated",
-      "lifecycle": "active",
+      "lifecycle": "deprecated",
       "introducedIn": "0.1.0",
       "deprecatedIn": "0.2.0",
-      "removedIn": "1.0.0",
+      "removedIn": "0.4.0",
       "compilerSeverity": null,
       "runtimeLogLevel": "Information",
       "panelSeverity": "Information",
@@ -2580,7 +2478,7 @@
       "releaseRow": "runtime-only",
       "migrationId": "HFC4001",
       "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "ownerStory": "8-6-mcp-schema-negotiation-and-fingerprint-trust"
     }
   ]
 }

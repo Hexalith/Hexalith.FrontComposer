@@ -11,7 +11,7 @@
     {
       "id": "HFC9999",
       "reason": "out-of-range-id",
-      "path": "src/Example/Example.cs",
+      "path": "<redacted-source-path>",
       "message": "Diagnostic ID HFC9999 is outside the FrontComposer package ownership table."
     }
   ]

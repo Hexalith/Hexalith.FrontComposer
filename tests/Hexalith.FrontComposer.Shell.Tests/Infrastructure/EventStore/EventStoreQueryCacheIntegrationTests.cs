@@ -333,7 +333,7 @@ public class EventStoreQueryCacheIntegrationTests {
         string? searchQuery = null,
         string? sortColumn = null,
         int cachePayloadVersion = 1) {
-#pragma warning disable CS0618 // Legacy Filter participates in Story 5-2 cache-safety tests.
+#pragma warning disable CS0618, HFC0001 // Legacy Filter participates in Story 5-2 cache-safety tests.
         return new QueryRequest(
             ProjectionType: ProjectionType,
             TenantId: Tenant,
@@ -346,7 +346,7 @@ public class EventStoreQueryCacheIntegrationTests {
             SortColumn: sortColumn,
             CacheDiscriminator: cacheDiscriminator,
             CachePayloadVersion: cachePayloadVersion);
-#pragma warning restore CS0618
+#pragma warning restore CS0618, HFC0001
     }
 
     private static string BuildKey(int skip)

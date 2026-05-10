@@ -29,9 +29,9 @@ public sealed class QueryRequestTests {
         request.EntityId.ShouldBeNull();
         request.ProjectionActorType.ShouldBeNull();
         request.ETags.ShouldBeNull();
-#pragma warning disable CS0618 // Legacy property
+#pragma warning disable CS0618, HFC0001 // Legacy property
         request.Filter.ShouldBeNull();
-#pragma warning restore CS0618
+#pragma warning restore CS0618, HFC0001
     }
 
     [Fact]

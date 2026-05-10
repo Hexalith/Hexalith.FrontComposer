@@ -4,13 +4,13 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsPackable>false</IsPackable>
-    <!-- RS2002: HFC1010 is intentionally reserved as a table row in AnalyzerReleases.Unshipped.md
-         without a DiagnosticDescriptor field (Story 1.8 AC4). Implementation requires an analyzer
-         (generators see current state, not diffs) — deferred. See docs/hot-reload-guide.md.
-         WARNING — this suppression is project-wide: a future DiagnosticDescriptor added without
-         the corresponding AnalyzerReleases.Unshipped.md row (or vice-versa) will NOT produce a
-         build warning. When adding a new diagnostic, manually cross-check both files. This gap
-         is tracked for a targeted test in deferred-work.md ("RS2002 guard test"). -->
+    <!-- RS2002: Story 9-2 ships migration findings (HFCM0000-HFCM9002) as rows in
+         AnalyzerReleases.Unshipped.md so the registry/release-row contract covers them, but
+         they are CLI-emitted (not Roslyn analyzer descriptors) and so trip the release-tracking
+         analyzer. Suppressed at project scope until Story 9-2's migration release-row file is
+         relocated to a CLI-specific artifact (tracked as DEF-9-4-HFCM in deferred-work.md).
+         Story 9-4 closed the original HFC1010 motivation by adding the FullRebuildRequired
+         descriptor; this remaining suppression is migration-id only. -->
     <NoWarn>$(NoWarn);RS2002</NoWarn>
   </PropertyGroup>
   <ItemGroup>

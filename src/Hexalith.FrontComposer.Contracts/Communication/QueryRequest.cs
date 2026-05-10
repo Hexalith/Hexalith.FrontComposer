@@ -25,7 +25,11 @@ namespace Hexalith.FrontComposer.Contracts.Communication;
 public record QueryRequest(
     string ProjectionType,
     string? TenantId,
-    [property: System.Obsolete("Filter replaced by ColumnFilters in v0.2. See HFC0001. Removed in v1.0.", error: false)]
+#if NET10_0_OR_GREATER
+    [property: System.Obsolete("Filter replaced by ColumnFilters in v0.2. See HFC0001. Removed in v0.4.", error: false, DiagnosticId = "HFC0001", UrlFormat = "https://hexalith.github.io/FrontComposer/diagnostics/{0}")]
+#else
+    [property: System.Obsolete("Filter replaced by ColumnFilters in v0.2. See HFC0001. Removed in v0.4.", error: false)]
+#endif
     string? Filter = null,
     int? Skip = null,
     int? Take = null,

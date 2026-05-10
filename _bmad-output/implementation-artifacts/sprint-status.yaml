@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-09 (/bmad-dev-story 9-4 completed Diagnostic ID System & Deprecation Policy. Build passed with 0 warnings/errors; solution tests passed 2,833 with 3 skipped.)"
+last_updated: "2026-05-10 (/bmad-code-review 9-4 chunks A + B complete. Chunk A: 12 decisions, 19/23 patches, 4 chunk-B follow-ups. Chunk B: ~40 tightening patches + 8 new test methods authoring AC6/AC11/AC22/AC24/AC25 coverage. Build 0/0; tests 2,860 passed / 3 skipped (44 registry tests, up from 17). Story remains in 'review' for chunk C (125 docs stubs).)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system

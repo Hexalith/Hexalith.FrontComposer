@@ -8,8 +8,7 @@
 
 Rule ID | Category | Severity | Notes
 --------|----------|----------|-------
-HFC1601 | HexalithFrontComposer | Error       | Command manifest registration is invalid at startup (FrontComposerRegistry.ValidateManifests; Story 3-4 D21 placeholder — see `FrontComposerRegistry.HasFullPageRoute` XML doc for the documented-placeholder status)
-HFC2004 | HexalithFrontComposer | Warning     | Invalid lifecycle transition dropped to preserve the one-terminal-outcome invariant (Story 2-4 lifecycle state service)
+HFC2004 | HexalithFrontComposer | Error       | Invalid lifecycle transition dropped to preserve the one-terminal-outcome invariant (Story 2-4 lifecycle state service); severity reconciled with runtime/panel registry channels (review 2026-05-10)
 HFC2005 | HexalithFrontComposer | Information | Duplicate MessageId detected across CorrelationIds and treated as a fresh submission (Story 2-4 lifecycle state service)
 HFC2007 | HexalithFrontComposer | Information | Transition arrived for a CorrelationId without a prior Submitted observation (Story 2-4 lifecycle state service)
 HFC2108 | HexalithFrontComposer | Information | Duplicate shortcut registration replaced (last-writer-wins semantics per Story 3-4 D3; emitted by `ShortcutService.Register`)
@@ -19,9 +18,6 @@ HFC2111 | HexalithFrontComposer | Information | Palette hydration payload invali
 HFC2112 | HexalithFrontComposer | Warning     | Badge initial-fetch / re-fetch / capability-seen persistence fault — per-type reader threw, async-void notifier handler threw, or seen-capability storage write failed (Story 3-5 D12, D13; emitted by `BadgeCountService.FetchOneAsync`, `BadgeCountService.OnProjectionChanged`, and `CapabilityDiscoveryEffects.HandleCapabilityVisited`)
 HFC2113 | HexalithFrontComposer | Information | Projection type-name string from `IProjectionChangeNotifier.ProjectionChanged` failed `Type.GetType` resolution (Story 3-5 D7; emitted by `BadgeCountService.OnProjectionChanged` — de-duplicated per Scoped service instance via `ConcurrentDictionary<string, byte>` guard)
 HFC2114 | HexalithFrontComposer | Information | DataGrid hydrate encountered an `Empty`/`Corrupt`/`OutOfScope`/`RegistryFailure` key during `{tenantId}:{userId}:datagrid:*` enumeration (Story 3-6 D11 / D14 / A9; emitted by `DataGridNavigationEffects.HandleAppInitialized` and `HandleStorageReady`; `OutOfScope` dedup is per-distinct-viewKey, `RegistryFailure` dedup is once-per-hydrate-pass)
-HFC1047 | HexalithFrontComposer | Information | Dev-mode annotation site lacks stable descriptor metadata; generated annotation is omitted or marked stale (Story 6-5)
-HFC1048 | HexalithFrontComposer | Information | Dev-mode starter emission requested an unsupported customization level or mismatched node level (Story 6-5)
-HFC1049 | HexalithFrontComposer | Information | Dev-mode starter metadata is stale relative to contract version, descriptor hash, or source component identity (Story 6-5)
 HFC2010 | HexalithFrontComposer | Information | Defensive runtime log for a dev-mode activation attempt outside Development; normal DEBUG/runtime gates prevent user-visible behavior (Story 6-5)
 HFC2011 | HexalithFrontComposer | Error       | FrontComposer authentication bridge configuration is invalid at startup (Story 7-1)
 HFC2012 | HexalithFrontComposer | Warning     | Authenticated claim extraction failed closed without exposing raw claim values (Story 7-1)

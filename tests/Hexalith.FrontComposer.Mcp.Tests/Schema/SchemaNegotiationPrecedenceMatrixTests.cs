@@ -212,7 +212,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             ]);
         }
 
-#pragma warning disable CS0618
+#pragma warning disable CS0618, HFC4001
         return new McpSchemaNegotiationInput(
             IsHiddenOrUnknown: row.IsHidden,
             IsStaleDescriptor: row.IsStale,
@@ -223,7 +223,7 @@ public sealed class SchemaNegotiationPrecedenceMatrixTests {
             HasSchemaIntegrityMismatch: row.IntegrityMismatch,
             Baseline: baseline,
             Server: serverSnapshot);
-#pragma warning restore CS0618
+#pragma warning restore CS0618, HFC4001
     }
 
     private static SchemaBaselineSnapshot BuildSnapshot(string fingerprintValue, IReadOnlyList<SchemaFieldContract> fields)
