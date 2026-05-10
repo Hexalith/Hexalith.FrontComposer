@@ -63,6 +63,10 @@ jobs:
           persist-credentials: false
           submodules: true
 
+      - name: Record full CI lane start
+        shell: bash
+        run: echo "FC_FULL_CI_STARTED_AT=$(date -u +%s)" >> "$GITHUB_ENV"
+
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
           dotnet-version: '10.0.x'
@@ -195,7 +199,7 @@ jobs:
       #
       # Story 3-7 D6: Gate 3 is split into three lanes so Story 3-4 closure can gate on
       # `e2e-palette` independently of latency/perf variance:
-      #   - Gate 3a (default):   excludes both Performance and e2e-palette traits.
+      #   - Gate 3a (default):   excludes Performance, e2e-palette, NightlyProperty, and Quarantined traits.
       #   - Gate 3b (palette):   `Category=e2e-palette` (Story 3-7 T1 — bUnit-level flow gate).
       #   - Gate 3c (perf bench): `Category=Performance` (Story 1-8 + Story 3-7 T2 BDN bench).
       # Palette/performance lanes remain advisory while Story 3-7 stabilizes browser and latency
@@ -205,7 +209,7 @@ jobs:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
           # Without this env var, a snapshot mismatch launches a diff tool and hangs the CI runner.
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: 'Gate 3b: Palette E2E (e2e-palette lane)'
         continue-on-error: true
@@ -218,6 +222,32 @@ jobs:
         env:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Performance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-performance.trx"
+
+      - name: 'Gate 3d: Quarantined tests (warning-only)'
+        continue-on-error: true
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results-quarantine.trx"
+
+      - name: Quarantine Summary
+        if: always()
+        run: |
+          python3 .github/scripts/ci_governance.py summarize-quarantine \
+            --results-dir ./TestResults \
+            --markdown artifacts/quarantine/quarantine-summary.md \
+            --json artifacts/quarantine/quarantine-summary.json \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+      - name: Upload quarantine artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quarantine-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/quarantine/**
+            TestResults/**/test-results-quarantine.trx
 
       # Guard: fail fast if no tests ran (--no-build silently exits 0 with 0 tests).
       # Uses find + grep to handle both flat and per-project-GUID subdirectory layouts.
@@ -343,6 +373,47 @@ jobs:
         with:
           name: coverage-reports
           path: '**/coverage.cobertura.xml'
+
+      - name: Record CI duration summary
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/ci-duration
+          now="$(date -u +%s)"
+          started="${FC_FULL_CI_STARTED_AT:-$now}"
+          duration="$((now - started))"
+          cat > artifacts/ci-duration/full-ci-evidence.json <<JSON
+          {
+            "runs": [
+              {
+                "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "run_id": "${{ github.run_id }}",
+                "commit": "${{ github.sha }}",
+                "workflow": "CI",
+                "lane": "build-and-test",
+                "lane_type": "full-ci",
+                "duration_seconds": ${duration},
+                "conclusion": "${{ job.status }}",
+                "blocking": true,
+                "protected_branch": ${{ github.ref == 'refs/heads/main' }}
+              }
+            ]
+          }
+          JSON
+          python3 .github/scripts/ci_governance.py duration-monitor \
+            --evidence artifacts/ci-duration/full-ci-evidence.json \
+            --output artifacts/ci-duration/full-ci-summary.json \
+            --markdown artifacts/ci-duration/full-ci-summary.md
+          cat artifacts/ci-duration/full-ci-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload CI duration artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ci-duration-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: artifacts/ci-duration/**
 
   accessibility-visual:
     runs-on: ubuntu-latest

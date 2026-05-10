@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "identity": "::warning::Injected <script>alert(1)</script>",
+      "displayName": "Injected",
+      "outcome": "failed",
+      "attempt": 1,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/1",
+      "failure": "Bearer ghp_abcdefghijklmnopqrstuvwxyz tenantId=tenant-1 userId=user-1 commandPayload={secret}"
+    },
+    {
+      "identity": "::warning::Injected <script>alert(1)</script>",
+      "displayName": "Injected",
+      "outcome": "passed",
+      "attempt": 2,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/1"
+    }
+  ]
+}

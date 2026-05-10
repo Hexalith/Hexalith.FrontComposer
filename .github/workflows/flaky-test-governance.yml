@@ -1,0 +1,83 @@
+name: Flaky Test Governance
+
+on:
+  workflow_run:
+    workflows: ['CI']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      evidence:
+        description: 'Path to a checked-in or downloaded JSON evidence file'
+        required: false
+        default: ''
+
+permissions:
+  actions: read
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: flaky-test-governance-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  propose-quarantine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          # Root-level submodules only; do not use recursive nested submodule checkout.
+          submodules: true
+
+      - name: Download CI evidence artifacts
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts/downloaded
+          gh run download "${{ github.event.workflow_run.id }}" --dir artifacts/downloaded || true
+
+      - name: Evaluate flaky-test evidence
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts/flaky-governance
+          gh auth setup-git
+          evidence="${{ inputs.evidence }}"
+          if [ -z "$evidence" ]; then
+            evidence="$(find artifacts/downloaded -name '*flake-evidence*.json' -type f | head -n 1 || true)"
+          fi
+          if [ -z "$evidence" ]; then
+            cat > artifacts/flaky-governance/no-evidence.md <<'EOF'
+          ## Flaky Test Governance
+
+          No mixed pass/fail evidence file was available. No issue or PR was created.
+          EOF
+            cat artifacts/flaky-governance/no-evidence.md >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 .github/scripts/ci_governance.py classify-flake \
+            --evidence "$evidence" \
+            --output artifacts/flaky-governance/quarantine-proposal.json \
+            --source-root . \
+            --apply \
+            --event-name "${{ github.event_name }}" \
+            --ref "${{ github.ref }}" \
+            --ref-protected "${{ github.ref_protected }}" \
+            --from-fork "false"
+
+      - name: Upload flaky governance artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: flaky-governance-artifacts
+          retention-days: 14
+          if-no-files-found: warn
+          path: artifacts/flaky-governance/**

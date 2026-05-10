@@ -1,6 +1,6 @@
 # Story 10.5: Flaky Test Quarantine & CI Governance
 
-Status: ready-for-dev
+Status: in-progress
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR80**, **NFR54**, **NFR57**, and **NFR64-NFR67**. Builds on Stories **10-1** through **10-4** and the current CI gates. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 

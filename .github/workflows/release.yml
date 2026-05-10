@@ -61,7 +61,7 @@ jobs:
       - name: Run All Tests
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
 
       # Guard: fail fast if no tests ran (silent exit 0 with 0 tests would still trigger release).
       - name: Verify tests actually ran

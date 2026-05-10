@@ -1,0 +1,13 @@
+{
+  "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.SometimesPasses",
+  "outcome": "passed",
+  "filter": "Category=Quarantined",
+  "protected_branch_sha": "abc123",
+  "canceled": false,
+  "partial": false,
+  "dynamic_skip": false,
+  "rerun_only": false,
+  "malformed": false,
+  "missing_evidence": false,
+  "changed_identity": false
+}

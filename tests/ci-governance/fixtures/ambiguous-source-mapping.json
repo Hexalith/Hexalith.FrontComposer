@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.GeneratedTests.ParameterizedCase",
+      "displayName": "ParameterizedCase(value: 1)",
+      "outcome": "failed",
+      "attempt": 1,
+      "sha": "abc123",
+      "sourcePath": "generated/ParameterizedCase.g.cs"
+    },
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.GeneratedTests.ParameterizedCase",
+      "displayName": "ParameterizedCase(value: 1)",
+      "outcome": "passed",
+      "attempt": 2,
+      "sha": "abc123",
+      "sourcePath": "generated/ParameterizedCase.g.cs"
+    }
+  ]
+}

@@ -28,6 +28,50 @@ dotnet test tests/Hexalith.FrontComposer.Shell.Tests
 dotnet test --collect:"XPlat Code Coverage"
 ```
 
+### CI Quarantine Governance
+
+```bash
+# Main blocking lane: excludes advisory and quarantined tests.
+dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"
+
+# Quarantine lane: runs only quarantined tests and writes TRX evidence.
+dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results-quarantine.trx"
+
+# Summarize quarantine evidence without publishing raw logs.
+python .github/scripts/ci_governance.py summarize-quarantine --results-dir ./TestResults --markdown artifacts/quarantine/quarantine-summary.md --json artifacts/quarantine/quarantine-summary.json
+
+# Validate that every manually quarantined test has issue, owner, reason, and reintroduction metadata.
+python .github/scripts/ci_governance.py validate-quarantine-metadata --root .
+```
+
+A quarantined test must carry both the xUnit trait and a nearby metadata comment:
+
+```csharp
+// frontcomposer-quarantine: issue=https://github.com/Hexalith/Hexalith.FrontComposer/issues/123 owner=owner-needed reason=timer-race reintroduction=5-nightly-passes
+[Trait("Category", "Quarantined")]
+```
+
+The quarantine trait is removed only after the same stable test identity records 5 consecutive valid nightly passes on protected-branch evidence. A valid pass uses the expected `Category=Quarantined` filter, complete bounded artifacts, no cancellation, no partial run, no dynamic skip, no rerun-only evidence, and unchanged identity. Failures, missing or malformed evidence, wrong filters, cancellations, partial runs, and identity drift reset the count to zero.
+
+```bash
+# Reintroduction dry run against a sample evidence file.
+python .github/scripts/ci_governance.py reintroduction --evidence artifacts/quarantine/reintroduction-evidence.json --state tests/ci-governance/quarantine-reintroduction-state.json --output artifacts/quarantine/reintroduction-decision.json
+
+# CI-diet duration monitor dry run.
+python .github/scripts/ci_governance.py duration-monitor --evidence artifacts/ci-duration/full-ci-evidence.json --output artifacts/ci-duration/full-ci-summary.json --markdown artifacts/ci-duration/full-ci-summary.md
+```
+
+Duration governance records inner-loop, full-CI, and nightly lane evidence with run id, lane, commit, timestamp, conclusion, and blocking/advisory classification. Full-CI duration authority comes from protected-branch workflow evidence. Reruns, canceled runs, and partial evidence are excluded from the 3-day breach count or recorded as invalid evidence. The budgets are: inner loop under 5 minutes, full CI under 12 minutes, nightly under 45 minutes, and a mandatory `ci-diet` issue after full CI exceeds 15 minutes for 3 consecutive protected-branch days.
+
+Quarantine evidence is published as bounded TRX, JSON, and markdown summaries. Summaries keep only allowlisted fields such as test identity, outcome, attempt number, category, seed when present, and normalized relative paths. Raw dumps, bearer tokens, workflow commands, HTML/script fragments, tenant/user identifiers, command payload bodies, local absolute paths, and unbounded logs are redacted, escaped, truncated, or rejected before publication.
+
+Troubleshooting:
+
+- **Malformed TRX**: treat the decision as invalid evidence, regenerate the run, and do not count it toward quarantine or reintroduction.
+- **Zero quarantined tests**: the quarantine lane should emit a clear zero-test summary; this is not the same as silently skipping the lane.
+- **Missing labels**: automation should still record the missing `flaky-test`, `ci-governance`, or `codex-automation` labels in the issue or PR body instead of opening duplicate issues.
+- **Manual quarantine failure**: add the metadata comment with issue, owner or `owner-needed`, root-cause hypothesis, and `reintroduction=5-nightly-passes`.
+
 ### Playwright E2E
 
 ```bash
@@ -127,6 +171,7 @@ Factories live in `factories/` and follow the `build{Aggregate}` pattern. Each a
   - 2 retries per failing test
   - 50% worker cap (tuneable via Playwright flags)
 - Architecture mandates smoke E2E in v0.1 and full lifecycle assertions in v1 (see `_bmad-output/planning-artifacts/architecture.md` rows 2 and 5).
+- CI governance keeps Playwright E2E scope to one suite per reference microservice covering happy path, disconnect/reconnect, and rejection rollback. Do not add broader product E2E behavior from quarantine work alone.
 
 ---
 

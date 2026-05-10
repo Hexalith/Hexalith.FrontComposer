@@ -1,0 +1,7 @@
+{
+  "event_name": "pull_request",
+  "ref": "refs/pull/5/merge",
+  "ref_protected": false,
+  "from_fork": true,
+  "expected": "governance write action rejected"
+}

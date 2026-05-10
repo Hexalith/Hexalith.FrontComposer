@@ -1,0 +1,26 @@
+{
+  "approved_evidence_window": {
+    "from_sha": "abc123",
+    "to_sha": "def456",
+    "source": "maintainer-approved-ci-history",
+    "owner": "owner-needed"
+  },
+  "results": [
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.ApprovedWindow",
+      "displayName": "ApprovedWindow",
+      "outcome": "failed",
+      "attempt": 1,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/1"
+    },
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.ApprovedWindow",
+      "displayName": "ApprovedWindow",
+      "outcome": "passed",
+      "attempt": 2,
+      "sha": "def456",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/2"
+    }
+  ]
+}

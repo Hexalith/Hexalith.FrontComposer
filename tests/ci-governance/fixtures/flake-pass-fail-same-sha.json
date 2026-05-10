@@ -1,0 +1,21 @@
+{
+  "results": [
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.SometimesPasses",
+      "displayName": "SometimesPasses",
+      "outcome": "failed",
+      "attempt": 1,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/1",
+      "failure": "Expected 1 but found 2"
+    },
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.SometimesPasses",
+      "displayName": "SometimesPasses",
+      "outcome": "passed",
+      "attempt": 2,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/1"
+    }
+  ]
+}

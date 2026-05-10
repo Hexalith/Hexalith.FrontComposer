@@ -1,0 +1,5 @@
+{
+  "stable_marker": "<!-- frontcomposer:flaky-test-quarantine --> id=abc123",
+  "optimistic_reread_required": true,
+  "expected": "avoid duplicate automation under concurrent runs"
+}

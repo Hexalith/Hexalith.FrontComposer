@@ -1,0 +1,112 @@
+name: Mutation and Property Nightly
+
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mutation-property-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  source-tools-mutation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          # Root-level submodules only; never initialize nested submodules recursively.
+          submodules: true
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore tools and packages
+        run: |
+          dotnet tool restore
+          dotnet restore Hexalith.FrontComposer.sln
+
+      - name: Build SourceTools tests
+        run: dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --no-restore
+
+      - name: Happy-path mutation segment
+        run: dotnet tool run dotnet-stryker --config-file tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-happy-path.json --output artifacts/mutation/happy-path
+
+      - name: Error-handling mutation segment
+        if: always()
+        run: dotnet tool run dotnet-stryker --config-file tests/Hexalith.FrontComposer.SourceTools.Tests/Mutation/stryker-error-handling.json --output artifacts/mutation/error-handling
+
+      - name: Validate mutation reports
+        if: always()
+        shell: pwsh
+        run: ./eng/validate-stryker-reports.ps1
+
+      - name: Mutation Summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/mutation/job-summary.md ]; then
+            cat artifacts/mutation/job-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload mutation artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: mutation-source-tools-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: artifacts/mutation/**
+
+  lifecycle-properties:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          # Root-level submodules only; never initialize nested submodules recursively.
+          submodules: true
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore packages
+        run: dotnet restore Hexalith.FrontComposer.sln
+
+      - name: Run high-count lifecycle property suite
+        shell: pwsh
+        run: ./eng/run-lifecycle-property-suite.ps1 -MaxTest 10000 -ResultsDirectory "TestResults/property-nightly"
+
+      - name: Validate property artifacts
+        if: always()
+        shell: pwsh
+        run: ./eng/validate-property-artifacts.ps1
+
+      - name: Property Summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/property/job-summary.md ]; then
+            cat artifacts/property/job-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload property artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lifecycle-property-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/property/**
+            TestResults/property-nightly/**

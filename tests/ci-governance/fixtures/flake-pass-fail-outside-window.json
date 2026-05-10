@@ -1,0 +1,20 @@
+{
+  "results": [
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.CrossSha",
+      "displayName": "CrossSha",
+      "outcome": "failed",
+      "attempt": 1,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/1"
+    },
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.CrossSha",
+      "displayName": "CrossSha",
+      "outcome": "passed",
+      "attempt": 2,
+      "sha": "def456",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/2"
+    }
+  ]
+}

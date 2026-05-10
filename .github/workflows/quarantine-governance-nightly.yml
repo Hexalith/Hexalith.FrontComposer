@@ -1,0 +1,195 @@
+name: Quarantine Governance Nightly
+
+on:
+  schedule:
+    - cron: '43 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: quarantine-governance-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  quarantine-governance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+          # Root-level submodules only; do not use recursive nested submodule checkout.
+          submodules: true
+
+      - name: Record nightly lane start
+        shell: bash
+        run: echo "FC_NIGHTLY_STARTED_AT=$(date -u +%s)" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore and build
+        run: |
+          dotnet restore Hexalith.FrontComposer.sln
+          dotnet build Hexalith.FrontComposer.sln --configuration Release --no-restore
+
+      - name: Validate quarantine metadata
+        run: python3 .github/scripts/ci_governance.py validate-quarantine-metadata --root .
+
+      - name: Run quarantined tests for reintroduction evidence
+        id: quarantine_tests
+        continue-on-error: true
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results-quarantine.trx"
+
+      - name: Summarize quarantine evidence
+        if: always()
+        run: |
+          python3 .github/scripts/ci_governance.py summarize-quarantine \
+            --results-dir ./TestResults \
+            --markdown artifacts/quarantine/quarantine-summary.md \
+            --json artifacts/quarantine/quarantine-summary.json \
+            --run-url "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          cat artifacts/quarantine/quarantine-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Evaluate reintroduction evidence
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p artifacts/quarantine
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path("artifacts/quarantine/quarantine-summary.json").read_text())
+          results = summary.get("results", [])
+          if not results:
+            Path("artifacts/quarantine/reintroduction-decision.json").write_text(json.dumps({
+              "action": "no-quarantined-tests",
+              "reason": "The quarantine lane discovered zero quarantined tests."
+            }, indent=2) + "\n")
+            raise SystemExit(0)
+          first = results[0]
+          evidence = {
+            "identity": first["identity"],
+            "outcome": "passed" if summary["failed"] == 0 and summary["total"] > 0 else "failed",
+            "filter": "Category=Quarantined",
+            "protected_branch_sha": "${{ github.sha }}",
+            "canceled": False,
+            "partial": False,
+            "dynamic_skip": False,
+            "rerun_only": False,
+            "malformed": summary["classification"] == "invalid evidence",
+            "missing_evidence": False,
+            "changed_identity": False
+          }
+          Path("artifacts/quarantine/reintroduction-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
+          PY
+          if [ -f artifacts/quarantine/reintroduction-evidence.json ]; then
+            python3 .github/scripts/ci_governance.py reintroduction \
+              --evidence artifacts/quarantine/reintroduction-evidence.json \
+              --state tests/ci-governance/quarantine-reintroduction-state.json \
+              --output-state artifacts/quarantine/quarantine-reintroduction-state.next.json \
+              --output artifacts/quarantine/reintroduction-decision.json
+          fi
+
+      - name: Record nightly duration summary
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts/ci-duration
+          now="$(date -u +%s)"
+          started="${FC_NIGHTLY_STARTED_AT:-$now}"
+          duration="$((now - started))"
+          cat > artifacts/ci-duration/nightly-evidence.json <<JSON
+          {
+            "runs": [
+              {
+                "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+                "run_id": "${{ github.run_id }}",
+                "commit": "${{ github.sha }}",
+                "workflow": "Quarantine Governance Nightly",
+                "lane": "quarantine-governance",
+                "lane_type": "nightly",
+                "duration_seconds": ${duration},
+                "conclusion": "${{ job.status }}",
+                "blocking": false,
+                "protected_branch": ${{ github.ref == 'refs/heads/main' }}
+              }
+            ]
+          }
+          JSON
+          python3 .github/scripts/ci_governance.py duration-monitor \
+            --evidence artifacts/ci-duration/nightly-evidence.json \
+            --output artifacts/ci-duration/nightly-summary.json \
+            --markdown artifacts/ci-duration/nightly-summary.md \
+            --apply \
+            --event-name "${{ github.event_name }}" \
+            --ref "${{ github.ref }}" \
+            --ref-protected "${{ github.ref_protected }}" \
+            --from-fork "false"
+          cat artifacts/ci-duration/nightly-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Evaluate full CI duration budget
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p artifacts/ci-duration
+          gh run list --workflow CI --branch main --limit 20 --json databaseId,headSha,createdAt,updatedAt,conclusion > artifacts/ci-duration/full-ci-history.raw.json
+          python3 - <<'PY'
+          import datetime as dt
+          import json
+          from pathlib import Path
+          raw = json.loads(Path("artifacts/ci-duration/full-ci-history.raw.json").read_text())
+          runs = []
+          for item in raw:
+            created = dt.datetime.fromisoformat(item["createdAt"].replace("Z", "+00:00"))
+            updated = dt.datetime.fromisoformat(item["updatedAt"].replace("Z", "+00:00"))
+            runs.append({
+              "timestamp": item["createdAt"],
+              "run_id": str(item["databaseId"]),
+              "commit": item["headSha"],
+              "workflow": "CI",
+              "lane": "build-and-test",
+              "lane_type": "full-ci",
+              "duration_seconds": int((updated - created).total_seconds()),
+              "conclusion": item.get("conclusion") or "unknown",
+              "blocking": True,
+              "protected_branch": True
+            })
+          Path("artifacts/ci-duration/full-ci-history.json").write_text(json.dumps({"runs": runs}, indent=2) + "\n")
+          PY
+          python3 .github/scripts/ci_governance.py duration-monitor \
+            --evidence artifacts/ci-duration/full-ci-history.json \
+            --output artifacts/ci-duration/full-ci-budget-summary.json \
+            --markdown artifacts/ci-duration/full-ci-budget-summary.md \
+            --apply \
+            --event-name "${{ github.event_name }}" \
+            --ref "${{ github.ref }}" \
+            --ref-protected "${{ github.ref_protected }}" \
+            --from-fork "false"
+          cat artifacts/ci-duration/full-ci-budget-summary.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload quarantine governance artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: quarantine-governance-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/quarantine/**
+            artifacts/ci-duration/**
+            TestResults/**/test-results-quarantine.trx

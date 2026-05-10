@@ -1,0 +1,22 @@
+{
+  "schemaVersion": "1.0",
+  "ownerStory": "10-4-mutation-testing-and-property-based-testing",
+  "fixtures": [
+    {
+      "name": "duplicate-terminal-confirmed-is-single-visible-outcome",
+      "propertyName": "ExactlyOneVisibleOutcomePerCorrelation",
+      "seed": "15485863,32452843,0",
+      "size": 8,
+      "minimalSequence": [
+        { "operation": "submit", "correlation": "corr-0", "messageId": "msg-0" },
+        { "operation": "acknowledge", "correlation": "corr-0", "messageId": "msg-0" },
+        { "operation": "confirmed", "correlation": "corr-0", "messageId": "msg-0" },
+        { "operation": "duplicate-terminal", "correlation": "corr-0", "messageId": "msg-0" }
+      ],
+      "expectedTerminalState": "Confirmed",
+      "expectedVisibleOutcomeCount": 1,
+      "relatedBugOrRationale": "Protected invariant fixture for same-correlation terminal replay.",
+      "retentionReason": "Keeps an obvious home and replay shape for future shrunk FsCheck counterexamples."
+    }
+  ]
+}
