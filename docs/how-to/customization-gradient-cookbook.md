@@ -51,6 +51,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Acme.Orders;
 
@@ -68,11 +69,23 @@ public sealed class OrderActivityTemplate : ComponentBase
 {
     [Parameter]
     public ProjectionTemplateContext<OrderActivityProjection> Context { get; set; } = default!;
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        foreach (OrderActivityProjection row in Context.Items)
+        {
+            builder.OpenElement(0, "article");
+            builder.AddAttribute(1, "data-order-id", row.OrderId);
+            Context.FieldRenderer(row, nameof(OrderActivityProjection.UpdatedAt))(builder);
+            builder.CloseElement();
+        }
+    }
 }
 #endif
 ```
 
-Use Level 2 when the problem is layout, not field rendering. Render `Context.DefaultBody`, `Context.RowRenderer(row)`, or `Context.FieldRenderer(row, nameof(OrderActivityProjection.UpdatedAt))` from the `.razor` companion so FrontComposer still owns the field behavior.
+Use Level 2 when the problem is layout, not field rendering. This template changes the row wrapper but still calls `Context.FieldRenderer(row, nameof(OrderActivityProjection.UpdatedAt))`, so FrontComposer owns the relative-time output.
 
 ## Level 3: typed slot
 
@@ -83,6 +96,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Acme.Orders;
 
@@ -98,6 +112,32 @@ public sealed class UpdatedAtRelativeTimeSlot : ComponentBase
 {
     [Parameter]
     public FieldSlotContext<OrderActivityProjection, DateTimeOffset> Context { get; set; } = default!;
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        DateTimeOffset value = Context.Value;
+        builder.OpenElement(0, "time");
+        builder.AddAttribute(1, "datetime", value.ToString("O"));
+        builder.AddContent(2, FormatRelativeTime(value, DateTimeOffset.UtcNow, 14));
+        builder.CloseElement();
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset value, DateTimeOffset now, int relativeWindowDays)
+    {
+        TimeSpan age = now - value;
+        if (age.TotalDays > relativeWindowDays)
+        {
+            return value.ToString("u");
+        }
+
+        if (age.TotalHours >= 1)
+        {
+            return $"{Math.Floor(age.TotalHours):0}h ago";
+        }
+
+        return $"{Math.Max(1, Math.Floor(age.TotalMinutes)):0}m ago";
+    }
 }
 
 public static class OrderActivitySlots
@@ -124,6 +164,7 @@ using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Attributes;
 using Hexalith.FrontComposer.Contracts.Rendering;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Rendering;
 
 namespace Acme.Orders;
 
@@ -139,6 +180,41 @@ public sealed class OrderActivityViewReplacement : ComponentBase
 {
     [Parameter]
     public ProjectionViewContext<OrderActivityProjection> Context { get; set; } = default!;
+
+    protected override void BuildRenderTree(RenderTreeBuilder builder)
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+        builder.OpenElement(0, "section");
+        builder.AddAttribute(1, "aria-label", Context.EntityPluralLabel);
+        foreach (OrderActivityProjection row in Context.Items)
+        {
+            builder.OpenElement(2, "article");
+            builder.AddContent(3, row.OrderId);
+            builder.OpenElement(4, "time");
+            builder.AddAttribute(5, "datetime", row.UpdatedAt.ToString("O"));
+            builder.AddContent(6, FormatRelativeTime(row.UpdatedAt, DateTimeOffset.UtcNow, 14));
+            builder.CloseElement();
+            builder.CloseElement();
+        }
+
+        builder.CloseElement();
+    }
+
+    private static string FormatRelativeTime(DateTimeOffset value, DateTimeOffset now, int relativeWindowDays)
+    {
+        TimeSpan age = now - value;
+        if (age.TotalDays > relativeWindowDays)
+        {
+            return value.ToString("u");
+        }
+
+        if (age.TotalHours >= 1)
+        {
+            return $"{Math.Floor(age.TotalHours):0}h ago";
+        }
+
+        return $"{Math.Max(1, Math.Floor(age.TotalMinutes)):0}m ago";
+    }
 }
 
 public static class OrderActivityViewOverrides

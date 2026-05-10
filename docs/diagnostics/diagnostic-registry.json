@@ -1,8 +1,8 @@
 {
   "schemaVersion": "1.0",
   "canonicalHelpLinkFormat": "https://hexalith.github.io/FrontComposer/diagnostics/{0}",
-  "messageTemplatePolicy": "auto-synthesized-placeholder-pending-authoring; per-diagnostic templates are authored by Story 9-5 (Diataxis docs) and validated then. Until then, runtime emission relies on the analyzer messageFormat / runtime logger templates and the docs stub at docsSlug.",
-  "docsStubProsePolicy": "auto-synthesized-placeholder-pending-authoring; per-diagnostic prose between <!-- story-9-5:narrative-start --> and <!-- story-9-5:narrative-end --> is authored by Story 9-5 (Diataxis docs) and validated then. Stub generation emits skeletal Problem/Common Causes/How To Fix/Example/Suppression Guidance/Migration-Deprecation/Related Diagnostics sections so DocFX consumption and AC5 stub-presence validation can run before authoring lands.",
+  "messageTemplatePolicy": "diagnostic messages are canonical producer inputs; Story 9-5 validates that each published page links to the registry-owned message template and does not invent diagnostic IDs or lifecycle policy.",
+  "docsStubProsePolicy": "published diagnostic prose must be actionable for the owning package and lifecycle. Generated section scaffolds are not accepted as complete published guidance.",
   "ranges": [
     {
       "ownerPackage": "Contracts",

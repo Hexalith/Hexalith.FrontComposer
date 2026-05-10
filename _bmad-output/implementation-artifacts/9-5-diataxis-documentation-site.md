@@ -1,6 +1,6 @@
 # Story 9.5: Diataxis Documentation Site
 
-Status: review
+Status: done
 
 > **Epic 9** - Developer Tooling & Documentation. Covers **FR68**, **FR69**, **NFR95**, **NFR96**, **NFR97**, and **NFR98**. Builds on Stories **8-5**, **9-1**, **9-2**, **9-3**, and **9-4**. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and **L11**.
 
@@ -253,6 +253,18 @@ The 2026-05-04 advanced elicitation pass found that Story 9-5 needs explicit rep
   - [x] Run `dotnet build Hexalith.FrontComposer.sln -p:TreatWarningsAsErrors=true -p:UseSharedCompilation=false`.
   - [x] Update completion notes with docs build output path, evidence manifest path, validation command results, accepted placeholders, and any deferred docs owners.
 
+### Review Findings
+
+- [x] [Review][Patch] Producer fingerprints are recorded but never compared to expected baselines, so stale or hash-mismatched Story 8-5/9-1/9-2/9-3/9-4 inputs can pass validation [eng/validate-docs.ps1:433]
+- [x] [Review][Patch] Diagnostic pages are marked published while retaining generated placeholder prose, and validation checks only section headings instead of real diagnostic completeness [docs/diagnostics/HFC1001.md:32]
+- [x] [Review][Patch] The required migration guide is still a stub and validation only checks front matter, not old/new code, affected versions, rationale, code-fix details, or skill-corpus evidence [docs/migrations/9.1-to-9.2.md:20]
+- [x] [Review][Patch] Cookbook levels 2-4 compile empty shells/descriptors but do not actually solve the relative-time rendering problem at each customization level [docs/how-to/customization-gradient-cookbook.md:66]
+- [x] [Review][Patch] The DocFX TOC adds Diagnostics and Migrations as extra top-level entries outside the four required Diataxis genres, and the validator does not reject unexpected top-level entries [docs/toc.yml:5]
+- [x] [Review][Patch] MCP reference slice filenames can collide after UID sanitization and silently overwrite one another [eng/validate-docs.ps1:188]
+- [x] [Review][Patch] Diagnostic docsSlug values are joined directly into paths without traversal/root/prefix validation, letting registry entries satisfy coverage with unrelated files [eng/validate-docs.ps1:379]
+- [x] [Review][Patch] Public XML docs are generated while CS1591 is globally suppressed, and validation never verifies summaries for public API reference output [src/Directory.Build.props:6]
+- [x] [Review][Patch] Invoke-Process reads redirected stdout to completion before stderr, which can deadlock CI tools that write enough stderr [eng/validate-docs.ps1:202]
+
 ---
 
 ## Dev Notes
@@ -473,6 +485,8 @@ Final recommendation: ready-for-dev
 - `docs/migrations/index.md`
 - `docs/migrations/9.1-to-9.2.md`
 - `docs/diagnostics/HFC*.md` (106 diagnostic pages enriched with DocFX front matter)
+- `docs/validation/api-summary-baseline.txt`
+- `docs/validation/producer-fingerprints.json`
 - `eng/validate-docs.ps1`
 - `src/Directory.Build.props`
 - `tests/Hexalith.FrontComposer.SourceTools.Tests/Docs/DocsSiteValidationTests.cs`
@@ -480,3 +494,4 @@ Final recommendation: ready-for-dev
 ### Change Log
 
 - 2026-05-10: Completed Story 9-5 Diataxis DocFX documentation site, validation command, CI integration, governance tests, diagnostic publication metadata, and final verification. Status: review.
+- 2026-05-10: Code-review patch pass completed. Added producer fingerprint baseline comparison, API summary baseline governance, diagnostic slug/path hardening, MCP output collision detection, stricter Diataxis TOC validation, migration/diagnostic completeness checks, safe process stream handling, authored the 9.1-to-9.2 migration guide, expanded cookbook examples, and reran docs validation plus focused governance tests. Status: done.

@@ -16,7 +16,8 @@ $SnippetRoot = Join-Path $ArtifactsRoot 'snippets'
 function ConvertTo-RepoPath([string]$Path) {
     $full = [System.IO.Path]::GetFullPath($Path)
     $root = [System.IO.Path]::GetFullPath($RepoRoot)
-    if (-not $full.StartsWith($root, [System.StringComparison]::OrdinalIgnoreCase)) {
+    $rootWithSeparator = $root.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    if (-not ($full.Equals($root, [System.StringComparison]::OrdinalIgnoreCase) -or $full.StartsWith($rootWithSeparator, [System.StringComparison]::OrdinalIgnoreCase))) {
         throw "Path escapes repository root: $Path"
     }
 
@@ -103,6 +104,132 @@ function Test-UnsafeText([string]$Text) {
     return $null
 }
 
+function Resolve-DiagnosticPagePath($Diagnostic, [System.Collections.Generic.List[string]]$Failures) {
+    $id = [string]$Diagnostic.id
+    $slug = ([string]$Diagnostic.docsSlug).Replace('\', '/').Trim()
+    if ([string]::IsNullOrWhiteSpace($slug)) {
+        Add-Failure $Failures "Diagnostic $id has an empty docsSlug."
+        return $null
+    }
+
+    if ([System.IO.Path]::IsPathRooted($slug) -or $slug.Contains('..') -or $slug -notmatch '^diagnostics/HFC[0-9A-Za-z_-]+$') {
+        Add-Failure $Failures "Diagnostic $id has unsafe docsSlug '$slug'. Expected diagnostics/HFCxxxx."
+        return $null
+    }
+
+    $expectedSlug = "diagnostics/$id"
+    if ($slug -ne $expectedSlug) {
+        Add-Failure $Failures "Diagnostic $id docsSlug '$slug' must match '$expectedSlug'."
+        return $null
+    }
+
+    $full = [System.IO.Path]::GetFullPath((Join-Path $DocsRoot "$slug.md"))
+    $diagnosticsRoot = [System.IO.Path]::GetFullPath((Join-Path $DocsRoot 'diagnostics'))
+    $diagnosticsRootWithSeparator = $diagnosticsRoot.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar) + [System.IO.Path]::DirectorySeparatorChar
+    if (-not $full.StartsWith($diagnosticsRootWithSeparator, [System.StringComparison]::OrdinalIgnoreCase)) {
+        Add-Failure $Failures "Diagnostic $id docsSlug '$slug' escapes docs/diagnostics."
+        return $null
+    }
+
+    return $full
+}
+
+function Assert-DiagnosticCompleteness([string]$Page, [string]$DiagnosticId, [System.Collections.Generic.List[string]]$Failures) {
+    $text = Get-Content -LiteralPath $Page -Raw
+    $rel = ConvertTo-RepoPath $Page
+    foreach ($section in @('## Problem', '## Common Causes', '## How To Fix', '## Example', '## Suppression Guidance', '## Migration/Deprecation', '## Related Diagnostics')) {
+        if (-not $text.Contains($section)) {
+            Add-Failure $Failures "$rel is missing diagnostic section '$section'."
+        }
+    }
+
+    foreach ($placeholder in @(
+        'The framework detected a condition represented by',
+        'Expected: Follow the FrontComposer diagnostic contract.',
+        'Fix: See https://hexalith.github.io/FrontComposer/diagnostics/',
+        'auto-synthesized-placeholder-pending-authoring')) {
+        if ($text.Contains($placeholder)) {
+            Add-Failure $Failures "$rel still contains placeholder diagnostic prose for $DiagnosticId."
+            break
+        }
+    }
+}
+
+function Assert-MigrationCompleteness([string]$Path, [System.Collections.Generic.List[string]]$Failures) {
+    $rel = ConvertTo-RepoPath $Path
+    $text = Get-Content -LiteralPath $Path -Raw
+    foreach ($heading in @('## Affected Versions', '## Why This Changed', '## Old Code', '## New Code', '## Analyzer And Code Fix', '## Skill Corpus Evidence')) {
+        if (-not $text.Contains($heading)) {
+            Add-Failure $Failures "$rel migration guide is missing section '$heading'."
+        }
+    }
+
+    if ($text -match '(?i)\bstub\b|pending authoring') {
+        Add-Failure $Failures "$rel migration guide still contains stub or pending-authoring language."
+    }
+
+    if ($text -notmatch '(?ms)## Old Code.*?```csharp' -or $text -notmatch '(?ms)## New Code.*?```csharp') {
+        Add-Failure $Failures "$rel migration guide must include old and new C# examples."
+    }
+}
+
+function Get-ApiItemsMissingSummaries {
+    $missing = New-Object System.Collections.Generic.List[string]
+    $apiRoot = Join-Path $DocsRoot 'reference/api'
+    if (-not (Test-Path -LiteralPath $apiRoot)) {
+        return $missing
+    }
+
+    foreach ($file in Get-ChildItem -Path $apiRoot -Filter '*.yml' -File) {
+        $text = Get-Content -LiteralPath $file.FullName -Raw
+        $items = [regex]::Matches($text, '(?ms)^- uid:\s*(?<uid>.+?)\r?\n(?<body>.*?)(?=^- uid:|\z)')
+        foreach ($item in $items) {
+            $uid = $item.Groups['uid'].Value.Trim()
+            $body = $item.Groups['body'].Value
+            $isPublicType = $uid.StartsWith('Hexalith.FrontComposer', [System.StringComparison]::Ordinal) -and
+                $body -match '(?m)^\s+commentId:\s*T:' -and
+                $body -match '(?m)^\s+type:\s*(Class|Struct|Interface|Enum|Delegate)\s*$'
+            if (-not $isPublicType) {
+                continue
+            }
+
+            $hasSummary = $body -match '(?m)^\s+summary:\s*(>-|\|-|\S+)' -and $body -notmatch '(?m)^\s+summary:\s*\[\]\s*$'
+            if (-not $hasSummary) {
+                $missing.Add($uid) | Out-Null
+            }
+        }
+    }
+
+    return $missing
+}
+
+function Assert-ApiSummaryBaseline([System.Collections.Generic.List[string]]$Failures) {
+    $baselinePath = Join-Path $DocsRoot 'validation/api-summary-baseline.txt'
+    if (-not (Test-Path -LiteralPath $baselinePath)) {
+        Add-Failure $Failures 'docs/validation/api-summary-baseline.txt is missing.'
+        return
+    }
+
+    $expected = @(Get-Content -LiteralPath $baselinePath | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and -not $_.StartsWith('#') } | Sort-Object -Unique)
+    $actual = @(Get-ApiItemsMissingSummaries | Sort-Object -Unique)
+    $expectedSet = @{}
+    foreach ($uid in $expected) { $expectedSet[$uid] = $true }
+    $actualSet = @{}
+    foreach ($uid in $actual) { $actualSet[$uid] = $true }
+
+    foreach ($uid in $actual) {
+        if (-not $expectedSet.ContainsKey($uid)) {
+            Add-Failure $Failures "API reference item '$uid' is missing a summary and is not in docs/validation/api-summary-baseline.txt."
+        }
+    }
+
+    foreach ($uid in $expected) {
+        if (-not $actualSet.ContainsKey($uid)) {
+            Add-Failure $Failures "API summary baseline contains resolved or missing UID '$uid'; update docs/validation/api-summary-baseline.txt."
+        }
+    }
+}
+
 function Assert-Markers([string]$Path, [string]$Body, $Metadata, [System.Collections.Generic.List[string]]$Failures) {
     $rel = ConvertTo-RepoPath $Path
     $known = @(
@@ -183,9 +310,20 @@ function Write-McpSlices([array]$Slices) {
     if (Test-Path -LiteralPath $McpSliceRoot) { Remove-Item -LiteralPath $McpSliceRoot -Recurse -Force }
     New-Item -ItemType Directory -Force -Path $McpSliceRoot | Out-Null
     $outputs = New-Object System.Collections.Generic.List[object]
+    $seenOutputNames = @{}
     foreach ($slice in $Slices) {
         $source = $slice.Source
         $name = ($slice.Uid -replace '[^A-Za-z0-9_.-]', '-')
+        if ([string]::IsNullOrWhiteSpace($name) -or $name -in @('.', '..')) {
+            throw "MCP slice from $(ConvertTo-RepoPath $source) has unsafe generated name '$name'."
+        }
+
+        $key = $name.ToLowerInvariant()
+        if ($seenOutputNames.ContainsKey($key)) {
+            throw "MCP slice output collision for '$name.md' between $(ConvertTo-RepoPath $source) and $($seenOutputNames[$key])."
+        }
+
+        $seenOutputNames[$key] = ConvertTo-RepoPath $source
         $target = Join-Path $McpSliceRoot "$name.md"
         Set-Content -LiteralPath $target -Value $slice.Content -NoNewline
         $outputs.Add([ordered]@{
@@ -207,9 +345,11 @@ function Invoke-Process([string]$FileName, [string[]]$Arguments, [string]$Workin
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
     $process = [System.Diagnostics.Process]::Start($psi)
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
+    $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+    $stderrTask = $process.StandardError.ReadToEndAsync()
     $process.WaitForExit()
+    $stdout = $stdoutTask.GetAwaiter().GetResult()
+    $stderr = $stderrTask.GetAwaiter().GetResult()
     if ($process.ExitCode -ne 0) {
         throw "Command failed ($FileName $($Arguments -join ' '))`n$stdout`n$stderr"
     }
@@ -361,10 +501,22 @@ if (-not (Test-Path -LiteralPath $toc)) {
     Add-Failure $failures 'docs/toc.yml is missing.'
 }
 else {
-    $tocText = Get-Content -LiteralPath $toc -Raw
-    foreach ($name in @('Tutorials', 'How-to', 'Reference', 'Concepts')) {
-        if (-not $tocText.Contains("name: $name")) {
-            Add-Failure $failures "docs/toc.yml is missing top-level Diataxis entry '$name'."
+    $tocLines = @(Get-Content -LiteralPath $toc)
+    $topLevelNames = @()
+    foreach ($line in $tocLines) {
+        if ($line -match '^- name:\s*(.+?)\s*$') {
+            $topLevelNames += $Matches[1]
+        }
+    }
+
+    $expectedTopLevelNames = @('Tutorials', 'How-to', 'Reference', 'Concepts')
+    if ($topLevelNames.Count -ne $expectedTopLevelNames.Count) {
+        Add-Failure $failures "docs/toc.yml must have exactly four top-level Diataxis entries: $($expectedTopLevelNames -join ', ')."
+    }
+
+    for ($i = 0; $i -lt $expectedTopLevelNames.Count -and $i -lt $topLevelNames.Count; $i++) {
+        if ($topLevelNames[$i] -ne $expectedTopLevelNames[$i]) {
+            Add-Failure $failures "docs/toc.yml top-level entry $($i + 1) must be '$($expectedTopLevelNames[$i])', got '$($topLevelNames[$i])'."
         }
     }
 }
@@ -375,20 +527,25 @@ if (-not (Test-Path -LiteralPath $registryPath)) {
 }
 else {
     $registry = Get-Content -LiteralPath $registryPath -Raw | ConvertFrom-Json
+    foreach ($policy in @('messageTemplatePolicy', 'docsStubProsePolicy')) {
+        if ($registry.PSObject.Properties.Name -contains $policy -and [string]$registry.PSObject.Properties[$policy].Value -match 'placeholder|pending-authoring') {
+            Add-Failure $failures "docs/diagnostics/diagnostic-registry.json $policy still describes placeholder diagnostic authoring."
+        }
+    }
+
     foreach ($diagnostic in $registry.diagnostics) {
         if ($diagnostic.lifecycle -in @('active', 'reserved', 'deprecated')) {
-            $page = Join-Path $DocsRoot "$($diagnostic.docsSlug).md"
+            $page = Resolve-DiagnosticPagePath $diagnostic $failures
+            if ($null -eq $page) {
+                continue
+            }
+
             if (-not (Test-Path -LiteralPath $page)) {
                 Add-Failure $failures "Diagnostic $($diagnostic.id) is missing page $($diagnostic.docsSlug).md."
                 continue
             }
 
-            $diagnosticText = Get-Content -LiteralPath $page -Raw
-            foreach ($section in @('## Problem', '## Common Causes', '## How To Fix', '## Example', '## Suppression Guidance', '## Migration/Deprecation', '## Related Diagnostics')) {
-                if (-not $diagnosticText.Contains($section)) {
-                    Add-Failure $failures "$(ConvertTo-RepoPath $page) is missing diagnostic section '$section'."
-                }
-            }
+            Assert-DiagnosticCompleteness $page $diagnostic.id $failures
         }
     }
 }
@@ -401,6 +558,8 @@ foreach ($migration in Get-ChildItem -Path (Join-Path $DocsRoot 'migrations') -F
             Add-Failure $failures "$(ConvertTo-RepoPath $migration.FullName) migration guide is missing '$field'."
         }
     }
+
+    Assert-MigrationCompleteness $migration.FullName $failures
 }
 
 $submodules = @()
@@ -427,6 +586,7 @@ $mcpOutputs = @(Write-McpSlices $mcpSlices)
 $docfxOutput = $null
 if (-not $SkipDocFx) {
     Invoke-Process 'dotnet' @('docfx', 'metadata', 'docs/docfx.json') $RepoRoot | Out-Null
+    Assert-ApiSummaryBaseline $failures
     Invoke-Process 'dotnet' @('docfx', 'build', 'docs/docfx.json') $RepoRoot | Out-Null
     $docfxOutput = 'docs/_site'
 }
@@ -439,19 +599,48 @@ $producerInputs = @(
     @{ story = '9-4-diagnostic-id-system-and-deprecation-policy'; path = 'docs/diagnostics/diagnostic-registry.json' }
 )
 
+$expectedProducerFingerprintPath = Join-Path $DocsRoot 'validation/producer-fingerprints.json'
+$expectedProducerFingerprints = @{}
+if (-not (Test-Path -LiteralPath $expectedProducerFingerprintPath)) {
+    Add-Failure $failures 'docs/validation/producer-fingerprints.json is missing.'
+}
+else {
+    $expectedProducerData = Get-Content -LiteralPath $expectedProducerFingerprintPath -Raw | ConvertFrom-Json
+    foreach ($expected in $expectedProducerData.producers) {
+        $expectedProducerFingerprints[[string]$expected.path] = [pscustomobject]@{
+            story = [string]$expected.story
+            sha256 = [string]$expected.sha256
+        }
+    }
+}
+
 $producerFingerprints = @()
 foreach ($input in $producerInputs) {
     $full = Join-Path $RepoRoot $input.path
+    $actualHash = Get-FileHashHex $full
     $producerFingerprints += [ordered]@{
         story = $input.story
         path = $input.path
         exists = Test-Path -LiteralPath $full
-        sha256 = Get-FileHashHex $full
+        sha256 = $actualHash
         placeholderAllowed = $false
     }
 
     if (-not (Test-Path -LiteralPath $full)) {
         Add-Failure $failures "Producer artifact missing for $($input.story): $($input.path)."
+    }
+    elseif (-not $expectedProducerFingerprints.ContainsKey($input.path)) {
+        Add-Failure $failures "Producer fingerprint baseline missing for $($input.story): $($input.path)."
+    }
+    else {
+        $expected = $expectedProducerFingerprints[$input.path]
+        if ($expected.story -ne $input.story) {
+            Add-Failure $failures "Producer fingerprint baseline story mismatch for $($input.path): expected $($input.story), got $($expected.story)."
+        }
+
+        if ($expected.sha256 -ne $actualHash) {
+            Add-Failure $failures "Producer artifact stale for $($input.story): $($input.path). Expected $($expected.sha256), actual $actualHash."
+        }
     }
 }
 
@@ -465,7 +654,7 @@ $manifest = [ordered]@{
     generatedAt = '2026-05-10T00:00:00Z'
     validationCommand = 'pwsh ./eng/validate-docs.ps1'
     toolVersions = $toolVersions
-    inputRoots = @('docs/index.md', 'docs/tutorials', 'docs/how-to', 'docs/reference', 'docs/concepts', 'docs/diagnostics', 'docs/migrations')
+    inputRoots = @('docs/index.md', 'docs/tutorials', 'docs/how-to', 'docs/reference', 'docs/concepts', 'docs/diagnostics', 'docs/migrations', 'docs/validation/producer-fingerprints.json', 'docs/validation/api-summary-baseline.txt')
     producerFingerprints = $producerFingerprints
     generatedOutputRoots = @($docfxOutput, 'artifacts/docs/mcp-reference', 'artifacts/docs/snippets') | Where-Object { $_ }
     mcpReferenceSlices = $mcpOutputs

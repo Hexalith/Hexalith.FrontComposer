@@ -2,11 +2,13 @@
   href: tutorials/index.md
 - name: How-to
   href: how-to/index.md
+  items:
+  - name: Migrations
+    href: migrations/index.md
 - name: Reference
   href: reference/index.md
+  items:
+  - name: Diagnostics
+    href: reference/diagnostics/index.md
 - name: Concepts
   href: concepts/index.md
-- name: Diagnostics
-  href: reference/diagnostics/index.md
-- name: Migrations
-  href: migrations/index.md

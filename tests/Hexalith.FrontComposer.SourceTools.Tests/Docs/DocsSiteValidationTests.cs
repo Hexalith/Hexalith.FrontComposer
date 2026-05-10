@@ -28,12 +28,14 @@ public sealed partial class DocsSiteValidationTests {
 
     [Fact]
     public void TocKeepsDiataxisTopLevelNavigation() {
-        string toc = File.ReadAllText(Path.Combine(ProjectRoot(), "docs", "toc.yml"));
+        string[] tocLines = File.ReadAllLines(Path.Combine(ProjectRoot(), "docs", "toc.yml"));
+        string[] topLevelNames = tocLines
+            .Select(line => Regex.Match(line, "^- name:\\s*(.+?)\\s*$"))
+            .Where(match => match.Success)
+            .Select(match => match.Groups[1].Value)
+            .ToArray();
 
-        toc.ShouldContain("name: Tutorials");
-        toc.ShouldContain("name: How-to");
-        toc.ShouldContain("name: Reference");
-        toc.ShouldContain("name: Concepts");
+        topLevelNames.ShouldBe(["Tutorials", "How-to", "Reference", "Concepts"]);
     }
 
     [Fact]
@@ -86,13 +88,45 @@ public sealed partial class DocsSiteValidationTests {
 
             string id = diagnostic.GetProperty("id").GetString()!;
             string docsSlug = diagnostic.GetProperty("docsSlug").GetString()!;
-            string pagePath = Path.Combine(ProjectRoot(), "docs", docsSlug.Replace('/', Path.DirectorySeparatorChar) + ".md");
+            docsSlug.ShouldBe($"diagnostics/{id}");
+            docsSlug.ShouldMatch("^diagnostics/HFC[0-9A-Za-z_-]+$");
+            docsSlug.ShouldNotContain("..");
+
+            string pagePath = Path.GetFullPath(Path.Combine(ProjectRoot(), "docs", docsSlug.Replace('/', Path.DirectorySeparatorChar) + ".md"));
+            string diagnosticsRoot = Path.GetFullPath(Path.Combine(ProjectRoot(), "docs", "diagnostics")) + Path.DirectorySeparatorChar;
+            pagePath.StartsWith(diagnosticsRoot, StringComparison.OrdinalIgnoreCase).ShouldBeTrue($"{id} docsSlug must stay under docs/diagnostics.");
             File.Exists(pagePath).ShouldBeTrue($"{id} must publish {docsSlug}.md.");
 
             string page = File.ReadAllText(pagePath);
             foreach (string section in new[] { "## Problem", "## Common Causes", "## How To Fix", "## Example", "## Suppression Guidance", "## Migration/Deprecation", "## Related Diagnostics" }) {
                 page.ShouldContain(section, customMessage: $"{id} must include {section}.");
             }
+
+            page.ShouldNotContain("The framework detected a condition represented by", customMessage: $"{id} must not keep generated placeholder prose.");
+            page.ShouldNotContain("Expected: Follow the FrontComposer diagnostic contract.", customMessage: $"{id} must not keep generated placeholder prose.");
+        }
+    }
+
+    [Fact]
+    public void ProducerFingerprintBaselineCoversRequiredInputs() {
+        string path = Path.Combine(ProjectRoot(), "docs", "validation", "producer-fingerprints.json");
+        File.Exists(path).ShouldBeTrue("Docs validation must compare producer inputs against a checked-in fingerprint baseline.");
+
+        using JsonDocument baseline = JsonDocument.Parse(File.ReadAllText(path));
+        HashSet<string> paths = baseline.RootElement
+            .GetProperty("producers")
+            .EnumerateArray()
+            .Select(item => item.GetProperty("path").GetString()!)
+            .ToHashSet(StringComparer.Ordinal);
+
+        foreach (string required in new[] {
+            "docs/skills/frontcomposer/index.md",
+            "docs/diagnostics/samples/registry-drift-report.json",
+            "docs/migrations/9.1-to-9.2.md",
+            "docs/ide-parity-matrix.md",
+            "docs/diagnostics/diagnostic-registry.json",
+        }) {
+            paths.Contains(required).ShouldBeTrue($"{required} must have a producer fingerprint baseline.");
         }
     }
 

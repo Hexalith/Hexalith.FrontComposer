@@ -1,0 +1,30 @@
+{
+  "schemaVersion": "1.0",
+  "producers": [
+    {
+      "story": "8-5-skill-corpus-and-build-time-agent-support",
+      "path": "docs/skills/frontcomposer/index.md",
+      "sha256": "899b728ae4d31b3f98b4e1c71a697a82c8658301a58a2d5aa754570213f8c65c"
+    },
+    {
+      "story": "9-1-build-time-drift-detection",
+      "path": "docs/diagnostics/samples/registry-drift-report.json",
+      "sha256": "cba284d9b00d13dffa891bc439731bcb9f6fa04738889bde1322576d429cf910"
+    },
+    {
+      "story": "9-2-cli-inspection-and-migration-tools",
+      "path": "docs/migrations/9.1-to-9.2.md",
+      "sha256": "8f31ae0ebbfa17456cf526d95ddd965cc7a05ce8fab40db8395af831ca45f717"
+    },
+    {
+      "story": "9-3-ide-parity-and-developer-experience",
+      "path": "docs/ide-parity-matrix.md",
+      "sha256": "0c875e63ca2a677c0cecbd7199f78268aa902f2946a2ff190a6de127f548edc4"
+    },
+    {
+      "story": "9-4-diagnostic-id-system-and-deprecation-policy",
+      "path": "docs/diagnostics/diagnostic-registry.json",
+      "sha256": "77d186eb2038615ca20b7632d17cbfd425ce59ed736e494c07a612cbd0f0463b"
+    }
+  ]
+}

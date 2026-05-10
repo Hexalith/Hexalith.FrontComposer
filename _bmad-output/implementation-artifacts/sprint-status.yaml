@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (/bmad-dev-story 10-6 completed; LLM benchmark signed release and SBOM governance ready for review.)"
+last_updated: "2026-05-10 (/bmad-code-review 9-5 completed; Diataxis documentation site review patches resolved.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -130,7 +130,7 @@ development_status:
   9-2-cli-inspection-and-migration-tools: done
   9-3-ide-parity-and-developer-experience: done
   9-4-diagnostic-id-system-and-deprecation-policy: done
-  9-5-diataxis-documentation-site: review
+  9-5-diataxis-documentation-site: done
   epic-9-retrospective: optional
 
   # Epic 10: Framework Quality & Adopter Confidence
