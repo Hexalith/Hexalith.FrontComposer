@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (/bmad-dev-story 10-1 started. Story 10-1 -> in-progress.)"
+last_updated: "2026-05-10 (/bmad-create-story 10-6 created. Story 10-6 -> ready-for-dev.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -140,5 +140,5 @@ development_status:
   10-3-consumer-driven-contract-tests-pact: ready-for-dev
   10-4-mutation-testing-and-property-based-testing: ready-for-dev
   10-5-flaky-test-quarantine-and-ci-governance: ready-for-dev
-  10-6-llm-benchmark-signed-releases-and-sbom: backlog
+  10-6-llm-benchmark-signed-releases-and-sbom: ready-for-dev
   epic-10-retrospective: optional
