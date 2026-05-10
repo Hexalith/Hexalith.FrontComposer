@@ -160,3 +160,4 @@
 2026-05-10T12:14:32+02:00	party-mode-review	10-5-flaky-test-quarantine-and-ci-governance	ok	party-mode hardening applied; added evidence, valid-nightly, permission, CI-result, and 10-4 boundary guardrails
 2026-05-10T13:09:27+02:00	advanced-elicitation	10-5-flaky-test-quarantine-and-ci-governance	ok	advanced elicitation applied; added trusted-token, hostile-output, ambiguous-patch, concurrency, and retry boundary guardrails
 2026-05-10T13:13:10+02:00	create-story	10-6-llm-benchmark-signed-releases-and-sbom	ok	Created Story 10-6 and marked ready-for-dev.
+2026-05-10T13:30:34+02:00	party-mode-review	10-6-llm-benchmark-signed-releases-and-sbom	ok	party-mode hardening applied; added benchmark gate, baseline, manifest, attestation, budget, and boundary guardrails
