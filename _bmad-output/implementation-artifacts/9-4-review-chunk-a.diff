@@ -1,0 +1,3457 @@
+diff --git a/Directory.Build.props b/Directory.Build.props
+index 4a3ed06..1c610ff 100644
+--- a/Directory.Build.props
++++ b/Directory.Build.props
+@@ -19,4 +19,10 @@
+     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+   </PropertyGroup>
+ 
++  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
++    <EnablePackageValidation>true</EnablePackageValidation>
++    <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
++    <ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>
++  </PropertyGroup>
++
+ </Project>
+diff --git a/docs/diagnostics/README.md b/docs/diagnostics/README.md
+new file mode 100644
+index 0000000..b79e7b3
+--- /dev/null
++++ b/docs/diagnostics/README.md
+@@ -0,0 +1,9 @@
++# FrontComposer Diagnostic Registry
++
++Story 9-4 makes `diagnostic-registry.json` the authoritative source for HFC ownership, lifecycle, canonical help links, release-row metadata, runtime channel severity, and deprecation linkage. The validation entry point is the `DiagnosticRegistryTests` suite in `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics`, which loads this registry, analyzer descriptors, runtime constants, release rows, docs stubs, obsolete attributes, submodule boundaries, and compatibility evidence from checked-in files only.
++
++The supported registry schema is exactly `1.0`. Newer or malformed schema versions fail closed with a named unsupported-schema category. Diagnostics docs slugs must remain `diagnostics/HFCxxxx`; encoded traversal, case variants, query strings, fragments, backslashes, whitespace, and zero-width characters are invalid.
++
++Normal CI must not call live package feeds, GitHub, or the public docs site to validate this contract. Package/API compatibility gates use .NET package validation / ApiCompat for packable FrontComposer packages, with `PackageValidationBaselineVersion` set in `Directory.Build.props`, checked-in suppression evidence in `compatibility-suppressions.json`, and normalized reports so unavailable network/cache state cannot silently skip diagnostics governance.
++
++The `samples/` folder contains stable blocking-report examples for registry drift, docs-stub drift, release-row drift, and compatibility drift. These examples intentionally avoid timestamps, absolute paths, machine names, SDK banners, and live feed URLs.
+diff --git a/docs/diagnostics/compatibility-suppressions.json b/docs/diagnostics/compatibility-suppressions.json
+new file mode 100644
+index 0000000..76ccf17
+--- /dev/null
++++ b/docs/diagnostics/compatibility-suppressions.json
+@@ -0,0 +1,5 @@
++{
++  "schemaVersion": "1.0",
++  "baselinePolicy": "Package validation is enabled for packable FrontComposer projects. Intentional major-version breaks require a bounded suppression row here before release.",
++  "suppressions": []
++}
+diff --git a/docs/diagnostics/diagnostic-registry.json b/docs/diagnostics/diagnostic-registry.json
+new file mode 100644
+index 0000000..a9f2fd2
+--- /dev/null
++++ b/docs/diagnostics/diagnostic-registry.json
+@@ -0,0 +1,2586 @@
++{
++  "schemaVersion": "1.0",
++  "canonicalHelpLinkFormat": "https://hexalith.github.io/FrontComposer/diagnostics/{0}",
++  "ranges": [
++    {
++      "ownerPackage": "Contracts",
++      "start": 1,
++      "end": 999
++    },
++    {
++      "ownerPackage": "SourceTools",
++      "start": 1000,
++      "end": 1999
++    },
++    {
++      "ownerPackage": "Shell",
++      "start": 2000,
++      "end": 2999
++    },
++    {
++      "ownerPackage": "EventStore",
++      "start": 3000,
++      "end": 3999
++    },
++    {
++      "ownerPackage": "Mcp",
++      "start": 4000,
++      "end": 4999
++    },
++    {
++      "ownerPackage": "Aspire",
++      "start": 5000,
++      "end": 5999
++    }
++  ],
++  "externalBoundaries": [
++    "Hexalith.EventStore",
++    "Hexalith.Tenants"
++  ],
++  "diagnostics": [
++    {
++      "id": "HFC0001",
++      "ownerPackage": "Contracts",
++      "range": "HFC0001-HFC0999",
++      "title": "HFC0001 Query Request Filter Deprecated",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": "0.2.0",
++      "removedIn": "1.0.0",
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC0001 Query Request Filter Deprecated. Expected: Follow the FrontComposer diagnostic contract for HFC0001. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
++      "docsSlug": "diagnostics/HFC0001",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": "HFC0001",
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1001",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "No [Command] or [Projection] types found",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: No [Command] or [Projection] types found. Expected: Follow the FrontComposer diagnostic contract for HFC1001. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1001",
++      "docsSlug": "diagnostics/HFC1001",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1001",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1002",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Unsupported field type",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Unsupported field type. Expected: Follow the FrontComposer diagnostic contract for HFC1002. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1002",
++      "docsSlug": "diagnostics/HFC1002",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1002",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1003",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Projection type should be partial",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Projection type should be partial. Expected: Follow the FrontComposer diagnostic contract for HFC1003. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1003",
++      "docsSlug": "diagnostics/HFC1003",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1003",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1004",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Projection on unsupported type kind",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Projection on unsupported type kind. Expected: Follow the FrontComposer diagnostic contract for HFC1004. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1004",
++      "docsSlug": "diagnostics/HFC1004",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1004",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1005",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Invalid attribute argument",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Invalid attribute argument. Expected: Follow the FrontComposer diagnostic contract for HFC1005. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1005",
++      "docsSlug": "diagnostics/HFC1005",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1005",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1006",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command missing MessageId property",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command missing MessageId property. Expected: Follow the FrontComposer diagnostic contract for HFC1006. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1006",
++      "docsSlug": "diagnostics/HFC1006",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1006",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1007",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command has too many non-derivable properties",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command has too many non-derivable properties. Expected: Follow the FrontComposer diagnostic contract for HFC1007. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1007",
++      "docsSlug": "diagnostics/HFC1007",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1007",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1008",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[Flags] enum in a single-value UI context",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [Flags] enum in a single-value UI context. Expected: Follow the FrontComposer diagnostic contract for HFC1008. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1008",
++      "docsSlug": "diagnostics/HFC1008",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1008",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1009",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command type has no parameterless constructor",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command type has no parameterless constructor. Expected: Follow the FrontComposer diagnostic contract for HFC1009. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1009",
++      "docsSlug": "diagnostics/HFC1009",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1009",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1010",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Full rebuild or restart required for customization metadata change",
++      "lifecycle": "reserved",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Full rebuild or restart required for customization metadata change. Expected: Follow the FrontComposer diagnostic contract for HFC1010. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1010",
++      "docsSlug": "diagnostics/HFC1010",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1010",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1011",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command exceeds 200-property hard limit",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command exceeds 200-property hard limit. Expected: Follow the FrontComposer diagnostic contract for HFC1011. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1011",
++      "docsSlug": "diagnostics/HFC1011",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1011",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1012",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[DefaultValue] value type does not match property type",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [DefaultValue] value type does not match property type. Expected: Follow the FrontComposer diagnostic contract for HFC1012. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1012",
++      "docsSlug": "diagnostics/HFC1012",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1012",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1013",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "HFC1013 Reserved generator diagnostic placeholder",
++      "lifecycle": "retired",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC1013 is a retired generator diagnostic placeholder. Expected: The ID remains reserved and is not reused. Got: A reference to the retired ID. Fix: Allocate a new SourceTools diagnostic ID and keep HFC1013 documented. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1013",
++      "docsSlug": "diagnostics/HFC1013",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1013",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "retired-placeholder",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1014",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Nested [Command] type is unsupported",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Nested [Command] type is unsupported. Expected: Follow the FrontComposer diagnostic contract for HFC1014. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1014",
++      "docsSlug": "diagnostics/HFC1014",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1014",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1015",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "RenderMode incompatible with command density",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: RenderMode incompatible with command density. Expected: Follow the FrontComposer diagnostic contract for HFC1015. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1015",
++      "docsSlug": "diagnostics/HFC1015",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1015",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1016",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command non-derivable property is read-only or init-only",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command non-derivable property is read-only or init-only. Expected: Follow the FrontComposer diagnostic contract for HFC1016. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1016",
++      "docsSlug": "diagnostics/HFC1016",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1016",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1017",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command type is generic",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command type is generic. Expected: Follow the FrontComposer diagnostic contract for HFC1017. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1017",
++      "docsSlug": "diagnostics/HFC1017",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1017",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1020",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command appears destructive by name but is missing [Destructive] attribute",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command appears destructive by name but is missing [Destructive] attribute. Expected: Follow the FrontComposer diagnostic contract for HFC1020. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1020",
++      "docsSlug": "diagnostics/HFC1020",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1020",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1021",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Destructive command must have at least one non-derivable property",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Destructive command must have at least one non-derivable property. Expected: Follow the FrontComposer diagnostic contract for HFC1021. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1021",
++      "docsSlug": "diagnostics/HFC1021",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1021",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1022",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "ProjectionRole.WhenState references unknown enum member",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: ProjectionRole.WhenState references unknown enum member. Expected: Follow the FrontComposer diagnostic contract for HFC1022. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1022",
++      "docsSlug": "diagnostics/HFC1022",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1022",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1023",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Dashboard projection rendering is deferred",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Dashboard projection rendering is deferred. Expected: Follow the FrontComposer diagnostic contract for HFC1023. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1023",
++      "docsSlug": "diagnostics/HFC1023",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1023",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1024",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Unknown ProjectionRole value",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Unknown ProjectionRole value. Expected: Follow the FrontComposer diagnostic contract for HFC1024. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1024",
++      "docsSlug": "diagnostics/HFC1024",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1024",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1025",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Projection enum has partial [ProjectionBadge] coverage",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Projection enum has partial [ProjectionBadge] coverage. Expected: Follow the FrontComposer diagnostic contract for HFC1025. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1025",
++      "docsSlug": "diagnostics/HFC1025",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1025",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1026",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Color-only badge detected (reserved)",
++      "lifecycle": "reserved",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Color-only badge detected (reserved). Expected: Follow the FrontComposer diagnostic contract for HFC1026. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1026",
++      "docsSlug": "diagnostics/HFC1026",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1026",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1027",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Collection column does not support automatic filtering",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Collection column does not support automatic filtering. Expected: Follow the FrontComposer diagnostic contract for HFC1027. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1027",
++      "docsSlug": "diagnostics/HFC1027",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1027",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1028",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[ColumnPriority] collision on projection",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [ColumnPriority] collision on projection. Expected: Follow the FrontComposer diagnostic contract for HFC1028. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1028",
++      "docsSlug": "diagnostics/HFC1028",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1028",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1029",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Projection exceeds 15 columns — FcColumnPrioritizer activates",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Projection exceeds 15 columns — FcColumnPrioritizer activates. Expected: Follow the FrontComposer diagnostic contract for HFC1029. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1029",
++      "docsSlug": "diagnostics/HFC1029",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1029",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1030",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[ProjectionFieldGroup] name collides with reserved catch-all label",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [ProjectionFieldGroup] name collides with reserved catch-all label. Expected: Follow the FrontComposer diagnostic contract for HFC1030. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1030",
++      "docsSlug": "diagnostics/HFC1030",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1030",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1031",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[ProjectionFieldGroup] is ignored for the projection role",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [ProjectionFieldGroup] is ignored for the projection role. Expected: Follow the FrontComposer diagnostic contract for HFC1031. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1031",
++      "docsSlug": "diagnostics/HFC1031",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1031",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1032",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Invalid Level 1 format annotation",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Invalid Level 1 format annotation. Expected: Follow the FrontComposer diagnostic contract for HFC1032. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1032",
++      "docsSlug": "diagnostics/HFC1032",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1032",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1033",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[ProjectionTemplate] references an invalid projection type",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [ProjectionTemplate] references an invalid projection type. Expected: Follow the FrontComposer diagnostic contract for HFC1033. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1033",
++      "docsSlug": "diagnostics/HFC1033",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1033",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1034",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[ProjectionTemplate] component is not a valid typed template component",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [ProjectionTemplate] component is not a valid typed template component. Expected: Follow the FrontComposer diagnostic contract for HFC1034. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1034",
++      "docsSlug": "diagnostics/HFC1034",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1034",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1035",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[ProjectionTemplate] contract version is incompatible",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [ProjectionTemplate] contract version is incompatible. Expected: Follow the FrontComposer diagnostic contract for HFC1035. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1035",
++      "docsSlug": "diagnostics/HFC1035",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1035",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1036",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "[ProjectionTemplate] contract version is out of date",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: [ProjectionTemplate] contract version is out of date. Expected: Follow the FrontComposer diagnostic contract for HFC1036. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1036",
++      "docsSlug": "diagnostics/HFC1036",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1036",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1037",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Duplicate [ProjectionTemplate] for the same projection and role",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Duplicate [ProjectionTemplate] for the same projection and role. Expected: Follow the FrontComposer diagnostic contract for HFC1037. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1037",
++      "docsSlug": "diagnostics/HFC1037",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1037",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1038",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Invalid Level 3 slot selector",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Invalid Level 3 slot selector. Expected: Follow the FrontComposer diagnostic contract for HFC1038. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1038",
++      "docsSlug": "diagnostics/HFC1038",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1038",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1039",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Invalid Level 3 slot component",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Invalid Level 3 slot component. Expected: Follow the FrontComposer diagnostic contract for HFC1039. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1039",
++      "docsSlug": "diagnostics/HFC1039",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1039",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1040",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Duplicate Level 3 slot override",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Duplicate Level 3 slot override. Expected: Follow the FrontComposer diagnostic contract for HFC1040. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1040",
++      "docsSlug": "diagnostics/HFC1040",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1040",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1041",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Level 3 slot contract version is incompatible",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Level 3 slot contract version is incompatible. Expected: Follow the FrontComposer diagnostic contract for HFC1041. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1041",
++      "docsSlug": "diagnostics/HFC1041",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1041",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1042",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Invalid Level 4 view override projection type",
++      "lifecycle": "reserved",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Invalid Level 4 view override projection type. Expected: Follow the FrontComposer diagnostic contract for HFC1042. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1042",
++      "docsSlug": "diagnostics/HFC1042",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1042",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1043",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Invalid Level 4 view override component",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Invalid Level 4 view override component. Expected: Follow the FrontComposer diagnostic contract for HFC1043. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1043",
++      "docsSlug": "diagnostics/HFC1043",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1043",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1044",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Duplicate Level 4 view override",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Duplicate Level 4 view override. Expected: Follow the FrontComposer diagnostic contract for HFC1044. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1044",
++      "docsSlug": "diagnostics/HFC1044",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1044",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1045",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Level 4 view override contract version is incompatible",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Level 4 view override contract version is incompatible. Expected: Follow the FrontComposer diagnostic contract for HFC1045. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1045",
++      "docsSlug": "diagnostics/HFC1045",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1045",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1046",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Level 4 view override accessibility contract warning",
++      "lifecycle": "reserved",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Level 4 view override accessibility contract warning. Expected: Follow the FrontComposer diagnostic contract for HFC1046. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1046",
++      "docsSlug": "diagnostics/HFC1046",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1046",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC1047",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Invalid dev-mode annotation site",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Invalid dev-mode annotation site. Expected: Follow the FrontComposer diagnostic contract for HFC1047. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1047",
++      "docsSlug": "diagnostics/HFC1047",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1047",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
++    },
++    {
++      "id": "HFC1048",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Unsupported dev-mode starter emission level",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Unsupported dev-mode starter emission level. Expected: Follow the FrontComposer diagnostic contract for HFC1048. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1048",
++      "docsSlug": "diagnostics/HFC1048",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1048",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
++    },
++    {
++      "id": "HFC1049",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Dev-mode starter contract metadata is stale",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Info",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Dev-mode starter contract metadata is stale. Expected: Follow the FrontComposer diagnostic contract for HFC1049. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1049",
++      "docsSlug": "diagnostics/HFC1049",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1049",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
++    },
++    {
++      "id": "HFC1050",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Custom override interactive element is missing an accessible name",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Custom override interactive element is missing an accessible name. Expected: Follow the FrontComposer diagnostic contract for HFC1050. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1050",
++      "docsSlug": "diagnostics/HFC1050",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1050",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC1051",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Custom override has a keyboard reachability issue",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Custom override has a keyboard reachability issue. Expected: Follow the FrontComposer diagnostic contract for HFC1051. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1051",
++      "docsSlug": "diagnostics/HFC1051",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1051",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC1052",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Custom override suppresses focus visibility",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Custom override suppresses focus visibility. Expected: Follow the FrontComposer diagnostic contract for HFC1052. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1052",
++      "docsSlug": "diagnostics/HFC1052",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1052",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC1053",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Custom override is missing aria-live parity",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Custom override is missing aria-live parity. Expected: Follow the FrontComposer diagnostic contract for HFC1053. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1053",
++      "docsSlug": "diagnostics/HFC1053",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1053",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC1054",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Custom override motion has no reduced-motion fallback",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Custom override motion has no reduced-motion fallback. Expected: Follow the FrontComposer diagnostic contract for HFC1054. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1054",
++      "docsSlug": "diagnostics/HFC1054",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1054",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC1055",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Custom override color styling has no forced-colors fallback",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Custom override color styling has no forced-colors fallback. Expected: Follow the FrontComposer diagnostic contract for HFC1055. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1055",
++      "docsSlug": "diagnostics/HFC1055",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1055",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC1056",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command authorization policy is invalid",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command authorization policy is invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1056. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1056",
++      "docsSlug": "diagnostics/HFC1056",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1056",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-3-command-authorization-policies"
++    },
++    {
++      "id": "HFC1057",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Command declares duplicate authorization policies",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Command declares duplicate authorization policies. Expected: Follow the FrontComposer diagnostic contract for HFC1057. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1057",
++      "docsSlug": "diagnostics/HFC1057",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1057",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-3-command-authorization-policies"
++    },
++    {
++      "id": "HFC1058",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift baseline is missing",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift baseline is missing. Expected: Follow the FrontComposer diagnostic contract for HFC1058. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1058",
++      "docsSlug": "diagnostics/HFC1058",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1058",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1059",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift baseline path is invalid",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift baseline path is invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1059. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1059",
++      "docsSlug": "diagnostics/HFC1059",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1059",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1060",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift baseline content is invalid",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift baseline content is invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1060. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1060",
++      "docsSlug": "diagnostics/HFC1060",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1060",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1061",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift baseline schema version is unsupported",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift baseline schema version is unsupported. Expected: Follow the FrontComposer diagnostic contract for HFC1061. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1061",
++      "docsSlug": "diagnostics/HFC1061",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1061",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1062",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift baseline algorithm version is unsupported",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift baseline algorithm version is unsupported. Expected: Follow the FrontComposer diagnostic contract for HFC1062. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1062",
++      "docsSlug": "diagnostics/HFC1062",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1062",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1063",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift baseline exceeds configured bounds",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift baseline exceeds configured bounds. Expected: Follow the FrontComposer diagnostic contract for HFC1063. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1063",
++      "docsSlug": "diagnostics/HFC1063",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1063",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1064",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift baseline identity is invalid",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift baseline identity is invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1064. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1064",
++      "docsSlug": "diagnostics/HFC1064",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1064",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1065",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI structural drift detected",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI structural drift detected. Expected: Follow the FrontComposer diagnostic contract for HFC1065. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1065",
++      "docsSlug": "diagnostics/HFC1065",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1065",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1066",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI metadata drift detected",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI metadata drift detected. Expected: Follow the FrontComposer diagnostic contract for HFC1066. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1066",
++      "docsSlug": "diagnostics/HFC1066",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1066",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1067",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift option is invalid",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift option is invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1067. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1067",
++      "docsSlug": "diagnostics/HFC1067",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1067",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1068",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift diagnostics truncated",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift diagnostics truncated. Expected: Follow the FrontComposer diagnostic contract for HFC1068. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1068",
++      "docsSlug": "diagnostics/HFC1068",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1068",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1069",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Generated UI drift diagnostic suppressed for redaction",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Error",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Generated UI drift diagnostic suppressed for redaction. Expected: Follow the FrontComposer diagnostic contract for HFC1069. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1069",
++      "docsSlug": "diagnostics/HFC1069",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1069",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "discouraged-error",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1070",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "Reflection action-queue projection catalog may be trim-incompatible",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": "Warning",
++      "runtimeLogLevel": null,
++      "panelSeverity": null,
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: Reflection action-queue projection catalog may be trim-incompatible. Expected: Follow the FrontComposer diagnostic contract for HFC1070. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1070",
++      "docsSlug": "diagnostics/HFC1070",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1070",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-1-build-time-drift-detection"
++    },
++    {
++      "id": "HFC1601",
++      "ownerPackage": "SourceTools",
++      "range": "HFC1000-HFC1999",
++      "title": "HFC1601 Manifest Invalid",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "diagnostic",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC1601 Manifest Invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1601. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
++      "docsSlug": "diagnostics/HFC1601",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
++      "redactionClass": "source-metadata-only",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC2004",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2004 Invalid Lifecycle Transition Dropped",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2004 Invalid Lifecycle Transition Dropped. Expected: Follow the FrontComposer diagnostic contract for HFC2004. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2004",
++      "docsSlug": "diagnostics/HFC2004",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2004",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2005",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2005 Duplicate Message Id Detected",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2005 Duplicate Message Id Detected. Expected: Follow the FrontComposer diagnostic contract for HFC2005. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2005",
++      "docsSlug": "diagnostics/HFC2005",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2005",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2007",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2007 Transition Without Submitted Observation",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2007 Transition Without Submitted Observation. Expected: Follow the FrontComposer diagnostic contract for HFC2007. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2007",
++      "docsSlug": "diagnostics/HFC2007",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2007",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2010",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2010 Dev Mode Activation Outside Development",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2010 Dev Mode Activation Outside Development. Expected: Follow the FrontComposer diagnostic contract for HFC2010. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2010",
++      "docsSlug": "diagnostics/HFC2010",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2010",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-5-fcdevmodeoverlay-and-starter-template-generator"
++    },
++    {
++      "id": "HFC2011",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2011 Authentication Configuration Invalid",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2011 Authentication Configuration Invalid. Expected: Follow the FrontComposer diagnostic contract for HFC2011. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2011",
++      "docsSlug": "diagnostics/HFC2011",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2011",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-1-oidc-saml-authentication-integration"
++    },
++    {
++      "id": "HFC2012",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2012 Authentication Claim Extraction Failed",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2012 Authentication Claim Extraction Failed. Expected: Follow the FrontComposer diagnostic contract for HFC2012. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2012",
++      "docsSlug": "diagnostics/HFC2012",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2012",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-1-oidc-saml-authentication-integration"
++    },
++    {
++      "id": "HFC2013",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2013 Authentication Token Relay Failed",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2013 Authentication Token Relay Failed. Expected: Follow the FrontComposer diagnostic contract for HFC2013. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2013",
++      "docsSlug": "diagnostics/HFC2013",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2013",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-1-oidc-saml-authentication-integration"
++    },
++    {
++      "id": "HFC2014",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2014 Git Hub Token Exchange Required",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2014 Git Hub Token Exchange Required. Expected: Follow the FrontComposer diagnostic contract for HFC2014. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2014",
++      "docsSlug": "diagnostics/HFC2014",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2014",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-1-oidc-saml-authentication-integration"
++    },
++    {
++      "id": "HFC2015",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2015 Tenant Context Missing",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2015 Tenant Context Missing. Expected: Follow the FrontComposer diagnostic contract for HFC2015. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2015",
++      "docsSlug": "diagnostics/HFC2015",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2015",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-2-tenant-context-propagation-and-isolation"
++    },
++    {
++      "id": "HFC2016",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2016 Tenant Context Malformed Segment",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Warning",
++      "panelSeverity": "Warning",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2016 Tenant Context Malformed Segment. Expected: Follow the FrontComposer diagnostic contract for HFC2016. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2016",
++      "docsSlug": "diagnostics/HFC2016",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2016",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-2-tenant-context-propagation-and-isolation"
++    },
++    {
++      "id": "HFC2017",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2017 Tenant Context Mismatch",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Warning",
++      "panelSeverity": "Warning",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2017 Tenant Context Mismatch. Expected: Follow the FrontComposer diagnostic contract for HFC2017. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2017",
++      "docsSlug": "diagnostics/HFC2017",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2017",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-2-tenant-context-propagation-and-isolation"
++    },
++    {
++      "id": "HFC2018",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2018 Demo Tenant Context Rejected",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Warning",
++      "panelSeverity": "Warning",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2018 Demo Tenant Context Rejected. Expected: Follow the FrontComposer diagnostic contract for HFC2018. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2018",
++      "docsSlug": "diagnostics/HFC2018",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2018",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-2-tenant-context-propagation-and-isolation"
++    },
++    {
++      "id": "HFC2019",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2019 Stale Tenant Context",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2019 Stale Tenant Context. Expected: Follow the FrontComposer diagnostic contract for HFC2019. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2019",
++      "docsSlug": "diagnostics/HFC2019",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2019",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "7-2-tenant-context-propagation-and-isolation"
++    },
++    {
++      "id": "HFC2100",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2100 Unknown Correlation Id",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2100 Unknown Correlation Id. Expected: Follow the FrontComposer diagnostic contract for HFC2100. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2100",
++      "docsSlug": "diagnostics/HFC2100",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2100",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2101",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2101 Idempotency Resolved Observed",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2101 Idempotency Resolved Observed. Expected: Follow the FrontComposer diagnostic contract for HFC2101. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2101",
++      "docsSlug": "diagnostics/HFC2101",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2101",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2102",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2102 Threshold Timer Off UI Thread",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2102 Threshold Timer Off UI Thread. Expected: Follow the FrontComposer diagnostic contract for HFC2102. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2102",
++      "docsSlug": "diagnostics/HFC2102",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2102",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2103",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2103 Abandonment During Submitting",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2103 Abandonment During Submitting. Expected: Follow the FrontComposer diagnostic contract for HFC2103. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2103",
++      "docsSlug": "diagnostics/HFC2103",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2103",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2104",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2104 Idempotent Info Bar Rendered",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2104 Idempotent Info Bar Rendered. Expected: Follow the FrontComposer diagnostic contract for HFC2104. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2104",
++      "docsSlug": "diagnostics/HFC2104",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2104",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "2-4-fclifecyclewrapper-visual-lifecycle-feedback"
++    },
++    {
++      "id": "HFC2105",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2105 Storage Persistence Skipped",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2105 Storage Persistence Skipped. Expected: Follow the FrontComposer diagnostic contract for HFC2105. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2105",
++      "docsSlug": "diagnostics/HFC2105",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2105",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-1-shell-layout-theme-and-typography"
++    },
++    {
++      "id": "HFC2106",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2106 Theme Hydration Empty",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2106 Theme Hydration Empty. Expected: Follow the FrontComposer diagnostic contract for HFC2106. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2106",
++      "docsSlug": "diagnostics/HFC2106",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2106",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-1-shell-layout-theme-and-typography"
++    },
++    {
++      "id": "HFC2107",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2107 Navigation Hydration Empty",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2107 Navigation Hydration Empty. Expected: Follow the FrontComposer diagnostic contract for HFC2107. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2107",
++      "docsSlug": "diagnostics/HFC2107",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2107",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-1-shell-layout-theme-and-typography"
++    },
++    {
++      "id": "HFC2108",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2108 Shortcut Conflict",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2108 Shortcut Conflict. Expected: Follow the FrontComposer diagnostic contract for HFC2108. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2108",
++      "docsSlug": "diagnostics/HFC2108",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2108",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-4-fccommandpalette-and-keyboard-shortcuts"
++    },
++    {
++      "id": "HFC2109",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2109 Shortcut Handler Fault",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2109 Shortcut Handler Fault. Expected: Follow the FrontComposer diagnostic contract for HFC2109. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2109",
++      "docsSlug": "diagnostics/HFC2109",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2109",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-4-fccommandpalette-and-keyboard-shortcuts"
++    },
++    {
++      "id": "HFC2110",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2110 Palette Scoring Fault",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2110 Palette Scoring Fault. Expected: Follow the FrontComposer diagnostic contract for HFC2110. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2110",
++      "docsSlug": "diagnostics/HFC2110",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2110",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-4-fccommandpalette-and-keyboard-shortcuts"
++    },
++    {
++      "id": "HFC2111",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2111 Palette Hydration Empty",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2111 Palette Hydration Empty. Expected: Follow the FrontComposer diagnostic contract for HFC2111. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2111",
++      "docsSlug": "diagnostics/HFC2111",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2111",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-4-fccommandpalette-and-keyboard-shortcuts"
++    },
++    {
++      "id": "HFC2112",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2112 Badge Initial Fetch Fault",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2112 Badge Initial Fetch Fault. Expected: Follow the FrontComposer diagnostic contract for HFC2112. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2112",
++      "docsSlug": "diagnostics/HFC2112",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2112",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-5-home-directory-badge-counts-and-new-capability-discovery"
++    },
++    {
++      "id": "HFC2113",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2113 Projection Type Unresolvable",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2113 Projection Type Unresolvable. Expected: Follow the FrontComposer diagnostic contract for HFC2113. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2113",
++      "docsSlug": "diagnostics/HFC2113",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2113",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-5-home-directory-badge-counts-and-new-capability-discovery"
++    },
++    {
++      "id": "HFC2114",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2114 Data Grid Hydration Empty",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2114 Data Grid Hydration Empty. Expected: Follow the FrontComposer diagnostic contract for HFC2114. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2114",
++      "docsSlug": "diagnostics/HFC2114",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2114",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "3-6-session-persistence-and-context-restoration"
++    },
++    {
++      "id": "HFC2115",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2115 Customization Override Render Fault",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2115 Customization Override Render Fault. Expected: Follow the FrontComposer diagnostic contract for HFC2115. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2115",
++      "docsSlug": "diagnostics/HFC2115",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2115",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC2116",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2116 Customization Stale Descriptor Manifest",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2116 Customization Stale Descriptor Manifest. Expected: Follow the FrontComposer diagnostic contract for HFC2116. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2116",
++      "docsSlug": "diagnostics/HFC2116",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2116",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC2117",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2117 Customization Panel Recovery Failure",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2117 Customization Panel Recovery Failure. Expected: Follow the FrontComposer diagnostic contract for HFC2117. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2117",
++      "docsSlug": "diagnostics/HFC2117",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2117",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC2118",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2118 Customization Runtime Accessibility Fallback",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2118 Customization Runtime Accessibility Fallback. Expected: Follow the FrontComposer diagnostic contract for HFC2118. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2118",
++      "docsSlug": "diagnostics/HFC2118",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2118",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC2119",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2119 Customization Redaction Fallback",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2119 Customization Redaction Fallback. Expected: Follow the FrontComposer diagnostic contract for HFC2119. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2119",
++      "docsSlug": "diagnostics/HFC2119",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2119",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "6-6-build-time-validation-error-boundaries-and-diagnostics"
++    },
++    {
++      "id": "HFC2120",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2120 Projection Slot Host Missing Parameter",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2120 Projection Slot Host Missing Parameter. Expected: Follow the FrontComposer diagnostic contract for HFC2120. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2120",
++      "docsSlug": "diagnostics/HFC2120",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2120",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC2121",
++      "ownerPackage": "Shell",
++      "range": "HFC2000-HFC2999",
++      "title": "HFC2121 Projection View Override Render Fault",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": null,
++      "removedIn": null,
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Error",
++      "panelSeverity": "Error",
++      "cliExitBehavior": "blocking",
++      "mcpCategory": null,
++      "messageTemplate": "What: HFC2121 Projection View Override Render Fault. Expected: Follow the FrontComposer diagnostic contract for HFC2121. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC2121",
++      "docsSlug": "diagnostics/HFC2121",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC2121",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": null,
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    },
++    {
++      "id": "HFC4001",
++      "ownerPackage": "Mcp",
++      "range": "HFC4000-HFC4999",
++      "title": "HFC4001 Mcp Compatible Additive Drift Deprecated",
++      "lifecycle": "active",
++      "introducedIn": "0.1.0",
++      "deprecatedIn": "0.2.0",
++      "removedIn": "1.0.0",
++      "compilerSeverity": null,
++      "runtimeLogLevel": "Information",
++      "panelSeverity": "Information",
++      "cliExitBehavior": "non-blocking",
++      "mcpCategory": "schema-deprecation",
++      "messageTemplate": "What: HFC4001 Mcp Compatible Additive Drift Deprecated. Expected: Follow the FrontComposer diagnostic contract for HFC4001. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC4001",
++      "docsSlug": "diagnostics/HFC4001",
++      "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC4001",
++      "redactionClass": "runtime-sanitized",
++      "suppressionPolicy": "allowed-with-rationale",
++      "releaseRow": "runtime-only",
++      "migrationId": "HFC4001",
++      "relatedIds": [],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/compatibility-drift-report.json b/docs/diagnostics/samples/compatibility-drift-report.json
+new file mode 100644
+index 0000000..79ffb44
+--- /dev/null
++++ b/docs/diagnostics/samples/compatibility-drift-report.json
+@@ -0,0 +1,23 @@
++{
++  "schemaVersion": "1.0",
++  "category": "compatibility-drift",
++  "exitCode": 2,
++  "inputs": {
++    "packageId": "Hexalith.FrontComposer.Schema",
++    "tfm": "netstandard2.0",
++    "currentAssembly": "src/Hexalith.FrontComposer.Schema/bin/Release/netstandard2.0/Hexalith.FrontComposer.Schema.dll",
++    "baselineSource": "checked-in-or-restored-package-baseline",
++    "baselineVersion": "0.1.0",
++    "suppressionFile": "docs/diagnostics/compatibility-suppressions.json",
++    "validator": "dotnet-package-validation"
++  },
++  "findings": [
++    {
++      "reason": "binary-breaking-change",
++      "oldSignature": "Hexalith.FrontComposer.Schema.SchemaBaselineSnapshot::get_Entries()",
++      "newState": "removed",
++      "hfcId": "HFC0001",
++      "message": "Public API removal requires a major version and checked-in suppression evidence."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/docs-stub-drift-report.json b/docs/diagnostics/samples/docs-stub-drift-report.json
+new file mode 100644
+index 0000000..8c20969
+--- /dev/null
++++ b/docs/diagnostics/samples/docs-stub-drift-report.json
+@@ -0,0 +1,17 @@
++{
++  "schemaVersion": "1.0",
++  "category": "docs-stub-drift",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json",
++    "docsRoot": "docs/diagnostics"
++  },
++  "findings": [
++    {
++      "id": "HFC1058",
++      "reason": "missing-docs-stub",
++      "expectedPath": "docs/diagnostics/HFC1058.md",
++      "message": "Registry slug diagnostics/HFC1058 does not resolve to a checked-in stub."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/registry-drift-report.json b/docs/diagnostics/samples/registry-drift-report.json
+new file mode 100644
+index 0000000..3f1370f
+--- /dev/null
++++ b/docs/diagnostics/samples/registry-drift-report.json
+@@ -0,0 +1,18 @@
++{
++  "schemaVersion": "1.0",
++  "category": "registry-drift",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json",
++    "sourceRoot": "src",
++    "submodulePolicy": "exclude-root-level-external-boundaries"
++  },
++  "findings": [
++    {
++      "id": "HFC9999",
++      "reason": "out-of-range-id",
++      "path": "src/Example/Example.cs",
++      "message": "Diagnostic ID HFC9999 is outside the FrontComposer package ownership table."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/release-row-drift-report.json b/docs/diagnostics/samples/release-row-drift-report.json
+new file mode 100644
+index 0000000..ee0823e
+--- /dev/null
++++ b/docs/diagnostics/samples/release-row-drift-report.json
+@@ -0,0 +1,20 @@
++{
++  "schemaVersion": "1.0",
++  "category": "release-row-drift",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json",
++    "releaseFiles": [
++      "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
++      "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Shipped.md",
++      "src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md"
++    ]
++  },
++  "findings": [
++    {
++      "id": "HFC1058",
++      "reason": "missing-release-row",
++      "message": "Analyzer-emitted diagnostic HFC1058 is active in the registry but absent from release tracking."
++    }
++  ]
++}
+diff --git a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+index 848f3ea..6bcb8ee 100644
+--- a/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
++++ b/src/Hexalith.FrontComposer.Contracts/Diagnostics/FcDiagnosticIds.cs
+@@ -9,6 +9,11 @@ namespace Hexalith.FrontComposer.Contracts.Diagnostics;
+ /// additional runtime-log codes are allocated in subsequent stories.
+ /// </remarks>
+ public static class FcDiagnosticIds {
++    /// <summary>
++    /// Deprecation: <c>QueryRequest.Filter</c> is replaced by <c>QueryRequest.ColumnFilters</c>.
++    /// </summary>
++    public const string HFC0001_QueryRequestFilterDeprecated = "HFC0001";
++
+     /// <summary>
+     /// Build-time Information: a customization metadata or descriptor edit requires a full rebuild/restart.
+     /// </summary>
+@@ -267,6 +272,16 @@ public static class FcDiagnosticIds {
+     /// </summary>
+     public const string HFC1055_CustomizationForcedColorsMissing = "HFC1055";
+ 
++    /// <summary>
++    /// Build-time Error: a command authorization policy value is invalid.
++    /// </summary>
++    public const string HFC1056_CommandAuthorizationPolicyInvalid = "HFC1056";
++
++    /// <summary>
++    /// Build-time Error: a command declares duplicate authorization policies.
++    /// </summary>
++    public const string HFC1057_CommandAuthorizationPolicyDuplicate = "HFC1057";
++
+     /// <summary>
+     /// Build-time Warning: drift detection is enabled but no trusted generated UI baseline is available.
+     /// </summary>
+@@ -332,6 +347,21 @@ public static class FcDiagnosticIds {
+     /// </summary>
+     public const string HFC1070_TrimAotReflectionCatalogWarning = "HFC1070";
+ 
++    /// <summary>
++    /// Runtime Warning: invalid lifecycle transition dropped to preserve the one-terminal-outcome invariant.
++    /// </summary>
++    public const string HFC2004_InvalidLifecycleTransitionDropped = "HFC2004";
++
++    /// <summary>
++    /// Runtime Information: duplicate MessageId was detected across CorrelationIds and treated as fresh submission.
++    /// </summary>
++    public const string HFC2005_DuplicateMessageIdDetected = "HFC2005";
++
++    /// <summary>
++    /// Runtime Information: transition arrived for a CorrelationId without a prior Submitted observation.
++    /// </summary>
++    public const string HFC2007_TransitionWithoutSubmittedObservation = "HFC2007";
++
+     /// <summary>Wrapper received a transition for an unknown CorrelationId (subscribe-after-terminal-cleanup race).</summary>
+     public const string HFC2100_UnknownCorrelationId = "HFC2100";
+ 
+@@ -548,4 +578,9 @@ public static class FcDiagnosticIds {
+     /// changed after the operation snapshot was accepted.
+     /// </summary>
+     public const string HFC2019_StaleTenantContext = "HFC2019";
++
++    /// <summary>
++    /// Deprecation: MCP schema negotiation no longer consults the legacy additive-drift flag.
++    /// </summary>
++    public const string HFC4001_McpCompatibleAdditiveDriftDeprecated = "HFC4001";
+ }
+diff --git a/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md b/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md
+index df89b53..2047878 100644
+--- a/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md
++++ b/src/Hexalith.FrontComposer.Shell/AnalyzerReleases.Unshipped.md
+@@ -9,6 +9,9 @@
+ Rule ID | Category | Severity | Notes
+ --------|----------|----------|-------
+ HFC1601 | HexalithFrontComposer | Error       | Command manifest registration is invalid at startup (FrontComposerRegistry.ValidateManifests; Story 3-4 D21 placeholder — see `FrontComposerRegistry.HasFullPageRoute` XML doc for the documented-placeholder status)
++HFC2004 | HexalithFrontComposer | Warning     | Invalid lifecycle transition dropped to preserve the one-terminal-outcome invariant (Story 2-4 lifecycle state service)
++HFC2005 | HexalithFrontComposer | Information | Duplicate MessageId detected across CorrelationIds and treated as a fresh submission (Story 2-4 lifecycle state service)
++HFC2007 | HexalithFrontComposer | Information | Transition arrived for a CorrelationId without a prior Submitted observation (Story 2-4 lifecycle state service)
+ HFC2108 | HexalithFrontComposer | Information | Duplicate shortcut registration replaced (last-writer-wins semantics per Story 3-4 D3; emitted by `ShortcutService.Register`)
+ HFC2109 | HexalithFrontComposer | Warning     | Registered shortcut handler threw (Story 3-4 D1; emitted by `ShortcutService.TryInvokeBindingAsync` — exception is caught so it does not bubble to the Blazor error boundary)
+ HFC2110 | HexalithFrontComposer | Warning     | Palette scoring fault — registry enumeration or per-manifest scoring threw (Story 3-4 ADR-043; emitted by `CommandPaletteEffects.HandlePaletteQueryChanged`)
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+index 7cb5be6..fdd8af4 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+@@ -6,10 +6,29 @@ namespace Hexalith.FrontComposer.SourceTools.Diagnostics;
+ /// Diagnostic descriptors for the FrontComposer source generator (HFC1000-1999).
+ /// </summary>
+ public static class DiagnosticDescriptors {
++    private const string DocsLinkPrefix = "https://hexalith.github.io/FrontComposer/diagnostics/";
++
++    private static DiagnosticDescriptor Create(
++        string id,
++        string title,
++        string messageFormat,
++        string category,
++        DiagnosticSeverity defaultSeverity,
++        bool isEnabledByDefault,
++        string? helpLinkUri = null)
++        => new(
++            id,
++            title,
++            messageFormat,
++            category,
++            defaultSeverity,
++            isEnabledByDefault,
++            helpLinkUri: DocsLinkPrefix + id);
++
+     /// <summary>
+     /// HFC1001: No [Command] or [Projection] types found in compilation.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor NoAnnotatedTypesFound = new(
++    public static readonly DiagnosticDescriptor NoAnnotatedTypesFound = Create(
+         id: "HFC1001",
+         title: "No [Command] or [Projection] types found",
+         messageFormat: "{0}",
+@@ -20,7 +39,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1002: Unsupported field type in [Projection].
+     /// </summary>
+-    public static readonly DiagnosticDescriptor UnsupportedFieldType = new(
++    public static readonly DiagnosticDescriptor UnsupportedFieldType = Create(
+         id: "HFC1002",
+         title: "Unsupported field type",
+         messageFormat: "{0}",
+@@ -31,7 +50,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1003: Projection type should be partial.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionShouldBePartial = new(
++    public static readonly DiagnosticDescriptor ProjectionShouldBePartial = Create(
+         id: "HFC1003",
+         title: "Projection type should be partial",
+         messageFormat: "{0}",
+@@ -42,7 +61,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1004: Projection on unsupported type kind.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor UnsupportedTypeKind = new(
++    public static readonly DiagnosticDescriptor UnsupportedTypeKind = Create(
+         id: "HFC1004",
+         title: "Projection on unsupported type kind",
+         messageFormat: "{0}",
+@@ -53,7 +72,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1005: Invalid attribute argument.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor InvalidAttributeArgument = new(
++    public static readonly DiagnosticDescriptor InvalidAttributeArgument = Create(
+         id: "HFC1005",
+         title: "Invalid attribute argument",
+         messageFormat: "{0}",
+@@ -64,7 +83,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1006: [Command] type is missing a <c>MessageId</c> property (required for correlation).
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandMissingMessageId = new(
++    public static readonly DiagnosticDescriptor CommandMissingMessageId = Create(
+         id: "HFC1006",
+         title: "Command missing MessageId property",
+         messageFormat: "{0}",
+@@ -76,7 +95,7 @@ public static class DiagnosticDescriptors {
+     /// HFC1007: [Command] type has an excessive number of non-derivable properties (DoS mitigation).
+     /// Warning at &gt; 30 properties; error at &gt; 100.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandTooManyProperties = new(
++    public static readonly DiagnosticDescriptor CommandTooManyProperties = Create(
+         id: "HFC1007",
+         title: "Command has too many non-derivable properties",
+         messageFormat: "{0}",
+@@ -95,7 +114,7 @@ public static class DiagnosticDescriptors {
+     /// cannot render compound state. The column falls through to the Story 1-5 plain-text path;
+     /// adopters needing compound rendering take the Epic 6 Slot-level customization path.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandFlagsEnumProperty = new(
++    public static readonly DiagnosticDescriptor CommandFlagsEnumProperty = Create(
+         id: "HFC1008",
+         title: "[Flags] enum in a single-value UI context",
+         messageFormat: "{0}",
+@@ -105,10 +124,10 @@ public static class DiagnosticDescriptors {
+ 
+     /// <summary>
+     /// HFC1009: [Command] type has no public parameterless constructor. The generated form initialises
+-    /// <c>_model = new()</c>, which fails to compile for positional records and for classes without a default ctor.
++    /// <c>_model = Create()</c>, which fails to compile for positional records and for classes without a default ctor.
+     /// Add a parameterless ctor, or provide defaults on every positional parameter.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandMissingParameterlessCtor = new(
++    public static readonly DiagnosticDescriptor CommandMissingParameterlessCtor = Create(
+         id: "HFC1009",
+         title: "Command type has no parameterless constructor",
+         messageFormat: "{0}",
+@@ -119,7 +138,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1010: A customization metadata or descriptor edit requires a full rebuild/restart.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor FullRebuildRequired = new(
++    public static readonly DiagnosticDescriptor FullRebuildRequired = Create(
+         id: "HFC1010",
+         title: "Full rebuild or restart required for customization metadata change",
+         messageFormat: "{0}",
+@@ -131,7 +150,7 @@ public static class DiagnosticDescriptors {
+     /// HFC1011: [Command] type exceeds the hard 200-property limit (DoS mitigation for Story 2-2).
+     /// Total public-property count (derivable + non-derivable) greater than 200 is rejected.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandTooManyTotalProperties = new(
++    public static readonly DiagnosticDescriptor CommandTooManyTotalProperties = Create(
+         id: "HFC1011",
+         title: "Command exceeds 200-property hard limit",
+         messageFormat: "{0}",
+@@ -142,7 +161,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1012: <c>[DefaultValue(x)]</c> argument type is not assignable to the decorated property's type.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor DefaultValueTypeMismatch = new(
++    public static readonly DiagnosticDescriptor DefaultValueTypeMismatch = Create(
+         id: "HFC1012",
+         title: "[DefaultValue] value type does not match property type",
+         messageFormat: "{0}",
+@@ -155,7 +174,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1014: Nested <c>[Command]</c> types are unsupported. Command types must be top-level within a namespace.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor NestedCommandUnsupported = new(
++    public static readonly DiagnosticDescriptor NestedCommandUnsupported = Create(
+         id: "HFC1014",
+         title: "Nested [Command] type is unsupported",
+         messageFormat: "{0}",
+@@ -169,7 +188,7 @@ public static class DiagnosticDescriptors {
+     /// in Story 2-2; analyzer emission deferred to Epic 9. (Renumbered from originally-proposed
+     /// HFC1008 to avoid collision with <see cref="CommandFlagsEnumProperty"/>.)
+     /// </summary>
+-    public static readonly DiagnosticDescriptor RenderModeIncompatibleWithDensity = new(
++    public static readonly DiagnosticDescriptor RenderModeIncompatibleWithDensity = Create(
+         id: "HFC1015",
+         title: "RenderMode incompatible with command density",
+         messageFormat: "{0}",
+@@ -184,7 +203,7 @@ public static class DiagnosticDescriptors {
+     /// or hand-authored <c>{ get; init; }</c> / <c>{ get; }</c> properties fail to compile.
+     /// Change to <c>{ get; set; }</c> or mark the property with <c>[DerivedFrom]</c>.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandPropertyNotWritable = new(
++    public static readonly DiagnosticDescriptor CommandPropertyNotWritable = Create(
+         id: "HFC1016",
+         title: "Command non-derivable property is read-only or init-only",
+         messageFormat: "{0}",
+@@ -199,7 +218,7 @@ public static class DiagnosticDescriptors {
+     /// subscribed via <c>IActionSubscriber.SubscribeToAction&lt;T&gt;</c>. Specialise the type or
+     /// remove the type parameters.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandTypeIsGeneric = new(
++    public static readonly DiagnosticDescriptor CommandTypeIsGeneric = Create(
+         id: "HFC1017",
+         title: "Command type is generic",
+         messageFormat: "{0}",
+@@ -215,7 +234,7 @@ public static class DiagnosticDescriptors {
+     /// blockers for codebases with pre-existing non-destructive <c>Remove*</c> / <c>Delete*</c>
+     /// commands; promotion to Warning + suppression escape hatch ship in Story 9-4.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor DestructiveNamePatternMissingAttribute = new(
++    public static readonly DiagnosticDescriptor DestructiveNamePatternMissingAttribute = Create(
+         id: "HFC1020",
+         title: "Command appears destructive by name but is missing [Destructive] attribute",
+         messageFormat: "{0}",
+@@ -229,7 +248,7 @@ public static class DiagnosticDescriptors {
+     /// non-derivable field (UX-DR36 — danger never inline on DataGrid rows). Story 2-5
+     /// Decision D1 / AC4.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor DestructiveCommandHasZeroFields = new(
++    public static readonly DiagnosticDescriptor DestructiveCommandHasZeroFields = Create(
+         id: "HFC1021",
+         title: "Destructive command must have at least one non-derivable property",
+         messageFormat: "{0}",
+@@ -243,7 +262,7 @@ public static class DiagnosticDescriptors {
+     /// Warning severity — member is passed through to the IR and will silently never match
+     /// at runtime. Fix: correct the typo or remove the invalid member from the CSV.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionWhenStateMemberUnknown = new(
++    public static readonly DiagnosticDescriptor ProjectionWhenStateMemberUnknown = Create(
+         id: "HFC1022",
+         title: "ProjectionRole.WhenState references unknown enum member",
+         messageFormat: "{0}",
+@@ -256,7 +275,7 @@ public static class DiagnosticDescriptors {
+     /// DataGrid rendering in v1 (Story 4-1 D16 / D17 / AC10). Information severity — feature
+     /// reserved, not broken; full Dashboard rendering deferred to Story 6-3.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionRoleDashboardFallback = new(
++    public static readonly DiagnosticDescriptor ProjectionRoleDashboardFallback = Create(
+         id: "HFC1023",
+         title: "Dashboard projection rendering is deferred",
+         messageFormat: "{0}",
+@@ -270,7 +289,7 @@ public static class DiagnosticDescriptors {
+     /// enum (Story 4-1 D15 / D17 / AC7). Warning severity — renderer falls back to Default
+     /// rendering. Fix: correct the unsafe cast at the attribute call site.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor UnknownProjectionRoleValue = new(
++    public static readonly DiagnosticDescriptor UnknownProjectionRoleValue = Create(
+         id: "HFC1024",
+         title: "Unknown ProjectionRole value",
+         messageFormat: "{0}",
+@@ -285,7 +304,7 @@ public static class DiagnosticDescriptors {
+     /// fall back to humanized text. Fix: annotate every member or none for visual
+     /// consistency. Per-view deduped: one diagnostic per (projection, enum) pair.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor BadgeSlotFallbackApplied = new(
++    public static readonly DiagnosticDescriptor BadgeSlotFallbackApplied = Create(
+         id: "HFC1025",
+         title: "Projection enum has partial [ProjectionBadge] coverage",
+         messageFormat: "{0}",
+@@ -300,7 +319,7 @@ public static class DiagnosticDescriptors {
+     /// diagnostic for adopter-authored custom badges (Epic 6 override path) without
+     /// re-opening the diagnostic table. No call sites in Story 4-2.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ColorOnlyBadgeDetected = new(
++    public static readonly DiagnosticDescriptor ColorOnlyBadgeDetected = Create(
+         id: "HFC1026",
+         title: "Color-only badge detected (reserved)",
+         messageFormat: "{0}",
+@@ -315,7 +334,7 @@ public static class DiagnosticDescriptors {
+     /// Epic 6 Slot-level customization path. Per-projection deduped: one diagnostic per
+     /// projection type regardless of how many Collection columns it carries.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CollectionColumnNotFilterable = new(
++    public static readonly DiagnosticDescriptor CollectionColumnNotFilterable = Create(
+         id: "HFC1027",
+         title: "Collection column does not support automatic filtering",
+         messageFormat: "{0}",
+@@ -329,7 +348,7 @@ public static class DiagnosticDescriptors {
+     /// succeeds; the deterministic fallback is declaration order within the tied priority.
+     /// Fire once per colliding priority value per projection type (per-projection dedupe).
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ColumnPriorityCollision = new(
++    public static readonly DiagnosticDescriptor ColumnPriorityCollision = Create(
+         id: "HFC1028",
+         title: "[ColumnPriority] collision on projection",
+         messageFormat: "{0}",
+@@ -344,7 +363,7 @@ public static class DiagnosticDescriptors {
+     /// gear affordance. Fire once per projection type (per-projection dedupe). Annotate columns
+     /// with <c>[ColumnPriority]</c> to control which 10 stay visible by default.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ColumnPrioritizerActivated = new(
++    public static readonly DiagnosticDescriptor ColumnPrioritizerActivated = Create(
+         id: "HFC1029",
+         title: "Projection exceeds 15 columns — FcColumnPrioritizer activates",
+         messageFormat: "{0}",
+@@ -360,7 +379,7 @@ public static class DiagnosticDescriptors {
+     /// unusual but not broken). Fire once per projection type with all colliding group
+     /// names listed (per-projection dedupe). Fix: rename the group.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor FieldGroupNameCollidesWithCatchAll = new(
++    public static readonly DiagnosticDescriptor FieldGroupNameCollidesWithCatchAll = Create(
+         id: "HFC1030",
+         title: "[ProjectionFieldGroup] name collides with reserved catch-all label",
+         messageFormat: "{0}",
+@@ -376,7 +395,7 @@ public static class DiagnosticDescriptors {
+     /// type (per-projection dedupe). Fix: remove the annotations or change the projection
+     /// role to Default / DetailRecord / ActionQueue / StatusOverview / Dashboard.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor FieldGroupIgnoredForNonDetailRole = new(
++    public static readonly DiagnosticDescriptor FieldGroupIgnoredForNonDetailRole = Create(
+         id: "HFC1031",
+         title: "[ProjectionFieldGroup] is ignored for the projection role",
+         messageFormat: "{0}",
+@@ -389,7 +408,7 @@ public static class DiagnosticDescriptors {
+     /// conflicts with another mutually-exclusive format annotation. Warning severity —
+     /// generated code remains fail-soft and falls back to the existing default formatter.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor Level1FormatAnnotationInvalid = new(
++    public static readonly DiagnosticDescriptor Level1FormatAnnotationInvalid = Create(
+         id: "HFC1032",
+         title: "Invalid Level 1 format annotation",
+         messageFormat: "{0}",
+@@ -403,7 +422,7 @@ public static class DiagnosticDescriptors {
+     /// <c>[Projection]</c> (Story 6-2 T3 / AC6). Error severity — the marker is excluded
+     /// from the generated manifest so runtime selection cannot pick it.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionTemplateInvalidProjectionType = new(
++    public static readonly DiagnosticDescriptor ProjectionTemplateInvalidProjectionType = Create(
+         id: "HFC1033",
+         title: "[ProjectionTemplate] references an invalid projection type",
+         messageFormat: "{0}",
+@@ -418,7 +437,7 @@ public static class DiagnosticDescriptors {
+     /// (Story 6-2 T3 / AC1 / AC6). Warning severity — the invalid component is excluded from
+     /// the generated manifest.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionTemplateContextParameterMissing = new(
++    public static readonly DiagnosticDescriptor ProjectionTemplateContextParameterMissing = Create(
+         id: "HFC1034",
+         title: "[ProjectionTemplate] component is not a valid typed template component",
+         messageFormat: "{0}",
+@@ -432,7 +451,7 @@ public static class DiagnosticDescriptors {
+     /// Warning severity — selection is suppressed so the template never runs against an
+     /// incompatible context shape.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionTemplateContractVersionMismatch = new(
++    public static readonly DiagnosticDescriptor ProjectionTemplateContractVersionMismatch = Create(
+         id: "HFC1035",
+         title: "[ProjectionTemplate] contract version is incompatible",
+         messageFormat: "{0}",
+@@ -445,7 +464,7 @@ public static class DiagnosticDescriptors {
+     /// in the minor digit from the installed Level 2 contract (Story 6-2 T7 / D6 / AC5).
+     /// Warning severity — selection proceeds; build-only drift does not warn.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionTemplateContractVersionDrift = new(
++    public static readonly DiagnosticDescriptor ProjectionTemplateContractVersionDrift = Create(
+         id: "HFC1036",
+         title: "[ProjectionTemplate] contract version is out of date",
+         messageFormat: "{0}",
+@@ -460,7 +479,7 @@ public static class DiagnosticDescriptors {
+     /// selection cannot pick a non-deterministic winner. Fix: keep one template, or
+     /// disambiguate via the <c>Role</c> named argument.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionTemplateDuplicate = new(
++    public static readonly DiagnosticDescriptor ProjectionTemplateDuplicate = Create(
+         id: "HFC1037",
+         title: "Duplicate [ProjectionTemplate] for the same projection and role",
+         messageFormat: "{0}",
+@@ -471,7 +490,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1038: A Level 3 slot selector is not a direct projection property access.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionSlotSelectorInvalid = new(
++    public static readonly DiagnosticDescriptor ProjectionSlotSelectorInvalid = Create(
+         id: "HFC1038",
+         title: "Invalid Level 3 slot selector",
+         messageFormat: "{0}",
+@@ -482,7 +501,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1039: A Level 3 slot component does not expose the required typed Context parameter.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionSlotComponentInvalid = new(
++    public static readonly DiagnosticDescriptor ProjectionSlotComponentInvalid = Create(
+         id: "HFC1039",
+         title: "Invalid Level 3 slot component",
+         messageFormat: "{0}",
+@@ -493,7 +512,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1040: Two or more Level 3 slot descriptors target the same projection, role, and field.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionSlotDuplicate = new(
++    public static readonly DiagnosticDescriptor ProjectionSlotDuplicate = Create(
+         id: "HFC1040",
+         title: "Duplicate Level 3 slot override",
+         messageFormat: "{0}",
+@@ -504,7 +523,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1041: A Level 3 slot descriptor declares an incompatible contract version.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionSlotContractVersionMismatch = new(
++    public static readonly DiagnosticDescriptor ProjectionSlotContractVersionMismatch = Create(
+         id: "HFC1041",
+         title: "Level 3 slot contract version is incompatible",
+         messageFormat: "{0}",
+@@ -515,7 +534,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1042: Reserved for Level 4 view override invalid projection type diagnostics.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionViewOverrideInvalidProjectionType = new(
++    public static readonly DiagnosticDescriptor ProjectionViewOverrideInvalidProjectionType = Create(
+         id: "HFC1042",
+         title: "Invalid Level 4 view override projection type",
+         messageFormat: "{0}",
+@@ -526,7 +545,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1043: A Level 4 view replacement component does not expose the required typed Context parameter.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionViewOverrideComponentInvalid = new(
++    public static readonly DiagnosticDescriptor ProjectionViewOverrideComponentInvalid = Create(
+         id: "HFC1043",
+         title: "Invalid Level 4 view override component",
+         messageFormat: "{0}",
+@@ -541,7 +560,7 @@ public static class DiagnosticDescriptors {
+     /// silently fading into generated rendering. Idempotent re-registration of the same
+     /// component type is treated as a no-op.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionViewOverrideDuplicate = new(
++    public static readonly DiagnosticDescriptor ProjectionViewOverrideDuplicate = Create(
+         id: "HFC1044",
+         title: "Duplicate Level 4 view override",
+         messageFormat: "{0}",
+@@ -552,7 +571,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1045: A Level 4 view replacement descriptor declares an incompatible contract version.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionViewOverrideContractVersionMismatch = new(
++    public static readonly DiagnosticDescriptor ProjectionViewOverrideContractVersionMismatch = Create(
+         id: "HFC1045",
+         title: "Level 4 view override contract version is incompatible",
+         messageFormat: "{0}",
+@@ -563,7 +582,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1046: Reserved for Level 4 custom-component accessibility warnings.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor ProjectionViewOverrideAccessibilityWarning = new(
++    public static readonly DiagnosticDescriptor ProjectionViewOverrideAccessibilityWarning = Create(
+         id: "HFC1046",
+         title: "Level 4 view override accessibility contract warning",
+         messageFormat: "{0}",
+@@ -574,7 +593,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1050: A statically inspectable custom override contains an interactive root without an accessible name.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CustomizationAccessibleNameMissing = new(
++    public static readonly DiagnosticDescriptor CustomizationAccessibleNameMissing = Create(
+         id: "HFC1050",
+         title: "Custom override interactive element is missing an accessible name",
+         messageFormat: "{0}",
+@@ -585,7 +604,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1051: A statically inspectable custom override has an obvious keyboard reachability issue.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CustomizationKeyboardReachabilityIssue = new(
++    public static readonly DiagnosticDescriptor CustomizationKeyboardReachabilityIssue = Create(
+         id: "HFC1051",
+         title: "Custom override has a keyboard reachability issue",
+         messageFormat: "{0}",
+@@ -596,7 +615,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1052: A statically inspectable custom override suppresses focus visibility.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CustomizationFocusVisibilitySuppressed = new(
++    public static readonly DiagnosticDescriptor CustomizationFocusVisibilitySuppressed = Create(
+         id: "HFC1052",
+         title: "Custom override suppresses focus visibility",
+         messageFormat: "{0}",
+@@ -607,7 +626,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1053: A lifecycle/status custom override omits aria-live parity.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CustomizationAriaLiveParityMissing = new(
++    public static readonly DiagnosticDescriptor CustomizationAriaLiveParityMissing = Create(
+         id: "HFC1053",
+         title: "Custom override is missing aria-live parity",
+         messageFormat: "{0}",
+@@ -618,7 +637,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1054: A custom override uses motion without a reduced-motion fallback.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CustomizationReducedMotionMissing = new(
++    public static readonly DiagnosticDescriptor CustomizationReducedMotionMissing = Create(
+         id: "HFC1054",
+         title: "Custom override motion has no reduced-motion fallback",
+         messageFormat: "{0}",
+@@ -629,7 +648,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1055: A custom override uses custom colors without forced-colors or static contrast evidence.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CustomizationForcedColorsMissing = new(
++    public static readonly DiagnosticDescriptor CustomizationForcedColorsMissing = Create(
+         id: "HFC1055",
+         title: "Custom override color styling has no forced-colors fallback",
+         messageFormat: "{0}",
+@@ -640,31 +659,31 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1056: A command declares an invalid <c>[RequiresPolicy]</c> value.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyInvalid = new(
++    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyInvalid = Create(
+         id: "HFC1056",
+         title: "Command authorization policy is invalid",
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+         isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.io/docs/policies/well-formedness");
++        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1056");
+ 
+     /// <summary>
+     /// HFC1057: A command declares duplicate <c>[RequiresPolicy]</c> attributes.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyDuplicate = new(
++    public static readonly DiagnosticDescriptor CommandAuthorizationPolicyDuplicate = Create(
+         id: "HFC1057",
+         title: "Command declares duplicate authorization policies",
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+         isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.io/docs/policies/duplicate-attributes");
++        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1057");
+ 
+     /// <summary>
+     /// HFC1058: Drift detection is enabled but no generated UI baseline is available.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiBaselineMissing = new(
++    public static readonly DiagnosticDescriptor GeneratedUiBaselineMissing = Create(
+         id: "HFC1058",
+         title: "Generated UI drift baseline is missing",
+         messageFormat: "{0}",
+@@ -676,7 +695,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1059: Configured drift baseline path does not match any analyzer AdditionalText.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiBaselinePathInvalid = new(
++    public static readonly DiagnosticDescriptor GeneratedUiBaselinePathInvalid = Create(
+         id: "HFC1059",
+         title: "Generated UI drift baseline path is invalid",
+         messageFormat: "{0}",
+@@ -688,7 +707,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1060: Generated UI drift baseline content is empty or malformed.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiBaselineContentInvalid = new(
++    public static readonly DiagnosticDescriptor GeneratedUiBaselineContentInvalid = Create(
+         id: "HFC1060",
+         title: "Generated UI drift baseline content is invalid",
+         messageFormat: "{0}",
+@@ -700,7 +719,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1061: Generated UI drift baseline schema version is unsupported.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiBaselineSchemaUnsupported = new(
++    public static readonly DiagnosticDescriptor GeneratedUiBaselineSchemaUnsupported = Create(
+         id: "HFC1061",
+         title: "Generated UI drift baseline schema version is unsupported",
+         messageFormat: "{0}",
+@@ -712,7 +731,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1062: Generated UI drift baseline algorithm version is unsupported.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiBaselineAlgorithmUnsupported = new(
++    public static readonly DiagnosticDescriptor GeneratedUiBaselineAlgorithmUnsupported = Create(
+         id: "HFC1062",
+         title: "Generated UI drift baseline algorithm version is unsupported",
+         messageFormat: "{0}",
+@@ -724,7 +743,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1063: Generated UI drift baseline exceeds configured bounds.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiBaselineBoundsExceeded = new(
++    public static readonly DiagnosticDescriptor GeneratedUiBaselineBoundsExceeded = Create(
+         id: "HFC1063",
+         title: "Generated UI drift baseline exceeds configured bounds",
+         messageFormat: "{0}",
+@@ -736,7 +755,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1064: Generated UI drift baseline contains duplicate identities or invariant violations.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiBaselineIdentityInvalid = new(
++    public static readonly DiagnosticDescriptor GeneratedUiBaselineIdentityInvalid = Create(
+         id: "HFC1064",
+         title: "Generated UI drift baseline identity is invalid",
+         messageFormat: "{0}",
+@@ -748,7 +767,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1065: Generated UI structural drift was detected.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiStructuralDrift = new(
++    public static readonly DiagnosticDescriptor GeneratedUiStructuralDrift = Create(
+         id: "HFC1065",
+         title: "Generated UI structural drift detected",
+         messageFormat: "{0}",
+@@ -760,7 +779,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1066: Generated UI metadata drift was detected.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiMetadataDrift = new(
++    public static readonly DiagnosticDescriptor GeneratedUiMetadataDrift = Create(
+         id: "HFC1066",
+         title: "Generated UI metadata drift detected",
+         messageFormat: "{0}",
+@@ -772,7 +791,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1067: Drift detector analyzer-config option is invalid.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiDriftOptionInvalid = new(
++    public static readonly DiagnosticDescriptor GeneratedUiDriftOptionInvalid = Create(
+         id: "HFC1067",
+         title: "Generated UI drift option is invalid",
+         messageFormat: "{0}",
+@@ -784,7 +803,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1068: Generated UI drift diagnostics were truncated.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiDriftTruncated = new(
++    public static readonly DiagnosticDescriptor GeneratedUiDriftTruncated = Create(
+         id: "HFC1068",
+         title: "Generated UI drift diagnostics truncated",
+         messageFormat: "{0}",
+@@ -796,7 +815,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1069: Drift diagnostic was suppressed because redaction could not prove safety.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor GeneratedUiDriftRedactionSuppressed = new(
++    public static readonly DiagnosticDescriptor GeneratedUiDriftRedactionSuppressed = Create(
+         id: "HFC1069",
+         title: "Generated UI drift diagnostic suppressed for redaction",
+         messageFormat: "{0}",
+@@ -808,7 +827,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1070: Trim/AOT build may be using the reflection action-queue projection catalog.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor TrimAotReflectionCatalogWarning = new(
++    public static readonly DiagnosticDescriptor TrimAotReflectionCatalogWarning = Create(
+         id: "HFC1070",
+         title: "Reflection action-queue projection catalog may be trim-incompatible",
+         messageFormat: "{0}",
+@@ -820,7 +839,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor DevModeAnnotationSiteInvalid = new(
++    public static readonly DiagnosticDescriptor DevModeAnnotationSiteInvalid = Create(
+         id: "HFC1047",
+         title: "Invalid dev-mode annotation site",
+         messageFormat: "{0}",
+@@ -831,7 +850,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1048: Starter emission requested an unsupported customization level.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor DevModeUnsupportedEmissionLevel = new(
++    public static readonly DiagnosticDescriptor DevModeUnsupportedEmissionLevel = Create(
+         id: "HFC1048",
+         title: "Unsupported dev-mode starter emission level",
+         messageFormat: "{0}",
+@@ -842,7 +861,7 @@ public static class DiagnosticDescriptors {
+     /// <summary>
+     /// HFC1049: Dev-mode starter output detected stale contract metadata.
+     /// </summary>
+-    public static readonly DiagnosticDescriptor DevModeContractVersionDrift = new(
++    public static readonly DiagnosticDescriptor DevModeContractVersionDrift = Create(
+         id: "HFC1049",
+         title: "Dev-mode starter contract metadata is stale",
+         messageFormat: "{0}",
