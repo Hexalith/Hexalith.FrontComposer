@@ -1,5 +1,19 @@
 # Deferred Work
 
+## Backlog Routing Status (2026-05-10)
+
+The unresolved deferred-work ledger is now routed to **Epic 11: Deferred Hardening & Release Readiness** in `_bmad-output/planning-artifacts/epics/epic-11-deferred-hardening-release-readiness.md`.
+
+Backlog buckets:
+
+- **Story 11.1** — ledger reconciliation, duplicate/superseded markers, and owner tightening.
+- **Story 11.2** — diagnostic registry, documentation governance, HFCM strategy, docs slug/schema/sample validation, and compatibility suppression policy.
+- **Story 11.3** — CLI migration tooling, IDE parity, manifest parsing, path normalization, sidecar, and help/README edge cases.
+- **Story 11.4** — drift detection, source-generator coverage, metadata-drift tests, performance coverage, and deterministic generated-output safeguards.
+- **Story 11.5** — MCP schema negotiation, skill corpus, agent contract, fingerprint, tenant-scope, and schema-rejection hardening.
+- **Story 11.6** — shell UX, accessibility, visual/localization/RTL, sample-domain, and customization-gradient follow-ups.
+- **Story 11.7** — EventStore reliability, realtime behavior, telemetry/exporter guidance, CI/release governance, and release-readiness blockers.
+
 ## Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — chunk C (2026-05-10)
 
 - **DEF-9-4-C1 — Synthesized titles with PascalCase splits and ID-prefix duplication** [~65 stubs: HFC0001, HFC1013, HFC1601, HFC2004, HFC2005, HFC2007, HFC2010–2019, HFC2100–2121, HFC4001] — already tracked as DEF-9-4-A16; reaffirmed in chunk C. Mechanical title authoring deferred to Story 9-5 prose pass. Sources: blind+edge.
@@ -31,7 +45,7 @@
 - **DEF-9-2-22 — `SourceFile.DetectEncoding` strict UTF-8 fallback breaks legitimate Latin-1 files** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Intentional fail-closed per second-pass P-encoding; flagged for completeness. Sources: blind.
 - **DEF-9-2-23 — `DetectEncoding` UTF-32 LE BOM `FF FE 00 00` collides with a 4-byte UTF-16 LE file containing one U+0000** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Extreme edge case; no realistic .cs source matches. Sources: blind+edge.
 - **DEF-9-2-24 — `MigrationCatalog.BuildEdges` throws from a static field initializer** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:87-108`] — Defensive guard; only one edge currently and a duplicate would also fail tests at first instantiation. Sources: blind+edge.
-- **DEF-9-2-25 — Apply IOException during write leaves partial file** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Already covered by `DEF-9-2-2` atomic temp+rename; reaffirmed by third pass. Sources: edge.
+- ✅ **DEF-9-2-25 — Resolved 2026-05-10 — Apply IOException during write leaves partial file** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — `SourceFile.WriteAsync` now writes through a same-directory temp file and replaces the target only after the temp write completes; README documents the apply-write behavior. Sources: edge.
 - **DEF-9-2-26 — `PathUtilities.Canonical` drive-root edge case (empty `Path.GetFileName`)** [`src/Hexalith.FrontComposer.Cli/PathUtilities.cs`] — Drive roots are not valid Compile Include targets. Sources: edge.
 - **DEF-9-2-27 — `SourceFile.ReadAsync` OOM on a multi-GB `.cs` file** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — No realistic adopter `.cs` source approaches OOM thresholds. Sources: edge.
 - **DEF-9-2-28 — `ToolPackagingSmokeTests.FindOnPath` PATHEXT casing (`extension.ToLowerInvariant()`)** [`tests/Hexalith.FrontComposer.Cli.Tests/ToolPackagingSmokeTests.cs:118`] — Works on Windows due to case-insensitive filesystem; minor. Sources: blind+edge.
@@ -44,9 +58,9 @@
 - **DEF-9-2-9 — `.slnx` and `.fsproj` not supported** [`src/Hexalith.FrontComposer.Cli/ProjectSelection.cs`] — First-pass patch claim was partial; only the CSV-split brittleness was fixed. **Owner:** Story 9-3 IDE parity. Sources: auditor.
 - **DEF-9-2-10 — `formattingApplied` field is always `false`** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:721`] — No `Formatter.FormatAsync` is called. Field is technically truthful but constant. Revisit when a real formatting-required fix is added to the catalog. Sources: auditor.
 - **DEF-9-2-11 — No SIGTERM/SIGINT POSIX signal handler** [`src/Hexalith.FrontComposer.Cli/Program.cs`] — Ctrl-C path covered; SIGTERM is rare in dev workflows. Sources: edge.
-- **DEF-9-2-12 — No atomic temp+rename write** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1122-1123`] — Also recorded as first-pass DEF-9-2-2; reaffirmed by second-pass review. Sources: edge.
+- ✅ **DEF-9-2-12 — Resolved 2026-05-10 — No atomic temp+rename write** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — Duplicate of DEF-9-2-2; `SourceFile.WriteAsync` now writes via a same-directory temp file before replacing the target. Sources: edge.
 - **DEF-9-2-13 — `MefHostServices` composition exception not surfaced cleanly** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:566-568`] — Only triggers on a misconfigured deploy. Catch `CompositionException` and surface a clear "Workspaces assemblies failed to load" error. Sources: edge.
-- **DEF-9-2-14 — `ProjectDocumentLoader.Load` does not evaluate `<Import>` items via MSBuild** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:875`] — Silently skips Compile items defined in shared MSBuild files. Requires `Microsoft.Build` dependency. Document as known limitation in README and emit a CLI warning when an `.csproj` has top-level `<Import>` elements. Sources: edge.
+- ✅ **DEF-9-2-14 — Resolved 2026-05-10 — `ProjectDocumentLoader.Load` does not evaluate `<Import>` items via MSBuild** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`, `src/Hexalith.FrontComposer.Cli/README.md`] — The limitation is now documented and `frontcomposer migrate` emits a warning when the selected `.csproj` has top-level `<Import>` elements. Full MSBuild evaluation remains out of scope. Sources: edge.
 - **DEF-9-2-15 — `.gitmodules` parser does not unescape `\"`, `\\`, or single-quoted paths** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1198`] — Git itself only emits double-quoted output; edge case for hand-written files. Sources: edge.
 - **DEF-9-2-16 — `PathUtilities.Canonical` `catch` is too narrow** [`src/Hexalith.FrontComposer.Cli/PathUtilities.cs:45-48`] — Does not catch `PathTooLongException`, `ArgumentException`, `NotSupportedException`. Hardening; rare on Windows long-path scenarios. Sources: edge.
 - **DEF-9-2-17 — Ctrl+C double-press does not force-exit** [`src/Hexalith.FrontComposer.Cli/Program.cs`] — Second press should restore the default handler. UX polish. Sources: blind+edge.
@@ -54,11 +68,11 @@
 ## Deferred from: code review of 9-2-cli-inspection-and-migration-tools (2026-05-09)
 
 - **DEF-9-2-1 — `fail-on-warning` vs `fail-on-error` precedence undocumented** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:678-685`] — Both flags are honored but the help text and JSON contract do not document precedence. Add to README and JSON `applied` payload. Sources: blind.
-- **DEF-9-2-2 — Apply does not write to temp + atomic rename** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:1411-1416`] — `WriteAllTextAsync` is a single-shot write but disk-full / power loss can still leave a partially truncated file. Industry pattern is write-to-`*.tmp` + `File.Replace` (or `Move` with `replace=true`). Owner: hardening pass when next migration provider lands. Sources: edge.
-- **DEF-9-2-3 — Race between `Directory.Exists` and `EnumerateFiles` returns generic IO error** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:106-116`] — TOCTOU on the generated-output directory yields `DirectoryNotFoundException` propagated to the top-level catch (exit 4 instead of 3). Vanishingly rare in practice. Sources: edge.
-- **DEF-9-2-4 — `ProjectLooksFrontComposerAnnotated` does not catch `IOException`** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:200-215`] — A locked or unreadable `.cs` file in the probe path surfaces as a generic IO error from inspect rather than "no annotations". Defensive try/catch in the predicate. Sources: edge.
+- ✅ **DEF-9-2-2 — Resolved 2026-05-10 — Apply does not write to temp + atomic rename** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`] — `SourceFile.WriteAsync` now writes to a same-directory `*.tmp` file, then replaces the target with `File.Move(..., overwrite: true)` and best-effort temp cleanup. Sources: edge.
+- ✅ **DEF-9-2-3 — Resolved 2026-05-10 — Race between `Directory.Exists` and `EnumerateFiles` returns generic IO error** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs`] — generated-output enumeration now catches `DirectoryNotFoundException`, `IOException`, and `UnauthorizedAccessException` and returns `GeneratedOutputUnavailable` with retry/`--build` guidance. Sources: edge.
+- ✅ **DEF-9-2-4 — Resolved 2026-05-10 — `ProjectLooksFrontComposerAnnotated` does not catch `IOException`** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs`] — the annotation probe now wraps recursive source enumeration and degrades to "no annotations" on directory/file access failures. Sources: edge.
 - **DEF-9-2-5 — `MigrationCatalog.Resolve` uses `SingleOrDefault`** [`src/Hexalith.FrontComposer.Cli/MigrationCommand.cs:88`] — Throws `InvalidOperationException` if a future contributor adds a duplicate `(from,to)` edge. Switch to `FirstOrDefault` plus a startup uniqueness assertion. Sources: edge.
-- **DEF-9-2-6 — `--build` hint not always emitted in inspect error messages** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs:885-915`] — The "no FrontComposer-annotated source" branch returns a different message that lacks the `--build` suggestion. Minor UX gap. Sources: blind.
+- ✅ **DEF-9-2-6 — Resolved 2026-05-10 — `--build` hint not always emitted in inspect error messages** [`src/Hexalith.FrontComposer.Cli/InspectCommand.cs`] — both annotated and no-obvious-annotation generated-output-missing branches now suggest `dotnet build` / `--build`; covered by CLI tests. Sources: blind.
 
 ## Deferred from: code review of 9-1-build-time-drift-detection chunk C (2026-05-07)
 

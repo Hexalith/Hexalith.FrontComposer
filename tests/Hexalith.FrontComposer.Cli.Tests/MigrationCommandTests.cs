@@ -273,6 +273,41 @@ public sealed class MigrationCommandTests
         output.ToString().ShouldBeEmpty();
     }
 
+    [Fact]
+    public async Task Migrate_ProjectWithTopLevelImportWarnsAboutUnevaluatedMsBuildImports()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        File.WriteAllText(
+            project,
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <Import Project="SharedCompileItems.props" />
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+              </PropertyGroup>
+              <ItemGroup>
+                <Compile Include="Program.cs" />
+              </ItemGroup>
+            </Project>
+            """);
+        fixture.WriteSource("Acme.App", "Program.cs", "services.AddFrontComposerDebugOverlay();");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--dry-run", "--format", "json"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(0, output + error.ToString());
+        error.ToString().ShouldContain("<Import>");
+        error.ToString().ShouldContain("not evaluated");
+        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        document.RootElement.GetProperty("summary").GetProperty("changed").GetInt32().ShouldBe(1);
+    }
+
     [Theory]
     [InlineData("9.2.0", "9.1.0")]
     [InlineData("9.0.0", "9.2.0")]

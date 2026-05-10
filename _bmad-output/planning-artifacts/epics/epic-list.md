@@ -15,6 +15,7 @@
 - **v0.3 (beta-usable):** Epics 1-5 -- business user has a complete, reliable composed application
 - **v1-rc (feature-complete):** Epics 1-8 -- all surfaces (web, agent, customization) functional with auth
 - **v1 (ship):** Epics 1-10 -- full tooling, documentation, and quality gates
+- **v1 hardening / release readiness:** Epic 11 -- deferred review findings reconciled into owned backlog work before release certification
 
 ### Epic 1: Project Scaffolding & First Auto-Generated View
 Developer can scaffold a FrontComposer project, register a domain with minimal ceremony, and see an auto-generated DataGrid from [Projection]-annotated types running in an Aspire topology. Includes the W1 architecture phase: MSBuild spine (Directory.Build.props, Directory.Packages.props, deps.local.props), Contracts package with attributes, SourceTools generator stub, Counter sample domain, CI gates 1-3, semantic-release pipeline, and hot reload for domain attribute changes. Includes a Fluent UI v5 migration contingency story to handle potential breaking changes if v5 goes GA during development.
@@ -57,5 +58,9 @@ Developer has CLI tools (inspect generator output, migration), build-time drift 
 Framework provides test host/utilities for adopters, automated CI gates (accessibility checks, visual specimens, Pact contracts, mutation testing, property-based idempotency, flaky quarantine), LLM code-generation benchmark, and signed releases with SBOM. Built incrementally alongside earlier epics -- quality gates are woven into each phase, not deferred to the end. **Note:** FR79 (mutation testing) aligns with Epic 1's generator; FR78 (Pact contracts) and FR81 (property-based testing) align with Epic 5's resilience code. Story creation should consider implementation timing alongside these epics even though they are organized here for tracking.
 **FRs covered:** FR71, FR73, FR75, FR76, FR77, FR78, FR79, FR80, FR81
 
+### Epic 11: Deferred Hardening & Release Readiness
+Product, engineering, and quality stakeholders can close the deferred-work ledger through owned backlog stories instead of leaving release-critical hardening scattered across review notes. This epic consolidates deferred items from `_bmad-output/implementation-artifacts/deferred-work.md` into seven backlog buckets: ledger reconciliation, diagnostic governance, CLI/IDE hardening, drift/source-generator coverage, MCP/schema hardening, shell UX/accessibility/sample coverage, and EventStore/CI/release-governance follow-ups.
+**FRs covered:** Cross-cutting follow-up coverage for FR7, FR48, FR49-FR61, FR63-FR69, FR71-FR82, and release-readiness NFRs already mapped to Epics 5, 8, 9, and 10.
+
 ---
-
+

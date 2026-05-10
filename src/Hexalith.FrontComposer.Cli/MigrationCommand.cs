@@ -45,6 +45,12 @@ internal static class MigrationCommand
             return ExitCodes.InvalidArguments;
         }
 
+        if (ProjectDocumentLoader.HasTopLevelImports(project.ProjectPath!)) {
+            await error.WriteLineAsync(
+                "Warning: MSBuild <Import> items are not evaluated by frontcomposer migrate; files contributed only by imports are not migrated. DocsLink: src/Hexalith.FrontComposer.Cli/README.md#migration-output-notes.")
+                .ConfigureAwait(false);
+        }
+
         MigrationPlan plan = await MigrationPlanner.PlanAsync(project.ProjectPath!, edge, cancellationToken).ConfigureAwait(false);
         MigrationResult result = apply
             ? await MigrationApplier.ApplyAsync(plan, cancellationToken).ConfigureAwait(false)
@@ -513,18 +519,18 @@ internal sealed record ProjectDocument(string FullPath, string RelativePath, Sou
 
 internal static class ProjectDocumentLoader
 {
+    public static bool HasTopLevelImports(string projectPath)
+    {
+        XDocument? project = TryLoadProject(projectPath);
+        return project?.Root?.Elements().Any(x => string.Equals(x.Name.LocalName, "Import", StringComparison.Ordinal)) == true;
+    }
+
     public static ProjectDocumentSet Load(string projectPath)
     {
         string projectFullPath = Path.GetFullPath(projectPath);
         string projectDirectory = Path.GetDirectoryName(projectFullPath)!;
-        XDocument project;
-        try {
-            project = XDocument.Load(projectFullPath);
-        }
-        catch (System.Xml.XmlException) {
-            return new ProjectDocumentSet(projectDirectory, []);
-        }
-        catch (IOException) {
+        XDocument? project = TryLoadProject(projectFullPath);
+        if (project is null) {
             return new ProjectDocumentSet(projectDirectory, []);
         }
 
@@ -555,6 +561,19 @@ internal static class ProjectDocumentLoader
                 .Select(x => x.First())
                 .OrderBy(x => x.RelativePath, StringComparer.Ordinal)
                 .ToArray());
+    }
+
+    private static XDocument? TryLoadProject(string projectPath)
+    {
+        try {
+            return XDocument.Load(projectPath);
+        }
+        catch (System.Xml.XmlException) {
+            return null;
+        }
+        catch (IOException) {
+            return null;
+        }
     }
 
     private static IEnumerable<ProjectDocument> EnumerateGlob(string projectDirectory, string include, string exclude, string? link)
@@ -666,7 +685,23 @@ internal static class SourceFile
     }
 
     public static async Task WriteAsync(string path, string text, Encoding encoding, CancellationToken cancellationToken)
-        => await File.WriteAllTextAsync(path, text, encoding, cancellationToken).ConfigureAwait(false);
+    {
+        string directory = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        string tempPath = Path.Combine(directory, "." + Path.GetFileName(path) + "." + Guid.NewGuid().ToString("N") + ".tmp");
+        try {
+            await File.WriteAllTextAsync(tempPath, text, encoding, cancellationToken).ConfigureAwait(false);
+            File.Move(tempPath, path, overwrite: true);
+        }
+        finally {
+            try {
+                if (File.Exists(tempPath)) {
+                    File.Delete(tempPath);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) {
+            }
+        }
+    }
 
     private static Encoding DetectEncoding(byte[] bytes)
     {

@@ -17,9 +17,14 @@ Early planning failures that occur before any source document is identified, suc
 initialization failures, report the selected project file name instead.
 
 The migration planner reads explicit `<Compile Include="...">` project items and the SDK-style
-default `**/*.cs` shape used by FrontComposer fixtures. More complex MSBuild glob semantics, imports,
-and item transforms are intentionally conservative in Story 9-2; files that are not resolved as
-explicit project documents are not migrated.
+default `**/*.cs` shape used by FrontComposer fixtures. More complex MSBuild glob semantics and item
+transforms are intentionally conservative in Story 9-2. Project files that contain top-level
+`<Import>` elements produce a warning because imported `Compile` items are not evaluated by the CLI;
+files that are not resolved as explicit project documents are not migrated.
+
+Apply mode writes each changed source file through a same-directory temporary file before replacing
+the original target. If the process is interrupted before replacement, the original source remains in
+place and the temporary file is cleaned up on a best-effort basis.
 
 ## Manual-Only Migration Diagnostics (HFCM9002)
 

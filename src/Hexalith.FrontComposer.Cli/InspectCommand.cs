@@ -211,17 +211,25 @@ internal static class GeneratedOutputLoader
         if (!Directory.Exists(generatedDirectory)) {
             string reason = ProjectLooksFrontComposerAnnotated(projectDirectory)
                 ? "Generated output is missing. Run 'dotnet build' or pass --build so FrontComposer can emit files."
-                : "Generated output is missing and no obvious FrontComposer annotations were found in project source.";
+                : "Generated output is missing and no obvious FrontComposer annotations were found in project source. Run 'dotnet build' or pass --build if generated output is expected.";
             return InspectLoadResult.Fail(reason, ExitCodes.GeneratedOutputUnavailable);
         }
 
-        List<GeneratedFileInfo> files = Directory.EnumerateFiles(generatedDirectory, "*", SearchOption.TopDirectoryOnly)
-            .Where(path => path.EndsWith(".g.cs", StringComparison.Ordinal) || path.EndsWith(".g.razor.cs", StringComparison.Ordinal))
-            .Select(path => GeneratedFileClassifier.Classify(projectDirectory, path, absolutePaths))
-            .OrderBy(x => x.RelatedType ?? string.Empty, StringComparer.Ordinal)
-            .ThenBy(x => x.Family.ToString(), StringComparer.Ordinal)
-            .ThenBy(x => x.RelativePath, StringComparer.Ordinal)
-            .ToList();
+        List<GeneratedFileInfo> files;
+        try {
+            files = Directory.EnumerateFiles(generatedDirectory, "*", SearchOption.TopDirectoryOnly)
+                .Where(path => path.EndsWith(".g.cs", StringComparison.Ordinal) || path.EndsWith(".g.razor.cs", StringComparison.Ordinal))
+                .Select(path => GeneratedFileClassifier.Classify(projectDirectory, path, absolutePaths))
+                .OrderBy(x => x.RelatedType ?? string.Empty, StringComparer.Ordinal)
+                .ThenBy(x => x.Family.ToString(), StringComparer.Ordinal)
+                .ThenBy(x => x.RelativePath, StringComparer.Ordinal)
+                .ToList();
+        }
+        catch (Exception ex) when (ex is DirectoryNotFoundException or IOException or UnauthorizedAccessException) {
+            return InspectLoadResult.Fail(
+                "Generated output became unavailable while inspecting it. Re-run with --build or retry after the build completes.",
+                ExitCodes.GeneratedOutputUnavailable);
+        }
 
         if (files.Count == 0) {
             return InspectLoadResult.Fail(
@@ -346,10 +354,17 @@ internal static class GeneratedOutputLoader
             .Order(StringComparer.Ordinal)!;
 
     private static bool ProjectLooksFrontComposerAnnotated(string projectDirectory)
-        => Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
-            .Where(path => !PathUtilities.HasExcludedSegment(projectDirectory, path))
-            .Take(500)
-            .Any(ContainsFrontComposerAttribute);
+    {
+        try {
+            return Directory.EnumerateFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
+                .Where(path => !PathUtilities.HasExcludedSegment(projectDirectory, path))
+                .Take(500)
+                .Any(ContainsFrontComposerAttribute);
+        }
+        catch (Exception ex) when (ex is DirectoryNotFoundException or IOException or UnauthorizedAccessException) {
+            return false;
+        }
+    }
 
     private static bool ContainsFrontComposerAttribute(string path)
     {

@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (/bmad-code-review 10-6 completed; release governance review patches resolved.)"
+last_updated: "2026-05-10 (Epic 8 and Epic 10 retrospectives completed; Epic 11 deferred-work backlog added.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -85,7 +85,7 @@ development_status:
   epic-4-retrospective: done
 
   # Epic 5: Reliable Real-Time Experience
-  epic-5: in-progress
+  epic-5: done
   5-1-eventstore-service-abstractions: done
   5-2-http-response-handling-and-etag-caching: done
   5-3-signalr-connection-and-disconnection-handling: done
@@ -93,7 +93,7 @@ development_status:
   5-5-command-idempotency-and-optimistic-updates: done
   5-6-build-time-infrastructure-enforcement-and-observability: done
   5-7-signalr-fault-injection-test-harness: done
-  epic-5-retrospective: optional
+  epic-5-retrospective: done
 
   # Epic 6: Developer Customization Gradient
   epic-6: in-progress
@@ -113,7 +113,7 @@ development_status:
   epic-7-retrospective: done
 
   # Epic 8: MCP & Agent Integration
-  epic-8: in-progress
+  epic-8: done
   8-1-mcp-server-and-typed-tool-exposure: done
   8-2-hallucination-rejection-and-tenant-scoped-tools: done
   8-3-two-call-lifecycle-and-agent-command-semantics: done
@@ -122,7 +122,7 @@ development_status:
   8-5-skill-corpus-and-build-time-agent-support: done
   8-6-schema-versioning-and-multi-surface-abstraction: done
   8-6a-schema-negotiation-runtime-gate: done
-  epic-8-retrospective: optional
+  epic-8-retrospective: done
 
   # Epic 9: Developer Tooling & Documentation
   epic-9: in-progress
@@ -131,7 +131,7 @@ development_status:
   9-3-ide-parity-and-developer-experience: done
   9-4-diagnostic-id-system-and-deprecation-policy: done
   9-5-diataxis-documentation-site: done
-  epic-9-retrospective: optional
+  epic-9-retrospective: done
 
   # Epic 10: Framework Quality & Adopter Confidence
   epic-10: in-progress
@@ -141,4 +141,14 @@ development_status:
   10-4-mutation-testing-and-property-based-testing: done
   10-5-flaky-test-quarantine-and-ci-governance: done
   10-6-llm-benchmark-signed-releases-and-sbom: done
-  epic-10-retrospective: optional
+  epic-10-retrospective: done
+
+  # Epic 11: Deferred Hardening & Release Readiness
+  epic-11: backlog
+  11-1-deferred-work-ledger-reconciliation-and-ownership: backlog
+  11-2-diagnostic-registry-and-documentation-governance-follow-ups: backlog
+  11-3-cli-migration-and-ide-edge-case-hardening: backlog
+  11-4-drift-detection-and-source-generator-coverage-hardening: backlog
+  11-5-mcp-schema-negotiation-and-agent-contract-hardening: backlog
+  11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: backlog
+  11-7-eventstore-reliability-and-ci-governance-follow-ups: backlog

@@ -16,3 +16,4 @@
   - [Epic 8: MCP & Agent Integration](#epic-8-mcp-agent-integration)
   - [Epic 9: Developer Tooling & Documentation](#epic-9-developer-tooling-documentation)
   - [Epic 10: Framework Quality & Adopter Confidence](#epic-10-framework-quality-adopter-confidence)
+  - [Epic 11: Deferred Hardening & Release Readiness](#epic-11-deferred-hardening-release-readiness)

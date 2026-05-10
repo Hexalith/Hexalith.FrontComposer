@@ -138,6 +138,26 @@ public sealed class InspectCommandTests
     }
 
     [Fact]
+    public async Task Inspect_MissingGeneratedOutputWithoutAnnotations_StillSuggestsBuild()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["inspect", "--project", project, "--configuration", "Debug", "--framework", "net10.0"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(ExitCodes.GeneratedOutputUnavailable);
+        error.ToString().ShouldContain("--build");
+        output.ToString().ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task InspectSeverity_FiltersHfcDiagnostics()
     {
         using CliFixture fixture = CliFixture.Create();
