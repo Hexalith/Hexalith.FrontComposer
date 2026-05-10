@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (Created Story 11.2 diagnostic registry and documentation governance follow-ups and marked it ready-for-dev.)"
+last_updated: "2026-05-11 (Created Story 11.3 CLI migration and IDE edge-case hardening and marked it ready-for-dev.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -147,7 +147,7 @@ development_status:
   epic-11: in-progress
   11-1-deferred-work-ledger-reconciliation-and-ownership: ready-for-dev
   11-2-diagnostic-registry-and-documentation-governance-follow-ups: ready-for-dev
-  11-3-cli-migration-and-ide-edge-case-hardening: backlog
+  11-3-cli-migration-and-ide-edge-case-hardening: ready-for-dev
   11-4-drift-detection-and-source-generator-coverage-hardening: backlog
   11-5-mcp-schema-negotiation-and-agent-contract-hardening: backlog
   11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: backlog
