@@ -1,0 +1,176 @@
+﻿{
+  "consumer": {
+    "name": "Hexalith.FrontComposer.Shell"
+  },
+  "provider": {
+    "name": "Hexalith.EventStore"
+  },
+  "interactions": [
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query cache validation reuses framework cache on 304",
+      "providerStates": [
+        {
+          "name": "query-etag-match"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json",
+          "If-None-Match": "\u0022etag-cache-1\u0022"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 304,
+        "headers": {
+          "ETag": "\u0022etag-cache-1\u0022"
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "QueryResult\u003CT\u003E.NotModifiedFromCache"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query caller-owned etag returns explicit no-change signal on 304",
+      "providerStates": [
+        {
+          "name": "query-etag-no-cache"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json",
+          "If-None-Match": "\u0022etag-caller-1\u0022"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 304,
+        "headers": {
+          "ETag": "\u0022etag-caller-1\u0022"
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "QueryResult\u003CT\u003E.NotModified"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query emits bounded multiple etag validators",
+      "providerStates": [
+        {
+          "name": "query-large-valid-metadata"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json",
+          "If-None-Match": "\u0022etag-1\u0022, \u0022etag-2\u0022, \u0022etag-3\u0022"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "payload": [
+            {
+              "id": "order-1",
+              "status": "Pending"
+            }
+          ],
+          "totalCount": 1
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "If-None-Match validator count \u003C= EventStoreOptions.MaxETagCount"
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "4.0"
+    },
+    "pactNet": {
+      "version": "5.0.1"
+    },
+    "frontComposerStory": "10-3-consumer-driven-contract-tests-pact",
+    "generatedBy": "EventStorePactContractTests"
+  }
+}

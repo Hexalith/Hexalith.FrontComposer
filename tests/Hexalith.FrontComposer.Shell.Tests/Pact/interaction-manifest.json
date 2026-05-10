@@ -1,0 +1,204 @@
+﻿{
+  "story": "10-3-consumer-driven-contract-tests-pact",
+  "consumer": "Hexalith.FrontComposer.Shell",
+  "provider": "Hexalith.EventStore",
+  "pactFiles": [
+    "frontcomposer-eventstore-command-dispatch.json",
+    "frontcomposer-eventstore-query-execution.json",
+    "frontcomposer-eventstore-cache-validation.json",
+    "frontcomposer-eventstore-auth-tenant-propagation.json"
+  ],
+  "interactionCount": 19,
+  "interactions": [
+    {
+      "description": "command auth failure requires redirect",
+      "providerState": "command-unauthorized",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "AuthRedirectRequiredException"
+    },
+    {
+      "description": "command conflict rejection is classified",
+      "providerState": "command-conflict",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "CommandRejectedException"
+    },
+    {
+      "description": "command dispatch accepted preserves generated message identity",
+      "providerState": "command-accepted",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "CommandResult.Status=Accepted; CommandResult.MessageId preserved"
+    },
+    {
+      "description": "command forbidden warning is classified",
+      "providerState": "command-forbidden",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "CommandWarningException"
+    },
+    {
+      "description": "command missing aggregate warning is classified",
+      "providerState": "command-not-found",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "CommandWarningException"
+    },
+    {
+      "description": "command propagates authenticated tenant and bearer requirement",
+      "providerState": "tenant-mismatch",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "Authorization required; tenant comes from authenticated context"
+    },
+    {
+      "description": "command rate limit warning is classified",
+      "providerState": "command-rate-limited",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "CommandWarningException"
+    },
+    {
+      "description": "command unexpected server failure is classified",
+      "providerState": "command-unexpected-5xx",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "HttpRequestException"
+    },
+    {
+      "description": "command validation failure is classified",
+      "providerState": "command-validation-failure",
+      "method": "POST",
+      "path": "/api/v1/commands",
+      "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+      "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "CommandValidationException"
+    },
+    {
+      "description": "query cache validation reuses framework cache on 304",
+      "providerState": "query-etag-match",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "QueryResult\u003CT\u003E.NotModifiedFromCache"
+    },
+    {
+      "description": "query caller-owned etag returns explicit no-change signal on 304",
+      "providerState": "query-etag-no-cache",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "QueryResult\u003CT\u003E.NotModified"
+    },
+    {
+      "description": "query emits bounded multiple etag validators",
+      "providerState": "query-large-valid-metadata",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "If-None-Match validator count \u003C= EventStoreOptions.MaxETagCount"
+    },
+    {
+      "description": "query empty projection data is classified",
+      "providerState": "query-empty-result",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "QueryResult\u003CT\u003E.IsNotModified=false; QueryResult\u003CT\u003E.TotalCount preserved"
+    },
+    {
+      "description": "query forbidden failure is classified",
+      "providerState": "query-forbidden",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "QueryFailureException"
+    },
+    {
+      "description": "query fresh projection data is classified",
+      "providerState": "query-fresh-data",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "QueryResult\u003CT\u003E.IsNotModified=false; QueryResult\u003CT\u003E.TotalCount preserved"
+    },
+    {
+      "description": "query malformed payload failure is classified",
+      "providerState": "query-malformed-payload",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "HttpRequestException"
+    },
+    {
+      "description": "query missing projection failure is classified",
+      "providerState": "query-not-found",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "QueryFailureException"
+    },
+    {
+      "description": "query propagates authenticated tenant and bearer requirement",
+      "providerState": "query-auth-tenant",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "Authorization required; tenant comes from authenticated context"
+    },
+    {
+      "description": "query rate limit failure is classified",
+      "providerState": "query-rate-limited",
+      "method": "POST",
+      "path": "/api/v1/queries",
+      "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+      "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+      "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+      "classifierExpectation": "QueryFailureException"
+    }
+  ]
+}

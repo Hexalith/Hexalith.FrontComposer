@@ -16,6 +16,7 @@
     <PackageReference Include="Fluxor.Blazor.Web" />
     <PackageReference Include="bunit" />
     <PackageReference Include="NSubstitute" />
+    <PackageReference Include="PactNet" />
     <PackageReference Include="Shouldly" />
     <PackageReference Include="Verify" />
     <PackageReference Include="Verify.XunitV3" />

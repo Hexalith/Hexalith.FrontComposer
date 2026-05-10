@@ -138,8 +138,51 @@ jobs:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
 
+      # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
+      # This lane intentionally uses the existing root-level `submodules: true` checkout above and
+      # does not run recursive nested submodule initialization.
+      - name: 'Gate 2c: Contract pacts'
+        env:
+          DiffEngine_Disabled: true
+        run: dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter "Category=Contract" --results-directory ./TestResults --logger "trx;LogFileName=test-results-contract.trx"
+
+      - name: 'Gate 2c: Validate contract artifacts'
+        shell: pwsh
+        run: ./eng/validate-contract-artifacts.ps1
+
+      - name: 'Gate 2c: Fail on stale pact diff'
+        shell: bash
+        run: |
+          mkdir -p artifacts/contracts
+          if git diff --exit-code -- tests/Hexalith.FrontComposer.Shell.Tests/Pact; then
+            echo "No stale pact diff detected." > artifacts/contracts/stale-pact-check.txt
+          else
+            echo "Stale pact diff detected; regenerate and commit intentional contract changes." > artifacts/contracts/stale-pact-check.txt
+            exit 1
+          fi
+
+      - name: Contract Summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f artifacts/contracts/job-summary.md ]; then
+            cat artifacts/contracts/job-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload contract artifacts
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: contract-artifacts
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            artifacts/contracts/**
+            tests/Hexalith.FrontComposer.Shell.Tests/Pact/*.json
+            tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-verification-handoff.md
+
       # Gate 2c: DocFX documentation publication and validation
-      - name: 'Gate 2c: Docs Validation'
+      - name: 'Gate 2d: Docs Validation'
         shell: pwsh
         run: |
           dotnet tool restore

@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (/bmad-dev-story 10-2 complete; a11y/visual specimen gate, docs, CI wiring, build/default tests pass. Story 10-2 -> review.)"
+last_updated: "2026-05-10 (/bmad-dev-story 10-3 complete; Pact consumer contracts, CI contract lane, docs, and provider handoff pass. Story 10-3 -> review.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -137,7 +137,7 @@ development_status:
   epic-10: in-progress
   10-1-adopter-test-host-and-component-testing-utilities: review
   10-2-accessibility-ci-gates-and-visual-specimen-verification: review
-  10-3-consumer-driven-contract-tests-pact: ready-for-dev
+  10-3-consumer-driven-contract-tests-pact: review
   10-4-mutation-testing-and-property-based-testing: ready-for-dev
   10-5-flaky-test-quarantine-and-ci-governance: ready-for-dev
   10-6-llm-benchmark-signed-releases-and-sbom: ready-for-dev

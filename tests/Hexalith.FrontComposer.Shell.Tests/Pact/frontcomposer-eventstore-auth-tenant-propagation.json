@@ -1,0 +1,123 @@
+﻿{
+  "consumer": {
+    "name": "Hexalith.FrontComposer.Shell"
+  },
+  "provider": {
+    "name": "Hexalith.EventStore"
+  },
+  "interactions": [
+    {
+      "type": "Synchronous/HTTP",
+      "description": "command propagates authenticated tenant and bearer requirement",
+      "providerStates": [
+        {
+          "name": "tenant-mismatch"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/commands",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "messageId": "01HXCNTRCT0000000000000000",
+          "tenant": "Tenant_Contract_Case",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "commandType": "Hexalith.FrontComposer.Shell.Tests.Pact.EventStorePactContractTests\u002BShipOrderCommand",
+          "payload": {
+            "tenantId": "Tenant_Contract_Case",
+            "aggregateId": "order-1",
+            "quantity": 3
+          },
+          "correlationId": null,
+          "extensions": null
+        }
+      },
+      "response": {
+        "status": 202,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "correlationId": "corr-auth-tenant"
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Domain/ShipOrderCommand metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+        "owningAcceptanceCriteria": "AC2, AC3, AC4, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "Authorization required; tenant comes from authenticated context"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query propagates authenticated tenant and bearer requirement",
+      "providerStates": [
+        {
+          "name": "query-auth-tenant"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tenant": "Tenant_Contract_Case",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "payload": [
+            {
+              "id": "order-1",
+              "status": "Pending"
+            }
+          ],
+          "totalCount": 1
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "Authorization required; tenant comes from authenticated context"
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "4.0"
+    },
+    "pactNet": {
+      "version": "5.0.1"
+    },
+    "frontComposerStory": "10-3-consumer-driven-contract-tests-pact",
+    "generatedBy": "EventStorePactContractTests"
+  }
+}

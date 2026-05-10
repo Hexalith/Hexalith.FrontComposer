@@ -18,3 +18,4 @@ slug: reference/
 - [IDE parity](ide-parity.md)
 - [Generated-output paths](generated-output.md)
 - [MCP reference slices](mcp/index.md)
+- [EventStore Pact contracts](pact-contracts.md)

@@ -1,0 +1,380 @@
+﻿{
+  "consumer": {
+    "name": "Hexalith.FrontComposer.Shell"
+  },
+  "provider": {
+    "name": "Hexalith.EventStore"
+  },
+  "interactions": [
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query fresh projection data is classified",
+      "providerStates": [
+        {
+          "name": "query-fresh-data"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "ETag": "\u0022etag-query-1\u0022"
+        },
+        "body": {
+          "payload": [
+            {
+              "id": "order-1",
+              "status": "Pending"
+            }
+          ],
+          "totalCount": 1
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "QueryResult\u003CT\u003E.IsNotModified=false; QueryResult\u003CT\u003E.TotalCount preserved"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query empty projection data is classified",
+      "providerStates": [
+        {
+          "name": "query-empty-result"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json",
+          "ETag": "\u0022etag-query-1\u0022"
+        },
+        "body": {
+          "payload": [],
+          "totalCount": 0
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "QueryResult\u003CT\u003E.IsNotModified=false; QueryResult\u003CT\u003E.TotalCount preserved"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query malformed payload failure is classified",
+      "providerStates": [
+        {
+          "name": "query-malformed-payload"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 400,
+        "headers": {
+          "Content-Type": "application/problem\u002Bjson"
+        },
+        "body": {
+          "title": "query-malformed-payload",
+          "detail": "Synthetic bounded contract fixture.",
+          "status": 400,
+          "errors": {
+            "payload": [
+              "Synthetic validation failure."
+            ]
+          },
+          "globalErrors": [
+            "Synthetic global failure."
+          ],
+          "entityLabel": "order-1"
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "HttpRequestException"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query forbidden failure is classified",
+      "providerStates": [
+        {
+          "name": "query-forbidden"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 403,
+        "headers": {
+          "Content-Type": "application/problem\u002Bjson"
+        },
+        "body": {
+          "title": "query-forbidden",
+          "detail": "Synthetic bounded contract fixture.",
+          "status": 403,
+          "errors": {
+            "payload": [
+              "Synthetic validation failure."
+            ]
+          },
+          "globalErrors": [
+            "Synthetic global failure."
+          ],
+          "entityLabel": "order-1"
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "QueryFailureException"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query missing projection failure is classified",
+      "providerStates": [
+        {
+          "name": "query-not-found"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/problem\u002Bjson"
+        },
+        "body": {
+          "title": "query-not-found",
+          "detail": "Synthetic bounded contract fixture.",
+          "status": 404,
+          "errors": {
+            "payload": [
+              "Synthetic validation failure."
+            ]
+          },
+          "globalErrors": [
+            "Synthetic global failure."
+          ],
+          "entityLabel": "order-1"
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "QueryFailureException"
+      }
+    },
+    {
+      "type": "Synchronous/HTTP",
+      "description": "query rate limit failure is classified",
+      "providerStates": [
+        {
+          "name": "query-rate-limited"
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/queries",
+        "headers": {
+          "Authorization": "Bearer FC_CONTRACT_TOKEN",
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "tenant": "tenant-contract-a",
+          "domain": "orders",
+          "aggregateId": "order-1",
+          "queryType": "GetOrders",
+          "projectionType": "orders",
+          "payload": {
+            "filter": null,
+            "skip": null,
+            "take": null,
+            "columnFilters": null,
+            "statusFilters": null,
+            "searchQuery": null,
+            "sortColumn": null,
+            "sortDescending": false
+          },
+          "entityId": null,
+          "projectionActorType": null
+        }
+      },
+      "response": {
+        "status": 429,
+        "headers": {
+          "Content-Type": "application/problem\u002Bjson",
+          "Retry-After": "5"
+        },
+        "body": {
+          "title": "query-rate-limited",
+          "detail": "Synthetic bounded contract fixture.",
+          "status": 429,
+          "errors": {
+            "payload": [
+              "Synthetic validation failure."
+            ]
+          },
+          "globalErrors": [
+            "Synthetic global failure."
+          ],
+          "entityLabel": "order-1"
+        }
+      },
+      "metadata": {
+        "generatedSource": "samples/Counter/Counter.Web generated orders projection metadata",
+        "adapterPath": "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreQueryClient.cs",
+        "owningAcceptanceCriteria": "AC5, AC6, AC7, AC8, AC14, AC17, AC22, AC23",
+        "classifierExpectation": "QueryFailureException"
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "4.0"
+    },
+    "pactNet": {
+      "version": "5.0.1"
+    },
+    "frontComposerStory": "10-3-consumer-driven-contract-tests-pact",
+    "generatedBy": "EventStorePactContractTests"
+  }
+}
