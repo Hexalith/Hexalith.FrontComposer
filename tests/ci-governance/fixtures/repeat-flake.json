@@ -1,0 +1,22 @@
+{
+  "recurrence_count": 2,
+  "failure_window": "2026-05-08..2026-05-10 protected branch",
+  "results": [
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.ReintroducedAgain",
+      "displayName": "ReintroducedAgain",
+      "outcome": "failed",
+      "attempt": 1,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/9"
+    },
+    {
+      "identity": "Hexalith.FrontComposer.Shell.Tests.Sample.FlakyTests.ReintroducedAgain",
+      "displayName": "ReintroducedAgain",
+      "outcome": "passed",
+      "attempt": 2,
+      "sha": "abc123",
+      "runUrl": "https://github.com/Hexalith/Hexalith.FrontComposer/actions/runs/9"
+    }
+  ]
+}

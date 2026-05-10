@@ -1,4 +1,7 @@
+using System.Diagnostics;
+using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 using Shouldly;
 
@@ -68,7 +71,7 @@ public sealed class CiGovernanceTests {
         string quarantineLane = ExtractNamedStep(ci, "Gate 3d: Quarantined tests (warning-only)");
         quarantineLane.ShouldContain("continue-on-error: true");
         quarantineLane.ShouldContain("--filter \"Category=Quarantined\"");
-        quarantineLane.ShouldContain("test-results-quarantine.trx");
+        quarantineLane.ShouldContain("LogFilePrefix=test-results-quarantine");
 
         ci.ShouldContain("ci_governance.py summarize-quarantine");
         ci.ShouldContain("artifacts/quarantine/quarantine-summary.md");
@@ -145,6 +148,10 @@ public sealed class CiGovernanceTests {
             "malformed-evidence.json",
             "permission-untrusted-context.json",
             "concurrent-update-marker.json",
+            "contradictory-evidence.json",
+            "missing-labels.json",
+            "repeat-flake.json",
+            "zero-quarantined-summary.json",
         ];
 
         foreach (string fixture in requiredFixtures) {
@@ -191,6 +198,107 @@ public sealed class CiGovernanceTests {
         mutationNightly.ShouldContain("Validate property artifacts");
         ci.ShouldNotContain("Category!=Mutation");
         ci.ShouldNotContain("Category!=Property");
+    }
+
+    [Fact]
+    public void GovernanceScript_ClassifiesFlakeEvidenceFromFixtures() {
+        string root = RepositoryRoot();
+        string output = Path.Combine(Path.GetTempPath(), $"fc-flake-{Guid.NewGuid():N}.json");
+
+        ProcessResult result = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/flake-pass-fail-same-sha.json",
+            "--output", output,
+            "--source-root", ".",
+        ]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("classification").GetString().ShouldBe("flaky");
+        doc.RootElement.GetProperty("decision").GetString().ShouldBe("open-or-update-issue-and-pr");
+        doc.RootElement.GetProperty("manual_patch_required").GetBoolean().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void GovernanceScript_RejectsOutsideWindowContradictoryMalformedAndUntrustedEvidence() {
+        string root = RepositoryRoot();
+        string output = Path.Combine(Path.GetTempPath(), $"fc-flake-{Guid.NewGuid():N}.json");
+
+        ProcessResult outsideWindow = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/flake-pass-fail-outside-window.json",
+            "--output", output,
+        ]);
+        outsideWindow.ExitCode.ShouldBe(0, outsideWindow.Error);
+        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output))) {
+            doc.RootElement.GetProperty("classification").GetString().ShouldBe("not-flaky");
+        }
+
+        ProcessResult contradictory = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/contradictory-evidence.json",
+        ]);
+        contradictory.ExitCode.ShouldNotBe(0);
+        contradictory.Error.ShouldContain("one stable test identity");
+
+        ProcessResult malformed = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/malformed-evidence.json",
+        ]);
+        malformed.ExitCode.ShouldNotBe(0);
+        malformed.Error.ShouldContain("requires identity, passed/failed outcome, and sha");
+
+        ProcessResult untrusted = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/flake-pass-fail-same-sha.json",
+            "--apply",
+            "--event-name", "pull_request",
+            "--ref", "refs/pull/5/merge",
+            "--from-fork", "true",
+        ]);
+        untrusted.ExitCode.ShouldNotBe(0);
+        untrusted.Error.ShouldContain("trusted protected-branch, schedule, or manual context required");
+    }
+
+    [Fact]
+    public void GovernanceScript_HandlesReintroductionDurationAndRepeatFlakeFixtures() {
+        string root = RepositoryRoot();
+        string reintroOutput = Path.Combine(Path.GetTempPath(), $"fc-reintro-{Guid.NewGuid():N}.json");
+        string stateOutput = Path.Combine(Path.GetTempPath(), $"fc-reintro-state-{Guid.NewGuid():N}.json");
+
+        ProcessResult reintro = RunGovernance(root, [
+            "reintroduction",
+            "--evidence", "tests/ci-governance/fixtures/reintroduction-valid-pass.json",
+            "--state", "tests/ci-governance/quarantine-reintroduction-state.json",
+            "--output-state", stateOutput,
+            "--output", reintroOutput,
+        ]);
+        reintro.ExitCode.ShouldBe(0, reintro.Error);
+        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(reintroOutput))) {
+            doc.RootElement.GetProperty("action").GetString().ShouldBe("track");
+        }
+
+        string durationOutput = Path.Combine(Path.GetTempPath(), $"fc-duration-{Guid.NewGuid():N}.json");
+        ProcessResult duration = RunGovernance(root, [
+            "duration-monitor",
+            "--evidence", "tests/ci-governance/fixtures/duration-breach-three-days.json",
+            "--output", durationOutput,
+        ]);
+        duration.ExitCode.ShouldBe(0, duration.Error);
+        using (JsonDocument doc = JsonDocument.Parse(File.ReadAllText(durationOutput))) {
+            doc.RootElement.GetProperty("action").GetString().ShouldBe("open-or-update-ci-diet-issue");
+        }
+
+        string repeatOutput = Path.Combine(Path.GetTempPath(), $"fc-repeat-{Guid.NewGuid():N}.json");
+        ProcessResult repeat = RunGovernance(root, [
+            "classify-flake",
+            "--evidence", "tests/ci-governance/fixtures/repeat-flake.json",
+            "--output", repeatOutput,
+        ]);
+        repeat.ExitCode.ShouldBe(0, repeat.Error);
+        string issueBody = JsonDocument.Parse(File.ReadAllText(repeatOutput)).RootElement.GetProperty("issue_body").GetString() ?? string.Empty;
+        issueBody.ShouldContain("Repeat flake");
+        issueBody.ShouldContain("recurrence count: 2");
     }
 
     [Fact]
@@ -249,4 +357,34 @@ public sealed class CiGovernanceTests {
 
         throw new InvalidOperationException("Could not locate repository root.");
     }
+
+    private static ProcessResult RunGovernance(string root, IReadOnlyList<string> arguments) {
+        string executable = OperatingSystem.IsWindows() ? "python" : "python3";
+        ProcessStartInfo startInfo = new(executable) {
+            WorkingDirectory = root,
+            RedirectStandardError = true,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+        };
+
+        startInfo.ArgumentList.Add(".github/scripts/ci_governance.py");
+        foreach (string argument in arguments) {
+            startInfo.ArgumentList.Add(argument);
+        }
+
+        using Process process = Process.Start(startInfo) ?? throw new InvalidOperationException("Could not start governance script.");
+        Task<string> outputTask = process.StandardOutput.ReadToEndAsync();
+        Task<string> errorTask = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(30_000)) {
+            process.Kill(entireProcessTree: true);
+            process.WaitForExit();
+            return new ProcessResult(-1, outputTask.GetAwaiter().GetResult(), "governance script timed out");
+        }
+
+        string output = outputTask.GetAwaiter().GetResult();
+        string error = errorTask.GetAwaiter().GetResult();
+        return new ProcessResult(process.ExitCode, output, error);
+    }
+
+    private sealed record ProcessResult(int ExitCode, string Output, string Error);
 }

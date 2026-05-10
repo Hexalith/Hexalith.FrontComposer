@@ -1,0 +1,9 @@
+{
+  "required_labels": [
+    "flaky-test",
+    "ci-governance",
+    "codex-automation"
+  ],
+  "available_labels": [],
+  "expected": "record missing labels in issue/PR body"
+}

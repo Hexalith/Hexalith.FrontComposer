@@ -227,7 +227,7 @@ jobs:
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results-quarantine.trx"
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
 
       - name: Quarantine Summary
         if: always()
@@ -247,7 +247,7 @@ jobs:
           if-no-files-found: error
           path: |
             artifacts/quarantine/**
-            TestResults/**/test-results-quarantine.trx
+            TestResults/**/test-results-quarantine*.trx
 
       # Guard: fail fast if no tests ran (--no-build silently exits 0 with 0 tests).
       # Uses find + grep to handle both flat and per-project-GUID subdirectory layouts.

@@ -1,6 +1,6 @@
 # Story 10.5: Flaky Test Quarantine & CI Governance
 
-Status: in-progress
+Status: review
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR80**, **NFR54**, **NFR57**, and **NFR64-NFR67**. Builds on Stories **10-1** through **10-4** and the current CI gates. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -99,69 +99,69 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 
 ## Tasks / Subtasks
 
-- [ ] T1. Harden current CI test filters (AC2, AC12, AC15, AC16, AC21, AC22)
-  - [ ] Update `.github/workflows/ci.yml` Gate 3a so the default lane excludes `Category=Quarantined` in addition to existing `Performance` and `e2e-palette` exclusions.
-  - [ ] Preserve Gate 2b Governance as blocking and ensure Governance tests are not accidentally excluded by quarantine filtering.
-  - [ ] Update `.github/workflows/release.yml` so release tests exclude quarantined tests but still fail on every non-quarantined failure.
-  - [ ] Keep checkout at root-level submodules only. Do not introduce `recursive`.
-  - [ ] Add governance tests that parse workflow YAML/text and prove the blocking lanes include the quarantine exclusion and no recursive submodule checkout.
+- [x] T1. Harden current CI test filters (AC2, AC12, AC15, AC16, AC21, AC22)
+  - [x] Update `.github/workflows/ci.yml` Gate 3a so the default lane excludes `Category=Quarantined` in addition to existing `Performance` and `e2e-palette` exclusions.
+  - [x] Preserve Gate 2b Governance as blocking and ensure Governance tests are not accidentally excluded by quarantine filtering.
+  - [x] Update `.github/workflows/release.yml` so release tests exclude quarantined tests but still fail on every non-quarantined failure.
+  - [x] Keep checkout at root-level submodules only. Do not introduce `recursive`.
+  - [x] Add governance tests that parse workflow YAML/text and prove the blocking lanes include the quarantine exclusion and no recursive submodule checkout.
 
-- [ ] T2. Add quarantine lane and evidence publishing (AC3, AC4, AC13, AC14, AC16, AC28, AC29, AC38, AC41)
-  - [ ] Add a CI job or step that runs `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined"` with `continue-on-error: true`.
-  - [ ] Emit a clear summary for zero quarantined tests, passed quarantined tests, and failed quarantined tests.
-  - [ ] Upload quarantine TRX and bounded markdown/JSON summaries on `always()`.
-  - [ ] Validate artifacts before upload or sanitize during generation.
-  - [ ] Escape or reject GitHub workflow commands, markdown/HTML control content, multiline injection, and oversized fields before writing summaries, issue comments, or PR bodies.
-  - [ ] Preserve the original main-lane failure outcome when diagnostic reruns or blame data are collected.
-  - [ ] Ensure quarantine lane result cannot rewrite or mask the status of blocking lanes.
+- [x] T2. Add quarantine lane and evidence publishing (AC3, AC4, AC13, AC14, AC16, AC28, AC29, AC38, AC41)
+  - [x] Add a CI job or step that runs `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined"` with `continue-on-error: true`.
+  - [x] Emit a clear summary for zero quarantined tests, passed quarantined tests, and failed quarantined tests.
+  - [x] Upload quarantine TRX and bounded markdown/JSON summaries on `always()`.
+  - [x] Validate artifacts before upload or sanitize during generation.
+  - [x] Escape or reject GitHub workflow commands, markdown/HTML control content, multiline injection, and oversized fields before writing summaries, issue comments, or PR bodies.
+  - [x] Preserve the original main-lane failure outcome when diagnostic reruns or blame data are collected.
+  - [x] Ensure quarantine lane result cannot rewrite or mask the status of blocking lanes.
 
-- [ ] T3. Implement flake detection and quarantine proposal tooling (AC5-AC8, AC20, AC25-AC29, AC31, AC33-AC35, AC37-AC41)
-  - [ ] Add script(s) under `jobs/` or `.github/scripts/` that parse TRX/workflow evidence and classify a candidate as flaky only from mixed pass/fail evidence.
-  - [ ] Use stable test identity: fully qualified name, display name, assembly/project, optional trait set, normalized source path if discoverable, and quarantine metadata signature.
-  - [ ] Reject mixed pass/fail evidence from unrelated SHAs unless an approved evidence window names the accepted range, evidence source, and owner.
-  - [ ] Open/update a GitHub issue with root-cause hypothesis, failure window, run links, owner marker, recurrence count, and proposed patch.
-  - [ ] Open a PR that adds `[Trait("Category", "Quarantined")]` and metadata. Do not commit directly to `main`.
-  - [ ] Run write-capable issue/PR/source-patch steps only from trusted protected-branch, scheduled, or manually approved contexts; never combine untrusted PR code execution with write-token permissions.
-  - [ ] Fall back to a manual patch proposal when source mapping is ambiguous because of generated tests, partial classes, parameterized cases, class-level traits, or conflicting trait locations.
-  - [ ] Use stable issue/PR markers and an optimistic re-read immediately before update or PR creation to avoid duplicate automation under concurrent runs.
-  - [ ] Add governance tests for manual and automated quarantine metadata.
-  - [ ] Add fixtures for pass/fail same SHA, pass/fail outside approved window, malformed evidence, contradictory evidence, unavailable permissions, untrusted PR context, ambiguous source mapping, concurrent update, workflow-command injection, missing labels, and redaction failures.
-  - [ ] Label with `flaky-test`, `ci-governance`, and `codex-automation` when labels are available.
+- [x] T3. Implement flake detection and quarantine proposal tooling (AC5-AC8, AC20, AC25-AC29, AC31, AC33-AC35, AC37-AC41)
+  - [x] Add script(s) under `jobs/` or `.github/scripts/` that parse TRX/workflow evidence and classify a candidate as flaky only from mixed pass/fail evidence.
+  - [x] Use stable test identity: fully qualified name, display name, assembly/project, optional trait set, normalized source path if discoverable, and quarantine metadata signature.
+  - [x] Reject mixed pass/fail evidence from unrelated SHAs unless an approved evidence window names the accepted range, evidence source, and owner.
+  - [x] Open/update a GitHub issue with root-cause hypothesis, failure window, run links, owner marker, recurrence count, and proposed patch.
+  - [x] Open a PR that adds `[Trait("Category", "Quarantined")]` and metadata. Do not commit directly to `main`.
+  - [x] Run write-capable issue/PR/source-patch steps only from trusted protected-branch, scheduled, or manually approved contexts; never combine untrusted PR code execution with write-token permissions.
+  - [x] Fall back to a manual patch proposal when source mapping is ambiguous because of generated tests, partial classes, parameterized cases, class-level traits, or conflicting trait locations.
+  - [x] Use stable issue/PR markers and an optimistic re-read immediately before update or PR creation to avoid duplicate automation under concurrent runs.
+  - [x] Add governance tests for manual and automated quarantine metadata.
+  - [x] Add fixtures for pass/fail same SHA, pass/fail outside approved window, malformed evidence, contradictory evidence, unavailable permissions, untrusted PR context, ambiguous source mapping, concurrent update, workflow-command injection, missing labels, and redaction failures.
+  - [x] Label with `flaky-test`, `ci-governance`, and `codex-automation` when labels are available.
 
-- [ ] T4. Implement reintroduction gate (AC9-AC11, AC20, AC24, AC27-AC29, AC32, AC34, AC37, AC40)
-  - [ ] Add or extend a scheduled/manual workflow for quarantine reintroduction. There is no general `nightly.yml` today, so create one only if that is the cleanest owner.
-  - [ ] Persist reintroduction state in a reviewable file or issue comment, keyed by stable test identity and protected-branch evidence.
-  - [ ] Count 5 consecutive valid nightly passes before opening a removal PR.
-  - [ ] Reset pass count on failure, cancellation, partial run, dynamic skip, rerun-only evidence, missing evidence, malformed evidence, wrong filter, or changed test identity.
-  - [ ] Re-read the existing state or issue marker before writing pass-count updates or opening a removal PR so concurrent nightly/manual runs cannot lose evidence.
-  - [ ] Keep write-token removal PR creation in trusted workflow contexts only.
-  - [ ] If a reintroduced test fails again, open/update a repeat-flake issue and quarantine PR with increased scrutiny.
+- [x] T4. Implement reintroduction gate (AC9-AC11, AC20, AC24, AC27-AC29, AC32, AC34, AC37, AC40)
+  - [x] Add or extend a scheduled/manual workflow for quarantine reintroduction. There is no general `nightly.yml` today, so create one only if that is the cleanest owner.
+  - [x] Persist reintroduction state in a reviewable file or issue comment, keyed by stable test identity and protected-branch evidence.
+  - [x] Count 5 consecutive valid nightly passes before opening a removal PR.
+  - [x] Reset pass count on failure, cancellation, partial run, dynamic skip, rerun-only evidence, missing evidence, malformed evidence, wrong filter, or changed test identity.
+  - [x] Re-read the existing state or issue marker before writing pass-count updates or opening a removal PR so concurrent nightly/manual runs cannot lose evidence.
+  - [x] Keep write-token removal PR creation in trusted workflow contexts only.
+  - [x] If a reintroduced test fails again, open/update a repeat-flake issue and quarantine PR with increased scrutiny.
 
-- [ ] T5. Add CI duration budget governance (AC17-AC20, AC29, AC34, AC36)
-  - [ ] Record inner-loop, full-CI, and nightly durations with run id, lane, commit, and timestamp.
-  - [ ] Compare against budgets: inner loop under 5 minutes, full CI under 12 minutes, nightly under 45 minutes.
-  - [ ] Open/update a mandatory `ci-diet` issue when full CI exceeds 15 minutes for 3 consecutive days.
-  - [ ] Include suspected slow lanes and links to run summaries.
-  - [ ] Define the authority for full-CI duration as protected-branch workflow evidence; document whether reruns and canceled runs are excluded or recorded as invalid evidence.
-  - [ ] Keep advisory performance and quarantine lanes visible but separate from blocking failure accounting.
+- [x] T5. Add CI duration budget governance (AC17-AC20, AC29, AC34, AC36)
+  - [x] Record inner-loop, full-CI, and nightly durations with run id, lane, commit, and timestamp.
+  - [x] Compare against budgets: inner loop under 5 minutes, full CI under 12 minutes, nightly under 45 minutes.
+  - [x] Open/update a mandatory `ci-diet` issue when full CI exceeds 15 minutes for 3 consecutive days.
+  - [x] Include suspected slow lanes and links to run summaries.
+  - [x] Define the authority for full-CI duration as protected-branch workflow evidence; document whether reruns and canceled runs are excluded or recorded as invalid evidence.
+  - [x] Keep advisory performance and quarantine lanes visible but separate from blocking failure accounting.
 
-- [ ] T6. Preserve E2E and cross-story quality boundaries (AC23, AC30)
-  - [ ] Ensure Playwright E2E governance references one suite per reference microservice for happy path, disconnect/reconnect, and rejection rollback.
-  - [ ] Do not implement new product E2E scenarios beyond governance wiring unless already present in `tests/e2e`.
-  - [ ] Do not suppress Story 10-4 invalid mutation/property reports or threshold failures through quarantine.
-  - [ ] Keep Pact, accessibility, visual specimens, release signing, SBOM, and LLM benchmark ownership with their existing stories.
+- [x] T6. Preserve E2E and cross-story quality boundaries (AC23, AC30)
+  - [x] Ensure Playwright E2E governance references one suite per reference microservice for happy path, disconnect/reconnect, and rejection rollback.
+  - [x] Do not implement new product E2E scenarios beyond governance wiring unless already present in `tests/e2e`.
+  - [x] Do not suppress Story 10-4 invalid mutation/property reports or threshold failures through quarantine.
+  - [x] Keep Pact, accessibility, visual specimens, release signing, SBOM, and LLM benchmark ownership with their existing stories.
 
-- [ ] T7. Document local and CI operations (AC24, AC27, AC28)
-  - [ ] Update `tests/README.md` or a focused process note with commands for main lane, quarantine lane, reintroduction dry run, and CI-diet monitor.
-  - [ ] Document how to remove quarantine after root-cause fix.
-  - [ ] Document evidence retention and redaction rules.
-  - [ ] Add troubleshooting guidance for malformed TRX, zero-test discovery, and missing GitHub labels.
+- [x] T7. Document local and CI operations (AC24, AC27, AC28)
+  - [x] Update `tests/README.md` or a focused process note with commands for main lane, quarantine lane, reintroduction dry run, and CI-diet monitor.
+  - [x] Document how to remove quarantine after root-cause fix.
+  - [x] Document evidence retention and redaction rules.
+  - [x] Add troubleshooting guidance for malformed TRX, zero-test discovery, and missing GitHub labels.
 
-- [ ] T8. Validate and hand off (AC1-AC41)
-  - [ ] Run targeted governance tests.
-  - [ ] Run local command(s) proving `Category!=Quarantined` and `Category=Quarantined` behavior.
-  - [ ] Run scripts in dry-run mode against sample TRX/workflow fixtures for pass, fail, mixed same SHA, mixed outside approved window, zero-test, malformed, canceled, missing, invalid permission, untrusted PR context, ambiguous source mapping, workflow-command injection, concurrent update, redaction, duration-breach, and repeat-flake cases.
-  - [ ] Record final workflow paths, script paths, command examples, labels, issue/PR behavior, and any deferred decisions in completion notes.
+- [x] T8. Validate and hand off (AC1-AC41)
+  - [x] Run targeted governance tests.
+  - [x] Run local command(s) proving `Category!=Quarantined` and `Category=Quarantined` behavior.
+  - [x] Run scripts in dry-run mode against sample TRX/workflow fixtures for pass, fail, mixed same SHA, mixed outside approved window, zero-test, malformed, canceled, missing, invalid permission, untrusted PR context, ambiguous source mapping, workflow-command injection, concurrent update, redaction, duration-breach, and repeat-flake cases.
+  - [x] Record final workflow paths, script paths, command examples, labels, issue/PR behavior, and any deferred decisions in completion notes.
 
 ---
 
@@ -310,21 +310,57 @@ Do not implement these in Story 10-5:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"` passed: 47 tests.
+- `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` passed for the blocking main-lane filter.
+- `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine-local"` passed and produced per-project zero-quarantine TRX evidence.
+- `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build` passed: 2900 total tests across solution projects, with 3 skipped.
+- `python .github/scripts/ci_governance.py classify-flake ...`, `reintroduction ...`, `duration-monitor ...`, and `validate-quarantine-metadata ...` were exercised through governance tests and direct dry-run fixture checks.
+- `dotnet format whitespace tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --include tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs --verify-no-changes --no-restore` passed for the changed C# governance test file.
+- `dotnet format --verify-no-changes --no-restore` failed on pre-existing whitespace/EOL drift across unrelated source files; no unrelated formatting churn was applied.
 
 ### Completion Notes List
 
 - 2026-05-10: Story created via `/bmad-create-story 10-5-flaky-test-quarantine-and-ci-governance` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-10: Party-mode review hardening applied. Added valid nightly pass semantics, stable test identity, evidence-window governance, fail-closed GitHub permission handling, CI-result interpretation, duplicate issue controls, redaction/fixture expectations, and stronger Story 10-4 quality-gate boundaries.
 - 2026-05-10: Advanced elicitation hardening applied. Added trusted write-token context rules, hostile evidence output escaping, ambiguous source-patch fallback, concurrent automation update guards, and retry/blame outcome boundaries.
+- 2026-05-10: Implemented and validated flaky-test quarantine governance. Main CI and release exclude `Category=Quarantined`; CI and nightly quarantine lanes run warning-only with bounded evidence; flaky classification, metadata validation, reintroduction, and CI-duration budget automation live in `.github/scripts/ci_governance.py`; governance tests now execute the helper against fixtures for same-SHA flakes, outside-window rejection, malformed/contradictory evidence, untrusted contexts, ambiguous source mapping, repeat flakes, redaction, and duration breaches.
+- 2026-05-10: Hardened quarantine TRX publishing to use `LogFilePrefix=test-results-quarantine` so solution-level quarantine runs preserve per-project evidence instead of overwriting a fixed TRX file.
+- 2026-05-10: Added timeout-safe stdout/stderr handling to the governance-test process helper after a local rerun exposed a possible child-process output deadlock.
 
 ### File List
 
-(to be filled in by dev agent)
+- `.github/scripts/ci_governance.py`
+- `.github/workflows/ci.yml`
+- `.github/workflows/flaky-test-governance.yml`
+- `.github/workflows/quarantine-governance-nightly.yml`
+- `.github/workflows/release.yml`
+- `.github/workflows/mutation-property-nightly.yml`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
+- `tests/README.md`
+- `tests/ci-governance/quarantine-reintroduction-state.json`
+- `tests/ci-governance/fixtures/ambiguous-source-mapping.json`
+- `tests/ci-governance/fixtures/concurrent-update-marker.json`
+- `tests/ci-governance/fixtures/contradictory-evidence.json`
+- `tests/ci-governance/fixtures/duration-breach-three-days.json`
+- `tests/ci-governance/fixtures/flake-approved-window.json`
+- `tests/ci-governance/fixtures/flake-pass-fail-outside-window.json`
+- `tests/ci-governance/fixtures/flake-pass-fail-same-sha.json`
+- `tests/ci-governance/fixtures/hostile-output-redaction.json`
+- `tests/ci-governance/fixtures/malformed-evidence.json`
+- `tests/ci-governance/fixtures/missing-labels.json`
+- `tests/ci-governance/fixtures/permission-untrusted-context.json`
+- `tests/ci-governance/fixtures/reintroduction-invalid-reset.json`
+- `tests/ci-governance/fixtures/reintroduction-valid-pass.json`
+- `tests/ci-governance/fixtures/repeat-flake.json`
+- `tests/ci-governance/fixtures/zero-quarantined-summary.json`
+
+### Change Log
+
+- 2026-05-10: Completed Story 10.5 implementation and moved status to review. Added executable governance coverage for CI quarantine automation, completed reintroduction PR support, expanded fixture coverage, documented local/CI operations, and validated story acceptance criteria with governance, filtered, quarantine, and full solution test runs.
 
 ---
 

@@ -49,7 +49,7 @@ jobs:
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results-quarantine.trx"
+        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
 
       - name: Summarize quarantine evidence
         if: always()
@@ -64,8 +64,11 @@ jobs:
       - name: Evaluate reintroduction evidence
         if: always()
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p artifacts/quarantine
+          gh auth setup-git
           python3 - <<'PY'
           import json
           from pathlib import Path
@@ -98,7 +101,13 @@ jobs:
               --evidence artifacts/quarantine/reintroduction-evidence.json \
               --state tests/ci-governance/quarantine-reintroduction-state.json \
               --output-state artifacts/quarantine/quarantine-reintroduction-state.next.json \
-              --output artifacts/quarantine/reintroduction-decision.json
+              --output artifacts/quarantine/reintroduction-decision.json \
+              --source-root . \
+              --apply \
+              --event-name "${{ github.event_name }}" \
+              --ref "${{ github.ref }}" \
+              --ref-protected "${{ github.ref_protected }}" \
+              --from-fork "false"
           fi
 
       - name: Record nightly duration summary
@@ -192,4 +201,4 @@ jobs:
           path: |
             artifacts/quarantine/**
             artifacts/ci-duration/**
-            TestResults/**/test-results-quarantine.trx
+            TestResults/**/test-results-quarantine*.trx
