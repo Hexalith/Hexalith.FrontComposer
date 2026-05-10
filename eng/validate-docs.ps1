@@ -253,6 +253,7 @@ function Test-Snippets([array]$ContentFiles, [System.Collections.Generic.List[st
   <ItemGroup>
     <ProjectReference Include="../../../../src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj" />
     <ProjectReference Include="../../../../src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj" />
+    <ProjectReference Include="../../../../src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj" />
   </ItemGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

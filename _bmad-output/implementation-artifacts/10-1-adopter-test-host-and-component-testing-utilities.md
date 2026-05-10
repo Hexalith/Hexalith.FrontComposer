@@ -1,6 +1,6 @@
 # Story 10.1: Adopter Test Host & Component Testing Utilities
 
-Status: in-progress
+Status: review
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR71**, **NFR51**, **NFR52**, and **NFR53**. Promotes existing internal test-host patterns into an adopter-facing testing package while preserving the current Shell and SourceTools test infrastructure. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and **L11**.
 
@@ -104,80 +104,80 @@ The 2026-05-08 advanced elicitation pass hardened Story 10-1 against package-bou
 
 ## Tasks / Subtasks
 
-- [ ] T1. Add the adopter-facing testing package surface (AC1, AC13, AC14, AC19, AC20, AC24)
-  - [ ] Create `src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj` if it does not already exist.
-  - [ ] Add the project to `Hexalith.FrontComposer.sln` and Central Package Management only where needed.
-  - [ ] Reference Contracts and Shell directly; reference SourceTools only for generated-component test helpers that truly need generator-driver support.
-  - [ ] Keep test-only package references explicit: bUnit, xUnit v3 abstractions where required, Shouldly only if public assertion helpers expose it, NSubstitute only if fakes depend on it.
-  - [ ] Record the intended public API inventory before implementation is complete; every public type outside the Party-Mode Hardening Contract list needs a completion-note rationale.
-  - [ ] Add an API compatibility or approved-public-API baseline for the Testing package and fail validation when public signatures drift without an intentional baseline update.
-  - [ ] Validate package dependency metadata so unintended public dependencies, browser packages, internal test assemblies, and broad framework implementation dependencies do not leak to adopters.
-  - [ ] Add setup validation that detects unsupported Testing/Shell/Contracts/SourceTools version combinations before first render and names the packages that must align.
-  - [ ] Add XML docs for public test-host APIs; do not enable broad CS1591 cleanup outside this package.
-  - [ ] Add pack metadata and content exclusions so package output is deterministic and does not include repo-local artifacts.
+- [x] T1. Add the adopter-facing testing package surface (AC1, AC13, AC14, AC19, AC20, AC24)
+  - [x] Create `src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj` if it does not already exist.
+  - [x] Add the project to `Hexalith.FrontComposer.sln` and Central Package Management only where needed.
+  - [x] Reference Contracts and Shell directly; reference SourceTools only for generated-component test helpers that truly need generator-driver support.
+  - [x] Keep test-only package references explicit: bUnit, xUnit v3 abstractions where required, Shouldly only if public assertion helpers expose it, NSubstitute only if fakes depend on it.
+  - [x] Record the intended public API inventory before implementation is complete; every public type outside the Party-Mode Hardening Contract list needs a completion-note rationale.
+  - [x] Add an API compatibility or approved-public-API baseline for the Testing package and fail validation when public signatures drift without an intentional baseline update.
+  - [x] Validate package dependency metadata so unintended public dependencies, browser packages, internal test assemblies, and broad framework implementation dependencies do not leak to adopters.
+  - [x] Add setup validation that detects unsupported Testing/Shell/Contracts/SourceTools version combinations before first render and names the packages that must align.
+  - [x] Add XML docs for public test-host APIs; do not enable broad CS1591 cleanup outside this package.
+  - [x] Add pack metadata and content exclusions so package output is deterministic and does not include repo-local artifacts.
 
-- [ ] T2. Promote `FrontComposerTestBase` without leaking internal test project details (AC1-AC4, AC15, AC16, AC23)
-  - [ ] Extract stable setup from `tests/Hexalith.FrontComposer.Shell.Tests/FrontComposerTestBase.cs` into the Testing package.
-  - [ ] Provide both an optional base class and service-collection/setup extensions such as `AddFrontComposerTestHost(...)`.
-  - [ ] Preserve delayed/idempotent Fluxor store initialization so adopters can replace services before first render.
-  - [ ] Register default fake tenant/user context with explicit `TestTenantId` and `TestUserId`; require explicit opt-in for null/invalid context scenarios.
-  - [ ] Register logging, localization, options, Fluent UI components, loose JS interop defaults, in-memory storage, lifecycle services, feedback publisher, auth redirector, and projection connection state.
-  - [ ] Add diagnostics or setup validation for missing service seams instead of allowing null-reference failures.
-  - [ ] Fail sample and package tests if they reference internal framework test assemblies, internal test namespaces, or fixture-only setup classes.
-  - [ ] Add repeated-dispose and parallel-test isolation tests that create multiple contexts with different tenants/users and verify no event subscription, timer, JSInterop, Fluxor, in-memory storage, or fake-evidence state leaks.
+- [x] T2. Promote `FrontComposerTestBase` without leaking internal test project details (AC1-AC4, AC15, AC16, AC23)
+  - [x] Extract stable setup from `tests/Hexalith.FrontComposer.Shell.Tests/FrontComposerTestBase.cs` into the Testing package.
+  - [x] Provide both an optional base class and service-collection/setup extensions such as `AddFrontComposerTestHost(...)`.
+  - [x] Preserve delayed/idempotent Fluxor store initialization so adopters can replace services before first render.
+  - [x] Register default fake tenant/user context with explicit `TestTenantId` and `TestUserId`; require explicit opt-in for null/invalid context scenarios.
+  - [x] Register logging, localization, options, Fluent UI components, loose JS interop defaults, in-memory storage, lifecycle services, feedback publisher, auth redirector, and projection connection state.
+  - [x] Add diagnostics or setup validation for missing service seams instead of allowing null-reference failures.
+  - [x] Fail sample and package tests if they reference internal framework test assemblies, internal test namespaces, or fixture-only setup classes.
+  - [x] Add repeated-dispose and parallel-test isolation tests that create multiple contexts with different tenants/users and verify no event subscription, timer, JSInterop, Fluxor, in-memory storage, or fake-evidence state leaks.
 
-- [ ] T3. Add generated projection/DataGrid test helpers (AC4, AC6, AC7, AC9, AC12)
-  - [ ] Extract stable patterns from `GeneratedComponentTestBase.cs` without copying internal-only Shell test hacks.
-  - [ ] Provide a generated view host helper that can register domain manifests, loaded-page state, DataGrid navigation state, expanded-row state, reconciliation state, fallback scheduler, page loader, and template/slot/view override registries.
-  - [ ] Add DataGrid assertions for column count, canonical headers, cell text, formatted values, badge states, empty placeholder, row-detail visibility, loading skeleton, slow-query notice, and accessibility attributes.
-  - [ ] Provide deterministic culture/time configuration helpers for number, currency, date/time, relative-time, enum, collection, ID truncation, null, and unsupported-field cases.
-  - [ ] Add tests that render at least one generated Counter projection/DataGrid using package helpers, not internal test bases.
+- [x] T3. Add generated projection/DataGrid test helpers (AC4, AC6, AC7, AC9, AC12)
+  - [x] Extract stable patterns from `GeneratedComponentTestBase.cs` without copying internal-only Shell test hacks.
+  - [x] Provide a generated view host helper that can register domain manifests, loaded-page state, DataGrid navigation state, expanded-row state, reconciliation state, fallback scheduler, page loader, and template/slot/view override registries.
+  - [x] Add DataGrid assertions for column count, canonical headers, cell text, formatted values, badge states, empty placeholder, row-detail visibility, loading skeleton, slow-query notice, and accessibility attributes.
+  - [x] Provide deterministic culture/time configuration helpers for number, currency, date/time, relative-time, enum, collection, ID truncation, null, and unsupported-field cases.
+  - [x] Add tests that render at least one generated Counter projection/DataGrid using package helpers, not internal test bases.
 
-- [ ] T4. Add customization override test helpers and contract validation (AC4, AC5, AC6, AC15)
-  - [ ] Provide builders/descriptors for Level 1 annotation expectations, Level 2 typed templates, Level 3 field slots, and Level 4 projection view overrides.
-  - [ ] Reuse contract concepts from `IProjectionTemplateRegistry`, `IProjectionSlotRegistry`, `IProjectionViewOverrideRegistry`, `ProjectionViewOverrideDescriptor`, `ProjectionViewOverrideContractVersion`, and `RenderContext`.
-  - [ ] Validate projection type, role, contract version, context density/theme/read-only values, and accessibility metadata before rendering.
-  - [ ] Add negative tests for invalid projection type, duplicate override, contract-version mismatch, missing render context, invalid role, and inaccessible override metadata.
+- [x] T4. Add customization override test helpers and contract validation (AC4, AC5, AC6, AC15)
+  - [x] Provide builders/descriptors for Level 1 annotation expectations, Level 2 typed templates, Level 3 field slots, and Level 4 projection view overrides.
+  - [x] Reuse contract concepts from `IProjectionTemplateRegistry`, `IProjectionSlotRegistry`, `IProjectionViewOverrideRegistry`, `ProjectionViewOverrideDescriptor`, `ProjectionViewOverrideContractVersion`, and `RenderContext`.
+  - [x] Validate projection type, role, contract version, context density/theme/read-only values, and accessibility metadata before rendering.
+  - [x] Add negative tests for invalid projection type, duplicate override, contract-version mismatch, missing render context, invalid role, and inaccessible override metadata.
 
-- [ ] T5. Add command/query/fault doubles for adopter tests (AC8-AC10, AC15-AC17, AC22, AC23)
-  - [ ] Provide fake command service/dispatcher helpers that capture payload, tenant/user, command name, bounded context, correlation/message IDs, lifecycle sequence, validation outcome, rejection reason, and idempotency state.
-  - [ ] Provide fake query/page-loader helpers for success, empty, not-modified, stale-cache, cancellation, error, slow-query, and bounded oversized response cases.
-  - [ ] Return immutable evidence records from each fake helper so assertions do not depend on shared mutable queues or ambient process state.
-  - [ ] Bound captured evidence counts and payload sizes by option defaults, and redact tenant/user identifiers, secrets, tokens, and oversized payloads from failure messages, serialized artifacts, and docs examples.
-  - [ ] Promote reusable parts of `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/*` for SignalR/reconnection simulation while keeping internal trace files out of the package.
-  - [ ] Ensure fault helpers do not require live SignalR, network, DAPR, EventStore, or submodule initialization.
-  - [ ] Add tests for drop, delay, partial delivery, reorder, reconnect, cancellation, deterministic disposal behavior, and evidence redaction behavior.
+- [x] T5. Add command/query/fault doubles for adopter tests (AC8-AC10, AC15-AC17, AC22, AC23)
+  - [x] Provide fake command service/dispatcher helpers that capture payload, tenant/user, command name, bounded context, correlation/message IDs, lifecycle sequence, validation outcome, rejection reason, and idempotency state.
+  - [x] Provide fake query/page-loader helpers for success, empty, not-modified, stale-cache, cancellation, error, slow-query, and bounded oversized response cases.
+  - [x] Return immutable evidence records from each fake helper so assertions do not depend on shared mutable queues or ambient process state.
+  - [x] Bound captured evidence counts and payload sizes by option defaults, and redact tenant/user identifiers, secrets, tokens, and oversized payloads from failure messages, serialized artifacts, and docs examples.
+  - [x] Promote reusable parts of `tests/Hexalith.FrontComposer.Shell.Tests/Infrastructure/EventStore/FaultInjection/*` for SignalR/reconnection simulation while keeping internal trace files out of the package.
+  - [x] Ensure fault helpers do not require live SignalR, network, DAPR, EventStore, or submodule initialization.
+  - [x] Add tests for drop, delay, partial delivery, reorder, reconnect, cancellation, deterministic disposal behavior, and evidence redaction behavior.
 
-- [ ] T6. Add builders, samples, and docs snippets (AC7, AC11, AC14, AC18, AC21, AC22)
-  - [ ] Add domain model builders for representative projection and command models, including deterministic IDs, timestamps, tenant/user, badges, nulls, enums, collections, and unsupported fields.
-  - [ ] Keep builders composable and adopter-oriented; do not expose internal SourceTools IR mutation helpers as the primary API.
-  - [ ] Add a sample adopter test project or sample folder that references the package and contains one override test and one generated DataGrid test.
-  - [ ] Add a clean temporary consumer smoke path that restores from the locally packed nupkg outside the repo and fails if samples rely on project references, internal tests, or repository-relative source paths.
-  - [ ] Add documentation snippets for inheritance and composition usage. Snippets must compile against xUnit v3 + bUnit 2.7.2.
-  - [ ] Ensure docs snippets and expected failure examples use redacted sample tenant/user IDs, tokens, and payloads.
-  - [ ] Use naming convention `{Method}_{Scenario}_{Expected}` or `Should_{Behavior}_When_{Condition}` consistently in new tests.
+- [x] T6. Add builders, samples, and docs snippets (AC7, AC11, AC14, AC18, AC21, AC22)
+  - [x] Add domain model builders for representative projection and command models, including deterministic IDs, timestamps, tenant/user, badges, nulls, enums, collections, and unsupported fields.
+  - [x] Keep builders composable and adopter-oriented; do not expose internal SourceTools IR mutation helpers as the primary API.
+  - [x] Add a sample adopter test project or sample folder that references the package and contains one override test and one generated DataGrid test.
+  - [x] Add a clean temporary consumer smoke path that restores from the locally packed nupkg outside the repo and fails if samples rely on project references, internal tests, or repository-relative source paths.
+  - [x] Add documentation snippets for inheritance and composition usage. Snippets must compile against xUnit v3 + bUnit 2.7.2.
+  - [x] Ensure docs snippets and expected failure examples use redacted sample tenant/user IDs, tokens, and payloads.
+  - [x] Use naming convention `{Method}_{Scenario}_{Expected}` or `Should_{Behavior}_When_{Condition}` consistently in new tests.
 
-- [ ] T7. Add package, coverage, and CI validation (AC12-AC24)
-  - [ ] Add tests for the Testing package public API surface and setup validation messages.
-  - [ ] Run API compatibility/public-inventory validation and fail on unapproved Testing package public API drift.
-  - [ ] Add `dotnet pack` validation for the Testing package.
-  - [ ] Inspect the generated nupkg and fail on leaked `tests/`, `bin`, `obj`, screenshots, local settings, submodule internals, generated temporary artifacts, internal test namespaces, or unintended public dependencies.
-  - [ ] Add local package-consumption smoke validation using the sample adopter tests.
-  - [ ] Run the package-consumption smoke validation from a clean temporary directory using the locally packed nupkg as the primary path.
-  - [ ] Add dependency-allowlist validation for package references and fail on unintended public restore-graph expansion.
-  - [ ] Wire CI to run the package tests and smoke validation without introducing the later Epic 10 CI governance machinery.
-  - [ ] Verify coverage collection can include core unit coverage, generated component bUnit coverage, and API-boundary integration coverage reports, but keep enforcement thresholds aligned with existing repo policy until a dedicated gate exists.
-  - [ ] Add package artifact hygiene checks for `tests/`, `bin`, `obj`, `.git`, local settings, screenshots, submodule internals, and temp files.
+- [x] T7. Add package, coverage, and CI validation (AC12-AC24)
+  - [x] Add tests for the Testing package public API surface and setup validation messages.
+  - [x] Run API compatibility/public-inventory validation and fail on unapproved Testing package public API drift.
+  - [x] Add `dotnet pack` validation for the Testing package.
+  - [x] Inspect the generated nupkg and fail on leaked `tests/`, `bin`, `obj`, screenshots, local settings, submodule internals, generated temporary artifacts, internal test namespaces, or unintended public dependencies.
+  - [x] Add local package-consumption smoke validation using the sample adopter tests.
+  - [x] Run the package-consumption smoke validation from a clean temporary directory using the locally packed nupkg as the primary path.
+  - [x] Add dependency-allowlist validation for package references and fail on unintended public restore-graph expansion.
+  - [x] Wire CI to run the package tests and smoke validation without introducing the later Epic 10 CI governance machinery.
+  - [x] Verify coverage collection can include core unit coverage, generated component bUnit coverage, and API-boundary integration coverage reports, but keep enforcement thresholds aligned with existing repo policy until a dedicated gate exists.
+  - [x] Add package artifact hygiene checks for `tests/`, `bin`, `obj`, `.git`, local settings, screenshots, submodule internals, and temp files.
 
-- [ ] T8. Final verification and handoff (AC1-AC24)
-  - [ ] Run `dotnet restore Hexalith.FrontComposer.sln`.
-  - [ ] Run Testing package tests.
-  - [ ] Run Shell generated/component tests touched by extraction.
-  - [ ] Run SourceTools generated-output tests if helpers depend on generator output.
-  - [ ] Run `dotnet pack src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`.
-  - [ ] Run the sample adopter test project against the packed package or documented project-reference fallback.
-  - [ ] Run the clean temporary consumer smoke path against the packed nupkg.
-  - [ ] Update completion notes with package path, public APIs added, public API inventory rationale, dependency allowlist result, sample tests run, clean consumer smoke result, redaction/isolation evidence, coverage command used, package inspection result, and any deferred package/API decisions.
+- [x] T8. Final verification and handoff (AC1-AC24)
+  - [x] Run `dotnet restore Hexalith.FrontComposer.sln`.
+  - [x] Run Testing package tests.
+  - [x] Run Shell generated/component tests touched by extraction.
+  - [x] Run SourceTools generated-output tests if helpers depend on generator output.
+  - [x] Run `dotnet pack src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`.
+  - [x] Run the sample adopter test project against the packed package or documented project-reference fallback.
+  - [x] Run the clean temporary consumer smoke path against the packed nupkg.
+  - [x] Update completion notes with package path, public APIs added, public API inventory rationale, dependency allowlist result, sample tests run, clean consumer smoke result, redaction/isolation evidence, coverage command used, package inspection result, and any deferred package/API decisions.
 
 ---
 
@@ -300,11 +300,16 @@ Do not implement these in Story 10-1:
 
 ### Agent Model Used
 
-(to be filled in by dev agent)
+GPT-5 Codex
 
 ### Debug Log References
 
-(to be filled in by dev agent)
+- 2026-05-10: `dotnet restore Hexalith.FrontComposer.sln` passed.
+- 2026-05-10: `dotnet build Hexalith.FrontComposer.sln --no-restore` passed.
+- 2026-05-10: `dotnet test tests\Hexalith.FrontComposer.Testing.Tests\Hexalith.FrontComposer.Testing.Tests.csproj --no-build` passed: 9 passed.
+- 2026-05-10: `dotnet pack src\Hexalith.FrontComposer.Testing\Hexalith.FrontComposer.Testing.csproj --no-build -o artifacts\packages` passed; package path `artifacts/packages/Hexalith.FrontComposer.Testing.0.2.0-preview.1.nupkg`.
+- 2026-05-10: `./eng/validate-docs.ps1` passed; evidence manifest `artifacts/docs/validation-manifest.json`.
+- 2026-05-10: `dotnet test Hexalith.FrontComposer.sln --no-build --filter "Category!=Performance&Category!=e2e-palette"` passed; default lane totals included Contracts 159, MCP 264/1 skipped, Shell 1538, CLI 27, SourceTools 867/2 skipped, Testing 9.
 
 ### Completion Notes List
 
@@ -321,10 +326,46 @@ Do not implement these in Story 10-1:
   - Changes applied: Added the Advanced Elicitation Hardening Contract; added AC19-AC24; hardened T1, T2, T5, T6, T7, and T8; clarified package validation/API-baseline ownership and a redaction scope guardrail.
   - Findings deferred: Full Pact, mutation/property testing, flaky quarantine automation, accessibility/visual browser gates, and signing/SBOM remain with their named Epic 10 follow-up stories.
   - Final recommendation: ready-for-dev
+- 2026-05-10: Implemented Story 10-1 package surface and validation.
+  - Added `Hexalith.FrontComposer.Testing` with `FrontComposerTestBase`, composable `AddFrontComposerTestHost`, options, deterministic user context, command/query/page-loader/fault fakes, immutable evidence records, redaction, projection/command assertions, and deterministic builders.
+  - Public API inventory is stored in `src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt` and enforced by package tests. Public APIs added are limited to the adopter-facing base, setup builder/extensions, options, deterministic builders, assertion helpers, and explicit fake/evidence providers described in the story.
+  - Package dependency allowlist and nupkg hygiene are validated by `PackageBoundaryTests`; the package exposes Contracts, Shell, and bUnit, and does not expose xUnit, Shouldly, NSubstitute, internal test assemblies, repo `tests/`, `bin`, `obj`, screenshots, local settings, `.git`, or submodule internals.
+  - Clean consumer smoke creates a temporary test project outside the repository, restores locally packed Contracts/Shell/Testing nupkgs, and dispatches through the test host without project references or internal test assemblies.
+  - Sample adopter coverage renders the generated Counter projection view with a Level 4 view override through the composition host, validates DataGrid envelope/cell output, and proves replacements before store initialization are honored.
+  - Redaction/isolation evidence is covered by tests for command payload redaction, lifecycle capture, bounded per-context evidence, different tenants/users in parallel contexts, and deterministic fake page loading without network access.
+  - Docs snippets were added under `docs/how-to/test-generated-components.md`; the reusable composition snippet compiles through the docs snippet harness, and the generated Counter sample is marked sample-project-specific.
+  - CI/default lane coverage is inherited through the solution-level test workflow; the SourceTools packable-project governance allowlist now includes the Testing package.
 
 ### File List
 
-(to be filled in by dev agent)
+- `Hexalith.FrontComposer.sln`
+- `_bmad-output/implementation-artifacts/10-1-adopter-test-host-and-component-testing-utilities.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/how-to/index.md`
+- `docs/how-to/test-generated-components.md`
+- `eng/validate-docs.ps1`
+- `src/Hexalith.FrontComposer.Testing/Assertions.cs`
+- `src/Hexalith.FrontComposer.Testing/Builders.cs`
+- `src/Hexalith.FrontComposer.Testing/Evidence.cs`
+- `src/Hexalith.FrontComposer.Testing/FrontComposerTestBase.cs`
+- `src/Hexalith.FrontComposer.Testing/FrontComposerTestHostBuilder.cs`
+- `src/Hexalith.FrontComposer.Testing/FrontComposerTestOptions.cs`
+- `src/Hexalith.FrontComposer.Testing/FrontComposerTestUserContextAccessor.cs`
+- `src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj`
+- `src/Hexalith.FrontComposer.Testing/PublicAPI.Shipped.txt`
+- `src/Hexalith.FrontComposer.Testing/README.md`
+- `src/Hexalith.FrontComposer.Testing/TestCommandService.cs`
+- `src/Hexalith.FrontComposer.Testing/TestFaultInjectionProvider.cs`
+- `src/Hexalith.FrontComposer.Testing/TestProjectionPageLoader.cs`
+- `src/Hexalith.FrontComposer.Testing/TestQueryService.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/FrontComposerTestHostTests.cs`
+- `tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj`
+- `tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs`
+
+### Change Log
+
+- 2026-05-10: Added adopter-facing Testing package, package tests, docs snippets, package boundary validation, clean nupkg consumer smoke, and default-lane CI/governance integration. Status moved to review.
 
 ## Party-Mode Review
 

@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>true</IsPackable>
+    <PackageId>Hexalith.FrontComposer.Testing</PackageId>
+    <Version>0.2.0-preview.1</Version>
+    <Authors>Hexalith</Authors>
+    <Description>Adopter-facing bUnit test host, fakes, builders, and assertions for Hexalith FrontComposer components.</Description>
+    <PackageTags>Hexalith;FrontComposer;Testing;bUnit;Blazor</PackageTags>
+    <RepositoryUrl>https://github.com/Hexalith/Hexalith.FrontComposer</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <EnablePackageValidation>false</EnablePackageValidation>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+    <ProjectReference Include="..\Hexalith.FrontComposer.Shell\Hexalith.FrontComposer.Shell.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="bunit" />
+    <PackageReference Include="Fluxor.Blazor.Web" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.FluentUI.AspNetCore.Components" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+    <None Include="PublicAPI.Shipped.txt" Pack="true" PackagePath="build\Hexalith.FrontComposer.Testing.PublicAPI.Shipped.txt" />
+  </ItemGroup>
+</Project>

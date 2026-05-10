@@ -13,5 +13,6 @@ slug: how-to/
 # How-to guides
 
 - [Customize a relative-time field at four levels](customization-gradient-cookbook.md)
+- [Test generated components](test-generated-components.md)
 - [Apply migration guidance](migration-guides.md)
 - [Debug generated output](generated-output-debugging.md)

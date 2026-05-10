@@ -1,0 +1,20 @@
+# Intentional public API baseline for Hexalith.FrontComposer.Testing 0.2.0-preview.1.
+# This file is validated by Hexalith.FrontComposer.Testing.Tests.
+Hexalith.FrontComposer.Testing.CommandDispatchEvidence
+Hexalith.FrontComposer.Testing.CommandEvidenceAssertions
+Hexalith.FrontComposer.Testing.CommandTestDataBuilder<TCommand>
+Hexalith.FrontComposer.Testing.FaultInjectionEvidence
+Hexalith.FrontComposer.Testing.FrontComposerTestBase
+Hexalith.FrontComposer.Testing.FrontComposerTestHostBuilder
+Hexalith.FrontComposer.Testing.FrontComposerTestHostServiceCollectionExtensions
+Hexalith.FrontComposer.Testing.FrontComposerTestOptions
+Hexalith.FrontComposer.Testing.FrontComposerTestUserContextAccessor
+Hexalith.FrontComposer.Testing.GeneratedProjectionAssertions
+Hexalith.FrontComposer.Testing.ProjectionPageEvidence
+Hexalith.FrontComposer.Testing.ProjectionTestDataBuilder<TProjection>
+Hexalith.FrontComposer.Testing.RedactedEvidenceFormatter
+Hexalith.FrontComposer.Testing.StoreInitializationMode
+Hexalith.FrontComposer.Testing.TestCommandService
+Hexalith.FrontComposer.Testing.TestFaultInjectionProvider
+Hexalith.FrontComposer.Testing.TestProjectionPageLoader
+Hexalith.FrontComposer.Testing.TestQueryService

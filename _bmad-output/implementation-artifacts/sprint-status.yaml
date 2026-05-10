@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (/bmad-create-story 10-6 created. Story 10-6 -> ready-for-dev.)"
+last_updated: "2026-05-10 (/bmad-dev-story 10-1 complete; restore/build/package/docs/default test lane pass. Story 10-1 -> review.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -135,7 +135,7 @@ development_status:
 
   # Epic 10: Framework Quality & Adopter Confidence
   epic-10: in-progress
-  10-1-adopter-test-host-and-component-testing-utilities: in-progress
+  10-1-adopter-test-host-and-component-testing-utilities: review
   10-2-accessibility-ci-gates-and-visual-specimen-verification: ready-for-dev
   10-3-consumer-driven-contract-tests-pact: ready-for-dev
   10-4-mutation-testing-and-property-based-testing: ready-for-dev
