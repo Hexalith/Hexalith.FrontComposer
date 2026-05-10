@@ -80,6 +80,10 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
         }
         catch (JSException) {
         }
+        catch (InvalidOperationException) {
+            // Static prerender does not have a live JS runtime. The interactive render will import
+            // the module again when scroll behavior is actually available.
+        }
         catch (OperationCanceledException) {
         }
     }
@@ -147,6 +151,10 @@ public sealed class DataGridScrollInterop : IAsyncDisposable {
             return null;
         }
         catch (JSException) {
+            ResetFaultedImport();
+            return null;
+        }
+        catch (InvalidOperationException) {
             ResetFaultedImport();
             return null;
         }

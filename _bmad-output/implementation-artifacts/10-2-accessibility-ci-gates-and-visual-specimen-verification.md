@@ -1,6 +1,6 @@
 # Story 10.2: Accessibility CI Gates & Visual Specimen Verification
 
-Status: review
+Status: done
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR76**, **FR77**, **UX-DR32**, **UX-DR33**, **UX-DR34**, **NFR37**, and **NFR38**. Turns the existing accessibility intent and early Playwright/axe helpers into a merge-blocking specimen gate. Applies lessons **L06**, **L07**, **L08**, **L10**, **L11**, **L13**, and **L15**.
 
@@ -173,6 +173,20 @@ Start here: T1 specimen host -> T2 deterministic state and selectors -> T3 axe g
   - [x] Run `dotnet build Hexalith.FrontComposer.sln --configuration Release`.
   - [x] Verify the specimen manifest, production route-exposure smoke test, artifact redaction/bounding behavior, retry evidence preservation, and no automatic snapshot or suppression creation in CI.
   - [x] Record specimen routes, screenshot baseline locations, specimen manifest path, CI trigger split, CI job name, accessibility artifact paths, baseline-update command, manual evidence path, and any temporary suppressions.
+
+### Review Findings
+
+- [x] [Review][Patch] Ubuntu CI has Windows-only visual baselines [`tests/e2e/specs/specimen-accessibility.spec.ts-snapshots`:1]
+- [x] [Review][Patch] Production route smoke test can pass while specimens are enabled [`tests/e2e/specs/specimen-accessibility.spec.ts`:224]
+- [x] [Review][Patch] Specimens hard-code fixture markup instead of exercising generated/Shell rendering contracts [`samples/Counter/Counter.Specimens/FrontComposerTypeSpecimen.razor`:11]
+- [x] [Review][Patch] Artifact validation does not validate the named accessibility/visual artifacts [`tests/e2e/scripts/validate-a11y-artifacts.mjs`:4]
+- [x] [Review][Patch] Artifact size guard checks directory entry size, not contents [`tests/e2e/scripts/validate-a11y-artifacts.mjs`:20]
+- [x] [Review][Patch] Visual baseline governance can silently skip on git diff or fetch failure [`tests/e2e/scripts/validate-visual-baseline-governance.mjs`:9]
+- [x] [Review][Patch] Committed baseline rationale template makes snapshot governance a false green [`docs/accessibility-verification/baseline-change-rationale.md`:5]
+- [x] [Review][Patch] Unknown axe impacts are reported but never fail [`tests/e2e/helpers/a11y.ts`:61]
+- [x] [Review][Patch] Forced-colors test page bypasses console/network guards [`tests/e2e/specs/specimen-accessibility.spec.ts`:168]
+- [x] [Review][Patch] CI installs Playwright dependencies nondeterministically [`.github/workflows/ci.yml`:443]
+- [x] [Review][Patch] Story changes the `Hexalith.EventStore` submodule pointer without reviewable story scope [`Hexalith.EventStore`:1]
 
 ---
 

@@ -1,5 +1,6 @@
 @page "/__frontcomposer/specimens/data-formatting"
 @namespace Counter.Specimens
+@using Counter.Specimens.Domain
 @using Hexalith.FrontComposer.Shell.Components.Specimens
 @using Microsoft.AspNetCore.Components
 @using Microsoft.AspNetCore.Components.Web
@@ -42,6 +43,11 @@
                 }
             </tbody>
         </table>
+    </section>
+
+    <section aria-labelledby="fc-generated-data-grid-title" data-testid="fc-generated-formatting-grid">
+        <h2 id="fc-generated-data-grid-title">Generated formatting DataGrid</h2>
+        <SpecimenFormattingProjectionView />
     </section>
 </main>
 

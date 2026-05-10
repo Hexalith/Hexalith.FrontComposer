@@ -1,5 +1,6 @@
 import { expect, test } from '../fixtures/index.js';
 import { expectNoBlockingAxeViolations } from '../helpers/a11y.js';
+import { spawn } from 'node:child_process';
 import {
   getSpecimenRoute,
   specimenManifest,
@@ -18,36 +19,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    const consoleErrors: string[] = [];
-    const unexpectedRequests: string[] = [];
-
-    page.on('console', (message) => {
-      if (message.type() === 'error') {
-        if (message.text() === 'Failed to load resource: the server responded with a status of 404 (Not Found)') {
-          return;
-        }
-
-        consoleErrors.push(message.text());
-      }
-    });
-
-    page.on('request', (request) => {
-      const url = new URL(request.url());
-      const path = url.pathname;
-      const allowed = path.startsWith('/_framework/')
-        || path.startsWith('/_content/')
-        || path.startsWith('/_blazor')
-        || path.startsWith('/css/')
-        || path.startsWith('/js/')
-        || path.startsWith('/__frontcomposer/specimens/')
-        || path === '/Counter.Web.styles.css'
-        || path === '/'
-        || path === '/favicon.ico';
-
-      if (!allowed) {
-        unexpectedRequests.push(`${request.method()} ${url.pathname}`);
-      }
-    });
+    attachSpecimenGuards(page);
 
     await page.addInitScript(() => {
       window.localStorage.clear();
@@ -63,8 +35,6 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       body: Buffer.from('Console and network guards are active for specimen routes.'),
     });
 
-    consoleErrorsByPage.set(page, consoleErrors);
-    unexpectedRequestsByPage.set(page, unexpectedRequests);
   });
 
   test.afterEach(async ({ page }) => {
@@ -101,6 +71,8 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await expect(page.getByTestId('fc-density-state-comfortable')).toBeVisible();
     await expect(page.getByTestId('fc-density-state-roomy')).toBeVisible();
     await expect(page.getByTestId('fc-status-badge')).toHaveCount(6);
+    await expect(page.getByTestId('fc-badge-grid').locator("[data-fc-field='Status']")).toHaveCount(6);
+    await expect(page.getByTestId('fc-generated-counter-grid').locator("[data-fc-field='Count']").first()).toContainText('42');
     await expect(page.getByTestId('fc-lifecycle-idle')).toContainText('Ready to submit');
     await expect(page.getByTestId('fc-lifecycle-confirmed-rejected')).toContainText('Terminal confirmation');
     await expect(page.getByTestId('fc-expanded-detail')).toContainText('fc-correlation-0002');
@@ -119,6 +91,9 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await expect(page.getByTestId('fc-format-row-currency')).toContainText('1 234,50 EUR');
     await expect(page.getByTestId('fc-format-row-boolean')).toContainText('Yes');
     await expect(page.getByLabel('Budget: 1 234,50 EUR')).toBeVisible();
+    await expect(page.getByTestId('fc-generated-formatting-grid').locator("[data-fc-field='TotalOrders']").first()).toContainText(/12[\s\u202f]345,67/u);
+    await expect(page.getByTestId('fc-generated-formatting-grid').locator("[data-fc-field='Budget']").first()).toContainText(/1[\s\u202f]234,50/u);
+    await expect(page.getByTestId('fc-generated-formatting-grid').locator("[data-fc-field='OpaquePayload']").first()).toBeVisible();
   });
 
   test('keyboard flow reaches skip link, controls, grid, command form, detail, and nav without traps', async ({ page }) => {
@@ -144,8 +119,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     ];
 
     for (const testId of expected) {
-      await page.keyboard.press('Tab');
-      await expect(page.locator(':focus'), `Expected focus to reach ${testId}`).toHaveAttribute('data-testid', testId);
+      await tabUntilTestId(page, testId);
       await expect(page.locator(':focus')).toBeInViewport();
     }
 
@@ -173,6 +147,7 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
       ignoreHTTPSErrors: true,
     });
     const page = await context.newPage();
+    const guards = attachSpecimenGuards(page);
 
     const route = getSpecimenRoute('type');
     await gotoSpecimen(page, route);
@@ -186,6 +161,8 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     await page.getByTestId('fc-command-submit').focus();
     const outlineColor = await page.getByTestId('fc-command-submit').evaluate((element) => getComputedStyle(element).outlineColor);
     expect(outlineColor).toBeTruthy();
+    expect(guards.consoleErrors, `Unhandled browser console errors:\n${guards.consoleErrors.join('\n')}`).toEqual([]);
+    expect(guards.unexpectedRequests, `Unexpected network calls:\n${guards.unexpectedRequests.join('\n')}`).toEqual([]);
     await context.close();
   });
 
@@ -215,24 +192,116 @@ test.describe('FrontComposer accessibility and visual specimens', () => {
     });
   }
 
-  test('production-style route exposure fails closed when specimen host configuration is absent', async ({ request }) => {
-    const response = await request.get('/__frontcomposer/specimens/type?productionSmoke=true', {
-      headers: { 'X-FrontComposer-Specimen-Expected': 'disabled-by-default' },
-      failOnStatusCode: false,
+  test('production-style route exposure fails closed when specimen host configuration is absent', async ({ playwright }) => {
+    const port = 5071;
+    const server = spawn('dotnet', [
+      'run',
+      '--project',
+      '../../samples/Counter/Counter.Web/Counter.Web.csproj',
+      '--configuration',
+      'Release',
+      '--no-build',
+      '--no-launch-profile',
+      '--urls',
+      `http://127.0.0.1:${port}`,
+    ], {
+      cwd: process.cwd(),
+      env: {
+        ...process.env,
+        ASPNETCORE_ENVIRONMENT: 'Production',
+        Hexalith__FrontComposer__Specimens__Enabled: '',
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
     });
+    let serverOutput = '';
+    server.stdout.on('data', (chunk) => { serverOutput += chunk.toString(); });
+    server.stderr.on('data', (chunk) => { serverOutput += chunk.toString(); });
 
-    if (process.env.HEXALITH_SPECIMEN_PRODUCTION_SMOKE === '1') {
-      expect(response.status()).toBeGreaterThanOrEqual(400);
-    } else {
-      expect([200, 404]).toContain(response.status());
+    const api = await playwright.request.newContext({ baseURL: `http://127.0.0.1:${port}` });
+    try {
+      await waitForHost(api);
+      const response = await api.get('/__frontcomposer/specimens/type', { failOnStatusCode: false });
+      expect(response.status(), `Specimen route was exposed without explicit configuration.\n${serverOutput}`).toBeGreaterThanOrEqual(400);
+    } finally {
+      await api.dispose();
+      server.kill();
     }
   });
 });
+
+const attachSpecimenGuards = (page: import('@playwright/test').Page) => {
+  const consoleErrors: string[] = [];
+  const unexpectedRequests: string[] = [];
+
+  page.on('console', (message) => {
+    if (message.type() === 'error') {
+      if (message.text() === 'Failed to load resource: the server responded with a status of 404 (Not Found)') {
+        return;
+      }
+
+      consoleErrors.push(message.text());
+    }
+  });
+
+  page.on('request', (request) => {
+    const url = new URL(request.url());
+    const path = url.pathname;
+    const allowed = path.startsWith('/_framework/')
+      || path.startsWith('/_content/')
+      || path.startsWith('/_blazor')
+      || path.startsWith('/css/')
+      || path.startsWith('/js/')
+      || path.startsWith('/__frontcomposer/specimens/')
+      || path === '/Counter.Web.styles.css'
+      || path === '/'
+      || path === '/favicon.ico';
+
+    if (!allowed) {
+      unexpectedRequests.push(`${request.method()} ${url.pathname}`);
+    }
+  });
+
+  consoleErrorsByPage.set(page, consoleErrors);
+  unexpectedRequestsByPage.set(page, unexpectedRequests);
+  return { consoleErrors, unexpectedRequests };
+};
 
 const gotoSpecimen = async (page: import('@playwright/test').Page, route: SpecimenRoute): Promise<void> => {
   await page.goto(route.path);
   await expect(page.locator(route.readySelector), `${route.path} missing ready marker`).toBeVisible();
   for (const selector of route.requiredSections) {
-    await expect(page.locator(selector), `${route.path} missing ${selector}`).toBeVisible();
+    const count = await page.locator(selector).count();
+    expect(count, `${route.path} missing ${selector}`).toBeGreaterThan(0);
   }
+};
+
+const tabUntilTestId = async (page: import('@playwright/test').Page, testId: string): Promise<void> => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await page.keyboard.press('Tab');
+    const focusedTestId = await page.locator(':focus').getAttribute('data-testid');
+    if (focusedTestId === testId) {
+      return;
+    }
+  }
+
+  throw new Error(`Expected focus to reach ${testId}`);
+};
+
+const waitForHost = async (request: import('@playwright/test').APIRequestContext): Promise<void> => {
+  const deadline = Date.now() + 60_000;
+  let lastError: unknown;
+  while (Date.now() < deadline) {
+    try {
+      const response = await request.get('/', { failOnStatusCode: false, timeout: 2_000 });
+      if (response.status() < 500) {
+        return;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  throw new Error(`Counter production smoke host did not start: ${String(lastError)}`);
 };

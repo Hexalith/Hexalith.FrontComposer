@@ -416,7 +416,7 @@ jobs:
           path: artifacts/ci-duration/**
 
   accessibility-visual:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -442,7 +442,7 @@ jobs:
 
       - name: Install Playwright workspace dependencies
         working-directory: tests/e2e
-        run: npm install
+        run: npm ci
 
       - name: Install Chromium browser
         working-directory: tests/e2e

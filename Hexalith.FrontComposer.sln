@@ -49,6 +49,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Hexalith.FrontComposer.Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Counter.Specimens", "samples\Counter\Counter.Specimens\Counter.Specimens.csproj", "{F4ED4A9E-D92A-4FBC-AE46-212073964022}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Counter.Specimens.Domain", "samples\Counter\Counter.Specimens.Domain\Counter.Specimens.Domain.csproj", "{D25B12B0-FB86-4973-9001-BE8C7703C40B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -287,6 +289,18 @@ Global
 		{F4ED4A9E-D92A-4FBC-AE46-212073964022}.Release|x64.Build.0 = Release|Any CPU
 		{F4ED4A9E-D92A-4FBC-AE46-212073964022}.Release|x86.ActiveCfg = Release|Any CPU
 		{F4ED4A9E-D92A-4FBC-AE46-212073964022}.Release|x86.Build.0 = Release|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Debug|x64.Build.0 = Debug|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Debug|x86.Build.0 = Debug|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Release|x64.ActiveCfg = Release|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Release|x64.Build.0 = Release|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Release|x86.ActiveCfg = Release|Any CPU
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -312,5 +326,6 @@ Global
 		{A4FE1CC9-2DC9-43B5-8474-90FB60994AE3} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{C0056DCD-2B5D-4869-9CB3-6A707EA562A3} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{F4ED4A9E-D92A-4FBC-AE46-212073964022} = {DB44E3BD-F8AB-30FC-3907-10256D4F8C58}
+		{D25B12B0-FB86-4973-9001-BE8C7703C40B} = {DB44E3BD-F8AB-30FC-3907-10256D4F8C58}
 	EndGlobalSection
 EndGlobal

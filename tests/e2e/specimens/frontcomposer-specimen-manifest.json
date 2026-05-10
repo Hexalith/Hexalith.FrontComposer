@@ -11,6 +11,9 @@
         "[data-testid='fc-color-tokens']",
         "[data-testid='fc-density-states']",
         "[data-testid='fc-badge-grid']",
+        "[data-testid='fc-generated-counter-grid']",
+        "[data-fc-field='Status']",
+        "[data-fc-field='Count']",
         "[data-testid='fc-command-lifecycle']",
         "[data-testid='fc-expanded-detail']",
         "[data-testid='fc-multi-level-nav']"
@@ -42,7 +45,14 @@
         "[data-testid='fc-format-row-currency']",
         "[data-testid='fc-format-row-boolean']",
         "[data-testid='fc-format-row-truncated-enum']",
-        "[data-testid='fc-format-row-unsupported']"
+        "[data-testid='fc-format-row-unsupported']",
+        "[data-testid='fc-generated-formatting-grid']",
+        "[data-fc-field='TotalOrders']",
+        "[data-fc-field='SubmittedAt']",
+        "[data-fc-field='LastSync']",
+        "[data-fc-field='Budget']",
+        "[data-fc-field='LifecycleState']",
+        "[data-fc-field='OpaquePayload']"
       ],
       "expectedArtifacts": [
         "axe-data-formatting.json"

@@ -1,0 +1,8 @@
+@namespace Counter.Specimens
+@using Counter.Domain
+
+<div class="fc-specimen-generated-template">
+    @foreach (CounterProjection row in Context.Items) {
+        @Context.RowRenderer(row)
+    }
+</div>

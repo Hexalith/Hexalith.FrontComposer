@@ -14,6 +14,16 @@ test.describe('a11y helper impact partitioning', () => {
     expect(partition.reportOnly.map((v) => v.id)).toEqual(['region', 'landmark-one-main']);
     expect(partition.unknown).toEqual([]);
   });
+
+  test('unknown axe impacts are separated for explicit triage', () => {
+    const partition = partitionAxeViolations([
+      { ...violation('future-impact', 'minor'), impact: undefined },
+    ]);
+
+    expect(partition.blocking).toEqual([]);
+    expect(partition.reportOnly).toEqual([]);
+    expect(partition.unknown.map((v) => v.id)).toEqual(['future-impact']);
+  });
 });
 
 const violation = (id: string, impact: 'minor' | 'moderate' | 'serious' | 'critical'): AxeViolation => ({

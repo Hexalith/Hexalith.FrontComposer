@@ -1,5 +1,3 @@
 # Visual Baseline Change Rationale
 
-Use this file only when a pull request intentionally changes committed specimen screenshots.
-
-Describe the UI change, why the baseline movement is expected, and where reviewers can find before and after evidence. Include links or artifact paths for the previous screenshot, updated screenshot, and any diff image.
+Story 10.2 intentionally adds the first committed FrontComposer specimen visual baselines for the Chromium Windows lane. Before this change there were no committed accessibility specimen screenshots to compare; after this change reviewers should inspect the six `frontcomposer-type-*-chromium-win32.png` files under `tests/e2e/specs/specimen-accessibility.spec.ts-snapshots/` together with the Playwright report artifacts from the accessibility-visual lane. Because these are new baselines, the before evidence is the absence of prior files in the same snapshot directory and the after evidence is the committed Light/Dark by Compact/Comfortable/Roomy snapshot matrix.

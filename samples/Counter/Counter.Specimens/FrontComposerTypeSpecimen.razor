@@ -1,5 +1,7 @@
 @page "/__frontcomposer/specimens/type"
 @namespace Counter.Specimens
+@using Counter.Domain
+@using Counter.Specimens.Domain
 @using Hexalith.FrontComposer.Contracts.Attributes
 @using Hexalith.FrontComposer.Shell.Components.Badges
 @using Hexalith.FrontComposer.Shell.Components.Specimens
@@ -87,28 +89,13 @@
     </section>
 
     <section aria-labelledby="fc-badge-grid-title" data-testid="fc-badge-grid">
-        <h2 id="fc-badge-grid-title">Projection DataGrid and badge states</h2>
-        <table class="fc-specimen__table">
-            <caption>Canonical status rows with all badge states</caption>
-            <thead>
-                <tr>
-                    <th scope="col">Identifier</th>
-                    <th scope="col">Name</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Owner</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (BadgeRow row in BadgeRows) {
-                    <tr>
-                        <td>@row.Id</td>
-                        <td>@row.Name</td>
-                        <td><FcStatusBadge Slot="@row.Slot" Label="@row.Label" ColumnHeader="Status" /></td>
-                        <td>@row.Owner</td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+        <h2 id="fc-badge-grid-title">Generated projection DataGrid and badge states</h2>
+        <SpecimenStatusProjectionView />
+    </section>
+
+    <section aria-labelledby="fc-counter-grid-title" data-testid="fc-generated-counter-grid">
+        <h2 id="fc-counter-grid-title">Generated Counter projection grid</h2>
+        <CounterProjectionView />
     </section>
 
     <section aria-labelledby="fc-specimen-command-title" data-testid="fc-command-lifecycle">
@@ -199,15 +186,6 @@
         new("accent", "Accent", "Selected"),
     ];
 
-    private static readonly BadgeRow[] BadgeRows = [
-        new("FC-1000", "Neutral projection", BadgeSlot.Neutral, "Neutral", "Shell"),
-        new("FC-1001", "Info projection", BadgeSlot.Info, "Info", "SourceTools"),
-        new("FC-1002", "Success projection", BadgeSlot.Success, "Success", "Contracts"),
-        new("FC-1003", "Warning projection", BadgeSlot.Warning, "Warning", "Testing"),
-        new("FC-1004", "Danger projection", BadgeSlot.Danger, "Danger", "CI"),
-        new("FC-1005", "Accent projection", BadgeSlot.Accent, "Accent", "Docs"),
-    ];
-
     private static readonly LifecycleSpecimenState[] LifecycleStates = [
         new("idle", "Idle", "Ready to submit."),
         new("submitting", "Submitting", "Submitting command."),
@@ -219,8 +197,6 @@
     private sealed record TypeRampSlot(string Key, string Name, string Sample, string CssClass);
 
     private sealed record ColorToken(string Key, string Name, string StateText);
-
-    private sealed record BadgeRow(string Id, string Name, BadgeSlot Slot, string Label, string Owner);
 
     private sealed record LifecycleSpecimenState(string Key, string Name, string Message);
 }

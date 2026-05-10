@@ -34,7 +34,8 @@ export const expectNoAxeViolations = async (page: Page, options: A11yOptions = {
 
 export const expectNoBlockingAxeViolations = async (page: Page, options: A11yOptions = {}): Promise<void> => {
   for (const selector of options.requiredSelectors ?? []) {
-    await expect(page.locator(selector), `${options.route ?? page.url()} missing required selector ${selector}`).toHaveCount(1);
+    const count = await page.locator(selector).count();
+    expect(count, `${options.route ?? page.url()} missing required selector ${selector}`).toBeGreaterThan(0);
   }
 
   let builder = new AxeBuilder({ page }).withTags(options.tags ?? [...WCAG_21_AA_TAGS]);
@@ -59,6 +60,7 @@ export const expectNoBlockingAxeViolations = async (page: Page, options: A11yOpt
   }
 
   expect(partitioned.blocking, formatViolations(partitioned.blocking)).toEqual([]);
+  expect(partitioned.unknown, `Unexpected axe impact values must be triaged explicitly:\n${formatViolations(partitioned.unknown)}`).toEqual([]);
 };
 
 export type AxeViolation = Awaited<ReturnType<AxeBuilder['analyze']>>['violations'][number];

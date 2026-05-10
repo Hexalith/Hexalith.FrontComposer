@@ -25,6 +25,7 @@
 
 <div class="fc-shell-root" style="--accent-base-color: @AccentColor;" tabindex="0" @ref="_shellRoot"
      @onkeydown="HandleGlobalKeyDown">
+    <Fluxor.Blazor.Web.StoreInitializer />
     <a class="fc-skip-link" href="#fc-main-content">@Localizer["SkipToContentLabel"].Value</a>
     @if (HasNavigation)
     {
@@ -118,7 +119,6 @@
     </CascadingValue>
 
     <FluentProviders />
-    <Fluxor.Blazor.Web.StoreInitializer />
     @if (IsDevModeBuild)
     {
         <FcDevModeOverlay />
