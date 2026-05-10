@@ -158,3 +158,4 @@
 2026-05-10T11:03:02+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-10T12:03:02+02:00	create-story	10-5-flaky-test-quarantine-and-ci-governance	ok	created ready-for-dev story because ready buffer was 4 after 9-5 moved in-progress
 2026-05-10T12:14:32+02:00	party-mode-review	10-5-flaky-test-quarantine-and-ci-governance	ok	party-mode hardening applied; added evidence, valid-nightly, permission, CI-result, and 10-4 boundary guardrails
+2026-05-10T13:09:27+02:00	advanced-elicitation	10-5-flaky-test-quarantine-and-ci-governance	ok	advanced elicitation applied; added trusted-token, hostile-output, ambiguous-patch, concurrency, and retry boundary guardrails

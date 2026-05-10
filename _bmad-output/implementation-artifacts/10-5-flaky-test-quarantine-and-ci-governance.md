@@ -89,6 +89,11 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 | AC34 | Quarantine or CI-diet issue automation runs repeatedly | An existing governance issue is found | Automation uses canonical issue titles or stable markers, updates the existing issue body/comment with current evidence, records unavailable labels, and avoids duplicate noise. |
 | AC35 | Evidence summaries are generated | TRX, workflow summaries, logs, or duration data are normalized | Output follows an allowlist of bounded fields and size limits; fake or real secrets, local absolute paths, tenant/user identifiers, command payload bodies, and unbounded logs are rejected or redacted before upload. |
 | AC36 | A developer reads the CI result summary | Blocking and advisory lanes completed with mixed outcomes | The summary clearly classifies `blocking failure`, `advisory quarantine failure`, `invalid evidence`, and `ci-diet breach` so a red main lane cannot be confused with tracked quarantine debt. |
+| AC37 | Automation needs write permissions for issues, PRs, or source patches | The workflow is triggered from a fork, pull request, or untrusted branch context | The write-capable step is skipped or fails closed with a governance diagnostic; it never executes untrusted branch code with `contents: write`, `issues: write`, or `pull-requests: write`. |
+| AC38 | Evidence contains test names, assertion text, file paths, or issue body content | Summaries are written to `$GITHUB_STEP_SUMMARY`, issue comments, PR bodies, or markdown artifacts | Workflow commands, markdown control sequences, HTML/script fragments, oversized fields, and multiline log injection are escaped, truncated, or rejected before publishing. |
+| AC39 | Quarantine proposal tooling maps a flaky test identity to source | The method/class declaration is ambiguous, generated, partial, parameterized, or has conflicting trait placement | Automation opens a reviewable issue/PR note with the proposed manual patch and evidence instead of editing the wrong source location. |
+| AC40 | Multiple automation runs evaluate the same quarantine, reintroduction, or CI-diet target concurrently | They attempt to update state, issues, or PRs | Stable markers plus an optimistic re-read prevent duplicate PRs, lost pass-count updates, and stale overwrite of newer evidence. |
+| AC41 | Retried attempts, blame data, or diagnostic reruns are collected | Main-lane test status is reported | Diagnostic retries may inform flake evidence only; they never turn a failed blocking lane green or replace the original failing outcome. |
 
 ---
 
@@ -101,28 +106,35 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
   - [ ] Keep checkout at root-level submodules only. Do not introduce `recursive`.
   - [ ] Add governance tests that parse workflow YAML/text and prove the blocking lanes include the quarantine exclusion and no recursive submodule checkout.
 
-- [ ] T2. Add quarantine lane and evidence publishing (AC3, AC4, AC13, AC14, AC16, AC28, AC29)
+- [ ] T2. Add quarantine lane and evidence publishing (AC3, AC4, AC13, AC14, AC16, AC28, AC29, AC38, AC41)
   - [ ] Add a CI job or step that runs `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined"` with `continue-on-error: true`.
   - [ ] Emit a clear summary for zero quarantined tests, passed quarantined tests, and failed quarantined tests.
   - [ ] Upload quarantine TRX and bounded markdown/JSON summaries on `always()`.
   - [ ] Validate artifacts before upload or sanitize during generation.
+  - [ ] Escape or reject GitHub workflow commands, markdown/HTML control content, multiline injection, and oversized fields before writing summaries, issue comments, or PR bodies.
+  - [ ] Preserve the original main-lane failure outcome when diagnostic reruns or blame data are collected.
   - [ ] Ensure quarantine lane result cannot rewrite or mask the status of blocking lanes.
 
-- [ ] T3. Implement flake detection and quarantine proposal tooling (AC5-AC8, AC20, AC25-AC29, AC31, AC33-AC35)
+- [ ] T3. Implement flake detection and quarantine proposal tooling (AC5-AC8, AC20, AC25-AC29, AC31, AC33-AC35, AC37-AC41)
   - [ ] Add script(s) under `jobs/` or `.github/scripts/` that parse TRX/workflow evidence and classify a candidate as flaky only from mixed pass/fail evidence.
   - [ ] Use stable test identity: fully qualified name, display name, assembly/project, optional trait set, normalized source path if discoverable, and quarantine metadata signature.
   - [ ] Reject mixed pass/fail evidence from unrelated SHAs unless an approved evidence window names the accepted range, evidence source, and owner.
   - [ ] Open/update a GitHub issue with root-cause hypothesis, failure window, run links, owner marker, recurrence count, and proposed patch.
   - [ ] Open a PR that adds `[Trait("Category", "Quarantined")]` and metadata. Do not commit directly to `main`.
+  - [ ] Run write-capable issue/PR/source-patch steps only from trusted protected-branch, scheduled, or manually approved contexts; never combine untrusted PR code execution with write-token permissions.
+  - [ ] Fall back to a manual patch proposal when source mapping is ambiguous because of generated tests, partial classes, parameterized cases, class-level traits, or conflicting trait locations.
+  - [ ] Use stable issue/PR markers and an optimistic re-read immediately before update or PR creation to avoid duplicate automation under concurrent runs.
   - [ ] Add governance tests for manual and automated quarantine metadata.
-  - [ ] Add fixtures for pass/fail same SHA, pass/fail outside approved window, malformed evidence, contradictory evidence, unavailable permissions, missing labels, and redaction failures.
+  - [ ] Add fixtures for pass/fail same SHA, pass/fail outside approved window, malformed evidence, contradictory evidence, unavailable permissions, untrusted PR context, ambiguous source mapping, concurrent update, workflow-command injection, missing labels, and redaction failures.
   - [ ] Label with `flaky-test`, `ci-governance`, and `codex-automation` when labels are available.
 
-- [ ] T4. Implement reintroduction gate (AC9-AC11, AC20, AC24, AC27-AC29, AC32, AC34)
+- [ ] T4. Implement reintroduction gate (AC9-AC11, AC20, AC24, AC27-AC29, AC32, AC34, AC37, AC40)
   - [ ] Add or extend a scheduled/manual workflow for quarantine reintroduction. There is no general `nightly.yml` today, so create one only if that is the cleanest owner.
   - [ ] Persist reintroduction state in a reviewable file or issue comment, keyed by stable test identity and protected-branch evidence.
   - [ ] Count 5 consecutive valid nightly passes before opening a removal PR.
   - [ ] Reset pass count on failure, cancellation, partial run, dynamic skip, rerun-only evidence, missing evidence, malformed evidence, wrong filter, or changed test identity.
+  - [ ] Re-read the existing state or issue marker before writing pass-count updates or opening a removal PR so concurrent nightly/manual runs cannot lose evidence.
+  - [ ] Keep write-token removal PR creation in trusted workflow contexts only.
   - [ ] If a reintroduced test fails again, open/update a repeat-flake issue and quarantine PR with increased scrutiny.
 
 - [ ] T5. Add CI duration budget governance (AC17-AC20, AC29, AC34, AC36)
@@ -145,10 +157,10 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
   - [ ] Document evidence retention and redaction rules.
   - [ ] Add troubleshooting guidance for malformed TRX, zero-test discovery, and missing GitHub labels.
 
-- [ ] T8. Validate and hand off (AC1-AC36)
+- [ ] T8. Validate and hand off (AC1-AC41)
   - [ ] Run targeted governance tests.
   - [ ] Run local command(s) proving `Category!=Quarantined` and `Category=Quarantined` behavior.
-  - [ ] Run scripts in dry-run mode against sample TRX/workflow fixtures for pass, fail, mixed same SHA, mixed outside approved window, zero-test, malformed, canceled, missing, invalid permission, redaction, duration-breach, and repeat-flake cases.
+  - [ ] Run scripts in dry-run mode against sample TRX/workflow fixtures for pass, fail, mixed same SHA, mixed outside approved window, zero-test, malformed, canceled, missing, invalid permission, untrusted PR context, ambiguous source mapping, workflow-command injection, concurrent update, redaction, duration-breach, and repeat-flake cases.
   - [ ] Record final workflow paths, script paths, command examples, labels, issue/PR behavior, and any deferred decisions in completion notes.
 
 ---
@@ -181,6 +193,10 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 | D9 | Automation failure to create required issue/PR is a governance failure. | Missing permissions or labels should be visible and fail closed rather than silently losing quarantine or CI-diet work. |
 | D10 | CI summaries must separate blocking failures, advisory quarantine failures, invalid evidence, and budget breaches. | Developers need to interpret a red build or warning in one pass without reverse-engineering workflow logs. |
 | D11 | Flake detection uses existing CI evidence, not a new analytics service. | Keeps the story within the decision budget and avoids building a parallel observability platform. |
+| D12 | Write-capable GitHub automation only runs in trusted contexts. | `pull_request` and fork contexts can execute attacker-controlled code; issue/PR/source mutation needs protected-branch, scheduled, or manually approved provenance. |
+| D13 | Published evidence is treated as untrusted content. | Test names and assertion messages can inject workflow commands or misleading markdown unless every output surface is escaped and bounded. |
+| D14 | Ambiguous source mutation falls back to a human patch plan. | A wrong quarantine trait is worse than no automatic trait insertion because it hides real failures while leaving the flaky test active. |
+| D15 | Automation state updates are compare-before-write. | Concurrent scheduled/manual runs must not duplicate PRs, lose nightly pass counts, or overwrite newer CI-diet evidence. |
 
 ### Architecture and Package Boundaries
 
@@ -207,6 +223,10 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 - `Same code revision` means the same protected-branch commit SHA for pass/fail evidence unless an approved evidence window names the accepted range, source, and owner.
 - Quarantine may isolate unstable execution, but it never changes Story 10-4 mutation/property thresholds, report validity, missing-evidence handling, or blocking gate status.
 - Automation that cannot create or update a required issue or PR because of permissions must emit a governance failure and avoid direct pushes or silent success.
+- Write-capable automation must not run untrusted branch code with write-token permissions. PR/fork evidence may be read, but source mutation, issue updates, and PR creation require trusted workflow provenance.
+- Evidence text is hostile input. Escape GitHub workflow-command prefixes, markdown/HTML control content, multiline injection, and oversized fields before writing summaries, issue bodies, PR bodies, or artifacts.
+- Automatic trait insertion is allowed only when the source location and metadata placement are unambiguous. Generated, partial, parameterized, or conflicting trait shapes require a manual patch proposal.
+- Issue, PR, and reintroduction state writes must use stable markers and compare-before-write behavior so concurrent automation cannot duplicate or clobber evidence.
 
 ### CI Duration Governance Contract
 
@@ -220,6 +240,7 @@ Start here: T1 current CI filters -> T2 quarantine lane -> T3 flake detection an
 - Duplicate issue prevention is required. Repeated breaches update the existing `ci-diet` issue.
 - Full-CI duration authority comes from protected-branch workflow evidence. Reruns, canceled runs, and partial evidence must be explicitly excluded from the 3-day breach count or recorded as invalid evidence.
 - The `ci-diet` issue uses a canonical title or stable marker, carries the current duration history, suspected slow lanes, labels when available, and the reason labels or writes were unavailable when permissions are missing.
+- CI-diet updates must re-read the current issue marker/body before writing so overlapping scheduled runs preserve the newest duration evidence.
 
 ### Latest Technical Notes
 
@@ -299,6 +320,7 @@ Do not implement these in Story 10-5:
 
 - 2026-05-10: Story created via `/bmad-create-story 10-5-flaky-test-quarantine-and-ci-governance` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-10: Party-mode review hardening applied. Added valid nightly pass semantics, stable test identity, evidence-window governance, fail-closed GitHub permission handling, CI-result interpretation, duplicate issue controls, redaction/fixture expectations, and stronger Story 10-4 quality-gate boundaries.
+- 2026-05-10: Advanced elicitation hardening applied. Added trusted write-token context rules, hostile evidence output escaping, ambiguous source-patch fallback, concurrent automation update guards, and retry/blame outcome boundaries.
 
 ### File List
 
@@ -333,6 +355,41 @@ Do not implement these in Story 10-5:
 - Approval authority for cross-boundary evidence windows is deferred to Story 10-5 implementation, with CODEOWNERS or maintainer approval recommended.
 - Automatic closure policy for `ci-diet` issues after sustained recovery is deferred to a future CI observability story.
 - Reintroduction automation may open PRs automatically, but auto-merge remains out of scope unless a human product/architecture decision adds it later.
+
+### Final Recommendation
+
+ready-for-dev
+
+---
+
+## Advanced Elicitation
+
+- ISO date/time: 2026-05-10T13:09:27+02:00
+- Selected story key: `10-5-flaky-test-quarantine-and-ci-governance`
+- Command/skill invocation used: `/bmad-advanced-elicitation 10-5-flaky-test-quarantine-and-ci-governance`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records
+
+### Findings Summary
+
+- Pre-mortem and Failure Mode Analysis: The highest unresolved failure was a write-capable workflow accidentally running attacker-controlled PR code or silently treating diagnostic retries as the main-lane outcome.
+- Red Team vs Blue Team and Security Audit Personas: Test names, assertion text, file paths, and issue content are untrusted publication inputs that can inject GitHub workflow commands or misleading markdown unless escaped and bounded.
+- Self-Consistency Validation and Comparative Analysis Matrix: Automatic source patching is useful only for unambiguous test declarations; generated, partial, class-level, and parameterized shapes need a manual patch proposal.
+- Chaos Monkey Scenarios and Hindsight Reflection: Scheduled/manual automation can race against itself, producing duplicate PRs or lost nightly pass counts unless every issue, PR, and state update re-reads stable markers before writing.
+- Occam's Razor and ADR review: The story should keep these as governance invariants and fixtures, not introduce a new service, queue, or analytics platform.
+
+### Changes Applied
+
+- Added AC37-AC41 for trusted write-token contexts, hostile evidence output escaping, ambiguous source-patch fallback, concurrent update protection, and diagnostic retry/blame outcome boundaries.
+- Hardened T2-T4 and T8 with workflow-command injection, untrusted PR context, ambiguous source mapping, concurrent update, and diagnostic retry fixture expectations.
+- Added Decisions D12-D15 for trusted-context write automation, untrusted evidence publication, human fallback for ambiguous mutation, and compare-before-write state updates.
+- Strengthened the Flaky Quarantine Contract and CI Duration Governance Contract with write-token isolation, output escaping, stable marker re-read behavior, and source mutation guardrails.
+
+### Findings Deferred
+
+- The exact trusted-context implementation can be chosen during Story 10-5 development, but it must satisfy AC37 and D12.
+- The storage owner for reintroduction state remains a Story 10-5 implementation choice between reviewable file and issue comment, provided AC40 and D15 are met.
+- Maximum quarantine age and CI-diet closure policy remain deferred to the existing process/future observability follow-ups.
 
 ### Final Recommendation
 
