@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-10 (/bmad-code-review 9-4 chunks A + B + C complete. Chunk C: 7 decisions resolved (1 → DEF-9-4-C10 deferred to Story 9-2), 15 patches applied (91 stubs normalized, registry gained docsStubProsePolicy, Shell unshipped severity reconciled, HFC1013 retired-stub trimmed, HFC0001/HFC4001 deprecation Migration authored, HFC1029 em-dash fixed, README §Stub authoring contract added, DiagnosticRegistryTests gained 4 parity matchers). Build 0/0; tests 2,860 passed / 3 skipped / 0 failed. Story 9-4 → done.)"
+last_updated: "2026-05-10 (/bmad-create-story 10-5 created; Story 10-5 backlog -> ready-for-dev.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -130,7 +130,7 @@ development_status:
   9-2-cli-inspection-and-migration-tools: done
   9-3-ide-parity-and-developer-experience: done
   9-4-diagnostic-id-system-and-deprecation-policy: done
-  9-5-diataxis-documentation-site: ready-for-dev
+  9-5-diataxis-documentation-site: in-progress
   epic-9-retrospective: optional
 
   # Epic 10: Framework Quality & Adopter Confidence
@@ -139,6 +139,6 @@ development_status:
   10-2-accessibility-ci-gates-and-visual-specimen-verification: ready-for-dev
   10-3-consumer-driven-contract-tests-pact: ready-for-dev
   10-4-mutation-testing-and-property-based-testing: ready-for-dev
-  10-5-flaky-test-quarantine-and-ci-governance: backlog
+  10-5-flaky-test-quarantine-and-ci-governance: ready-for-dev
   10-6-llm-benchmark-signed-releases-and-sbom: backlog
   epic-10-retrospective: optional
