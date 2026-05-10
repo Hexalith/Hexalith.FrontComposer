@@ -10,12 +10,13 @@ namespace Hexalith.FrontComposer.Testing;
 public sealed class TestQueryService : IQueryService
 {
     private readonly ConcurrentDictionary<Type, object> _results = new();
+    private readonly ConcurrentQueue<ProjectionPageEvidence> _evidence = new();
     private readonly FrontComposerTestOptions _options;
 
     internal TestQueryService(FrontComposerTestOptions options) => _options = options;
 
     /// <summary>Gets captured query evidence.</summary>
-    public IReadOnlyList<ProjectionPageEvidence> Evidence { get; private set; } = [];
+    public IReadOnlyList<ProjectionPageEvidence> Evidence => [.. _evidence];
 
     /// <summary>Configures a successful typed query result.</summary>
     public void SucceedWith<T>(IReadOnlyList<T> items, string? etag = null)
@@ -28,18 +29,14 @@ public sealed class TestQueryService : IQueryService
     public Task<QueryResult<T>> QueryAsync<T>(QueryRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Evidence =
-        [
-            .. Evidence,
-            new ProjectionPageEvidence(
-                typeof(T).FullName ?? typeof(T).Name,
-                0,
-                0,
-                _options.TestTenantId,
-                _options.TestUserId,
-                "query",
-                _options.TimeProvider.GetUtcNow()),
-        ];
+        EnqueueBounded(new ProjectionPageEvidence(
+            typeof(T).FullName ?? typeof(T).Name,
+            0,
+            0,
+            _options.TestTenantId,
+            _options.TestUserId,
+            "query",
+            _options.TimeProvider.GetUtcNow()));
 
         if (_results.TryGetValue(typeof(T), out object? value) && value is QueryResult<T> result)
         {
@@ -53,6 +50,16 @@ public sealed class TestQueryService : IQueryService
     public void Reset()
     {
         _results.Clear();
-        Evidence = [];
+        while (_evidence.TryDequeue(out _))
+        {
+        }
+    }
+
+    private void EnqueueBounded(ProjectionPageEvidence evidence)
+    {
+        _evidence.Enqueue(evidence);
+        while (_evidence.Count > _options.MaxEvidenceRecords && _evidence.TryDequeue(out _))
+        {
+        }
     }
 }

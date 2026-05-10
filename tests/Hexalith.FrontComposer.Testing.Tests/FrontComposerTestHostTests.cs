@@ -1,3 +1,5 @@
+using System.Globalization;
+
 using Bunit;
 
 using Counter.Domain;
@@ -108,6 +110,61 @@ public sealed class FrontComposerTestHostTests
     }
 
     [Fact]
+    public async Task QueryAndPageLoaderEvidence_MaxEvidenceRecords_IsBounded()
+    {
+        await using BunitContext context = new();
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(
+            context,
+            options => options.MaxEvidenceRecords = 2);
+
+        for (int i = 0; i < 5; i++)
+        {
+            _ = await host.QueryService.QueryAsync<string>(
+                new QueryRequest("String", null),
+                Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+            _ = await host.PageLoader.LoadPageAsync(
+                typeof(CounterProjection).FullName!,
+                i,
+                20,
+                System.Collections.Immutable.ImmutableDictionary<string, string>.Empty,
+                null,
+                false,
+                null,
+                Xunit.TestContext.Current.CancellationToken).ConfigureAwait(true);
+        }
+
+        host.QueryService.Evidence.Count.ShouldBe(2);
+        host.PageLoader.Evidence.Count.ShouldBe(2);
+        host.PageLoader.Evidence.Select(e => e.Skip).ShouldBe([3, 4]);
+    }
+
+    [Fact]
+    public void FrontComposerTestHost_Dispose_RestoresAppliedCulture()
+    {
+        CultureInfo originalCulture = CultureInfo.CurrentCulture;
+        CultureInfo originalUICulture = CultureInfo.CurrentUICulture;
+        try
+        {
+            using BunitContext context = new();
+            using (context.Services.AddFrontComposerTestHost(
+                context,
+                options => options.Culture = CultureInfo.GetCultureInfo("ja-JP")))
+            {
+                CultureInfo.CurrentCulture.Name.ShouldBe("ja-JP");
+                CultureInfo.CurrentUICulture.Name.ShouldBe("ja-JP");
+            }
+
+            CultureInfo.CurrentCulture.ShouldBe(originalCulture);
+            CultureInfo.CurrentUICulture.ShouldBe(originalUICulture);
+        }
+        finally
+        {
+            CultureInfo.CurrentCulture = originalCulture;
+            CultureInfo.CurrentUICulture = originalUICulture;
+        }
+    }
+
+    [Fact]
     public async Task ParallelContexts_DifferentTenants_DoNotShareFakeEvidence()
     {
         static async Task<CommandDispatchEvidence> DispatchAsync(string tenant, string user, CancellationToken cancellationToken)
@@ -132,10 +189,8 @@ public sealed class FrontComposerTestHostTests
     public async Task CounterProjectionView_WithCompositionHost_RendersDataGridAndViewOverride()
     {
         await using BunitContext context = new();
-        _ = context.Services.AddFrontComposerTestHost(
-            context,
-            options => options.DomainAssemblies.Add(typeof(CounterDomain).Assembly));
-        context.Services.AddHexalithDomain<CounterDomain>();
+        FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
+        _ = host.AddDomainAssembly<CounterDomain>();
         context.Services.AddViewOverride<CounterProjection, CounterFullViewReplacement>();
 
         IStore store = context.Services.GetRequiredService<IStore>();

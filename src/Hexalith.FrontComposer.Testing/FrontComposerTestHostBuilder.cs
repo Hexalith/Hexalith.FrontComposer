@@ -4,6 +4,7 @@ using System.Reflection;
 using Bunit;
 
 using Fluxor;
+using Fluxor.DependencyInjection;
 
 using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Rendering;
@@ -21,7 +22,11 @@ namespace Hexalith.FrontComposer.Testing;
 /// Composable handle for the services and fakes registered by <see cref="FrontComposerTestHostServiceCollectionExtensions"/>.
 /// </summary>
 public sealed class FrontComposerTestHostBuilder
+    : IDisposable
 {
+    private readonly IDisposable _cultureScope;
+    private bool _disposed;
+
     internal FrontComposerTestHostBuilder(
         BunitContext context,
         FrontComposerTestOptions options,
@@ -29,7 +34,8 @@ public sealed class FrontComposerTestHostBuilder
         TestCommandService commandService,
         TestQueryService queryService,
         TestProjectionPageLoader pageLoader,
-        TestFaultInjectionProvider faultProvider)
+        TestFaultInjectionProvider faultProvider,
+        IDisposable cultureScope)
     {
         Context = context;
         Options = options;
@@ -38,6 +44,7 @@ public sealed class FrontComposerTestHostBuilder
         QueryService = queryService;
         PageLoader = pageLoader;
         FaultProvider = faultProvider;
+        _cultureScope = cultureScope;
     }
 
     /// <summary>Gets the bUnit context configured by this builder.</summary>
@@ -67,11 +74,14 @@ public sealed class FrontComposerTestHostBuilder
     /// <typeparam name="TMarker">A marker type from the generated domain assembly.</typeparam>
     /// <returns>The same builder for chaining.</returns>
     public FrontComposerTestHostBuilder AddDomainAssembly<TMarker>()
+        where TMarker : class
     {
         Assembly assembly = typeof(TMarker).Assembly;
         if (!Options.DomainAssemblies.Contains(assembly))
         {
             Options.DomainAssemblies.Add(assembly);
+            _ = Context.Services.AddFluxor(o => o.ScanAssemblies(assembly));
+            _ = Context.Services.AddHexalithDomain<TMarker>();
         }
 
         return this;
@@ -121,6 +131,20 @@ public sealed class FrontComposerTestHostBuilder
         return (version.Major, version.Minor);
     }
 
+    /// <summary>
+    /// Restores culture settings applied by the test host.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        _cultureScope.Dispose();
+        _disposed = true;
+    }
+
     private sealed class CultureScope(CultureInfo originalCulture, CultureInfo originalUICulture) : IDisposable
     {
         public void Dispose()
@@ -155,7 +179,7 @@ public static class FrontComposerTestHostServiceCollectionExtensions
         configure?.Invoke(options);
 
         context.JSInterop.Mode = options.JSInteropMode;
-        _ = FrontComposerTestHostBuilder.ApplyCulture(options.Culture);
+        IDisposable cultureScope = FrontComposerTestHostBuilder.ApplyCulture(options.Culture);
 
         FrontComposerTestUserContextAccessor userContext = new()
         {
@@ -199,7 +223,8 @@ public static class FrontComposerTestHostServiceCollectionExtensions
             commandService,
             queryService,
             pageLoader,
-            faultProvider);
+            faultProvider,
+            cultureScope);
     }
 
     private sealed class TestCommandPageContext(string commandName, string boundedContext, string? returnPath)

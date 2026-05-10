@@ -22,10 +22,7 @@ public sealed class PackageBoundaryTests
             .Order(StringComparer.Ordinal)
             .ToArray();
 
-        string[] actual = typeof(FrontComposerTestBase).Assembly
-            .GetExportedTypes()
-            .Where(type => type.Namespace == "Hexalith.FrontComposer.Testing")
-            .Select(FormatTypeName)
+        string[] actual = EnumeratePublicApi(typeof(FrontComposerTestBase).Assembly)
             .Order(StringComparer.Ordinal)
             .ToArray();
 
@@ -69,12 +66,13 @@ public sealed class PackageBoundaryTests
         string root = FindRepoRoot();
         string packageOutput = Path.Combine(Path.GetTempPath(), "fc-testing-clean-pack-" + Guid.NewGuid().ToString("N"));
         string consumer = Path.Combine(Path.GetTempPath(), "fc-testing-consumer-" + Guid.NewGuid().ToString("N"));
+        string packageVersion = "0.2.0-review." + Guid.NewGuid().ToString("N")[..8];
         Directory.CreateDirectory(packageOutput);
         Directory.CreateDirectory(consumer);
 
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-o", packageOutput, "--no-restore", "-p:Version=0.2.0-preview.1").ConfigureAwait(true);
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-o", packageOutput, "--no-restore", "-p:Version=0.2.0-preview.1").ConfigureAwait(true);
-        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-o", packageOutput, "--no-restore", "-p:Version=0.2.0-preview.1").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj", "-o", packageOutput, "--no-restore", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj", "-o", packageOutput, "--no-restore", $"-p:Version={packageVersion}").ConfigureAwait(true);
+        await RunDotnetAsync(root, TestContext.Current.CancellationToken, "pack", "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj", "-o", packageOutput, "--no-restore", $"-p:Version={packageVersion}").ConfigureAwait(true);
 
         await File.WriteAllTextAsync(Path.Combine(consumer, "Consumer.csproj"), $$"""
 <Project Sdk="Microsoft.NET.Sdk.Razor">
@@ -85,7 +83,7 @@ public sealed class PackageBoundaryTests
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Hexalith.FrontComposer.Testing" Version="0.2.0-preview.1" />
+    <PackageReference Include="Hexalith.FrontComposer.Testing" Version="{{packageVersion}}" />
     <PackageReference Include="xunit.v3" Version="3.2.2" />
     <PackageReference Include="xunit.v3.assert" Version="3.2.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
@@ -116,7 +114,7 @@ public sealed class ConsumerSmokeTests
     public async Task TestHost_DispatchesWithoutInternalTestAssemblies()
     {
         using BunitContext context = new();
-        FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
         ICommandService service = context.Services.GetRequiredService<ICommandService>();
         await service.DispatchAsync(new SmokeCommand { Name = "demo" }, Xunit.TestContext.Current.CancellationToken);
         Assert.Single(host.CommandService.Evidence);
@@ -142,17 +140,79 @@ public sealed class ConsumerSmokeTests
 
     private static string FormatTypeName(Type type)
     {
+        if (type.IsGenericParameter)
+        {
+            return type.Name;
+        }
+
+        if (type.IsArray)
+        {
+            return FormatTypeName(type.GetElementType()!) + "[]";
+        }
+
+        if (type.IsByRef)
+        {
+            return FormatTypeName(type.GetElementType()!);
+        }
+
+        if (type == typeof(void))
+        {
+            return "void";
+        }
+
         if (!type.IsGenericType)
         {
             return type.FullName!;
         }
 
-        string name = type.FullName!;
+        string name = type.FullName ?? type.Name;
         int tick = name.IndexOf('`', StringComparison.Ordinal);
         string genericName = tick < 0 ? name : name[..tick];
-        string args = string.Join(",", type.GetGenericArguments().Select(arg => arg.Name));
+        string args = string.Join(",", type.GetGenericArguments().Select(FormatTypeName));
         return $"{genericName}<{args}>";
     }
+
+    private static IEnumerable<string> EnumeratePublicApi(Assembly assembly)
+    {
+        foreach (Type type in assembly
+            .GetExportedTypes()
+            .Where(type => type.Namespace == "Hexalith.FrontComposer.Testing")
+            .OrderBy(FormatTypeName, StringComparer.Ordinal))
+        {
+            string typeName = FormatTypeName(type);
+            yield return typeName;
+
+            foreach (ConstructorInfo constructor in type.GetConstructors(BindingFlags.Public | BindingFlags.Instance | BindingFlags.DeclaredOnly))
+            {
+                yield return $"{typeName}.#ctor({FormatParameters(constructor)})";
+            }
+
+            foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            {
+                MethodInfo? getter = property.GetMethod;
+                MethodInfo? setter = property.SetMethod;
+                string access = $"{(getter is null ? "-" : "get")}/{(setter is null ? "-" : "set")}";
+                yield return $"{typeName}.{property.Name}:{FormatTypeName(property.PropertyType)}:{access}";
+            }
+
+            foreach (FieldInfo field in type.GetFields(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly))
+            {
+                yield return $"{typeName}.{field.Name}:{FormatTypeName(field.FieldType)}";
+            }
+
+            foreach (MethodInfo method in type.GetMethods(BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly)
+                .Where(method => !method.IsSpecialName))
+            {
+                string genericArgs = method.IsGenericMethodDefinition
+                    ? $"<{string.Join(",", method.GetGenericArguments().Select(arg => arg.Name))}>"
+                    : string.Empty;
+                yield return $"{typeName}.{method.Name}{genericArgs}({FormatParameters(method)}):{FormatTypeName(method.ReturnType)}";
+            }
+        }
+    }
+
+    private static string FormatParameters(MethodBase method)
+        => string.Join(",", method.GetParameters().Select(parameter => FormatTypeName(parameter.ParameterType)));
 
     private static async Task RunDotnetAsync(string workingDirectory, CancellationToken cancellationToken, params string[] args)
     {

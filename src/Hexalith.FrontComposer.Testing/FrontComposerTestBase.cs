@@ -64,4 +64,15 @@ public abstract class FrontComposerTestBase : BunitContext
         await store.InitializeAsync().ConfigureAwait(false);
         _storeInitialized = true;
     }
+
+    /// <inheritdoc />
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            Host.Dispose();
+        }
+
+        base.Dispose(disposing);
+    }
 }

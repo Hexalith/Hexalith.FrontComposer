@@ -1,6 +1,6 @@
 # Story 10.1: Adopter Test Host & Component Testing Utilities
 
-Status: review
+Status: done
 
 > **Epic 10** - Framework Quality & Adopter Confidence. Covers **FR71**, **NFR51**, **NFR52**, and **NFR53**. Promotes existing internal test-host patterns into an adopter-facing testing package while preserving the current Shell and SourceTools test infrastructure. Applies lessons **L01**, **L06**, **L07**, **L08**, **L10**, and **L11**.
 
@@ -178,6 +178,13 @@ The 2026-05-08 advanced elicitation pass hardened Story 10-1 against package-bou
   - [x] Run the sample adopter test project against the packed package or documented project-reference fallback.
   - [x] Run the clean temporary consumer smoke path against the packed nupkg.
   - [x] Update completion notes with package path, public APIs added, public API inventory rationale, dependency allowlist result, sample tests run, clean consumer smoke result, redaction/isolation evidence, coverage command used, package inspection result, and any deferred package/API decisions.
+
+### Review Findings
+
+- [x] [Review][Patch] Public API baseline only validates type names, not member/signature drift [tests/Hexalith.FrontComposer.Testing.Tests/PackageBoundaryTests.cs:25]
+- [x] [Review][Patch] Test-host culture scope is created and discarded, leaving `CurrentCulture`/`CurrentUICulture` changed after context disposal [src/Hexalith.FrontComposer.Testing/FrontComposerTestHostBuilder.cs:157]
+- [x] [Review][Patch] `AddDomainAssembly<TMarker>()` mutates options after `AddHexalithFrontComposer` has already consumed the scan list, so fluent domain registration is a no-op for Fluxor/Shell scanning [src/Hexalith.FrontComposer.Testing/FrontComposerTestHostBuilder.cs:69]
+- [x] [Review][Patch] Query and page-loader evidence is unbounded and updated with non-atomic read-copy-write lists, so parallel tests can lose records and AC22/AC23 bounding is not enforced [src/Hexalith.FrontComposer.Testing/TestProjectionPageLoader.cs:49]
 
 ---
 

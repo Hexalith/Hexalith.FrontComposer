@@ -73,7 +73,7 @@ public sealed class CommandDispatchTests
     public static async Task CommandService_Dispatch_CapturesRedactedEvidence()
     {
         using BunitContext context = new();
-        FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
+        using FrontComposerTestHostBuilder host = context.Services.AddFrontComposerTestHost(context);
 
         ICommandService commandService = context.Services.GetRequiredService<ICommandService>();
         await commandService.DispatchAsync(

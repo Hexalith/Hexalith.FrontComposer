@@ -11,12 +11,13 @@ namespace Hexalith.FrontComposer.Testing;
 public sealed class TestProjectionPageLoader : IProjectionPageLoader
 {
     private readonly ConcurrentDictionary<string, ProjectionPageResult> _pages = new(StringComparer.Ordinal);
+    private readonly ConcurrentQueue<ProjectionPageEvidence> _evidence = new();
     private readonly FrontComposerTestOptions _options;
 
     internal TestProjectionPageLoader(FrontComposerTestOptions options) => _options = options;
 
     /// <summary>Gets captured page-load evidence.</summary>
-    public IReadOnlyList<ProjectionPageEvidence> Evidence { get; private set; } = [];
+    public IReadOnlyList<ProjectionPageEvidence> Evidence => [.. _evidence];
 
     /// <summary>Configures a successful page for one projection type.</summary>
     public void SucceedWith(string projectionTypeFqn, IReadOnlyList<object> items, int? totalCount = null, string? etag = null)
@@ -46,18 +47,14 @@ public sealed class TestProjectionPageLoader : IProjectionPageLoader
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        Evidence =
-        [
-            .. Evidence,
-            new ProjectionPageEvidence(
-                projectionTypeFqn,
-                skip,
-                take,
-                _options.TestTenantId,
-                _options.TestUserId,
-                _pages.ContainsKey(projectionTypeFqn) ? "configured" : "empty",
-                _options.TimeProvider.GetUtcNow()),
-        ];
+        EnqueueBounded(new ProjectionPageEvidence(
+            projectionTypeFqn,
+            skip,
+            take,
+            _options.TestTenantId,
+            _options.TestUserId,
+            _pages.ContainsKey(projectionTypeFqn) ? "configured" : "empty",
+            _options.TimeProvider.GetUtcNow()));
 
         return Task.FromResult(
             _pages.TryGetValue(projectionTypeFqn, out ProjectionPageResult? result)
@@ -69,6 +66,16 @@ public sealed class TestProjectionPageLoader : IProjectionPageLoader
     public void Reset()
     {
         _pages.Clear();
-        Evidence = [];
+        while (_evidence.TryDequeue(out _))
+        {
+        }
+    }
+
+    private void EnqueueBounded(ProjectionPageEvidence evidence)
+    {
+        _evidence.Enqueue(evidence);
+        while (_evidence.Count > _options.MaxEvidenceRecords && _evidence.TryDequeue(out _))
+        {
+        }
     }
 }
