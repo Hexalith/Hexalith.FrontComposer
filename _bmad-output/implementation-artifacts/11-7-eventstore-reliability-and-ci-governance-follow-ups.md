@@ -84,6 +84,12 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
 | AC32 | Pending-command provider parity is evaluated | Story 11.7 implements or splits provider-backed status polling | The story records one architecture decision: implement the real EventStore-backed `IPendingCommandStatusQuery` with contract tests for 202/200/304/429/503/malformed/duplicate/stale/provider-exception behavior, or split it as a named release-blocking owner with rationale and reopen trigger; mock-only parity cannot satisfy release readiness. |
 | AC33 | CI or release workflow changes can trigger irreversible side effects | Governance tests or static workflow validation run | Evidence capture, package inventory, SBOM/checksum/signing/attestation checks, redaction scan, and blocking CI verification complete before credentialed pushes, NuGet publishing, tag/changelog pushes, GitHub Release creation, deployment mutation, or other irreversible side effects. |
 | AC34 | Validation evidence is committed or attached to release-readiness notes | Redaction and governance checks run | Evidence uses bounded sanitized examples and negative fixtures to prove tokens, credentials, tenant/user values, command payloads, raw response bodies, local paths, raw logs, and unbounded workflow dumps are absent; governance tests reject recursive nested submodule checkout/update commands while permitting root-level submodules only. |
+| AC35 | The deferred ledger changes during implementation or review | The Story 11.7 inventory is reconciled | The implementer records the starting and ending row-count/fingerprint evidence for all Story 11.7-owned rows; new, removed, or owner-changed rows are classified before review rather than ignored as out-of-band drift. |
+| AC36 | Blocking CI, release, contract, or governance lanes report success | Evidence is inspected | A pass is invalid when expected tests, package inventory, SBOM/signing/attestation checks, redaction scans, or workflow assertions were skipped, filtered to zero, or produced no bounded artifact; skip/no-op states must be explicit accepted constraints or failures. |
+| AC37 | Runtime telemetry, logs, metrics, traces, or evidence include EventStore, SignalR, tenant, user, command, cache, or workflow identifiers | Observability and evidence tests run | High-cardinality or sensitive identifiers are excluded from metric dimensions and public logs; sanitized correlation examples may appear only as bounded evidence fields with length/type proof and no raw tenant/user/payload values. |
+| AC38 | Retry-after, reconnect, fallback polling, pending-command polling, or release retry logic is exercised | Deterministic tests or governance checks run | Backoff, cancellation, cap, and retry-budget behavior uses fake-clock or injected scheduler evidence where practical; tests prove no busy loop, unbounded retry, stale timer resurrection, or sleep-based flake is introduced. |
+| AC39 | The EventStore status endpoint, query endpoint, or SignalR contract drifts from expected shape | Provider-backed or contract fixtures run | Missing fields, unknown terminal states, invalid retry headers, mismatched cache validators, and schema/version drift fail closed with typed categories and redacted evidence instead of silently falling back to stale or mock-only behavior. |
+| AC40 | Release publication, evidence capture, or workflow rerun fails halfway through | Release governance validation runs | Reruns are idempotent or explicitly blocked before irreversible side effects; partial artifacts, tags, changelog pushes, packages, attestations, and GitHub Release state cannot produce a false "release-ready" record without a reconciliation step. |
 
 ---
 
@@ -96,6 +102,7 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Create a row-to-evidence matrix naming the intended outcome for each row: fix now, accept, split, supersede, non-action, or block.
   - [ ] Include row ID, source review label, owner, AC, implementation target, validation command/lane, evidence path, final disposition, and residual release-gate risk in the matrix.
   - [ ] For every accepted row, record likelihood, impact, release risk, downstream consumer impact, owner, expiry or review date, reopen trigger, and validation evidence.
+  - [ ] Record a starting and ending Story 11.7 row-count/fingerprint summary; if `deferred-work.md` changes while the story is in progress, reconcile new, removed, or owner-changed rows before review.
   - [ ] Preserve historical review text; append resolution notes rather than rewriting or deleting old rows.
 
 - [ ] T2. Harden EventStore command/query response behavior and redacted telemetry (AC5-AC10)
@@ -105,6 +112,7 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Decide whether invalid cached ETags should be evicted, ignored, replaced, or reported when detected; tests must prove the value is not re-sent, persisted unsafely, or logged.
   - [ ] Check `EventStoreCommandClient.ReadCorrelationIdAsync` and `FrontComposerTelemetry.SafeIdentifierOrAbsent` for strict ULID/GUID behavior, truncation markers, and malformed correlation evidence.
   - [ ] Confirm schema mismatch invalidates affected projection cache entries and preserves original cause category without leaking payload fragments.
+  - [ ] Verify EventStore and pending-status telemetry avoid high-cardinality metric dimensions for tenant, user, command id, cache key, correlation id, raw projection type, response body, or local path values.
   - [ ] Tighten exact-deny-list tests for Contracts infrastructure references if this story keeps DW-0250 instead of splitting to Story 11.4.
 
 - [ ] T3. Harden SignalR connection, reconnect, and fallback behavior (AC11-AC16)
@@ -116,12 +124,14 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Verify fallback polling preserves visible data on 429/503 and clears reconciliation state on reconnect.
   - [ ] Audit `ReconciliationSweepState` and coordinator clear scheduling; add cap/clear tests or accepted constraint evidence.
   - [ ] Verify `LoadPageFailedAction` schema-mismatch path resolves or fails pending TCS entries.
+  - [ ] Use fake-clock or injected scheduler fixtures for reconnect, fallback, retry-after, and disposal races where practical; no sleep-based timing assertions may be added for these story risks.
 
 - [ ] T4. Close pending-command status provider parity (AC17-AC20)
   - [ ] Decide whether Story 11.7 implements the real EventStore-backed `IPendingCommandStatusQuery` or records an explicit release-blocking split.
   - [ ] If implemented, map EventStore status endpoint responses into `PendingCommandOutcomeObservation` without exposing raw payloads.
   - [ ] Cover 202 pending, 200 terminal, 304 not modified, 429/503 retry-after, malformed body, duplicate terminal, stale terminal, and provider exception cases with focused tests and consumer contract tests when HTTP behavior changes.
   - [ ] Record the provider parity decision in the Dev Agent Record; mock-only or null-provider-only behavior must be named as a release-blocking split, not as provider parity.
+  - [ ] Treat missing fields, unknown terminal states, invalid retry headers, stale validators, and provider schema/version drift as fail-closed typed outcomes with redacted evidence.
   - [ ] Validate `MaxPendingCommandPollingPerTick`, processed counters, null-provider short-circuit behavior, and burst/live-nudge coalescing.
   - [ ] Revisit reconnect-epoch awareness in `PendingCommandOutcomeResolver` and stale terminal observations.
   - [ ] Review pending-command UI/component semantics for explicit empty state, disposed reads, cap eviction, and long-running Confirming escalation; split UX contract changes if needed.
@@ -140,6 +150,8 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Preserve root-level submodule behavior (`submodules: true`) and do not introduce recursive nested submodule checkout/update.
   - [ ] Add or update governance assertions that reject recursive nested submodule checkout/update commands while allowing root-level submodule checkout only.
   - [ ] Prove release ordering places evidence, inventory, SBOM/checksum/signing/attestation, blocking CI verification, and redaction checks before any credentialed push, package publish, tag/changelog push, GitHub Release creation, or deployment mutation.
+  - [ ] Add a zero-evidence/zero-tests guard for blocking lanes so filtered-out, skipped, or no-op CI/release checks cannot publish a false pass.
+  - [ ] Prove release reruns after partial failure are idempotent or blocked before irreversible side effects; document any manual reconciliation required for tags, packages, attestations, changelog commits, or GitHub Releases.
   - [ ] Validate release package inventory, SBOM/checksum/signing evidence, NuGet credentials, and GitHub Release failure behavior if workflow changes are made.
   - [ ] Keep artifact output bounded and redacted: no secrets, tokens, local absolute paths, tenant/user values, raw logs, or unbounded workflow dumps.
 
@@ -156,6 +168,7 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
     `python eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output artifacts/release/package-inventory-preflight.json`
   - [ ] Run a bounded forbidden-token/redaction scan across updated logs, docs, snapshots, workflow summaries, release evidence, and ledger evidence.
   - [ ] Use negative redaction fixtures containing representative secret, token, tenant/user, payload, local-path, and raw-log sentinels; prove committed or attached evidence contains only bounded sanitized substitutes.
+  - [ ] Treat skipped, filtered-to-zero, missing-artifact, or no-output blocking validation as failure unless the Dev Agent Record names the accepted constraint, owner, and reopen trigger.
   - [ ] Map every touched AC to one validation lane: focused Shell/EventStore tests, contract tests, governance tests, release-evidence helper, main lane, or explicitly not impacted. Do not add blanket performance, palette, nightly, visual, or quarantine validation unless a concrete Story 11.7 row requires it.
   - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` with row-scoped resolution evidence.
   - [ ] Update this story's Dev Agent Record with commands, outcomes, file list, accepted constraints, split rows, and residual release risks.
@@ -185,6 +198,12 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
 | D17 | Validation lanes are assigned per AC before implementation. | Prevents advisory performance/visual/quarantine work from masking missing main-lane, contract, governance, or release-evidence proof. |
 | D18 | CI/release workflows must prove evidence-before-side-effect ordering. | Credentialed pushes, package publishing, tags, releases, and deployment mutations are hard to reverse and require prior blocking evidence. |
 | D19 | Redaction proof uses negative fixtures, not prose-only assertions. | Sentinel secrets, tenants, users, payloads, local paths, and raw logs catch evidence leaks that normal happy-path outputs miss. |
+| D20 | Story 11.7 row inventory is reconciled at both start and finish. | The ledger is active release evidence; row-count drift can otherwise hide new or moved release risks. |
+| D21 | Retry, reconnect, fallback, pending polling, and release retry behavior must use bounded budgets and deterministic time evidence. | Sleep-based tests and unbounded retries are the easiest way for reliability hardening to become flaky or unsafe. |
+| D22 | Observability uses low-cardinality categories by default. | Tenant, user, command, payload, cache, response, and local-path identifiers belong in sanitized bounded evidence, not metrics dimensions or public logs. |
+| D23 | Provider-backed pending-command status shares the EventStore HTTP contract oracle. | Query, command, cache, and status endpoint behavior must fail closed consistently when EventStore contracts drift. |
+| D24 | Release workflows are idempotent or blocked before irreversible side effects. | Partial publication states need explicit reconciliation; reruns must not create duplicate packages, tags, releases, or misleading evidence. |
+| D25 | Blocking validation requires non-empty evidence. | A skipped, filtered-to-zero, or missing-artifact lane is not a pass for release readiness. |
 
 ### Source Tree Components To Touch
 
@@ -312,11 +331,13 @@ GPT-5 Codex
 
 - 2026-05-11: Story created via `/bmad-create-story 11-7-eventstore-reliability-and-ci-governance-follow-ups` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-12T00:04:54+02:00: Party-mode review applied via `/bmad-party-mode 11-7-eventstore-reliability-and-ci-governance-follow-ups; review;` with Winston, Amelia, John, and Murat. Added row disposition, EventStore classification, tenant/user fail-closed, SignalR advisory-only, provider parity, CI/release ordering, validation lane, redaction, and root-level submodule governance guardrails.
+- 2026-05-12T01:03:17+02:00: Advanced elicitation applied via `/bmad-advanced-elicitation 11-7-eventstore-reliability-and-ci-governance-follow-ups`. Added ledger drift reconciliation, zero-evidence validation failure, low-cardinality observability, deterministic retry/backoff timing, EventStore contract drift, and release rerun idempotency guardrails.
 
 ### Change Log
 
 - 2026-05-11: Created Story 11.7 and marked ready-for-dev.
 - 2026-05-12T00:04:54+02:00: Party-mode review hardening applied; added AC28-AC34, Decisions D13-D19, and task guardrails for row-to-evidence disposition, HTTP fixture matrices, deterministic SignalR sequencing, provider parity contracts, release ordering, validation lane mapping, redaction fixtures, and recursive submodule rejection.
+- 2026-05-12T01:03:17+02:00: Advanced elicitation hardening applied; added AC35-AC40, Decisions D20-D25, and task guardrails for row inventory drift, zero-tests/zero-evidence blocking failures, telemetry cardinality, fake-clock retry validation, provider contract drift, and idempotent release reruns.
 
 ### File List
 
@@ -331,4 +352,16 @@ GPT-5 Codex
 - Findings summary: Review converged that Story 11.7 is directionally implementable but needed pre-dev tightening before it can provide a defensible release-owner pass/fail view. Key risks were broad 71-row closure without one final disposition per row, EventStore HTTP behavior without one shared oracle, tenant/user gaps across REST, SignalR, pending commands, badge/count, and cache paths, SignalR fallback being misread as durable authority, mock-only pending-command parity, CI/release evidence after irreversible side effects, validation lanes that could overuse advisory checks, and prose-only redaction claims.
 - Changes applied: Added AC28-AC34; added Decisions D13-D19; tightened T1-T7 subtasks for row-to-evidence matrix columns, accepted-constraint expiry/review dates, EventStore response fixture matrices, invalid ETag hygiene, deterministic SignalR fake-time sequencing, advisory-only SignalR proof, provider-backed pending-command contract tests, mock-only parity split rules, recursive nested submodule rejection, evidence-before-side-effect ordering, negative redaction fixtures, and per-AC validation lane mapping.
 - Findings deferred: Concrete EventStore command/query code, SignalR fallback mechanics, pending-command provider implementation, badge/count fixes, release workflow changes, and release evidence generation remain implementation work. Broad diagnostic registry governance, MCP schema cleanup, SourceTools drift, Shell UX polish, docs-site cleanup, nested submodule work, visual/palette/nightly/performance expansion, and generalized hardening remain out of scope unless tied to a named Story 11.7 row and split owner.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- Date/time: 2026-05-12T01:03:17+02:00
+- Selected story key: `11-7-eventstore-reliability-and-ci-governance-follow-ups`
+- Command/skill invocation used: `/bmad-advanced-elicitation 11-7-eventstore-reliability-and-ci-governance-follow-ups`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+- Findings summary: The story was already directionally ready after party-mode review, but the elicitation pass found remaining implementation traps around active ledger drift, false green validation caused by skipped or zero-output lanes, high-cardinality observability leaks, retry/backoff timing flakiness, provider contract drift between query/status/SignalR paths, and release reruns after partial side effects.
+- Changes applied: Added AC35-AC40; added Decisions D20-D25; tightened T1-T7 subtasks for start/end row inventory fingerprints, zero-tests and missing-artifact blocking failures, low-cardinality telemetry/evidence boundaries, fake-clock retry and reconnect tests, pending-status fail-closed contract drift handling, and idempotent or blocked release reruns after partial failure.
+- Findings deferred: Actual EventStore HTTP/provider implementation, SignalR scheduler changes, telemetry code changes, CI/release workflow edits, release evidence generation, and deferred-ledger row disposition remain implementation work for `bmad-dev-story`. Product or architecture decisions about broader compliance audit logging, visual/performance lane expansion, nested submodule initialization, and non-Story-11.7 diagnostic/MCP/SourceTools/Shell UX scope remain outside this story unless split to a named owner.
 - Final recommendation: ready-for-dev
