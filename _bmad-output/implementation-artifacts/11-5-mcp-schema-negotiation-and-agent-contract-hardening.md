@@ -67,6 +67,14 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
 | AC16 | MCP tenant scope, hallucination rejection, schema mismatch behavior, and lifecycle result categories are validated together | Focused test suites run | Cross-surface tests prove unknown tools do not reach backend dispatch, cross-tenant tools remain invisible, schema failures have stable categories, and lifecycle category changes are pinned. |
 | AC17 | Story 11.2, 11.3, 11.4, 11.6, and 11.7 own adjacent release-readiness work | Story 11.5 touches docs, diagnostics, SourceTools, shell, EventStore, or CI | Changes are limited to MCP/agent contract evidence; adjacent work is handed off instead of silently absorbed. |
 | AC18 | Validation completes | Story 11.5 moves to review | The Dev Agent Record lists commands, outcomes, touched files, unresolved accepted constraints, and evidence paths. |
+| AC19 | Multiple MCP rejection causes apply to the same request | Admission, negotiation, and invocation classify the failure | A normative fail-closed precedence matrix is applied consistently across tools, resources, and skill-corpus paths; first matching cause wins and lower-priority details do not leak. |
+| AC20 | A compatible-additive or compatible-warning request later fails current server validation | Tests instrument MCP invocation seams | Validation fails before any observable side effect: no command dispatch, query execution, lifecycle success, cache write, renderer buffer, token relay, manifest write, or ledger mutation occurs. |
+| AC21 | Schema, tenant, corpus, and agent-contract tests are added | Test fixtures are composed | Minimal independent fixtures for schema manifests, skill-corpus fingerprints, tenant scope, and agent contract behavior are used so mixed-algorithm, missing-fingerprint, stale-descriptor, and cross-tenant combinations are visible. |
+| AC22 | Public rejection payloads, logs, diagnostics, exceptions, or telemetry are produced | Sentinel values are injected for tenant ID, user ID, token, raw payload, local path, raw descriptor, hidden name, and machine-local source | Assertions prove those sentinel values are absent from every public or semi-public surface while internal investigation keeps only opaque correlation evidence. |
+| AC23 | Fingerprints are compared or aggregated | MCP schema paths evaluate equality or aggregate integrity | Comparisons are centralized around typed fingerprint identity including algorithm, value, and material kind where available; direct string-value-only comparisons in MCP paths are removed or covered by regression tests. |
+| AC24 | A client omits claimed fingerprint material | Registry integrity validation runs | The outcome is explicitly decided before implementation: fail closed by default, or a named legacy/release-constraint path with owner, expiry, telemetry, downstream consumers, and tests. |
+| AC25 | `MessageKey`, `AgentCategory`, `decisionKind`, `ProtocolUriCategory`, or lifecycle categories are changed or documented | Agent-facing responses are pinned | The story records whether each field is strict, extensible, or fallback-mapped; public value changes require compatibility tests and maintainer-facing notes. |
+| AC26 | Enum display-label parity is deferred to Story 11.6 or v1.x | MCP schema fingerprint material and manifests are evaluated | Deferral is allowed only when tests or notes prove enum labels do not participate in published schema fingerprints, manifest material, or agent contract values; otherwise the compatibility work remains in Story 11.5. |
 
 ---
 
@@ -77,6 +85,7 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
   - [ ] Capture MCP/schema/skill-corpus rows from Stories 8.1 through 8.6a, including DEF-D5, DEF-C3, DEF-CK4-*, DEF-2, Story 8.5 skill corpus rows, and Story 8.2/8.3 agent-surface rows that are not already owned by Story 10.6 or 11.7.
   - [ ] Classify each row as fix now, accept with evidence, split to Story 11.6/11.7/10.6, or leave blocked with a named product/architecture decision.
   - [ ] Preserve historical review text; append resolution markers rather than rewriting the ledger.
+  - [ ] For every `accepted` row, name the residual risk, owning decision, downstream consumer impact, and whether the item blocks merge or release.
 
 - [ ] T2. Implement compatible-additive revalidation and zero-side-effect coverage (AC2, AC9, AC16)
   - [ ] Unskip or replace the existing `CompatibleAdditive` projection/command admission tests that were left pending DEF-D5.
@@ -84,6 +93,7 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
   - [ ] Ensure `CompatibleWarning`/`EnumChanged` keeps the schema-drift signal instead of degrading to generic `ValidationFailed` when old enum values are rejected.
   - [ ] Add side-effect spies for command dispatch, query execution, lifecycle mutation, cache writes, renderer buffers, and token relay where feasible.
   - [ ] Keep hidden/unknown and tenant/policy checks ahead of schema details.
+  - [ ] Add a fake side-effect recorder proving additive/warning requests that fail current validation do not invoke dispatch, query execution, lifecycle success, cache writes, renderer buffers, token relay, manifest writes, or ledger writes.
 
 - [ ] T3. Harden fingerprint and aggregate semantics (AC3-AC6, AC8, AC10)
   - [ ] Compare `SchemaFingerprint.AlgorithmId` and `Value` together in `SchemaNegotiation.cs`.
@@ -92,6 +102,9 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
   - [ ] Route `ISkillCorpusFingerprintProvider` outputs into a production aggregate integrity path, or record the release constraint with tests proving the current seam.
   - [ ] Consolidate or production-test the `FrontComposerMcpDescriptorRegistry` constructor selected by `AddFrontComposerMcp`.
   - [ ] Add runtime lifecycle payload cross-checks for `McpLifecycleResult` so pinned state material cannot drift silently.
+  - [ ] Add parameterized fingerprint tests for same value/different algorithm, same algorithm/different value, same algorithm/same value, aggregate mixed algorithm, and missing claimed fingerprint.
+  - [ ] Keep runtime manifest fingerprints and skill-corpus fingerprints independently versioned and reported; any combined aggregate must preserve component identity, algorithm, and material kind.
+  - [ ] Add DI composition coverage with at least two corpus providers and a zero-provider case whose expected behavior is either fail-closed or an explicitly documented release constraint.
 
 - [ ] T4. Tighten schema rejection, descriptor correlation, and agent categories (AC7, AC9, AC11, AC13, AC16)
   - [ ] Preserve descriptor correlation for schema rejection without exposing hidden names or tenant-specific data to agents.
@@ -99,18 +112,25 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
   - [ ] Document and test hidden/stale/schema precedence for production paths where stale descriptor state is upstream of `SchemaNegotiationRuntimeGate`.
   - [ ] Ensure schema-failure logs use bounded category/message/docs fields only.
   - [ ] Review `ProtocolUriCategory` and lifecycle categories; either specialize them with evidence or accept them as v1 decorative metadata.
+  - [ ] Add the rejection precedence matrix and table-driven tests for hidden+unknown, hidden+stale, unknown+schema, stale+schema, tenant mismatch+schema, unsupported algorithm+schema, and missing fingerprint+schema collisions.
+  - [ ] Test both correlation surfaces: internal opaque evidence remains useful for investigation, while public responses omit hidden descriptor names, tenant/user IDs, raw payloads, tokens, local paths, exception text, and raw descriptor material.
+  - [ ] Treat any public value rename for `MessageKey`, `AgentCategory`, `decisionKind`, URI category, or lifecycle category as compatibility work requiring downstream tests and release notes.
 
 - [ ] T5. Harden skill corpus and auth/header parser contracts (AC12-AC15)
   - [ ] Replace `SkillResourceReadResult` invalid-state construction with success/failure factories, or document the compatibility constraint.
   - [ ] Add tests for skill corpus diagnostics source redaction or no-log/no-agent-exposure contract.
   - [ ] Add `AuthContextAccessor` coverage for cached success, malformed sentinel rethrow, multi-valued headers, uppercase hex rejection, null/empty header no-op, and oversized lowercase values.
   - [ ] Decide whether enum display-label parity in MCP Markdown rendering is Story 11.5 scope; if not, record a handoff to Story 11.6 or v1.x because schema fingerprint material changes.
+  - [ ] Document valid `SkillResourceReadResult` states as a matrix; success requires safe content and fingerprint material, not-found forbids content, denied forbids raw reason leakage, and invalid-schema exposes only safe diagnostic codes.
+  - [ ] Add hostile header parser cases for absent, empty, duplicate, contradictory multi-value, mixed casing, whitespace, unknown algorithm, truncated value, invalid separator, oversized value, and control characters; all ambiguous cases fail closed before schema/tenant resolution and without logging raw values.
+  - [ ] Use sentinel redaction tests that assert absence of tenant ID, user ID, token, raw payload, local path, raw descriptor, hidden name, and machine-local source across messages, structured diagnostics, exceptions, telemetry, and captured logs.
 
 - [ ] T6. Update docs, ledger, and validation evidence (AC1, AC17, AC18)
   - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` with resolution/acceptance/split markers for every Story 11.5-owned row.
   - [ ] Update focused comments or release notes only where behavior changes need maintainer-facing explanation.
   - [ ] Record exact validation commands and outcomes in this story's Dev Agent Record.
   - [ ] Move Story 11.5 to `review` only after implementation and validation evidence are complete.
+  - [ ] Link every closed ledger row to at least one compatibility test, redaction/no-log test, production payload validation artifact, release-constraint note, or split-story reference.
 
 ---
 
@@ -152,6 +172,14 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
 | D5 | Corpus aggregate support is either production-enforced or explicitly release-constrained. | A test-only aggregate path creates false confidence for agent contracts. |
 | D6 | Agent-visible categories are compatibility surface. | Rename only with pinned tests and release notes; otherwise document the existing wire contract. |
 | D7 | Any accepted constraint must be backed by tests, comments, or release notes and ledger evidence. | Avoids false closure of old review findings. |
+| D8 | All MCP tools/resources must pass through one contract gate before side effects: known descriptor, tenant scope, claimed schema/fingerprint policy, payload schema validation, and redaction context. | Handler-level validation can add constraints but cannot weaken the shared boundary. |
+| D9 | Rejection precedence is normative: hidden descriptor, unknown tool/resource, tenant scope denied, stale or incompatible fingerprint, schema validation failure, handler failure. | First matching cause wins so lower-priority details cannot leak and consumer-visible outcomes stay stable. |
+| D10 | Fingerprint identity includes algorithm, value, and material kind where the material kind is available. | Runtime manifest, skill corpus, lifecycle result, and schema fingerprints must not collapse into a single untyped string comparison. |
+| D11 | Missing claimed fingerprint material fails closed by default unless a named legacy/release-constraint path is explicitly approved with owner, expiry, telemetry, and downstream-consumer impact. | Prevents a documented no-integrity bypass from becoming the de facto production contract. |
+| D12 | Runtime manifest fingerprints and skill-corpus fingerprints remain independently versioned, validated, and reported. | A combined aggregate must preserve component identity so one surface cannot mask another surface's drift. |
+| D13 | Public rejection payloads expose only stable public codes, safe categories, docs/message keys, and opaque correlation identifiers. | Internal investigation stays possible without exposing hidden descriptors, tenant/user identifiers, payloads, tokens, paths, raw envelopes, fingerprints, or exception text. |
+| D14 | `SkillResourceReadResult` must prefer invariant construction through factories or an equivalent validated state matrix. | Invalid success/failure/category combinations should be impossible or explicitly accepted with tests and no sensitive output. |
+| D15 | Enum display-label parity is out of Story 11.5 only when labels do not affect published schema fingerprint, manifest, or agent contract material. | If labels affect contract material, the work is compatibility hardening rather than shell UX polish. |
 
 ### Source Tree Components To Touch
 
@@ -186,6 +214,10 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
 
 ### Testing Strategy
 
+- Add a fail-closed precedence matrix test suite that covers at least hidden+unknown, hidden+stale, unknown+schema, stale+schema, tenant mismatch+schema, unsupported algorithm+schema, and missing fingerprint+schema collisions across tools/resources/skills where applicable.
+- Add an acceptance seam for the full order of operations: header parsing -> tenant scope -> fingerprint negotiation -> current server validation -> side-effect gate -> redacted diagnostics.
+- Keep schema manifest, skill-corpus fingerprint, tenant-scope, and agent-contract fixtures minimal and independently composable; avoid a monolithic fixture that hides cross-surface coupling.
+- Use sentinel values for tenant ID, user ID, token, raw payload, local path, raw descriptor, hidden descriptor name, and machine-local source, then assert absence across messages, structured diagnostics, exceptions, telemetry, logs, and public result payloads.
 - Run focused MCP schema tests first:
   - `dotnet test tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release --filter "FullyQualifiedName~Schema"`
 - Run focused invocation admission tests while iterating:
@@ -221,6 +253,7 @@ Start here: T1 inventory Story 11.5 deferred rows -> T2 patch compatible-additiv
 | EventStore provider-backed behavior, realtime reliability, and CI/release governance. | Story 11.7 |
 | Timing-oracle and P95 benchmark upgrades across hidden/cross-tenant/policy buckets. | Story 10.6 |
 | Full hot-reload of skill corpus descriptors after startup. | Product/architecture decision after Story 11.5 evidence |
+| Missing fingerprint compatibility mode, corpus-provider absence behavior, and public category compatibility policy if implementation evidence cannot make them fail-closed without adopter impact. | Product/architecture decision recorded before dev completion |
 
 ---
 
@@ -258,10 +291,23 @@ GPT-5 Codex
 ### Completion Notes List
 
 - 2026-05-11: Story created via `/bmad-create-story 11-5-mcp-schema-negotiation-and-agent-contract-hardening` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-11T11:11:15+02:00: Party-mode review applied via `/bmad-party-mode 11-5-mcp-schema-negotiation-and-agent-contract-hardening; review;` with Winston, Amelia, John, and Murat. Added fail-closed precedence, zero-side-effect, fingerprint identity, DI corpus-provider, redaction, header-parser, ledger-evidence, and scope-boundary guardrails. Deferred product/architecture choices remain for missing claimed fingerprint policy, corpus-provider absence behavior, public category compatibility, and enum-label parity when it affects fingerprint material.
+
+## Party-Mode Review
+
+- Date/time: 2026-05-11T11:11:15+02:00
+- Selected story key: `11-5-mcp-schema-negotiation-and-agent-contract-hardening`
+- Command/skill invocation used: `/bmad-party-mode 11-5-mcp-schema-negotiation-and-agent-contract-hardening; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- Findings summary: Review converged on a need for one MCP contract gate before side effects, normative rejection precedence, typed fingerprint identity, independently reported manifest/corpus fingerprints, DI composition proof for corpus providers, redaction by negative assertions, hostile header-parser coverage, and executable ledger evidence.
+- Changes applied: Added AC19-AC26, Decisions D8-D15, expanded T1-T6 subtasks, expanded testing strategy, and added explicit follow-up/deferred-decision rows.
+- Findings deferred: Missing claimed fingerprint default versus legacy/release-constraint path; corpus-provider absence behavior; strict/extensible/fallback policy for `MessageKey`, `AgentCategory`, `decisionKind`, URI category, and lifecycle category; enum-display-label parity when labels affect published fingerprint/manifest/agent-contract material.
+- Final recommendation: ready-for-dev
 
 ### Change Log
 
 - 2026-05-11: Created Story 11.5 and marked ready-for-dev.
+- 2026-05-11: Applied party-mode review hardening for MCP contract gate, fail-closed precedence, fingerprint identity, DI provider coverage, redaction, hostile header parsing, and evidence requirements.
 
 ### File List
 
