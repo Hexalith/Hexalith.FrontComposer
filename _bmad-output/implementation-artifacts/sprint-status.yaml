@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-11 (Created Story 11.5 MCP schema negotiation and agent contract hardening and marked it ready-for-dev.)"
+last_updated: "2026-05-11 (Completed Story 11.1 deferred-work ledger reconciliation and marked it ready for review.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -145,7 +145,7 @@ development_status:
 
   # Epic 11: Deferred Hardening & Release Readiness
   epic-11: in-progress
-  11-1-deferred-work-ledger-reconciliation-and-ownership: ready-for-dev
+  11-1-deferred-work-ledger-reconciliation-and-ownership: review
   11-2-diagnostic-registry-and-documentation-governance-follow-ups: ready-for-dev
   11-3-cli-migration-and-ide-edge-case-hardening: ready-for-dev
   11-4-drift-detection-and-source-generator-coverage-hardening: ready-for-dev
