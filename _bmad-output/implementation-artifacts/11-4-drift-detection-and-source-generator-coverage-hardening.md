@@ -72,6 +72,12 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
 | AC22 | Source generator coverage is evaluated beyond string-only assertions | Roslyn fixture compilations run | Tests inspect diagnostics, generated trees, hint names, incremental cache behavior, missing `AdditionalFiles`/metadata handling where applicable, and absence of parasite output for no-contract or malformed-contract inputs. |
 | AC23 | Performance evidence is kept or accepted as advisory | `Category=Performance` drift benchmark tests run or are explicitly skipped | The Dev Agent Record captures environment, baseline source, threshold/rationale, median/p95 results, and whether the gate is blocking, advisory, or accepted unstable with owner and follow-up. |
 | AC24 | Story 11.4 implementation pressure reveals broader generator architecture or public contract changes | The dev identifies work outside the owned SourceTools rows | Refactors, API changes, snapshot format overhauls, auto-fix CLI modes, and cross-story contract consolidation are recorded as deferred decisions instead of being absorbed into this story. |
+| AC25 | Story 11.4 starts and ends deferred-row reconciliation | The implementer inventories routed rows and later updates `deferred-work.md` | The starting inventory, alias map, and final bucket counts reconcile exactly; duplicate aliases, split rows, accepted constraints, and unresolved rows are named without silently dropping any row. |
+| AC26 | A Story 11.4 row is accepted or split instead of fixed | The Dev Agent Record and ledger are updated | The entry includes likelihood/impact rationale, release risk, validation evidence or reason skipped, owner, revisit trigger, and why the acceptance does not invalidate release readiness. |
+| AC27 | Drift, generator, snapshot, benchmark, or ledger evidence is written | The evidence is committed or referenced | A bounded redaction scan covers updated evidence surfaces and fails closed on local absolute paths, temp roots, user names, `bin/obj`, tokens, tenant/user identifiers, raw JSON snippets, or source payload fragments. |
+| AC28 | A fixture, benchmark, or approval path cannot run consistently on the current platform | Validation is recorded | The outcome is `blocking`, `advisory`, `accepted unstable`, or `split` with explicit platform/environment conditions; tests must not pass by silently reducing assertions or fixture coverage. |
+| AC29 | SourceTools fixes touch diagnostic IDs, severities, help links, release-tracking rows, or registry/docs governance | Implementation proceeds | The change stays within existing Story 11.4 SourceTools behavior or is handed to Story 11.2 with evidence; new governance policy is not invented inside this story. |
+| AC30 | A generator limitation remains after Story 11.4 | The limitation is recorded as an accepted constraint | The constraint names the affected surface, bounded fixture proving current behavior, downstream impact, owner, and condition that would reopen the decision; vague "low priority" closure is not sufficient. |
 
 ---
 
@@ -81,6 +87,8 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom.
   - [ ] Capture unresolved `DEF-9-1A-*`, `DEF-9-1B-*`, `DEF-9-1C-*`, older Story 1.4/1.5/1.8 SourceTools rows, and SourceTools-specific parser/emitter rows routed to Story 11.4.
   - [ ] Classify each row as fix now, accept with evidence, split to Story 11.2/11.3/11.6/11.7, or leave blocked with a named decision.
+  - [ ] Record a starting inventory table with canonical row ID, aliases, source story/review, owning ACs, selected bucket, and expected evidence before editing production code.
+  - [ ] Reconcile the final ledger buckets back to the starting inventory; duplicate aliases and split rows must keep a backlink to the canonical row.
   - [ ] Identify the checked-in baseline/snapshot/fixture corpus that is the source of truth for each drift or generator row before changing production code.
   - [ ] Freeze the owned file and fixture perimeter for this story; record any desired broad generator refactor, public API change, or snapshot-format change as deferred.
   - [ ] Preserve historical review text; append resolution markers rather than rewriting the ledger.
@@ -92,6 +100,7 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Convert `DriftBenchmarkTests` from red-phase skip to actionable `Category=Performance` coverage if stable on the target environment, or document why it remains advisory.
   - [ ] Record median and p95 evidence for cache-hit and cache-miss drift paths with warmup excluded.
   - [ ] Record the benchmark baseline source, threshold rationale, execution environment, and whether the performance gate is blocking or advisory.
+  - [ ] If the benchmark remains skipped or advisory, record the exact environment condition and the release-risk rationale instead of treating the skip as closure.
 
 - [ ] T3. Strengthen drift diagnostic comparison, path, and baseline trust tests (AC5-AC7, AC15)
   - [ ] Replace `Id + "|" + Message` comparisons with a shared diagnostic-shape assertion helper where severity, path, and properties matter.
@@ -101,6 +110,7 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Assert diagnostics remain sanitized and do not leak raw baseline JSON, absolute paths, tokens, tenant/user data, or source snippets.
   - [ ] Add a fail-closed drift test that intentionally changes generated output or expected baseline data and verifies the gate fails with normalized, actionable diff evidence.
   - [ ] Add clean-run determinism coverage: two consecutive executions on the same input must produce byte-stable normalized output and no working-tree mutation.
+  - [ ] Run or implement a bounded forbidden-token scan across updated drift diagnostics, reports, snapshots, benchmark evidence, and ledger evidence.
 
 - [ ] T4. Complete high-value metadata drift coverage (AC8, AC15)
   - [ ] Add ProjectionBadge drift tests using enum member attributes such as `[ProjectionBadge(BadgeSlot.Danger)] New` and `[ProjectionBadge(BadgeSlot.Success)] Done`.
@@ -116,6 +126,7 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Decide whether conflicting display labels across the same bounded context need a diagnostic or explicit acceptance.
   - [ ] Preserve or improve the malformed `[Projection]` inner-loop contract without introducing generator-amplified compile errors.
   - [ ] Evaluate HFC1010 / RS2002 release-tracking suppression and add a descriptor release-row guard if Story 11.2 does not already own it.
+  - [ ] For any diagnostic ID, severity, help-link, release-row, or registry impact, either keep the change inside existing SourceTools behavior or create a Story 11.2 handoff with evidence.
   - [ ] Add destructive renderer snapshot coverage only if the fixture set stays bounded; avoid reapproving unrelated snapshots.
   - [ ] Triage policy alias collisions, Unicode/normalization policy names, partial declaration ordering, and struct projection empty-state CTA flow.
   - [ ] Use compiler-backed Roslyn fixtures for generator coverage; assert diagnostics, generated trees, hint names, incremental cache behavior, missing metadata/`AdditionalFiles` behavior where applicable, and no parasite output for unrelated projects.
@@ -124,6 +135,7 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Create or extend isolated valid/invalid SourceTools fixtures with unique temp roots, shared minimal abstractions, deterministic cleanup, and normalized snapshot output.
   - [ ] Cover Windows and non-Windows separators, CRLF/LF normalization, invariant-culture formatting, malformed syntax, missing references, no-contract projects, and multi-target/multi-project shapes where currently supported.
   - [ ] Add redaction assertions for diagnostics, logs, benchmark output, and generated/snapshot artifacts: no local absolute paths, temp directories, user names, `bin/obj` paths, tokens, tenant/user identifiers, raw JSON snippets, or source payload fragments.
+  - [ ] When a fixture cannot execute on the current platform, fail closed into `blocking`, `advisory`, `accepted unstable`, or `split`; do not substitute weaker assertions without recording the reduction.
   - [ ] Keep snapshot/golden approval bounded to touched SourceTools surfaces; do not introduce broad unrelated approval churn.
   - [ ] Treat auto-fix/update command behavior, long-term snapshot format, and JSON/SARIF/text drift report format as deferred unless already implemented locally.
 
@@ -132,6 +144,7 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Update SourceTools comments or focused docs only where behavior changes need a maintainer-facing explanation.
   - [ ] Record exact validation commands and outcomes in this story's Dev Agent Record.
   - [ ] Record SourceTools fixture corpus, expected drift/generator artifacts, redaction evidence, benchmark status, and any accepted constraints in the Dev Agent Record.
+  - [ ] For each accepted constraint, record likelihood, impact, release risk, owner, validation evidence, and the condition that reopens the decision.
   - [ ] Move Story 11.4 to `review` only after implementation and validation evidence are complete.
 
 ---
@@ -204,6 +217,12 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
 | D11 | Generator coverage must compile real Roslyn fixtures before trusting string-only assertions. | Parser, transform, emitter, diagnostic, hint-name, and incremental cache behavior can diverge while string checks still pass. |
 | D12 | Redaction applies to all evidence surfaces, including benchmark and drift reports. | SourceTools evidence is public release material and must not leak local paths, users, tenants, payloads, or tokens. |
 | D13 | Broad generator refactors, API changes, auto-fix modes, and snapshot format overhauls are deferred by default. | Keeps Story 11.4 as bounded release hardening rather than an architecture rewrite. |
+| D14 | Deferred-row inventory reconciliation is a release gate, not bookkeeping. | Story 11.4 exists to close old review findings; losing an alias or split row would create false confidence. |
+| D15 | Accepted constraints require explicit likelihood, impact, owner, evidence, and reopen trigger. | "Low priority" is not enough justification for release readiness. |
+| D16 | Evidence redaction must run across every updated evidence surface before review. | A sanitized diagnostic can still leak through benchmark output, snapshots, logs, or ledger notes. |
+| D17 | Platform-dependent fixtures and benchmarks fail closed into named states. | Silent assertion reduction turns release-hardening tests into false positives. |
+| D18 | Diagnostic governance policy stays with Story 11.2 unless this story only exercises existing SourceTools behavior. | Prevents drift fixes from smuggling registry, docs, release-row, or severity policy changes. |
+| D19 | Snapshot and generator coverage stays bounded to touched SourceTools surfaces. | Full-corpus reapproval or broad generator rewrites would exceed the story's L06/L07 decision and test budget. |
 
 ### Source Tree Components To Touch
 
@@ -243,6 +262,8 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=Performance|FullyQualifiedName~DriftBenchmark"`
 - Run snapshot/approval verification only for touched emitter surfaces.
 - Run redaction and fail-closed drift checks with hostile path/payload fixtures before moving the story to review; record whether each gate is blocking or advisory.
+- Run a bounded forbidden-token scan across changed drift/generator evidence surfaces before review, including benchmark output and ledger evidence if updated.
+- For skipped, advisory, or unstable performance/fixture checks, record the exact platform/environment condition and risk rationale in the Dev Agent Record.
 - When a snapshot or golden file update is required, the committed diff is the review artifact; CI must verify it rather than regenerating it.
 - For final release-confidence, run the main lane if time allows:
   - `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`
@@ -306,11 +327,13 @@ GPT-5 Codex
 
 - 2026-05-11: Story created via `/bmad-create-story 11-4-drift-detection-and-source-generator-coverage-hardening` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-11: Party-mode pre-dev hardening applied; added SourceTools source-of-truth, fail-closed drift, deterministic fixture, redaction, benchmark, and scope-boundary guardrails.
+- 2026-05-11: Advanced elicitation applied via `/bmad-advanced-elicitation 11-4-drift-detection-and-source-generator-coverage-hardening`. Added deferred-row reconciliation, accepted-constraint risk rationale, redaction scan, platform fail-closed, diagnostic-governance boundary, and bounded snapshot guardrails.
 
 ### Change Log
 
 - 2026-05-11: Created Story 11.4 and marked ready-for-dev.
 - 2026-05-11: Applied party-mode review hardening for drift/generator determinism and release-readiness gates.
+- 2026-05-11: Advanced elicitation hardening applied; added AC25-AC30, Decisions D14-D19, task refinements, validation guidance, and canonical trace.
 
 ### Party-Mode Review
 
@@ -334,6 +357,18 @@ GPT-5 Codex
   - Long-term snapshot/baseline report format such as text, JSON, SARIF, or combined output.
   - Global generator architecture refactor, public API changes, and cross-story contract consolidation.
   - Exact performance regression threshold if current environment cannot support a stable blocking benchmark.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-11T10:03:47+02:00
+- Selected story key: `11-4-drift-detection-and-source-generator-coverage-hardening`
+- Command/skill invocation used: `/bmad-advanced-elicitation 11-4-drift-detection-and-source-generator-coverage-hardening`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+- Findings summary: The elicitation found that Story 11.4 already had strong drift/generator coverage goals, but could still fail release-readiness by losing deferred-row aliases during closure, accepting constraints without risk rationale, leaking sanitized-looking evidence through secondary surfaces, weakening platform-specific fixtures into passing tests, smuggling diagnostic governance into SourceTools fixes, or reapproving too broad a snapshot corpus.
+- Changes applied: Added AC25-AC30; added Decisions D14-D19; tightened T1-T7 for starting inventory reconciliation, accepted-constraint likelihood/impact rationale, benchmark skip/advisory evidence, forbidden-token scans across evidence surfaces, diagnostic-governance handoffs, platform fail-closed outcomes, and bounded snapshot/generator coverage; expanded validation guidance.
+- Findings deferred: No product-scope, architecture-policy, diagnostic registry policy, CLI/IDE behavior, MCP schema, shell UX, EventStore reliability, release automation, auto-fix command, full-corpus snapshot reapproval, or broad generator refactor was applied. Those remain with the named follow-up stories or product/architecture decisions already captured in the story.
 - Final recommendation: ready-for-dev
 
 ### File List
