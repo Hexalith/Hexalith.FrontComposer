@@ -69,6 +69,14 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
 | AC18 | CLI/IDE hardening touches docs or public reference pages | Docs are updated | `src/Hexalith.FrontComposer.Cli/README.md`, `docs/reference/cli.md`, `docs/reference/ide-parity.md`, and related help text agree on exit codes, JSON fields, path semantics, diff limitations, and known unsupported cases. |
 | AC19 | Story 11.2 owns diagnostic/HFCM governance | Story 11.3 changes CLI-side migration behavior | HFCM registry/release-row relocation remains outside Story 11.3 unless the change is only a compatibility handoff; cross-story handoff is recorded explicitly. |
 | AC20 | Validation completes | Story 11.3 moves to review | The Dev Agent Record lists commands, outcomes, touched files, unresolved accepted constraints, and evidence paths. |
+| AC21 | A deferred row is closed as an accepted constraint rather than fixed | The ledger and docs are updated | The row names the documented user-visible behavior, targeted regression evidence, release-safety rationale, and follow-up owner/story when the constraint is not permanent. |
+| AC22 | CLI migration, inspect, sidecar, or IDE evidence code decides whether a path is trusted or writable | The decision runs | The same workspace path policy is used before filesystem mutation, resolving symlinks/junctions where supported, case/path variants, relative segments, UNC/drive-relative inputs, excluded folders, and submodule boundaries with shared regression coverage. |
+| AC23 | Project or solution selection has no explicit path or has multiple candidates | Selection runs from a repository or subfolder | Precedence is deterministic: explicit `--project`/`--solution` wins, a single unambiguous current-root candidate is allowed, and all ambiguous or unsupported discovery paths fail with a sanitized actionable error; no "first found" fallback is permitted. |
+| AC24 | Migration, sidecar, or IDE `$OutPath` writes fail, are cancelled, or receive hostile paths | The command exits | Temp files are created only inside the already-validated target directory, replacement happens only after validation succeeds, final files are unchanged on failure, cleanup is best-effort and bounded, and text/JSON errors are sanitized. |
+| AC25 | Story 11.3 closes CLI/IDE deferred rows | Implementation proposes new diagnostics, HFCM release-row governance, SourceTools drift behavior, docs-site polish, or CI/release orchestration | The change is rejected or split to Stories 11.2, 11.4, 11.6, or 11.7 unless it is a narrow compatibility handoff needed to keep CLI/IDE evidence coherent. |
+| AC26 | Tests create symlinks, junctions, case-variant paths, submodule-like paths, package-cache paths, or hostile sidecar/evidence manifests | Fixtures run locally or in CI | Fixtures are isolated under per-test temporary roots, never point to HOME/TEMP globals or live repo content, skip only for documented platform limitations, and never initialize or update nested submodules. |
+| AC27 | `Debugger.Launch()` source-generator guidance is evaluated | Story 11.3 completes | The story chooses one binary rule before review: production paths forbid unconditional debugger launch with grep/analyzer evidence, or an explicit guarded/debug-only allowance is documented with the exact validation evidence. |
+| AC28 | A release maintainer reviews Story 11.3 evidence | The story moves to review | The maintainer can read a single deferred-row matrix with `Deferred ID`, `Status`, `Evidence`, `User-visible behavior`, and `Follow-up story`; every status is fixed, accepted, superseded, or split. |
 
 ---
 
@@ -78,6 +86,7 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
   - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom.
   - [ ] Capture every unresolved `DEF-9-2-*` and `DEF-9-3-*` row plus Story 11.3-routed rows such as CLI path/help/sidecar/manifest/debug findings.
   - [ ] Classify each row as fix now, document accepted constraint, split to Story 11.2, or split to another Epic 11 story.
+  - [ ] Produce the release-maintainer matrix with columns `Deferred ID`, `Status`, `Evidence`, `User-visible behavior`, and `Follow-up story`; accepted constraints require docs/help behavior, targeted evidence, release-safety rationale, and future owner when not permanent.
   - [ ] Preserve historical review text; add resolution markers rather than deleting rows.
 
 - [ ] T2. Harden CLI project selection and path boundaries (AC2-AC4)
@@ -85,6 +94,8 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
   - [ ] Decide whether `.slnx` and `.fsproj` are supported in v1; if not, add explicit user-facing errors and docs.
   - [ ] Add tests for quoted solution paths, escaped quotes where feasible, ambiguous matches, unsupported formats, and symlink/junction canonicalization.
   - [ ] Ensure canonicalization uses `PathUtilities` consistently before trust decisions and output normalization.
+  - [ ] Define a single workspace path policy used by CLI migration, inspect-side evidence, sidecar reads, and IDE `$OutPath` decisions before any mutation; include expected outcomes for relative segments, trailing separators, UNC/drive-relative inputs, missing paths, symlink/junction escapes, case variants, and submodule/package-cache boundaries.
+  - [ ] Define project/solution precedence as explicit argument over single unambiguous current-root candidate over deterministic failure; add tests proving no "first found" fallback remains.
   - [ ] Confirm migration write policy still excludes generated output, `bin`, `obj`, package caches, root-level submodules, nested submodule paths, outside-root linked files, and unrelated repositories.
 
 - [ ] T3. Harden migration catalog, workspace setup, apply result, and file IO behavior (AC5-AC7, AC10, AC12-AC14)
@@ -92,6 +103,7 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
   - [ ] Surface `MefHostServices` or workspace composition failures as bounded CLI errors.
   - [ ] Confirm `MigrationResult.Applied` or equivalent success field is false when any file write fails.
   - [ ] Verify atomic temp-and-replace writes remain same-directory and preserve encoding/line endings where supported.
+  - [ ] Prove write-failure and cancellation behavior with injected failures: final file unchanged, temp artifact bounded or cleaned best-effort, JSON/text result non-success, and stderr/stdout redacted.
   - [ ] Document and test strict UTF-8 / BOM handling, drive-root canonicalization, and excessive-file-size behavior as fixed or accepted.
   - [ ] Revisit Ctrl+C double-press and SIGTERM handling; implement only if it stays low-risk and testable.
   - [ ] Keep tool packaging smoke tests bounded with skip/timeout behavior and documented live-tree build isolation constraints.
@@ -101,6 +113,7 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
   - [ ] Add or update JSON schema notes for inspect and migrate payloads: path relativity, redaction, exit code mapping, warning/manual-only/failure fields, and known limitations.
   - [ ] Decide whether unified diffs are terminal-safe only or patch-applicable; document the exact contract and keep tests aligned.
   - [ ] Add sidecar tests for drive-relative paths (`C:foo.cs`), traversal, duplicate/case-variant paths, unreadable files, malformed JSON, and unsafe source path reporting.
+  - [ ] Distinguish missing sidecar, malformed/unreadable sidecar, and untrusted sidecar path as controlled fail-closed outcomes; do not silently fall back to permissive behavior.
   - [ ] Ensure `OutputSanitizer` and diff rendering bound user-controlled fields without leaking raw omitted content.
 
 - [ ] T5. Harden IDE parity manifest parsing and evidence generation (AC15-AC18)
@@ -109,13 +122,14 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
   - [ ] Revisit `IdeParityReportSanitizer` ESC replacement only if downstream JSON decoding consumes its output; otherwise mark accepted with evidence.
   - [ ] Evaluate `IdeParityRepositoryRoot` ancestor walk through symlinked `AppContext.BaseDirectory`; fix or document the CI assumption.
   - [ ] Confirm `jobs/ide-parity-version-revalidation.ps1` writes `$OutPath` atomically and cannot escape expected artifact roots in release usage.
-  - [ ] Add a validation check for unconditional `Debugger.Launch()` in source-generator paths or record documentation-only acceptance with a grep command.
+  - [ ] Choose one binary `Debugger.Launch()` policy before review: either forbid unconditional production-path launches with grep/analyzer-style validation, or document the exact guarded/debug-only allowance and evidence.
 
 - [ ] T6. Update public docs and ledger evidence (AC1, AC8, AC9, AC13, AC18-AC20)
   - [ ] Update `src/Hexalith.FrontComposer.Cli/README.md` and `docs/reference/cli.md` so package README and public docs agree.
   - [ ] Update `docs/reference/ide-parity.md` or `docs/ide-parity-matrix.md` only for story-owned manifest/evidence behavior.
   - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` with resolution/acceptance/split markers for all Story 11.3 rows.
   - [ ] Record exact validation commands and outcomes in this story's Dev Agent Record.
+  - [ ] Record quality-gate evidence for path policy, atomic failure behavior, strict JSON parsing, hostile sidecars, CLI/IDE JSON/help/exit-code contracts, package smoke skip/run rationale, and root-level-only submodule handling.
   - [ ] Move Story 11.3 to `review` only after implementation and validation evidence are complete.
 
 ---
@@ -176,6 +190,48 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
 | D5 | IDE manifest validation should be strict and category-rich. | Silent duplicate-key or unknown-field tolerance defeats release evidence integrity. |
 | D6 | HFCM governance remains a Story 11.2 contract. | Story 11.3 can keep CLI sidecar behavior compatible, but registry/release-row ownership stays with diagnostics governance. |
 | D7 | Root-level submodules may be read as boundaries only; nested submodules must not be initialized or updated. | Preserves repository guardrails and avoids changing submodule state during tooling tests. |
+| D8 | All write/trust decisions must flow through one workspace path policy before filesystem mutation. | Prevents CLI migration, inspect, sidecar, and IDE evidence code from drifting on symlink, junction, submodule, package-cache, and outside-root decisions. |
+| D9 | Accepted constraints are release decisions, not unresolved leftovers. | Every accepted row must name user-visible behavior, targeted evidence, release-safety rationale, and a follow-up owner when it is not permanent. |
+| D10 | Atomic writes use temp files only inside the already-validated target directory and replace only after validation completes. | Same-directory temp-and-replace keeps same-volume semantics and makes failure/cancellation state observable and testable. |
+| D11 | Project selection never falls back to an arbitrary first candidate. | Deterministic release tooling is more valuable than guessing when multiple solutions/projects or unsupported formats are present. |
+| D12 | Story 11.3 does not create, rename, or govern diagnostics/HFCM release rows. | Diagnostic governance belongs to Story 11.2; this story may only keep CLI/IDE evidence compatible with that contract. |
+| D13 | Hostile-path and symlink/junction fixtures must be temporary and platform-aware. | Tests should prove boundaries without touching live repo content, HOME/TEMP globals, or nested submodule initialization. |
+| D14 | `Debugger.Launch()` handling must be binary before review: forbidden by validation or explicitly guarded and documented. | A documentation-only maybe state is too ambiguous for release-readiness evidence. |
+
+### Decision Rules for Deferred Rows
+
+| Status | Required evidence |
+| --- | --- |
+| Fixed | Test or validation command, touched behavior, and docs/help update when user-visible. |
+| Accepted | Documented user-visible behavior, targeted regression evidence, release-safety rationale, and follow-up owner/story when not permanent. |
+| Superseded | Replacement behavior or owner, evidence that the old row no longer applies, and a pointer to the superseding row/story. |
+| Split | Destination story, reason the work is out of Story 11.3 scope, and any compatibility handoff required here. |
+
+Rows involving diagnostic registry/HFCM governance split to Story 11.2. SourceTools drift/generator coverage splits to Story 11.4. Docs-site UX polish splits to Story 11.6. CI/release orchestration splits to Story 11.7. Story 11.3 may not add new CLI/IDE behavior outside existing deferred rows unless the row inventory exposes a release-blocking bug in the owned CLI/IDE conformance surface.
+
+### Workspace Path Policy Examples
+
+| Input shape | Expected Story 11.3 decision |
+| --- | --- |
+| Explicit `--project` or `--solution` inside selected root | Allow only after canonicalization and supported-format validation. |
+| Multiple discovered solutions/projects with no explicit path | Fail deterministically with a sanitized actionable error. |
+| Relative path, `..`, trailing separator, case variant, or missing segment | Normalize before trust decisions; fail closed when the canonical target is absent, ambiguous, or outside the selected root. |
+| Symlink or junction escaping the selected root | Refuse as outside-root even when the lexical path appears local. |
+| UNC or drive-relative sidecar/output path | Refuse or emit deterministic sentinel/manual-only behavior per CLI contract; never silently reinterpret as repo-local. |
+| `bin`, `obj`, generated output, package cache, root-level submodule, nested submodule, or unrelated repository path | Treat as read-only/excluded for migration and output writes; do not initialize or update nested submodules. |
+
+### Quality Gate Evidence Required Before Review
+
+| Evidence area | Minimum proof |
+| --- | --- |
+| Path policy | Focused tests for inside-root allow, symlink/junction escape refusal, case/drive-relative behavior where platform-feasible, excluded folders, and submodule boundaries. |
+| Atomic writes | Injected write/cancel failure showing final file unchanged, non-success result, bounded temp cleanup, and sanitized text/JSON output. |
+| CLI/IDE contracts | README/reference/help examples for fail flags, exit codes, JSON fields, path relativity, diff limits, and known unsupported cases. |
+| Strict parsing | Duplicate-key, unknown-field, trailing-comma/BOM, traversal, unsupported URI, and malformed JSON tests with friendly categories. |
+| Sidecar hostility | Missing, malformed, unreadable, traversal, duplicate/case-variant, too-large, and drive-relative sidecars produce controlled fail-closed outcomes. |
+| Debugger launch | Grep/analyzer validation forbids unconditional production-path launch, or a documented guarded/debug-only allowance with evidence. |
+| Release-maintainer matrix | Every Story 11.3 deferred row has status, evidence, user-visible behavior, and follow-up story when applicable. |
+| Submodule guardrail | Evidence confirms root-level submodules are excluded/write-protected and no recursive nested submodule initialization/update is run. |
 
 ### Source Tree Components To Touch
 
@@ -273,11 +329,24 @@ GPT-5 Codex
 ### Completion Notes List
 
 - 2026-05-11: Story created via `/bmad-create-story 11-3-cli-migration-and-ide-edge-case-hardening` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-11: Party-mode review applied via `/bmad-party-mode 11-3-cli-migration-and-ide-edge-case-hardening; review;`. Added guardrails for release-maintainer deferred-row decisions, single workspace path policy, deterministic project selection, atomic write failure evidence, hostile fixture handling, `Debugger.Launch()` policy, and cross-story scope boundaries.
 
 ### Change Log
 
 - 2026-05-11: Created Story 11.3 and marked ready-for-dev.
+- 2026-05-11: Party-mode review hardening applied; added AC21-AC28, Decisions D8-D14, deferred-row decision rules, workspace path examples, quality-gate evidence, and task updates.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/11-3-cli-migration-and-ide-edge-case-hardening.md`
+
+## Party-Mode Review
+
+- ISO date and time: 2026-05-11T08:04:51+02:00
+- Selected story key: `11-3-cli-migration-and-ide-edge-case-hardening`
+- Command/skill invocation used: `/bmad-party-mode 11-3-cli-migration-and-ide-edge-case-hardening; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- Findings summary: The review agreed Story 11.3 is valuable but too easy to implement as a broad edge-case bucket. Key risks were implicit path-policy divergence across CLI/IDE surfaces, ambiguous project/solution selection fallback, underspecified atomic write failure semantics, accepted constraints without release-maintainer evidence, accidental spillover into Stories 11.2/11.4/11.6/11.7, unsafe hostile-path fixtures, sidecar fail-open ambiguity, and unclear `Debugger.Launch()` acceptance.
+- Changes applied: Added AC21-AC28; added Decisions D8-D14; added `Decision Rules for Deferred Rows`; added `Workspace Path Policy Examples`; added `Quality Gate Evidence Required Before Review`; tightened tasks for deferred-row matrices, path policy, deterministic selection, atomic failure evidence, sidecar fail-closed cases, `Debugger.Launch()` policy, and submodule guardrails.
+- Findings deferred: John's recommendation to collapse the existing twenty ACs into six to eight outcome-driven ACs was deferred to avoid high-churn story rewriting during this pre-dev hardening pass; the new AC21-AC28 instead bound the existing detailed ACs with release-maintainer evidence and scope rules. No product-scope, architecture-policy, diagnostic-governance, SourceTools drift, docs-site UX, or CI/release orchestration changes were applied.
+- Final recommendation: ready-for-dev

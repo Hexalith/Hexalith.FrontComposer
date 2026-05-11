@@ -171,3 +171,4 @@
 2026-05-11T04:04:11+02:00	advanced-elicitation	11-2-diagnostic-registry-and-documentation-governance-follow-ups	ok	advanced elicitation applied; added duplicate-row, slug, sanitization, HFCM, deterministic-report, and prose-budget guardrails
 2026-05-11T05:36:56+02:00	party-mode-review	11-1-deferred-work-ledger-reconciliation-and-ownership	ok	party-mode hardening applied; added owner-marker, split-parent, count-bucket, evidence, scope, and helper guardrails
 2026-05-11T07:11:41+02:00	party-mode-review	11-2-diagnostic-registry-and-documentation-governance-follow-ups	ok	party-mode hardening applied; added fail-closed, suppression, HFC1601, severity, determinism, redaction, and ledger guardrails
+2026-05-11T08:07:11+02:00	party-mode-review	11-3-cli-migration-and-ide-edge-case-hardening	ok	party-mode hardening applied; added deferred-row, path-policy, atomic-write, scope, fixture, debugger, and evidence guardrails
