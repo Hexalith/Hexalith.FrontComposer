@@ -76,6 +76,14 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 | AC24 | HFCM migration IDs move to CLI-specific governance | Release-row validation runs | HFCM rows are represented as migration findings, not Roslyn analyzer descriptors; SourceTools RS2002 suppression is removed or narrowed only after the CLI-specific artifact is validated. |
 | AC25 | Governance reports enumerate registry rows, docs stubs, samples, source files, or release rows | Reports are generated on different platforms | Output ordering is ordinal and deterministic across all enumerated surfaces, not only source-file scanning. |
 | AC26 | Title/prose authoring exceeds the story's decision and test budget | Implementation scopes docs work | The story records a prioritized touched-diagnostic set and defers any full-corpus prose rewrite with an owner instead of silently expanding scope. |
+| AC27 | The registry schema version is missing, malformed, unknown, or newer than the validator supports | Governance validation runs | Validation emits one deterministic fail-closed classification and does not silently downgrade to partial validation; unknown optional fields in a supported schema remain non-fatal only when the compatibility rule explicitly permits them. |
+| AC28 | Compatibility suppression rows attempt to hide unrelated diagnostics | Governance validation runs | Suppressions cannot apply outside their declared diagnostic ID, package, range, TFM, target version, expiration, and reviewer rationale; wildcard, duplicate, expired, or unknown-category suppressions fail with named categories. |
+| AC29 | HFC1601 is allowed as a cross-package exception | Registry validation runs | The allowed HFC1601 row passes only with structured owner package, consuming package, rationale, related IDs, introducedIn provenance, canonical help link, and approving story; a similar non-HFC1601 cross-package row still fails. |
+| AC30 | HFC1037, HFC1040, and HFC1044 have intentional severity differences | Governance validation runs | A table-driven severity matrix asserts exact diagnostic ID, package/source context, expected severity, suppression policy, and rationale across registry, docs, release rows, and reports. |
+| AC31 | Governance inputs are presented in shuffled order | Reports and generated governance tables are produced | Output is byte-stable after redaction and sorting by documented ordinal keys, independent of filesystem enumeration order, current culture, OS path separators, and input JSON order. |
+| AC32 | Failure evidence contains sentinel local paths, usernames, temp folders, stack traces, tokens, SDK banners, live feed URLs, tenant/user IDs, raw payload fragments, or long snippets | Reports are generated | Redaction removes every sentinel, truncation happens after canonical sorting, and max item count/max character budget are directly asserted. |
+| AC33 | Story 11.2 closes deferred-work rows | Ledger validation or Dev Agent Record review runs | Each Story 9.4/9.5 row routed to Story 11.2 maps to closed-with-evidence, deferred-to-named-story, or rejected-with-rationale; unrelated ledger cleanup is out of scope. |
+| AC34 | The release-readiness governance lane is complete | Story moves to review | Targeted xUnit governance tests and `eng/validate-docs.ps1` have recorded outcomes; snapshot approvals are supplemented by direct assertions for classification, ID, severity, package, help link, redaction, ordering, and ledger mapping. |
 
 ---
 
@@ -91,24 +99,28 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 - [ ] T2. Harden registry schema and fail-closed validation (AC1-AC7, AC9, AC10, AC12)
   - [ ] Extend or extract the registry validator used by `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`.
   - [ ] Ensure unsupported schema short-circuits before reading `diagnostics`, `ranges`, or any nested row.
+  - [ ] Add `registry-schema-invalid-*` fixtures for missing, malformed, unknown, and future `schemaVersion` values plus the supported-schema unknown-optional-field case.
   - [ ] Add per-row schema checks for `compatibility-suppressions.json`.
+  - [ ] Add `suppression-scope-*` fixtures for mismatched diagnostic ID, mismatched package, expired row, duplicate row, unsupported wildcard/package-wide scope, and unrecognized reason/category.
   - [ ] Add structured schema for `externalBoundaries` or a compatible top-level object that records owner, range policy, provenance, and update policy.
-  - [ ] Add tests for range/boundary overlap, missing range entries, `Hexalith.Tenants` no-range policy, and allowed cross-package exceptions.
-  - [ ] Add or validate `allowedExceptions.crossPackageRange` for HFC1601 with package, numeric-range owner, reason, approving story, and version/date.
-  - [ ] Replace filesystem-order source enumeration with ordinal ordering in diagnostic governance scans.
-  - [ ] Add severity-pinning fixtures for HFC1037/HFC1040/HFC1044 and document the final decision.
+  - [ ] Add tests for range/boundary overlap, missing range entries, `Hexalith.Tenants` no-range policy, and exact package identity matching including `Hexalith.EventStore`, `Hexalith.Tenants`, unknown external packages, and near-prefix rejection such as `Hexalith.TenantsX`.
+  - [ ] Add or validate `allowedExceptions.crossPackageRange` for HFC1601 with owner package, consuming package, numeric-range owner, related IDs, canonical help link, reason, approving story, and version/date; include a non-HFC1601 negative control.
+  - [ ] Replace filesystem-order source enumeration with ordinal ordering in diagnostic governance scans and document sort keys for package ID, diagnostic ID, normalized `/` path, line, and column.
+  - [ ] Add table-driven severity-pinning fixtures for HFC1037/HFC1040/HFC1044 covering registry, docs, release rows, reports, and suppression policy; document the final decision.
 
 - [ ] T3. Resolve HFCM migration ID release-row governance (AC15)
   - [ ] Move HFCM0000, HFCM0001, HFCM0002, HFCM0004, HFCM9001, and HFCM9002 out of Roslyn analyzer release tracking if they remain CLI-emitted only.
   - [ ] Introduce a CLI-specific release-row artifact or registry-owned migration-row artifact with category, severity, migration docs slug, owner story, and release provenance.
   - [ ] Assert HFCM rows are classified as CLI migration findings and never require a Roslyn `DiagnosticDescriptor`.
+  - [ ] Add `hfcm-release-governance-*` fixtures for valid migration ID, duplicate ID, wrong prefix, wrong release bucket, missing release note row, and analyzer-descriptor misclassification.
   - [ ] Update registry tests so HFCM rows are covered without requiring Roslyn `DiagnosticDescriptor` backing.
   - [ ] Remove the broad `RS2002` project suppression from `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`, or narrow it to a temporary, named exception if removal is impossible.
 
 - [ ] T4. Tighten docs slugs, docs host, stubs, titles, and related IDs (AC5, AC7, AC8, AC11, AC13, AC16, AC17)
   - [ ] Whitelist `docsSlug` as `diagnostics/HFC####`; reject encoded slash/backslash, null, query, fragment, whitespace, zero-width, bidi formatting, case variants, non-NFC, and traversal after decoding.
-  - [ ] Add fixtures for malformed percent-encoding, double-encoding, mixed separators, non-NFC input, and confusable/format characters so docs slug normalization cannot pass ambiguous paths.
+  - [ ] Add `docs-slug-containment-*` fixtures for `%2e%2e`, encoded slash, encoded backslash, double-encoded traversal, mixed separators, absolute paths, malformed percent-encoding, non-NFC input, query/fragment suffixes, and confusable/format characters so docs slug normalization cannot pass ambiguous paths.
   - [ ] Derive `DiagnosticDescriptors` help links from registry canonical format or a generated checked-in constant; remove the independent hardcoded docs host source of truth.
+  - [ ] Add an assertion that descriptor, registry, report, and docs-stub help links match the registry-owned canonical format exactly; do not implement docs publishing, routing, or site navigation changes.
   - [ ] Populate `relatedIds` for the high-value logical families explicitly named by this story and any families discovered during implementation.
   - [ ] Replace mechanical placeholder titles/prose for the diagnostics touched by this story; update matching `docs/diagnostics/HFC*.md` front matter and narrative sections.
   - [ ] Record the prioritized touched-diagnostic set before rewriting prose; split full-corpus title/prose cleanup if it exceeds the Story 11.2 budget.
@@ -119,19 +131,23 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
   - [ ] Move package validation properties that depend on `IsPackable` from `Directory.Build.props` to an evaluation-safe `Directory.Build.targets` or an equivalent policy file imported after project properties.
   - [ ] Add an explicit opt-in such as `EnableFrontComposerPackageValidation` if required by the existing governance docs.
   - [ ] Update `PackableProjects_UsePackageValidationBaselinePolicy` to inspect the real policy file and the opt-in semantics, not dead-code text.
+  - [ ] Keep package-validation checks in the existing governance validation path and reuse registry/docs/release parsers where available; do not create a parallel validation engine or move ownership into unrelated package projects.
   - [ ] Validate compatibility suppression rows without network, live package feeds, or generated absolute paths.
 
 - [ ] T6. Expand sample fixtures and validation evidence (AC6, AC18, AC20)
   - [ ] Add missing stable sample reports for all AC6 categories.
+  - [ ] Use small named fixture groups: `registry-schema-invalid-*`, `suppression-scope-*`, `docs-slug-containment-*`, `external-boundaries-*`, `severity-asymmetry-*`, `deterministic-ordering-*`, `redacted-report-budget-*`, and `hfcm-release-governance-*`.
   - [ ] Validate each sample against the same report schema used by governance validation.
   - [ ] Keep samples free of timestamps, absolute paths, machine names, SDK banners, live feed URLs, tokens, tenant/user IDs, and real package names unless a real ID is explicitly required.
-  - [ ] Apply the forbidden-token scan to docs stubs, generated examples, sample reports, and validation reports, not only `docs/diagnostics/samples/*.json`.
-  - [ ] Ensure report arrays and emitted findings are ordered with `StringComparer.Ordinal` or equivalent deterministic ordering.
+  - [ ] Apply the forbidden-token scan to docs stubs, generated examples, sample reports, and validation reports, not only `docs/diagnostics/samples/*.json`; inject sentinel absolute paths, usernames, temp directories, tokens/API-key shapes, stack traces, SDK banners, live feed URLs, and long evidence snippets.
+  - [ ] Ensure report arrays and emitted findings are ordered with `StringComparer.Ordinal` or equivalent deterministic ordering; add shuffled-input fixtures for source files, registry rows, docs rows, related IDs, suppressions, and package groups, with truncation after sorting.
   - [ ] Record the exact validation commands and outcomes in this story's Dev Agent Record.
 
 - [ ] T7. Update ledger and story status evidence (AC19, AC20)
   - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` to mark each Story 11.2-owned row resolved, superseded, split, or still deferred with evidence.
   - [ ] For duplicate clusters, record canonical row, alias row, final state, and evidence path in the story record.
+  - [ ] Assert each Story 9.4/9.5 ledger row routed to Story 11.2 maps to exactly one final state: closed-with-evidence, deferred-to-named-story, or rejected-with-rationale.
+  - [ ] Do not close unrelated deferred-work rows as opportunistic cleanup.
   - [ ] Record touched files in this story's File List.
   - [ ] Move Story 11.2 to `review` only after implementation and validation evidence are complete.
 
@@ -190,6 +206,11 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 | D11 | Sanitization applies to authored docs examples and generated reports. | Public diagnostic evidence must not leak local paths, user data, machine names, tokens, or raw payload fragments. |
 | D12 | Governance report ordering is part of the contract. | Release diffs and CI evidence must be stable across filesystems and platforms. |
 | D13 | Full-corpus prose cleanup requires an explicit split decision. | Prevents title/prose quality work from overrunning the bounded diagnostic governance story. |
+| D14 | Story 11.2 adds validation contracts, not release workflow redesign. | The party-mode review found scope pressure across docs, release, package, and ledger governance; the story must not consume Stories 11.3-11.7. |
+| D15 | Fail-closed behavior is fixture-defined. | Missing, malformed, unknown, and future schema versions plus invalid suppression and HFCM mappings need deterministic negative tests, not prose-only policy. |
+| D16 | HFC1601 is a named exception, not a bypass pattern. | The allowed cross-package case must carry structured provenance and a negative control so future duplicates do not slip through. |
+| D17 | Deterministic reports use documented ordinal sort keys. | Byte-stable evidence requires normalized paths, ordinal comparers, sorted-before-truncated output, and shuffled-input tests. |
+| D18 | Governance snapshots require direct assertions. | Verify snapshots are useful evidence but cannot be the only oracle for classification, severity, package, link, redaction, ordering, or ledger mapping. |
 
 ### Source Tree Components To Touch
 
@@ -225,8 +246,12 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 - If docs validation changes, run:
   - `pwsh ./eng/validate-docs.ps1`
 - If docs slug, sample, or report validation changes, include negative fixtures for double-encoded paths, malformed percent encoding, zero-width/bidi characters, non-NFC input, forbidden evidence tokens, and deterministic report ordering.
+- Snapshot approvals must be paired with direct assertions for pass/fail classification, diagnostic ID, severity, package, canonical help link, redaction, sort order, report budget, and ledger mapping.
+- Determinism tests should shuffle input collections and assert byte-stable output using ordinal comparers with normalized `/` paths; truncation must occur after sorting and redaction.
+- Report redaction tests should inject sentinel secrets, local paths, temp folders, usernames, stack traces, SDK banners, live feed URLs, tenant/user IDs, raw payload fragments, and long evidence snippets, then assert absence and max size.
 - If descriptor constants or release rows change, run the broader SourceTools diagnostic test slice:
   - `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=Governance|FullyQualifiedName~Diagnostic"`
+- Dev completion requires recording outcomes for targeted xUnit governance tests and `pwsh ./eng/validate-docs.ps1`; skipped commands need a reason in the Dev Agent Record.
 - For final release-confidence, run the main lane if time allows:
   - `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`
 
@@ -282,11 +307,24 @@ GPT-5 Codex
 
 - 2026-05-10: Story created via `/bmad-create-story 11-2-diagnostic-registry-and-documentation-governance-follow-ups` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-11: Advanced elicitation pass applied during recurring pre-dev hardening job. Added duplicate-row, encoded-slug, sanitization, HFCM classification, deterministic-report, and prose-budget guardrails.
+- 2026-05-11: Party-mode review applied during recurring pre-dev hardening job. Added fixture-defined fail-closed behavior, suppression misuse, HFC1601 negative control, severity matrix, shuffled-input determinism, redaction budget, and validation ownership guardrails.
 
 ### Change Log
 
 - 2026-05-10: Created Story 11.2 and marked ready-for-dev.
 - 2026-05-11: Advanced elicitation hardening added AC21-AC26, Decisions D8-D13, task refinements, validation guidance, and canonical trace.
+- 2026-05-11: Party-mode hardening added AC27-AC34, Decisions D14-D18, fixture/test obligations, validation ownership guardrails, and canonical trace.
+
+## Party-Mode Review
+
+- ISO date/time: 2026-05-11T07:11:41+02:00
+- Selected story key: 11-2-diagnostic-registry-and-documentation-governance-follow-ups
+- Command/skill invocation used: `/bmad-party-mode 11-2-diagnostic-registry-and-documentation-governance-follow-ups; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor).
+- Findings summary: The party-mode review agreed that Story 11.2 was directionally ready but still too easy to implement with broad prose-only governance. The main risks were ambiguous fail-closed triggers, compatibility suppressions masking unrelated diagnostics, HFC1601 becoming a broad cross-package bypass, flattened severity asymmetry, narrow deterministic-ordering coverage, redaction without sentinel leak tests, HFCM governance spilling into release automation, package validation splitting into a parallel engine, and ledger closure expanding beyond Story 9.4/9.5 rows.
+- Changes applied: Added AC27-AC34; added required fixture groups for schema, suppression, slug containment, external boundaries, severity asymmetry, deterministic ordering, redacted report budget, and HFCM release governance; tightened tasks for HFC1601 provenance plus negative control, exact package matching, canonical help-link source of truth, existing validation-path ownership, shuffled-input deterministic reports, direct assertions beyond snapshots, and explicit ledger final states; added Decisions D14-D18; expanded validation guidance.
+- Findings deferred: No product-scope, architecture-policy, or cross-story contract changes were applied. Release workflow redesign, docs publishing/navigation changes, CLI behavior changes, broad docs rewrites, and unrelated ledger cleanup remain out of scope for Story 11.2 and stay with the named follow-up stories or product split decision.
+- Final recommendation: ready-for-dev
 
 ## Advanced Elicitation
 
