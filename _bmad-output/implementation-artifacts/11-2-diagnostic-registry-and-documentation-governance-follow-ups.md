@@ -70,6 +70,12 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 | AC18 | Governance validation emits failure reports | Reports are generated | Output is bounded, deterministic, and redacts absolute paths, usernames, machine names, tokens, tenant/user IDs, raw payloads, SDK banners, and live feed URLs. |
 | AC19 | Deferred-work ledger rows DEF-9-4-A1 through DEF-9-4-HFCM are addressed | Story implementation completes | Each row is marked resolved, superseded, split, or still deferred with evidence and an owner; no row is silently dropped. |
 | AC20 | Release validation is run | Story moves to review | The Dev Agent Record lists commands, outcomes, touched files, unresolved decisions, and evidence paths. |
+| AC21 | Duplicate or repeated deferred rows exist across chunk A, chunk C, and HFCM review notes | Story 11.2 reconciles the rows | The Dev Agent Record identifies the canonical row, aliases, and closure evidence for each duplicate cluster without deleting the historical rows. |
+| AC22 | Docs slug validation receives encoded, malformed, double-encoded, non-NFC, mixed-separator, or confusable input | Governance validation runs | The validator decodes once, rejects malformed/ambiguous inputs with a named category, and records only sanitized project-relative evidence. |
+| AC23 | Diagnostic docs stubs, examples, or generated front matter contain emitted messages or copied payload fragments | Docs validation runs | Examples remain bounded and sanitized: no absolute paths, user/machine names, tenant/user IDs, tokens, raw command payloads, SDK banners, or live feed URLs appear in docs artifacts. |
+| AC24 | HFCM migration IDs move to CLI-specific governance | Release-row validation runs | HFCM rows are represented as migration findings, not Roslyn analyzer descriptors; SourceTools RS2002 suppression is removed or narrowed only after the CLI-specific artifact is validated. |
+| AC25 | Governance reports enumerate registry rows, docs stubs, samples, source files, or release rows | Reports are generated on different platforms | Output ordering is ordinal and deterministic across all enumerated surfaces, not only source-file scanning. |
+| AC26 | Title/prose authoring exceeds the story's decision and test budget | Implementation scopes docs work | The story records a prioritized touched-diagnostic set and defers any full-corpus prose rewrite with an owner instead of silently expanding scope. |
 
 ---
 
@@ -79,6 +85,7 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
   - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` rows `DEF-9-4-A1` through `DEF-9-4-HFCM`.
   - [ ] Confirm whether Story 11.1 has already updated owner markers; if not, preserve old rows and add Story 11.2 resolution evidence during implementation.
   - [ ] Split the work into registry-schema, docs-stub/prose, release-row/HFCM, package-validation, sample-fixture, and docs-host categories.
+  - [ ] Identify duplicate or repeated findings across chunk A, chunk C, and HFCM rows; choose one canonical row per cluster and list aliases in the Dev Agent Record.
   - [ ] Do not delete historical deferred rows; mark them with resolved/superseded evidence after the code/docs change lands.
 
 - [ ] T2. Harden registry schema and fail-closed validation (AC1-AC7, AC9, AC10, AC12)
@@ -94,14 +101,17 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 - [ ] T3. Resolve HFCM migration ID release-row governance (AC15)
   - [ ] Move HFCM0000, HFCM0001, HFCM0002, HFCM0004, HFCM9001, and HFCM9002 out of Roslyn analyzer release tracking if they remain CLI-emitted only.
   - [ ] Introduce a CLI-specific release-row artifact or registry-owned migration-row artifact with category, severity, migration docs slug, owner story, and release provenance.
+  - [ ] Assert HFCM rows are classified as CLI migration findings and never require a Roslyn `DiagnosticDescriptor`.
   - [ ] Update registry tests so HFCM rows are covered without requiring Roslyn `DiagnosticDescriptor` backing.
   - [ ] Remove the broad `RS2002` project suppression from `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`, or narrow it to a temporary, named exception if removal is impossible.
 
 - [ ] T4. Tighten docs slugs, docs host, stubs, titles, and related IDs (AC5, AC7, AC8, AC11, AC13, AC16, AC17)
   - [ ] Whitelist `docsSlug` as `diagnostics/HFC####`; reject encoded slash/backslash, null, query, fragment, whitespace, zero-width, bidi formatting, case variants, non-NFC, and traversal after decoding.
+  - [ ] Add fixtures for malformed percent-encoding, double-encoding, mixed separators, non-NFC input, and confusable/format characters so docs slug normalization cannot pass ambiguous paths.
   - [ ] Derive `DiagnosticDescriptors` help links from registry canonical format or a generated checked-in constant; remove the independent hardcoded docs host source of truth.
   - [ ] Populate `relatedIds` for the high-value logical families explicitly named by this story and any families discovered during implementation.
   - [ ] Replace mechanical placeholder titles/prose for the diagnostics touched by this story; update matching `docs/diagnostics/HFC*.md` front matter and narrative sections.
+  - [ ] Record the prioritized touched-diagnostic set before rewriting prose; split full-corpus title/prose cleanup if it exceeds the Story 11.2 budget.
   - [ ] Preserve Story 9-5 narrative/reference markers and DocFX front matter expectations.
   - [ ] Keep all public examples sanitized and bounded.
 
@@ -115,10 +125,13 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
   - [ ] Add missing stable sample reports for all AC6 categories.
   - [ ] Validate each sample against the same report schema used by governance validation.
   - [ ] Keep samples free of timestamps, absolute paths, machine names, SDK banners, live feed URLs, tokens, tenant/user IDs, and real package names unless a real ID is explicitly required.
+  - [ ] Apply the forbidden-token scan to docs stubs, generated examples, sample reports, and validation reports, not only `docs/diagnostics/samples/*.json`.
+  - [ ] Ensure report arrays and emitted findings are ordered with `StringComparer.Ordinal` or equivalent deterministic ordering.
   - [ ] Record the exact validation commands and outcomes in this story's Dev Agent Record.
 
 - [ ] T7. Update ledger and story status evidence (AC19, AC20)
   - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` to mark each Story 11.2-owned row resolved, superseded, split, or still deferred with evidence.
+  - [ ] For duplicate clusters, record canonical row, alias row, final state, and evidence path in the story record.
   - [ ] Record touched files in this story's File List.
   - [ ] Move Story 11.2 to `review` only after implementation and validation evidence are complete.
 
@@ -171,6 +184,12 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 | D5 | Docs slug and docs host validation must fail closed offline. | Release validation cannot depend on the public site or live network state. |
 | D6 | Diagnostic title/prose authoring should be prioritized, not expanded indiscriminately. | Applies L06/L07; start with touched and release-critical diagnostics instead of rewriting every page blindly. |
 | D7 | Sample fixtures are contract tests, not generated evidence dumps. | They must be small, stable, sanitized, and schema-validated. |
+| D8 | Duplicate deferred findings close through canonical row plus aliases. | Preserves audit history while preventing repeated review notes from inflating unresolved work. |
+| D9 | HFCM governance is metadata/release-row work, not CLI behavior work. | Story 11.2 can validate migration ID release governance without consuming Story 11.3's command behavior scope. |
+| D10 | Docs slug validation treats ambiguous encoding as invalid. | Double-decoding, malformed percent sequences, Unicode format characters, and mixed separators are path-confusion risks. |
+| D11 | Sanitization applies to authored docs examples and generated reports. | Public diagnostic evidence must not leak local paths, user data, machine names, tokens, or raw payload fragments. |
+| D12 | Governance report ordering is part of the contract. | Release diffs and CI evidence must be stable across filesystems and platforms. |
+| D13 | Full-corpus prose cleanup requires an explicit split decision. | Prevents title/prose quality work from overrunning the bounded diagnostic governance story. |
 
 ### Source Tree Components To Touch
 
@@ -205,6 +224,7 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry 
 - If package validation policy files change, run focused tests that cover package validation and any affected SourceTools diagnostics.
 - If docs validation changes, run:
   - `pwsh ./eng/validate-docs.ps1`
+- If docs slug, sample, or report validation changes, include negative fixtures for double-encoded paths, malformed percent encoding, zero-width/bidi characters, non-NFC input, forbidden evidence tokens, and deterministic report ordering.
 - If descriptor constants or release rows change, run the broader SourceTools diagnostic test slice:
   - `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=Governance|FullyQualifiedName~Diagnostic"`
 - For final release-confidence, run the main lane if time allows:
@@ -261,10 +281,24 @@ GPT-5 Codex
 ### Completion Notes List
 
 - 2026-05-10: Story created via `/bmad-create-story 11-2-diagnostic-registry-and-documentation-governance-follow-ups` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-11: Advanced elicitation pass applied during recurring pre-dev hardening job. Added duplicate-row, encoded-slug, sanitization, HFCM classification, deterministic-report, and prose-budget guardrails.
 
 ### Change Log
 
 - 2026-05-10: Created Story 11.2 and marked ready-for-dev.
+- 2026-05-11: Advanced elicitation hardening added AC21-AC26, Decisions D8-D13, task refinements, validation guidance, and canonical trace.
+
+## Advanced Elicitation
+
+- ISO date/time: 2026-05-11T04:04:11+02:00
+- Selected story key: 11-2-diagnostic-registry-and-documentation-governance-follow-ups
+- Command/skill invocation used: `/bmad-advanced-elicitation 11-2-diagnostic-registry-and-documentation-governance-follow-ups`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+- Findings summary: The story already covered the core diagnostic governance gaps, but elicitation found implementation paths that could still pass while leaving duplicate deferred rows ambiguous, accepting path-confusing docs slugs, leaking unsafe evidence through examples or reports, misclassifying HFCM migration IDs as Roslyn diagnostics, producing nondeterministic governance report order, or expanding title/prose authoring beyond the release-readiness budget.
+- Changes applied: Added AC21-AC26; added task guardrails for canonical duplicate-row aliases, HFCM CLI-migration classification, encoded-slug negative fixtures, prioritized prose scope, forbidden-token scans across docs and reports, deterministic output ordering, and story-record evidence; added Decisions D8-D13; expanded testing guidance; recorded this canonical trace.
+- Findings deferred: No product-scope, architecture-policy, or cross-story contract changes were applied. Full-corpus prose rewrite remains a Product split decision if the prioritized touched-diagnostic set exceeds Story 11.2's budget.
+- Final recommendation: ready-for-dev
 
 ### File List
 
