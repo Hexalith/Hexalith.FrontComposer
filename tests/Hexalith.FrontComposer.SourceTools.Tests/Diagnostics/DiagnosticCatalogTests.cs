@@ -17,8 +17,6 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Diagnostics;
 /// docs-link shape, and Title / MessageFormat are non-empty.
 /// </summary>
 public sealed class DiagnosticCatalogTests {
-    private const string DocsLinkPrefix = "https://hexalith.github.io/FrontComposer/diagnostics/";
-
     [Fact]
     public void FcDiagnosticIdsConstants_AreUnique_AndShapedHFCxxxx() {
         string[] ids = TypeIdConstants(typeof(FcDiagnosticIds)).ToArray();
@@ -57,8 +55,7 @@ public sealed class DiagnosticCatalogTests {
         // gate diagnostic. We don't enforce docs-link presence on every descriptor (existing
         // descriptors don't carry HelpLinkUri), but all newly-introduced runtime diagnostic
         // emissions must use the canonical https://hexalith.github.io/FrontComposer/diagnostics/HFCxxxx
-        // prefix. The CustomizationAccessibilityAnalyzer emits messages that include the
-        // canonical prefix, so spot-checking message format is sufficient.
+        // prefix derived from DiagnosticDescriptors.CanonicalHelpLinkFormat (Story 11.2 AC13).
         string[] story66Ids = [
             FcDiagnosticIds.HFC1010_FullRebuildRequired,
             FcDiagnosticIds.HFC1050_CustomizationAccessibleNameMissing,
@@ -80,9 +77,11 @@ public sealed class DiagnosticCatalogTests {
             id.Length.ShouldBe(7);
         }
 
-        // Sanity: the canonical docs-link prefix is the agreed-upon shape.
-        DocsLinkPrefix.ShouldEndWith("/diagnostics/");
-        DocsLinkPrefix.ShouldStartWith("https://");
+        // The single docs-link source of truth lives in DiagnosticDescriptors.CanonicalHelpLinkFormat;
+        // its registry-equality assertion lives in DiagnosticRegistryTests.
+        string sampleHelpLink = string.Format(DiagnosticDescriptors.CanonicalHelpLinkFormat, "HFC1050");
+        sampleHelpLink.ShouldStartWith("https://");
+        sampleHelpLink.ShouldEndWith("/HFC1050");
     }
 
     [Fact]
