@@ -66,6 +66,12 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
 | AC16 | SourceTools changes build under analyzer host constraints | Build/test runs | `Hexalith.FrontComposer.SourceTools` stays `netstandard2.0`, `IsRoslynComponent=true`, keeps CodeAnalysis dependencies private, and does not take Shell/Fluent UI/Fluxor runtime dependencies. |
 | AC17 | Story 11.2 owns diagnostic registry/docs governance and Story 11.3 owns CLI/IDE hardening | Story 11.4 touches diagnostics or docs | Changes are limited to SourceTools drift/generator behavior and test evidence; registry/docs/HFCM/CLI work is handed off instead of silently absorbed. |
 | AC18 | Validation completes | Story 11.4 moves to review | The Dev Agent Record lists commands, outcomes, touched files, unresolved accepted constraints, and evidence paths. |
+| AC19 | A clean baseline/snapshot corpus exists for SourceTools drift and generated output | The drift verification command runs twice on the same commit | Both runs produce identical normalized results, leave the working tree unchanged, and prove the contract source of truth is the checked-in baseline/snapshot corpus plus compiler-backed fixture expectations. |
+| AC20 | Generated output or drift baseline content is intentionally changed without updating the expected corpus | CI or the focused drift verification runs | The gate fails closed with an actionable diagnostic or test failure naming the expected artifact, actual artifact, normalized diff evidence, and the update command if one exists; CI must not silently regenerate expectations. |
+| AC21 | Drift/generator tests run on Windows and non-Windows path shapes with different line endings and cultures | Fixtures are compiled and compared | Paths, separators, line endings, and culture-sensitive values are normalized; generated output contains no timestamps, local absolute paths, temp directories, user names, `bin/obj` paths, tokens, or tenant/user identifiers. |
+| AC22 | Source generator coverage is evaluated beyond string-only assertions | Roslyn fixture compilations run | Tests inspect diagnostics, generated trees, hint names, incremental cache behavior, missing `AdditionalFiles`/metadata handling where applicable, and absence of parasite output for no-contract or malformed-contract inputs. |
+| AC23 | Performance evidence is kept or accepted as advisory | `Category=Performance` drift benchmark tests run or are explicitly skipped | The Dev Agent Record captures environment, baseline source, threshold/rationale, median/p95 results, and whether the gate is blocking, advisory, or accepted unstable with owner and follow-up. |
+| AC24 | Story 11.4 implementation pressure reveals broader generator architecture or public contract changes | The dev identifies work outside the owned SourceTools rows | Refactors, API changes, snapshot format overhauls, auto-fix CLI modes, and cross-story contract consolidation are recorded as deferred decisions instead of being absorbed into this story. |
 
 ---
 
@@ -75,6 +81,8 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom.
   - [ ] Capture unresolved `DEF-9-1A-*`, `DEF-9-1B-*`, `DEF-9-1C-*`, older Story 1.4/1.5/1.8 SourceTools rows, and SourceTools-specific parser/emitter rows routed to Story 11.4.
   - [ ] Classify each row as fix now, accept with evidence, split to Story 11.2/11.3/11.6/11.7, or leave blocked with a named decision.
+  - [ ] Identify the checked-in baseline/snapshot/fixture corpus that is the source of truth for each drift or generator row before changing production code.
+  - [ ] Freeze the owned file and fixture perimeter for this story; record any desired broad generator refactor, public API change, or snapshot-format change as deferred.
   - [ ] Preserve historical review text; append resolution markers rather than rewriting the ledger.
 
 - [ ] T2. Patch trim/AOT and performance evidence gaps (AC2-AC4, AC16)
@@ -83,6 +91,7 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Keep adopter override evidence and no-Contracts defensive silence behavior pinned.
   - [ ] Convert `DriftBenchmarkTests` from red-phase skip to actionable `Category=Performance` coverage if stable on the target environment, or document why it remains advisory.
   - [ ] Record median and p95 evidence for cache-hit and cache-miss drift paths with warmup excluded.
+  - [ ] Record the benchmark baseline source, threshold rationale, execution environment, and whether the performance gate is blocking or advisory.
 
 - [ ] T3. Strengthen drift diagnostic comparison, path, and baseline trust tests (AC5-AC7, AC15)
   - [ ] Replace `Id + "|" + Message` comparisons with a shared diagnostic-shape assertion helper where severity, path, and properties matter.
@@ -90,6 +99,8 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Add or confirm boundary tests for BOM-only/minimal baseline text, malformed JSON, duplicate identity origin pairs, load-phase diagnostic caps, and redaction precedence.
   - [ ] Keep diagnostics bounded by `MaxDiagnostics` or a separate load-phase cap; hostile baselines must not flood builds.
   - [ ] Assert diagnostics remain sanitized and do not leak raw baseline JSON, absolute paths, tokens, tenant/user data, or source snippets.
+  - [ ] Add a fail-closed drift test that intentionally changes generated output or expected baseline data and verifies the gate fails with normalized, actionable diff evidence.
+  - [ ] Add clean-run determinism coverage: two consecutive executions on the same input must produce byte-stable normalized output and no working-tree mutation.
 
 - [ ] T4. Complete high-value metadata drift coverage (AC8, AC15)
   - [ ] Add ProjectionBadge drift tests using enum member attributes such as `[ProjectionBadge(BadgeSlot.Danger)] New` and `[ProjectionBadge(BadgeSlot.Success)] Done`.
@@ -107,11 +118,20 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [ ] Evaluate HFC1010 / RS2002 release-tracking suppression and add a descriptor release-row guard if Story 11.2 does not already own it.
   - [ ] Add destructive renderer snapshot coverage only if the fixture set stays bounded; avoid reapproving unrelated snapshots.
   - [ ] Triage policy alias collisions, Unicode/normalization policy names, partial declaration ordering, and struct projection empty-state CTA flow.
+  - [ ] Use compiler-backed Roslyn fixtures for generator coverage; assert diagnostics, generated trees, hint names, incremental cache behavior, missing metadata/`AdditionalFiles` behavior where applicable, and no parasite output for unrelated projects.
 
-- [ ] T6. Update docs, ledger, and validation evidence (AC1, AC15-AC18)
+- [ ] T6. Build deterministic fixture and redaction gates (AC19-AC24)
+  - [ ] Create or extend isolated valid/invalid SourceTools fixtures with unique temp roots, shared minimal abstractions, deterministic cleanup, and normalized snapshot output.
+  - [ ] Cover Windows and non-Windows separators, CRLF/LF normalization, invariant-culture formatting, malformed syntax, missing references, no-contract projects, and multi-target/multi-project shapes where currently supported.
+  - [ ] Add redaction assertions for diagnostics, logs, benchmark output, and generated/snapshot artifacts: no local absolute paths, temp directories, user names, `bin/obj` paths, tokens, tenant/user identifiers, raw JSON snippets, or source payload fragments.
+  - [ ] Keep snapshot/golden approval bounded to touched SourceTools surfaces; do not introduce broad unrelated approval churn.
+  - [ ] Treat auto-fix/update command behavior, long-term snapshot format, and JSON/SARIF/text drift report format as deferred unless already implemented locally.
+
+- [ ] T7. Update docs, ledger, and validation evidence (AC1, AC15-AC24)
   - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` with resolution/acceptance/split markers for every Story 11.4-owned row.
   - [ ] Update SourceTools comments or focused docs only where behavior changes need a maintainer-facing explanation.
   - [ ] Record exact validation commands and outcomes in this story's Dev Agent Record.
+  - [ ] Record SourceTools fixture corpus, expected drift/generator artifacts, redaction evidence, benchmark status, and any accepted constraints in the Dev Agent Record.
   - [ ] Move Story 11.4 to `review` only after implementation and validation evidence are complete.
 
 ---
@@ -178,6 +198,12 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
 | D5 | Metadata drift categories need representative compiler-backed fixtures. | Hand-built JSON-only checks can pass while parser/transform flow is broken. |
 | D6 | Accepted constraints must be explicit in docs/comments/ledger and backed by a command or test. | Avoids false closure of old review findings. |
 | D7 | SourceTools remains analyzer-host compatible. | `netstandard2.0`, Roslyn 4.12.0, and no Shell/Fluxor/Fluent UI dependency are release constraints. |
+| D8 | Checked-in baselines/snapshots plus compiler-backed fixture expectations are the Story 11.4 source of truth. | Prevents ambiguous drift checks that compare against incidental local output or stale review notes. |
+| D9 | Drift gates fail closed and CI must not silently regenerate expectations. | Release readiness requires actionable failure when generated output changes without reviewed baseline updates. |
+| D10 | Determinism is a release contract, not a cosmetic test concern. | Stable ordering, invariant culture, normalized paths/line endings, and timestamp-free output prevent CI/local split-brain. |
+| D11 | Generator coverage must compile real Roslyn fixtures before trusting string-only assertions. | Parser, transform, emitter, diagnostic, hint-name, and incremental cache behavior can diverge while string checks still pass. |
+| D12 | Redaction applies to all evidence surfaces, including benchmark and drift reports. | SourceTools evidence is public release material and must not leak local paths, users, tenants, payloads, or tokens. |
+| D13 | Broad generator refactors, API changes, auto-fix modes, and snapshot format overhauls are deferred by default. | Keeps Story 11.4 as bounded release hardening rather than an architecture rewrite. |
 
 ### Source Tree Components To Touch
 
@@ -216,6 +242,8 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
 - Run performance/advisory drift tests intentionally when AC11 changes:
   - `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=Performance|FullyQualifiedName~DriftBenchmark"`
 - Run snapshot/approval verification only for touched emitter surfaces.
+- Run redaction and fail-closed drift checks with hostile path/payload fixtures before moving the story to review; record whether each gate is blocking or advisory.
+- When a snapshot or golden file update is required, the committed diff is the review artifact; CI must verify it rather than regenerating it.
 - For final release-confidence, run the main lane if time allows:
   - `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`
 
@@ -277,10 +305,36 @@ GPT-5 Codex
 ### Completion Notes List
 
 - 2026-05-11: Story created via `/bmad-create-story 11-4-drift-detection-and-source-generator-coverage-hardening` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+- 2026-05-11: Party-mode pre-dev hardening applied; added SourceTools source-of-truth, fail-closed drift, deterministic fixture, redaction, benchmark, and scope-boundary guardrails.
 
 ### Change Log
 
 - 2026-05-11: Created Story 11.4 and marked ready-for-dev.
+- 2026-05-11: Applied party-mode review hardening for drift/generator determinism and release-readiness gates.
+
+### Party-Mode Review
+
+- Date/time: 2026-05-11T09:37:09+02:00
+- Selected story key: `11-4-drift-detection-and-source-generator-coverage-hardening`
+- Command/skill invocation used: `/bmad-party-mode 11-4-drift-detection-and-source-generator-coverage-hardening; review;`
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- Findings summary:
+  - Story 11.4 needed a clearer SourceTools drift/generator source of truth so implementation does not compare against incidental local output.
+  - Drift verification needed fail-closed behavior with actionable normalized diff evidence and no silent CI regeneration.
+  - Source generator coverage needed compiler-backed Roslyn fixtures, not only string assertions or happy-path generation checks.
+  - Determinism, path/line-ending/culture normalization, analyzer-host compatibility, and redaction needed to be explicit release-readiness gates.
+  - Benchmark evidence needed baseline, environment, threshold/rationale, and blocking/advisory status instead of an ambiguous skipped/advisory test.
+- Changes applied:
+  - Added AC19-AC24 for source-of-truth corpus, fail-closed drift, cross-platform normalization/redaction, compiler-backed generator coverage, benchmark evidence, and scope deferral.
+  - Added T1/T2/T3/T5 hardening bullets and new T6/T7 tasks for fixture, redaction, validation, and evidence gates.
+  - Added Decisions D8-D13 to bound drift source of truth, CI regeneration behavior, deterministic output, Roslyn fixture coverage, redaction surfaces, and deferred architecture/API/snapshot-format work.
+  - Updated testing strategy with redaction/fail-closed drift checks and snapshot/golden-file review guidance.
+- Findings deferred:
+  - Auto-fix or update-command mode for snapshots/golden files.
+  - Long-term snapshot/baseline report format such as text, JSON, SARIF, or combined output.
+  - Global generator architecture refactor, public API changes, and cross-story contract consolidation.
+  - Exact performance regression threshold if current environment cannot support a stable blocking benchmark.
+- Final recommendation: ready-for-dev
 
 ### File List
 

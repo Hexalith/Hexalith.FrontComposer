@@ -173,3 +173,4 @@
 2026-05-11T07:11:41+02:00	party-mode-review	11-2-diagnostic-registry-and-documentation-governance-follow-ups	ok	party-mode hardening applied; added fail-closed, suppression, HFC1601, severity, determinism, redaction, and ledger guardrails
 2026-05-11T08:07:11+02:00	party-mode-review	11-3-cli-migration-and-ide-edge-case-hardening	ok	party-mode hardening applied; added deferred-row, path-policy, atomic-write, scope, fixture, debugger, and evidence guardrails
 2026-05-11T08:17:58+02:00	advanced-elicitation	11-3-cli-migration-and-ide-edge-case-hardening	ok	advanced elicitation applied; added inventory, revalidation, redaction, risk, fixture, and result-contract guardrails
+2026-05-11T09:37:09+02:00	party-mode-review	11-4-drift-detection-and-source-generator-coverage-hardening	ok	party-mode hardening applied; added source-of-truth, fail-closed, determinism, fixture, benchmark, and redaction guardrails
