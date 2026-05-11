@@ -181,3 +181,4 @@
 2026-05-11T14:03:52+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-11T14:06:39+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-11T20:10:31+02:00	create-story	11-6-shell-ux-accessibility-and-sample-coverage-follow-ups	ok	created Story 11.6 shell UX, accessibility, and sample coverage follow-ups and marked ready-for-dev
+2026-05-11T21:04:24+02:00	create-story	11-7-eventstore-reliability-and-ci-governance-follow-ups	ok	created Story 11.7 EventStore reliability and CI governance follow-ups and marked ready-for-dev

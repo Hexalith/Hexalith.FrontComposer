@@ -151,4 +151,4 @@ development_status:
   11-4-drift-detection-and-source-generator-coverage-hardening: ready-for-dev
   11-5-mcp-schema-negotiation-and-agent-contract-hardening: ready-for-dev
   11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: ready-for-dev
-  11-7-eventstore-reliability-and-ci-governance-follow-ups: backlog
+  11-7-eventstore-reliability-and-ci-governance-follow-ups: ready-for-dev
