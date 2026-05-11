@@ -33,14 +33,14 @@ A release owner should be able to scan the ledger and answer: "Is this deferred 
 | Area | Required outcome |
 | --- | --- |
 | Primary artifact | Update `_bmad-output/implementation-artifacts/deferred-work.md`; keep original audit trail intact. |
-| Scope | Reconcile ownership/status only. Do not fix the technical findings owned by Stories 11.2-11.7. |
-| Owner contract | Every unresolved entry must point to a concrete active backlog story or explicitly named future decision surface. |
+| Scope | Reconcile ownership/status only. Do not fix, redesign, reprioritize, test, or configure the technical findings owned by Stories 11.2-11.7. |
+| Owner contract | Every unresolved entry must point to a concrete current owner marker. Owner means the story or decision surface accountable for next evidence/decision, not necessarily the implementer. |
 | Resolved contract | Resolved entries must keep a date, evidence path, and original review source. |
 | Duplicate contract | Duplicate entries must be cross-referenced, not deleted, so audit history remains searchable. |
 | Non-action contract | Accepted/no-action decisions must name the rationale, date, and decision owner. |
 | Vague owner cleanup | Tighten "future", "follow-up", "v1.x", "later", and completed-story owners to Story 11.2-11.7 or a documented non-action decision. |
-| Verification | Add a short reconciliation summary and a mechanical checklist or grep-based evidence that no vague unresolved owner remains. |
-| Guardrail | Do not change production code unless a tiny local validation script is absolutely necessary and documented as support tooling. |
+| Verification | Add a short reconciliation summary and a mechanical checklist or grep-based evidence that no vague unresolved owner remains; counts must reconcile by the defined buckets. |
+| Guardrail | Do not change production code, test code, dependencies, configuration, or behavior. Validation helpers must be transient unless a future story explicitly owns tooling. |
 
 Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3 route unresolved entries to Stories 11.2-11.7 -> T4 cross-reference duplicates/resolved items -> T5 add reconciliation summary and validation evidence.
 
@@ -71,6 +71,13 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
 | AC19 | A row references evidence paths, diagnostics output, logs, samples, or review payloads | Reconciliation updates the row | Evidence references stay bounded and sanitized: no raw tenant/user values, bearer tokens, local absolute paths, machine names, or unbounded payload excerpts are introduced. |
 | AC20 | Duplicate IDs, repeated findings, checked resolved rows, or mixed marker casing appear in the ledger | Validation scans the ledger | Canonical rows and aliases are recorded consistently enough that future grep-based runs can distinguish duplicates from independent unresolved items. |
 | AC21 | Reconciliation requires helper scripting beyond focused shell searches | The implementation finishes | The helper's purpose, inputs, and redaction assumptions are documented in the Dev Agent Record; otherwise no persistent support script is added. |
+| AC22 | A deferred item is classified during reconciliation | The ledger row is updated | The row has exactly one current-state marker from the allowed set: `Owner: Story 11.2` through `Owner: Story 11.7`, `Resolved YYYY-MM-DD`, `Superseded by`, `Duplicate of`, `Non-action decision`, `Split parent`, or `Needs Product/Architecture decision`. |
+| AC23 | The reconciliation summary reports totals | Validation cross-checks detailed rows | Total inventoried rows equals `unresolved-owned` + `unresolved-ambiguous` + `duplicate-alias` + `resolved-preserved` + `superseded-preserved` + `non-action` + `split-parent`, with every detailed row counted once in the primary total. |
+| AC24 | A row is too broad for one owner story | Reconciliation completes | The original row is preserved as a split parent, actionable child aliases use stable row IDs or deterministic ledger-local IDs, and each child has exactly one owner plus optional `Related:` stories. |
+| AC25 | Evidence is added or normalized | The diff is reviewed | Evidence uses repository-relative paths or short redacted snippets only; redaction placeholders such as `[redacted-path]`, `[redacted-token]`, or `[redacted-tenant]` are allowed when preserving proof would otherwise expose sensitive data. |
+| AC26 | Duplicate aliases are created | Validation scans aliases | Aliases remain traceable to distinct original source rows and are not generated solely from mutable prose. |
+| AC27 | A vague or contradictory item cannot be confidently routed | Reconciliation completes | The item is marked `Needs Product/Architecture decision` with an ambiguity note and evidence gap instead of inventing a false owner. |
+| AC28 | Validation uses helper commands or scripts | The story handoff is recorded | Committed output is limited to ledger/story documentation unless a separate future story owns persistent validation tooling. |
 
 ---
 
@@ -88,6 +95,8 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
   - [ ] Keep marker wording simple enough that future agents can grep it without a custom parser.
   - [ ] Make the marker grammar anchored to the current row: accepted current-state markers must appear in the same bullet or an immediately indented continuation line, not only in nearby historical prose. (AC16, AC20)
   - [ ] Document how aliases and duplicates point to a canonical row without deleting the source row. (AC3, AC16, AC20)
+  - [ ] Define the allowed current-state marker set and reject non-canonical owners unless the row is explicitly marked `Needs Product/Architecture decision`. (AC22, AC27)
+  - [ ] Define owner as accountability for next decision/evidence, not implementation assignment. Include examples for unresolved, resolved, superseded, duplicate, split-parent, and non-action rows. (AC22-AC24)
 
 - [ ] T3. Route unresolved items to concrete Story 11 owners (AC2, AC6-AC13)
   - [ ] Route diagnostic registry/docs/HFCM/docs-site governance items to Story 11.2.
@@ -97,6 +106,8 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
   - [ ] Route shell UX, accessibility, localization/RTL, visual, sample, command-palette, and customization-gradient UX items to Story 11.6.
   - [ ] Route EventStore, SignalR, realtime reliability, telemetry/exporter, CI/release governance, and release blockers to Story 11.7.
   - [ ] Where an item crosses buckets, record one `Owner:` and one or more `Related:` references.
+  - [ ] For rows that are too broad for one bucket, preserve the original as `Split parent` and add stable child aliases with one owner each. (AC24)
+  - [ ] If evidence does not support confident routing, mark `Needs Product/Architecture decision` with an ambiguity note and evidence gap. (AC18, AC27)
 
 - [ ] T4. Resolve duplicate, superseded, and no-action entries (AC3-AC5, AC14)
   - [ ] Cross-reference duplicates instead of deleting original source rows.
@@ -105,13 +116,17 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
   - [ ] Do not silently close an item just because it looks low risk; if uncertain, keep it unresolved and route it to a Story 11 owner.
   - [ ] If evidence conflicts or ownership is ambiguous, keep the item open with `Owner:` plus an `Ambiguity:` note instead of resolving it. (AC18)
   - [ ] Sanitize any newly added evidence pointers so they do not expose raw local paths, tenant/user values, tokens, machine names, or long payload excerpts. (AC19)
+  - [ ] Keep resolved, superseded, duplicate, and non-action rows in the historical audit trail; add reconciliation metadata only. (AC4, AC5, AC14, AC25)
+  - [ ] Use stable row IDs or deterministic ledger-local aliases for duplicates and child rows, not mutable prose-derived labels. (AC20, AC24, AC26)
 
 - [ ] T5. Add validation evidence and handoff notes (AC1-AC15)
-  - [ ] Add a compact reconciliation summary with counts by owner story and by state: unresolved, resolved, superseded, non-action.
+  - [ ] Add a compact reconciliation summary with counts by owner story and by state: `unresolved-owned`, `unresolved-ambiguous`, `duplicate-alias`, `resolved-preserved`, `superseded-preserved`, `non-action`, and `split-parent`.
   - [ ] Run focused searches for vague owner language (`future`, `follow-up`, `later`, `v1.x`) and verify remaining occurrences are either historical text with a new owner marker or accepted non-action decisions.
   - [ ] Run focused searches for duplicate ids and repeated resolved entries; document how each was handled.
   - [ ] Cross-check summary counts against the detailed rows and name any excluded explanatory rows or headings. (AC17)
   - [ ] Validate current markers with row-scoped searches rather than broad whole-document matches that can be fooled by historical text. (AC16, AC20)
+  - [ ] Run negative validation showing markers do not apply document-wide, duplicate aliases do not collapse distinct source rows, and historical/audit text remains preserved. (AC16, AC23, AC26)
+  - [ ] Include at least one sanitized evidence example per present outcome bucket, and verify evidence snippets use repository-relative paths or redacted placeholders only. (AC19, AC25)
   - [ ] Record whether validation used only focused shell searches or a temporary helper; if a helper was necessary, document its purpose, inputs, and redaction assumptions. (AC21)
   - [ ] Record validation commands in this story's Dev Agent Record.
   - [ ] Move Story 11.1 to `review` only after the ledger is reconciled and validation evidence is recorded.
@@ -143,6 +158,12 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
 | D10 | Newly added evidence pointers must be bounded and sanitized. | The ledger may reference review payloads and tool output, but it must not publish raw local paths, tokens, tenant/user data, machine names, or large payload excerpts. |
 | D11 | Duplicate handling uses canonical row plus aliases. | Preserves audit history while making repeated findings mechanically searchable. |
 | D12 | Persistent helper tooling is avoided unless shell searches cannot prove the reconciliation. | Keeps Story 11.1 documentation-focused and avoids creating maintenance surface for one-off ledger cleanup. |
+| D13 | Allowed current owner markers are canonical Story 11.2 through Story 11.7 or an explicit Product/Architecture decision marker. | Prevents invented owners and keeps release-readiness accountability auditable. |
+| D14 | Ownership means accountability for the next decision/evidence, not a promise that the named story implements every technical fix. | Keeps reconciliation separate from downstream delivery work. |
+| D15 | Split rows keep an audit parent plus stable child aliases. | Broad rows can be made actionable without deleting history or forcing false single-owner semantics. |
+| D16 | Count buckets are mutually exclusive for the primary total. | Prevents duplicate aliases, split parents, and preserved resolved rows from inflating release-readiness evidence. |
+| D17 | Sanitized evidence uses repository-relative references or short redacted snippets only. | Balances evidence preservation with project rules against raw paths, secrets, tenant/user data, and unbounded logs. |
+| D18 | Story 11.1 cannot change production code, test code, dependencies, configuration, runtime behavior, or CI gates. | The story is a ledger reconciliation pass; implementation fixes belong to Stories 11.2-11.7 or later Product-approved splits. |
 
 ### Owner Routing Matrix
 
@@ -155,6 +176,8 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
 | Story 11.6 | Shell UX, accessibility, visual/localization/RTL checks, command palette, sample coverage, customization-gradient adopter guidance. |
 | Story 11.7 | EventStore/realtime reliability, SignalR/reconnection, telemetry/exporter guidance, CI/release governance, release-readiness blockers. |
 
+Allowed current owner markers are `Owner: Story 11.2`, `Owner: Story 11.3`, `Owner: Story 11.4`, `Owner: Story 11.5`, `Owner: Story 11.6`, `Owner: Story 11.7`, or `Needs Product/Architecture decision`. Use `Related: Story 11.x` only after one primary current marker is present. `Owner:` records accountability for the next evidence or decision; it is not permission to implement the deferred fix inside Story 11.1.
+
 ### Implementation Guidance
 
 - Prefer small inline marker additions to each ledger row over rewriting the whole document.
@@ -163,6 +186,10 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
 - Keep all source labels such as `Sources: blind`, `Sources: edge`, `Sources: auditor`, and original code path references.
 - If an item already says "Owner: Story 9-x" and that story is done, add a Story 11.x owner marker rather than treating the old completed story as active ownership.
 - Do not update production files just because ledger rows reference them. Those technical patches belong to later Epic 11 stories.
+- Do not update test code, dependencies, configuration, runtime behavior, or CI gates as part of this story.
+- Use `Split parent` when one historical row contains multiple actionable slices; add stable aliases or child row ids for the slices and route each child to exactly one owner.
+- Use `Needs Product/Architecture decision` only when available evidence cannot support a confident Story 11.2-11.7 owner without changing the row's intent.
+- Evidence pointers should be repository-relative paths or short redacted excerpts; use placeholders such as `[redacted-path]`, `[redacted-token]`, and `[redacted-tenant]` instead of copying sensitive proof into the ledger.
 
 ### Validation Strategy
 
@@ -173,8 +200,11 @@ Use documentation-focused validation rather than product test suites unless impl
 - Search for resolved entries without evidence: `Resolved` rows should include a date and source path/story reference.
 - Search for duplicated ids: ids such as `DEF-9-4-C1` and known repeated review findings should cross-reference their canonical row.
 - Search current-state markers in row scope, not whole-document scope, so historical text cannot satisfy AC16 by accident.
-- Compare owner/state summary counts with detailed marker counts; document any explanatory rows intentionally excluded from totals.
+- Compare owner/state summary counts with detailed marker counts; document any explanatory rows intentionally excluded from totals. Primary count buckets are mutually exclusive: `unresolved-owned`, `unresolved-ambiguous`, `duplicate-alias`, `resolved-preserved`, `superseded-preserved`, `non-action`, and `split-parent`.
+- Prove negative cases: a marker in one row does not satisfy another row, duplicate aliases remain linked to distinct source rows, and historical/audit text remains present after metadata is added.
+- For every outcome bucket that exists in the ledger, include one sanitized example showing the marker, owner/status, evidence pointer, and redaction shape.
 - Check newly added evidence snippets for raw absolute paths, tokens, tenant/user identifiers, machine names, and unbounded payload text.
+- If validation uses helper commands, keep them transient by default; committed output remains ledger/story documentation unless a future story explicitly owns persistent tooling.
 - Review `git diff -- _bmad-output/implementation-artifacts/deferred-work.md` to ensure original evidence was preserved.
 
 ### Source Tree Components To Touch
@@ -241,11 +271,24 @@ GPT-5 Codex
 
 - 2026-05-10: Story created via `/bmad-create-story 11-1-deferred-work-ledger-reconciliation-and-ownership` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-11: Advanced elicitation pass applied during recurring pre-dev hardening job. Added row-scoped marker, count reconciliation, ambiguity, evidence sanitization, duplicate alias, and helper-tooling guardrails.
+- 2026-05-11: Party-mode review applied during recurring pre-dev hardening job. Clarified classification-only scope, canonical owner markers, split-parent aliases, mutually exclusive count buckets, sanitized evidence format, and no-production-change guardrails.
 
 ### Change Log
 
 - 2026-05-10: Created Story 11.1 and marked ready-for-dev.
 - 2026-05-11: Advanced elicitation hardening added AC16-AC21, Decisions D7-D12, task refinements, validation checks, and canonical trace.
+- 2026-05-11: Party-mode hardening added AC22-AC28, Decisions D13-D18, owner-marker rules, split/count/evidence validation guidance, and canonical trace.
+
+## Party-Mode Review
+
+- ISO date/time: 2026-05-11T05:36:56+02:00
+- Selected story key: 11-1-deferred-work-ledger-reconciliation-and-ownership
+- Command/skill invocation used: `/bmad-party-mode 11-1-deferred-work-ledger-reconciliation-and-ownership; review;`
+- Participating BMAD agents: Winston (Architect); Amelia (Developer Agent); John (Product Manager); Murat (Master Test Architect).
+- Findings summary: The review found that the story already had strong ledger-reconciliation intent, but dev execution could still drift if "owner" meant implementer rather than decision accountability, if broad rows were forced into false single owners, if duplicate aliases or split parents inflated summary counts, if evidence preservation copied sensitive proof, or if validation helpers became persistent tooling. Reviewers also flagged scope creep into downstream fixes and asked for explicit no-production/test/configuration/CI changes.
+- Changes applied: Added AC22-AC28; added Decisions D13-D18; clarified the Dev Agent Cheat Sheet; added allowed current owner markers, owner accountability wording, split-parent/child-alias behavior, mutually exclusive count buckets, row-scoped negative validation, sanitized evidence pointer format, and transient-helper guidance; expanded tasks and validation strategy.
+- Findings deferred: Product/Architecture decisions remain deferred for rows that cannot be confidently routed without changing intent. Downstream technical fixes remain owned by Stories 11.2-11.7 or later Product-approved splits. No product-scope, architecture-policy, or cross-story contract changes were applied beyond ledger marker semantics.
+- Final recommendation: ready-for-dev
 
 ## Advanced Elicitation
 
