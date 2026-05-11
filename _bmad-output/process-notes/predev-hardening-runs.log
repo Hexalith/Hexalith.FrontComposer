@@ -167,3 +167,4 @@
 2026-05-11T00:04:34+02:00	create-story	11-3-cli-migration-and-ide-edge-case-hardening	ok	Created Story 11.3 and marked ready-for-dev.
 2026-05-11T01:03:13+02:00	create-story	11-4-drift-detection-and-source-generator-coverage-hardening	ok	Created Story 11.4 and marked ready-for-dev.
 2026-05-11T02:03:12+02:00	create-story	11-5-mcp-schema-negotiation-and-agent-contract-hardening	ok	created Story 11.5 MCP schema negotiation and agent contract hardening and marked ready-for-dev
+2026-05-11T03:03:33+02:00	advanced-elicitation	11-1-deferred-work-ledger-reconciliation-and-ownership	ok	advanced elicitation applied; added row-scoped marker, count, ambiguity, evidence, duplicate, and helper guardrails
