@@ -80,6 +80,12 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
 | AC29 | Starter-template and dev-mode source generation changes are made | SourceTools/Shell generator tests run | Cycle detection, depth/fan-out bounds, generic arity, invalid names, collisions, unsafe characters, namespace/path sanitization, and byte-stable deterministic output are covered or explicitly recorded as not impacted. |
 | AC30 | Customization registry version parsing is touched | Registry contract tests run | Templates, slots, and view overrides use one shared packed-version parser or an equivalent parity fixture set covering malformed, duplicate, incompatible, and unreachable generic-component descriptors. |
 | AC31 | Evidence artifacts are produced for samples, specimens, or ledger reconciliation | Redaction validation runs | Outputs are bounded and reject local absolute paths, home-directory aliases, environment/user/tenant identifiers, tokens, cookies, stack traces, raw DOM dumps, and unbounded snippets; allowed fields remain route, rule, impact, selector, artifact path, owner, rationale, and truncation markers. |
+| AC32 | The 287-row Story 11.6 inventory is converted into implementation evidence | The implementer creates or updates the row-to-evidence matrix | The matrix reconciles deferred-row count, aliases, duplicate references, source review labels, final classification, AC coverage, evidence path, and split owner; any count mismatch blocks review until explained. |
+| AC33 | Dev-mode overlay dependencies are missing, denied, stale, or unavailable during render | Shell bUnit or bounded analysis evidence runs | Missing localization resources, unavailable JS interop, clipboard denial, stale component metadata, and unregistered dev-mode services fail closed without breaking generated content or production Shell navigation. |
+| AC34 | User-facing labels, descriptor metadata, or starter-template source can contain hostile text | Sanitization tests or review evidence runs | Razor comment terminators, HTML/script fragments, raw local paths, namespace-breaking characters, bidi controls, user/tenant strings, and oversized snippets are escaped, rejected, or truncated before display, generated source, or evidence output. |
+| AC35 | Counter sample or specimen evidence is used to close a row | Evidence is recorded | Each artifact maps to at least one AC and one deferred row, names the validation command or `not impacted` reason, and has no orphan screenshots, raw DOM dumps, or unexplained baseline updates. |
+| AC36 | A Story 11.6 row could be fixed, accepted, or split | The implementer chooses the final classification | The decision uses a lightweight score covering adopter-visible impact, accessibility/security/release risk, implementation cost, test cost, and story adjacency; medium or high accessibility/release risk cannot be accepted without a named product or UX owner. |
+| AC37 | Visual, localization, or accessibility baseline output changes | Review evidence is produced | Baseline updates name viewport, theme, density, culture, direction, reduced-motion or forced-colors state when relevant, and explain why the change is intentional instead of snapshot churn. |
 
 ---
 
@@ -91,8 +97,11 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Group rows into dev-mode overlay, customization registries/contracts, SourceTools-to-Shell emission, Counter sample, visual/accessibility specimen, localization/RTL, and adjacent handoff buckets.
   - [ ] Create a starting row-to-evidence matrix naming the intended outcome for each high-value row: fix now, accept, split, supersede, or block.
   - [ ] Use the canonical classification vocabulary from AC25 for every Story 11.6 row; do not invent equivalent final-state labels.
+  - [ ] Reconcile the starting and final Story 11.6 row counts against the 287-row bucket; record any alias or duplicate-row collapse explicitly instead of hiding it in prose.
+  - [ ] Add AC and evidence-path columns to the row-to-evidence matrix so every final classification can be audited back to acceptance criteria.
   - [ ] For split rows, name the exact destination story or product/UX owner and explain why the row is outside Story 11.6.
   - [ ] For every accepted row, record likelihood, impact, release risk, owner, revisit trigger, and validation evidence.
+  - [ ] Score fix/accept/split choices before implementation using adopter-visible impact, accessibility/security/release risk, implementation cost, test cost, and story adjacency.
   - [ ] Preserve historical review text; append resolution notes rather than rewriting or deleting old rows.
 
 - [ ] T2. Harden dev-mode overlay accessibility, localization, and registration (AC5-AC9, AC13)
@@ -104,6 +113,7 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Test localized fallback behavior without depending on developer machine culture, using a bounded EN/FR plus representative RTL/LTR proof for touched Shell/dev-mode text only.
   - [ ] Revisit `AddFrontComposerDevMode()` factory-registered `IHostEnvironment` behavior; either support it or add explicit fail-closed tests/docs.
   - [ ] Clarify the Blazor Auto registration contract for server, WASM, and Auto-mode hosts before changing service lifetimes or environment lookup.
+  - [ ] Prove missing localizer resources, JS interop denial, clipboard failure, and unavailable browser APIs do not prevent the primary generated content from rendering.
   - [ ] Decide whether `DevModeOverlayController` selection mutations need a private lock or an explicit Blazor-scoped single-threaded acceptance.
   - [ ] Make `FcDevModeAnnotation.OnParametersSet` epoch-aware for same-key/new-epoch metadata or record the HFC1049 stale-selection behavior, naming the mutation scenario, invalidated state, and regression test.
 
@@ -111,6 +121,7 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Add cyclic/repeated child graph tests for `RazorEmitter.AppendNode`; enforce visited-set, depth, and fan-out behavior.
   - [ ] Add generic-arity-aware short type names for starter component names, including examples with arity-1 and arity-2 generic projections sharing a simple name.
   - [ ] Keep generated starter source deterministic, timestamp-free, local-path-free, and sanitized for `*/`, Razor comment terminators, raw paths, invalid identifiers, namespaces, and user/tenant strings.
+  - [ ] Add hostile metadata fixtures for descriptor labels, display labels, diagnostic text, namespaces, and starter-template comments; escape, reject, or truncate unsafe values before source or evidence emission.
   - [ ] Keep SourceTools generator tests separate from Shell UI tests: run unit/golden output checks only when starter-template or generated annotation seams change.
   - [ ] Expand SourceTools dev-mode annotation seams where bounded: DataGrid columns, empty-state body, Level 3 slot dispatch, and Level 4 view-override dispatch.
   - [ ] Populate dev-mode metadata fields that implementers need: `HasActiveOverride`, `DiagnosticId`, `Role`, `CurrentLevel`, and stale reasons.
@@ -126,6 +137,7 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
 - [ ] T5. Close Counter sample and customization-gradient evidence gaps (AC17-AC20)
   - [ ] Add or explicitly accept the four Counter sample fixtures named by prior review: valid Level 2/3/4 path, stale-contract/contract-drift path, accessibility-warning path, and runtime-fault path.
   - [ ] Treat Counter sample changes as adopter-facing evidence: each fixture must show what a new adopter sees, copies, configures, or validates.
+  - [ ] Maintain an evidence map from Counter fixtures and specimen artifacts back to AC IDs and deferred row IDs; reject orphan baselines or screenshots that do not close a named row.
   - [ ] Confirm sibling projection surfaces continue rendering when a Level 4 replacement faults, or document why existing ErrorBoundary evidence is enough.
   - [ ] Clarify `Context.FieldRenderer` unknown-field behavior through docs/tests or split to Story 9.5 if this story does not touch docs.
   - [ ] Review Counter slot/template markup for `aria-labelledby`, non-interactive `aria-label`, inline styles, strict CSP, and unstable Fluent design-token usage.
@@ -140,6 +152,7 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Add missing manifest ownership or route checks if specimen gaps are directly in Story 11.6 scope.
   - [ ] Record full RTL, broader zoom, and cross-assistive-technology matrices as named deferrals unless this story can produce stable evidence; require only a representative RTL/LTR proof for touched user-facing Shell/dev-mode text.
   - [ ] Keep artifact output bounded and redacted: route, rule, impact, selector, artifact path, and truncation markers only; no full DOM dumps, tokens, cookies, local paths, or environment secrets.
+  - [ ] When a visual or accessibility baseline changes, record viewport, theme, density, culture, direction, reduced-motion or forced-colors state when relevant, and the intentional reason for the update.
   - [ ] Document culture-sensitive generated labels versus invariant machine contracts. Do not let localized display text become schema, diagnostic, or agent contract input.
 
 - [ ] T7. Validate, reconcile, and record evidence (AC1, AC3, AC21, AC24)
@@ -150,6 +163,7 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
   - [ ] Run Playwright specimen checks only if specimen routes, manifest, visual baselines, or axe behavior changes:
     `npm --prefix tests/e2e test -- --grep @specimen`
   - [ ] Run a bounded forbidden-token/redaction scan across updated evidence surfaces before review, including docs, samples, specimen artifacts, ledger evidence, and generated starter-template output.
+  - [ ] Run a consistency check across the story artifact, deferred ledger, evidence matrix, specimen manifest, and Dev Agent Record; fail review on missing AC links, missing row IDs, or unexplained count drift.
   - [ ] Record `not impacted` for SourceTools emitter tests, Playwright specimen checks, and advisory performance/nightly/visual/palette/quarantine lanes when their owned surfaces are not touched.
   - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` with row-scoped resolution evidence.
   - [ ] Update this story's Dev Agent Record with commands, outcomes, file list, accepted constraints, split rows, and residual risks.
@@ -176,6 +190,12 @@ Start here: T1 inventory Story 11.6 rows -> T2 classify fix/accept/split -> T3 h
 | D14 | Blazor Auto service registration must be explicit about server, WASM, and Auto-mode environment availability. | Host-environment assumptions are easy to get wrong across render modes. |
 | D15 | SourceTools starter-template contracts are validated with generator-focused tests separate from Shell UI tests. | Keeps failures local and avoids conflating generated-source determinism with runtime UX behavior. |
 | D16 | Accessibility/localization evidence is representative and targeted, not a broad matrix expansion. | Preserves L07 test budget while still proving user-facing release risk is bounded. |
+| D17 | The row-to-evidence matrix is the implementation control surface for Story 11.6. | A prose-only summary cannot safely close 287 routed rows without count drift or orphan evidence. |
+| D18 | Dev-mode dependency failures must preserve generated content first. | Developer tooling is optional; generated Shell surfaces and production navigation must remain usable when tooling dependencies fail. |
+| D19 | Descriptor metadata, labels, and starter-template text are treated as untrusted evidence/source inputs. | Generated source and review artifacts can leak or execute hostile text unless sanitized before emission. |
+| D20 | Counter fixtures prove adopter workflows, not broad sample redesign. | Keeps the story focused on release evidence and avoids absorbing product polish that belongs to docs or UX owners. |
+| D21 | Fix, accept, and split choices require lightweight scoring before implementation. | L06 and L07 require a defensible budget when many low-value rows compete with high-risk accessibility and release-readiness gaps. |
+| D22 | Evidence cannot close a row unless it links row ID, AC, command or not-impacted reason, and redaction status. | Prevents screenshots, baselines, or notes from looking complete while failing to prove the release-readiness claim. |
 
 ### Source Tree Components To Touch
 
@@ -283,11 +303,13 @@ GPT-5 Codex
 
 - 2026-05-11: Story created via `/bmad-create-story 11-6-shell-ux-accessibility-and-sample-coverage-follow-ups` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-11T22:04:33+02:00: Party-mode review applied via `/bmad-party-mode 11-6-shell-ux-accessibility-and-sample-coverage-follow-ups; review;` with Winston, Amelia, John, and Murat. Added ledger classification, dev-mode leakage, nested interaction, Blazor Auto registration, starter-template, packed-version, evidence redaction, test-scope, and representative accessibility/localization guardrails.
+- 2026-05-11T23:08:37+02:00: Advanced elicitation applied via `/bmad-advanced-elicitation 11-6-shell-ux-accessibility-and-sample-coverage-follow-ups`. Added row-evidence reconciliation, fail-closed dev-mode dependency, hostile metadata sanitization, evidence mapping, classification scoring, and baseline-intent guardrails.
 
 ### Change Log
 
 - 2026-05-11: Created Story 11.6 and marked ready-for-dev.
 - 2026-05-11T22:04:33+02:00: Party-mode review hardening applied; added AC25-AC31, Decisions D11-D16, and task guardrails for inventory final states, dev-mode production absence, Shell accessibility, Blazor Auto registration, SourceTools/UI test split, Counter evidence scope, specimen redaction, and validation lane gating.
+- 2026-05-11T23:08:37+02:00: Advanced elicitation hardening applied; added AC32-AC37, Decisions D17-D22, and task guardrails for row-count reconciliation, evidence traceability, fail-closed tooling dependencies, hostile metadata sanitization, fixture/specimen evidence mapping, scored fix/accept/split decisions, and intentional baseline updates.
 
 ### File List
 
@@ -302,4 +324,16 @@ GPT-5 Codex
 - Findings summary: The review agreed Story 11.6 is close to development readiness but had too many broad surfaces without enough execution gates. Key risks were an unbounded 287-row inventory, unclear fix-vs-split criteria, dev-mode affordances leaking into normal Shell behavior, nested interactive annotation traps, Blazor Auto `IHostEnvironment` ambiguity, SourceTools starter-template requirements being mixed into UI validation, vague localization/RTL proof, Counter sample scope creep, and insufficient redaction/specimen validation rules.
 - Changes applied: Added AC25-AC31; added Decisions D11-D16; tightened tasks for canonical ledger final states, story-specific split owners, prod-disabled dev-mode absence, annotation focus/keyboard behavior, bounded EN/FR plus representative RTL/LTR proof, Blazor Auto registration, epoch mutation scenario naming, generator-focused starter-template tests, shared packed-version parser parity, adopter-facing Counter evidence, sample split rules, specimen redaction, and lane gating with explicit `not impacted` notes.
 - Findings deferred: Full RTL, broad zoom, cross-assistive-technology matrices, broad sample redesign, diagnostic governance, CLI/IDE behavior, broad SourceTools drift, MCP schema, EventStore reliability, CI/release workflow, and advisory performance/nightly/visual/palette/quarantine lane expansion remain outside Story 11.6 unless a row is split to a named owner. No product-scope or architecture-policy change was applied beyond clarifying the existing release-readiness guardrails.
+- Final recommendation: ready-for-dev
+
+## Advanced Elicitation
+
+- ISO date and time: 2026-05-11T23:08:37+02:00
+- Selected story key: `11-6-shell-ux-accessibility-and-sample-coverage-follow-ups`
+- Command/skill invocation used: `/bmad-advanced-elicitation 11-6-shell-ux-accessibility-and-sample-coverage-follow-ups`
+- Batch 1 method names: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation
+- Reshuffled Batch 2 method names: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records
+- Findings summary: The elicitation found that the party-mode hardening made the story reviewable, but implementation could still fail by closing a 287-row bucket with prose-only evidence, accepting risky accessibility rows without scoring, leaking hostile metadata into starter-template or review artifacts, letting optional dev-mode dependencies break generated content, and updating specimen baselines without enough intent metadata.
+- Changes applied: Added AC32-AC37; added Decisions D17-D22; tightened tasks for row-count reconciliation, row-to-AC evidence traceability, scored fix/accept/split classification, fail-closed localizer/JS/clipboard/browser dependency behavior, hostile descriptor/display-label/source sanitization, Counter/specimen evidence mapping, cross-artifact consistency checks, and intentional baseline metadata.
+- Findings deferred: Full broad localization, broad RTL, cross-assistive-technology matrices, sample redesign, new architecture policy for registries, and broad SourceTools diagnostic governance remain deferred to the named owners already listed in the story unless a specific row is scored and split during implementation. No product-scope or cross-story contract change was applied.
 - Final recommendation: ready-for-dev
