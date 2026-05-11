@@ -1,6 +1,6 @@
 # Story 11.1: Deferred Work Ledger Reconciliation and Ownership
 
-Status: review
+Status: done
 
 > **Epic 11** - Deferred Hardening & Release Readiness. Converts the existing deferred-work ledger into owned, auditable backlog decisions without reopening completed Epics 1-10. Applies lessons **L06**, **L07**, **L08**, and especially **L10**.
 
@@ -130,6 +130,13 @@ Start here: T1 inventory ledger entries -> T2 classify by status and owner -> T3
   - [x] Record whether validation used only focused shell searches or a temporary helper; if a helper was necessary, document its purpose, inputs, and redaction assumptions. (AC21)
   - [x] Record validation commands in this story's Dev Agent Record.
   - [x] Move Story 11.1 to `review` only after the ledger is reconciled and validation evidence is recorded.
+
+### Review Findings
+
+- [x] [Review][Patch] Duplicate aliases do not consistently target stable row IDs or source IDs [_bmad-output/implementation-artifacts/deferred-work.md:965]
+- [x] [Review][Patch] Reconciliation evidence includes abbreviated `tests/...` paths instead of repository-relative paths or explicit redaction placeholders [_bmad-output/implementation-artifacts/deferred-work.md:326]
+- [x] [Review][Patch] Design-clarification rows with uncertain intent lack row-scoped ambiguity notes [_bmad-output/implementation-artifacts/deferred-work.md:185]
+- [x] [Review][Patch] Dev Agent validation record uses broad resolved/non-action greps instead of row-scoped evidence checks [_bmad-output/implementation-artifacts/11-1-deferred-work-ledger-reconciliation-and-ownership.md:273]
 
 ---
 
@@ -270,7 +277,7 @@ GPT-5 Codex
 - 2026-05-11: Inventory and marker validation: PowerShell row-scope scan over `_bmad-output/implementation-artifacts/deferred-work.md` reported `detailed_bullets=659`, `marked_rows=659`, `unique_row_ids=659`, `duplicate_row_ids=0`, and `bad_marker_rows=0`.
 - 2026-05-11: Summary cross-check: detailed marker buckets reconciled to `unresolved-owned=637`, `unresolved-ambiguous=0`, `duplicate-alias=6`, `resolved-preserved=13`, `superseded-preserved=0`, `non-action=3`, `split-parent=0`; owner counts reconciled to Story 11.2=26, Story 11.3=28, Story 11.4=21, Story 11.5=204, Story 11.6=287, Story 11.7=71.
 - 2026-05-11: Vague-owner validation: row-scoped search for `future|follow-up|later|v1.x|TBD|ownerless` found `137` detailed rows and `0` without a current reconciliation marker; old completed-story owner search found `48` detailed rows and `0` without a current reconciliation marker.
-- 2026-05-11: Duplicate/resolved/non-action validation: `rg "Reconciliation: Row: DW-[0-9]{4}; Duplicate of"`, `rg "Resolved"`, and `rg "Non-action decision"` confirmed aliases, preserved resolutions, and accepted no-action rows remain in the ledger with evidence.
+- 2026-05-11: Duplicate/resolved/non-action validation: row-scoped PowerShell scan over `Reconciliation:` bullets confirmed `Duplicate of`, `Resolved YYYY-MM-DD`, and `Non-action decision YYYY-MM-DD` rows each carry `Evidence:` on the same bullet; duplicate aliases target stable source IDs or `DW-####` row IDs.
 - 2026-05-11: Evidence sanitization validation: `rg "Reconciliation:.*([A-Za-z]:\\|bearer|token=|Authorization:|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}|[A-Z0-9]{20,})"` returned `0` matches.
 - 2026-05-11: Formatting and regression validation: `git diff --check` passed; `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` passed with 2,904 tests passed, 3 skipped, 0 failed.
 
@@ -281,6 +288,7 @@ GPT-5 Codex
 - 2026-05-11: Party-mode review applied during recurring pre-dev hardening job. Clarified classification-only scope, canonical owner markers, split-parent aliases, mutually exclusive count buckets, sanitized evidence format, and no-production-change guardrails.
 - 2026-05-11: Reconciled `_bmad-output/implementation-artifacts/deferred-work.md` with deterministic `DW-####` row IDs, row-scoped current markers, owner routing to Stories 11.2-11.7, duplicate aliases, resolved/non-action preservation, and a top-level summary that reconciles all 659 detailed ledger rows.
 - 2026-05-11: Validation used focused shell and PowerShell searches only. No persistent helper tooling was added; transient scans read the ledger, counted markers, checked vague/old owners, checked duplicate/resolved/non-action rows, scanned reconciliation evidence for sensitive patterns, and ran the main-lane Release test command.
+- 2026-05-11: Code review findings patched. Duplicate aliases now point to stable IDs, abbreviated `tests/...` evidence markers were replaced with repository-relative paths or source labels, uncertain design-verification rows carry row-scoped ambiguity notes, and duplicate/resolved/non-action validation evidence is documented as row-scoped.
 
 ### Change Log
 
@@ -288,6 +296,7 @@ GPT-5 Codex
 - 2026-05-11: Advanced elicitation hardening added AC16-AC21, Decisions D7-D12, task refinements, validation checks, and canonical trace.
 - 2026-05-11: Party-mode hardening added AC22-AC28, Decisions D13-D18, owner-marker rules, split/count/evidence validation guidance, and canonical trace.
 - 2026-05-11: Reconciled deferred-work ledger ownership/status markers and moved Story 11.1 to review.
+- 2026-05-11: Applied code-review patches and moved Story 11.1 to done.
 
 ## Party-Mode Review
 
