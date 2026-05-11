@@ -184,3 +184,4 @@
 2026-05-11T21:04:24+02:00	create-story	11-7-eventstore-reliability-and-ci-governance-follow-ups	ok	created Story 11.7 EventStore reliability and CI governance follow-ups and marked ready-for-dev
 2026-05-11T22:04:33+02:00	party-mode-review	11-6-shell-ux-accessibility-and-sample-coverage-follow-ups	ok	party-mode hardening applied; added ledger, dev-mode, Blazor Auto, starter-template, accessibility, and validation guardrails
 2026-05-11T23:08:37+02:00	advanced-elicitation	11-6-shell-ux-accessibility-and-sample-coverage-follow-ups	ok	advanced elicitation applied; added row-evidence, fail-closed dependency, hostile metadata, scoring, evidence-map, and baseline guardrails
+2026-05-12T00:04:54+02:00	party-mode-review	11-7-eventstore-reliability-and-ci-governance-follow-ups	ok	party-mode hardening applied; added row disposition, HTTP matrix, fail-closed, SignalR, provider parity, release ordering, validation lane, redaction, and submodule guardrails
