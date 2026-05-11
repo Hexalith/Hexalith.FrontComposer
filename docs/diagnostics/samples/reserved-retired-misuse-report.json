@@ -9,7 +9,7 @@
     {
       "id": "HFC-PLACEHOLDER",
       "reason": "reserved-or-retired-emitted",
-      "path": "<redacted-source-path>",
+      "path": "src/Hexalith.FrontComposer.SourceTools/Diagnostics/PLACEHOLDER.cs",
       "message": "Reserved or retired diagnostic ID was used as an emitted diagnostic."
     }
   ]

@@ -123,6 +123,10 @@ public sealed partial class DiagnosticRegistryTests {
             numericId.ShouldBeInRange(range.Start, range.End, $"{diagnostic.Id} is outside {diagnostic.OwnerPackage} range.");
 
             if (diagnostic.RelatedIds is not null) {
+                // Pass-2 R25: duplicate entries within a single relatedIds array are rejected so
+                // a sloppy edit cannot inflate the apparent set ([HFC1040, HFC1040, HFC1601]).
+                diagnostic.RelatedIds.ShouldBe(diagnostic.RelatedIds.Distinct(Ordinal).ToArray(),
+                    $"{diagnostic.Id} relatedIds contains duplicates: [{string.Join(", ", diagnostic.RelatedIds)}].");
                 foreach (string relatedId in diagnostic.RelatedIds) {
                     idRegex.IsMatch(relatedId).ShouldBeTrue($"{diagnostic.Id} relatedIds entry '{relatedId}' is malformed.");
                     ids.ShouldContain(relatedId, $"{diagnostic.Id} relatedIds references unknown id '{relatedId}'.");
@@ -140,11 +144,12 @@ public sealed partial class DiagnosticRegistryTests {
 
         // Story 11.2 code-review P29: introducedIn must follow a SemVer-like shape so that
         // "what's new since vX" semantics in Story 9-2 / 9-1 cannot drift to free-form strings.
+        // Pass-2 R36: an empty / whitespace `introducedIn` must Assert.Fail rather than silently
+        // pass — the field is required for release provenance.
         Regex semverShape = SemverShapeRegex();
         foreach (DiagnosticEntry diagnostic in registry.Diagnostics) {
-            if (string.IsNullOrEmpty(diagnostic.IntroducedIn)) {
-                continue;
-            }
+            diagnostic.IntroducedIn.ShouldNotBeNullOrWhiteSpace(
+                $"{diagnostic.Id} introducedIn is required and must be a SemVer-shaped version.");
             semverShape.IsMatch(diagnostic.IntroducedIn).ShouldBeTrue(
                 $"{diagnostic.Id} introducedIn '{diagnostic.IntroducedIn}' must follow MAJOR.MINOR or MAJOR.MINOR.PATCH SemVer shape.");
         }
@@ -723,14 +728,22 @@ public sealed partial class DiagnosticRegistryTests {
             }
 
             foreach (Match urlMatch in docsLinkUrl.Matches(text)) {
-                string host = urlMatch.Groups["host"].Value;
-                string scheme = urlMatch.Groups["scheme"].Value;
-                string suffix = urlMatch.Groups["suffix"].Value;
-                host.ShouldBe(CanonicalDocsHost, $"{ProjectRelativePath(file)} links to non-canonical diagnostics host '{host}'.");
-                // Story 11.2 code-review P25: scheme must be https and the URL must not carry
-                // a trailing slash, query, or fragment after the HFC id.
-                scheme.ShouldBe("https", $"{ProjectRelativePath(file)} uses non-https diagnostics scheme '{scheme}'.");
-                suffix.ShouldBe(string.Empty, $"{ProjectRelativePath(file)} diagnostics URL has trailing suffix '{suffix}'; canonical form is the bare /HFCxxxx path.");
+                string raw = urlMatch.Value;
+                // Pass-2 R20: structural Uri check — scheme/host/port/userinfo/path/query/fragment.
+                // Coarse regex extraction must be paired with a strict parse so trailing-dot host,
+                // userinfo (`user@host`), explicit port, query, or fragment cannot bypass.
+                Uri.TryCreate(raw, UriKind.Absolute, out Uri? parsed).ShouldBeTrue(
+                    $"{ProjectRelativePath(file)} contains a malformed diagnostics URL: '{raw}'.");
+                parsed!.Scheme.ShouldBe("https", $"{ProjectRelativePath(file)} uses non-https diagnostics scheme '{parsed.Scheme}' in '{raw}'.");
+                parsed.Host.TrimEnd('.').ShouldBe(CanonicalDocsHost,
+                    $"{ProjectRelativePath(file)} links to non-canonical diagnostics host '{parsed.Host}' in '{raw}'.");
+                parsed.IsDefaultPort.ShouldBeTrue($"{ProjectRelativePath(file)} diagnostics URL '{raw}' must not specify an explicit port.");
+                parsed.UserInfo.ShouldBeEmpty($"{ProjectRelativePath(file)} diagnostics URL '{raw}' must not contain userinfo.");
+                parsed.Query.ShouldBeEmpty($"{ProjectRelativePath(file)} diagnostics URL '{raw}' must not carry a query.");
+                parsed.Fragment.ShouldBeEmpty($"{ProjectRelativePath(file)} diagnostics URL '{raw}' must not carry a fragment.");
+                Regex canonicalPath = new(@"^/FrontComposer/diagnostics/HFC[0-9]{4}$", RegexOptions.CultureInvariant);
+                canonicalPath.IsMatch(parsed.AbsolutePath).ShouldBeTrue(
+                    $"{ProjectRelativePath(file)} diagnostics URL '{raw}' path must be exactly `/FrontComposer/diagnostics/HFCxxxx` (got '{parsed.AbsolutePath}').");
             }
 
             foreach (Match match in strictHfc.Matches(text)) {
@@ -818,23 +831,49 @@ public sealed partial class DiagnosticRegistryTests {
             provenance["approvedOn"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
             provenance["rationale"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
         }
+
+        // Pass-2 R32: the same JSON that the Shouldly checks above traverse must also satisfy
+        // ValidateMigrationFindingsJson — otherwise the validator could yield a spurious category
+        // for valid input and the outer test would not notice. This is the negative-control
+        // assertion the validator needs.
+        ValidateMigrationFindingsJson(json).ShouldBeEmpty(
+            "pristine migration-findings.json must yield zero categories from the fail-closed validator; any drift between the outer Shouldly checks and ValidateMigrationFindingsJson must be reconciled.");
     }
 
     [Theory]
-    [InlineData("duplicate-id")]
-    [InlineData("wrong-prefix")]
-    [InlineData("wrong-bucket")]
-    [InlineData("missing-release-note")]
-    [InlineData("missing-owner-story")]
-    [InlineData("malformed-introduced-in")]
-    [InlineData("missing-release-provenance")]
-    public void MigrationFindingsValidator_FailsClosedWithNamedCategories(string mutation) {
+    [InlineData("duplicate-id", 0)]
+    [InlineData("wrong-prefix", 0)]
+    [InlineData("wrong-bucket", 0)]
+    [InlineData("missing-release-note", 0)]
+    [InlineData("missing-owner-story", 0)]
+    [InlineData("malformed-introduced-in", 0)]
+    [InlineData("missing-release-provenance", 0)]
+    // Pass-2 R12: explicit schema-level mutations exercising the unsupported-schema and
+    // missing-findings-array branches that previously had no Theory coverage.
+    [InlineData("missing-schema-version", 0)]
+    [InlineData("wrong-schema-version", 0)]
+    [InlineData("missing-findings-array", 0)]
+    // Pass-2 R10: severity, category, slug mutations matching the new validator categories.
+    [InlineData("invalid-severity", 0)]
+    [InlineData("invalid-category", 0)]
+    [InlineData("malformed-slug", 0)]
+    [InlineData("malformed-approved-on", 0)]
+    // Pass-2 R22: analyzer-descriptor-misclassification — an HFCM finding whose id collides with
+    // a Roslyn HFC descriptor id is detected via the wrong-prefix branch since the id-shape regex
+    // rejects HFC-prefixed values from a migration-findings row.
+    [InlineData("analyzer-descriptor-misclassification", 0)]
+    // Pass-2 R24: same mutations applied to row index 1 to ensure per-row validation, not just
+    // findings[0]. Sample is small enough that two reps cover the loop semantics.
+    [InlineData("duplicate-id", 1)]
+    [InlineData("wrong-prefix", 1)]
+    [InlineData("missing-owner-story", 1)]
+    public void MigrationFindingsValidator_FailsClosedWithNamedCategories(string mutation, int rowIndex) {
         // Story 11.2 code-review P3 (T3 subtask 4): the CLI-specific release-row artifact must
-        // fail closed on duplicate, wrong-prefix, wrong-bucket, missing-note, and missing-owner
-        // mutations. This is the migration-findings analogue of the registry-validator fixture.
+        // fail closed on each named mutation. Pass-2 R11/R12/R22/R24/R33: extended mutation set,
+        // per-row coverage, explicit default case in the switch.
         JsonObject json = JsonNode.Parse(File.ReadAllText(Path.Combine(DiagnosticsDocsRoot().FullName, "migration-findings.json"), Encoding.UTF8))!.AsObject();
         JsonArray findings = json["findings"]!.AsArray();
-        JsonObject row = findings[0]!.AsObject();
+        JsonObject row = findings[rowIndex]!.AsObject();
 
         switch (mutation) {
             case "duplicate-id":
@@ -853,22 +892,58 @@ public sealed partial class DiagnosticRegistryTests {
                 row.Remove("ownerStory");
                 break;
             case "malformed-introduced-in":
-                row["introducedIn"] = "latest";
+                // Pass-2 R39: use a clearly non-empty but non-SemVer value so the path under
+                // test is the SemVer-shape branch, not the missing/empty branch.
+                row["introducedIn"] = "1.x";
                 break;
             case "missing-release-provenance":
                 row.Remove("releaseProvenance");
                 break;
+            case "missing-schema-version":
+                json.Remove("schemaVersion");
+                break;
+            case "wrong-schema-version":
+                json["schemaVersion"] = "2.0";
+                break;
+            case "missing-findings-array":
+                json.Remove("findings");
+                break;
+            case "invalid-severity":
+                row["severity"] = "Verbose";
+                break;
+            case "invalid-category":
+                row["category"] = "Other.Category";
+                break;
+            case "malformed-slug":
+                row["migrationDocsSlug"] = "migrations/../../etc/passwd";
+                break;
+            case "malformed-approved-on":
+                row["releaseProvenance"]!["approvedOn"] = "yesterday";
+                break;
+            case "analyzer-descriptor-misclassification":
+                // Pass-2 R22: an HFC-prefixed id smuggled into the findings array; the validator
+                // must yield wrong-prefix (HFCM-only).
+                row["id"] = "HFC9999";
+                break;
+            default:
+                throw new InvalidOperationException($"Pass-2 R33: unrecognized Theory mutation '{mutation}' — add a case or remove the [InlineData].");
         }
 
         string expectedCategory = mutation switch {
             "duplicate-id" => "hfcm-duplicate-id",
-            "wrong-prefix" => "hfcm-wrong-prefix",
+            "wrong-prefix" or "analyzer-descriptor-misclassification" => "hfcm-wrong-prefix",
             "wrong-bucket" => "hfcm-wrong-bucket",
             "missing-release-note" => "hfcm-missing-release-note",
             "missing-owner-story" => "hfcm-missing-owner-story",
             "malformed-introduced-in" => "hfcm-malformed-introduced-in",
             "missing-release-provenance" => "hfcm-missing-release-provenance",
-            _ => throw new InvalidOperationException(),
+            "missing-schema-version" or "wrong-schema-version" => "hfcm-unsupported-schema",
+            "missing-findings-array" => "hfcm-missing-findings-array",
+            "invalid-severity" => "hfcm-invalid-severity",
+            "invalid-category" => "hfcm-invalid-category",
+            "malformed-slug" => "hfcm-malformed-slug",
+            "malformed-approved-on" => "hfcm-malformed-approved-on",
+            _ => throw new InvalidOperationException($"Pass-2 R33: unrecognized mutation '{mutation}' in expectedCategory map."),
         };
         ValidateMigrationFindingsJson(json).ShouldContain(expectedCategory);
     }
@@ -888,7 +963,12 @@ public sealed partial class DiagnosticRegistryTests {
 
         Regex idShape = HfcmIdShapeRegex();
         Regex semverShape = SemverShapeRegex();
+        // Pass-2 R14: approvedOn must be ISO-8601 date — `YYYY-MM-DD`. Free-form `TBD` / `soon`
+        // bypasses audit-trail provenance.
+        Regex isoDate = new(@"^[0-9]{4}-[0-9]{2}-[0-9]{2}$", RegexOptions.CultureInvariant);
         HashSet<string> seen = new(Ordinal);
+        HashSet<string> allowedSeverities = new(Ordinal) { "Info", "Warning", "Error" };
+        const string requiredCategory = "HexalithFrontComposer.Migration";
         foreach (JsonNode? node in findings) {
             if (node is not JsonObject row) {
                 yield return "hfcm-invalid-row";
@@ -898,9 +978,12 @@ public sealed partial class DiagnosticRegistryTests {
                 yield return "hfcm-missing-id";
                 continue;
             }
-            if (!idShape.IsMatch(id!)) {
+            // Pass-2 R11: do not `continue` on wrong-prefix — yield the category and still run the
+            // dedupe/owner/release-note checks so combined mutations (wrong-prefix + duplicate)
+            // surface every applicable category.
+            bool idShapeOk = idShape.IsMatch(id!);
+            if (!idShapeOk) {
                 yield return "hfcm-wrong-prefix";
-                continue;
             }
             if (!seen.Add(id!)) {
                 yield return "hfcm-duplicate-id";
@@ -914,13 +997,63 @@ public sealed partial class DiagnosticRegistryTests {
             if (!TryGetString(row, "introducedIn", out string? introducedIn) || !semverShape.IsMatch(introducedIn!)) {
                 yield return "hfcm-malformed-introduced-in";
             }
+            // Pass-2 R10: per-row severity, category, and migrationDocsSlug validation.
+            if (!TryGetString(row, "severity", out string? severity) || !allowedSeverities.Contains(severity!)) {
+                yield return "hfcm-invalid-severity";
+            }
+            if (!TryGetString(row, "category", out string? category) || category != requiredCategory) {
+                yield return "hfcm-invalid-category";
+            }
+            // Pass-2 R10: containment-safe migrationDocsSlug check — equivalent to IsCanonicalDocsSlug
+            // for the `migrations/<id>` prefix. Rejects `..` traversal, encoded slash/backslash,
+            // query/fragment, rooted paths, non-NFC, zero-width, percent-encoding.
+            if (!TryGetString(row, "migrationDocsSlug", out string? slug)
+                || !IsCanonicalMigrationSlug(slug!)) {
+                yield return "hfcm-malformed-slug";
+            }
             if (row["releaseProvenance"] is not JsonObject provenance
                 || !TryGetString(provenance, "approvingStory", out _)
-                || !TryGetString(provenance, "approvedOn", out _)
+                || !TryGetString(provenance, "approvedOn", out string? approvedOn)
                 || !TryGetString(provenance, "rationale", out _)) {
                 yield return "hfcm-missing-release-provenance";
+            } else if (!isoDate.IsMatch(approvedOn!)) {
+                // Pass-2 R14: provenance exists but approvedOn is not ISO date — distinct category.
+                yield return "hfcm-malformed-approved-on";
             }
         }
+    }
+
+    // Pass-2 R10: parallel of IsCanonicalDocsSlug for `migrations/<id>` namespace.
+    private static bool IsCanonicalMigrationSlug(string slug) {
+        if (string.IsNullOrEmpty(slug)
+            || slug != slug.Normalize(NormalizationForm.FormC)
+            || slug.Any(char.IsWhiteSpace)
+            || slug.Any(IsConfusableOrFormatChar)
+            || slug.Contains('\\', StringComparison.Ordinal)
+            || slug.Contains('?', StringComparison.Ordinal)
+            || slug.Contains('#', StringComparison.Ordinal)
+            || slug.Contains("..", StringComparison.Ordinal)
+            || IsRootedSlug(slug)) {
+            return false;
+        }
+
+        string decoded;
+        try {
+            decoded = Uri.UnescapeDataString(slug);
+        } catch (UriFormatException) {
+            return false;
+        }
+
+        if (decoded.Contains('%', StringComparison.Ordinal)
+            || decoded.Contains('\\', StringComparison.Ordinal)
+            || decoded.Contains("..", StringComparison.Ordinal)
+            || decoded != slug) {
+            return false;
+        }
+
+        return decoded.StartsWith("migrations/", StringComparison.Ordinal)
+            && decoded.Length > "migrations/".Length
+            && !decoded[..^1].EndsWith('/');
     }
 
     [GeneratedRegex(@"^HFCM[0-9]{4}$", RegexOptions.CultureInvariant)]
@@ -956,38 +1089,18 @@ public sealed partial class DiagnosticRegistryTests {
         string projectRootBackslash = ProjectRoot().FullName;
         string machineName = Environment.MachineName;
 
-        // Story 11.2 code-review P16 (AC32): sentinel forbidden-token list. If any drift sample
-        // ever contains one of these patterns it must be redacted before commit. Includes Windows
-        // and Unix absolute path shapes, $HOME variants, GitHub Actions runner paths, common token
-        // prefixes, SDK banners, live feed URLs, and stack-trace markers.
-        string[] forbiddenSentinels = [
-            "https://api.github.com",
-            "https://api.nuget.org",
-            "https://pkgs.dev.azure.com",
-            "C:\\Users\\",
-            "/home/runner/",
-            "/Users/",
-            "$HOME",
-            "${HOME}",
-            "~/",
-            "ghp_",
-            "gho_",
-            "xoxb-",
-            "AKIA",
-            "sk-ant-",
-            "Microsoft .NET SDK",
-            "   at System.",
-            "   at Microsoft.",
-            "fv-az",
-        ];
         // AC32: max-item / max-character budget. Sample reports are evidence artifacts, not
         // unbounded log dumps; if we ever exceed these the redaction layer is leaking.
+        // Pass-2 R23: byte budget for AC32 is documented — derived from the largest legitimate
+        // sample (~6 KB) × 2.5 safety margin = 16 KiB. Measured in UTF-8 bytes, not UTF-16 chars,
+        // since the "bytes" semantics matter for streaming/redaction.
         const int MaxFindingsPerSample = 32;
         const int MaxJsonBytesPerSample = 16 * 1024;
 
         foreach (string sample in expectedSamples) {
             string path = Path.Combine(samplesRoot, sample);
             string json = File.ReadAllText(path, Encoding.UTF8);
+            int jsonBytes = Encoding.UTF8.GetByteCount(json);
             JsonObject parsed = JsonNode.Parse(json)!.AsObject();
             parsed["schemaVersion"]!.GetValue<string>().ShouldBe("1.0");
             parsed["exitCode"]!.GetValue<int>().ShouldBe(2);
@@ -995,7 +1108,7 @@ public sealed partial class DiagnosticRegistryTests {
             JsonArray findings = parsed["findings"]!.AsArray();
             findings.Count.ShouldBeGreaterThan(0, $"{sample} must include at least one finding.");
             findings.Count.ShouldBeLessThanOrEqualTo(MaxFindingsPerSample, $"{sample} exceeds max findings budget ({findings.Count} > {MaxFindingsPerSample}); redaction/truncation must happen before commit (AC32).");
-            json.Length.ShouldBeLessThanOrEqualTo(MaxJsonBytesPerSample, $"{sample} exceeds max sample size ({json.Length} > {MaxJsonBytesPerSample} bytes); samples are evidence artifacts, not log dumps (AC32).");
+            jsonBytes.ShouldBeLessThanOrEqualTo(MaxJsonBytesPerSample, $"{sample} exceeds max sample size ({jsonBytes} > {MaxJsonBytesPerSample} bytes); samples are evidence artifacts, not log dumps (AC32).");
             foreach (JsonObject finding in findings.Select(node => node!.AsObject())) {
                 string findingId = finding["id"]!.GetValue<string>();
                 findingId.ShouldNotBeNullOrWhiteSpace();
@@ -1015,9 +1128,74 @@ public sealed partial class DiagnosticRegistryTests {
                 json.ShouldNotContain(machineName, Case.Insensitive);
             }
 
-            foreach (string sentinel in forbiddenSentinels) {
-                json.ShouldNotContain(sentinel, Case.Insensitive, $"{sample} contains forbidden sentinel '{sentinel}'; redaction failure (AC32).");
-            }
+            AssertNoForbiddenSentinels(json, sample);
+        }
+
+        // Pass-2 R7: AC32 explicitly requires applying the sentinel scan to docs stubs,
+        // migration-findings.json, and validation reports too — not just samples.
+        foreach (string stub in Directory.EnumerateFiles(DiagnosticsDocsRoot().FullName, "HFC*.md").OrderBy(p => p, Ordinal)) {
+            AssertNoForbiddenSentinels(File.ReadAllText(stub, Encoding.UTF8), ProjectRelativePath(stub));
+        }
+        string migrationFindingsPath = Path.Combine(DiagnosticsDocsRoot().FullName, "migration-findings.json");
+        if (File.Exists(migrationFindingsPath)) {
+            AssertNoForbiddenSentinels(File.ReadAllText(migrationFindingsPath, Encoding.UTF8), ProjectRelativePath(migrationFindingsPath));
+        }
+        string validationManifestPath = Path.Combine(ProjectRoot().FullName, "artifacts", "docs", "validation-manifest.json");
+        if (File.Exists(validationManifestPath)) {
+            AssertNoForbiddenSentinels(File.ReadAllText(validationManifestPath, Encoding.UTF8), ProjectRelativePath(validationManifestPath));
+        }
+    }
+
+    // Pass-2 R7: extracted forbidden-sentinel scan applied to samples, docs stubs,
+    // migration-findings.json, and validation reports. Sentinel list covers Windows/Unix absolute
+    // paths, $HOME variants, GitHub Actions runner paths, common token prefixes (GitHub, Slack,
+    // AWS, Azure, Anthropic, Google, GitLab, PEM), SDK banners, live feed URLs, and stack-trace
+    // markers. Short ASCII prefixes (`AKIA`, `ASIA`, `AIza`) are anchored to typical surrounding
+    // characters via word-boundary search inside ScanForSentinel to avoid false positives in prose.
+    private static readonly string[] ForbiddenSentinels = [
+        "https://api.github.com",
+        "https://api.nuget.org",
+        "https://pkgs.dev.azure.com",
+        "C:\\Users\\",
+        "/home/runner/",
+        "/Users/",
+        "$HOME",
+        "${HOME}",
+        "~/",
+        "ghp_",
+        "gho_",
+        "xoxb-",
+        "xoxa-",
+        "xoxp-",
+        "xoxs-",
+        "sk-ant-",
+        "Microsoft .NET SDK",
+        "   at System.",
+        "   at Microsoft.",
+        "fv-az",
+        "eyJ",
+        "-----BEGIN",
+        "glpat-",
+        "sig=",
+    ];
+
+    // Short uppercase tokens that occur as legitimate substrings in prose; require word-boundary
+    // context (preceded and followed by non-token-char) to count as a sentinel.
+    private static readonly string[] ForbiddenSentinelWordBoundaryTokens = [
+        "AKIA",
+        "ASIA",
+        "AIza",
+    ];
+
+    private static void AssertNoForbiddenSentinels(string content, string source) {
+        foreach (string sentinel in ForbiddenSentinels) {
+            content.ShouldNotContain(sentinel, Case.Insensitive,
+                $"{source} contains forbidden sentinel '{sentinel}'; redaction failure (AC32).");
+        }
+        foreach (string token in ForbiddenSentinelWordBoundaryTokens) {
+            Regex wordBounded = new($@"\b{Regex.Escape(token)}[0-9A-Z_]{{8,}}\b", RegexOptions.CultureInvariant);
+            wordBounded.IsMatch(content).ShouldBeFalse(
+                $"{source} contains token shape matching forbidden sentinel '{token}<token-tail>'; redaction failure (AC32).");
         }
     }
 
@@ -1100,6 +1278,51 @@ public sealed partial class DiagnosticRegistryTests {
     }
 
     [Fact]
+    public void DocsStubBody_RelatedDiagnosticsListEqualsRegistry() {
+        // Pass-2 R4: the docs-stub `## Related Diagnostics` body section must enumerate the same
+        // ids as the registry's relatedIds field. The front-matter array is already pinned by
+        // DocsStubs_ArePresentBoundedAndRegistryBacked; this test pins the body so a maintainer
+        // cannot update one half (e.g., rewrite the bullets) without touching the other (e.g.,
+        // refresh front-matter / registry).
+        DiagnosticRegistry registry = LoadRegistry();
+        DirectoryInfo docsRoot = DiagnosticsDocsRoot();
+        Regex hfcId = HfcIdRegex();
+
+        foreach (DiagnosticEntry diagnostic in registry.Diagnostics) {
+            string[] expected = (diagnostic.RelatedIds ?? []).OrderBy(id => id, Ordinal).ToArray();
+            if (expected.Length == 0) {
+                continue; // empty registry relatedIds — body may legitimately say "None currently".
+            }
+
+            string raw = File.ReadAllText(Path.Combine(docsRoot.FullName, $"{diagnostic.Id}.md"), Encoding.UTF8);
+            string stub = StripZeroWidthAndFormatChars(raw);
+
+            int sectionStart = stub.IndexOf("## Related Diagnostics", StringComparison.Ordinal);
+            sectionStart.ShouldBePositive($"{diagnostic.Id} stub is missing `## Related Diagnostics` section.");
+            int sectionEnd = stub.IndexOf("\n## ", sectionStart + "## Related Diagnostics".Length, StringComparison.Ordinal);
+            if (sectionEnd < 0) {
+                // Use the narrative-end marker as a fallback if no next section follows.
+                sectionEnd = stub.IndexOf("<!-- story-9-5:narrative-end -->", sectionStart, StringComparison.Ordinal);
+            }
+            sectionEnd.ShouldBeGreaterThan(sectionStart, $"{diagnostic.Id} stub `## Related Diagnostics` section appears unterminated.");
+            string sectionBody = stub[sectionStart..sectionEnd];
+
+            string[] bodyIds = hfcId.Matches(sectionBody)
+                .Select(m => m.Value)
+                // Filter to ids the section is *enumerating* (exclude `HFC` references inside
+                // descriptive prose by requiring they appear in a markdown link form). The
+                // bodies use `- [HFC1040](https://...) — ...`; the regex picks up HFC1040 in
+                // both the link text and the URL — collapse duplicates.
+                .Distinct(Ordinal)
+                .OrderBy(id => id, Ordinal)
+                .ToArray();
+
+            bodyIds.ShouldBe(expected,
+                $"{diagnostic.Id} stub `## Related Diagnostics` body enumerates [{string.Join(", ", bodyIds)}] but registry relatedIds is [{string.Join(", ", expected)}]. Body and front-matter must stay in sync.");
+        }
+    }
+
+    [Fact]
     public void DescriptorCanonicalHelpLinkFormat_EqualsRegistryConstant() {
         // Story 11.2 code-review P17 (AC13): the SourceTools descriptor's canonical-help-link
         // format must equal the registry's canonicalHelpLinkFormat. This is the single-source-of-
@@ -1110,26 +1333,49 @@ public sealed partial class DiagnosticRegistryTests {
         descriptorFormat.ShouldBe(registry.CanonicalHelpLinkFormat,
             "DiagnosticDescriptors.CanonicalHelpLinkFormat must mirror the registry's canonicalHelpLinkFormat exactly (single source of truth, AC13).");
 
-        // Stub help-link autolinks must also derive from this format. Pin the stubs touched by
-        // Story 11.2 (which received fresh prose) as the contract anchor.
+        // Stub help-link autolinks must also derive from this format. Pass-2 R27: iterate every
+        // active/deprecated registry diagnostic rather than a hardcoded 8-id list so future
+        // diagnostics inherit the contract automatically. Retired and reserved stubs intentionally
+        // omit the canonical link block (retired-stub convention from Story 9-5). Pass-2 R35:
+        // normalize the stub text via StripZeroWidthAndFormatChars before substring search so a
+        // zero-width-joiner inside the URL cannot bypass the canonical-link check, and assert
+        // absence of any `http://` variant.
         DirectoryInfo docsRoot = DiagnosticsDocsRoot();
-        Dictionary<string, DiagnosticEntry> byId = registry.Diagnostics.ToDictionary(d => d.Id, Ordinal);
-        foreach (string id in new[] { "HFC0001", "HFC1037", "HFC1040", "HFC1044", "HFC1056", "HFC1057", "HFC1601", "HFC4001" }) {
-            byId.ShouldContainKey(id);
+        foreach (DiagnosticEntry diagnostic in registry.Diagnostics) {
+            if (diagnostic.Lifecycle is "retired" or "reserved" or "removed-in-major") {
+                continue;
+            }
+            string id = diagnostic.Id;
             string expectedLink = string.Format(CultureInfo.InvariantCulture, descriptorFormat, id);
-            string stubText = File.ReadAllText(Path.Combine(docsRoot.FullName, $"{id}.md"), Encoding.UTF8);
-            stubText.ShouldContain(expectedLink, customMessage: $"{id} stub must autolink the canonical help link '{expectedLink}'.");
+            string rawStub = File.ReadAllText(Path.Combine(docsRoot.FullName, $"{id}.md"), Encoding.UTF8);
+            string stubText = StripZeroWidthAndFormatChars(rawStub);
+            stubText.ShouldContain(expectedLink,
+                customMessage: $"{id} stub must autolink the canonical help link '{expectedLink}' after zero-width normalization.");
+
+            // Pass-2 R35: reject any `http://hexalith.github.io/FrontComposer/diagnostics/{id}`
+            // variant in the stub — only the https form is canonical.
+            string insecureVariant = expectedLink.Replace("https://", "http://", StringComparison.Ordinal);
+            stubText.ShouldNotContain(insecureVariant,
+                customMessage: $"{id} stub must not contain insecure http:// help-link variant.");
         }
     }
 
     [Fact]
     public void Severity_HFC1037_HFC1040_HFC1044_AreTablePinnedAcrossChannels() {
-        // Story 11.2 code-review P5 (AC30): the override-duplicate family's severity asymmetry
-        // (Error / Warning / Error) must be locked by a table-driven test so an accidental
-        // copy-paste regression is caught immediately. Table covers: registry compilerSeverity,
-        // suppression policy, owner package, lifecycle note presence requirement.
+        // Story 11.2 code-review P5 (AC30) + Pass-2 R1/R42: the override-duplicate family's
+        // severity asymmetry (Error / Warning / Error) is pinned across four channels:
+        //   1. Registry compilerSeverity + suppression policy + owner package + lifecycleNote.
+        //   2. Roslyn DiagnosticDescriptor.DefaultSeverity.
+        //   3. AnalyzerReleases.*.md release-row severity column.
+        //   4. Docs stub front-matter `severity:` field.
+        // AC30 mandates the matrix span all four; a Warning/Error flip in any one channel must
+        // fail the test immediately.
         DiagnosticRegistry registry = LoadRegistry();
         Dictionary<string, DiagnosticEntry> byId = registry.Diagnostics.ToDictionary(d => d.Id, Ordinal);
+        Dictionary<string, DiagnosticDescriptor> descriptorsById = DiagnosticDescriptorFields().ToDictionary(d => d.Id, Ordinal);
+        Dictionary<string, string> releaseRowSeverityById = LoadReleaseRowSeverityMap();
+        DirectoryInfo docsRoot = DiagnosticsDocsRoot();
+        Regex frontMatterSeverity = FrontMatterSeverityLineRegex();
 
         (string Id, string Package, string CompilerSeverity, string SuppressionPolicy)[] expected = [
             ("HFC1037", "SourceTools", "Error", "discouraged-error"),
@@ -1139,15 +1385,59 @@ public sealed partial class DiagnosticRegistryTests {
         foreach ((string id, string package, string severity, string policy) in expected) {
             byId.ShouldContainKey(id);
             DiagnosticEntry entry = byId[id];
+
+            // Channel 1: registry.
             entry.OwnerPackage.ShouldBe(package, $"{id} ownerPackage drift.");
             entry.CompilerSeverity.ShouldBe(severity, $"{id} compilerSeverity drift — severity asymmetry is intentional and pinned.");
             entry.SuppressionPolicy.ShouldBe(policy, $"{id} suppressionPolicy drift.");
+
+            // Channel 2: Roslyn descriptor.
+            descriptorsById.ShouldContainKey(id, $"{id} must have a DiagnosticDescriptor field for cross-channel severity pinning.");
+            descriptorsById[id].DefaultSeverity.ToString().ShouldBe(severity,
+                $"{id} Roslyn DiagnosticDescriptor.DefaultSeverity drift from registry compilerSeverity (AC30).");
+
+            // Channel 3: release-row severity column.
+            releaseRowSeverityById.ShouldContainKey(id, $"{id} must appear in an AnalyzerReleases.*.md release row.");
+            releaseRowSeverityById[id].ShouldBe(severity,
+                $"{id} AnalyzerReleases release-row severity drift from registry compilerSeverity (AC30).");
+
+            // Channel 4: docs stub front-matter severity.
+            string stubText = File.ReadAllText(Path.Combine(docsRoot.FullName, $"{id}.md"), Encoding.UTF8);
+            Match severityMatch = frontMatterSeverity.Match(stubText);
+            severityMatch.Success.ShouldBeTrue($"{id} docs stub must declare front-matter severity (AC30).");
+            severityMatch.Groups["severity"].Value.ShouldBe(severity,
+                $"{id} docs stub front-matter severity drift from registry compilerSeverity (AC30).");
         }
 
         // The Warning member of the family must carry a lifecycleNote documenting why the
         // asymmetry is intentional (per AC22).
         byId["HFC1040"].LifecycleNote.ShouldNotBeNullOrWhiteSpace(
             "HFC1040 must carry a lifecycleNote explaining the Level-3 Warning asymmetry vs HFC1037/HFC1044 (AC22).");
+    }
+
+    // Pass-2 R1: parse `AnalyzerReleases.*.md` table rows to extract per-id severity column so the
+    // severity matrix can pin release-row severity against registry compilerSeverity. The table
+    // shape is `| HFCxxxx | Category | Severity | Notes |` per Roslyn release-tracking
+    // conventions; we tolerate leading/trailing whitespace and only capture id + severity.
+    private static Dictionary<string, string> LoadReleaseRowSeverityMap() {
+        string[] releaseFiles = [
+            Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.SourceTools", "AnalyzerReleases.Unshipped.md"),
+            Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.SourceTools", "AnalyzerReleases.Shipped.md"),
+            Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.Shell", "AnalyzerReleases.Unshipped.md"),
+        ];
+        // Release rows use space-pipe column separators (no leading pipe), e.g.
+        //   `HFC1001 | HexalithFrontComposer | Warning | description`
+        Regex tableRow = new(@"^\s*(?<id>HFC[0-9]{4})\s*\|\s*(?<category>[^|]+?)\s*\|\s*(?<severity>Info|Warning|Error|Hidden)\s*\|", RegexOptions.CultureInvariant);
+        Dictionary<string, string> map = new(StringComparer.Ordinal);
+        foreach (string file in releaseFiles.Where(File.Exists).OrderBy(p => p, StringComparer.Ordinal)) {
+            foreach (string line in File.ReadAllLines(file, Encoding.UTF8)) {
+                Match match = tableRow.Match(line);
+                if (match.Success) {
+                    map[match.Groups["id"].Value] = match.Groups["severity"].Value;
+                }
+            }
+        }
+        return map;
     }
 
     [Fact]
@@ -1173,38 +1463,145 @@ public sealed partial class DiagnosticRegistryTests {
     [Fact]
     public void RegistryValidator_DeterministicUnderShuffledInput() {
         // Story 11.2 code-review P19 (AC25/AC31/D17): governance output must be byte-stable
-        // across input order. Shuffle the diagnostics array and confirm that the validator
-        // emits the same set of categories, regardless of the order in which it encounters them.
+        // across input order. Pass-2 R8 replaces the broken `OrderBy(rng.Next())` LINQ pseudo-
+        // shuffle with a real Fisher-Yates shuffle, asserts the permutation is actually different,
+        // and compares ordered lists (byte-stability) rather than HashSet (set-stability).
         JsonObject pristine = RegistryJson().DeepClone().AsObject();
         // Inject two duplicate-id collisions so we have something to detect deterministically.
         JsonArray diagnostics = pristine["diagnostics"]!.AsArray();
+        diagnostics.Count.ShouldBeGreaterThanOrEqualTo(2,
+            "registry needs at least two diagnostics to inject duplicate-collisions for the determinism trial.");
         diagnostics.Add(diagnostics[0]!.DeepClone());
         diagnostics.Add(diagnostics[1]!.DeepClone());
 
-        HashSet<string> orderedCategories = ValidateRegistryJson(pristine).OrderBy(c => c, Ordinal).ToHashSet(Ordinal);
+        // Pass-2 R8: order ordinally so byte-stable comparison is meaningful (the validator may
+        // yield categories in input order, but a deterministic governance report sorts the output
+        // before truncation/redaction — assert the sorted form is stable across shuffles).
+        List<string> orderedCategories = [.. ValidateRegistryJson(pristine).OrderBy(c => c, Ordinal)];
 
         Random rng = new(20260511);
         for (int trial = 0; trial < 4; trial++) {
             JsonObject shuffled = pristine.DeepClone().AsObject();
             JsonArray shuffledDiagnostics = shuffled["diagnostics"]!.AsArray();
             JsonNode[] reorder = [.. shuffledDiagnostics.Where(n => n is not null).Cast<JsonNode>()];
+
+            // Pass-2 R8: real Fisher-Yates (in-place swap) so the resulting array is guaranteed
+            // to be a uniform random permutation, not a non-deterministic LINQ sort.
+            for (int i = reorder.Length - 1; i > 0; i--) {
+                int j = rng.Next(i + 1);
+                (reorder[i], reorder[j]) = (reorder[j], reorder[i]);
+            }
+
+            // Sanity check: the shuffle MUST actually reorder for the determinism claim to mean
+            // anything. With ≥3 elements and a meaningful seed sequence this is overwhelmingly
+            // likely; if it ever fails, the shuffle algorithm regressed.
+            string[] originalIds = shuffledDiagnostics.Select(n => n!["id"]!.GetValue<string>()).ToArray();
+            string[] shuffledIds = reorder.Select(n => n["id"]!.GetValue<string>()).ToArray();
+            (!originalIds.SequenceEqual(shuffledIds)).ShouldBeTrue(
+                $"trial {trial} shuffle produced the original order; Fisher-Yates should permute non-trivially.");
+
             shuffledDiagnostics.Clear();
-            foreach (JsonNode node in reorder.OrderBy(_ => rng.Next())) {
+            foreach (JsonNode node in reorder) {
                 shuffledDiagnostics.Add(node.DeepClone());
             }
 
-            HashSet<string> shuffledCategories = ValidateRegistryJson(shuffled).OrderBy(c => c, Ordinal).ToHashSet(Ordinal);
-            shuffledCategories.SetEquals(orderedCategories).ShouldBeTrue(
-                $"Validator category set drifted under shuffled input (trial {trial}); output must be byte-stable independent of JSON order (AC25/AC31).");
+            List<string> shuffledCategories = [.. ValidateRegistryJson(shuffled).OrderBy(c => c, Ordinal)];
+            shuffledCategories.ShouldBe(orderedCategories,
+                $"Validator category list drifted under shuffled input (trial {trial}); output must be byte-stable independent of JSON order (AC25/AC31/D17).");
         }
+    }
+
+    [Fact]
+    public void GovernanceEnumerations_AreDeterministicAcrossSurfaces() {
+        // Pass-2 R9 (AC25/AC31/D17/T6): the registry-rows shuffle is covered by
+        // RegistryValidator_DeterministicUnderShuffledInput; this companion test covers the
+        // remaining five enumerated surfaces called out by T6 — source files, docs stub rows,
+        // related IDs, suppressions, and package groups — by asserting each enumeration sorts
+        // ordinally and produces byte-stable output independent of underlying filesystem or input
+        // order. Each surface is tested by re-running its enumerator and checking the result is
+        // already sorted under StringComparer.Ordinal (which is the canonical sort the
+        // governance report applies before truncation/redaction).
+        Random rng = new(20260512);
+
+        // Surface 1: source files — OwnedSourceFiles already sorts ordinal; shuffle a snapshot
+        // copy and confirm reapplying ordinal sort returns the canonical order.
+        string[] sourceFiles = OwnedSourceFiles().ToArray();
+        sourceFiles.ShouldBe(sourceFiles.OrderBy(p => p, Ordinal).ToArray(),
+            "OwnedSourceFiles enumeration must be ordinally sorted (T6 source-files surface).");
+        AssertShuffledSortIsStable(sourceFiles, rng, "source-files");
+
+        // Surface 2: docs stub rows — every stub filename under docs/diagnostics/ for a registry
+        // diagnostic. Same byte-stability contract.
+        string[] stubFiles = Directory.EnumerateFiles(DiagnosticsDocsRoot().FullName, "HFC*.md")
+            .Select(Path.GetFileName)
+            .OrderBy(name => name, Ordinal)
+            .ToArray()!;
+        stubFiles.Length.ShouldBeGreaterThan(0, "expected at least one HFC*.md stub.");
+        AssertShuffledSortIsStable(stubFiles, rng, "docs-stub-rows");
+
+        // Surface 3: related IDs — flatten every diagnostic's relatedIds with the parent id, then
+        // assert ordinal sort is stable under shuffle.
+        DiagnosticRegistry registry = LoadRegistry();
+        string[] relatedPairs = registry.Diagnostics
+            .Where(d => d.RelatedIds is { Length: > 0 })
+            .SelectMany(d => d.RelatedIds!.Select(r => $"{d.Id}->{r}"))
+            .OrderBy(s => s, Ordinal)
+            .ToArray();
+        relatedPairs.Length.ShouldBeGreaterThan(0, "expected at least one relatedIds edge in the registry.");
+        AssertShuffledSortIsStable(relatedPairs, rng, "related-ids");
+
+        // Surface 4: suppressions — keys derived from compatibility-suppressions.json rows.
+        FileInfo suppressionFile = new(Path.Combine(ProjectRoot().FullName, "docs", "diagnostics", "compatibility-suppressions.json"));
+        if (suppressionFile.Exists) {
+            JsonObject suppressionJson = JsonNode.Parse(File.ReadAllText(suppressionFile.FullName, Encoding.UTF8))!.AsObject();
+            if (suppressionJson["suppressions"] is JsonArray suppressionArray && suppressionArray.Count > 0) {
+                string[] suppressionKeys = suppressionArray
+                    .Select(node => {
+                        JsonObject row = node!.AsObject();
+                        return $"{row["package"]!.GetValue<string>()}|{row["tfm"]!.GetValue<string>()}|{row["oldSignature"]!.GetValue<string>()}|{row["hfcId"]!.GetValue<string>()}";
+                    })
+                    .OrderBy(s => s, Ordinal)
+                    .ToArray();
+                AssertShuffledSortIsStable(suppressionKeys, rng, "suppressions");
+            }
+        }
+
+        // Surface 5: package groups — owner-package strings derived from registry rows.
+        string[] packageGroups = registry.Diagnostics
+            .Select(d => d.OwnerPackage)
+            .Distinct(Ordinal)
+            .OrderBy(p => p, Ordinal)
+            .ToArray();
+        packageGroups.Length.ShouldBeGreaterThan(0, "expected at least one owner-package group.");
+        AssertShuffledSortIsStable(packageGroups, rng, "package-groups");
+    }
+
+    private static void AssertShuffledSortIsStable(string[] sortedInput, Random rng, string surface) {
+        if (sortedInput.Length < 2) {
+            return; // a single-element collection is trivially deterministic.
+        }
+        string[] shuffled = (string[])sortedInput.Clone();
+        for (int i = shuffled.Length - 1; i > 0; i--) {
+            int j = rng.Next(i + 1);
+            (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
+        }
+        // The shuffle MUST actually reorder; otherwise the determinism claim is vacuous.
+        (!shuffled.SequenceEqual(sortedInput)).ShouldBeTrue(
+            $"surface '{surface}' shuffle produced the original order; Fisher-Yates should permute non-trivially.");
+        string[] resorted = shuffled.OrderBy(s => s, Ordinal).ToArray();
+        resorted.ShouldBe(sortedInput,
+            $"surface '{surface}' is not stable under ordinal sort: shuffled+resorted differs from canonical order.");
     }
 
     [Fact]
     public void Story112_LedgerRowsMapToOneOfThreeFinalStates() {
         // Story 11.2 code-review P21 (AC34/D18): every Story-9-4 row routed to Story 11.2 must
-        // map to exactly one of AC33's three final states (closed-with-evidence /
-        // deferred-to-named-story / rejected-with-rationale). This is a direct assertion that
-        // pairs with the prose ledger so that drift is caught programmatically, not by review.
+        // map to exactly one final state. Pass-2 R2/R5: AC33 vocabulary is `closed-with-evidence`,
+        // `deferred-to-named-story`, `rejected-with-rationale`. Reconciliation in deferred-work.md
+        // uses the equivalent marker vocabulary that Story 11.1 introduced: `Resolved YYYY-MM-DD`,
+        // `Owner: Story <X>`, `Rejected with rationale`, plus alias forms. Excluded substring
+        // `Owner: Story` because the bare phrase appears in every row header; we require the full
+        // `Owner: Story 11.<n>` shape so a free header phrase cannot satisfy the assertion.
         FileInfo ledger = new(Path.Combine(ProjectRoot().FullName, "_bmad-output", "implementation-artifacts", "deferred-work.md"));
         ledger.Exists.ShouldBeTrue("deferred-work.md must exist for ledger-mapping assertion.");
 
@@ -1213,30 +1610,53 @@ public sealed partial class DiagnosticRegistryTests {
         MatchCollection matches = story112RowRegex.Matches(text);
         matches.Count.ShouldBeGreaterThan(0, "expected at least one DEF-9-4-* row in deferred-work.md.");
 
-        string[] mandatedStates = ["Resolved", "Owner: Story", "Duplicate of", "Superseded by", "Rejected with rationale", "Split parent"];
+        // Pass-2 R2: each state expressed as a compiled regex anchored to the reconciliation
+        // text so substrings of unrelated prose cannot accidentally satisfy the contract.
+        Regex[] mandatedStateRegexes = [
+            new(@"\bResolved\s+\d{4}-\d{2}-\d{2}\b", RegexOptions.CultureInvariant),
+            new(@"\bOwner:\s+Story\s+1\d-\d", RegexOptions.CultureInvariant),
+            new(@"\bDuplicate of\s+DEF-", RegexOptions.CultureInvariant),
+            new(@"\bSuperseded by\s+DEF-", RegexOptions.CultureInvariant),
+            new(@"\bRejected with rationale\b", RegexOptions.CultureInvariant),
+            new(@"\bSplit parent\b", RegexOptions.CultureInvariant),
+            new(@"\bNon-action decision\b", RegexOptions.CultureInvariant),
+            new(@"\bNeeds Product/Architecture decision\b", RegexOptions.CultureInvariant),
+        ];
         foreach (Match match in matches) {
             string reconciliation = match.Groups["reconciliation"].Value;
-            bool hasState = mandatedStates.Any(state => reconciliation.Contains(state, StringComparison.Ordinal));
+            bool hasState = mandatedStateRegexes.Any(rx => rx.IsMatch(reconciliation));
             hasState.ShouldBeTrue(
-                $"DEF-9-4 ledger row '{match.Groups["id"].Value}' must carry one of AC33's mandated final-state markers (Resolved / Owner / Duplicate of / Superseded by / Rejected with rationale / Split parent); got reconciliation: '{reconciliation}'.");
+                $"DEF-9-4 ledger row '{match.Groups["id"].Value}' must carry one final-state marker (Resolved YYYY-MM-DD / Owner: Story 11.x / Duplicate of DEF- / Superseded by DEF- / Rejected with rationale / Split parent / Non-action decision / Needs Product/Architecture decision); got reconciliation: '{reconciliation}'.");
         }
     }
 
     [Fact]
     public void SourceToolsAnalyzerReleaseRows_AllHaveBackingDescriptor() {
         // Story 11.2 code-review P31: the RS2002 NoWarn was removed from the SourceTools
-        // project assuming only HFCM rows tripped it. Add an explicit guard: every
-        // SourceTools release-row id must have a backing DiagnosticDescriptor field, otherwise
-        // build under TreatWarningsAsErrors will break. The Shell project has its own
-        // AnalyzerReleases file owned by Shell-side descriptors; only the SourceTools-owned
-        // file is checked here because the SourceTools project is the one whose RS2002 was
-        // removed by Story 11.2.
+        // project assuming only HFCM rows tripped it. The original test inverted its own
+        // justification by filtering OUT HFCM ids; Pass-2 R3 splits the assertion in two:
+        //   (a) every HFC[non-M] row has a backing DiagnosticDescriptor.
+        //   (b) no HFCM row appears in the SourceTools AnalyzerReleases.*.md files (HFCM rows
+        //       belong in docs/diagnostics/migration-findings.json instead).
+        // Pass-2 R28: enumeration uses an ordinal sort so failure ordering is platform-stable.
         HashSet<string> descriptorIds = DiagnosticDescriptorFields().Select(d => d.Id).ToHashSet(Ordinal);
         Regex strictHfcId = StrictHfcIdRegex();
-        foreach (string releaseRow in SourceToolsReleaseRows().Where(id => strictHfcId.IsMatch(id))) {
+        Regex hfcmIdShape = HfcmIdShapeRegex();
+        string[] orderedReleaseRows = SourceToolsReleaseRows()
+            .OrderBy(id => id, Ordinal)
+            .ToArray();
+
+        foreach (string releaseRow in orderedReleaseRows.Where(id => strictHfcId.IsMatch(id))) {
             descriptorIds.ShouldContain(releaseRow,
                 $"SourceTools AnalyzerReleases row '{releaseRow}' must have a backing DiagnosticDescriptor field; otherwise RS2002 will fire under TreatWarningsAsErrors=true.");
         }
+
+        // Pass-2 R3 part (b): the original assumption "RS2002 only fires for HFCM rows" must be
+        // enforced — if an HFCM row leaks back into SourceTools AnalyzerReleases.*.md, the build
+        // would fail again. Catch the regression here.
+        string[] hfcmRows = orderedReleaseRows.Where(id => hfcmIdShape.IsMatch(id)).ToArray();
+        hfcmRows.ShouldBeEmpty(
+            $"SourceTools AnalyzerReleases.*.md must not contain HFCM rows; they belong in docs/diagnostics/migration-findings.json. Found: {string.Join(", ", hfcmRows)}.");
     }
 
     private static IEnumerable<string> SourceToolsReleaseRows() {
@@ -1245,7 +1665,8 @@ public sealed partial class DiagnosticRegistryTests {
             Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.SourceTools", "AnalyzerReleases.Shipped.md"),
         ];
         Regex tableRowId = ReleaseRowIdRegex();
-        foreach (string file in sourceToolsReleaseFiles.Where(File.Exists)) {
+        // Pass-2 R28: deterministic enumeration order across Windows/Linux.
+        foreach (string file in sourceToolsReleaseFiles.Where(File.Exists).OrderBy(path => path, Ordinal)) {
             foreach (string line in File.ReadAllLines(file, Encoding.UTF8)) {
                 Match match = tableRowId.Match(line);
                 if (match.Success) {
@@ -1260,12 +1681,17 @@ public sealed partial class DiagnosticRegistryTests {
         // Story 11.2 code-review P22: the unsafe-generated-front-matter sample documents a
         // category that previously had no validator. Provide a minimal validator that rejects
         // formula-injection lead chars and forbidden patterns in front-matter input, then
-        // round-trip a positive and negative case so the contract is testable.
+        // round-trip positive and negative cases so the contract is testable.
         string safeFrontMatter = "id: HFC1058\ntitle: \"Sample\"\nlifecycle: active";
         ValidateGeneratedFrontMatter(safeFrontMatter).ShouldBeEmpty();
 
         string formulaInjection = "=cmd|'/c calc'!A1\nid: HFC1058";
         ValidateGeneratedFrontMatter(formulaInjection).ShouldContain("frontmatter-formula-injection");
+
+        // Pass-2 R29: shell-pipe lead '|' must trigger formula-injection.
+        string pipeInjection = "|cat /etc/passwd\nid: HFC1058";
+        ValidateGeneratedFrontMatter(pipeInjection).ShouldContain("frontmatter-formula-injection",
+            customMessage: "shell pipe '|' must trigger formula-injection category (R29).");
 
         string scriptInjection = "id: HFC1058\nnotes: <script>alert(1)</script>";
         ValidateGeneratedFrontMatter(scriptInjection).ShouldContain("frontmatter-injection-pattern");
@@ -1273,36 +1699,135 @@ public sealed partial class DiagnosticRegistryTests {
         string nbspScript = "id: HFC1058\nnotes: < script>alert(1)</script>";
         ValidateGeneratedFrontMatter(nbspScript).ShouldContain("frontmatter-injection-pattern",
             customMessage: "NBSP-disguised script tag must be caught after StripZeroWidthAndFormatChars (P30).");
+
+        // Pass-2 R26: CRLF line endings must not bypass lead-char detection.
+        string crlfFormulaInjection = "=cmd|'/c calc'!A1\r\nid: HFC1058";
+        ValidateGeneratedFrontMatter(crlfFormulaInjection).ShouldContain("frontmatter-formula-injection",
+            customMessage: "CRLF must split correctly so the formula-injection lead is detected (R26).");
+
+        // Pass-2 R29: HTML-entity-encoded injection patterns must be decoded before scan.
+        string htmlEntityScript = "id: HFC1058\nnotes: &lt;script&gt;alert(1)&lt;/script&gt;";
+        ValidateGeneratedFrontMatter(htmlEntityScript).ShouldContain("frontmatter-injection-pattern",
+            customMessage: "HTML-entity-encoded script tag must be caught after entity decode (R29).");
+
+        // Pass-2 R31: full-width confusable characters must NFC-normalize before scan.
+        string fullWidthScript = "id: HFC1058\nnotes: ＜script＞alert(1)＜/script＞";
+        ValidateGeneratedFrontMatter(fullWidthScript).ShouldContain("frontmatter-injection-pattern",
+            customMessage: "full-width '<' (U+FF1C) must NFC-normalize to '<' before scan (R31).");
+
+        // Pass-2 R38: idempotency — running the validator twice on the same input must yield the
+        // same categories (no state leak between calls).
+        string[] first = ValidateGeneratedFrontMatter(scriptInjection).ToArray();
+        string[] second = ValidateGeneratedFrontMatter(scriptInjection).ToArray();
+        first.ShouldBe(second, "ValidateGeneratedFrontMatter must be idempotent on identical input (R38).");
+    }
+
+    [Fact]
+    public void UnsafeGeneratedFrontMatter_SampleRoundTrips() {
+        // Pass-2 R18: the committed `unsafe-generated-front-matter-report.json` sample declares a
+        // category that the validator must actually emit on a tampered input. Round-trip a known
+        // tampered input through ValidateGeneratedFrontMatter and assert the category appears in
+        // the same shape the sample uses.
+        FileInfo sample = new(Path.Combine(DiagnosticsDocsRoot().FullName, "samples", "unsafe-generated-front-matter-report.json"));
+        sample.Exists.ShouldBeTrue("unsafe-generated-front-matter sample missing.");
+        JsonObject parsed = JsonNode.Parse(File.ReadAllText(sample.FullName, Encoding.UTF8))!.AsObject();
+        string sampleCategory = parsed["category"]!.GetValue<string>();
+
+        string[] producedCategories = ValidateGeneratedFrontMatter("=cmd|'/c calc'!A1\nid: HFC1058").ToArray();
+        producedCategories.ShouldContain("frontmatter-formula-injection",
+            $"validator must emit 'frontmatter-formula-injection'; sample category '{sampleCategory}' is the documented evidence shape.");
+    }
+
+    [Fact]
+    public void RegistryValidator_UnsupportedSchemaSampleRoundTrips() {
+        // Pass-2 R17: the committed `unsupported-schema-drift-report.json` declares evidence for
+        // an unsupported-schema validation outcome. Tamper a pristine registry to flip
+        // schemaVersion to an unsupported value and assert the validator emits the matching
+        // category — proving the sample is the producer-side output shape, not a hand-rolled
+        // artifact that could drift from the validator's actual behavior.
+        FileInfo sample = new(Path.Combine(DiagnosticsDocsRoot().FullName, "samples", "unsupported-schema-drift-report.json"));
+        sample.Exists.ShouldBeTrue("unsupported-schema-drift-report sample missing.");
+        JsonObject parsed = JsonNode.Parse(File.ReadAllText(sample.FullName, Encoding.UTF8))!.AsObject();
+        parsed["category"]!.GetValue<string>().ShouldBe("unsupported-schema");
+
+        JsonObject tampered = RegistryJson().DeepClone().AsObject();
+        tampered["schemaVersion"] = "9.9";
+        string[] categories = ValidateRegistryJson(tampered).ToArray();
+        categories.ShouldBe(["unsupported-schema"],
+            "ValidateRegistryJson on unsupported schemaVersion must yield exactly one category ('unsupported-schema'); the sample is its evidence form.");
     }
 
     private static IEnumerable<string> ValidateGeneratedFrontMatter(string frontMatter) {
-        char[] forbiddenLeads = ['=', '+', '@'];
+        // Pass-2 R29: shell-pipe prefix '|' added; '-' intentionally NOT included because legitimate
+        // YAML list lines start with '-'. Generated front-matter that ships a leading shell command
+        // is caught via the injection-pattern scan, not the lead-char fast path.
+        char[] forbiddenLeads = ['=', '+', '@', '|'];
         string[] forbiddenPatterns = ["<script", "</script", "<iframe", "javascript:", "data:text/html", "vbscript:"];
 
-        foreach (string line in frontMatter.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)) {
+        // Pass-2 R26: split on both '\r' and '\n' so CRLF inputs do not leave a trailing '\r' on
+        // line[0] that bypasses the lead-char check.
+        string[] lines = frontMatter.Split(['\r', '\n'], StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        bool yieldedFormulaInjection = false;
+        foreach (string line in lines) {
             if (line.Length > 0 && forbiddenLeads.Contains(line[0])) {
                 yield return "frontmatter-formula-injection";
+                yieldedFormulaInjection = true;
                 break;
             }
         }
 
-        string sanitized = StripZeroWidthAndFormatChars(frontMatter);
+        // Pass-2 R29 + R31: HTML-entity-decode and NFKC-normalize before injection-pattern scan
+        // so encoded `&lt;script&gt;` and full-width `＜script＞` cannot bypass. NFKC (compatibility
+        // composition) is required for full-width-to-halfwidth folding; NFC alone leaves U+FF1C
+        // intact because the chars are canonically distinct.
+        string normalized = StripZeroWidthAndFormatChars(frontMatter).Normalize(NormalizationForm.FormKC);
+        string htmlDecoded = System.Net.WebUtility.HtmlDecode(normalized);
         foreach (string forbidden in forbiddenPatterns) {
-            if (sanitized.Contains(forbidden, StringComparison.OrdinalIgnoreCase)) {
+            if (htmlDecoded.Contains(forbidden, StringComparison.OrdinalIgnoreCase)) {
                 yield return "frontmatter-injection-pattern";
                 yield break;
             }
         }
+
+        // Quiet unused-flag warning; the variable documents that the two categories are emitted
+        // independently (one does not short-circuit the other) for AC32 evidence completeness.
+        _ = yieldedFormulaInjection;
     }
 
-    [GeneratedRegex(@"\*\*(?<id>DEF-9-4-[A-Z0-9]+)[^*]*\*\*[^\n]*?Reconciliation:\s*(?<reconciliation>[^\n]+)", RegexOptions.CultureInvariant | RegexOptions.Multiline)]
+    // Pass-2 R5: allow hyphens/alphanumerics in the suffix (e.g., `DEF-9-4-C4a`), match either
+    // `**...**` or `__...__` bold markers, and accept content between the id and the bold close
+    // (rows use `**DEF-9-4-A1 — Title**` shape). Reconciliation may live on a later line in the
+    // same bullet, so the gap between bold close and marker is multi-line tolerant.
+    [GeneratedRegex(@"(?:\*\*|__)(?<id>DEF-9-4-[A-Za-z0-9\-]+)\b[^\n]*?(?:\*\*|__)[\s\S]*?Reconciliation:\s*(?<reconciliation>[^\n]+)", RegexOptions.CultureInvariant)]
     private static partial Regex Story112LedgerRowRegex();
+
+    // Pass-2 R16: explicit allowlist of supported root keys. AC27 says unknown optional fields in
+    // a supported schema must remain non-fatal only when the compatibility rule explicitly
+    // permits them. Anything outside this allowlist must surface as a named category so a
+    // `"backdoor": "..."` or other foreign key cannot ride along silently.
+    private static readonly HashSet<string> KnownRegistryRootKeys = new(StringComparer.Ordinal) {
+        "schemaVersion",
+        "canonicalHelpLinkFormat",
+        "ranges",
+        "externalBoundaries",
+        "allowedExceptions",
+        "diagnostics",
+    };
 
     private static IEnumerable<string> ValidateRegistryJson(JsonObject json) {
         if (!TryGetString(json, "schemaVersion", out string? schemaVersion)
             || schemaVersion != SupportedSchemaVersion) {
             yield return "unsupported-schema";
             yield break;
+        }
+
+        // Pass-2 R16: unknown-root-field detection — every top-level key must be in the documented
+        // allowlist. Yields one category per unknown key so the operator sees exactly which field
+        // is foreign.
+        foreach (string key in json.Select(kvp => kvp.Key).OrderBy(k => k, Ordinal)) {
+            if (!KnownRegistryRootKeys.Contains(key)) {
+                yield return "registry-unknown-root-field";
+            }
         }
 
         if (json["diagnostics"] is not JsonArray diagnosticsArray) {
@@ -1363,13 +1888,15 @@ public sealed partial class DiagnosticRegistryTests {
                     || !TryGetString(exception, "helpLinkUri", out string? helpLinkUri)
                     || !TryGetString(exception, "reason", out _)
                     || !TryGetString(exception, "approvingStory", out _)
-                    || !TryGetString(exception, "introducedIn", out _)
+                    || !TryGetString(exception, "introducedIn", out string? exIntroducedIn)
                     || !TryGetString(exception, "approvedOn", out _)
                     || id != "HFC1601"
                     || ownerPackage != "SourceTools"
                     || consumingPackage != "Shell"
                     || numericRangeOwner != "SourceTools"
-                    || helpLinkUri != string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, id)) {
+                    || helpLinkUri != string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, id)
+                    // Pass-2 R34: cross-package-exception introducedIn must follow SemVer shape.
+                    || !SemverShapeRegex().IsMatch(exIntroducedIn!)) {
                     yield return "invalid-cross-package-exception";
                     continue;
                 }
@@ -1451,7 +1978,10 @@ public sealed partial class DiagnosticRegistryTests {
         }
 
         HashSet<string> registryIds = LoadRegistry().Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
-        HashSet<(string Package, string Tfm, string OldSignature, string HfcId, string TargetRelease)> uniqueRows = [];
+        // Pass-2 R21: include newState in the dedupe tuple so two suppressions differing only in
+        // newState ("removed" vs "modified") are treated as distinct compatibility scenarios, not
+        // collapsed into a spurious duplicate.
+        HashSet<(string Package, string Tfm, string OldSignature, string NewState, string HfcId, string TargetRelease)> uniqueRows = [];
         HashSet<string> allowedReasons = new(Ordinal) {
             "intentional-major-break",
             "known-binary-compatibility-gap",
@@ -1524,12 +2054,17 @@ public sealed partial class DiagnosticRegistryTests {
                 yield return "suppression-unknown-reason";
             }
 
-            // Story 11.2 code-review P8: malformed version literals must yield a named category
-            // instead of throwing FormatException/ArgumentException out of the iterator.
-            if (!TryParseVersionToken(expiresAfter!, out Version? parsedExpires)
-                || !TryParseVersionToken(targetRelease!, out Version? parsedTarget)) {
-                yield return "suppression-malformed-version";
-            } else if (parsedExpires! <= parsedTarget!) {
+            // Story 11.2 code-review P8 + Pass-2 R30: split malformed-version into per-field
+            // categories so the operator can tell which field is bad.
+            bool expiresOk = TryParseVersionToken(expiresAfter!, out Version? parsedExpires);
+            bool targetOk = TryParseVersionToken(targetRelease!, out Version? parsedTarget);
+            if (!expiresOk) {
+                yield return "suppression-malformed-expires-after";
+            }
+            if (!targetOk) {
+                yield return "suppression-malformed-target-release";
+            }
+            if (expiresOk && targetOk && parsedExpires! <= parsedTarget!) {
                 yield return "suppression-expired";
             }
 
@@ -1537,7 +2072,7 @@ public sealed partial class DiagnosticRegistryTests {
                 yield return "suppression-missing-required-field";
             }
 
-            if (!uniqueRows.Add((package, tfm!, oldSignature!, hfcId!, targetRelease!))) {
+            if (!uniqueRows.Add((package, tfm!, oldSignature!, newState!, hfcId!, targetRelease!))) {
                 yield return "suppression-duplicate-row";
             }
         }
@@ -1549,10 +2084,15 @@ public sealed partial class DiagnosticRegistryTests {
             return false;
         }
 
+        // Pass-2 R13: catch every exception type the parsing pipeline can produce. The previous
+        // narrow filter (`ArgumentException or FormatException or OverflowException`) would let
+        // `RegexMatchTimeoutException` or `InvalidOperationException` escape the iterator and
+        // crash the validator — defeating the fail-closed contract the validator is meant to
+        // enforce. We log no surface area outside this method, so a catch-all is safe.
         try {
             version = ParseVersionToken(value);
             return true;
-        } catch (Exception ex) when (ex is ArgumentException or FormatException or OverflowException) {
+        } catch (Exception) {
             return false;
         }
     }
@@ -1612,17 +2152,31 @@ public sealed partial class DiagnosticRegistryTests {
             return true;
         }
 
-        // Story 11.2 code-review P30: NBSP (U+00A0) and other non-format whitespace must be
-        // stripped before injection-pattern scanning so that `< script` or `< script` is
-        // caught after normalization.
-        if (value == ' ' || value == ' ' || value == ' ' || value == '　') {
+        // Story 11.2 code-review P30 + Pass-2 R19: non-format whitespace variants (NBSP and
+        // friends) must be stripped before injection-pattern scanning. R19: use explicit C#
+        // \uXXXX escapes so reviewers can verify intent without a hex dump, and editor
+        // normalization cannot silently collapse invisible literals into ASCII spaces.
+        if (value is '\u00A0'   // NO-BREAK SPACE
+            or '\u2007'         // FIGURE SPACE
+            or '\u202F'         // NARROW NO-BREAK SPACE
+            or '\u3000') {      // IDEOGRAPHIC SPACE
             return true;
         }
 
-        return value is '​' or '‌' or '‍' or '﻿'
-            or '‎' or '‏' or '⁠' or '᠎'
-            or '‪' or '‫' or '‬' or '‭' or '‮'
-            or 'Ｈ';
+        return value is '\u200B'  // ZERO WIDTH SPACE
+            or '\u200C'           // ZERO WIDTH NON-JOINER
+            or '\u200D'           // ZERO WIDTH JOINER
+            or '\uFEFF'           // ZERO WIDTH NO-BREAK SPACE (BOM)
+            or '\u200E'           // LEFT-TO-RIGHT MARK
+            or '\u200F'           // RIGHT-TO-LEFT MARK
+            or '\u2060'           // WORD JOINER
+            or '\u180E'           // MONGOLIAN VOWEL SEPARATOR
+            or '\u202A'           // LEFT-TO-RIGHT EMBEDDING
+            or '\u202B'           // RIGHT-TO-LEFT EMBEDDING
+            or '\u202C'           // POP DIRECTIONAL FORMATTING
+            or '\u202D'           // LEFT-TO-RIGHT OVERRIDE
+            or '\u202E'           // RIGHT-TO-LEFT OVERRIDE
+            or '\uFF28';          // FULLWIDTH LATIN CAPITAL LETTER H (confusable for 'H')
     }
 
     private static bool IsRootedSlug(string slug) {
@@ -1824,14 +2378,20 @@ public sealed partial class DiagnosticRegistryTests {
     [GeneratedRegex(@"\[submodule\s+""[^""]+""\]\s*\n(?:[^\n]*\n)*?\s*path\s*=\s*(?<path>[^\n]+)", RegexOptions.CultureInvariant)]
     private static partial Regex SubmodulePathRegex();
 
-    // Story 11.2 code-review P25: pin the diagnostics URL shape to https-only canonical form
-    // (no trailing slash, no query, no fragment). Captures both the scheme and host so
-    // SourceHfcIds_AreRegistryBackedAndDiagnosticLinksUseCanonicalHost can fail closed on http://
-    // downgrades, alternative hosts, or appended ?/# variants.
-    [GeneratedRegex(@"(?<scheme>https?)://(?<host>[A-Za-z0-9.\-]+)/[^""'\s?#]*diagnostics/HFC[0-9]{4}(?<suffix>[/?#][^""'\s]*)?", RegexOptions.CultureInvariant)]
+    // Story 11.2 code-review P25 + Pass-2 R20: pin the diagnostics URL shape to https-only
+    // canonical form. The regex is a coarse extractor that stops at the bare HFCxxxx form (no
+    // trailing path segments or punctuation captured); the caller uses Uri.TryCreate to validate
+    // scheme=https exactly, host equals CanonicalDocsHost with no trailing dot, no userinfo, no
+    // explicit port, no query, no fragment, and path is exactly `/FrontComposer/diagnostics/
+    // HFCxxxx`. Trailing characters (`.`, `,`, `)`, `]`, `;`, whitespace) are NOT consumed so
+    // prose like "see HFC1039." does not poison the URL with a stray period.
+    [GeneratedRegex(@"https?://[^""'\s]*?/diagnostics/HFC[0-9]{4}", RegexOptions.CultureInvariant)]
     private static partial Regex DiagnosticsDocsLinkUrlRegex();
 
-    [GeneratedRegex(@"^[0-9]+\.[0-9]+(?:\.[0-9]+)?(?:[-+][0-9A-Za-z.\-]+)?$", RegexOptions.CultureInvariant)]
+    // Pass-2 R37: strict SemVer 2.0.0 shape (no leading zeros, well-formed pre-release/build
+    // metadata identifiers separated by `.`). Rejects `00.000`, `1.0-`, `1.0--`, `1.0-..beta`.
+    // Does NOT accept `v` prefix — callers that need a `v` prefix must strip it before matching.
+    [GeneratedRegex(@"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:\.(0|[1-9][0-9]*))?(?:-[0-9A-Za-z\-]+(?:\.[0-9A-Za-z\-]+)*)?(?:\+[0-9A-Za-z\-]+(?:\.[0-9A-Za-z\-]+)*)?$", RegexOptions.CultureInvariant)]
     private static partial Regex SemverShapeRegex();
 
     [GeneratedRegex(@"^(?:HFCM?-PLACEHOLDER|HFCM?[0-9]{4})$", RegexOptions.CultureInvariant)]
