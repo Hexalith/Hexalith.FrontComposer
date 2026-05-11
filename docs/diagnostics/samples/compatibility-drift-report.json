@@ -13,7 +13,9 @@
   },
   "findings": [
     {
+      "id": "HFC-PLACEHOLDER",
       "reason": "binary-breaking-change",
+      "path": "docs/diagnostics/compatibility-suppressions.json",
       "oldSignature": "<example-package>.<ExampleType>::<ExampleMember>()",
       "newState": "removed",
       "hfcId": "HFC-PLACEHOLDER",

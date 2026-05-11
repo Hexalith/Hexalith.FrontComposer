@@ -163,7 +163,7 @@ public sealed class CiGovernanceTests {
     public void PackageInventory_IsExplicitLockstepAndReviewable() {
         string root = RepositoryRoot();
         string inventory = File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"));
-        string directoryProps = File.ReadAllText(Path.Combine(root, "Directory.Build.props"));
+        string directoryTargets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
         string testingProject = File.ReadAllText(Path.Combine(root, "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"));
 
         inventory.ShouldContain("Hexalith.FrontComposer.Cli");
@@ -175,8 +175,9 @@ public sealed class CiGovernanceTests {
         inventory.ShouldContain("Hexalith.FrontComposer.SourceTools");
         inventory.ShouldContain("\"packable\": false");
         inventory.ShouldContain("exception");
-        directoryProps.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
-        directoryProps.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");
+        directoryTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
+        directoryTargets.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
+        directoryTargets.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");
         testingProject.ShouldNotContain("<Version>");
 
         string output = Path.Combine(Path.GetTempPath(), $"fc-release-inventory-{Guid.NewGuid():N}.json");

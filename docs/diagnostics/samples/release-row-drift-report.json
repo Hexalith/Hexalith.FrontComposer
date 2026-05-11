@@ -14,6 +14,7 @@
     {
       "id": "HFC1058",
       "reason": "missing-release-row",
+      "path": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "message": "Analyzer-emitted diagnostic HFC1058 is active in the registry but absent from release tracking."
     }
   ]

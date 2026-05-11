@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "category": "unsafe-generated-front-matter",
+  "exitCode": 2,
+  "inputs": {
+    "docsRoot": "docs/diagnostics"
+  },
+  "findings": [
+    {
+      "id": "HFC-PLACEHOLDER",
+      "reason": "unsafe-front-matter",
+      "path": "docs/diagnostics/HFC-PLACEHOLDER.md",
+      "message": "Generated front matter contains a forbidden control, formula, or formatting character."
+    }
+  ]
+}

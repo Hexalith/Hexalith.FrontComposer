@@ -74,6 +74,21 @@ public sealed partial class DiagnosticRegistryTests {
             range.End.ShouldBe(end, $"{range.OwnerPackage} range end drift.");
         }
 
+        registry.ExternalBoundaries.Select(b => b.Package).ShouldBe([
+            "Hexalith.EventStore",
+            "Hexalith.Tenants",
+        ], ignoreOrder: false);
+        registry.ExternalBoundaries.Single(b => b.Package == "Hexalith.EventStore").RangePolicy.ShouldBe("owns-range");
+        registry.ExternalBoundaries.Single(b => b.Package == "Hexalith.Tenants").RangePolicy.ShouldBe("no-range-reserved");
+        registry.AllowedExceptions.CrossPackageRange.Length.ShouldBe(1, "HFC1601 must be the only cross-package range exception.");
+        CrossPackageRangeException hfc1601Exception = registry.AllowedExceptions.CrossPackageRange.Single();
+        hfc1601Exception.Id.ShouldBe("HFC1601");
+        hfc1601Exception.OwnerPackage.ShouldBe("SourceTools");
+        hfc1601Exception.ConsumingPackage.ShouldBe("Shell");
+        hfc1601Exception.NumericRangeOwner.ShouldBe("SourceTools");
+        hfc1601Exception.ApprovingStory.ShouldBe("11-2-diagnostic-registry-and-documentation-governance-follow-ups");
+        hfc1601Exception.HelpLinkUri.ShouldBe(string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, "HFC1601"));
+
         registry.Diagnostics.ShouldNotBeNull();
         registry.Diagnostics.Length.ShouldBeGreaterThan(0, "registry has no diagnostics — accidental wipe.");
 
@@ -118,6 +133,18 @@ public sealed partial class DiagnosticRegistryTests {
                 ids.ShouldContain(diagnostic.MigrationId, $"{diagnostic.Id} migrationId '{diagnostic.MigrationId}' must resolve to a registry entry.");
             }
         }
+
+        Dictionary<string, DiagnosticEntry> byId = registry.Diagnostics.ToDictionary(d => d.Id, Ordinal);
+        foreach (DiagnosticEntry diagnostic in registry.Diagnostics.Where(d => d.RelatedIds is { Length: > 0 })) {
+            foreach (string relatedId in diagnostic.RelatedIds!) {
+                byId[relatedId].RelatedIds.ShouldNotBeNull($"{relatedId} must reciprocate relatedIds from {diagnostic.Id}.");
+                byId[relatedId].RelatedIds!.ShouldContain(diagnostic.Id, $"{diagnostic.Id} and {relatedId} relatedIds must be reciprocal.");
+            }
+        }
+
+        byId["HFC1037"].RelatedIds.ShouldBe(["HFC1040", "HFC1044", "HFC1601"], ignoreOrder: false);
+        byId["HFC1056"].RelatedIds.ShouldBe(["HFC1057"], ignoreOrder: false);
+        byId["HFC1601"].RelatedIds.ShouldBe(["HFC1037", "HFC1040", "HFC1044"], ignoreOrder: false);
     }
 
     [Fact]
@@ -362,11 +389,44 @@ public sealed partial class DiagnosticRegistryTests {
     }
 
     [Theory]
+    [InlineData("missing")]
+    [InlineData("malformed")]
+    [InlineData("unknown")]
+    [InlineData("future")]
+    public void RegistryValidator_UnsupportedSchemaShortCircuitsBeforeNestedRows(string schemaCase) {
+        JsonObject json = RegistryJson().DeepClone().AsObject();
+        json.Remove("diagnostics");
+
+        switch (schemaCase) {
+            case "missing":
+                json.Remove("schemaVersion");
+                break;
+            case "malformed":
+                json["schemaVersion"] = 10;
+                break;
+            case "unknown":
+                json["schemaVersion"] = "0.9";
+                break;
+            case "future":
+                json["schemaVersion"] = "2.0";
+                break;
+        }
+
+        ValidateRegistryJson(json).ToArray().ShouldBe(["unsupported-schema"]);
+    }
+
+    [Theory]
     [InlineData("diagnostics/HFC1058", false)]
     [InlineData("diagnostics/hfc1058", true)]
     [InlineData("DIAGNOSTICS/HFC1058", true)]
     [InlineData("diagnostics/HFC1058%2fescape", true)]
     [InlineData("diagnostics/HFC1058%5cescape", true)]
+    [InlineData("diagnostics/HFC1058%252fescape", true)]
+    [InlineData("diagnostics/HFC1058%zz", true)]
+    [InlineData("diagnostics/HFC1058%u2215escape", true)]
+    [InlineData("diagnostics/HFC1058/../HFC1058", true)]
+    [InlineData("/diagnostics/HFC1058", true)]
+    [InlineData("C:/diagnostics/HFC1058", true)]
     [InlineData("diagnostics/HFC1058%00null", true)]
     [InlineData("../diagnostics/HFC1058", true)]
     [InlineData("..\\diagnostics\\HFC1058", true)]
@@ -483,6 +543,7 @@ public sealed partial class DiagnosticRegistryTests {
         suppression.Exists.ShouldBeTrue("Story 9-4 compatibility evidence file is missing.");
 
         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
+        ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
         json["schemaVersion"]!.GetValue<string>().ShouldBe("1.0");
         JsonArray suppressions = json["suppressions"]!.AsArray();
 
@@ -517,6 +578,60 @@ public sealed partial class DiagnosticRegistryTests {
         }
     }
 
+    [Theory]
+    [InlineData("missing-package", "suppression-missing-package")]
+    [InlineData("unknown-diagnostic", "suppression-unknown-diagnostic")]
+    [InlineData("wildcard-package", "suppression-wildcard-scope")]
+    [InlineData("duplicate-row", "suppression-duplicate-row")]
+    [InlineData("expired-row", "suppression-expired")]
+    [InlineData("unknown-reason", "suppression-unknown-reason")]
+    public void CompatibilitySuppressionValidator_FailsClosedWithNamedCategories(string mutation, string expectedCategory) {
+        JsonObject json = JsonNode.Parse("""
+            {
+              "schemaVersion": "1.0",
+              "baselinePolicy": "fixture",
+              "suppressions": [
+                {
+                  "package": "Hexalith.FrontComposer.Contracts",
+                  "tfm": "net10.0",
+                  "oldSignature": "M:Example.Old",
+                  "newState": "removed",
+                  "hfcId": "HFC0001",
+                  "targetRelease": "v1.0",
+                  "reviewerRationale": "Intentional binary break reviewed for this fixture.",
+                  "ownerStory": "11-2-diagnostic-registry-and-documentation-governance-follow-ups",
+                  "expiresAfter": "v9.9",
+                  "reason": "intentional-major-break"
+                }
+              ]
+            }
+            """)!.AsObject();
+        JsonObject row = json["suppressions"]!.AsArray()[0]!.AsObject();
+
+        switch (mutation) {
+            case "missing-package":
+                row.Remove("package");
+                break;
+            case "unknown-diagnostic":
+                row["hfcId"] = "HFC9999";
+                break;
+            case "wildcard-package":
+                row["package"] = "*";
+                break;
+            case "duplicate-row":
+                json["suppressions"]!.AsArray().Add(row.DeepClone());
+                break;
+            case "expired-row":
+                row["expiresAfter"] = "v0.1";
+                break;
+            case "unknown-reason":
+                row["reason"] = "anything-goes";
+                break;
+        }
+
+        ValidateCompatibilitySuppressionsJson(json).ShouldContain(expectedCategory);
+    }
+
     [Fact]
     public void SubmoduleBoundaries_AreDocumentedAndExcludedFromRegistryOwnershipScan() {
         FileInfo gitmodules = new(Path.Combine(ProjectRoot().FullName, ".gitmodules"));
@@ -531,12 +646,12 @@ public sealed partial class DiagnosticRegistryTests {
         declaredPaths.ShouldContain("Hexalith.Tenants");
 
         DiagnosticRegistry registry = LoadRegistry();
-        registry.ExternalBoundaries.ShouldContain("Hexalith.EventStore");
-        registry.ExternalBoundaries.ShouldContain("Hexalith.Tenants");
+        registry.ExternalBoundaries.Select(b => b.Package).ShouldContain("Hexalith.EventStore");
+        registry.ExternalBoundaries.Select(b => b.Package).ShouldContain("Hexalith.Tenants");
 
         // No registry diagnostic may claim ownership in a submodule-named package.
         HashSet<string> boundarySegments = registry.ExternalBoundaries
-            .Select(b => b.Split('.').Last())
+            .Select(b => b.Package.Split('.').Last())
             .ToHashSet(OrdinalIgnoreCase);
 
         foreach (DiagnosticEntry diagnostic in registry.Diagnostics) {
@@ -584,14 +699,15 @@ public sealed partial class DiagnosticRegistryTests {
 
     [Fact]
     public void PackableProjects_UsePackageValidationBaselinePolicy() {
-        // NOTE: literal-text assertion against Directory.Build.props is intentional. The current
-        // block has a known evaluation-order bug (DEF-9-4-A13); the proper fix relocates the block
-        // to Directory.Build.targets behind an EnableFrontComposerPackageValidation switch, at
-        // which point this assertion must move with it. Tracked.
         string directoryBuildProps = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.props"), Encoding.UTF8);
-        directoryBuildProps.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
-        directoryBuildProps.ShouldContain("<PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>");
-        directoryBuildProps.ShouldContain("<ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>");
+        directoryBuildProps.ShouldNotContain("<EnablePackageValidation>true</EnablePackageValidation>", customMessage: "package validation depends on IsPackable and must not live in Directory.Build.props.");
+
+        string directoryBuildTargets = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.targets"), Encoding.UTF8);
+        directoryBuildTargets.ShouldContain("<EnableFrontComposerPackageValidation Condition=\"'$(EnableFrontComposerPackageValidation)' == ''\">false</EnableFrontComposerPackageValidation>");
+        directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
+        directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
+        directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion>$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
+        directoryBuildTargets.ShouldContain("<ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>");
 
         Regex isPackableTrue = IsPackableTrueRegex();
         string[] packableProjects = Directory.EnumerateFiles(Path.Combine(ProjectRoot().FullName, "src"), "*.csproj", SearchOption.AllDirectories)
@@ -608,13 +724,47 @@ public sealed partial class DiagnosticRegistryTests {
     }
 
     [Fact]
+    public void HfcmMigrationFindings_AreCliGovernedNotRoslynReleaseRows() {
+        string sourceToolsProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.SourceTools", "Hexalith.FrontComposer.SourceTools.csproj"), Encoding.UTF8);
+        sourceToolsProject.ShouldNotContain("RS2002", customMessage: "CLI migration findings must not require broad Roslyn release-tracking suppression.");
+
+        ReleaseRows().Where(id => id.StartsWith("HFCM", StringComparison.Ordinal)).ShouldBeEmpty("HFCM rows are CLI migration findings, not Roslyn analyzer release rows.");
+
+        JsonObject json = JsonNode.Parse(File.ReadAllText(Path.Combine(DiagnosticsDocsRoot().FullName, "migration-findings.json"), Encoding.UTF8))!.AsObject();
+        json["schemaVersion"]!.GetValue<string>().ShouldBe(SupportedSchemaVersion);
+        json["releaseBucket"]!.GetValue<string>().ShouldBe("cli-migration");
+
+        JsonArray findings = json["findings"]!.AsArray();
+        string[] ids = findings.Select(node => node!["id"]!.GetValue<string>()).OrderBy(id => id, Ordinal).ToArray();
+        ids.ShouldBe(["HFCM0000", "HFCM0001", "HFCM0002", "HFCM0004", "HFCM9001", "HFCM9002"], ignoreOrder: false);
+        ids.ShouldBeUnique();
+
+        foreach (JsonObject finding in findings.Select(node => node!.AsObject())) {
+            finding["id"]!.GetValue<string>().ShouldMatch("^HFCM[0-9]{4}$");
+            finding["category"]!.GetValue<string>().ShouldBe("HexalithFrontComposer.Migration");
+            finding["severity"]!.GetValue<string>().ShouldBeOneOf("Info", "Warning", "Error");
+            finding["migrationDocsSlug"]!.GetValue<string>().ShouldStartWith("migrations/");
+            finding["releaseNote"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+            finding["introducedIn"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+        }
+    }
+
+    [Fact]
     public void DriftSampleReports_AreNormalizedAndCommitted() {
         string samplesRoot = Path.Combine(DiagnosticsDocsRoot().FullName, "samples");
         string[] expectedSamples = [
             "compatibility-drift-report.json",
             "docs-stub-drift-report.json",
+            "duplicate-id-drift-report.json",
+            "encoded-docs-root-escape-report.json",
+            "hfcm-release-governance-report.json",
+            "invalid-lifecycle-transition-report.json",
             "registry-drift-report.json",
             "release-row-drift-report.json",
+            "reserved-retired-misuse-report.json",
+            "suppression-scope-drift-report.json",
+            "unsafe-generated-front-matter-report.json",
+            "unsupported-schema-drift-report.json",
         ];
 
         Directory.EnumerateFiles(samplesRoot, "*.json")
@@ -635,6 +785,14 @@ public sealed partial class DiagnosticRegistryTests {
             parsed["schemaVersion"]!.GetValue<string>().ShouldBe("1.0");
             parsed["exitCode"]!.GetValue<int>().ShouldBe(2);
             parsed["category"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+            JsonArray findings = parsed["findings"]!.AsArray();
+            findings.Count.ShouldBeGreaterThan(0, $"{sample} must include at least one finding.");
+            foreach (JsonObject finding in findings.Select(node => node!.AsObject())) {
+                finding["id"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+                finding["reason"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+                finding["path"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+                finding["message"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
+            }
 
             isoTimestamp.IsMatch(json).ShouldBeFalse($"{sample} contains an ISO timestamp; samples must be timestamp-free.");
             anyYearLiteral.IsMatch(json).ShouldBeFalse($"{sample} contains a 4-digit year literal; samples must be year-free (matches \\b(19|20)\\d{{2}}\\b).");
@@ -728,7 +886,8 @@ public sealed partial class DiagnosticRegistryTests {
     }
 
     private static IEnumerable<string> ValidateRegistryJson(JsonObject json) {
-        if (json["schemaVersion"]?.GetValue<string>() != SupportedSchemaVersion) {
+        if (!TryGetString(json, "schemaVersion", out string? schemaVersion)
+            || schemaVersion != SupportedSchemaVersion) {
             yield return "unsupported-schema";
             yield break;
         }
@@ -738,8 +897,59 @@ public sealed partial class DiagnosticRegistryTests {
             yield break;
         }
 
+        if (json["externalBoundaries"] is not JsonArray boundariesArray) {
+            yield return "missing-external-boundaries";
+        } else {
+            HashSet<string> boundaryPackages = new(Ordinal);
+            foreach (JsonNode? node in boundariesArray) {
+                if (node is not JsonObject boundary
+                    || !TryGetString(boundary, "package", out string? package)
+                    || !TryGetString(boundary, "rangePolicy", out string? rangePolicy)
+                    || !TryGetString(boundary, "provenance", out _)
+                    || !TryGetString(boundary, "updatePolicy", out _)
+                    || !TryGetString(boundary, "rationale", out _)) {
+                    yield return "invalid-external-boundary";
+                    continue;
+                }
+
+                if (!boundaryPackages.Add(package!) || package is not ("Hexalith.EventStore" or "Hexalith.Tenants")) {
+                    yield return "invalid-external-boundary";
+                }
+
+                if (package == "Hexalith.Tenants" && rangePolicy != "no-range-reserved") {
+                    yield return "invalid-external-boundary";
+                }
+            }
+        }
+
         (int Start, int End)[] ranges = ExpectedRangeBounds;
         string[] orderedOwners = ["Contracts", "SourceTools", "Shell", "EventStore", "Mcp", "Aspire"];
+        HashSet<string> crossPackageExceptions = [];
+        if (json["allowedExceptions"] is JsonObject exceptions
+            && exceptions["crossPackageRange"] is JsonArray crossPackageRange) {
+            foreach (JsonNode? node in crossPackageRange) {
+                if (node is not JsonObject exception
+                    || !TryGetString(exception, "id", out string? id)
+                    || !TryGetString(exception, "ownerPackage", out string? ownerPackage)
+                    || !TryGetString(exception, "consumingPackage", out string? consumingPackage)
+                    || !TryGetString(exception, "numericRangeOwner", out string? numericRangeOwner)
+                    || !TryGetString(exception, "helpLinkUri", out string? helpLinkUri)
+                    || !TryGetString(exception, "reason", out _)
+                    || !TryGetString(exception, "approvingStory", out _)
+                    || !TryGetString(exception, "introducedIn", out _)
+                    || !TryGetString(exception, "approvedOn", out _)
+                    || id != "HFC1601"
+                    || ownerPackage != "SourceTools"
+                    || consumingPackage != "Shell"
+                    || numericRangeOwner != "SourceTools"
+                    || helpLinkUri != string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, id)) {
+                    yield return "invalid-cross-package-exception";
+                    continue;
+                }
+
+                crossPackageExceptions.Add(id);
+            }
+        }
 
         HashSet<string> ids = new(Ordinal);
         HashSet<string> slugs = new(Ordinal);
@@ -771,14 +981,7 @@ public sealed partial class DiagnosticRegistryTests {
             } else if (!slugs.Add(slug) && !yieldedDuplicateSlug) {
                 yieldedDuplicateSlug = true;
                 yield return "duplicate-slug";
-            } else if (slug != $"diagnostics/{id}"
-                || slug.Contains('\\', StringComparison.Ordinal)
-                || slug.Contains('%', StringComparison.Ordinal)
-                || slug.Contains('?', StringComparison.Ordinal)
-                || slug.Contains('#', StringComparison.Ordinal)
-                || slug.Contains("..", StringComparison.Ordinal)
-                || slug.Any(char.IsWhiteSpace)
-                || slug.Any(IsConfusableOrFormatChar)) {
+            } else if (!IsCanonicalDocsSlug(slug, id)) {
                 yield return "invalid-slug";
             }
 
@@ -801,11 +1004,128 @@ public sealed partial class DiagnosticRegistryTests {
             if (id.Length == 7 && id.StartsWith("HFC", StringComparison.Ordinal)
                 && int.TryParse(id[3..], NumberStyles.None, CultureInfo.InvariantCulture, out int numericId)) {
                 (int start, int end) = ranges[ownerIndex];
-                if (numericId < start || numericId > end) {
+                if ((numericId < start || numericId > end) && !crossPackageExceptions.Contains(id)) {
                     yield return "out-of-range-id";
                 }
             }
         }
+    }
+
+    private static IEnumerable<string> ValidateCompatibilitySuppressionsJson(JsonObject json) {
+        if (!TryGetString(json, "schemaVersion", out string? schemaVersion)
+            || schemaVersion != SupportedSchemaVersion) {
+            yield return "compatibility-unsupported-schema";
+            yield break;
+        }
+
+        if (json["suppressions"] is not JsonArray suppressions) {
+            yield return "compatibility-missing-suppressions";
+            yield break;
+        }
+
+        HashSet<string> registryIds = LoadRegistry().Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
+        HashSet<(string Package, string Tfm, string OldSignature, string HfcId, string TargetRelease)> uniqueRows = [];
+        HashSet<string> allowedReasons = new(Ordinal) {
+            "intentional-major-break",
+            "known-binary-compatibility-gap",
+            "temporary-release-candidate-exception",
+        };
+
+        foreach (JsonNode? node in suppressions) {
+            if (node is not JsonObject row) {
+                yield return "suppression-invalid-row";
+                continue;
+            }
+
+            if (!TryGetString(row, "package", out string? package) || string.IsNullOrWhiteSpace(package)) {
+                yield return "suppression-missing-package";
+                continue;
+            }
+
+            if (package.Contains('*', StringComparison.Ordinal) || package.EndsWith(".*", StringComparison.Ordinal)) {
+                yield return "suppression-wildcard-scope";
+            }
+
+            TryGetString(row, "tfm", out string? tfm).ShouldBeTrue("fixture row missing tfm.");
+            TryGetString(row, "oldSignature", out string? oldSignature).ShouldBeTrue("fixture row missing oldSignature.");
+            TryGetString(row, "newState", out string? newState).ShouldBeTrue("fixture row missing newState.");
+            TryGetString(row, "hfcId", out string? hfcId).ShouldBeTrue("fixture row missing hfcId.");
+            TryGetString(row, "targetRelease", out string? targetRelease).ShouldBeTrue("fixture row missing targetRelease.");
+            TryGetString(row, "reviewerRationale", out string? rationale).ShouldBeTrue("fixture row missing reviewerRationale.");
+            TryGetString(row, "ownerStory", out string? ownerStory).ShouldBeTrue("fixture row missing ownerStory.");
+            TryGetString(row, "expiresAfter", out string? expiresAfter).ShouldBeTrue("fixture row missing expiresAfter.");
+            TryGetString(row, "reason", out string? reason).ShouldBeTrue("fixture row missing reason.");
+
+            if (hfcId is null || !registryIds.Contains(hfcId)) {
+                yield return "suppression-unknown-diagnostic";
+            }
+
+            if (reason is null || !allowedReasons.Contains(reason)) {
+                yield return "suppression-unknown-reason";
+            }
+
+            if (expiresAfter is not null && ParseVersionToken(expiresAfter) <= ParseVersionToken(targetRelease!)) {
+                yield return "suppression-expired";
+            }
+
+            if (string.IsNullOrWhiteSpace(newState)
+                || string.IsNullOrWhiteSpace(rationale)
+                || string.IsNullOrWhiteSpace(ownerStory)) {
+                yield return "suppression-missing-required-field";
+            }
+
+            if (!uniqueRows.Add((package, tfm!, oldSignature!, hfcId!, targetRelease!))) {
+                yield return "suppression-duplicate-row";
+            }
+        }
+    }
+
+    private static bool TryGetString(JsonObject json, string propertyName, out string? value) {
+        value = null;
+        if (json[propertyName] is not JsonValue jsonValue) {
+            return false;
+        }
+
+        try {
+            value = jsonValue.GetValue<string>();
+            return !string.IsNullOrWhiteSpace(value);
+        } catch (Exception ex) when (ex is InvalidOperationException or FormatException) {
+            return false;
+        }
+    }
+
+    private static bool IsCanonicalDocsSlug(string slug, string id) {
+        if (slug != slug.Normalize(NormalizationForm.FormC)
+            || slug.Any(char.IsWhiteSpace)
+            || slug.Any(IsConfusableOrFormatChar)
+            || slug.Contains('\\', StringComparison.Ordinal)
+            || slug.Contains('?', StringComparison.Ordinal)
+            || slug.Contains('#', StringComparison.Ordinal)
+            || slug.Contains("..", StringComparison.Ordinal)
+            || Path.IsPathRooted(slug)) {
+            return false;
+        }
+
+        string decoded;
+        try {
+            decoded = Uri.UnescapeDataString(slug);
+        } catch (UriFormatException) {
+            return false;
+        }
+
+        if (decoded.Contains('%', StringComparison.Ordinal)
+            || decoded.Contains('\\', StringComparison.Ordinal)
+            || decoded.Contains("..", StringComparison.Ordinal)
+            || decoded != slug) {
+            return false;
+        }
+
+        return decoded == $"diagnostics/{id}";
+    }
+
+    private static Version ParseVersionToken(string value) {
+        string trimmed = value.Trim().TrimStart('v', 'V');
+        return ParseVersion(trimmed);
     }
 
     private static bool IsConfusableOrFormatChar(char value) {
@@ -1018,13 +1338,37 @@ public sealed partial class DiagnosticRegistryTests {
         string SchemaVersion,
         string CanonicalHelpLinkFormat,
         DiagnosticRange[] Ranges,
-        string[] ExternalBoundaries,
+        DiagnosticExternalBoundary[] ExternalBoundaries,
+        DiagnosticAllowedExceptions AllowedExceptions,
         DiagnosticEntry[] Diagnostics);
 
     private sealed record DiagnosticRange(
         string OwnerPackage,
         int Start,
         int End);
+
+    private sealed record DiagnosticExternalBoundary(
+        string Package,
+        string Owner,
+        string RangePolicy,
+        string? RangeOwner,
+        string Provenance,
+        string UpdatePolicy,
+        string Rationale);
+
+    private sealed record DiagnosticAllowedExceptions(
+        CrossPackageRangeException[] CrossPackageRange);
+
+    private sealed record CrossPackageRangeException(
+        string Id,
+        string OwnerPackage,
+        string ConsumingPackage,
+        string NumericRangeOwner,
+        string HelpLinkUri,
+        string Reason,
+        string ApprovingStory,
+        string IntroducedIn,
+        string ApprovedOn);
 
     private sealed record DiagnosticEntry(
         string Id,

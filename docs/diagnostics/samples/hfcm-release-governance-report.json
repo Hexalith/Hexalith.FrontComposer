@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "1.0",
+  "category": "hfcm-release-governance",
+  "exitCode": 2,
+  "inputs": {
+    "migrationFindings": "docs/diagnostics/migration-findings.json"
+  },
+  "findings": [
+    {
+      "id": "HFCM-PLACEHOLDER",
+      "reason": "analyzer-descriptor-misclassification",
+      "path": "docs/diagnostics/migration-findings.json",
+      "message": "CLI migration finding was classified as a Roslyn analyzer descriptor release row."
+    }
+  ]
+}

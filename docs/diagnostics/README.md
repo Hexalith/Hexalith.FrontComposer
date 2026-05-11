@@ -6,7 +6,7 @@ The supported registry schema is exactly `1.0`. Newer or malformed schema versio
 
 Normal CI must not call live package feeds, GitHub, or the public docs site to validate this contract. Package/API compatibility gates use .NET package validation / ApiCompat for packable FrontComposer packages, with `FrontComposerPackageValidationBaselineVersion` defined in `Directory.Build.props` and applied conditionally in `Directory.Build.targets` only when `EnableFrontComposerPackageValidation=true` is set (default off). Suppression evidence is checked in at `compatibility-suppressions.json`. Reports are normalized so unavailable network/cache state cannot silently skip diagnostics governance.
 
-The `samples/` folder contains stable blocking-report examples for registry drift, docs-stub drift, release-row drift, and compatibility drift. These examples intentionally avoid timestamps, absolute paths, machine names, SDK banners, and live feed URLs.
+The `samples/` folder contains stable blocking-report examples for registry drift, docs-stub drift, release-row drift, compatibility drift, unsupported schema, reserved/retired misuse, lifecycle transition errors, encoded docs-root escape, unsafe front matter, duplicate IDs, suppression scope, and HFCM release governance. These examples intentionally avoid timestamps, absolute paths, machine names, SDK banners, and live feed URLs.
 
 ## Sample placeholder convention
 
@@ -34,7 +34,7 @@ Mixed channels (analyzer-emitted + runtime-emitted under the same id) require bo
 
 ## Migration ID convention
 
-`migrationId` is the registry pointer used by Story 9-2 (CLI `migrate`) and Story 9-5 (DocFX migration pages) to resolve the canonical migration page for a deprecated diagnostic or API. Two shapes are supported:
+`migrationId` is the registry pointer used by Story 9-2 (CLI `migrate`) and Story 9-5 (DocFX migration pages) to resolve the canonical migration page for a deprecated diagnostic or API. CLI-only HFCM findings are governed by `docs/diagnostics/migration-findings.json`; they are not Roslyn `DiagnosticDescriptor` IDs and must not appear in analyzer release-tracking rows. Two registry pointer shapes are supported:
 
 - `migrationId == id` — the diagnostic page **is** the migration page (the "obsolete API X, replaced by Y" stub doubles as the migration story). This is the default for simple field-level deprecations.
 - `migrationId == "HFCMxxxx"` (or another distinct id) — the migration story is a separate page (Story 9-2's `HFCM*` namespace, or another diagnostic's docs slug). Used when the migration spans multiple APIs, requires multi-step upgrade actions, or carries security/compliance prose that does not belong in the diagnostic stub.
@@ -43,7 +43,7 @@ Mixed channels (analyzer-emitted + runtime-emitted under the same id) require bo
 
 ## Cross-package range exceptions
 
-`ranges` defines exact numeric ID ownership: Contracts 1-999, SourceTools 1000-1999, Shell 2000-2999, EventStore 3000-3999, Mcp 4000-4999, Aspire 5000-5999. Every diagnostic id must fall inside its `ownerPackage`'s declared range *unless* it is listed in the top-level `allowedExceptions.crossPackageRange` array with package, numeric-range owner, reason, and approval version. Exceptions are reviewed at registry time and must be motivated by stable-public-id constraints (e.g., already-shipped diagnostic ids consumed by external telemetry or adopter SIEM rules).
+`ranges` defines exact numeric ID ownership: Contracts 1-999, SourceTools 1000-1999, Shell 2000-2999, EventStore 3000-3999, Mcp 4000-4999, Aspire 5000-5999. `externalBoundaries` is structured data, not a string list: each boundary records its package, owner, range policy, provenance, update policy, and rationale. `Hexalith.EventStore` owns its range; `Hexalith.Tenants` is a no-range-reserved external boundary until a future story allocates one. Every diagnostic id must fall inside its `ownerPackage`'s declared range *unless* it is listed in the top-level `allowedExceptions.crossPackageRange` array with package, consuming package, numeric-range owner, canonical help link, reason, approving story, and approval version. Exceptions are reviewed at registry time and must be motivated by stable-public-id constraints (e.g., already-shipped diagnostic ids consumed by external telemetry or adopter SIEM rules).
 
 ## Stub authoring contract
 

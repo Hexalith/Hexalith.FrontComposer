@@ -1,0 +1,55 @@
+{
+  "schemaVersion": "1.0",
+  "ownerStory": "9-2-cli-inspection-and-migration-tools",
+  "releaseBucket": "cli-migration",
+  "findings": [
+    {
+      "id": "HFCM0000",
+      "category": "HexalithFrontComposer.Migration",
+      "severity": "Info",
+      "migrationDocsSlug": "migrations/9.1-to-9.2",
+      "releaseNote": "Migration candidate was skipped by write-safety policy.",
+      "introducedIn": "0.2.0"
+    },
+    {
+      "id": "HFCM0001",
+      "category": "HexalithFrontComposer.Migration",
+      "severity": "Info",
+      "migrationDocsSlug": "migrations/9.1-to-9.2",
+      "releaseNote": "No fixable FrontComposer migration diagnostics were found.",
+      "introducedIn": "0.2.0"
+    },
+    {
+      "id": "HFCM0002",
+      "category": "HexalithFrontComposer.Migration",
+      "severity": "Warning",
+      "migrationDocsSlug": "migrations/9.1-to-9.2",
+      "releaseNote": "Diagnostic sidecar file is unreadable or malformed.",
+      "introducedIn": "0.2.0"
+    },
+    {
+      "id": "HFCM0004",
+      "category": "HexalithFrontComposer.Migration",
+      "severity": "Error",
+      "migrationDocsSlug": "migrations/9.1-to-9.2",
+      "releaseNote": "Migration apply failed because plan/write validation failed.",
+      "introducedIn": "0.2.0"
+    },
+    {
+      "id": "HFCM9001",
+      "category": "HexalithFrontComposer.Migration",
+      "severity": "Warning",
+      "migrationDocsSlug": "migrations/9.1-to-9.2",
+      "releaseNote": "Obsolete dev-mode overlay registration API can be migrated automatically.",
+      "introducedIn": "0.2.0"
+    },
+    {
+      "id": "HFCM9002",
+      "category": "HexalithFrontComposer.Migration",
+      "severity": "Warning",
+      "migrationDocsSlug": "migrations/9.1-to-9.2",
+      "releaseNote": "Custom FrontComposer migration requires manual review.",
+      "introducedIn": "0.2.0"
+    }
+  ]
+}

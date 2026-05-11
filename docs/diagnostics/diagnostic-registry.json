@@ -36,14 +36,30 @@
     }
   ],
   "externalBoundaries": [
-    "Hexalith.EventStore",
-    "Hexalith.Tenants"
+    {
+      "package": "Hexalith.EventStore",
+      "owner": "EventStore",
+      "rangePolicy": "owns-range",
+      "rangeOwner": "EventStore",
+      "provenance": "root-submodule",
+      "updatePolicy": "Changes require Story 11.7 or explicit registry governance review.",
+      "rationale": "EventStore is a root-level submodule with a dedicated HFC3000-HFC3999 range."
+    },
+    {
+      "package": "Hexalith.Tenants",
+      "owner": "Tenants",
+      "rangePolicy": "no-range-reserved",
+      "rangeOwner": null,
+      "provenance": "root-submodule",
+      "updatePolicy": "A future Tenants diagnostic range requires an explicit registry range allocation story.",
+      "rationale": "Tenants is an external boundary but currently emits no FrontComposer-owned diagnostics."
+    }
   ],
   "diagnostics": [
     {
       "id": "HFC0001",
       "ownerPackage": "Contracts",
-      "title": "HFC0001 Query Request Filter Deprecated",
+      "title": "QueryRequest.Filter is deprecated",
       "lifecycle": "deprecated",
       "introducedIn": "0.1.0",
       "deprecatedIn": "0.2.0",
@@ -53,14 +69,16 @@
       "panelSeverity": "Information",
       "cliExitBehavior": "non-blocking",
       "mcpCategory": null,
-      "messageTemplate": "What: HFC0001 Query Request Filter Deprecated. Expected: Follow the FrontComposer diagnostic contract for HFC0001. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
+      "messageTemplate": "What: QueryRequest.Filter is deprecated. Expected: Use QueryRequest.ColumnFilters for column-scoped filter expressions. Got: Legacy QueryRequest.Filter metadata was used. Fix: Move filter state to ColumnFilters before the removal release. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
       "docsSlug": "diagnostics/HFC0001",
       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
       "redactionClass": "runtime-sanitized",
       "suppressionPolicy": "allowed-with-rationale",
       "releaseRow": "runtime-only",
       "migrationId": "HFC0001",
-      "relatedIds": [],
+      "relatedIds": [
+        "HFC4001"
+      ],
       "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
     },
     {
@@ -865,7 +883,11 @@
       "suppressionPolicy": "discouraged-error",
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
-      "relatedIds": [],
+      "relatedIds": [
+        "HFC1040",
+        "HFC1044",
+        "HFC1601"
+      ],
       "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
     },
     {
@@ -934,8 +956,13 @@
       "suppressionPolicy": "allowed-with-rationale",
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
-      "relatedIds": [],
-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+      "relatedIds": [
+        "HFC1037",
+        "HFC1044",
+        "HFC1601"
+      ],
+      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy",
+      "lifecycleNote": "Level 3 slot duplicates remain Warning/allowed-with-rationale because duplicate slot descriptors can be ignored with default-renderer fallback; Level 2 templates and Level 4 view overrides are Error due manifest or runtime selection ambiguity."
     },
     {
       "id": "HFC1041",
@@ -1026,7 +1053,11 @@
       "suppressionPolicy": "discouraged-error",
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
-      "relatedIds": [],
+      "relatedIds": [
+        "HFC1037",
+        "HFC1040",
+        "HFC1601"
+      ],
       "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
     },
     {
@@ -1302,7 +1333,9 @@
       "suppressionPolicy": "discouraged-error",
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
-      "relatedIds": [],
+      "relatedIds": [
+        "HFC1057"
+      ],
       "ownerStory": "7-3-command-authorization-policies",
       "lifecycleNote": "helpLinkUri rebased from legacy hexalith.io host to canonical github.io host in 0.2.0 per registry canonicalHelpLinkFormat alignment (AC22)."
     },
@@ -1326,7 +1359,9 @@
       "suppressionPolicy": "discouraged-error",
       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
       "migrationId": null,
-      "relatedIds": [],
+      "relatedIds": [
+        "HFC1056"
+      ],
       "ownerStory": "7-3-command-authorization-policies",
       "lifecycleNote": "helpLinkUri rebased from legacy hexalith.io host to canonical github.io host in 0.2.0 per registry canonicalHelpLinkFormat alignment (AC22)."
     },
@@ -1632,7 +1667,7 @@
     {
       "id": "HFC1601",
       "ownerPackage": "SourceTools",
-      "title": "HFC1601 Manifest Invalid",
+      "title": "Customization manifest is invalid",
       "lifecycle": "active",
       "introducedIn": "0.1.0",
       "deprecatedIn": null,
@@ -1642,16 +1677,20 @@
       "panelSeverity": "Error",
       "cliExitBehavior": "diagnostic",
       "mcpCategory": null,
-      "messageTemplate": "What: HFC1601 Manifest Invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1601. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
+      "messageTemplate": "What: Customization manifest is invalid. Expected: Shell runtime customization manifests match the SourceTools descriptor contract. Got: A manifest failed validation before it could be trusted. Fix: Regenerate or correct the manifest and keep evidence sanitized. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
       "docsSlug": "diagnostics/HFC1601",
       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
       "redactionClass": "source-metadata-only",
       "suppressionPolicy": "discouraged-error",
       "releaseRow": "runtime-only",
       "migrationId": null,
-      "relatedIds": [],
+      "relatedIds": [
+        "HFC1037",
+        "HFC1040",
+        "HFC1044"
+      ],
       "ownerStory": "3-4-fccommandpalette-and-keyboard-shortcuts",
-      "lifecycleNote": "Cross-package emission: HFC1601 is allocated in the SourceTools numeric range but emitted at runtime exclusively from the Shell project (FrontComposerRegistry / CustomizationContractValidationGate). releaseRow=runtime-only because no Roslyn analyzer descriptor backs this id. Documented inconsistency between ownerPackage and emit location; chunk-B test should add an emit-location-vs-range check (see deferred-work DEF-9-4-A14)."
+      "lifecycleNote": "Cross-package emission: HFC1601 is allocated in the SourceTools numeric range but emitted at runtime exclusively from the Shell project. The structured allowedExceptions.crossPackageRange row records owner package, consuming package, numeric-range owner, canonical help link, rationale, approving story, and provenance so this one stable ID does not become a general bypass."
     },
     {
       "id": "HFC2004",
@@ -2483,8 +2522,25 @@
       "suppressionPolicy": "allowed-with-rationale",
       "releaseRow": "runtime-only",
       "migrationId": "HFC4001",
-      "relatedIds": [],
+      "relatedIds": [
+        "HFC0001"
+      ],
       "ownerStory": "8-6-mcp-schema-negotiation-and-fingerprint-trust"
     }
-  ]
+  ],
+  "allowedExceptions": {
+    "crossPackageRange": [
+      {
+        "id": "HFC1601",
+        "ownerPackage": "SourceTools",
+        "consumingPackage": "Shell",
+        "numericRangeOwner": "SourceTools",
+        "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
+        "reason": "HFC1601 was allocated in the SourceTools numeric range before its runtime Shell emission became the stable public surface.",
+        "approvingStory": "11-2-diagnostic-registry-and-documentation-governance-follow-ups",
+        "introducedIn": "0.1.0",
+        "approvedOn": "2026-05-11"
+      }
+    ]
+  }
 }

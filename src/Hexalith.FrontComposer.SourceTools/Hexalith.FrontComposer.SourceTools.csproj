@@ -4,14 +4,6 @@
     <IsRoslynComponent>true</IsRoslynComponent>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <IsPackable>false</IsPackable>
-    <!-- RS2002: Story 9-2 ships migration findings (HFCM0000-HFCM9002) as rows in
-         AnalyzerReleases.Unshipped.md so the registry/release-row contract covers them, but
-         they are CLI-emitted (not Roslyn analyzer descriptors) and so trip the release-tracking
-         analyzer. Suppressed at project scope until Story 9-2's migration release-row file is
-         relocated to a CLI-specific artifact (tracked as DEF-9-4-HFCM in deferred-work.md).
-         Story 9-4 closed the original HFC1010 motivation by adding the FullRebuildRequired
-         descriptor; this remaining suppression is migration-id only. -->
-    <NoWarn>$(NoWarn);RS2002</NoWarn>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />

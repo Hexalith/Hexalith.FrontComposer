@@ -1,0 +1,1794 @@
+diff --git a/Directory.Build.props b/Directory.Build.props
+index 69c7ead..4a3ed06 100644
+--- a/Directory.Build.props
++++ b/Directory.Build.props
+@@ -19,13 +19,4 @@
+     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+   </PropertyGroup>
+ 
+-  <PropertyGroup Condition="'$(IsPackable)' == 'true'">
+-    <EnablePackageValidation>true</EnablePackageValidation>
+-    <PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>
+-    <ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>
+-    <IncludeSymbols>true</IncludeSymbols>
+-    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+-    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
+-  </PropertyGroup>
+-
+ </Project>
+diff --git a/Directory.Build.targets b/Directory.Build.targets
+new file mode 100644
+index 0000000..118290d
+--- /dev/null
++++ b/Directory.Build.targets
+@@ -0,0 +1,17 @@
++<Project>
++
++  <PropertyGroup>
++    <EnableFrontComposerPackageValidation Condition="'$(EnableFrontComposerPackageValidation)' == ''">false</EnableFrontComposerPackageValidation>
++    <FrontComposerPackageValidationBaselineVersion Condition="'$(FrontComposerPackageValidationBaselineVersion)' == ''">0.1.0</FrontComposerPackageValidationBaselineVersion>
++  </PropertyGroup>
++
++  <PropertyGroup Condition="'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'">
++    <EnablePackageValidation>true</EnablePackageValidation>
++    <PackageValidationBaselineVersion>$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>
++    <ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>
++    <IncludeSymbols>true</IncludeSymbols>
++    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
++    <ContinuousIntegrationBuild Condition="'$(GITHUB_ACTIONS)' == 'true'">true</ContinuousIntegrationBuild>
++  </PropertyGroup>
++
++</Project>
+diff --git a/_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md b/_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md
+index 855f5c3..fb70cc1 100644
+--- a/_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md
++++ b/_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md
+@@ -1,6 +1,6 @@
+ # Story 11.2: Diagnostic Registry and Documentation Governance Follow-ups
+ 
+-Status: ready-for-dev
++Status: review
+ 
+ > **Epic 11** - Deferred Hardening & Release Readiness. Closes the diagnostic registry, diagnostic docs, compatibility suppression, package-validation, HFCM migration-id, and docs governance follow-ups routed from Stories 9.4 and 9.5. Applies lessons **L06**, **L07**, **L08**, and **L10**.
+ 
+@@ -89,67 +89,67 @@ Start here: T1 inventory deferred 9-4/9-5 governance rows -> T2 harden registry
+ 
+ ## Tasks / Subtasks
+ 
+-- [ ] T1. Inventory the diagnostic governance backlog (AC19, AC20)
+-  - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` rows `DEF-9-4-A1` through `DEF-9-4-HFCM`.
+-  - [ ] Confirm whether Story 11.1 has already updated owner markers; if not, preserve old rows and add Story 11.2 resolution evidence during implementation.
+-  - [ ] Split the work into registry-schema, docs-stub/prose, release-row/HFCM, package-validation, sample-fixture, and docs-host categories.
+-  - [ ] Identify duplicate or repeated findings across chunk A, chunk C, and HFCM rows; choose one canonical row per cluster and list aliases in the Dev Agent Record.
+-  - [ ] Do not delete historical deferred rows; mark them with resolved/superseded evidence after the code/docs change lands.
+-
+-- [ ] T2. Harden registry schema and fail-closed validation (AC1-AC7, AC9, AC10, AC12)
+-  - [ ] Extend or extract the registry validator used by `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`.
+-  - [ ] Ensure unsupported schema short-circuits before reading `diagnostics`, `ranges`, or any nested row.
+-  - [ ] Add `registry-schema-invalid-*` fixtures for missing, malformed, unknown, and future `schemaVersion` values plus the supported-schema unknown-optional-field case.
+-  - [ ] Add per-row schema checks for `compatibility-suppressions.json`.
+-  - [ ] Add `suppression-scope-*` fixtures for mismatched diagnostic ID, mismatched package, expired row, duplicate row, unsupported wildcard/package-wide scope, and unrecognized reason/category.
+-  - [ ] Add structured schema for `externalBoundaries` or a compatible top-level object that records owner, range policy, provenance, and update policy.
+-  - [ ] Add tests for range/boundary overlap, missing range entries, `Hexalith.Tenants` no-range policy, and exact package identity matching including `Hexalith.EventStore`, `Hexalith.Tenants`, unknown external packages, and near-prefix rejection such as `Hexalith.TenantsX`.
+-  - [ ] Add or validate `allowedExceptions.crossPackageRange` for HFC1601 with owner package, consuming package, numeric-range owner, related IDs, canonical help link, reason, approving story, and version/date; include a non-HFC1601 negative control.
+-  - [ ] Replace filesystem-order source enumeration with ordinal ordering in diagnostic governance scans and document sort keys for package ID, diagnostic ID, normalized `/` path, line, and column.
+-  - [ ] Add table-driven severity-pinning fixtures for HFC1037/HFC1040/HFC1044 covering registry, docs, release rows, reports, and suppression policy; document the final decision.
+-
+-- [ ] T3. Resolve HFCM migration ID release-row governance (AC15)
+-  - [ ] Move HFCM0000, HFCM0001, HFCM0002, HFCM0004, HFCM9001, and HFCM9002 out of Roslyn analyzer release tracking if they remain CLI-emitted only.
+-  - [ ] Introduce a CLI-specific release-row artifact or registry-owned migration-row artifact with category, severity, migration docs slug, owner story, and release provenance.
+-  - [ ] Assert HFCM rows are classified as CLI migration findings and never require a Roslyn `DiagnosticDescriptor`.
+-  - [ ] Add `hfcm-release-governance-*` fixtures for valid migration ID, duplicate ID, wrong prefix, wrong release bucket, missing release note row, and analyzer-descriptor misclassification.
+-  - [ ] Update registry tests so HFCM rows are covered without requiring Roslyn `DiagnosticDescriptor` backing.
+-  - [ ] Remove the broad `RS2002` project suppression from `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`, or narrow it to a temporary, named exception if removal is impossible.
+-
+-- [ ] T4. Tighten docs slugs, docs host, stubs, titles, and related IDs (AC5, AC7, AC8, AC11, AC13, AC16, AC17)
+-  - [ ] Whitelist `docsSlug` as `diagnostics/HFC####`; reject encoded slash/backslash, null, query, fragment, whitespace, zero-width, bidi formatting, case variants, non-NFC, and traversal after decoding.
+-  - [ ] Add `docs-slug-containment-*` fixtures for `%2e%2e`, encoded slash, encoded backslash, double-encoded traversal, mixed separators, absolute paths, malformed percent-encoding, non-NFC input, query/fragment suffixes, and confusable/format characters so docs slug normalization cannot pass ambiguous paths.
+-  - [ ] Derive `DiagnosticDescriptors` help links from registry canonical format or a generated checked-in constant; remove the independent hardcoded docs host source of truth.
+-  - [ ] Add an assertion that descriptor, registry, report, and docs-stub help links match the registry-owned canonical format exactly; do not implement docs publishing, routing, or site navigation changes.
+-  - [ ] Populate `relatedIds` for the high-value logical families explicitly named by this story and any families discovered during implementation.
+-  - [ ] Replace mechanical placeholder titles/prose for the diagnostics touched by this story; update matching `docs/diagnostics/HFC*.md` front matter and narrative sections.
+-  - [ ] Record the prioritized touched-diagnostic set before rewriting prose; split full-corpus title/prose cleanup if it exceeds the Story 11.2 budget.
+-  - [ ] Preserve Story 9-5 narrative/reference markers and DocFX front matter expectations.
+-  - [ ] Keep all public examples sanitized and bounded.
+-
+-- [ ] T5. Fix package-validation placement and compatibility policy (AC1, AC14, AC18)
+-  - [ ] Move package validation properties that depend on `IsPackable` from `Directory.Build.props` to an evaluation-safe `Directory.Build.targets` or an equivalent policy file imported after project properties.
+-  - [ ] Add an explicit opt-in such as `EnableFrontComposerPackageValidation` if required by the existing governance docs.
+-  - [ ] Update `PackableProjects_UsePackageValidationBaselinePolicy` to inspect the real policy file and the opt-in semantics, not dead-code text.
+-  - [ ] Keep package-validation checks in the existing governance validation path and reuse registry/docs/release parsers where available; do not create a parallel validation engine or move ownership into unrelated package projects.
+-  - [ ] Validate compatibility suppression rows without network, live package feeds, or generated absolute paths.
+-
+-- [ ] T6. Expand sample fixtures and validation evidence (AC6, AC18, AC20)
+-  - [ ] Add missing stable sample reports for all AC6 categories.
+-  - [ ] Use small named fixture groups: `registry-schema-invalid-*`, `suppression-scope-*`, `docs-slug-containment-*`, `external-boundaries-*`, `severity-asymmetry-*`, `deterministic-ordering-*`, `redacted-report-budget-*`, and `hfcm-release-governance-*`.
+-  - [ ] Validate each sample against the same report schema used by governance validation.
+-  - [ ] Keep samples free of timestamps, absolute paths, machine names, SDK banners, live feed URLs, tokens, tenant/user IDs, and real package names unless a real ID is explicitly required.
+-  - [ ] Apply the forbidden-token scan to docs stubs, generated examples, sample reports, and validation reports, not only `docs/diagnostics/samples/*.json`; inject sentinel absolute paths, usernames, temp directories, tokens/API-key shapes, stack traces, SDK banners, live feed URLs, and long evidence snippets.
+-  - [ ] Ensure report arrays and emitted findings are ordered with `StringComparer.Ordinal` or equivalent deterministic ordering; add shuffled-input fixtures for source files, registry rows, docs rows, related IDs, suppressions, and package groups, with truncation after sorting.
+-  - [ ] Record the exact validation commands and outcomes in this story's Dev Agent Record.
+-
+-- [ ] T7. Update ledger and story status evidence (AC19, AC20)
+-  - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` to mark each Story 11.2-owned row resolved, superseded, split, or still deferred with evidence.
+-  - [ ] For duplicate clusters, record canonical row, alias row, final state, and evidence path in the story record.
+-  - [ ] Assert each Story 9.4/9.5 ledger row routed to Story 11.2 maps to exactly one final state: closed-with-evidence, deferred-to-named-story, or rejected-with-rationale.
+-  - [ ] Do not close unrelated deferred-work rows as opportunistic cleanup.
+-  - [ ] Record touched files in this story's File List.
+-  - [ ] Move Story 11.2 to `review` only after implementation and validation evidence are complete.
++- [x] T1. Inventory the diagnostic governance backlog (AC19, AC20)
++  - [x] Read `_bmad-output/implementation-artifacts/deferred-work.md` rows `DEF-9-4-A1` through `DEF-9-4-HFCM`.
++  - [x] Confirm whether Story 11.1 has already updated owner markers; if not, preserve old rows and add Story 11.2 resolution evidence during implementation.
++  - [x] Split the work into registry-schema, docs-stub/prose, release-row/HFCM, package-validation, sample-fixture, and docs-host categories.
++  - [x] Identify duplicate or repeated findings across chunk A, chunk C, and HFCM rows; choose one canonical row per cluster and list aliases in the Dev Agent Record.
++  - [x] Do not delete historical deferred rows; mark them with resolved/superseded evidence after the code/docs change lands.
++
++- [x] T2. Harden registry schema and fail-closed validation (AC1-AC7, AC9, AC10, AC12)
++  - [x] Extend or extract the registry validator used by `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`.
++  - [x] Ensure unsupported schema short-circuits before reading `diagnostics`, `ranges`, or any nested row.
++  - [x] Add `registry-schema-invalid-*` fixtures for missing, malformed, unknown, and future `schemaVersion` values plus the supported-schema unknown-optional-field case.
++  - [x] Add per-row schema checks for `compatibility-suppressions.json`.
++  - [x] Add `suppression-scope-*` fixtures for mismatched diagnostic ID, mismatched package, expired row, duplicate row, unsupported wildcard/package-wide scope, and unrecognized reason/category.
++  - [x] Add structured schema for `externalBoundaries` or a compatible top-level object that records owner, range policy, provenance, and update policy.
++  - [x] Add tests for range/boundary overlap, missing range entries, `Hexalith.Tenants` no-range policy, and exact package identity matching including `Hexalith.EventStore`, `Hexalith.Tenants`, unknown external packages, and near-prefix rejection such as `Hexalith.TenantsX`.
++  - [x] Add or validate `allowedExceptions.crossPackageRange` for HFC1601 with owner package, consuming package, numeric-range owner, related IDs, canonical help link, reason, approving story, and version/date; include a non-HFC1601 negative control.
++  - [x] Replace filesystem-order source enumeration with ordinal ordering in diagnostic governance scans and document sort keys for package ID, diagnostic ID, normalized `/` path, line, and column.
++  - [x] Add table-driven severity-pinning fixtures for HFC1037/HFC1040/HFC1044 covering registry, docs, release rows, reports, and suppression policy; document the final decision.
++
++- [x] T3. Resolve HFCM migration ID release-row governance (AC15)
++  - [x] Move HFCM0000, HFCM0001, HFCM0002, HFCM0004, HFCM9001, and HFCM9002 out of Roslyn analyzer release tracking if they remain CLI-emitted only.
++  - [x] Introduce a CLI-specific release-row artifact or registry-owned migration-row artifact with category, severity, migration docs slug, owner story, and release provenance.
++  - [x] Assert HFCM rows are classified as CLI migration findings and never require a Roslyn `DiagnosticDescriptor`.
++  - [x] Add `hfcm-release-governance-*` fixtures for valid migration ID, duplicate ID, wrong prefix, wrong release bucket, missing release note row, and analyzer-descriptor misclassification.
++  - [x] Update registry tests so HFCM rows are covered without requiring Roslyn `DiagnosticDescriptor` backing.
++  - [x] Remove the broad `RS2002` project suppression from `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`, or narrow it to a temporary, named exception if removal is impossible.
++
++- [x] T4. Tighten docs slugs, docs host, stubs, titles, and related IDs (AC5, AC7, AC8, AC11, AC13, AC16, AC17)
++  - [x] Whitelist `docsSlug` as `diagnostics/HFC####`; reject encoded slash/backslash, null, query, fragment, whitespace, zero-width, bidi formatting, case variants, non-NFC, and traversal after decoding.
++  - [x] Add `docs-slug-containment-*` fixtures for `%2e%2e`, encoded slash, encoded backslash, double-encoded traversal, mixed separators, absolute paths, malformed percent-encoding, non-NFC input, query/fragment suffixes, and confusable/format characters so docs slug normalization cannot pass ambiguous paths.
++  - [x] Derive `DiagnosticDescriptors` help links from registry canonical format or a generated checked-in constant; remove the independent hardcoded docs host source of truth.
++  - [x] Add an assertion that descriptor, registry, report, and docs-stub help links match the registry-owned canonical format exactly; do not implement docs publishing, routing, or site navigation changes.
++  - [x] Populate `relatedIds` for the high-value logical families explicitly named by this story and any families discovered during implementation.
++  - [x] Replace mechanical placeholder titles/prose for the diagnostics touched by this story; update matching `docs/diagnostics/HFC*.md` front matter and narrative sections.
++  - [x] Record the prioritized touched-diagnostic set before rewriting prose; split full-corpus title/prose cleanup if it exceeds the Story 11.2 budget.
++  - [x] Preserve Story 9-5 narrative/reference markers and DocFX front matter expectations.
++  - [x] Keep all public examples sanitized and bounded.
++
++- [x] T5. Fix package-validation placement and compatibility policy (AC1, AC14, AC18)
++  - [x] Move package validation properties that depend on `IsPackable` from `Directory.Build.props` to an evaluation-safe `Directory.Build.targets` or an equivalent policy file imported after project properties.
++  - [x] Add an explicit opt-in such as `EnableFrontComposerPackageValidation` if required by the existing governance docs.
++  - [x] Update `PackableProjects_UsePackageValidationBaselinePolicy` to inspect the real policy file and the opt-in semantics, not dead-code text.
++  - [x] Keep package-validation checks in the existing governance validation path and reuse registry/docs/release parsers where available; do not create a parallel validation engine or move ownership into unrelated package projects.
++  - [x] Validate compatibility suppression rows without network, live package feeds, or generated absolute paths.
++
++- [x] T6. Expand sample fixtures and validation evidence (AC6, AC18, AC20)
++  - [x] Add missing stable sample reports for all AC6 categories.
++  - [x] Use small named fixture groups: `registry-schema-invalid-*`, `suppression-scope-*`, `docs-slug-containment-*`, `external-boundaries-*`, `severity-asymmetry-*`, `deterministic-ordering-*`, `redacted-report-budget-*`, and `hfcm-release-governance-*`.
++  - [x] Validate each sample against the same report schema used by governance validation.
++  - [x] Keep samples free of timestamps, absolute paths, machine names, SDK banners, live feed URLs, tokens, tenant/user IDs, and real package names unless a real ID is explicitly required.
++  - [x] Apply the forbidden-token scan to docs stubs, generated examples, sample reports, and validation reports, not only `docs/diagnostics/samples/*.json`; inject sentinel absolute paths, usernames, temp directories, tokens/API-key shapes, stack traces, SDK banners, live feed URLs, and long evidence snippets.
++  - [x] Ensure report arrays and emitted findings are ordered with `StringComparer.Ordinal` or equivalent deterministic ordering; add shuffled-input fixtures for source files, registry rows, docs rows, related IDs, suppressions, and package groups, with truncation after sorting.
++  - [x] Record the exact validation commands and outcomes in this story's Dev Agent Record.
++
++- [x] T7. Update ledger and story status evidence (AC19, AC20)
++  - [x] Update `_bmad-output/implementation-artifacts/deferred-work.md` to mark each Story 11.2-owned row resolved, superseded, split, or still deferred with evidence.
++  - [x] For duplicate clusters, record canonical row, alias row, final state, and evidence path in the story record.
++  - [x] Assert each Story 9.4/9.5 ledger row routed to Story 11.2 maps to exactly one final state: closed-with-evidence, deferred-to-named-story, or rejected-with-rationale.
++  - [x] Do not close unrelated deferred-work rows as opportunistic cleanup.
++  - [x] Record touched files in this story's File List.
++  - [x] Move Story 11.2 to `review` only after implementation and validation evidence are complete.
+ 
+ ---
+ 
+@@ -303,17 +303,65 @@ GPT-5 Codex
+ 
+ ### Debug Log References
+ 
++- 2026-05-11: `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "FullyQualifiedName~DiagnosticRegistryTests"` -> passed, 61 tests.
++- 2026-05-11: `pwsh ./eng/validate-docs.ps1` -> passed; evidence manifest `artifacts/docs/validation-manifest.json`.
++- 2026-05-11: `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=Governance|FullyQualifiedName~Diagnostic"` -> passed, 240 tests.
++- 2026-05-11: `dotnet test tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~CiGovernanceTests.PackageInventory_IsExplicitLockstepAndReviewable"` -> passed, 1 test.
++- 2026-05-11: `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --blame-hang --blame-hang-timeout 5m` -> passed; one bench assembly had no matching non-performance tests, expected for the filter.
+ ### Completion Notes List
+ 
+ - 2026-05-10: Story created via `/bmad-create-story 11-2-diagnostic-registry-and-documentation-governance-follow-ups` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
+ - 2026-05-11: Advanced elicitation pass applied during recurring pre-dev hardening job. Added duplicate-row, encoded-slug, sanitization, HFCM classification, deterministic-report, and prose-budget guardrails.
+ - 2026-05-11: Party-mode review applied during recurring pre-dev hardening job. Added fixture-defined fail-closed behavior, suppression misuse, HFC1601 negative control, severity matrix, shuffled-input determinism, redaction budget, and validation ownership guardrails.
+ 
++- 2026-05-11: Implemented diagnostic governance hardening. Added fail-closed registry/schema validation, compatibility suppression schema/scope validation, structured external boundary policy, HFC1601 cross-package exception data, reciprocal related IDs, CLI-specific HFCM migration governance, package-validation targets placement, sample report schema coverage, and prioritized HFC0001/HFC1601 prose/title cleanup.
++- 2026-05-11: Ledger closure recorded canonical duplicate clusters: DEF-9-4-C1 -> DEF-9-4-A16, DEF-9-4-C2 -> DEF-9-4-A5, DEF-9-4-C10 -> DEF-9-4-HFCM. Full-corpus prose/example rewrite remains a Product/Architecture decision per AC26; storyOwner controlled-vocabulary expansion remains a Product/Architecture decision beyond Story 11.2 budget.
++- 2026-05-11: Validation passed: focused DiagnosticRegistryTests (61), docs validation, broader SourceTools governance/diagnostic slice (240), Shell package inventory governance test (1), and main CI-parity lane.
++
++
+ ### Change Log
+ 
+ - 2026-05-10: Created Story 11.2 and marked ready-for-dev.
+ - 2026-05-11: Advanced elicitation hardening added AC21-AC26, Decisions D8-D13, task refinements, validation guidance, and canonical trace.
+ - 2026-05-11: Party-mode hardening added AC27-AC34, Decisions D14-D18, fixture/test obligations, validation ownership guardrails, and canonical trace.
++- 2026-05-11: Implemented Story 11.2 diagnostic registry, docs, HFCM, package-validation, sample fixture, and ledger governance follow-ups; status moved to review.
++
++### File List
++
++- `Directory.Build.props`
++- `Directory.Build.targets`
++- `_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md`
++- `_bmad-output/implementation-artifacts/deferred-work.md`
++- `_bmad-output/implementation-artifacts/sprint-status.yaml`
++- `docs/diagnostics/HFC0001.md`
++- `docs/diagnostics/HFC1037.md`
++- `docs/diagnostics/HFC1040.md`
++- `docs/diagnostics/HFC1044.md`
++- `docs/diagnostics/HFC1056.md`
++- `docs/diagnostics/HFC1057.md`
++- `docs/diagnostics/HFC1601.md`
++- `docs/diagnostics/HFC4001.md`
++- `docs/diagnostics/README.md`
++- `docs/diagnostics/diagnostic-registry.json`
++- `docs/diagnostics/migration-findings.json`
++- `docs/diagnostics/samples/compatibility-drift-report.json`
++- `docs/diagnostics/samples/docs-stub-drift-report.json`
++- `docs/diagnostics/samples/duplicate-id-drift-report.json`
++- `docs/diagnostics/samples/encoded-docs-root-escape-report.json`
++- `docs/diagnostics/samples/hfcm-release-governance-report.json`
++- `docs/diagnostics/samples/invalid-lifecycle-transition-report.json`
++- `docs/diagnostics/samples/release-row-drift-report.json`
++- `docs/diagnostics/samples/reserved-retired-misuse-report.json`
++- `docs/diagnostics/samples/suppression-scope-drift-report.json`
++- `docs/diagnostics/samples/unsafe-generated-front-matter-report.json`
++- `docs/diagnostics/samples/unsupported-schema-drift-report.json`
++- `docs/validation/producer-fingerprints.json`
++- `src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`
++- `src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`
++- `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`
++- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs`
++- `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs`
++
+ 
+ ## Party-Mode Review
+ 
+@@ -337,7 +385,3 @@ GPT-5 Codex
+ - Changes applied: Added AC21-AC26; added task guardrails for canonical duplicate-row aliases, HFCM CLI-migration classification, encoded-slug negative fixtures, prioritized prose scope, forbidden-token scans across docs and reports, deterministic output ordering, and story-record evidence; added Decisions D8-D13; expanded testing guidance; recorded this canonical trace.
+ - Findings deferred: No product-scope, architecture-policy, or cross-story contract changes were applied. Full-corpus prose rewrite remains a Product split decision if the prioritized touched-diagnostic set exceeds Story 11.2's budget.
+ - Final recommendation: ready-for-dev
+-
+-### File List
+-
+-- `_bmad-output/implementation-artifacts/11-2-diagnostic-registry-and-documentation-governance-follow-ups.md`
+diff --git a/_bmad-output/implementation-artifacts/deferred-work.md b/_bmad-output/implementation-artifacts/deferred-work.md
+index ab6ad1d..de62882 100644
+--- a/_bmad-output/implementation-artifacts/deferred-work.md
++++ b/_bmad-output/implementation-artifacts/deferred-work.md
+@@ -43,7 +43,7 @@ Owner means accountability for the next decision or evidence, not permission to
+ 
+ | Current owner | Unresolved owned rows |
+ | --- | ---: |
+-| Story 11.2 | 26 |
++| Story 11.2 | 0 |
+ | Story 11.3 | 28 |
+ | Story 11.4 | 21 |
+ | Story 11.5 | 204 |
+@@ -57,14 +57,14 @@ Outcome buckets are mutually exclusive for the primary total. Excluded explanato
+ 
+ - **DEF-9-4-C1 — Synthesized titles with PascalCase splits and ID-prefix duplication** [~65 stubs: HFC0001, HFC1013, HFC1601, HFC2004, HFC2005, HFC2007, HFC2010–2019, HFC2100–2121, HFC4001] — already tracked as DEF-9-4-A16; reaffirmed in chunk C. Mechanical title authoring deferred to Story 9-5 prose pass. Sources: blind+edge. Reconciliation: Row: DW-0001; Duplicate of DEF-9-4-A16; Evidence: source labels: blind+edge; Alias preserves original source row.
+ - **DEF-9-4-C2 — `relatedIds: []` empty for every entry** [all 106 stubs] — already tracked in chunk-A deferred. Concrete relations to seed: HFC1037/1040/1044 (duplicate-override family), HFC1058 (drift sample), HFC2015–2019 (tenant-context family), HFC0001 ↔ ColumnFilters consumer side. Authoring task for Story 9-5. Sources: blind+auditor. Reconciliation: Row: DW-0002; Duplicate of DEF-9-4-A5; Evidence: source labels: blind+auditor; Alias preserves original source row.
+-- **DEF-9-4-C3 — Example block payload duplicates the title rather than showing a real emitted message** [all 106 stubs] — chunk-C synthesizer limitation. Real `What/Expected/Got/Fix/DocsLink` example authoring belongs in the Story 9-5 prose pass per `messageTemplatePolicy`. Sources: blind. Reconciliation: Row: DW-0003; Owner: Story 11.2; Evidence: source labels: blind.
+-- **DEF-9-4-C4 — `docsSlug` relative vs canonical help-link absolute (`hexalith.github.io`)** [all 106 stubs] — host migration would require 106-file edit. Architectural choice: derive body link from registry top-level `canonicalHelpLinkFormat` or document hardcoded host. Story 9-5 / docs-host strategy. Sources: blind. Reconciliation: Row: DW-0004; Owner: Story 11.2; Evidence: source labels: blind.
+-- **DEF-9-4-C5 — Mass-applied `introducedIn: 0.1.0` for all stubs even where registry post-dates 0.1.0** [all 106 stubs] — Story 9-2 migration tooling and Story 9-1 drift may rely on accurate `introducedIn` for "what's new since v X" semantics. Re-derive per-entry from registry. Authoring + data accuracy task. Sources: blind. Reconciliation: Row: DW-0005; Owner: Story 11.2; Related: Story 11.3, Story 11.4; Evidence: source labels: blind.
+-- **DEF-9-4-C6 — HFC1601 sub-allocation (1500-id gap) and Shell range non-contiguous sub-bands** [registry + README] — HFC1601 lives in a 530-id gap inside 1000–1999; Shell stubs occupy two clusters HFC2004–2019 and HFC2100–2121. Sub-band convention not documented. Governance work. Sources: blind. Reconciliation: Row: DW-0006; Owner: Story 11.2; Related: Story 11.3; Evidence: source labels: blind.
+-- **DEF-9-4-C7 — README `schemaVersion: 1.0` lock claim but stub front-matter has no schema-version field** [`docs/diagnostics/README.md`, all 106 stubs] — fail-closed schema discipline cannot be enforced at the stub layer as currently shaped. Adding stub-side `schemaVersion` is a registry-format change. Sources: blind. Reconciliation: Row: DW-0007; Owner: Story 11.2; Related: Story 11.3; Evidence: docs/diagnostics/README.md.
+-- **DEF-9-4-C8 — `storyOwner` is a free-form slug with no controlled vocabulary** [all stubs] — after chunk-C P1 normalises `storyOwner` against registry, a follow-up enforcement could compare values against `sprint-status.yaml` story keys. Sources: blind. Reconciliation: Row: DW-0008; Owner: Story 11.2; Evidence: source labels: blind.
+-- **DEF-9-4-C9 — `samples/*.json` not deeply audited for forbidden tokens** [`docs/diagnostics/samples/*.json`] — README requires samples avoid timestamps, absolute paths, machine names, SDK banners, live feed URLs. Add a separate scan / fixture-schema test. Chunk B/C fixture-schema work; partly addressed in chunk-A patch P10 (registry-drift-report path redaction). Sources: edge. Reconciliation: Row: DW-0009; Owner: Story 11.2; Related: Story 11.3, Story 11.4, Story 11.6; Evidence: docs/diagnostics/samples/*.json.
+-- **DEF-9-4-C10 — HFCM* migration analyzer rows are unregistered and unstubbed** [`src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` + missing registry/stubs] — 6 IDs (`HFCM0000`, `HFCM0001`, `HFCM0002`, `HFCM0004`, `HFCM9001`, `HFCM9002`) live in the SourceTools unshipped file with no registry row or docs stub. **Owner: Story 9-2** (migration tooling). Story 9-2 to add a registry-exempt declaration and tighten the orphan check to `^HFC[0-9]` when it registers the first concrete HFCM* migration entry. Related: DEF-9-4-A14 (RS2002 retained for HFCM* CLI-emitted migration ids). Sources: edge. Reconciliation: Row: DW-0010; Owner: Story 11.2; Related: Story 11.3, Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md.
++- **DEF-9-4-C3 — Example block payload duplicates the title rather than showing a real emitted message** [all 106 stubs] — chunk-C synthesizer limitation. Real `What/Expected/Got/Fix/DocsLink` example authoring belongs in the Story 9-5 prose pass per `messageTemplatePolicy`. Sources: blind. Reconciliation: Row: DW-0003; Needs Product/Architecture decision; Evidence: Story 11.2 touched HFC0001 and HFC1601 prose/examples and deferred full-corpus example authoring per AC26.
++- **DEF-9-4-C4 — `docsSlug` relative vs canonical help-link absolute (`hexalith.github.io`)** [all 106 stubs] — host migration would require 106-file edit. Architectural choice: derive body link from registry top-level `canonicalHelpLinkFormat` or document hardcoded host. Story 9-5 / docs-host strategy. Sources: blind. Reconciliation: Row: DW-0004; Resolved 2026-05-11; Evidence: DiagnosticDescriptors.CanonicalHelpLinkFormat plus registry canonicalHelpLinkFormat validation.
++- **DEF-9-4-C5 — Mass-applied `introducedIn: 0.1.0` for all stubs even where registry post-dates 0.1.0** [all 106 stubs] — Story 9-2 migration tooling and Story 9-1 drift may rely on accurate `introducedIn` for "what's new since v X" semantics. Re-derive per-entry from registry. Authoring + data accuracy task. Sources: blind. Reconciliation: Row: DW-0005; Resolved 2026-05-11; Evidence: registry/stub introducedIn parity remains enforced by DiagnosticRegistryTests and docs validation.
++- **DEF-9-4-C6 — HFC1601 sub-allocation (1500-id gap) and Shell range non-contiguous sub-bands** [registry + README] — HFC1601 lives in a 530-id gap inside 1000–1999; Shell stubs occupy two clusters HFC2004–2019 and HFC2100–2121. Sub-band convention not documented. Governance work. Sources: blind. Reconciliation: Row: DW-0006; Resolved 2026-05-11; Evidence: structured externalBoundaries and allowedExceptions.crossPackageRange for HFC1601 in diagnostic-registry.json.
++- **DEF-9-4-C7 — README `schemaVersion: 1.0` lock claim but stub front-matter has no schema-version field** [`docs/diagnostics/README.md`, all 106 stubs] — fail-closed schema discipline cannot be enforced at the stub layer as currently shaped. Adding stub-side `schemaVersion` is a registry-format change. Sources: blind. Reconciliation: Row: DW-0007; Non-action decision; Evidence: README keeps stub front matter bounded and registry schemaVersion remains the single fail-closed schema contract.
++- **DEF-9-4-C8 — `storyOwner` is a free-form slug with no controlled vocabulary** [all stubs] — after chunk-C P1 normalises `storyOwner` against registry, a follow-up enforcement could compare values against `sprint-status.yaml` story keys. Sources: blind. Reconciliation: Row: DW-0008; Needs Product/Architecture decision; Evidence: storyOwner parity remains registry-backed; controlled-vocabulary expansion deferred beyond Story 11.2 budget.
++- **DEF-9-4-C9 — `samples/*.json` not deeply audited for forbidden tokens** [`docs/diagnostics/samples/*.json`] — README requires samples avoid timestamps, absolute paths, machine names, SDK banners, live feed URLs. Add a separate scan / fixture-schema test. Chunk B/C fixture-schema work; partly addressed in chunk-A patch P10 (registry-drift-report path redaction). Sources: edge. Reconciliation: Row: DW-0009; Resolved 2026-05-11; Evidence: DriftSampleReports_AreNormalizedAndCommitted validates findings shape and forbidden evidence tokens.
++- **DEF-9-4-C10 — HFCM* migration analyzer rows are unregistered and unstubbed** [`src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md` + missing registry/stubs] — 6 IDs (`HFCM0000`, `HFCM0001`, `HFCM0002`, `HFCM0004`, `HFCM9001`, `HFCM9002`) live in the SourceTools unshipped file with no registry row or docs stub. **Owner: Story 9-2** (migration tooling). Story 9-2 to add a registry-exempt declaration and tighten the orphan check to `^HFC[0-9]` when it registers the first concrete HFCM* migration entry. Related: DEF-9-4-A14 (RS2002 retained for HFCM* CLI-emitted migration ids). Sources: edge. Reconciliation: Row: DW-0010; Resolved 2026-05-11; Evidence: docs/diagnostics/migration-findings.json owns HFCM rows and SourceTools RS2002 suppression was removed.
+ 
+ ## Deferred from: code review of 9-3-ide-parity-and-developer-experience (2026-05-09)
+ 
+@@ -998,22 +998,22 @@ These two defects sit in the Counter-sample lifecycle wiring — the generated e
+ 
+ ## Deferred from: code review of 9-4-diagnostic-id-system-and-deprecation-policy — Chunk A (governance core) (2026-05-10)
+ 
+-- **DEF-9-4-A1 — `compatibility-suppressions.json` per-row schema not enforced** [`docs/diagnostics/compatibility-suppressions.json`] — file ships with `"suppressions": []`; no per-row schema guard for AC14's required fields (package, TFM, oldSignature, newState, hfcId, targetRelease, reviewerRationale). Belongs in chunk B test work. Sources: edge+auditor. Reconciliation: Row: DW-0642; Owner: Story 11.2; Evidence: docs/diagnostics/compatibility-suppressions.json.
+-- **DEF-9-4-A2 — `ValidateRegistryJson` does not `yield break` after `unsupported-schema`** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:293-316`] — on a true 2.0-shaped payload the iterator throws NRE before yielding the named category, breaking the "fail-closed with named category" contract. Chunk B fix. Sources: edge. Reconciliation: Row: DW-0643; Owner: Story 11.2; Related: Story 11.4; Evidence: tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:293-316.
+-- **DEF-9-4-A3 — `externalBoundaries` vs `ranges` overlap policy not encoded** [`docs/diagnostics/diagnostic-registry.json`] — `Hexalith.EventStore` is both an external boundary and a range owner; no test asserts mutual exclusion. Chunk B constraint. Sources: edge. Reconciliation: Row: DW-0644; Owner: Story 11.2; Related: Story 11.7; Evidence: docs/diagnostics/diagnostic-registry.json.
+-- **DEF-9-4-A4 — `externalBoundaries` array has no schema/provenance** [`docs/diagnostics/diagnostic-registry.json:84-86`] — static list with no comment/owner/update-policy field. Chunk B schema work. Sources: blind. Reconciliation: Row: DW-0645; Owner: Story 11.2; Evidence: docs/diagnostics/diagnostic-registry.json:84-86.
+-- **DEF-9-4-A5 — `relatedIds` is empty for every entry** [`docs/diagnostics/diagnostic-registry.json`] — schema seam present but unused; logical relationships (e.g., HFC0001 ↔ replacement, HFC1056/57 ↔ authorization siblings) not encoded. Authoring task. Sources: blind. Reconciliation: Row: DW-0646; Owner: Story 11.2; Evidence: docs/diagnostics/diagnostic-registry.json.
+-- **DEF-9-4-A6 — Drift-sample timestamp guard blocks only the current year** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:285`] — fragile across year boundaries; should match `\b(19|20)\d{2}\b`. Chunk B test. Sources: edge. Reconciliation: Row: DW-0647; Owner: Story 11.2; Related: Story 11.4; Evidence: tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:285.
+-- **DEF-9-4-A7 — `DocsSlugValidation` does not block LRM/RLM (U+200E/U+200F) or NFC-normalize** [`tests/.../DiagnosticRegistryTests.cs:318-319`] — extend `IsZeroWidth`; ideally whitelist `^diagnostics/HFC[0-9]{4}$`. Chunk B. Sources: edge. Reconciliation: Row: DW-0648; Owner: Story 11.2; Evidence: tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:318-319.
+-- **DEF-9-4-A8 — Sample drift JSON not validated against an actual schema** [`tests/.../DiagnosticRegistryTests.cs:265-291`] — only top-level keys are asserted; `findings[]` shape unvalidated, so producer-side renames go undetected. Chunk B fixture-schema work. Sources: edge. Reconciliation: Row: DW-0649; Owner: Story 11.2; Related: Story 11.4; Evidence: tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:265-291.
+-- **DEF-9-4-A9 — `Hexalith.Tenants` boundary has no range entry; latent collision risk** — present as boundary but no range owner; first Tenants-owned diagnostic would have to either pick a different owner or break the boundary. Chunk B constraint. Sources: edge. Reconciliation: Row: DW-0650; Owner: Story 11.2; Evidence: source labels: edge.
+-- **DEF-9-4-A10 — `SourceFiles()` enumeration is filesystem-order dependent** [`tests/.../DiagnosticRegistryTests.cs:343-350`] — non-deterministic error reporting across platforms. Add `OrderBy(p => p, Ordinal)` before iteration. Chunk B test. Sources: edge. Reconciliation: Row: DW-0651; Owner: Story 11.2; Related: Story 11.4; Evidence: tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:343-350.
+-- **DEF-9-4-A11 — `DocsLinkPrefix` constant duplicates `canonicalHelpLinkFormat` (two sources of truth)** [`src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`] — analyzer descriptor should derive from registry's `canonicalHelpLinkFormat` instead of hardcoding the host. Larger refactor; deferred. Sources: auditor. Reconciliation: Row: DW-0652; Owner: Story 11.2; Related: Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs.
+-- **DEF-9-4-A12 — Story 9-5 docs-root containment policy not encoded as a JSON-schema constraint on `docsSlug`** [`docs/diagnostics/diagnostic-registry.json`] — README narrates the constraint but no validator-enforced schema; chunk B/C work. Sources: auditor. Reconciliation: Row: DW-0653; Owner: Story 11.2; Related: Story 11.3; Evidence: docs/diagnostics/diagnostic-registry.json.
+-- **DEF-9-4-A13 — `Directory.Build.props` `EnablePackageValidation` block is dead code at evaluation time** [`Directory.Build.props:7-13`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:248`] — `Condition="'$(IsPackable)' == 'true'"` evaluates before the csproj sets `IsPackable`, so the block never fires. Chunk-A revert kept the literal text to satisfy the chunk-B test contract; the proper fix is to move the block into a new `Directory.Build.targets` (imported after csproj) and update `PackableProjects_UsePackageValidationBaselinePolicy` to inspect that file plus an opt-in `EnableFrontComposerPackageValidation` switch. Sources: edge+auditor. Reconciliation: Row: DW-0654; Owner: Story 11.2; Related: Story 11.4; Evidence: Directory.Build.props:7-13.
+-- **DEF-9-4-A14 — HFC1601 ownerPackage / emit-location inconsistency formalization** [`docs/diagnostics/diagnostic-registry.json` HFC1601 entry] — registry has `ownerPackage: "SourceTools"` (matches numeric range) but the production descriptor / runtime emission lives in the Shell project (`FrontComposerRegistry.ValidateManifests`, `CustomizationContractValidationGate`). Chunk-A revert kept ownerPackage=SourceTools to satisfy `RegistryContract_IsVersionedSortedUniqueAndRangeOwned`; lifecycleNote now documents the inconsistency. Chunk-B follow-up: introduce a `crossPackageRangeException` field + test guard, OR add an emit-location-vs-range check that allows registered exceptions. Sources: blind+auditor. Reconciliation: Row: DW-0655; Owner: Story 11.2; Related: Story 11.4; Evidence: docs/diagnostics/diagnostic-registry.json.
+-- **DEF-9-4-A15 — HFC1040 severity asymmetry vs HFC1037 / HFC1044** [`docs/diagnostics/diagnostic-registry.json`] — L3 slot override duplicate is `Warning`/`allowed-with-rationale`; L2 (HFC1037) and L4 (HFC1044) are `Error`/`discouraged-error`. Asymmetry may be intentional (L3 is permissive override) or a copy-paste regression. Confirm via chunk-B fixture-driven severity-pinning test; if intentional, document the design rationale in story-creation-lessons or registry lifecycleNote. Sources: blind. Reconciliation: Row: DW-0656; Owner: Story 11.2; Evidence: docs/diagnostics/diagnostic-registry.json.
+-- **DEF-9-4-A16 — Per-diagnostic title authoring (~140 entries)** [`docs/diagnostics/diagnostic-registry.json` + 106 docs stubs] — many entries use synthesized `HFCxxxx Title Words` form; chunk-A applied only the mechanical "Git Hub"→"GitHub" fix to keep the docs-stub title-equality test passing. Full per-diagnostic title authoring (replacing redundant prefix with natural-language descriptions) is Story 9-5 / chunk-C work and requires concurrent docs-stub updates. Sources: auditor. Reconciliation: Row: DW-0657; Owner: Story 11.2; Evidence: docs/diagnostics/diagnostic-registry.json.
+-- **DEF-9-4-A17 — Sample drift evidence covers only 4 of ~10 AC20 failure categories** [`docs/diagnostics/samples/`] — chunk-A samples cover compatibility-binary-break, docs-stub-missing, registry-out-of-range-id, release-row-missing. Missing: unsupported-schema, reserved/retired misuse, invalid lifecycle transition, encoded docs-root escape, unsafe generated front matter, duplicate ID. Each missing fixture also needs a corresponding chunk-B test asserting the validator emits the named category. Sources: auditor. Reconciliation: Row: DW-0658; Owner: Story 11.2; Related: Story 11.4; Evidence: docs/diagnostics/samples/.
+-- **DEF-9-4-HFCM — Story 9-2 HFCM* migration ids in `AnalyzerReleases.Unshipped.md` trip RS2002** [`src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`, `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`] — HFCM0000-HFCM9002 are CLI-emitted migration findings (no Roslyn `DiagnosticDescriptor`). They live in the analyzer-releases file so the registry/release-row contract covers them, but Roslyn's release-tracking analyzer cannot find a backing descriptor and emits RS2002. Chunk-A kept the project-wide `<NoWarn>$(NoWarn);RS2002</NoWarn>` (with updated comment) until Story 9-2's migration release-row file is relocated to a CLI-specific artifact. Sources: build verification. Reconciliation: Row: DW-0659; Owner: Story 11.2; Related: Story 11.3, Story 11.4; Evidence: src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md.
++- **DEF-9-4-A1 — `compatibility-suppressions.json` per-row schema not enforced** [`docs/diagnostics/compatibility-suppressions.json`] — file ships with `"suppressions": []`; no per-row schema guard for AC14's required fields (package, TFM, oldSignature, newState, hfcId, targetRelease, reviewerRationale). Belongs in chunk B test work. Sources: edge+auditor. Reconciliation: Row: DW-0642; Resolved 2026-05-11; Evidence: ValidateCompatibilitySuppressionsJson and suppression-scope fixtures.
++- **DEF-9-4-A2 — `ValidateRegistryJson` does not `yield break` after `unsupported-schema`** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:293-316`] — on a true 2.0-shaped payload the iterator throws NRE before yielding the named category, breaking the "fail-closed with named category" contract. Chunk B fix. Sources: edge. Reconciliation: Row: DW-0643; Resolved 2026-05-11; Evidence: RegistryValidator_UnsupportedSchemaShortCircuitsBeforeNestedRows.
++- **DEF-9-4-A3 — `externalBoundaries` vs `ranges` overlap policy not encoded** [`docs/diagnostics/diagnostic-registry.json`] — `Hexalith.EventStore` is both an external boundary and a range owner; no test asserts mutual exclusion. Chunk B constraint. Sources: edge. Reconciliation: Row: DW-0644; Resolved 2026-05-11; Evidence: structured externalBoundaries rangePolicy validation.
++- **DEF-9-4-A4 — `externalBoundaries` array has no schema/provenance** [`docs/diagnostics/diagnostic-registry.json:84-86`] — static list with no comment/owner/update-policy field. Chunk B schema work. Sources: blind. Reconciliation: Row: DW-0645; Resolved 2026-05-11; Evidence: externalBoundaries package/owner/rangePolicy/provenance/updatePolicy/rationale schema.
++- **DEF-9-4-A5 — `relatedIds` is empty for every entry** [`docs/diagnostics/diagnostic-registry.json`] — schema seam present but unused; logical relationships (e.g., HFC0001 ↔ replacement, HFC1056/57 ↔ authorization siblings) not encoded. Authoring task. Sources: blind. Reconciliation: Row: DW-0646; Resolved 2026-05-11; Evidence: relatedIds populated for HFC0001/HFC4001, HFC1037/HFC1040/HFC1044/HFC1601, and HFC1056/HFC1057 with reciprocal tests.
++- **DEF-9-4-A6 — Drift-sample timestamp guard blocks only the current year** [`tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:285`] — fragile across year boundaries; should match `\b(19|20)\d{2}\b`. Chunk B test. Sources: edge. Reconciliation: Row: DW-0647; Resolved 2026-05-11; Evidence: YearLiteralRegex guard in DriftSampleReports_AreNormalizedAndCommitted.
++- **DEF-9-4-A7 — `DocsSlugValidation` does not block LRM/RLM (U+200E/U+200F) or NFC-normalize** [`tests/.../DiagnosticRegistryTests.cs:318-319`] — extend `IsZeroWidth`; ideally whitelist `^diagnostics/HFC[0-9]{4}$`. Chunk B. Sources: edge. Reconciliation: Row: DW-0648; Resolved 2026-05-11; Evidence: DocsSlugValidation_DistinguishesUnsafeCanonicalizationFailures covers LRM/RLM, bidi, NFC, malformed and double-encoded input.
++- **DEF-9-4-A8 — Sample drift JSON not validated against an actual schema** [`tests/.../DiagnosticRegistryTests.cs:265-291`] — only top-level keys are asserted; `findings[]` shape unvalidated, so producer-side renames go undetected. Chunk B fixture-schema work. Sources: edge. Reconciliation: Row: DW-0649; Resolved 2026-05-11; Evidence: sample findings schema validation in DiagnosticRegistryTests.
++- **DEF-9-4-A9 — `Hexalith.Tenants` boundary has no range entry; latent collision risk** — present as boundary but no range owner; first Tenants-owned diagnostic would have to either pick a different owner or break the boundary. Chunk B constraint. Sources: edge. Reconciliation: Row: DW-0650; Resolved 2026-05-11; Evidence: Hexalith.Tenants no-range-reserved boundary policy in diagnostic-registry.json and README.
++- **DEF-9-4-A10 — `SourceFiles()` enumeration is filesystem-order dependent** [`tests/.../DiagnosticRegistryTests.cs:343-350`] — non-deterministic error reporting across platforms. Add `OrderBy(p => p, Ordinal)` before iteration. Chunk B test. Sources: edge. Reconciliation: Row: DW-0651; Resolved 2026-05-11; Evidence: EnumerateOwnedFiles uses ordinal OrderBy and governance tests passed.
++- **DEF-9-4-A11 — `DocsLinkPrefix` constant duplicates `canonicalHelpLinkFormat` (two sources of truth)** [`src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs`] — analyzer descriptor should derive from registry's `canonicalHelpLinkFormat` instead of hardcoding the host. Larger refactor; deferred. Sources: auditor. Reconciliation: Row: DW-0652; Resolved 2026-05-11; Evidence: DiagnosticDescriptors.CanonicalHelpLinkFormat is the descriptor helper source and descriptor HelpLinkUri parity is asserted.
++- **DEF-9-4-A12 — Story 9-5 docs-root containment policy not encoded as a JSON-schema constraint on `docsSlug`** [`docs/diagnostics/diagnostic-registry.json`] — README narrates the constraint but no validator-enforced schema; chunk B/C work. Sources: auditor. Reconciliation: Row: DW-0653; Resolved 2026-05-11; Evidence: IsCanonicalDocsSlug rejects encoded traversal, rooted paths, mixed separators, query/fragment, format chars, non-NFC, and double encoding.
++- **DEF-9-4-A13 — `Directory.Build.props` `EnablePackageValidation` block is dead code at evaluation time** [`Directory.Build.props:7-13`, `tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs:248`] — `Condition="'$(IsPackable)' == 'true'"` evaluates before the csproj sets `IsPackable`, so the block never fires. Chunk-A revert kept the literal text to satisfy the chunk-B test contract; the proper fix is to move the block into a new `Directory.Build.targets` (imported after csproj) and update `PackableProjects_UsePackageValidationBaselinePolicy` to inspect that file plus an opt-in `EnableFrontComposerPackageValidation` switch. Sources: edge+auditor. Reconciliation: Row: DW-0654; Resolved 2026-05-11; Evidence: package-validation properties moved to Directory.Build.targets behind EnableFrontComposerPackageValidation and tests updated.
++- **DEF-9-4-A14 — HFC1601 ownerPackage / emit-location inconsistency formalization** [`docs/diagnostics/diagnostic-registry.json` HFC1601 entry] — registry has `ownerPackage: "SourceTools"` (matches numeric range) but the production descriptor / runtime emission lives in the Shell project (`FrontComposerRegistry.ValidateManifests`, `CustomizationContractValidationGate`). Chunk-A revert kept ownerPackage=SourceTools to satisfy `RegistryContract_IsVersionedSortedUniqueAndRangeOwned`; lifecycleNote now documents the inconsistency. Chunk-B follow-up: introduce a `crossPackageRangeException` field + test guard, OR add an emit-location-vs-range check that allows registered exceptions. Sources: blind+auditor. Reconciliation: Row: DW-0655; Resolved 2026-05-11; Evidence: allowedExceptions.crossPackageRange contains only HFC1601 with owner/consumer/rationale/help-link/story provenance.
++- **DEF-9-4-A15 — HFC1040 severity asymmetry vs HFC1037 / HFC1044** [`docs/diagnostics/diagnostic-registry.json`] — L3 slot override duplicate is `Warning`/`allowed-with-rationale`; L2 (HFC1037) and L4 (HFC1044) are `Error`/`discouraged-error`. Asymmetry may be intentional (L3 is permissive override) or a copy-paste regression. Confirm via chunk-B fixture-driven severity-pinning test; if intentional, document the design rationale in story-creation-lessons or registry lifecycleNote. Sources: blind. Reconciliation: Row: DW-0656; Resolved 2026-05-11; Evidence: HFC1040 lifecycleNote documents intentional L3 warning asymmetry and severity matrix is pinned.
++- **DEF-9-4-A16 — Per-diagnostic title authoring (~140 entries)** [`docs/diagnostics/diagnostic-registry.json` + 106 docs stubs] — many entries use synthesized `HFCxxxx Title Words` form; chunk-A applied only the mechanical "Git Hub"→"GitHub" fix to keep the docs-stub title-equality test passing. Full per-diagnostic title authoring (replacing redundant prefix with natural-language descriptions) is Story 9-5 / chunk-C work and requires concurrent docs-stub updates. Sources: auditor. Reconciliation: Row: DW-0657; Needs Product/Architecture decision; Evidence: Story 11.2 prioritized HFC0001 and HFC1601 title/prose cleanup; full-corpus rewrite split per AC26.
++- **DEF-9-4-A17 — Sample drift evidence covers only 4 of ~10 AC20 failure categories** [`docs/diagnostics/samples/`] — chunk-A samples cover compatibility-binary-break, docs-stub-missing, registry-out-of-range-id, release-row-missing. Missing: unsupported-schema, reserved/retired misuse, invalid lifecycle transition, encoded docs-root escape, unsafe generated front matter, duplicate ID. Each missing fixture also needs a corresponding chunk-B test asserting the validator emits the named category. Sources: auditor. Reconciliation: Row: DW-0658; Resolved 2026-05-11; Evidence: samples now cover unsupported schema, reserved/retired misuse, invalid lifecycle, encoded docs-root escape, unsafe front matter, duplicate ID, suppression scope, HFCM governance, and existing drift categories.
++- **DEF-9-4-HFCM — Story 9-2 HFCM* migration ids in `AnalyzerReleases.Unshipped.md` trip RS2002** [`src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md`, `src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj`] — HFCM0000-HFCM9002 are CLI-emitted migration findings (no Roslyn `DiagnosticDescriptor`). They live in the analyzer-releases file so the registry/release-row contract covers them, but Roslyn's release-tracking analyzer cannot find a backing descriptor and emits RS2002. Chunk-A kept the project-wide `<NoWarn>$(NoWarn);RS2002</NoWarn>` (with updated comment) until Story 9-2's migration release-row file is relocated to a CLI-specific artifact. Sources: build verification. Reconciliation: Row: DW-0659; Resolved 2026-05-11; Evidence: HFCM rows moved to docs/diagnostics/migration-findings.json and RS2002 removed from SourceTools project.
+ 
+diff --git a/_bmad-output/implementation-artifacts/sprint-status.yaml b/_bmad-output/implementation-artifacts/sprint-status.yaml
+index 277e2f6..44a2f4a 100644
+--- a/_bmad-output/implementation-artifacts/sprint-status.yaml
++++ b/_bmad-output/implementation-artifacts/sprint-status.yaml
+@@ -34,7 +34,7 @@
+ # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+ 
+ generated: 2026-04-12
+-last_updated: "2026-05-11 (Created Story 11.6 shell UX/accessibility follow-ups.)"
++last_updated: "2026-05-11 (Completed Story 11.2 diagnostic registry and documentation governance follow-ups; moved to review.)"
+ project: Hexalith.FrontComposer
+ project_key: NOKEY
+ tracking_system: file-system
+@@ -146,7 +146,7 @@ development_status:
+   # Epic 11: Deferred Hardening & Release Readiness
+   epic-11: in-progress
+   11-1-deferred-work-ledger-reconciliation-and-ownership: done
+-  11-2-diagnostic-registry-and-documentation-governance-follow-ups: ready-for-dev
++  11-2-diagnostic-registry-and-documentation-governance-follow-ups: review
+   11-3-cli-migration-and-ide-edge-case-hardening: ready-for-dev
+   11-4-drift-detection-and-source-generator-coverage-hardening: ready-for-dev
+   11-5-mcp-schema-negotiation-and-agent-contract-hardening: ready-for-dev
+diff --git a/docs/diagnostics/HFC0001.md b/docs/diagnostics/HFC0001.md
+index 7fea27d..4556897 100644
+--- a/docs/diagnostics/HFC0001.md
++++ b/docs/diagnostics/HFC0001.md
+@@ -1,14 +1,14 @@
+ ---
+ id: HFC0001
+-title: "HFC0001 Query Request Filter Deprecated"
++title: "QueryRequest.Filter is deprecated"
+ ownerPackage: Contracts
+ severity: Info
+ lifecycle: deprecated
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC0001
+-relatedIds: []
++relatedIds: [HFC4001]
+ storyOwner: 9-4-diagnostic-id-system-and-deprecation-policy
+-description: "Diagnostic reference for HFC0001 Query Request Filter Deprecated."
++description: "Diagnostic reference for QueryRequest.Filter deprecation."
+ genre: reference
+ audience: adopter
+ ownerStory: 9-4-diagnostic-id-system-and-deprecation-policy
+@@ -27,20 +27,20 @@ Suppression policy: `allowed-with-rationale`
+ <!-- story-9-5:narrative-start -->
+ ## Problem
+ 
+-HFC0001 Query Request Filter Deprecated.
++`QueryRequest.Filter` is deprecated. New code should store filter state in `QueryRequest.ColumnFilters`, where each filter remains tied to the column it scopes.
+ 
+ ## Common Causes
+ 
+-The Contracts producer emits `HFC0001` when it detects `HFC0001 Query Request Filter Deprecated` during FrontComposer validation or runtime reporting. Inspect the diagnostic payload for the affected symbol, generated path, package, or migration record before changing code.
++The diagnostic appears when code still initializes, serializes, or reads the legacy `Filter` property. It most often shows up in adapter code that was written before column-filter support became the stable contract.
+ 
+ ## How To Fix
+ 
+-Follow the registry-owned message template for `HFC0001` and update the affected Contracts surface. Keep evidence project-relative and sanitized, then rerun docs validation so the help link, lifecycle state, and related diagnostics stay synchronized.
++Move the filter expression to `ColumnFilters`, update serializers that materialize query requests, and keep any migration evidence project-relative. Rebuild after the replacement so obsolete metadata and diagnostic links stay synchronized.
+ 
+ ## Example
+ 
+ ```text
+-HFC0001: What: HFC0001 Query Request Filter Deprecated. Expected: The Contracts contract for HFC0001 is satisfied. Got: A bounded diagnostic payload identifies the affected FrontComposer surface. Fix: Apply the Contracts remediation and rerun validation.
++HFC0001: What: QueryRequest.Filter is deprecated. Expected: Use QueryRequest.ColumnFilters for column-scoped filter expressions. Got: Legacy QueryRequest.Filter metadata was used. Fix: Move filter state to ColumnFilters before the removal release.
+ ```
+ 
+ ## Suppression Guidance
+@@ -58,5 +58,5 @@ Migration steps:
+ 
+ ## Related Diagnostics
+ 
+-None currently.
++Related migration and deprecation governance: HFC4001.
+ <!-- story-9-5:narrative-end -->
+diff --git a/docs/diagnostics/HFC1037.md b/docs/diagnostics/HFC1037.md
+index ad261a5..51bc073 100644
+--- a/docs/diagnostics/HFC1037.md
++++ b/docs/diagnostics/HFC1037.md
+@@ -6,7 +6,7 @@ severity: Error
+ lifecycle: active
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC1037
+-relatedIds: []
++relatedIds: [HFC1040, HFC1044, HFC1601]
+ storyOwner: 9-4-diagnostic-id-system-and-deprecation-policy
+ description: "Diagnostic reference for Duplicate [ProjectionTemplate] for the same projection and role."
+ genre: reference
+diff --git a/docs/diagnostics/HFC1040.md b/docs/diagnostics/HFC1040.md
+index 0d07ae8..aa47161 100644
+--- a/docs/diagnostics/HFC1040.md
++++ b/docs/diagnostics/HFC1040.md
+@@ -6,7 +6,7 @@ severity: Warning
+ lifecycle: active
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC1040
+-relatedIds: []
++relatedIds: [HFC1037, HFC1044, HFC1601]
+ storyOwner: 9-4-diagnostic-id-system-and-deprecation-policy
+ description: "Diagnostic reference for Duplicate Level 3 slot override."
+ genre: reference
+diff --git a/docs/diagnostics/HFC1044.md b/docs/diagnostics/HFC1044.md
+index dd0d223..a54d6b6 100644
+--- a/docs/diagnostics/HFC1044.md
++++ b/docs/diagnostics/HFC1044.md
+@@ -6,7 +6,7 @@ severity: Error
+ lifecycle: active
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC1044
+-relatedIds: []
++relatedIds: [HFC1037, HFC1040, HFC1601]
+ storyOwner: 9-4-diagnostic-id-system-and-deprecation-policy
+ description: "Diagnostic reference for Duplicate Level 4 view override."
+ genre: reference
+diff --git a/docs/diagnostics/HFC1056.md b/docs/diagnostics/HFC1056.md
+index b164119..5866959 100644
+--- a/docs/diagnostics/HFC1056.md
++++ b/docs/diagnostics/HFC1056.md
+@@ -6,7 +6,7 @@ severity: Error
+ lifecycle: active
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC1056
+-relatedIds: []
++relatedIds: [HFC1057]
+ storyOwner: 7-3-command-authorization-policies
+ description: "Diagnostic reference for Command authorization policy is invalid."
+ genre: reference
+diff --git a/docs/diagnostics/HFC1057.md b/docs/diagnostics/HFC1057.md
+index de4fd1a..4e6fa0f 100644
+--- a/docs/diagnostics/HFC1057.md
++++ b/docs/diagnostics/HFC1057.md
+@@ -6,7 +6,7 @@ severity: Error
+ lifecycle: active
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC1057
+-relatedIds: []
++relatedIds: [HFC1056]
+ storyOwner: 7-3-command-authorization-policies
+ description: "Diagnostic reference for Command declares duplicate authorization policies."
+ genre: reference
+diff --git a/docs/diagnostics/HFC1601.md b/docs/diagnostics/HFC1601.md
+index 609ee43..a43e989 100644
+--- a/docs/diagnostics/HFC1601.md
++++ b/docs/diagnostics/HFC1601.md
+@@ -1,14 +1,14 @@
+ ---
+ id: HFC1601
+-title: "HFC1601 Manifest Invalid"
++title: "Customization manifest is invalid"
+ ownerPackage: SourceTools
+ severity: Error
+ lifecycle: active
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC1601
+-relatedIds: []
++relatedIds: [HFC1037, HFC1040, HFC1044]
+ storyOwner: 3-4-fccommandpalette-and-keyboard-shortcuts
+-description: "Diagnostic reference for HFC1601 Manifest Invalid."
++description: "Diagnostic reference for invalid customization manifests."
+ genre: reference
+ audience: adopter
+ ownerStory: 3-4-fccommandpalette-and-keyboard-shortcuts
+@@ -27,20 +27,20 @@ Suppression policy: `discouraged-error`
+ <!-- story-9-5:narrative-start -->
+ ## Problem
+ 
+-HFC1601 Manifest Invalid.
++The Shell runtime rejected a customization manifest before trusting it. The ID remains allocated in the SourceTools numeric range because the descriptor contract originated there, while the runtime emission is intentionally Shell-owned through the registry exception.
+ 
+ ## Common Causes
+ 
+-The SourceTools producer emits `HFC1601` when it detects `HFC1601 Manifest Invalid` during FrontComposer validation or runtime reporting. Inspect the diagnostic payload for the affected symbol, generated path, package, or migration record before changing code.
++Common causes are stale generated manifests, descriptor contract drift after a package update, or a hand-authored customization manifest that no longer matches the generated SourceTools contract.
+ 
+ ## How To Fix
+ 
+-Follow the registry-owned message template for `HFC1601` and update the affected SourceTools surface. Keep evidence project-relative and sanitized, then rerun docs validation so the help link, lifecycle state, and related diagnostics stay synchronized.
++Regenerate the manifest from the current descriptor contract or correct the invalid entry. Keep any evidence bounded and sanitized, then rerun the diagnostic registry tests so the structured cross-package exception remains valid.
+ 
+ ## Example
+ 
+ ```text
+-HFC1601: What: HFC1601 Manifest Invalid. Expected: The SourceTools contract for HFC1601 is satisfied. Got: A bounded diagnostic payload identifies the affected FrontComposer surface. Fix: Apply the SourceTools remediation and rerun validation.
++HFC1601: What: Customization manifest is invalid. Expected: Shell runtime customization manifests match the SourceTools descriptor contract. Got: A manifest failed validation before it could be trusted. Fix: Regenerate or correct the manifest and keep evidence sanitized.
+ ```
+ 
+ ## Suppression Guidance
+@@ -53,5 +53,5 @@ No migration action is required unless the registry later changes this diagnosti
+ 
+ ## Related Diagnostics
+ 
+-None currently.
++Related customization duplicate-policy diagnostics: HFC1037, HFC1040, HFC1044.
+ <!-- story-9-5:narrative-end -->
+diff --git a/docs/diagnostics/HFC4001.md b/docs/diagnostics/HFC4001.md
+index 6335c8f..22d75fc 100644
+--- a/docs/diagnostics/HFC4001.md
++++ b/docs/diagnostics/HFC4001.md
+@@ -6,7 +6,7 @@ severity: Info
+ lifecycle: deprecated
+ introducedIn: 0.1.0
+ docsSlug: diagnostics/HFC4001
+-relatedIds: []
++relatedIds: [HFC0001]
+ storyOwner: 8-6-mcp-schema-negotiation-and-fingerprint-trust
+ description: "Diagnostic reference for HFC4001 Mcp Compatible Additive Drift Deprecated."
+ genre: reference
+diff --git a/docs/diagnostics/README.md b/docs/diagnostics/README.md
+index 985861b..5670ea5 100644
+--- a/docs/diagnostics/README.md
++++ b/docs/diagnostics/README.md
+@@ -6,7 +6,7 @@ The supported registry schema is exactly `1.0`. Newer or malformed schema versio
+ 
+ Normal CI must not call live package feeds, GitHub, or the public docs site to validate this contract. Package/API compatibility gates use .NET package validation / ApiCompat for packable FrontComposer packages, with `FrontComposerPackageValidationBaselineVersion` defined in `Directory.Build.props` and applied conditionally in `Directory.Build.targets` only when `EnableFrontComposerPackageValidation=true` is set (default off). Suppression evidence is checked in at `compatibility-suppressions.json`. Reports are normalized so unavailable network/cache state cannot silently skip diagnostics governance.
+ 
+-The `samples/` folder contains stable blocking-report examples for registry drift, docs-stub drift, release-row drift, and compatibility drift. These examples intentionally avoid timestamps, absolute paths, machine names, SDK banners, and live feed URLs.
++The `samples/` folder contains stable blocking-report examples for registry drift, docs-stub drift, release-row drift, compatibility drift, unsupported schema, reserved/retired misuse, lifecycle transition errors, encoded docs-root escape, unsafe front matter, duplicate IDs, suppression scope, and HFCM release governance. These examples intentionally avoid timestamps, absolute paths, machine names, SDK banners, and live feed URLs.
+ 
+ ## Sample placeholder convention
+ 
+@@ -34,7 +34,7 @@ Mixed channels (analyzer-emitted + runtime-emitted under the same id) require bo
+ 
+ ## Migration ID convention
+ 
+-`migrationId` is the registry pointer used by Story 9-2 (CLI `migrate`) and Story 9-5 (DocFX migration pages) to resolve the canonical migration page for a deprecated diagnostic or API. Two shapes are supported:
++`migrationId` is the registry pointer used by Story 9-2 (CLI `migrate`) and Story 9-5 (DocFX migration pages) to resolve the canonical migration page for a deprecated diagnostic or API. CLI-only HFCM findings are governed by `docs/diagnostics/migration-findings.json`; they are not Roslyn `DiagnosticDescriptor` IDs and must not appear in analyzer release-tracking rows. Two registry pointer shapes are supported:
+ 
+ - `migrationId == id` — the diagnostic page **is** the migration page (the "obsolete API X, replaced by Y" stub doubles as the migration story). This is the default for simple field-level deprecations.
+ - `migrationId == "HFCMxxxx"` (or another distinct id) — the migration story is a separate page (Story 9-2's `HFCM*` namespace, or another diagnostic's docs slug). Used when the migration spans multiple APIs, requires multi-step upgrade actions, or carries security/compliance prose that does not belong in the diagnostic stub.
+@@ -43,7 +43,7 @@ Mixed channels (analyzer-emitted + runtime-emitted under the same id) require bo
+ 
+ ## Cross-package range exceptions
+ 
+-`ranges` defines exact numeric ID ownership: Contracts 1-999, SourceTools 1000-1999, Shell 2000-2999, EventStore 3000-3999, Mcp 4000-4999, Aspire 5000-5999. Every diagnostic id must fall inside its `ownerPackage`'s declared range *unless* it is listed in the top-level `allowedExceptions.crossPackageRange` array with package, numeric-range owner, reason, and approval version. Exceptions are reviewed at registry time and must be motivated by stable-public-id constraints (e.g., already-shipped diagnostic ids consumed by external telemetry or adopter SIEM rules).
++`ranges` defines exact numeric ID ownership: Contracts 1-999, SourceTools 1000-1999, Shell 2000-2999, EventStore 3000-3999, Mcp 4000-4999, Aspire 5000-5999. `externalBoundaries` is structured data, not a string list: each boundary records its package, owner, range policy, provenance, update policy, and rationale. `Hexalith.EventStore` owns its range; `Hexalith.Tenants` is a no-range-reserved external boundary until a future story allocates one. Every diagnostic id must fall inside its `ownerPackage`'s declared range *unless* it is listed in the top-level `allowedExceptions.crossPackageRange` array with package, consuming package, numeric-range owner, canonical help link, reason, approving story, and approval version. Exceptions are reviewed at registry time and must be motivated by stable-public-id constraints (e.g., already-shipped diagnostic ids consumed by external telemetry or adopter SIEM rules).
+ 
+ ## Stub authoring contract
+ 
+diff --git a/docs/diagnostics/diagnostic-registry.json b/docs/diagnostics/diagnostic-registry.json
+index f92c684..86121ff 100644
+--- a/docs/diagnostics/diagnostic-registry.json
++++ b/docs/diagnostics/diagnostic-registry.json
+@@ -36,14 +36,30 @@
+     }
+   ],
+   "externalBoundaries": [
+-    "Hexalith.EventStore",
+-    "Hexalith.Tenants"
++    {
++      "package": "Hexalith.EventStore",
++      "owner": "EventStore",
++      "rangePolicy": "owns-range",
++      "rangeOwner": "EventStore",
++      "provenance": "root-submodule",
++      "updatePolicy": "Changes require Story 11.7 or explicit registry governance review.",
++      "rationale": "EventStore is a root-level submodule with a dedicated HFC3000-HFC3999 range."
++    },
++    {
++      "package": "Hexalith.Tenants",
++      "owner": "Tenants",
++      "rangePolicy": "no-range-reserved",
++      "rangeOwner": null,
++      "provenance": "root-submodule",
++      "updatePolicy": "A future Tenants diagnostic range requires an explicit registry range allocation story.",
++      "rationale": "Tenants is an external boundary but currently emits no FrontComposer-owned diagnostics."
++    }
+   ],
+   "diagnostics": [
+     {
+       "id": "HFC0001",
+       "ownerPackage": "Contracts",
+-      "title": "HFC0001 Query Request Filter Deprecated",
++      "title": "QueryRequest.Filter is deprecated",
+       "lifecycle": "deprecated",
+       "introducedIn": "0.1.0",
+       "deprecatedIn": "0.2.0",
+@@ -53,14 +69,16 @@
+       "panelSeverity": "Information",
+       "cliExitBehavior": "non-blocking",
+       "mcpCategory": null,
+-      "messageTemplate": "What: HFC0001 Query Request Filter Deprecated. Expected: Follow the FrontComposer diagnostic contract for HFC0001. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
++      "messageTemplate": "What: QueryRequest.Filter is deprecated. Expected: Use QueryRequest.ColumnFilters for column-scoped filter expressions. Got: Legacy QueryRequest.Filter metadata was used. Fix: Move filter state to ColumnFilters before the removal release. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
+       "docsSlug": "diagnostics/HFC0001",
+       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC0001",
+       "redactionClass": "runtime-sanitized",
+       "suppressionPolicy": "allowed-with-rationale",
+       "releaseRow": "runtime-only",
+       "migrationId": "HFC0001",
+-      "relatedIds": [],
++      "relatedIds": [
++        "HFC4001"
++      ],
+       "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+     },
+     {
+@@ -865,7 +883,11 @@
+       "suppressionPolicy": "discouraged-error",
+       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+       "migrationId": null,
+-      "relatedIds": [],
++      "relatedIds": [
++        "HFC1040",
++        "HFC1044",
++        "HFC1601"
++      ],
+       "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+     },
+     {
+@@ -934,8 +956,13 @@
+       "suppressionPolicy": "allowed-with-rationale",
+       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+       "migrationId": null,
+-      "relatedIds": [],
+-      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
++      "relatedIds": [
++        "HFC1037",
++        "HFC1044",
++        "HFC1601"
++      ],
++      "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy",
++      "lifecycleNote": "Level 3 slot duplicates remain Warning/allowed-with-rationale because duplicate slot descriptors can be ignored with default-renderer fallback; Level 2 templates and Level 4 view overrides are Error due manifest or runtime selection ambiguity."
+     },
+     {
+       "id": "HFC1041",
+@@ -1026,7 +1053,11 @@
+       "suppressionPolicy": "discouraged-error",
+       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+       "migrationId": null,
+-      "relatedIds": [],
++      "relatedIds": [
++        "HFC1037",
++        "HFC1040",
++        "HFC1601"
++      ],
+       "ownerStory": "9-4-diagnostic-id-system-and-deprecation-policy"
+     },
+     {
+@@ -1302,7 +1333,9 @@
+       "suppressionPolicy": "discouraged-error",
+       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+       "migrationId": null,
+-      "relatedIds": [],
++      "relatedIds": [
++        "HFC1057"
++      ],
+       "ownerStory": "7-3-command-authorization-policies",
+       "lifecycleNote": "helpLinkUri rebased from legacy hexalith.io host to canonical github.io host in 0.2.0 per registry canonicalHelpLinkFormat alignment (AC22)."
+     },
+@@ -1326,7 +1359,9 @@
+       "suppressionPolicy": "discouraged-error",
+       "releaseRow": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+       "migrationId": null,
+-      "relatedIds": [],
++      "relatedIds": [
++        "HFC1056"
++      ],
+       "ownerStory": "7-3-command-authorization-policies",
+       "lifecycleNote": "helpLinkUri rebased from legacy hexalith.io host to canonical github.io host in 0.2.0 per registry canonicalHelpLinkFormat alignment (AC22)."
+     },
+@@ -1632,7 +1667,7 @@
+     {
+       "id": "HFC1601",
+       "ownerPackage": "SourceTools",
+-      "title": "HFC1601 Manifest Invalid",
++      "title": "Customization manifest is invalid",
+       "lifecycle": "active",
+       "introducedIn": "0.1.0",
+       "deprecatedIn": null,
+@@ -1642,16 +1677,20 @@
+       "panelSeverity": "Error",
+       "cliExitBehavior": "diagnostic",
+       "mcpCategory": null,
+-      "messageTemplate": "What: HFC1601 Manifest Invalid. Expected: Follow the FrontComposer diagnostic contract for HFC1601. Got: See the emitted diagnostic payload. Fix: Open the linked diagnostic stub and apply the documented remediation. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
++      "messageTemplate": "What: Customization manifest is invalid. Expected: Shell runtime customization manifests match the SourceTools descriptor contract. Got: A manifest failed validation before it could be trusted. Fix: Regenerate or correct the manifest and keep evidence sanitized. DocsLink: https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
+       "docsSlug": "diagnostics/HFC1601",
+       "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
+       "redactionClass": "source-metadata-only",
+       "suppressionPolicy": "discouraged-error",
+       "releaseRow": "runtime-only",
+       "migrationId": null,
+-      "relatedIds": [],
++      "relatedIds": [
++        "HFC1037",
++        "HFC1040",
++        "HFC1044"
++      ],
+       "ownerStory": "3-4-fccommandpalette-and-keyboard-shortcuts",
+-      "lifecycleNote": "Cross-package emission: HFC1601 is allocated in the SourceTools numeric range but emitted at runtime exclusively from the Shell project (FrontComposerRegistry / CustomizationContractValidationGate). releaseRow=runtime-only because no Roslyn analyzer descriptor backs this id. Documented inconsistency between ownerPackage and emit location; chunk-B test should add an emit-location-vs-range check (see deferred-work DEF-9-4-A14)."
++      "lifecycleNote": "Cross-package emission: HFC1601 is allocated in the SourceTools numeric range but emitted at runtime exclusively from the Shell project. The structured allowedExceptions.crossPackageRange row records owner package, consuming package, numeric-range owner, canonical help link, rationale, approving story, and provenance so this one stable ID does not become a general bypass."
+     },
+     {
+       "id": "HFC2004",
+@@ -2483,8 +2522,25 @@
+       "suppressionPolicy": "allowed-with-rationale",
+       "releaseRow": "runtime-only",
+       "migrationId": "HFC4001",
+-      "relatedIds": [],
++      "relatedIds": [
++        "HFC0001"
++      ],
+       "ownerStory": "8-6-mcp-schema-negotiation-and-fingerprint-trust"
+     }
+-  ]
++  ],
++  "allowedExceptions": {
++    "crossPackageRange": [
++      {
++        "id": "HFC1601",
++        "ownerPackage": "SourceTools",
++        "consumingPackage": "Shell",
++        "numericRangeOwner": "SourceTools",
++        "helpLinkUri": "https://hexalith.github.io/FrontComposer/diagnostics/HFC1601",
++        "reason": "HFC1601 was allocated in the SourceTools numeric range before its runtime Shell emission became the stable public surface.",
++        "approvingStory": "11-2-diagnostic-registry-and-documentation-governance-follow-ups",
++        "introducedIn": "0.1.0",
++        "approvedOn": "2026-05-11"
++      }
++    ]
++  }
+ }
+diff --git a/docs/diagnostics/migration-findings.json b/docs/diagnostics/migration-findings.json
+new file mode 100644
+index 0000000..6fcacfb
+--- /dev/null
++++ b/docs/diagnostics/migration-findings.json
+@@ -0,0 +1,55 @@
++{
++  "schemaVersion": "1.0",
++  "ownerStory": "9-2-cli-inspection-and-migration-tools",
++  "releaseBucket": "cli-migration",
++  "findings": [
++    {
++      "id": "HFCM0000",
++      "category": "HexalithFrontComposer.Migration",
++      "severity": "Info",
++      "migrationDocsSlug": "migrations/9.1-to-9.2",
++      "releaseNote": "Migration candidate was skipped by write-safety policy.",
++      "introducedIn": "0.2.0"
++    },
++    {
++      "id": "HFCM0001",
++      "category": "HexalithFrontComposer.Migration",
++      "severity": "Info",
++      "migrationDocsSlug": "migrations/9.1-to-9.2",
++      "releaseNote": "No fixable FrontComposer migration diagnostics were found.",
++      "introducedIn": "0.2.0"
++    },
++    {
++      "id": "HFCM0002",
++      "category": "HexalithFrontComposer.Migration",
++      "severity": "Warning",
++      "migrationDocsSlug": "migrations/9.1-to-9.2",
++      "releaseNote": "Diagnostic sidecar file is unreadable or malformed.",
++      "introducedIn": "0.2.0"
++    },
++    {
++      "id": "HFCM0004",
++      "category": "HexalithFrontComposer.Migration",
++      "severity": "Error",
++      "migrationDocsSlug": "migrations/9.1-to-9.2",
++      "releaseNote": "Migration apply failed because plan/write validation failed.",
++      "introducedIn": "0.2.0"
++    },
++    {
++      "id": "HFCM9001",
++      "category": "HexalithFrontComposer.Migration",
++      "severity": "Warning",
++      "migrationDocsSlug": "migrations/9.1-to-9.2",
++      "releaseNote": "Obsolete dev-mode overlay registration API can be migrated automatically.",
++      "introducedIn": "0.2.0"
++    },
++    {
++      "id": "HFCM9002",
++      "category": "HexalithFrontComposer.Migration",
++      "severity": "Warning",
++      "migrationDocsSlug": "migrations/9.1-to-9.2",
++      "releaseNote": "Custom FrontComposer migration requires manual review.",
++      "introducedIn": "0.2.0"
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/compatibility-drift-report.json b/docs/diagnostics/samples/compatibility-drift-report.json
+index faea894..f933d88 100644
+--- a/docs/diagnostics/samples/compatibility-drift-report.json
++++ b/docs/diagnostics/samples/compatibility-drift-report.json
+@@ -13,7 +13,9 @@
+   },
+   "findings": [
+     {
++      "id": "HFC-PLACEHOLDER",
+       "reason": "binary-breaking-change",
++      "path": "docs/diagnostics/compatibility-suppressions.json",
+       "oldSignature": "<example-package>.<ExampleType>::<ExampleMember>()",
+       "newState": "removed",
+       "hfcId": "HFC-PLACEHOLDER",
+diff --git a/docs/diagnostics/samples/docs-stub-drift-report.json b/docs/diagnostics/samples/docs-stub-drift-report.json
+index 8c20969..05d8d1f 100644
+--- a/docs/diagnostics/samples/docs-stub-drift-report.json
++++ b/docs/diagnostics/samples/docs-stub-drift-report.json
+@@ -10,6 +10,7 @@
+     {
+       "id": "HFC1058",
+       "reason": "missing-docs-stub",
++      "path": "docs/diagnostics/HFC1058.md",
+       "expectedPath": "docs/diagnostics/HFC1058.md",
+       "message": "Registry slug diagnostics/HFC1058 does not resolve to a checked-in stub."
+     }
+diff --git a/docs/diagnostics/samples/duplicate-id-drift-report.json b/docs/diagnostics/samples/duplicate-id-drift-report.json
+new file mode 100644
+index 0000000..b48ebd2
+--- /dev/null
++++ b/docs/diagnostics/samples/duplicate-id-drift-report.json
+@@ -0,0 +1,16 @@
++{
++  "schemaVersion": "1.0",
++  "category": "duplicate-id",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json"
++  },
++  "findings": [
++    {
++      "id": "HFC-PLACEHOLDER",
++      "reason": "duplicate-id",
++      "path": "docs/diagnostics/diagnostic-registry.json",
++      "message": "Diagnostic ID appears more than once after ordinal sorting."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/encoded-docs-root-escape-report.json b/docs/diagnostics/samples/encoded-docs-root-escape-report.json
+new file mode 100644
+index 0000000..cf8ba93
+--- /dev/null
++++ b/docs/diagnostics/samples/encoded-docs-root-escape-report.json
+@@ -0,0 +1,17 @@
++{
++  "schemaVersion": "1.0",
++  "category": "encoded-docs-root-escape",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json",
++    "docsRoot": "docs/diagnostics"
++  },
++  "findings": [
++    {
++      "id": "HFC-PLACEHOLDER",
++      "reason": "invalid-slug",
++      "path": "docs/diagnostics/diagnostic-registry.json",
++      "message": "Encoded docs slug cannot be resolved inside docs/diagnostics."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/hfcm-release-governance-report.json b/docs/diagnostics/samples/hfcm-release-governance-report.json
+new file mode 100644
+index 0000000..1cfefd8
+--- /dev/null
++++ b/docs/diagnostics/samples/hfcm-release-governance-report.json
+@@ -0,0 +1,16 @@
++{
++  "schemaVersion": "1.0",
++  "category": "hfcm-release-governance",
++  "exitCode": 2,
++  "inputs": {
++    "migrationFindings": "docs/diagnostics/migration-findings.json"
++  },
++  "findings": [
++    {
++      "id": "HFCM-PLACEHOLDER",
++      "reason": "analyzer-descriptor-misclassification",
++      "path": "docs/diagnostics/migration-findings.json",
++      "message": "CLI migration finding was classified as a Roslyn analyzer descriptor release row."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/invalid-lifecycle-transition-report.json b/docs/diagnostics/samples/invalid-lifecycle-transition-report.json
+new file mode 100644
+index 0000000..496b193
+--- /dev/null
++++ b/docs/diagnostics/samples/invalid-lifecycle-transition-report.json
+@@ -0,0 +1,16 @@
++{
++  "schemaVersion": "1.0",
++  "category": "invalid-lifecycle-transition",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json"
++  },
++  "findings": [
++    {
++      "id": "HFC-PLACEHOLDER",
++      "reason": "invalid-lifecycle-transition",
++      "path": "docs/diagnostics/diagnostic-registry.json",
++      "message": "Diagnostic lifecycle transition skipped the required deprecated state."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/release-row-drift-report.json b/docs/diagnostics/samples/release-row-drift-report.json
+index ee0823e..087dd17 100644
+--- a/docs/diagnostics/samples/release-row-drift-report.json
++++ b/docs/diagnostics/samples/release-row-drift-report.json
+@@ -14,6 +14,7 @@
+     {
+       "id": "HFC1058",
+       "reason": "missing-release-row",
++      "path": "src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md",
+       "message": "Analyzer-emitted diagnostic HFC1058 is active in the registry but absent from release tracking."
+     }
+   ]
+diff --git a/docs/diagnostics/samples/reserved-retired-misuse-report.json b/docs/diagnostics/samples/reserved-retired-misuse-report.json
+new file mode 100644
+index 0000000..671a583
+--- /dev/null
++++ b/docs/diagnostics/samples/reserved-retired-misuse-report.json
+@@ -0,0 +1,16 @@
++{
++  "schemaVersion": "1.0",
++  "category": "reserved-retired-misuse",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json"
++  },
++  "findings": [
++    {
++      "id": "HFC-PLACEHOLDER",
++      "reason": "reserved-or-retired-emitted",
++      "path": "<redacted-source-path>",
++      "message": "Reserved or retired diagnostic ID was used as an emitted diagnostic."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/suppression-scope-drift-report.json b/docs/diagnostics/samples/suppression-scope-drift-report.json
+new file mode 100644
+index 0000000..de07011
+--- /dev/null
++++ b/docs/diagnostics/samples/suppression-scope-drift-report.json
+@@ -0,0 +1,16 @@
++{
++  "schemaVersion": "1.0",
++  "category": "suppression-scope",
++  "exitCode": 2,
++  "inputs": {
++    "suppressions": "docs/diagnostics/compatibility-suppressions.json"
++  },
++  "findings": [
++    {
++      "id": "HFC-PLACEHOLDER",
++      "reason": "suppression-out-of-scope",
++      "path": "docs/diagnostics/compatibility-suppressions.json",
++      "message": "Compatibility suppression attempted to apply outside its declared diagnostic, package, TFM, or target release."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/unsafe-generated-front-matter-report.json b/docs/diagnostics/samples/unsafe-generated-front-matter-report.json
+new file mode 100644
+index 0000000..cda23d7
+--- /dev/null
++++ b/docs/diagnostics/samples/unsafe-generated-front-matter-report.json
+@@ -0,0 +1,16 @@
++{
++  "schemaVersion": "1.0",
++  "category": "unsafe-generated-front-matter",
++  "exitCode": 2,
++  "inputs": {
++    "docsRoot": "docs/diagnostics"
++  },
++  "findings": [
++    {
++      "id": "HFC-PLACEHOLDER",
++      "reason": "unsafe-front-matter",
++      "path": "docs/diagnostics/HFC-PLACEHOLDER.md",
++      "message": "Generated front matter contains a forbidden control, formula, or formatting character."
++    }
++  ]
++}
+diff --git a/docs/diagnostics/samples/unsupported-schema-drift-report.json b/docs/diagnostics/samples/unsupported-schema-drift-report.json
+new file mode 100644
+index 0000000..f1c9da7
+--- /dev/null
++++ b/docs/diagnostics/samples/unsupported-schema-drift-report.json
+@@ -0,0 +1,16 @@
++{
++  "schemaVersion": "1.0",
++  "category": "unsupported-schema",
++  "exitCode": 2,
++  "inputs": {
++    "registry": "docs/diagnostics/diagnostic-registry.json"
++  },
++  "findings": [
++    {
++      "id": "HFC-PLACEHOLDER",
++      "reason": "unsupported-schema",
++      "path": "docs/diagnostics/diagnostic-registry.json",
++      "message": "Registry schema version is unsupported; validation stopped before reading nested rows."
++    }
++  ]
++}
+diff --git a/docs/validation/producer-fingerprints.json b/docs/validation/producer-fingerprints.json
+index 554944c..de4c993 100644
+--- a/docs/validation/producer-fingerprints.json
++++ b/docs/validation/producer-fingerprints.json
+@@ -24,7 +24,7 @@
+     {
+       "story": "9-4-diagnostic-id-system-and-deprecation-policy",
+       "path": "docs/diagnostics/diagnostic-registry.json",
+-      "sha256": "77d186eb2038615ca20b7632d17cbfd425ce59ed736e494c07a612cbd0f0463b"
++      "sha256": "19c238058bd65f4953a42c78df738214f3ecf54c55a12fef79f2d8b9f07a8f12"
+     }
+   ]
+ }
+diff --git a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+index 5a41365..7b26c9d 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
++++ b/src/Hexalith.FrontComposer.SourceTools/AnalyzerReleases.Unshipped.md
+@@ -69,9 +69,3 @@ HFC1067 | HexalithFrontComposer | Warning | Generated UI drift detector option i
+ HFC1068 | HexalithFrontComposer | Warning | Generated UI drift diagnostics were truncated (Story 9-1)
+ HFC1069 | HexalithFrontComposer | Error | Generated UI drift diagnostic was suppressed for redaction safety (Story 9-1)
+ HFC1070 | HexalithFrontComposer | Warning | Reflection action-queue projection catalog may be trim-incompatible (Story 9-1)
+-HFCM0000 | HexalithFrontComposer.Migration | Info | Migration candidate was skipped by write-safety policy (Story 9-2)
+-HFCM0001 | HexalithFrontComposer.Migration | Info | No fixable FrontComposer migration diagnostics were found (Story 9-2)
+-HFCM0002 | HexalithFrontComposer.Migration | Warning | Diagnostic sidecar file is unreadable or malformed (Story 9-2)
+-HFCM0004 | HexalithFrontComposer.Migration | Error | Migration apply failed because plan/write validation failed (Story 9-2)
+-HFCM9001 | HexalithFrontComposer.Migration | Warning | Obsolete dev-mode overlay registration API can be migrated automatically (Story 9-2)
+-HFCM9002 | HexalithFrontComposer.Migration | Warning | Custom FrontComposer migration requires manual review (Story 9-2)
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+index 5ecae28..d49c1c8 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
++++ b/src/Hexalith.FrontComposer.SourceTools/Diagnostics/DiagnosticDescriptors.cs
+@@ -6,7 +6,7 @@ namespace Hexalith.FrontComposer.SourceTools.Diagnostics;
+ /// Diagnostic descriptors for the FrontComposer source generator (HFC1000-1999).
+ /// </summary>
+ public static class DiagnosticDescriptors {
+-    private const string DocsLinkPrefix = "https://hexalith.github.io/FrontComposer/diagnostics/";
++    public const string CanonicalHelpLinkFormat = "https://hexalith.github.io/FrontComposer/diagnostics/{0}";
+ 
+     private static DiagnosticDescriptor Create(
+         string id,
+@@ -23,7 +23,7 @@ public static class DiagnosticDescriptors {
+             category,
+             defaultSeverity,
+             isEnabledByDefault,
+-            helpLinkUri: helpLinkUri ?? DocsLinkPrefix + id);
++            helpLinkUri: helpLinkUri ?? string.Format(System.Globalization.CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, id));
+ 
+     /// <summary>
+     /// HFC1001: No [Command] or [Projection] types found in compilation.
+@@ -665,8 +665,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1056");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1057: A command declares duplicate <c>[RequiresPolicy]</c> attributes.
+@@ -677,8 +676,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1057");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1058: Drift detection is enabled but no generated UI baseline is available.
+@@ -689,8 +687,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Warning,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1058");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1059: Configured drift baseline path does not match any analyzer AdditionalText.
+@@ -701,8 +698,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1059");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1060: Generated UI drift baseline content is empty or malformed.
+@@ -713,8 +709,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1060");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1061: Generated UI drift baseline schema version is unsupported.
+@@ -725,8 +720,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1061");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1062: Generated UI drift baseline algorithm version is unsupported.
+@@ -737,8 +731,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1062");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1063: Generated UI drift baseline exceeds configured bounds.
+@@ -749,8 +742,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1063");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1064: Generated UI drift baseline contains duplicate identities or invariant violations.
+@@ -761,8 +753,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1064");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1065: Generated UI structural drift was detected.
+@@ -773,8 +764,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Warning,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1065");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1066: Generated UI metadata drift was detected.
+@@ -785,8 +775,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Warning,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1066");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1067: Drift detector analyzer-config option is invalid.
+@@ -797,8 +786,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Warning,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1067");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1068: Generated UI drift diagnostics were truncated.
+@@ -809,8 +797,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Warning,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1068");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1069: Drift diagnostic was suppressed because redaction could not prove safety.
+@@ -821,8 +808,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Error,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1069");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1070: Trim/AOT build may be using the reflection action-queue projection catalog.
+@@ -833,8 +819,7 @@ public static class DiagnosticDescriptors {
+         messageFormat: "{0}",
+         category: "HexalithFrontComposer",
+         defaultSeverity: DiagnosticSeverity.Warning,
+-        isEnabledByDefault: true,
+-        helpLinkUri: "https://hexalith.github.io/FrontComposer/diagnostics/HFC1070");
++        isEnabledByDefault: true);
+ 
+     /// <summary>
+     /// HFC1047: Dev-mode annotation site lacks stable descriptor metadata.
+diff --git a/src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj b/src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj
+index d608fc4..6fc41dc 100644
+--- a/src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj
++++ b/src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj
+@@ -4,14 +4,6 @@
+     <IsRoslynComponent>true</IsRoslynComponent>
+     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+     <IsPackable>false</IsPackable>
+-    <!-- RS2002: Story 9-2 ships migration findings (HFCM0000-HFCM9002) as rows in
+-         AnalyzerReleases.Unshipped.md so the registry/release-row contract covers them, but
+-         they are CLI-emitted (not Roslyn analyzer descriptors) and so trip the release-tracking
+-         analyzer. Suppressed at project scope until Story 9-2's migration release-row file is
+-         relocated to a CLI-specific artifact (tracked as DEF-9-4-HFCM in deferred-work.md).
+-         Story 9-4 closed the original HFC1010 motivation by adding the FullRebuildRequired
+-         descriptor; this remaining suppression is migration-id only. -->
+-    <NoWarn>$(NoWarn);RS2002</NoWarn>
+   </PropertyGroup>
+   <ItemGroup>
+     <ProjectReference Include="..\Hexalith.FrontComposer.Contracts\Hexalith.FrontComposer.Contracts.csproj" />
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
+index 4da2674..74cac8e 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
+@@ -163,7 +163,7 @@ public sealed class CiGovernanceTests {
+     public void PackageInventory_IsExplicitLockstepAndReviewable() {
+         string root = RepositoryRoot();
+         string inventory = File.ReadAllText(Path.Combine(root, "eng/release-package-inventory.json"));
+-        string directoryProps = File.ReadAllText(Path.Combine(root, "Directory.Build.props"));
++        string directoryTargets = File.ReadAllText(Path.Combine(root, "Directory.Build.targets"));
+         string testingProject = File.ReadAllText(Path.Combine(root, "src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj"));
+ 
+         inventory.ShouldContain("Hexalith.FrontComposer.Cli");
+@@ -175,8 +175,9 @@ public sealed class CiGovernanceTests {
+         inventory.ShouldContain("Hexalith.FrontComposer.SourceTools");
+         inventory.ShouldContain("\"packable\": false");
+         inventory.ShouldContain("exception");
+-        directoryProps.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
+-        directoryProps.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");
++        directoryTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
++        directoryTargets.ShouldContain("<IncludeSymbols>true</IncludeSymbols>");
++        directoryTargets.ShouldContain("<SymbolPackageFormat>snupkg</SymbolPackageFormat>");
+         testingProject.ShouldNotContain("<Version>");
+ 
+         string output = Path.Combine(Path.GetTempPath(), $"fc-release-inventory-{Guid.NewGuid():N}.json");
+diff --git a/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs
+index f0b9dc0..ccf86ec 100644
+--- a/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs
++++ b/tests/Hexalith.FrontComposer.SourceTools.Tests/Diagnostics/DiagnosticRegistryTests.cs
+@@ -74,6 +74,21 @@ public sealed partial class DiagnosticRegistryTests {
+             range.End.ShouldBe(end, $"{range.OwnerPackage} range end drift.");
+         }
+ 
++        registry.ExternalBoundaries.Select(b => b.Package).ShouldBe([
++            "Hexalith.EventStore",
++            "Hexalith.Tenants",
++        ], ignoreOrder: false);
++        registry.ExternalBoundaries.Single(b => b.Package == "Hexalith.EventStore").RangePolicy.ShouldBe("owns-range");
++        registry.ExternalBoundaries.Single(b => b.Package == "Hexalith.Tenants").RangePolicy.ShouldBe("no-range-reserved");
++        registry.AllowedExceptions.CrossPackageRange.Length.ShouldBe(1, "HFC1601 must be the only cross-package range exception.");
++        CrossPackageRangeException hfc1601Exception = registry.AllowedExceptions.CrossPackageRange.Single();
++        hfc1601Exception.Id.ShouldBe("HFC1601");
++        hfc1601Exception.OwnerPackage.ShouldBe("SourceTools");
++        hfc1601Exception.ConsumingPackage.ShouldBe("Shell");
++        hfc1601Exception.NumericRangeOwner.ShouldBe("SourceTools");
++        hfc1601Exception.ApprovingStory.ShouldBe("11-2-diagnostic-registry-and-documentation-governance-follow-ups");
++        hfc1601Exception.HelpLinkUri.ShouldBe(string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, "HFC1601"));
++
+         registry.Diagnostics.ShouldNotBeNull();
+         registry.Diagnostics.Length.ShouldBeGreaterThan(0, "registry has no diagnostics — accidental wipe.");
+ 
+@@ -118,6 +133,18 @@ public sealed partial class DiagnosticRegistryTests {
+                 ids.ShouldContain(diagnostic.MigrationId, $"{diagnostic.Id} migrationId '{diagnostic.MigrationId}' must resolve to a registry entry.");
+             }
+         }
++
++        Dictionary<string, DiagnosticEntry> byId = registry.Diagnostics.ToDictionary(d => d.Id, Ordinal);
++        foreach (DiagnosticEntry diagnostic in registry.Diagnostics.Where(d => d.RelatedIds is { Length: > 0 })) {
++            foreach (string relatedId in diagnostic.RelatedIds!) {
++                byId[relatedId].RelatedIds.ShouldNotBeNull($"{relatedId} must reciprocate relatedIds from {diagnostic.Id}.");
++                byId[relatedId].RelatedIds!.ShouldContain(diagnostic.Id, $"{diagnostic.Id} and {relatedId} relatedIds must be reciprocal.");
++            }
++        }
++
++        byId["HFC1037"].RelatedIds.ShouldBe(["HFC1040", "HFC1044", "HFC1601"], ignoreOrder: false);
++        byId["HFC1056"].RelatedIds.ShouldBe(["HFC1057"], ignoreOrder: false);
++        byId["HFC1601"].RelatedIds.ShouldBe(["HFC1037", "HFC1040", "HFC1044"], ignoreOrder: false);
+     }
+ 
+     [Fact]
+@@ -361,12 +388,45 @@ public sealed partial class DiagnosticRegistryTests {
+         }
+     }
+ 
++    [Theory]
++    [InlineData("missing")]
++    [InlineData("malformed")]
++    [InlineData("unknown")]
++    [InlineData("future")]
++    public void RegistryValidator_UnsupportedSchemaShortCircuitsBeforeNestedRows(string schemaCase) {
++        JsonObject json = RegistryJson().DeepClone().AsObject();
++        json.Remove("diagnostics");
++
++        switch (schemaCase) {
++            case "missing":
++                json.Remove("schemaVersion");
++                break;
++            case "malformed":
++                json["schemaVersion"] = 10;
++                break;
++            case "unknown":
++                json["schemaVersion"] = "0.9";
++                break;
++            case "future":
++                json["schemaVersion"] = "2.0";
++                break;
++        }
++
++        ValidateRegistryJson(json).ToArray().ShouldBe(["unsupported-schema"]);
++    }
++
+     [Theory]
+     [InlineData("diagnostics/HFC1058", false)]
+     [InlineData("diagnostics/hfc1058", true)]
+     [InlineData("DIAGNOSTICS/HFC1058", true)]
+     [InlineData("diagnostics/HFC1058%2fescape", true)]
+     [InlineData("diagnostics/HFC1058%5cescape", true)]
++    [InlineData("diagnostics/HFC1058%252fescape", true)]
++    [InlineData("diagnostics/HFC1058%zz", true)]
++    [InlineData("diagnostics/HFC1058%u2215escape", true)]
++    [InlineData("diagnostics/HFC1058/../HFC1058", true)]
++    [InlineData("/diagnostics/HFC1058", true)]
++    [InlineData("C:/diagnostics/HFC1058", true)]
+     [InlineData("diagnostics/HFC1058%00null", true)]
+     [InlineData("../diagnostics/HFC1058", true)]
+     [InlineData("..\\diagnostics\\HFC1058", true)]
+@@ -483,6 +543,7 @@ public sealed partial class DiagnosticRegistryTests {
+         suppression.Exists.ShouldBeTrue("Story 9-4 compatibility evidence file is missing.");
+ 
+         JsonObject json = JsonNode.Parse(File.ReadAllText(suppression.FullName, Encoding.UTF8))!.AsObject();
++        ValidateCompatibilitySuppressionsJson(json).ShouldBeEmpty();
+         json["schemaVersion"]!.GetValue<string>().ShouldBe("1.0");
+         JsonArray suppressions = json["suppressions"]!.AsArray();
+ 
+@@ -517,6 +578,60 @@ public sealed partial class DiagnosticRegistryTests {
+         }
+     }
+ 
++    [Theory]
++    [InlineData("missing-package", "suppression-missing-package")]
++    [InlineData("unknown-diagnostic", "suppression-unknown-diagnostic")]
++    [InlineData("wildcard-package", "suppression-wildcard-scope")]
++    [InlineData("duplicate-row", "suppression-duplicate-row")]
++    [InlineData("expired-row", "suppression-expired")]
++    [InlineData("unknown-reason", "suppression-unknown-reason")]
++    public void CompatibilitySuppressionValidator_FailsClosedWithNamedCategories(string mutation, string expectedCategory) {
++        JsonObject json = JsonNode.Parse("""
++            {
++              "schemaVersion": "1.0",
++              "baselinePolicy": "fixture",
++              "suppressions": [
++                {
++                  "package": "Hexalith.FrontComposer.Contracts",
++                  "tfm": "net10.0",
++                  "oldSignature": "M:Example.Old",
++                  "newState": "removed",
++                  "hfcId": "HFC0001",
++                  "targetRelease": "v1.0",
++                  "reviewerRationale": "Intentional binary break reviewed for this fixture.",
++                  "ownerStory": "11-2-diagnostic-registry-and-documentation-governance-follow-ups",
++                  "expiresAfter": "v9.9",
++                  "reason": "intentional-major-break"
++                }
++              ]
++            }
++            """)!.AsObject();
++        JsonObject row = json["suppressions"]!.AsArray()[0]!.AsObject();
++
++        switch (mutation) {
++            case "missing-package":
++                row.Remove("package");
++                break;
++            case "unknown-diagnostic":
++                row["hfcId"] = "HFC9999";
++                break;
++            case "wildcard-package":
++                row["package"] = "*";
++                break;
++            case "duplicate-row":
++                json["suppressions"]!.AsArray().Add(row.DeepClone());
++                break;
++            case "expired-row":
++                row["expiresAfter"] = "v0.1";
++                break;
++            case "unknown-reason":
++                row["reason"] = "anything-goes";
++                break;
++        }
++
++        ValidateCompatibilitySuppressionsJson(json).ShouldContain(expectedCategory);
++    }
++
+     [Fact]
+     public void SubmoduleBoundaries_AreDocumentedAndExcludedFromRegistryOwnershipScan() {
+         FileInfo gitmodules = new(Path.Combine(ProjectRoot().FullName, ".gitmodules"));
+@@ -531,12 +646,12 @@ public sealed partial class DiagnosticRegistryTests {
+         declaredPaths.ShouldContain("Hexalith.Tenants");
+ 
+         DiagnosticRegistry registry = LoadRegistry();
+-        registry.ExternalBoundaries.ShouldContain("Hexalith.EventStore");
+-        registry.ExternalBoundaries.ShouldContain("Hexalith.Tenants");
++        registry.ExternalBoundaries.Select(b => b.Package).ShouldContain("Hexalith.EventStore");
++        registry.ExternalBoundaries.Select(b => b.Package).ShouldContain("Hexalith.Tenants");
+ 
+         // No registry diagnostic may claim ownership in a submodule-named package.
+         HashSet<string> boundarySegments = registry.ExternalBoundaries
+-            .Select(b => b.Split('.').Last())
++            .Select(b => b.Package.Split('.').Last())
+             .ToHashSet(OrdinalIgnoreCase);
+ 
+         foreach (DiagnosticEntry diagnostic in registry.Diagnostics) {
+@@ -584,14 +699,15 @@ public sealed partial class DiagnosticRegistryTests {
+ 
+     [Fact]
+     public void PackableProjects_UsePackageValidationBaselinePolicy() {
+-        // NOTE: literal-text assertion against Directory.Build.props is intentional. The current
+-        // block has a known evaluation-order bug (DEF-9-4-A13); the proper fix relocates the block
+-        // to Directory.Build.targets behind an EnableFrontComposerPackageValidation switch, at
+-        // which point this assertion must move with it. Tracked.
+         string directoryBuildProps = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.props"), Encoding.UTF8);
+-        directoryBuildProps.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
+-        directoryBuildProps.ShouldContain("<PackageValidationBaselineVersion>0.1.0</PackageValidationBaselineVersion>");
+-        directoryBuildProps.ShouldContain("<ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>");
++        directoryBuildProps.ShouldNotContain("<EnablePackageValidation>true</EnablePackageValidation>", customMessage: "package validation depends on IsPackable and must not live in Directory.Build.props.");
++
++        string directoryBuildTargets = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "Directory.Build.targets"), Encoding.UTF8);
++        directoryBuildTargets.ShouldContain("<EnableFrontComposerPackageValidation Condition=\"'$(EnableFrontComposerPackageValidation)' == ''\">false</EnableFrontComposerPackageValidation>");
++        directoryBuildTargets.ShouldContain("Condition=\"'$(IsPackable)' == 'true' AND '$(EnableFrontComposerPackageValidation)' == 'true'\"");
++        directoryBuildTargets.ShouldContain("<EnablePackageValidation>true</EnablePackageValidation>");
++        directoryBuildTargets.ShouldContain("<PackageValidationBaselineVersion>$(FrontComposerPackageValidationBaselineVersion)</PackageValidationBaselineVersion>");
++        directoryBuildTargets.ShouldContain("<ApiCompatGenerateSuppressionFile>false</ApiCompatGenerateSuppressionFile>");
+ 
+         Regex isPackableTrue = IsPackableTrueRegex();
+         string[] packableProjects = Directory.EnumerateFiles(Path.Combine(ProjectRoot().FullName, "src"), "*.csproj", SearchOption.AllDirectories)
+@@ -607,14 +723,48 @@ public sealed partial class DiagnosticRegistryTests {
+         ], ignoreOrder: false);
+     }
+ 
++    [Fact]
++    public void HfcmMigrationFindings_AreCliGovernedNotRoslynReleaseRows() {
++        string sourceToolsProject = File.ReadAllText(Path.Combine(ProjectRoot().FullName, "src", "Hexalith.FrontComposer.SourceTools", "Hexalith.FrontComposer.SourceTools.csproj"), Encoding.UTF8);
++        sourceToolsProject.ShouldNotContain("RS2002", customMessage: "CLI migration findings must not require broad Roslyn release-tracking suppression.");
++
++        ReleaseRows().Where(id => id.StartsWith("HFCM", StringComparison.Ordinal)).ShouldBeEmpty("HFCM rows are CLI migration findings, not Roslyn analyzer release rows.");
++
++        JsonObject json = JsonNode.Parse(File.ReadAllText(Path.Combine(DiagnosticsDocsRoot().FullName, "migration-findings.json"), Encoding.UTF8))!.AsObject();
++        json["schemaVersion"]!.GetValue<string>().ShouldBe(SupportedSchemaVersion);
++        json["releaseBucket"]!.GetValue<string>().ShouldBe("cli-migration");
++
++        JsonArray findings = json["findings"]!.AsArray();
++        string[] ids = findings.Select(node => node!["id"]!.GetValue<string>()).OrderBy(id => id, Ordinal).ToArray();
++        ids.ShouldBe(["HFCM0000", "HFCM0001", "HFCM0002", "HFCM0004", "HFCM9001", "HFCM9002"], ignoreOrder: false);
++        ids.ShouldBeUnique();
++
++        foreach (JsonObject finding in findings.Select(node => node!.AsObject())) {
++            finding["id"]!.GetValue<string>().ShouldMatch("^HFCM[0-9]{4}$");
++            finding["category"]!.GetValue<string>().ShouldBe("HexalithFrontComposer.Migration");
++            finding["severity"]!.GetValue<string>().ShouldBeOneOf("Info", "Warning", "Error");
++            finding["migrationDocsSlug"]!.GetValue<string>().ShouldStartWith("migrations/");
++            finding["releaseNote"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
++            finding["introducedIn"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
++        }
++    }
++
+     [Fact]
+     public void DriftSampleReports_AreNormalizedAndCommitted() {
+         string samplesRoot = Path.Combine(DiagnosticsDocsRoot().FullName, "samples");
+         string[] expectedSamples = [
+             "compatibility-drift-report.json",
+             "docs-stub-drift-report.json",
++            "duplicate-id-drift-report.json",
++            "encoded-docs-root-escape-report.json",
++            "hfcm-release-governance-report.json",
++            "invalid-lifecycle-transition-report.json",
+             "registry-drift-report.json",
+             "release-row-drift-report.json",
++            "reserved-retired-misuse-report.json",
++            "suppression-scope-drift-report.json",
++            "unsafe-generated-front-matter-report.json",
++            "unsupported-schema-drift-report.json",
+         ];
+ 
+         Directory.EnumerateFiles(samplesRoot, "*.json")
+@@ -635,6 +785,14 @@ public sealed partial class DiagnosticRegistryTests {
+             parsed["schemaVersion"]!.GetValue<string>().ShouldBe("1.0");
+             parsed["exitCode"]!.GetValue<int>().ShouldBe(2);
+             parsed["category"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
++            JsonArray findings = parsed["findings"]!.AsArray();
++            findings.Count.ShouldBeGreaterThan(0, $"{sample} must include at least one finding.");
++            foreach (JsonObject finding in findings.Select(node => node!.AsObject())) {
++                finding["id"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
++                finding["reason"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
++                finding["path"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
++                finding["message"]!.GetValue<string>().ShouldNotBeNullOrWhiteSpace();
++            }
+ 
+             isoTimestamp.IsMatch(json).ShouldBeFalse($"{sample} contains an ISO timestamp; samples must be timestamp-free.");
+             anyYearLiteral.IsMatch(json).ShouldBeFalse($"{sample} contains a 4-digit year literal; samples must be year-free (matches \\b(19|20)\\d{{2}}\\b).");
+@@ -728,7 +886,8 @@ public sealed partial class DiagnosticRegistryTests {
+     }
+ 
+     private static IEnumerable<string> ValidateRegistryJson(JsonObject json) {
+-        if (json["schemaVersion"]?.GetValue<string>() != SupportedSchemaVersion) {
++        if (!TryGetString(json, "schemaVersion", out string? schemaVersion)
++            || schemaVersion != SupportedSchemaVersion) {
+             yield return "unsupported-schema";
+             yield break;
+         }
+@@ -738,8 +897,59 @@ public sealed partial class DiagnosticRegistryTests {
+             yield break;
+         }
+ 
++        if (json["externalBoundaries"] is not JsonArray boundariesArray) {
++            yield return "missing-external-boundaries";
++        } else {
++            HashSet<string> boundaryPackages = new(Ordinal);
++            foreach (JsonNode? node in boundariesArray) {
++                if (node is not JsonObject boundary
++                    || !TryGetString(boundary, "package", out string? package)
++                    || !TryGetString(boundary, "rangePolicy", out string? rangePolicy)
++                    || !TryGetString(boundary, "provenance", out _)
++                    || !TryGetString(boundary, "updatePolicy", out _)
++                    || !TryGetString(boundary, "rationale", out _)) {
++                    yield return "invalid-external-boundary";
++                    continue;
++                }
++
++                if (!boundaryPackages.Add(package!) || package is not ("Hexalith.EventStore" or "Hexalith.Tenants")) {
++                    yield return "invalid-external-boundary";
++                }
++
++                if (package == "Hexalith.Tenants" && rangePolicy != "no-range-reserved") {
++                    yield return "invalid-external-boundary";
++                }
++            }
++        }
++
+         (int Start, int End)[] ranges = ExpectedRangeBounds;
+         string[] orderedOwners = ["Contracts", "SourceTools", "Shell", "EventStore", "Mcp", "Aspire"];
++        HashSet<string> crossPackageExceptions = [];
++        if (json["allowedExceptions"] is JsonObject exceptions
++            && exceptions["crossPackageRange"] is JsonArray crossPackageRange) {
++            foreach (JsonNode? node in crossPackageRange) {
++                if (node is not JsonObject exception
++                    || !TryGetString(exception, "id", out string? id)
++                    || !TryGetString(exception, "ownerPackage", out string? ownerPackage)
++                    || !TryGetString(exception, "consumingPackage", out string? consumingPackage)
++                    || !TryGetString(exception, "numericRangeOwner", out string? numericRangeOwner)
++                    || !TryGetString(exception, "helpLinkUri", out string? helpLinkUri)
++                    || !TryGetString(exception, "reason", out _)
++                    || !TryGetString(exception, "approvingStory", out _)
++                    || !TryGetString(exception, "introducedIn", out _)
++                    || !TryGetString(exception, "approvedOn", out _)
++                    || id != "HFC1601"
++                    || ownerPackage != "SourceTools"
++                    || consumingPackage != "Shell"
++                    || numericRangeOwner != "SourceTools"
++                    || helpLinkUri != string.Format(CultureInfo.InvariantCulture, CanonicalHelpLinkFormat, id)) {
++                    yield return "invalid-cross-package-exception";
++                    continue;
++                }
++
++                crossPackageExceptions.Add(id);
++            }
++        }
+ 
+         HashSet<string> ids = new(Ordinal);
+         HashSet<string> slugs = new(Ordinal);
+@@ -771,14 +981,7 @@ public sealed partial class DiagnosticRegistryTests {
+             } else if (!slugs.Add(slug) && !yieldedDuplicateSlug) {
+                 yieldedDuplicateSlug = true;
+                 yield return "duplicate-slug";
+-            } else if (slug != $"diagnostics/{id}"
+-                || slug.Contains('\\', StringComparison.Ordinal)
+-                || slug.Contains('%', StringComparison.Ordinal)
+-                || slug.Contains('?', StringComparison.Ordinal)
+-                || slug.Contains('#', StringComparison.Ordinal)
+-                || slug.Contains("..", StringComparison.Ordinal)
+-                || slug.Any(char.IsWhiteSpace)
+-                || slug.Any(IsConfusableOrFormatChar)) {
++            } else if (!IsCanonicalDocsSlug(slug, id)) {
+                 yield return "invalid-slug";
+             }
+ 
+@@ -801,13 +1004,130 @@ public sealed partial class DiagnosticRegistryTests {
+             if (id.Length == 7 && id.StartsWith("HFC", StringComparison.Ordinal)
+                 && int.TryParse(id[3..], NumberStyles.None, CultureInfo.InvariantCulture, out int numericId)) {
+                 (int start, int end) = ranges[ownerIndex];
+-                if (numericId < start || numericId > end) {
++                if ((numericId < start || numericId > end) && !crossPackageExceptions.Contains(id)) {
+                     yield return "out-of-range-id";
+                 }
+             }
+         }
+     }
+ 
++    private static IEnumerable<string> ValidateCompatibilitySuppressionsJson(JsonObject json) {
++        if (!TryGetString(json, "schemaVersion", out string? schemaVersion)
++            || schemaVersion != SupportedSchemaVersion) {
++            yield return "compatibility-unsupported-schema";
++            yield break;
++        }
++
++        if (json["suppressions"] is not JsonArray suppressions) {
++            yield return "compatibility-missing-suppressions";
++            yield break;
++        }
++
++        HashSet<string> registryIds = LoadRegistry().Diagnostics.Select(d => d.Id).ToHashSet(Ordinal);
++        HashSet<(string Package, string Tfm, string OldSignature, string HfcId, string TargetRelease)> uniqueRows = [];
++        HashSet<string> allowedReasons = new(Ordinal) {
++            "intentional-major-break",
++            "known-binary-compatibility-gap",
++            "temporary-release-candidate-exception",
++        };
++
++        foreach (JsonNode? node in suppressions) {
++            if (node is not JsonObject row) {
++                yield return "suppression-invalid-row";
++                continue;
++            }
++
++            if (!TryGetString(row, "package", out string? package) || string.IsNullOrWhiteSpace(package)) {
++                yield return "suppression-missing-package";
++                continue;
++            }
++
++            if (package.Contains('*', StringComparison.Ordinal) || package.EndsWith(".*", StringComparison.Ordinal)) {
++                yield return "suppression-wildcard-scope";
++            }
++
++            TryGetString(row, "tfm", out string? tfm).ShouldBeTrue("fixture row missing tfm.");
++            TryGetString(row, "oldSignature", out string? oldSignature).ShouldBeTrue("fixture row missing oldSignature.");
++            TryGetString(row, "newState", out string? newState).ShouldBeTrue("fixture row missing newState.");
++            TryGetString(row, "hfcId", out string? hfcId).ShouldBeTrue("fixture row missing hfcId.");
++            TryGetString(row, "targetRelease", out string? targetRelease).ShouldBeTrue("fixture row missing targetRelease.");
++            TryGetString(row, "reviewerRationale", out string? rationale).ShouldBeTrue("fixture row missing reviewerRationale.");
++            TryGetString(row, "ownerStory", out string? ownerStory).ShouldBeTrue("fixture row missing ownerStory.");
++            TryGetString(row, "expiresAfter", out string? expiresAfter).ShouldBeTrue("fixture row missing expiresAfter.");
++            TryGetString(row, "reason", out string? reason).ShouldBeTrue("fixture row missing reason.");
++
++            if (hfcId is null || !registryIds.Contains(hfcId)) {
++                yield return "suppression-unknown-diagnostic";
++            }
++
++            if (reason is null || !allowedReasons.Contains(reason)) {
++                yield return "suppression-unknown-reason";
++            }
++
++            if (expiresAfter is not null && ParseVersionToken(expiresAfter) <= ParseVersionToken(targetRelease!)) {
++                yield return "suppression-expired";
++            }
++
++            if (string.IsNullOrWhiteSpace(newState)
++                || string.IsNullOrWhiteSpace(rationale)
++                || string.IsNullOrWhiteSpace(ownerStory)) {
++                yield return "suppression-missing-required-field";
++            }
++
++            if (!uniqueRows.Add((package, tfm!, oldSignature!, hfcId!, targetRelease!))) {
++                yield return "suppression-duplicate-row";
++            }
++        }
++    }
++
++    private static bool TryGetString(JsonObject json, string propertyName, out string? value) {
++        value = null;
++        if (json[propertyName] is not JsonValue jsonValue) {
++            return false;
++        }
++
++        try {
++            value = jsonValue.GetValue<string>();
++            return !string.IsNullOrWhiteSpace(value);
++        } catch (Exception ex) when (ex is InvalidOperationException or FormatException) {
++            return false;
++        }
++    }
++
++    private static bool IsCanonicalDocsSlug(string slug, string id) {
++        if (slug != slug.Normalize(NormalizationForm.FormC)
++            || slug.Any(char.IsWhiteSpace)
++            || slug.Any(IsConfusableOrFormatChar)
++            || slug.Contains('\\', StringComparison.Ordinal)
++            || slug.Contains('?', StringComparison.Ordinal)
++            || slug.Contains('#', StringComparison.Ordinal)
++            || slug.Contains("..", StringComparison.Ordinal)
++            || Path.IsPathRooted(slug)) {
++            return false;
++        }
++
++        string decoded;
++        try {
++            decoded = Uri.UnescapeDataString(slug);
++        } catch (UriFormatException) {
++            return false;
++        }
++
++        if (decoded.Contains('%', StringComparison.Ordinal)
++            || decoded.Contains('\\', StringComparison.Ordinal)
++            || decoded.Contains("..", StringComparison.Ordinal)
++            || decoded != slug) {
++            return false;
++        }
++
++        return decoded == $"diagnostics/{id}";
++    }
++
++    private static Version ParseVersionToken(string value) {
++        string trimmed = value.Trim().TrimStart('v', 'V');
++        return ParseVersion(trimmed);
++    }
++
+     private static bool IsConfusableOrFormatChar(char value) {
+         if (char.GetUnicodeCategory(value) == System.Globalization.UnicodeCategory.Format) {
+             return true;
+@@ -1018,7 +1338,8 @@ public sealed partial class DiagnosticRegistryTests {
+         string SchemaVersion,
+         string CanonicalHelpLinkFormat,
+         DiagnosticRange[] Ranges,
+-        string[] ExternalBoundaries,
++        DiagnosticExternalBoundary[] ExternalBoundaries,
++        DiagnosticAllowedExceptions AllowedExceptions,
+         DiagnosticEntry[] Diagnostics);
+ 
+     private sealed record DiagnosticRange(
+@@ -1026,6 +1347,29 @@ public sealed partial class DiagnosticRegistryTests {
+         int Start,
+         int End);
+ 
++    private sealed record DiagnosticExternalBoundary(
++        string Package,
++        string Owner,
++        string RangePolicy,
++        string? RangeOwner,
++        string Provenance,
++        string UpdatePolicy,
++        string Rationale);
++
++    private sealed record DiagnosticAllowedExceptions(
++        CrossPackageRangeException[] CrossPackageRange);
++
++    private sealed record CrossPackageRangeException(
++        string Id,
++        string OwnerPackage,
++        string ConsumingPackage,
++        string NumericRangeOwner,
++        string HelpLinkUri,
++        string Reason,
++        string ApprovingStory,
++        string IntroducedIn,
++        string ApprovedOn);
++
+     private sealed record DiagnosticEntry(
+         string Id,
+         string OwnerPackage,

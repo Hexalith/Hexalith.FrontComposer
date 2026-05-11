@@ -10,6 +10,7 @@
     {
       "id": "HFC1058",
       "reason": "missing-docs-stub",
+      "path": "docs/diagnostics/HFC1058.md",
       "expectedPath": "docs/diagnostics/HFC1058.md",
       "message": "Registry slug diagnostics/HFC1058 does not resolve to a checked-in stub."
     }

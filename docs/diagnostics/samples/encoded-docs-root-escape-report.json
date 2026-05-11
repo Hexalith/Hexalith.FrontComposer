@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "category": "encoded-docs-root-escape",
+  "exitCode": 2,
+  "inputs": {
+    "registry": "docs/diagnostics/diagnostic-registry.json",
+    "docsRoot": "docs/diagnostics"
+  },
+  "findings": [
+    {
+      "id": "HFC-PLACEHOLDER",
+      "reason": "invalid-slug",
+      "path": "docs/diagnostics/diagnostic-registry.json",
+      "message": "Encoded docs slug cannot be resolved inside docs/diagnostics."
+    }
+  ]
+}
