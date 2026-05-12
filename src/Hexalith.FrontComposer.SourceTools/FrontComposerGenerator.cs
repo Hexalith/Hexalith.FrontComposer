@@ -113,7 +113,7 @@ public sealed class FrontComposerGenerator : IIncrementalGenerator {
                 ImmutableArray<ParseResult> projections = source.Right.Left;
                 ImmutableArray<CommandParseResult> commands = source.Right.Right;
 
-                if (!optionsResult.Options.PublishTrimmed) {
+                if (!optionsResult.Options.TrimOrAotAdvisoryEnabled) {
                     return;
                 }
 

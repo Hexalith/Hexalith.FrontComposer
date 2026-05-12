@@ -94,10 +94,21 @@ public sealed class DriftDiagnosticContractTests {
         foreach (Diagnostic d in driftDiagnostics) {
             string baselinePath = d.Properties["BaselinePath"]!;
             baselinePath.ShouldNotContain("\\", customMessage: "AC12 — BaselinePath must be forward-slash.");
-            baselinePath.ShouldNotContain(":", customMessage: "AC12 — no Windows drive letters.");
+            IsWindowsDriveRootedPath(baselinePath).ShouldBeFalse(
+                "AC12 — BaselinePath must not leak a Windows drive-root absolute path.");
             (baselinePath == "<outside-project>" || !Path.IsPathRooted(baselinePath))
                 .ShouldBeTrue("AC12 — BaselinePath must be repo-relative or the <outside-project> sentinel.");
         }
+    }
+
+    [Theory]
+    [InlineData("fixtures/frontcomposer:drift-baseline.json", false)]
+    [InlineData("C:/repo/frontcomposer.drift-baseline.json", true)]
+    [InlineData("C:\\repo\\frontcomposer.drift-baseline.json", true)]
+    [InlineData("C:repo/frontcomposer.drift-baseline.json", false)]
+    public void WindowsDriveRootedPathCheck_AllowsBenignColonOnly(string path, bool expected) {
+        path.ShouldNotBeNull();
+        IsWindowsDriveRootedPath(path).ShouldBe(expected);
     }
 
     [Fact()]
@@ -148,4 +159,10 @@ public sealed class DriftDiagnosticContractTests {
         driver = driver.RunGenerators(compilation, ct);
         return driver.GetRunResult().Diagnostics;
     }
+
+    private static bool IsWindowsDriveRootedPath(string path)
+        => path.Length >= 3
+            && ((path[0] >= 'A' && path[0] <= 'Z') || (path[0] >= 'a' && path[0] <= 'z'))
+            && path[1] == ':'
+            && (path[2] == '/' || path[2] == '\\');
 }

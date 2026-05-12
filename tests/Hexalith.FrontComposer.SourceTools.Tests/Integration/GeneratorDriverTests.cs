@@ -254,6 +254,40 @@ public partial class OrderItemProjection
     }
 
     [Fact]
+    public void RunGenerators_BoundedContextXmlCharacters_EscapesRegistrationXmlDoc() {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+
+            namespace TestDomain;
+
+            [BoundedContext("Orders <North> & \"Priority\"", DisplayLabel = "Priority Orders")]
+            [Projection]
+            public partial class OrderProjection
+            {
+                public string Id { get; set; } = string.Empty;
+            }
+            """;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        FrontComposerGenerator generator = new();
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
+
+        driver = driver.RunGenerators(compilation, ct);
+        GeneratorDriverRunResult result = driver.GetRunResult();
+
+        SyntaxTree registrationTree = result.GeneratedTrees
+            .Single(t => System.IO.Path.GetFileName(t.FilePath).EndsWith("ProjectionRegistration.g.cs", StringComparison.Ordinal));
+        string registrationSource = registrationTree.GetText(ct).ToString();
+        registrationSource.ShouldContain("Orders &lt;North&gt; &amp; &quot;Priority&quot;");
+        registrationSource.ShouldNotContain("/// Domain registration for <see cref=\"OrderProjection\"/> in the \"Orders <North>");
+
+        CSharpCompilation outputCompilation = compilation.AddSyntaxTrees(result.GeneratedTrees.ToArray());
+        outputCompilation.GetDiagnostics(ct)
+            .Where(d => d.Severity == DiagnosticSeverity.Error || d.Id == "CS1570")
+            .ShouldBeEmpty("Generated registration XML docs must stay escaped and compile cleanly.");
+    }
+
+    [Fact]
     public void RunGenerators_SameNameDifferentNamespace_NoHintNameCollision() {
         CancellationToken ct = TestContext.Current.CancellationToken;
         string[] sources =

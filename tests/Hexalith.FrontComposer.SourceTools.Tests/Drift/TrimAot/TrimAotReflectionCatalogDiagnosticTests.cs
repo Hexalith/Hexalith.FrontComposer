@@ -34,13 +34,13 @@ public sealed class TrimAotReflectionCatalogDiagnosticTests {
         """;
 
     [Theory]
-    [InlineData(true, false)] // PublishTrimmed alone
-    [InlineData(true, true)]  // PublishTrimmed + PublishAot
-    public void PublishTrimmedEnabled_AndNoOverrideEvidence_EmitsHfc1070(bool publishTrimmed, bool publishAot) {
-        // CC-7 — exercise PublishAot toggle in combination with PublishTrimmed. Production
-        // gates HFC1070 on PublishTrimmed only today (FrontComposerGenerator.cs:116); the
-        // PublishAot-alone case is documented as a production AC14 gap (DEF-9-1C-2) rather
-        // than enforced here.
+    [InlineData(true, false)]  // PublishTrimmed alone
+    [InlineData(false, true)]  // PublishAot alone
+    [InlineData(true, true)]   // PublishTrimmed + PublishAot
+    public void TrimOrAotEnabled_AndNoOverrideEvidence_EmitsHfc1070(bool publishTrimmed, bool publishAot) {
+        // Story 11.4 / DEF-9-1C-2 — AC14 treats trim-enabled OR native-AOT hosts as advisory
+        // triggers. Keep the PublishAot-only row pinned so the gate cannot regress to
+        // PublishTrimmed-only behavior.
         IReadOnlyList<Diagnostic> diagnostics = Run(ProjectionSource, publishTrimmed: publishTrimmed, publishAot: publishAot);
 
         Diagnostic? trim = diagnostics.FirstOrDefault(d => d.Id == FcDiagnosticIds.HFC1070_TrimAotReflectionCatalogWarning);

@@ -49,13 +49,13 @@ internal sealed class DriftOptions {
         string? configuredBaselinePath,
         int maxDiagnostics,
         int maxBaselineBytes,
-        bool publishTrimmed,
+        bool trimOrAotAdvisoryEnabled,
         DiagnosticSeverity driftSeverity) {
         Enabled = enabled;
         ConfiguredBaselinePath = configuredBaselinePath;
         MaxDiagnostics = maxDiagnostics;
         MaxBaselineBytes = maxBaselineBytes;
-        PublishTrimmed = publishTrimmed;
+        TrimOrAotAdvisoryEnabled = trimOrAotAdvisoryEnabled;
         DriftSeverity = driftSeverity;
     }
 
@@ -63,7 +63,7 @@ internal sealed class DriftOptions {
     internal string? ConfiguredBaselinePath { get; }
     internal int MaxDiagnostics { get; }
     internal int MaxBaselineBytes { get; }
-    internal bool PublishTrimmed { get; }
+    internal bool TrimOrAotAdvisoryEnabled { get; }
     internal DiagnosticSeverity DriftSeverity { get; }
 
     internal static DriftOptionsResult Bind(AnalyzerConfigOptionsProvider provider) {
@@ -73,9 +73,9 @@ internal sealed class DriftOptions {
         bool enabled = TryReadBool(options, "build_property.HfcDriftDetectionEnabled")
             ?? TryReadBool(options, "build_property.FrontComposerDriftDetectionEnabled")
             ?? false;
-        bool publishTrimmed = TryReadBool(options, "build_property.PublishTrimmed")
-            ?? TryReadBool(options, "build_property.PublishAot")
-            ?? false;
+        bool trimOrAotAdvisoryEnabled =
+            (TryReadBool(options, "build_property.PublishTrimmed") ?? false)
+            || (TryReadBool(options, "build_property.PublishAot") ?? false);
 
         string? configuredBaselinePath = TryReadString(options, "build_property.HfcDriftBaselinePath");
 
@@ -122,7 +122,7 @@ internal sealed class DriftOptions {
                 configuredBaselinePath,
                 maxDiagnostics,
                 maxBaselineBytes,
-                publishTrimmed,
+                trimOrAotAdvisoryEnabled,
                 severity),
             diagnostics.ToImmutable());
     }
@@ -225,7 +225,8 @@ internal sealed class DriftBaselineInput(string path, string text) : IEquatable<
 
     public override int GetHashCode() {
         unchecked {
-            return ((Path?.GetHashCode() ?? 0) * 397) ^ (Text?.GetHashCode() ?? 0);
+            return (StringComparer.Ordinal.GetHashCode(Path) * 397)
+                ^ StringComparer.Ordinal.GetHashCode(Text);
         }
     }
 }
@@ -323,7 +324,7 @@ internal static class DriftBaselineLoader {
                 .ToImmutableArray();
             if (eligible.Length == 0) {
                 diagnostics.Add(DriftDiagnosticFact.InvalidBaselinePath(options.ConfiguredBaselinePath));
-                return EmptyResult(diagnostics);
+                return EmptyResult(diagnostics, options.MaxDiagnostics);
             }
         }
 
@@ -333,7 +334,7 @@ internal static class DriftBaselineLoader {
             // the orchestrator already gates on options.Enabled so this only runs in the
             // opt-in case.
             diagnostics.Add(DriftDiagnosticFact.MissingBaseline());
-            return EmptyResult(diagnostics);
+            return EmptyResult(diagnostics, options.MaxDiagnostics);
         }
 
         HashSet<string> contractIdentities = new(StringComparer.Ordinal);
@@ -467,17 +468,35 @@ internal static class DriftBaselineLoader {
         // fail-closed contract is self-evident — even though `ComparisonEnabled=false` already
         // halts comparison, leaving the half-populated set in `Baseline` was misleading.
         if (trustFailed) {
-            return EmptyResult(diagnostics);
+            return EmptyResult(diagnostics, options.MaxDiagnostics);
         }
 
-        return new DriftBaselineLoadResult(true, new DriftBaselineSet(contracts.ToImmutable()), diagnostics.ToImmutable());
+        return new DriftBaselineLoadResult(
+            true,
+            new DriftBaselineSet(contracts.ToImmutable()),
+            CapLoadDiagnostics(diagnostics, options.MaxDiagnostics));
     }
 
-    private static DriftBaselineLoadResult EmptyResult(ImmutableArray<DriftDiagnosticFact>.Builder diagnostics)
+    private static DriftBaselineLoadResult EmptyResult(
+        ImmutableArray<DriftDiagnosticFact>.Builder diagnostics,
+        int maxDiagnostics)
         => new(
             comparisonEnabled: false,
             baseline: new DriftBaselineSet(ImmutableArray<DriftBaselineContract>.Empty),
-            diagnostics: diagnostics.ToImmutable());
+            diagnostics: CapLoadDiagnostics(diagnostics, maxDiagnostics));
+
+    private static ImmutableArray<DriftDiagnosticFact> CapLoadDiagnostics(
+        ImmutableArray<DriftDiagnosticFact>.Builder diagnostics,
+        int maxDiagnostics) {
+        if (diagnostics.Count <= maxDiagnostics) {
+            return diagnostics.ToImmutable();
+        }
+
+        ImmutableArray<DriftDiagnosticFact>.Builder capped = ImmutableArray.CreateBuilder<DriftDiagnosticFact>();
+        capped.AddRange(diagnostics.Take(maxDiagnostics));
+        capped.Add(DriftDiagnosticFact.Truncation(diagnostics.Count - maxDiagnostics));
+        return capped.ToImmutable();
+    }
 
     private static string StripUtf8Bom(string text) {
         if (text.Length > 0 && text[0] == '﻿') {

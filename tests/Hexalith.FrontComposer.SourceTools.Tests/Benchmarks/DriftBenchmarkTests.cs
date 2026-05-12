@@ -18,20 +18,21 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Benchmarks;
 /// <c>IncrementalRebuildBenchmarkTests</c>; marked benchmark, not a unit gate.
 /// </summary>
 public sealed class DriftBenchmarkTests {
-    private const string SkipReason = "RED-PHASE: T7 — drift benchmark harness pending; perf machine-sensitive, kept out of unit gate.";
-
     private const int WarmupIterations = 5;
     private const int MeasuredIterations = 20;
     private const double Nfr8MedianBudgetMs = 500.0;
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
+    [Trait("Category", "Performance")]
     public void IncrementalRebuild_WithDriftDetection_StaysBelowNfr8MedianBudget_CacheHit() {
         (CSharpCompilation compilation, AdditionalText baseline) = BuildBoundedFixture(declarationCount: 25);
         FrontComposerGenerator generator = new();
 
         // Prime: warm-up runs that do not contribute to measurement.
         GeneratorDriver primed = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baseline]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baseline],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         for (int i = 0; i < WarmupIterations; i++) {
             primed = primed.RunGenerators(compilation, TestContext.Current.CancellationToken);
         }
@@ -55,13 +56,16 @@ public sealed class DriftBenchmarkTests {
             $"AC11 — p95 cache-hit overhead {p95Ms:F1} ms exceeded soft 2x budget.");
     }
 
-    [Fact(Skip = SkipReason)]
+    [Fact]
+    [Trait("Category", "Performance")]
     public void IncrementalRebuild_WithDriftDetection_StaysBelowNfr8MedianBudget_CacheMiss() {
         FrontComposerGenerator generator = new();
         (CSharpCompilation baseCompilation, AdditionalText baseline) = BuildBoundedFixture(declarationCount: 25);
 
         GeneratorDriver primed = CSharpGeneratorDriver.Create(
-            generators: [generator.AsSourceGenerator()], additionalTexts: [baseline]);
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: [baseline],
+            optionsProvider: CompilationHelper.DriftEnabledOptions());
         for (int i = 0; i < WarmupIterations; i++) {
             primed = primed.RunGenerators(baseCompilation, TestContext.Current.CancellationToken);
         }
@@ -78,9 +82,12 @@ public sealed class DriftBenchmarkTests {
 
         Array.Sort(cacheMissMs);
         double medianMs = cacheMissMs[MeasuredIterations / 2];
+        double p95Ms = cacheMissMs[(int)(MeasuredIterations * 0.95)];
 
         medianMs.ShouldBeLessThan(Nfr8MedianBudgetMs,
             $"AC11 / NFR8 — median cache-miss incremental added overhead {medianMs:F1} ms exceeded {Nfr8MedianBudgetMs} ms budget.");
+        p95Ms.ShouldBeLessThan(Nfr8MedianBudgetMs * 2.0,
+            $"AC11 — p95 cache-miss overhead {p95Ms:F1} ms exceeded soft 2x budget.");
     }
 
     private static (CSharpCompilation compilation, AdditionalText baseline) BuildBoundedFixture(int declarationCount) {

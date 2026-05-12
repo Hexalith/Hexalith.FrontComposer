@@ -296,9 +296,33 @@ public sealed class DriftBaselineTrustFailureTests {
                 .ShouldBeFalse($"AC9 — {label} ordering must suppress drift comparison for the duplicated identity.");
         }
 
-        forward.Select(d => d.Id + "|" + d.GetMessage()).OrderBy(s => s, StringComparer.Ordinal)
-            .ShouldBe(reverse.Select(d => d.Id + "|" + d.GetMessage()).OrderBy(s => s, StringComparer.Ordinal),
+        forward.Select(DiagnosticShape.From).OrderBy(s => s.SortKey, StringComparer.Ordinal)
+            .ShouldBe(reverse.Select(DiagnosticShape.From).OrderBy(s => s.SortKey, StringComparer.Ordinal),
                 "AC9 + AC18 — file enumeration order must not change diagnostics.");
+    }
+
+    [Fact()]
+    public void LoadPhaseDiagnostics_AreCappedAndTruncated() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace Acme.Shipping;
+            [BoundedContext("Shipping")]
+            [Projection]
+            public partial class ShipmentProjection { public string Id { get; set; } = string.Empty; }
+            """;
+
+        (string Path, string Content)[] baselines = Enumerable.Range(0, 5)
+            .Select(i => (
+                $"frontcomposer.drift-baseline-{i}.json",
+                """{ "schemaVersion": "not-supported", "algorithm": "frontcomposer-structural-v1", "contracts": [] }"""))
+            .ToArray();
+
+        IReadOnlyList<Diagnostic> diagnostics = RunWithMultipleBaselines(source, 2, baselines);
+
+        diagnostics.Count(d => d.Id == "HFC1061").ShouldBe(2,
+            "AC7 — load-phase trust diagnostics must honor HfcDriftMaxDiagnostics.");
+        diagnostics.Any(d => d.Id == "HFC1068" && d.GetMessage().Contains("3 omitted", StringComparison.Ordinal))
+            .ShouldBeTrue("AC7 — capped load-phase diagnostics must emit a deterministic HFC1068 truncation fact.");
     }
 
     private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson, int? maxBaselineBytesOverride = null) {
@@ -331,6 +355,26 @@ public sealed class DriftBaselineTrustFailureTests {
         return driver.GetRunResult().Diagnostics;
     }
 
+    private static IReadOnlyList<Diagnostic> RunWithMultipleBaselines(
+        string source,
+        int maxDiagnostics,
+        params (string Path, string Content)[] baselines) {
+        CancellationToken ct = TestContext.Current.CancellationToken;
+        CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);
+        FrontComposerGenerator generator = new();
+        AdditionalText[] texts = [.. baselines.Select(b => (AdditionalText)new InMemoryAdditionalText(b.Path, b.Content))];
+        AnalyzerConfigOptionsProvider options = CompilationHelper.DriftEnabledOptions(
+            new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase) {
+                ["build_property.HfcDriftMaxDiagnostics"] = maxDiagnostics.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            });
+        GeneratorDriver driver = CSharpGeneratorDriver.Create(
+            generators: [generator.AsSourceGenerator()],
+            additionalTexts: texts,
+            optionsProvider: options);
+        driver = driver.RunGenerators(compilation, ct);
+        return driver.GetRunResult().Diagnostics;
+    }
+
     private static AnalyzerConfigOptionsProvider EnabledOptions(int? maxBaselineBytes = null) {
         // Story 9-1 review CB-28: delegate to the canonical helper instead of duplicating the
         // provider/options classes inline.
@@ -354,5 +398,31 @@ public sealed class DriftBaselineTrustFailureTests {
         }
 
         throw new FileNotFoundException($"Drift fixture '{fileName}' not found from {Assembly.GetExecutingAssembly().Location}.");
+    }
+
+    private sealed record DiagnosticShape(
+        string Id,
+        DiagnosticSeverity Severity,
+        string Message,
+        string Path,
+        string Properties) {
+        internal string SortKey { get; } = Id + "|" + Severity + "|" + Message + "|" + Path;
+
+        internal static DiagnosticShape From(Diagnostic diagnostic) {
+            string path = diagnostic.Location == Location.None
+                ? "<none>"
+                : diagnostic.Location.GetMappedLineSpan().Path;
+            string properties = string.Join(
+                "\n",
+                diagnostic.Properties
+                .OrderBy(p => p.Key, StringComparer.Ordinal)
+                .Select(p => p.Key + "=" + (p.Value ?? "<null>")));
+            return new DiagnosticShape(
+                diagnostic.Id,
+                diagnostic.Severity,
+                diagnostic.GetMessage(),
+                path,
+                properties);
+        }
     }
 }

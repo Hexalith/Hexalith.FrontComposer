@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-12 (Story 11.3 code review patches resolved; status moved to done.)"
+last_updated: "2026-05-12 (Story 11.4 development started; status moved to in-progress.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -148,7 +148,7 @@ development_status:
   11-1-deferred-work-ledger-reconciliation-and-ownership: done
   11-2-diagnostic-registry-and-documentation-governance-follow-ups: done
   11-3-cli-migration-and-ide-edge-case-hardening: done
-  11-4-drift-detection-and-source-generator-coverage-hardening: ready-for-dev
+  11-4-drift-detection-and-source-generator-coverage-hardening: in-progress
   11-5-mcp-schema-negotiation-and-agent-contract-hardening: ready-for-dev
   11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: ready-for-dev
   11-7-eventstore-reliability-and-ci-governance-follow-ups: ready-for-dev

@@ -146,6 +146,132 @@ public sealed class DriftClassifierMetadataTests {
             .ShouldBeTrue("AC7 — RequiresPolicy change must emit one HFC1066 metadata-drift diagnostic.");
     }
 
+    [Fact()]
+    public void ProjectionBadgeMappingChange_EmitsSingleMetadataDiagnostic() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection {
+                public OrderStatus Status { get; set; }
+            }
+
+            public enum OrderStatus {
+                [ProjectionBadge(BadgeSlot.Danger)] New,
+                [ProjectionBadge(BadgeSlot.Success)] Done
+            }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "Status", "category": "Enum", "nullable": false,
+                  "badges": [
+                    { "enumMember": "Done", "slot": "Danger" },
+                    { "enumMember": "New", "slot": "Success" }
+                  ] }] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Count(d => d.Id == "HFC1066"
+                            && d.GetMessage().Contains("ProjectionBadge", StringComparison.Ordinal)
+                            && d.GetMessage().Contains("Status", StringComparison.Ordinal))
+            .ShouldBe(1, "AC8 — ProjectionBadge drift must emit exactly one HFC1066 per member/category.");
+    }
+
+    [Theory()]
+    [InlineData("ProjectionRole", "[ProjectionRole(ProjectionRole.ActionQueue)]", "\"role\": \"StatusOverview\",")]
+    [InlineData("ProjectionEmptyStateCta", "[ProjectionEmptyStateCta(\"CreateOrderCommand\")]", "\"emptyStateCtaCommandTypeName\": \"OldCommand\",")]
+    public void ProjectionContractMetadataChange_EmitsSingleMetadataDiagnostic(string kind, string attribute, string baselineMetadata) {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            {{attribute}}
+            public partial class OrderProjection {
+                public string Id { get; set; } = string.Empty;
+            }
+            """;
+        string baseline = $$"""
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                {{baselineMetadata}}
+                "properties": [{ "name": "Id", "category": "String", "nullable": false }] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Count(d => d.Id == "HFC1066"
+                            && d.GetMessage().Contains(kind, StringComparison.Ordinal)
+                            && d.GetMessage().Contains("OrderProjection", StringComparison.Ordinal))
+            .ShouldBe(1, $"AC8 — {kind} drift must emit exactly one HFC1066 per declaration/category.");
+    }
+
+    [Fact()]
+    public void CurrencyDisplayFormatChange_EmitsSingleMetadataDiagnostic() {
+        const string source = """
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Projection]
+            public partial class OrderProjection {
+                [Currency]
+                public decimal Amount { get; set; }
+            }
+            """;
+        const string baseline = """
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "projection", "type": "TestDomain.OrderProjection", "boundedContext": "Orders",
+                "properties": [{ "name": "Amount", "category": "Decimal", "nullable": false, "displayFormat": "Default" }] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Count(d => d.Id == "HFC1066"
+                            && d.GetMessage().Contains("DisplayFormat", StringComparison.Ordinal)
+                            && d.GetMessage().Contains("Amount", StringComparison.Ordinal))
+            .ShouldBe(1, "AC8 — currency/display-format drift must emit exactly one HFC1066 per member/category.");
+    }
+
+    [Theory()]
+    [InlineData("Destructive", "[Destructive]", "\"destructive\": false,")]
+    [InlineData("Icon", "[Icon(\"Regular.Size16.Delete\")]", "\"icon\": \"Regular.Size16.Play\",")]
+    public void CommandContractMetadataChange_EmitsSingleMetadataDiagnostic(string kind, string attribute, string baselineMetadata) {
+        string source = $$"""
+            using Hexalith.FrontComposer.Contracts.Attributes;
+            namespace TestDomain;
+            [BoundedContext("Orders")]
+            [Command]
+            {{attribute}}
+            public partial class CancelOrderCommand {
+                public string MessageId { get; set; } = string.Empty;
+                public string Reason { get; set; } = string.Empty;
+            }
+            """;
+        string baseline = $$"""
+            { "schemaVersion": "frontcomposer.generated-ui-baseline.v1",
+              "algorithm": "frontcomposer-structural-v1",
+              "contracts": [{ "family": "command", "type": "TestDomain.CancelOrderCommand", "boundedContext": "Orders",
+                {{baselineMetadata}}
+                "properties": [
+                  { "name": "MessageId", "category": "String", "nullable": false, "derivable": false },
+                  { "name": "Reason", "category": "String", "nullable": false, "derivable": false }
+                ] }] }
+            """;
+
+        IReadOnlyList<Diagnostic> diagnostics = Run(source, baseline);
+
+        diagnostics.Count(d => d.Id == "HFC1066"
+                            && d.GetMessage().Contains(kind, StringComparison.Ordinal)
+                            && d.GetMessage().Contains("CancelOrderCommand", StringComparison.Ordinal))
+            .ShouldBe(1, $"AC8 — {kind} command metadata drift must emit exactly one HFC1066 per declaration/category.");
+    }
+
     private static IReadOnlyList<Diagnostic> Run(string source, string baselineJson) {
         CancellationToken ct = TestContext.Current.CancellationToken;
         CSharpCompilation compilation = CompilationHelper.CreateCompilation(source);

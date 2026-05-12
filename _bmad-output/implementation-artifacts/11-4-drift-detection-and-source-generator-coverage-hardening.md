@@ -1,6 +1,6 @@
 # Story 11.4: Drift Detection and Source Generator Coverage Hardening
 
-Status: ready-for-dev
+Status: in-progress
 
 > **Epic 11** - Deferred Hardening & Release Readiness. Closes drift-detection, SourceTools generator coverage, metadata-drift tests, performance evidence, deterministic output, and older parser/transform/emitter follow-ups routed from Stories 9.1, 1.4, 1.5, 1.8, and related SourceTools reviews. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 

@@ -37,7 +37,7 @@ public static class RegistrationEmitter {
         string displayName = model.DisplayLabel ?? model.BoundedContext;
 
         _ = sb.AppendLine("/// <summary>");
-        _ = sb.AppendLine("/// Domain registration for <see cref=\"" + model.TypeName + "\"/> in the \"" + model.BoundedContext + "\" bounded context.");
+        _ = sb.AppendLine("/// Domain registration for <see cref=\"" + XmlEscape(model.TypeName) + "\"/> in the \"" + XmlEscape(model.BoundedContext) + "\" bounded context.");
         _ = sb.AppendLine("/// </summary>");
         _ = sb.AppendLine("public static class " + className);
         _ = sb.AppendLine("{");
@@ -92,4 +92,10 @@ public static class RegistrationEmitter {
             .Replace("\r", "\\r")
             .Replace("\t", "\\t")
             .Replace("\0", "\\0");
+
+    private static string XmlEscape(string value) => value
+        .Replace("&", "&amp;")
+        .Replace("<", "&lt;")
+        .Replace(">", "&gt;")
+        .Replace("\"", "&quot;");
 }
