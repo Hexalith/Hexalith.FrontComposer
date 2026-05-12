@@ -57,5 +57,8 @@ public static class CliApplication
         output.WriteLine("  frontcomposer migrate --from <version> --to <version> [--dry-run|--apply] [--project <path>] [--solution <path>] [--format text|json] [--fail-on-findings]");
         output.WriteLine();
         output.WriteLine("Exit codes: 0 success, 1 explicit fail-on-findings, 2 invalid/ambiguous input, 3 generated output unavailable, 4 apply/write failure.");
+        output.WriteLine("Path support: --project requires .csproj; --solution requires .sln with exactly one .csproj. .slnx and .fsproj fail closed in v1.");
+        output.WriteLine("Inspect fail flags: --fail-on-warning is stricter than --fail-on-error when both are supplied.");
+        output.WriteLine("Migrate JSON: applied is true only after a clean --apply run; diffs are terminal-safe informational output, not a patch contract.");
     }
 }

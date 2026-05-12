@@ -39,6 +39,8 @@ Mixed channels (analyzer-emitted + runtime-emitted under the same id) require bo
 - `migrationId == id` — the diagnostic page **is** the migration page (the "obsolete API X, replaced by Y" stub doubles as the migration story). This is the default for simple field-level deprecations.
 - `migrationId == "HFCMxxxx"` (or another distinct id) — the migration story is a separate page (Story 9-2's `HFCM*` namespace, or another diagnostic's docs slug). Used when the migration spans multiple APIs, requires multi-step upgrade actions, or carries security/compliance prose that does not belong in the diagnostic stub.
 
+For `migration-findings.json`, `introducedIn` records the FrontComposer CLI/tooling release that introduced the CLI-emitted finding, not the first product release that contained the migrated API. The six initial HFCM rows are batch-approved as the Story 9-2 migration cohort and remain outside Roslyn analyzer release tracking.
+
 `migrationId` must always resolve to an existing registry entry's `docsSlug`. Self-reference is permitted; pointing to a non-existent or removed id is a registry validation failure.
 
 ## Cross-package range exceptions

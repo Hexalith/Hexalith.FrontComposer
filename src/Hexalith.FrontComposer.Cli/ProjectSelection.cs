@@ -6,30 +6,52 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
     {
         string? explicitProject = options.Get("project");
         if (!string.IsNullOrWhiteSpace(explicitProject)) {
-            string fullPath = Path.GetFullPath(explicitProject, currentDirectory);
+            string fullPath = PathUtilities.Canonical(Path.GetFullPath(explicitProject, currentDirectory));
             if (Directory.Exists(fullPath)) {
                 return new ProjectSelection(false, null, "--project must resolve to a .csproj file, not a directory: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(fullPath)));
             }
 
+            string extension = Path.GetExtension(fullPath);
+            if (!extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)) {
+                return extension.Equals(".fsproj", StringComparison.OrdinalIgnoreCase)
+                    ? new ProjectSelection(false, null, ".fsproj is not supported by frontcomposer migrate/inspect v1; pass a .csproj project.")
+                    : new ProjectSelection(false, null, "--project must resolve to a .csproj file: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(fullPath)));
+            }
+
             return File.Exists(fullPath)
-                ? Path.GetExtension(fullPath).Equals(".csproj", StringComparison.OrdinalIgnoreCase)
-                    ? new ProjectSelection(true, fullPath, string.Empty)
-                    : new ProjectSelection(false, null, "--project must resolve to a .csproj file: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(fullPath)))
+                ? new ProjectSelection(true, fullPath, string.Empty)
                 : new ProjectSelection(false, null, "Project file was not found: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(fullPath)));
         }
 
         string? solution = options.Get("solution");
         if (!string.IsNullOrWhiteSpace(solution)) {
-            string solutionPath = Path.GetFullPath(solution, currentDirectory);
+            string solutionPath = PathUtilities.Canonical(Path.GetFullPath(solution, currentDirectory));
+            string extension = Path.GetExtension(solutionPath);
+            if (!extension.Equals(".sln", StringComparison.OrdinalIgnoreCase)) {
+                return extension.Equals(".slnx", StringComparison.OrdinalIgnoreCase)
+                    ? new ProjectSelection(false, null, ".slnx is not supported by frontcomposer migrate/inspect v1; pass --project with a .csproj file.")
+                    : new ProjectSelection(false, null, "--solution must resolve to a .sln file: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(solutionPath)));
+            }
+
             if (!File.Exists(solutionPath)) {
                 return new ProjectSelection(false, null, "Solution file was not found: " + OutputSanitizer.Sanitize(PathUtilities.RedactAbsolute(solutionPath)));
             }
 
             string solutionDirectory = Path.GetDirectoryName(solutionPath)!;
-            string[] projects = File.ReadLines(solutionPath)
-                .Select(TryReadProjectPath)
-                .Where(path => !string.IsNullOrWhiteSpace(path))
-                .Select(path => Path.GetFullPath(path!, solutionDirectory))
+            SolutionProjectParseResult parse = ReadSolutionProjects(solutionPath);
+            if (parse.MalformedLines > 0) {
+                return new ProjectSelection(false, null, "Solution contains malformed Project entries; pass --project with a .csproj file.");
+            }
+
+            if (parse.UnsupportedProjectTypes.Length > 0) {
+                return new ProjectSelection(false, null, string.Join(", ", parse.UnsupportedProjectTypes.Order(StringComparer.OrdinalIgnoreCase))
+                    + " is not supported by frontcomposer migrate/inspect v1. Solution contains unsupported project type(s) "
+                    + string.Join(", ", parse.UnsupportedProjectTypes.Order(StringComparer.OrdinalIgnoreCase))
+                    + "; pass --project with a .csproj file.");
+            }
+
+            string[] projects = parse.ProjectPaths
+                .Select(path => PathUtilities.Canonical(Path.GetFullPath(path, solutionDirectory)))
                 .Where(File.Exists)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
@@ -50,13 +72,73 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
         };
     }
 
-    private static string? TryReadProjectPath(string line)
+    private static SolutionProjectParseResult ReadSolutionProjects(string solutionPath)
     {
-        if (!line.StartsWith("Project(", StringComparison.Ordinal) || !line.Contains(".csproj", StringComparison.OrdinalIgnoreCase)) {
-            return null;
+        List<string> projectPaths = [];
+        HashSet<string> unsupported = new(StringComparer.OrdinalIgnoreCase);
+        int malformed = 0;
+
+        foreach (string line in File.ReadLines(solutionPath)) {
+            if (!line.StartsWith("Project(", StringComparison.Ordinal)) {
+                continue;
+            }
+
+            string[] fields = ReadQuotedFields(line);
+            if (fields.Length < 3) {
+                malformed++;
+                continue;
+            }
+
+            string projectPath = fields[2];
+            string extension = Path.GetExtension(projectPath);
+            if (extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)) {
+                projectPaths.Add(projectPath);
+            }
+            else if (extension.Equals(".fsproj", StringComparison.OrdinalIgnoreCase)) {
+                _ = unsupported.Add(extension);
+            }
         }
 
-        string[] parts = line.Split('"');
-        return parts.FirstOrDefault(part => part.EndsWith(".csproj", StringComparison.OrdinalIgnoreCase));
+        return new SolutionProjectParseResult(projectPaths.ToArray(), unsupported.ToArray(), malformed);
     }
+
+    private static string[] ReadQuotedFields(string line)
+    {
+        List<string> fields = [];
+        for (int i = 0; i < line.Length; i++) {
+            if (line[i] != '"') {
+                continue;
+            }
+
+            i++;
+            System.Text.StringBuilder builder = new();
+            while (i < line.Length) {
+                if (line[i] == '"') {
+                    if (i + 1 < line.Length && line[i + 1] == '"') {
+                        _ = builder.Append('"');
+                        i += 2;
+                        continue;
+                    }
+
+                    break;
+                }
+
+                _ = builder.Append(line[i]);
+                i++;
+            }
+
+            if (i >= line.Length || line[i] != '"') {
+                return [];
+            }
+
+            fields.Add(builder.ToString());
+        }
+
+        return fields.ToArray();
+    }
+
+    private sealed record SolutionProjectParseResult(
+        string[] ProjectPaths,
+        string[] UnsupportedProjectTypes,
+        int MalformedLines);
 }

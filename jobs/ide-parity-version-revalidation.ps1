@@ -34,6 +34,50 @@ $ErrorActionPreference = "Stop"
 
 $RequiredLabels = @("ide-parity", "conformance-revalidation")
 
+function Get-RepositoryRoot {
+    $root = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot ".."))
+    return $root.TrimEnd([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+}
+
+function Resolve-RepoBoundPath {
+    [CmdletBinding()]
+    param(
+        [string]$Path,
+        [string]$RepositoryRoot,
+        [string]$ParameterName
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path)) {
+        throw "$ParameterName is required."
+    }
+
+    if ($Path -match '^[A-Za-z][A-Za-z0-9+\-.]*://') {
+        throw "$ParameterName must be a repository-relative path, not a URI."
+    }
+
+    if ($Path -match '^[A-Za-z]:[^\\/]') {
+        throw "$ParameterName must not be a drive-relative path."
+    }
+
+    $candidate = if ([System.IO.Path]::IsPathRooted($Path)) {
+        [System.IO.Path]::GetFullPath($Path)
+    } else {
+        [System.IO.Path]::GetFullPath((Join-Path $RepositoryRoot $Path))
+    }
+
+    $rootWithSeparator = $RepositoryRoot
+    if (-not $rootWithSeparator.EndsWith([System.IO.Path]::DirectorySeparatorChar)) {
+        $rootWithSeparator = $rootWithSeparator + [System.IO.Path]::DirectorySeparatorChar
+    }
+
+    $comparison = if ($IsWindows) { [System.StringComparison]::OrdinalIgnoreCase } else { [System.StringComparison]::Ordinal }
+    if (-not ($candidate.Equals($RepositoryRoot, $comparison) -or $candidate.StartsWith($rootWithSeparator, $comparison))) {
+        throw "$ParameterName must stay inside the repository root."
+    }
+
+    return $candidate
+}
+
 function Get-VersionParts {
     [CmdletBinding()]
     param([string]$Raw)
@@ -164,12 +208,16 @@ function Write-AtomicFile([string]$Path, [string]$Content) {
     if (-not [string]::IsNullOrWhiteSpace($directory) -and -not (Test-Path -LiteralPath $directory)) {
         New-Item -ItemType Directory -Force -Path $directory | Out-Null
     }
-    $temp = "$Path.tmp"
+    $temp = Join-Path $directory (".{0}.{1}.tmp" -f ([System.IO.Path]::GetFileName($Path)), ([System.Guid]::NewGuid().ToString("N")))
     [System.IO.File]::WriteAllText($temp, $Content, (New-Object System.Text.UTF8Encoding($false)))
     Move-Item -LiteralPath $temp -Destination $Path -Force
 }
 
 # --- main ---
+$RepositoryRoot = Get-RepositoryRoot
+$MatrixPath = Resolve-RepoBoundPath -Path $MatrixPath -RepositoryRoot $RepositoryRoot -ParameterName "MatrixPath"
+$OutPath = Resolve-RepoBoundPath -Path $OutPath -RepositoryRoot $RepositoryRoot -ParameterName "OutPath"
+
 if (-not (Test-Path -LiteralPath $MatrixPath)) {
     throw "Matrix file not found: $MatrixPath"
 }

@@ -6,6 +6,8 @@ This section is contributor-only guidance for debugging the FrontComposer source
 
 Use `Debugger.Launch()` only in short-lived local investigation branches. Put it behind a narrow condition such as a specific generated type name or analyzer-config flag, then remove it before review. Source generators run inside the compiler host, so an unconditional launch prompt can block ordinary builds and IDE design-time builds.
 
+Production source under `src/**/*.cs` must not contain `Debugger.Launch()`. The IDE parity regression suite enforces this with a source scan; use local-only patches or temporary investigation branches for debugger launch prompts.
+
 For Visual Studio, use JIT attach or attach to the active compiler server process when the launch prompt appears. If the generator does not hit a breakpoint, run a clean rebuild with shared compilation disabled:
 
 ```powershell

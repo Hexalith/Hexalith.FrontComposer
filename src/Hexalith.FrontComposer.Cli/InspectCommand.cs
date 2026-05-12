@@ -513,6 +513,8 @@ internal static class TypeMatcher
 
     private static int Distance(string left, string right)
     {
+        // Bound closest-type suggestions so hostile generated metadata names cannot force
+        // quadratic work across unbounded strings. The output remains a hint, not an exact scorer.
         ReadOnlySpan<char> l = left.AsSpan(0, Math.Min(left.Length, MaxDistanceInputLength));
         ReadOnlySpan<char> r = right.AsSpan(0, Math.Min(right.Length, MaxDistanceInputLength));
         int[,] costs = new int[l.Length + 1, r.Length + 1];

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Diagnostics;
+using System.Text;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -11,6 +12,82 @@ namespace Hexalith.FrontComposer.Cli.Tests;
 
 public sealed class MigrationCommandTests
 {
+    [Fact]
+    public void ProjectSelection_RejectsUnsupportedExplicitProjectFormats()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string fsProject = Path.Combine(fixture.Root, "Acme.App", "Acme.App.fsproj");
+        _ = Directory.CreateDirectory(Path.GetDirectoryName(fsProject)!);
+        File.WriteAllText(fsProject, "<Project />");
+
+        ProjectSelection selection = ProjectSelection.Resolve(
+            CommandOptions.Parse(["--project", fsProject]),
+            fixture.Root);
+
+        selection.Success.ShouldBeFalse();
+        selection.Error.ShouldContain(".fsproj is not supported");
+        selection.Error.ShouldNotContain(fixture.Root, Case.Sensitive);
+    }
+
+    [Fact]
+    public void ProjectSelection_RejectsUnsupportedSolutionFormats()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string slnx = Path.Combine(fixture.Root, "Acme.slnx");
+        File.WriteAllText(slnx, "<Solution />");
+
+        ProjectSelection selection = ProjectSelection.Resolve(
+            CommandOptions.Parse(["--solution", slnx]),
+            fixture.Root);
+
+        selection.Success.ShouldBeFalse();
+        selection.Error.ShouldContain(".slnx is not supported");
+        selection.Error.ShouldNotContain(fixture.Root, Case.Sensitive);
+    }
+
+    [Fact]
+    public void ProjectSelection_ReadsQuotedSolutionProjectPathsDeterministically()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string solution = Path.Combine(fixture.Root, "Acme.sln");
+        File.WriteAllText(
+            solution,
+            """"
+            Microsoft Visual Studio Solution File, Format Version 12.00
+            Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Acme ""App""", "Acme.App\Acme.App.csproj", "{11111111-1111-1111-1111-111111111111}"
+            EndProject
+            """");
+
+        ProjectSelection selection = ProjectSelection.Resolve(
+            CommandOptions.Parse(["--solution", solution]),
+            fixture.Root);
+
+        selection.Success.ShouldBeTrue(selection.Error);
+        selection.ProjectPath.ShouldBe(PathUtilities.Canonical(project));
+    }
+
+    [Fact]
+    public void ProjectSelection_RejectsUnsupportedSolutionProjectTypes()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string solution = Path.Combine(fixture.Root, "Acme.sln");
+        File.WriteAllText(
+            solution,
+            """
+            Microsoft Visual Studio Solution File, Format Version 12.00
+            Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Acme.FSharp", "Acme.FSharp\Acme.FSharp.fsproj", "{11111111-1111-1111-1111-111111111111}"
+            EndProject
+            """);
+
+        ProjectSelection selection = ProjectSelection.Resolve(
+            CommandOptions.Parse(["--solution", solution]),
+            fixture.Root);
+
+        selection.Success.ShouldBeFalse();
+        selection.Error.ShouldContain(".fsproj is not supported");
+    }
+
     [Fact]
     public async Task Migrate_DefaultsToDryRunAndDoesNotWriteSource()
     {
@@ -141,6 +218,76 @@ public sealed class MigrationCommandTests
         output.ToString().ShouldNotContain(fixture.Root, Case.Sensitive);
     }
 
+    [Theory]
+    [InlineData("C:Program.cs")]
+    [InlineData("../Program.cs")]
+    [InlineData("file:///Program.cs")]
+    public async Task Migrate_SidecarHostilePathsSurfaceManualOnlySentinel(string sidecarPath)
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        fixture.WriteSource("Acme.App", "Program.cs", "namespace Acme.App;");
+        fixture.WriteGeneratedDiagnosticSidecar(
+            "Acme.App",
+            "Debug",
+            "net10.0",
+            "frontcomposer.migration.diagnostics.json",
+            $$"""
+            {
+              "diagnostics": [
+                {
+                  "id": "HFCM9002",
+                  "severity": "Warning",
+                  "path": "{{sidecarPath}}",
+                  "what": "Unsafe sidecar path should not be trusted"
+                }
+              ]
+            }
+            """);
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--format", "json"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(0, output + error.ToString());
+        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        JsonElement entry = document.RootElement.GetProperty("entries").EnumerateArray().Single();
+        entry.GetProperty("kind").GetString().ShouldBe("manual-only");
+        entry.GetProperty("path").GetString().ShouldStartWith("__sidecar__/");
+        output.ToString().ShouldNotContain(sidecarPath, Case.Sensitive);
+        output.ToString().ShouldNotContain(fixture.Root, Case.Sensitive);
+    }
+
+    [Fact]
+    public async Task SourceFile_ReadAsyncRejectsExcessiveFileSizeBeforeDecoding()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string largeSource = Path.Combine(fixture.Root, "TooLarge.cs");
+        await using (FileStream stream = File.Create(largeSource)) {
+            stream.SetLength(SourceFile.MaxSupportedBytes + 1);
+        }
+
+        IOException exception = await Should.ThrowAsync<IOException>(
+            () => SourceFile.ReadAsync(largeSource, CancellationToken.None));
+
+        exception.Message.ShouldContain("exceeds");
+    }
+
+    [Fact]
+    public async Task SourceFile_ReadAsyncRejectsInvalidUtf8()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string source = Path.Combine(fixture.Root, "InvalidUtf8.cs");
+        await File.WriteAllBytesAsync(source, [0x63, 0x6C, 0x61, 0x73, 0x73, 0x20, 0xFF], CancellationToken.None);
+
+        await Should.ThrowAsync<DecoderFallbackException>(
+            () => SourceFile.ReadAsync(source, CancellationToken.None));
+    }
+
     [Fact]
     public async Task Migrate_DoesNotTreatDiagnosticIdInsideCommentAsManualOnly()
     {
@@ -220,6 +367,47 @@ public sealed class MigrationCommandTests
         document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
         File.ReadAllText(submoduleSource).ShouldContain("AddFrontComposerDebugOverlay");
         output.ToString().ShouldNotContain(fixture.Root, Case.Sensitive);
+    }
+
+    [Fact]
+    public async Task Migrate_ParsesSingleQuotedGitmodulesSubmodulePaths()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        File.WriteAllText(
+            Path.Combine(fixture.Root, "Acme.App", ".gitmodules"),
+            """
+            [submodule "vendor/lib"]
+              path = 'vendor/lib'
+              url = https://example.invalid/lib.git
+            """);
+        File.WriteAllText(
+            project,
+            """
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+                <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+              </PropertyGroup>
+              <ItemGroup>
+                <Compile Include="vendor\lib\Code.cs" />
+              </ItemGroup>
+            </Project>
+            """);
+        string submoduleSource = fixture.WriteSource("Acme.App", "vendor/lib/Code.cs", "services.AddFrontComposerDebugOverlay();");
+
+        using StringWriter output = new();
+        using StringWriter error = new();
+        int exitCode = await CliApplication.RunAsync(
+            ["migrate", "--project", project, "--from", "9.1.0", "--to", "9.2.0", "--apply", "--format", "json"],
+            output,
+            error,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(0, output + error.ToString());
+        File.ReadAllText(submoduleSource).ShouldContain("AddFrontComposerDebugOverlay");
+        using JsonDocument document = JsonDocument.Parse(output.ToString());
+        document.RootElement.GetProperty("summary").GetProperty("skipped").GetInt32().ShouldBe(1);
     }
 
     [Fact]

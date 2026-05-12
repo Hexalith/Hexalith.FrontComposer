@@ -195,9 +195,17 @@ internal static class MigrationPlanner
         List<MigrationEntry> entries = [];
         List<PlannedFileEdit> fileEdits = [];
 
-        MefHostServices host = MefHostServices.Create(MefHostServices.DefaultAssemblies
-            .Concat([typeof(CSharpCompilation).Assembly, typeof(CSharpFormattingOptions).Assembly])
-            .Distinct());
+        MefHostServices host;
+        try {
+            host = MefHostServices.Create(MefHostServices.DefaultAssemblies
+                .Concat([typeof(CSharpCompilation).Assembly, typeof(CSharpFormattingOptions).Assembly])
+                .Distinct());
+        }
+        catch (Exception ex) when (IsWorkspaceCompositionFailure(ex)) {
+            entries.Add(Failed(Path.GetFileName(projectPath), edge, "Workspaces assemblies failed to load; verify the CLI package installation and rerun migration."));
+            return new MigrationPlan(documentSet.ProjectDirectory, edge, [], entries);
+        }
+
         using AdhocWorkspace workspace = new(host);
         ProjectId projectId = ProjectId.CreateNewId(debugName: Path.GetFileNameWithoutExtension(projectPath));
         ProjectInfo projectInfo = ProjectInfo.Create(
@@ -387,6 +395,23 @@ internal static class MigrationPlanner
                 fixEntries));
         }
 
+        foreach ((string sidecarPath, ImmutableArray<Diagnostic> diagnostics) in generatedDiagnostics
+            .Where(x => x.Key.StartsWith(MigrationDiagnosticSidecarReader.SentinelPrefix, StringComparison.Ordinal))
+            .OrderBy(x => x.Key, StringComparer.Ordinal)) {
+            foreach (Diagnostic diagnostic in diagnostics.OrderBy(x => x.Id, StringComparer.Ordinal)) {
+                entries.Add(new MigrationEntry(
+                    diagnostic.Id,
+                    "manual-only",
+                    sidecarPath,
+                    "Migration sidecar path or payload was not trusted.",
+                    "Sidecar diagnostics use project-relative source paths inside the selected project.",
+                    "Untrusted, malformed, or unreadable sidecar data was found.",
+                    "Regenerate FrontComposer diagnostics and rerun migration.",
+                    edge.DocsLink,
+                    null));
+            }
+        }
+
         if (!entries.Any(x => x.Kind == "safe-fix" || x.Kind == "manual-only" || x.Kind == "failed" || x.Kind == "conflict")) {
             entries.Add(new MigrationEntry(
                 "HFCM0001",
@@ -402,6 +427,10 @@ internal static class MigrationPlanner
 
         return new MigrationPlan(documentSet.ProjectDirectory, edge, fileEdits, entries);
     }
+
+    private static bool IsWorkspaceCompositionFailure(Exception exception)
+        => exception is FileLoadException or FileNotFoundException or TypeLoadException or System.Reflection.ReflectionTypeLoadException
+            || exception.GetType().Name.Contains("Composition", StringComparison.Ordinal);
 
     public static string Hash(string text)
         => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text)));
@@ -676,8 +705,15 @@ internal static class ProjectDocumentLoader
 
 internal static class SourceFile
 {
+    public const long MaxSupportedBytes = 16 * 1024 * 1024;
+
     public static async Task<SourceFileContent> ReadAsync(string path, CancellationToken cancellationToken)
     {
+        FileInfo file = new(path);
+        if (file.Exists && file.Length > MaxSupportedBytes) {
+            throw new IOException("Source file exceeds the maximum supported migration size of 16 MiB.");
+        }
+
         byte[] bytes = await File.ReadAllBytesAsync(path, cancellationToken).ConfigureAwait(false);
         Encoding encoding = DetectEncoding(bytes);
         string text = encoding.GetString(PreambleFree(bytes, encoding));
@@ -802,6 +838,8 @@ internal static class MigrationDiagnosticScanner
 
 internal static class MigrationDiagnosticSidecarReader
 {
+    public const string SentinelPrefix = "__sidecar__/";
+
     public static IReadOnlyDictionary<string, ImmutableArray<Diagnostic>> Read(string projectDirectory)
     {
         // D7 (Story 9-2 third pass): manual-migration HFCM9002 sidecars are read here as a
@@ -844,6 +882,7 @@ internal static class MigrationDiagnosticSidecarReader
 
                     string relativePath = NormalizePath(Get(entry, "path"), projectDirectory);
                     if (string.IsNullOrWhiteSpace(relativePath) || relativePath == PathUtilities.RedactedPathSentinel) {
+                        AddSentinel(builders, path, projectDirectory);
                         continue;
                     }
 
@@ -890,8 +929,10 @@ internal static class MigrationDiagnosticSidecarReader
     {
         string sentinelKey = NormalizePath(sidecarPath, projectDirectory);
         if (string.IsNullOrWhiteSpace(sentinelKey) || sentinelKey == PathUtilities.RedactedPathSentinel) {
-            return;
+            sentinelKey = OutputSanitizer.Sanitize(Path.GetFileName(sidecarPath), 120);
         }
+
+        sentinelKey = SentinelPrefix + sentinelKey;
 
         if (!builders.TryGetValue(sentinelKey, out ImmutableArray<Diagnostic>.Builder? builder)) {
             builder = ImmutableArray.CreateBuilder<Diagnostic>();
@@ -921,9 +962,18 @@ internal static class MigrationDiagnosticSidecarReader
             return string.Empty;
         }
 
+        string trimmed = path.Trim();
+        if (trimmed.Length >= 2 && char.IsAsciiLetter(trimmed[0]) && trimmed[1] == ':') {
+            return PathUtilities.RedactedPathSentinel;
+        }
+
+        if (trimmed.Contains("://", StringComparison.Ordinal)) {
+            return PathUtilities.RedactedPathSentinel;
+        }
+
         string relative = Path.IsPathRooted(path)
             ? PathUtilities.ToProjectRelative(projectDirectory, path)
-            : path.Replace('\\', '/').TrimStart('/');
+            : trimmed.Replace('\\', '/').TrimStart('/');
         // Reject `..` segments after normalization; AC23 disallows project-root escape.
         if (relative.Split('/').Any(segment => segment == "..")) {
             return PathUtilities.RedactedPathSentinel;
@@ -1118,7 +1168,7 @@ internal static class SubmoduleBoundaryReader
                 continue;
             }
 
-            string relative = trimmed[(equals + 1)..].Trim().Trim('"');
+            string relative = UnquoteGitConfigValue(trimmed[(equals + 1)..].Trim());
             // Reject `..` traversal and absolute paths in `.gitmodules` entries; a malicious or
             // hand-edited file should not be able to mark arbitrary ancestors as submodules.
             if (relative.Length == 0 || Path.IsPathRooted(relative) || relative.Replace('\\', '/').Split('/').Any(s => s == "..")) {
@@ -1129,6 +1179,44 @@ internal static class SubmoduleBoundaryReader
         }
 
         return roots;
+    }
+
+    private static string UnquoteGitConfigValue(string value)
+    {
+        if (value.Length >= 2
+            && ((value[0] == '"' && value[^1] == '"') || (value[0] == '\'' && value[^1] == '\''))) {
+            value = value[1..^1];
+        }
+
+        StringBuilder builder = new(value.Length);
+        bool escaping = false;
+        foreach (char ch in value) {
+            if (escaping) {
+                _ = builder.Append(ch switch {
+                    '"' => '"',
+                    '\'' => '\'',
+                    '\\' => '\\',
+                    'n' => '\n',
+                    't' => '\t',
+                    _ => ch,
+                });
+                escaping = false;
+                continue;
+            }
+
+            if (ch == '\\') {
+                escaping = true;
+                continue;
+            }
+
+            _ = builder.Append(ch);
+        }
+
+        if (escaping) {
+            _ = builder.Append('\\');
+        }
+
+        return builder.ToString();
     }
 
     private static string? FindRepositoryRoot(string start)

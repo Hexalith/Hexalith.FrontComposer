@@ -375,7 +375,7 @@ internal static class IdeParityRepositoryRoot
     {
         get
         {
-            DirectoryInfo? directory = new(AppContext.BaseDirectory);
+            DirectoryInfo? directory = new(ResolveLinkTarget(Path.GetFullPath(AppContext.BaseDirectory)));
             while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.sln")))
             {
                 directory = directory.Parent;
@@ -388,5 +388,26 @@ internal static class IdeParityRepositoryRoot
 
             return directory.FullName;
         }
+    }
+
+    private static string ResolveLinkTarget(string path)
+    {
+        try
+        {
+            DirectoryInfo directory = new(path);
+            FileSystemInfo? resolved = directory.ResolveLinkTarget(returnFinalTarget: true);
+            return Path.GetFullPath(resolved?.FullName ?? directory.FullName);
+        }
+        catch (IOException)
+        {
+        }
+        catch (UnauthorizedAccessException)
+        {
+        }
+        catch (NotSupportedException)
+        {
+        }
+
+        return path;
     }
 }

@@ -1,6 +1,6 @@
 # Story 11.3: CLI, Migration, and IDE Edge-Case Hardening
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 11** - Deferred Hardening & Release Readiness. Closes CLI migration, inspect/help, IDE manifest, path normalization, sidecar, write-safety, and generator-debug follow-ups routed from Stories 9.2 and 9.3. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -88,62 +88,62 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
 
 ## Tasks / Subtasks
 
-- [ ] T1. Inventory and classify the Story 11.3 deferred rows (AC1, AC19, AC20)
-  - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom.
-  - [ ] Capture every unresolved `DEF-9-2-*` and `DEF-9-3-*` row plus Story 11.3-routed rows such as CLI path/help/sidecar/manifest/debug findings.
-  - [ ] Save a starting inventory snapshot before changing code or docs, then reconcile the final matrix against that snapshot so each Story 11.3 row has exactly one current outcome.
-  - [ ] Classify each row as fix now, document accepted constraint, split to Story 11.2, or split to another Epic 11 story.
-  - [ ] Produce the release-maintainer matrix with columns `Deferred ID`, `Status`, `Evidence`, `User-visible behavior`, and `Follow-up story`; accepted constraints require docs/help behavior, targeted evidence, release-safety rationale, and future owner when not permanent.
-  - [ ] Add a lightweight likelihood/impact note for accepted constraints and escalate high-impact security, data-loss, or release-integrity rows to fixed, blocked, or split.
-  - [ ] Preserve historical review text; add resolution markers rather than deleting rows.
+- [x] T1. Inventory and classify the Story 11.3 deferred rows (AC1, AC19, AC20)
+  - [x] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom.
+  - [x] Capture every unresolved `DEF-9-2-*` and `DEF-9-3-*` row plus Story 11.3-routed rows such as CLI path/help/sidecar/manifest/debug findings.
+  - [x] Save a starting inventory snapshot before changing code or docs, then reconcile the final matrix against that snapshot so each Story 11.3 row has exactly one current outcome.
+  - [x] Classify each row as fix now, document accepted constraint, split to Story 11.2, or split to another Epic 11 story.
+  - [x] Produce the release-maintainer matrix with columns `Deferred ID`, `Status`, `Evidence`, `User-visible behavior`, and `Follow-up story`; accepted constraints require docs/help behavior, targeted evidence, release-safety rationale, and future owner when not permanent.
+  - [x] Add a lightweight likelihood/impact note for accepted constraints and escalate high-impact security, data-loss, or release-integrity rows to fixed, blocked, or split.
+  - [x] Preserve historical review text; add resolution markers rather than deleting rows.
 
-- [ ] T2. Harden CLI project selection and path boundaries (AC2-AC4)
-  - [ ] Review `ProjectSelection.cs` for `--project`, `--solution`, `.sln`, `.slnx`, `.csproj`, and `.fsproj` behavior.
-  - [ ] Decide whether `.slnx` and `.fsproj` are supported in v1; if not, add explicit user-facing errors and docs.
-  - [ ] Add tests for quoted solution paths, escaped quotes where feasible, ambiguous matches, unsupported formats, and symlink/junction canonicalization.
-  - [ ] Ensure canonicalization uses `PathUtilities` consistently before trust decisions and output normalization.
-  - [ ] Define a single workspace path policy used by CLI migration, inspect-side evidence, sidecar reads, and IDE `$OutPath` decisions before any mutation; include expected outcomes for relative segments, trailing separators, UNC/drive-relative inputs, missing paths, symlink/junction escapes, case variants, and submodule/package-cache boundaries.
-  - [ ] Revalidate resolved targets immediately before filesystem mutation or evidence trust so link/junction swaps, root drift, and excluded-folder changes fail closed.
-  - [ ] Define project/solution precedence as explicit argument over single unambiguous current-root candidate over deterministic failure; add tests proving no "first found" fallback remains.
-  - [ ] Confirm migration write policy still excludes generated output, `bin`, `obj`, package caches, root-level submodules, nested submodule paths, outside-root linked files, and unrelated repositories.
+- [x] T2. Harden CLI project selection and path boundaries (AC2-AC4)
+  - [x] Review `ProjectSelection.cs` for `--project`, `--solution`, `.sln`, `.slnx`, `.csproj`, and `.fsproj` behavior.
+  - [x] Decide whether `.slnx` and `.fsproj` are supported in v1; if not, add explicit user-facing errors and docs.
+  - [x] Add tests for quoted solution paths, escaped quotes where feasible, ambiguous matches, unsupported formats, and symlink/junction canonicalization.
+  - [x] Ensure canonicalization uses `PathUtilities` consistently before trust decisions and output normalization.
+  - [x] Define a single workspace path policy used by CLI migration, inspect-side evidence, sidecar reads, and IDE `$OutPath` decisions before any mutation; include expected outcomes for relative segments, trailing separators, UNC/drive-relative inputs, missing paths, symlink/junction escapes, case variants, and submodule/package-cache boundaries.
+  - [x] Revalidate resolved targets immediately before filesystem mutation or evidence trust so link/junction swaps, root drift, and excluded-folder changes fail closed.
+  - [x] Define project/solution precedence as explicit argument over single unambiguous current-root candidate over deterministic failure; add tests proving no "first found" fallback remains.
+  - [x] Confirm migration write policy still excludes generated output, `bin`, `obj`, package caches, root-level submodules, nested submodule paths, outside-root linked files, and unrelated repositories.
 
-- [ ] T3. Harden migration catalog, workspace setup, apply result, and file IO behavior (AC5-AC7, AC10, AC12-AC14)
-  - [ ] Replace latent `SingleOrDefault` duplicate-edge behavior with explicit catalog uniqueness validation for `(fromVersion,toVersion)`.
-  - [ ] Surface `MefHostServices` or workspace composition failures as bounded CLI errors.
-  - [ ] Confirm `MigrationResult.Applied` or equivalent success field is false when any file write fails.
-  - [ ] Verify atomic temp-and-replace writes remain same-directory and preserve encoding/line endings where supported.
-  - [ ] Prove write-failure and cancellation behavior with injected failures: final file unchanged, temp artifact bounded or cleaned best-effort, JSON/text result non-success, and stderr/stdout redacted.
-  - [ ] Reconcile text and JSON counts for changed, unchanged, skipped, failed, manual-only, warning, and error outcomes; mismatches block review.
-  - [ ] Document and test strict UTF-8 / BOM handling, drive-root canonicalization, and excessive-file-size behavior as fixed or accepted.
-  - [ ] Revisit Ctrl+C double-press and SIGTERM handling; implement only if it stays low-risk and testable.
-  - [ ] Keep tool packaging smoke tests bounded with skip/timeout behavior and documented live-tree build isolation constraints.
+- [x] T3. Harden migration catalog, workspace setup, apply result, and file IO behavior (AC5-AC7, AC10, AC12-AC14)
+  - [x] Replace latent `SingleOrDefault` duplicate-edge behavior with explicit catalog uniqueness validation for `(fromVersion,toVersion)`.
+  - [x] Surface `MefHostServices` or workspace composition failures as bounded CLI errors.
+  - [x] Confirm `MigrationResult.Applied` or equivalent success field is false when any file write fails.
+  - [x] Verify atomic temp-and-replace writes remain same-directory and preserve encoding/line endings where supported.
+  - [x] Prove write-failure and cancellation behavior with injected failures: final file unchanged, temp artifact bounded or cleaned best-effort, JSON/text result non-success, and stderr/stdout redacted.
+  - [x] Reconcile text and JSON counts for changed, unchanged, skipped, failed, manual-only, warning, and error outcomes; mismatches block review.
+  - [x] Document and test strict UTF-8 / BOM handling, drive-root canonicalization, and excessive-file-size behavior as fixed or accepted.
+  - [x] Revisit Ctrl+C double-press and SIGTERM handling; implement only if it stays low-risk and testable.
+  - [x] Keep tool packaging smoke tests bounded with skip/timeout behavior and documented live-tree build isolation constraints.
 
-- [ ] T4. Harden sidecar, diff, sanitizer, and JSON/help semantics (AC8-AC11, AC18)
-  - [ ] Add README/reference/help coverage for `--fail-on-warning` versus `--fail-on-error` precedence and JSON `applied`/fail behavior.
-  - [ ] Add or update JSON schema notes for inspect and migrate payloads: path relativity, redaction, exit code mapping, warning/manual-only/failure fields, and known limitations.
-  - [ ] Decide whether unified diffs are terminal-safe only or patch-applicable; document the exact contract and keep tests aligned.
-  - [ ] Add sidecar tests for drive-relative paths (`C:foo.cs`), traversal, duplicate/case-variant paths, unreadable files, malformed JSON, and unsafe source path reporting.
-  - [ ] Distinguish missing sidecar, malformed/unreadable sidecar, and untrusted sidecar path as controlled fail-closed outcomes; do not silently fall back to permissive behavior.
-  - [ ] Ensure `OutputSanitizer` and diff rendering bound user-controlled fields without leaking raw omitted content.
-  - [ ] Confirm command output, JSON snippets, diff snippets, and docs examples redact absolute paths, user names, temp directory names, tokens, raw source payloads, and terminal control characters.
+- [x] T4. Harden sidecar, diff, sanitizer, and JSON/help semantics (AC8-AC11, AC18)
+  - [x] Add README/reference/help coverage for `--fail-on-warning` versus `--fail-on-error` precedence and JSON `applied`/fail behavior.
+  - [x] Add or update JSON schema notes for inspect and migrate payloads: path relativity, redaction, exit code mapping, warning/manual-only/failure fields, and known limitations.
+  - [x] Decide whether unified diffs are terminal-safe only or patch-applicable; document the exact contract and keep tests aligned.
+  - [x] Add sidecar tests for drive-relative paths (`C:foo.cs`), traversal, duplicate/case-variant paths, unreadable files, malformed JSON, and unsafe source path reporting.
+  - [x] Distinguish missing sidecar, malformed/unreadable sidecar, and untrusted sidecar path as controlled fail-closed outcomes; do not silently fall back to permissive behavior.
+  - [x] Ensure `OutputSanitizer` and diff rendering bound user-controlled fields without leaking raw omitted content.
+  - [x] Confirm command output, JSON snippets, diff snippets, and docs examples redact absolute paths, user names, temp directory names, tokens, raw source payloads, and terminal control characters.
 
-- [ ] T5. Harden IDE parity manifest parsing and evidence generation (AC15-AC18)
-  - [ ] Add strict duplicate-key and unknown-field detection for `docs/ide-parity-matrix.json` and evidence manifests.
-  - [ ] Preserve strict trailing-comma rejection but add a friendly failure category or test name so maintainers understand the failure.
-  - [ ] Revisit `IdeParityReportSanitizer` ESC replacement only if downstream JSON decoding consumes its output; otherwise mark accepted with evidence.
-  - [ ] Evaluate `IdeParityRepositoryRoot` ancestor walk through symlinked `AppContext.BaseDirectory`; fix or document the CI assumption.
-  - [ ] Confirm `jobs/ide-parity-version-revalidation.ps1` writes `$OutPath` atomically and cannot escape expected artifact roots in release usage.
-  - [ ] Choose one binary `Debugger.Launch()` policy before review: either forbid unconditional production-path launches with grep/analyzer-style validation, or document the exact guarded/debug-only allowance and evidence.
-  - [ ] Keep hostile manifest and `$OutPath` fixtures inside per-test roots, and make missing platform capabilities or cleanup failures visible instead of silently relaxing fixture safety.
+- [x] T5. Harden IDE parity manifest parsing and evidence generation (AC15-AC18)
+  - [x] Add strict duplicate-key and unknown-field detection for `docs/ide-parity-matrix.json` and evidence manifests.
+  - [x] Preserve strict trailing-comma rejection but add a friendly failure category or test name so maintainers understand the failure.
+  - [x] Revisit `IdeParityReportSanitizer` ESC replacement only if downstream JSON decoding consumes its output; otherwise mark accepted with evidence.
+  - [x] Evaluate `IdeParityRepositoryRoot` ancestor walk through symlinked `AppContext.BaseDirectory`; fix or document the CI assumption.
+  - [x] Confirm `jobs/ide-parity-version-revalidation.ps1` writes `$OutPath` atomically and cannot escape expected artifact roots in release usage.
+  - [x] Choose one binary `Debugger.Launch()` policy before review: either forbid unconditional production-path launches with grep/analyzer-style validation, or document the exact guarded/debug-only allowance and evidence.
+  - [x] Keep hostile manifest and `$OutPath` fixtures inside per-test roots, and make missing platform capabilities or cleanup failures visible instead of silently relaxing fixture safety.
 
-- [ ] T6. Update public docs and ledger evidence (AC1, AC8, AC9, AC13, AC18-AC20)
-  - [ ] Update `src/Hexalith.FrontComposer.Cli/README.md` and `docs/reference/cli.md` so package README and public docs agree.
-  - [ ] Update `docs/reference/ide-parity.md` or `docs/ide-parity-matrix.md` only for story-owned manifest/evidence behavior.
-  - [ ] Update `_bmad-output/implementation-artifacts/deferred-work.md` with resolution/acceptance/split markers for all Story 11.3 rows.
-  - [ ] Record exact validation commands and outcomes in this story's Dev Agent Record.
-  - [ ] Record quality-gate evidence for path policy, atomic failure behavior, strict JSON parsing, hostile sidecars, CLI/IDE JSON/help/exit-code contracts, package smoke skip/run rationale, and root-level-only submodule handling.
-  - [ ] Record the starting inventory snapshot, final reconciliation result, accepted-constraint risk rationale, and evidence-sanitization checks.
-  - [ ] Move Story 11.3 to `review` only after implementation and validation evidence are complete.
+- [x] T6. Update public docs and ledger evidence (AC1, AC8, AC9, AC13, AC18-AC20)
+  - [x] Update `src/Hexalith.FrontComposer.Cli/README.md` and `docs/reference/cli.md` so package README and public docs agree.
+  - [x] Update `docs/reference/ide-parity.md` or `docs/ide-parity-matrix.md` only for story-owned manifest/evidence behavior.
+  - [x] Update `_bmad-output/implementation-artifacts/deferred-work.md` with resolution/acceptance/split markers for all Story 11.3 rows.
+  - [x] Record exact validation commands and outcomes in this story's Dev Agent Record.
+  - [x] Record quality-gate evidence for path policy, atomic failure behavior, strict JSON parsing, hostile sidecars, CLI/IDE JSON/help/exit-code contracts, package smoke skip/run rationale, and root-level-only submodule handling.
+  - [x] Record the starting inventory snapshot, final reconciliation result, accepted-constraint risk rationale, and evidence-sanitization checks.
+  - [x] Move Story 11.3 to `review` only after implementation and validation evidence are complete.
 
 ---
 
@@ -350,21 +350,82 @@ GPT-5 Codex
 
 ### Debug Log References
 
+- 2026-05-12: `dotnet test tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj --configuration Release --no-restore` — passed, 39 tests.
+- 2026-05-12: `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "FullyQualifiedName~IdeParity" --no-restore` — passed, 35 tests.
+- 2026-05-12: `pwsh ./jobs/ide-parity-version-revalidation.ps1 -NoGithub -OutPath artifacts/ide-parity/revalidation-dry-run.story-11-3.md` — passed, no configured version drift and no artifact written.
+- 2026-05-12: `pwsh ./eng/validate-docs.ps1` — passed; evidence manifest `artifacts/docs/validation-manifest.json`.
+- 2026-05-12: `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --no-restore` — passed; main lane reported no failures.
+
 ### Completion Notes List
 
 - 2026-05-11: Story created via `/bmad-create-story 11-3-cli-migration-and-ide-edge-case-hardening` during recurring pre-dev hardening job. Ready for party-mode review on a later run.
 - 2026-05-11: Party-mode review applied via `/bmad-party-mode 11-3-cli-migration-and-ide-edge-case-hardening; review;`. Added guardrails for release-maintainer deferred-row decisions, single workspace path policy, deterministic project selection, atomic write failure evidence, hostile fixture handling, `Debugger.Launch()` policy, and cross-story scope boundaries.
 - 2026-05-11: Advanced elicitation applied via `/bmad-advanced-elicitation 11-3-cli-migration-and-ide-edge-case-hardening`. Added guardrails for inventory reconciliation, last-moment path revalidation, evidence redaction, accepted-constraint risk rationale, fixture fail-closed behavior, and CLI/IDE result contract consistency.
+- 2026-05-12: Starting inventory snapshot captured 29 Story 11.3-owned rows: DW-0011 through DW-0040/DW-0044 plus DW-0660. Final reconciliation leaves no active Story 11.3 owner markers in `deferred-work.md`.
+- 2026-05-12: Hardened CLI project/solution selection: explicit paths are canonicalized, `.sln` quoted project paths are parsed deterministically, `.slnx` and `.fsproj` fail closed, and solution/current-directory ambiguity requires explicit `--project`.
+- 2026-05-12: Hardened migration behavior: workspace composition failures emit bounded guidance, source reads reject invalid UTF-8 and files over 16 MiB, hostile sidecar paths produce sentinel manual-only entries, and quoted `.gitmodules` submodule paths remain excluded from writes.
+- 2026-05-12: Hardened IDE parity evidence: strict duplicate-key/unknown-field/trailing-comma tests cover matrix and evidence JSON, repository-root discovery resolves symlinked base directories, `$OutPath` writes are repository-bounded/atomic, and production `Debugger.Launch()` is forbidden by test.
+- 2026-05-12: Public README/reference docs now agree on exit codes, fail flag precedence, JSON fields, path policy, diff limitations, encoding limits, Ctrl+C/SIGTERM scope, IDE manifest strictness, and HFCM `introducedIn` semantics.
+
+### Release Maintainer Matrix
+
+| Deferred ID | Status | Evidence | User-visible behavior | Follow-up story |
+| --- | --- | --- | --- | --- |
+| DW-0011 / DEF-9-3-1 | Accepted | `docs/reference/ide-parity.md`; IDE parity tests | ESC remains literal `\u001B` text for report safety. | Story 11.4 only if downstream JSON decoding consumes sanitized text |
+| DW-0012 / DEF-9-3-2 | Fixed | `CONTRIBUTING.md`; `ProductionSource_ForbidsUnconditionalDebuggerLaunch` | Production source forbids `Debugger.Launch()` prompts. | None |
+| DW-0013 / DEF-9-3-3 | Fixed | `jobs/ide-parity-version-revalidation.ps1`; `docs/reference/ide-parity.md` | `$OutPath` is repository-bounded and atomically written. | None |
+| DW-0014 / DEF-9-3-4 | Fixed | `IdeParityRepositoryRoot` link resolution | Symlinked test base directories anchor to the real checkout. | None |
+| DW-0015 / DEF-9-3-5 | Fixed | `StrictJsonValidation_RejectsDuplicateKeysUnknownFieldsAndTrailingCommas` | Matrix/evidence JSON rejects duplicate keys and unknown fields. | None |
+| DW-0016 / DEF-9-3-6 | Fixed | Strict JSON test and `docs/reference/ide-parity.md` | Trailing commas remain fail-closed with named test evidence. | None |
+| DW-0017 / DEF-9-2-18 | Fixed | CLI README and reference docs | JSON fields, exit codes, and path semantics are listed. | None |
+| DW-0018 / DEF-9-2-19 | Accepted | CLI README and reference docs | Diffs are terminal-safe informational output, not patch-applicable. | None unless product requires patch output |
+| DW-0019 / DEF-9-2-20 | Accepted | `InspectCommand.cs` comment | Closest-type matching is a bounded hint. | None |
+| DW-0020 / DEF-9-2-21 | Accepted | CLI README and reference docs | Widely separated edits may produce coarse informational diffs. | None unless patch output becomes required |
+| DW-0021 / DEF-9-2-22 | Fixed | `SourceFile_ReadAsyncRejectsInvalidUtf8`; docs | Unsupported encodings fail closed. | None |
+| DW-0022 / DEF-9-2-23 | Accepted | CLI encoding docs | Standard BOM precedence applies to the extreme UTF-32/UTF-16 edge. | None |
+| DW-0023 / DEF-9-2-24 | Fixed | `MigrationCatalog.BuildEdges` | Duplicate migration catalog edges fail with named edge. | None |
+| DW-0025 / DEF-9-2-26 | Fixed | `PathUtilities.Canonical`; selection tests | Drive roots/non-project roots are refused. | None |
+| DW-0026 / DEF-9-2-27 | Fixed | `SourceFile_ReadAsyncRejectsExcessiveFileSizeBeforeDecoding` | Files over 16 MiB fail closed before decoding. | None |
+| DW-0027 / DEF-9-2-28 | Fixed | `ToolPackagingSmokeTests`; main lane | PATHEXT casing is preserved in package smoke lookup. | None |
+| DW-0028 / DEF-9-2-29 | Fixed | `Migrate_SidecarHostilePathsSurfaceManualOnlySentinel` | Hostile sidecar paths produce sentinel manual-only entries. | None |
+| DW-0029 / DEF-9-2-7 | Fixed | `ProjectSelection.cs`; CLI tests | Explicit selected paths are canonicalized. | None |
+| DW-0030 / DEF-9-2-8 | Fixed | `.sln` quoted path test | Quoted solution paths parse deterministically. | None |
+| DW-0031 / DEF-9-2-9 | Fixed | unsupported `.slnx`/`.fsproj` tests and docs | Unsupported formats fail closed with guidance. | None |
+| DW-0032 / DEF-9-2-10 | Accepted | CLI README/reference docs | `formattingApplied` is reserved and currently false. | Future formatter-backed migration edge |
+| DW-0033 / DEF-9-2-11 | Accepted | `Program.cs`; CLI reference | Ctrl+C is supported; SIGTERM-specific handling is outside v1 local workflow. | Story 11.7 if release automation needs SIGTERM semantics |
+| DW-0035 / DEF-9-2-13 | Fixed | `MigrationPlanner` workspace failure catch | Workspace assembly failures emit bounded guidance. | None |
+| DW-0037 / DEF-9-2-15 | Fixed | `.gitmodules` quoted path test | Hand-written quoted submodule paths remain write-excluded. | None |
+| DW-0038 / DEF-9-2-16 | Fixed | `PathUtilities.Canonical` | Odd path shapes fail closed instead of crashing. | None |
+| DW-0039 / DEF-9-2-17 | Fixed | `Program.cs`; CLI reference | First Ctrl+C cancels; second uses OS default termination. | None |
+| DW-0040 / DEF-9-2-1 | Fixed | CLI help, README, reference docs | `--fail-on-warning` precedence is documented. | None |
+| DW-0044 / DEF-9-2-5 | Fixed | `MigrationCatalog.BuildEdges` | Duplicate `(from,to)` edges are explicitly rejected. | None |
+| DW-0660 | Fixed | `docs/diagnostics/README.md` | HFCM `introducedIn` means CLI/tooling release. | None |
 
 ### Change Log
 
 - 2026-05-11: Created Story 11.3 and marked ready-for-dev.
 - 2026-05-11: Party-mode review hardening applied; added AC21-AC28, Decisions D8-D14, deferred-row decision rules, workspace path examples, quality-gate evidence, and task updates.
 - 2026-05-11: Advanced elicitation hardening applied; added AC29-AC34, Decisions D15-D20, deferred-row acceptance rationale, last-moment path revalidation, evidence redaction, fixture safety, and result contract reconciliation requirements.
+- 2026-05-12: Implemented CLI/IDE edge-case hardening, reconciled Story 11.3 deferred rows, updated docs/evidence, and moved story to review.
 
 ### File List
 
+- `CONTRIBUTING.md`
 - `_bmad-output/implementation-artifacts/11-3-cli-migration-and-ide-edge-case-hardening.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/diagnostics/README.md`
+- `docs/reference/cli.md`
+- `docs/reference/ide-parity.md`
+- `jobs/ide-parity-version-revalidation.ps1`
+- `src/Hexalith.FrontComposer.Cli/CliApplication.cs`
+- `src/Hexalith.FrontComposer.Cli/InspectCommand.cs`
+- `src/Hexalith.FrontComposer.Cli/MigrationCommand.cs`
+- `src/Hexalith.FrontComposer.Cli/ProjectSelection.cs`
+- `src/Hexalith.FrontComposer.Cli/README.md`
+- `tests/Hexalith.FrontComposer.Cli.Tests/MigrationCommandTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityConformanceUtilityTests.cs`
+- `tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs`
 
 ## Party-Mode Review
 
