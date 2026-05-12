@@ -80,6 +80,38 @@ public sealed class SkillResourceTests {
     }
 
     [Fact]
+    public void ReadResultFactories_EnforceValidStateMatrix() {
+        SkillResourceReadResult success = SkillResourceReadResult.Success("# Safe markdown");
+        success.IsSuccess.ShouldBeTrue();
+        success.Category.ShouldBe(FrontComposerMcpFailureCategory.None);
+        success.ContentType.ShouldBe("text/markdown");
+        success.Markdown.ShouldBe("# Safe markdown");
+
+        SkillResourceReadResult missing = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.UnknownResource);
+        missing.IsSuccess.ShouldBeFalse();
+        missing.Category.ShouldBe(FrontComposerMcpFailureCategory.UnknownResource);
+        missing.ContentType.ShouldBe("text/plain");
+        missing.Markdown.ShouldBe("unknown_resource");
+
+        SkillResourceReadResult denied = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.AuthFailed);
+        denied.IsSuccess.ShouldBeFalse();
+        // 11-5 review P4: AuthFailed and UnknownResource intentionally project the same opaque
+        // "unknown_resource" markdown body (Story 8-4a DN-2 hidden-equivalence) so an unauth'd
+        // probe cannot distinguish "exists but forbidden" from "does not exist". The Category
+        // field must remain distinct, however, so internal correlation and telemetry can
+        // separate them — a regression that collapses both factories to the same Category would
+        // weaken the audit surface without strengthening the hidden-equivalence guarantee.
+        denied.Category.ShouldBe(FrontComposerMcpFailureCategory.AuthFailed);
+        denied.Category.ShouldNotBe(missing.Category);
+        denied.Markdown.ShouldBe("unknown_resource");
+
+        SkillResourceReadResult invalid = SkillResourceReadResult.Failure(FrontComposerMcpFailureCategory.MalformedRequest);
+        invalid.IsSuccess.ShouldBeFalse();
+        invalid.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+        invalid.Markdown.ShouldBe("malformed_request");
+    }
+
+    [Fact]
     public void PackagingFootprint_EmbedsAllSkillCorpusMarkdownAndPromptSet() {
         // P-30: the .Mcp assembly carries every skill corpus markdown file as an embedded
         // resource plus the v1 benchmark prompt-set JSON. A regression that drops the embed

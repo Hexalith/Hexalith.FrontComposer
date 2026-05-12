@@ -92,11 +92,11 @@ public sealed class FrontComposerMcpToolAdmissionService(
                     or FrontComposerMcpFailureCategory.UnsupportedSchemaAlgorithm
                     or FrontComposerMcpFailureCategory.UnsupportedSchema
                     or FrontComposerMcpFailureCategory.SchemaIntegrityMismatch) {
-                return McpToolResolutionResult.Reject(sanitizedRequested, ex.Category, catalog);
+                return McpToolResolutionResult.Reject(sanitizedRequested, ex.Category, catalog, exact);
             }
 
             if (schema is not null && !schema.AllowsSideEffects) {
-                return McpToolResolutionResult.Reject(sanitizedRequested, schema.FailureCategory, catalog);
+                return McpToolResolutionResult.Reject(sanitizedRequested, schema.FailureCategory, catalog, exact);
             }
 
             return McpToolResolutionResult.Accept(exact, catalog, schema);

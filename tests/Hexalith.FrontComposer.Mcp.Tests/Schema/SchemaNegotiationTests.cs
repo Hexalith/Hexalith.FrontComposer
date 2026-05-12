@@ -54,6 +54,30 @@ public sealed class SchemaNegotiationTests {
     }
 
     [Fact]
+    public void Negotiate_SameValueDifferentSupportedAlgorithm_IsNotExact() {
+        SchemaFingerprint sourceToolsClient = new(SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1, Server.Value);
+
+        McpSchemaNegotiationResult result = McpSchemaNegotiator.Negotiate(new McpSchemaNegotiationInput(
+            IsHiddenOrUnknown: false,
+            IsStaleDescriptor: false,
+            sourceToolsClient,
+            Server,
+            HasTrustedBaseline: false,
+            HasCompatibleAdditiveDrift: false,
+            HasSchemaIntegrityMismatch: false));
+
+        result.Kind.ShouldBe(McpSchemaNegotiationResultKind.UnknownServerBaseline);
+        result.AllowsSideEffects.ShouldBeFalse();
+        // 11-5 review P6 / D6: pin the public wire-contract category and message key so a
+        // future change that collapses different schema failures into a generic "schema-
+        // mismatch" agent category surfaces here. AC11 requires consistent naming or an
+        // explicit compatibility decision; a silent rename is forbidden.
+        result.AgentCategory.ShouldBe("schema-unavailable");
+        result.MessageKey.ShouldBe("schema.baseline.unknown");
+        result.FailureCategory.ShouldBe(FrontComposerMcpFailureCategory.UnknownSchemaBaseline);
+    }
+
+    [Fact]
     public void Negotiate_CompatibleAdditive_AllowsOnlyAdmittedPath() {
         // 8-6a review M1: the legacy `HasCompatibleAdditiveDrift` bool is now ignored per AC6;
         // additive compatibility must be derived from baseline+server snapshot inputs through

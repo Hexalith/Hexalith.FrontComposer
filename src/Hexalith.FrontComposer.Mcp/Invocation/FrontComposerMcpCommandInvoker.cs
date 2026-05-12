@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
@@ -34,9 +35,9 @@ public sealed class FrontComposerMcpCommandInvoker(
         IReadOnlyDictionary<string, JsonElement>? arguments,
         CancellationToken cancellationToken = default) {
         // D8: capture messageId/correlationId on the outer scope so the catch blocks can emit
-        // them in the rejection envelope. They are populated by ApplyDerivableValues and remain
-        // null until then; admission/validation failures that fire before allocation legitimately
-        // have no correlation handle.
+        // them in the rejection envelope. ApplyDerivableValues populates them before validation
+        // (DN17), so domain-rejection and validation-rejection envelopes both carry the handle;
+        // admission/schema failures that fire upstream of allocation legitimately have none.
         string? capturedMessageId = null;
         string? capturedCorrelationId = null;
         try {
@@ -67,7 +68,14 @@ public sealed class FrontComposerMcpCommandInvoker(
             Type commandType = ResolveType(descriptor.CommandTypeName);
             object command = CreateInstanceOrThrow(commandType);
             ApplyArguments(command, descriptor, arguments);
+            // 11-5 review DN17: derivable values (TenantId, UserId, MessageId, CorrelationId)
+            // are populated before the current-server-contract validation so commands that carry
+            // [Required] on those properties do not fail validation merely because the framework
+            // had not yet injected its server-controlled values. ValidateArguments above already
+            // refused caller-supplied derivable names via SpoofedDerivableNames, so this ordering
+            // does not let an agent bypass tenant validation.
             (capturedMessageId, capturedCorrelationId) = ApplyDerivableValues(command, context);
+            ValidateCurrentCommandContract(command);
 
             ICommandService commandService = services.GetRequiredService<ICommandService>();
             FrontComposerMcpLifecycleTracker? lifecycleTracker = services.GetService<FrontComposerMcpLifecycleTracker>();
@@ -338,6 +346,74 @@ public sealed class FrontComposerMcpCommandInvoker(
 
             property.SetValue(command, typed);
         }
+    }
+
+    private static void ValidateCurrentCommandContract(object command) {
+        List<ValidationResult> validationResults = [];
+        ValidationContext validationContext = new(command);
+        bool valid;
+        try {
+            valid = Validator.TryValidateObject(command, validationContext, validationResults, validateAllProperties: true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException) {
+            // 11-5 review P2: an IValidatableObject.Validate implementation that throws would
+            // otherwise bypass the post-admission contract gate and surface as DownstreamFailed
+            // with the underlying exception captured by the outer catch (potentially leaking
+            // type/stack into structured logs). Translate to bounded ValidationFailed instead;
+            // the exception object itself is not logged here — the outer envelope is sufficient.
+            throw new CommandValidationException(new ProblemDetailsPayload(
+                Title: "Command validation failed.",
+                Detail: "The command arguments did not satisfy the current server contract.",
+                Status: null,
+                EntityLabel: null,
+                ValidationErrors: new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal),
+                GlobalErrors: ["The command arguments did not satisfy the current server contract."]));
+        }
+
+        if (valid) {
+            return;
+        }
+
+        Dictionary<string, List<string>> errors = new(StringComparer.Ordinal);
+        List<string> globalErrors = [];
+        foreach (ValidationResult validationResult in validationResults) {
+            string[] memberNames = validationResult.MemberNames
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            string message = string.IsNullOrWhiteSpace(validationResult.ErrorMessage)
+                ? "The command argument did not satisfy the current server contract."
+                : validationResult.ErrorMessage!;
+            if (memberNames.Length == 0) {
+                globalErrors.Add(message);
+                continue;
+            }
+
+            // 11-5 review P1: append messages per member instead of overwriting. A command
+            // carrying both [Required] and [Range] on the same property would otherwise surface
+            // only the last evaluated message, which is non-deterministic across BCL versions.
+            foreach (string memberName in memberNames) {
+                if (!errors.TryGetValue(memberName, out List<string>? messages)) {
+                    messages = [];
+                    errors[memberName] = messages;
+                }
+
+                messages.Add(message);
+            }
+        }
+
+        throw new CommandValidationException(new ProblemDetailsPayload(
+            Title: "Command validation failed.",
+            Detail: "The command arguments did not satisfy the current server contract.",
+            Status: null,
+            EntityLabel: null,
+            ValidationErrors: errors.ToDictionary(
+                pair => pair.Key,
+                pair => (IReadOnlyList<string>)pair.Value,
+                StringComparer.Ordinal),
+            GlobalErrors: globalErrors.Count == 0 && errors.Count == 0
+                ? ["The command arguments did not satisfy the current server contract."]
+                : globalErrors));
     }
 
     private (string MessageId, string CorrelationId) ApplyDerivableValues(object command, FrontComposerMcpAgentContext context) {

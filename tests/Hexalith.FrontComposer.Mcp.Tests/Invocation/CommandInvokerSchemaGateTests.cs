@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -59,7 +60,7 @@ public sealed class CommandInvokerSchemaGateTests {
         dispatcher.Dispatched.ShouldBeNull();
     }
 
-    [Fact(Skip = "DEF-D5: AC5 server-side revalidation hook on CompatibleAdditive admit is pending. CK4-P1 strengthened the assertion (Amount=200 must be rejected or clamped) — the test now correctly fails because the gate currently lets the value through unchanged. Restore the test once DEF-D5 lands and revalidation runs the [1,100] clamp.")]
+    [Fact]
     public async Task CompatibleAdditive_OnCommand_AdmitsDispatch_AfterRevalidation() {
         // AC5: validation/defaulting/bounds re-run on CompatibleAdditive before any side effect.
         // The command type clamps Amount to [1, 100]; an out-of-bounds caller value (200) must be
@@ -137,6 +138,7 @@ public sealed class CommandInvokerSchemaGateTests {
         public string MessageId { get; set; } = "";
         public string TenantId { get; set; } = "";
         public string UserId { get; set; } = "";
+        [Range(1, 100)]
         public int Amount { get; set; }
     }
 

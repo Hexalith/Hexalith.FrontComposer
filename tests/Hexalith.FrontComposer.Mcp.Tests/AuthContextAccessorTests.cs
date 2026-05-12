@@ -172,6 +172,76 @@ public sealed class AuthContextAccessorTests {
     }
 
     [Fact]
+    public void ClientFingerprintHint_CachesSuccessfulParse_ForRequestLifetime() {
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        string fingerprint = new('a', 64);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + fingerprint;
+
+        SchemaFingerprint? first = sut.ClientFingerprintHint;
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] = "not-a-valid-fingerprint";
+        SchemaFingerprint? second = sut.ClientFingerprintHint;
+        // 11-5 review P7: a parser that re-tokenises on every read (no cache) would now observe
+        // the malformed value mutated in by the test and throw MalformedRequest. Asserting that
+        // a third read after another header mutation also returns the same cached value proves
+        // the cache survives the request lifetime and is not a coincidental "first-call wins"
+        // memoisation that only the first observation locks in. The malformed header value is
+        // never re-parsed by the cached path — a regression to lazy re-read would surface here.
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('b', 64);
+        SchemaFingerprint? third = sut.ClientFingerprintHint;
+
+        second.ShouldBe(first);
+        second!.Value.ShouldBe(fingerprint);
+        third.ShouldBe(first, "11-5 review P7: cache must survive multiple header mutations within the same request scope.");
+        third!.Value.ShouldBe(fingerprint);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_CachesMalformedFailure_ForRequestLifetime() {
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] = "not-a-valid-fingerprint";
+
+        Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint)
+            .Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('a', 64);
+
+        Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint)
+            .Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_MultiValueHeader_FailsClosed() {
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] = new StringValues([
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('a', 64),
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('b', 64),
+        ]);
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(() => _ = sut.ClientFingerprintHint);
+
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.MalformedRequest);
+    }
+
+    [Fact]
+    public void ClientFingerprintHint_EmptyHeaderValue_ReturnsNull() {
+        var sut = BuildAccessor(out HttpContext http, configure: null);
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] = string.Empty;
+
+        sut.ClientFingerprintHint.ShouldBeNull();
+        // 11-5 review P8: a second read must remain null without throwing, even if the request
+        // pipeline subsequently mutates the header. This pins null as a stable observation for
+        // the request lifetime so retry paths cannot observe a different category than the
+        // first read (D20: memoised parser failures retain bounded categories).
+        http.Request.Headers["x-frontcomposer-schema-fingerprint"] =
+            SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1 + ":" + new string('a', 64);
+        sut.ClientFingerprintHint.ShouldBeNull(
+            "11-5 review P8: empty-header null result must be cached for request lifetime so retry paths do not observe a different outcome.");
+    }
+
+    [Fact]
     public void ClientFingerprintHint_RejectsShortFingerprint() {
         // C3 (chunk-2 re-review): non-64-char hex fingerprints fail-closed.
         var sut = BuildAccessor(out HttpContext http, configure: null);

@@ -147,7 +147,8 @@ public static class McpSchemaNegotiator {
         // (Baseline + Server both non-null) the analyzer's structural decision is the more
         // authoritative answer; the hash short-circuit fires below only when no snapshot
         // decision is available.
-        bool hashesMatch = string.Equals(input.ClientFingerprint.Value, input.ServerFingerprint.Value, StringComparison.Ordinal);
+        bool hashesMatch = string.Equals(input.ClientFingerprint.AlgorithmId, input.ServerFingerprint.AlgorithmId, StringComparison.Ordinal)
+            && string.Equals(input.ClientFingerprint.Value, input.ServerFingerprint.Value, StringComparison.Ordinal);
 
         if (!input.HasTrustedBaseline && !hashesMatch) {
             return Result(

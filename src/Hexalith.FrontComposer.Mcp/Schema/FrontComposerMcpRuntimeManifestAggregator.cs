@@ -18,8 +18,16 @@ public sealed class FrontComposerMcpRuntimeManifestAggregator {
 
         // 8-6a re-review: tuple-keyed dedup avoids the literal `:` collision between
         // (algorithmId="alg", value="A:B") and (algorithmId="alg:A", value="B").
+        //
+        // 11-5 review P3: track distinct algorithm IDs during dedup in a single pass so the
+        // mixed-algorithm fail-closed (D3 / D10) does not depend on a separate LINQ enumeration
+        // and trips on the same loop that builds the canonical fingerprint list. Algorithm-mix
+        // precedence over null-mix is already established earlier in this method by the
+        // null-vs-non-null check above; this loop now fails fast on the next-most-severe
+        // invariant.
         List<SchemaFingerprint> allFingerprints = [];
         HashSet<(string AlgorithmId, string Value)> seen = [];
+        HashSet<string> distinctAlgorithms = new(StringComparer.Ordinal);
         foreach (SchemaFingerprint fingerprint in nestedFingerprints
             .Where(f => f is not null)
             .Cast<SchemaFingerprint>()
@@ -27,6 +35,12 @@ public sealed class FrontComposerMcpRuntimeManifestAggregator {
             if (seen.Add((fingerprint.AlgorithmId, fingerprint.Value))) {
                 allFingerprints.Add(fingerprint);
             }
+
+            _ = distinctAlgorithms.Add(fingerprint.AlgorithmId);
+        }
+
+        if (distinctAlgorithms.Count > 1) {
+            throw new FrontComposerMcpException(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch);
         }
 
         List<SchemaFieldContract> fields = [];

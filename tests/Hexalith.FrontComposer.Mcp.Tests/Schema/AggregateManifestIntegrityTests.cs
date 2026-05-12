@@ -111,6 +111,80 @@ public sealed class AggregateManifestIntegrityTests {
     }
 
     [Fact]
+    public void Aggregator_MixedFingerprintAlgorithms_FailsClosed() {
+        SchemaFingerprint nested = new(SchemaFingerprintAlgorithm.Sha256CanonicalJsonV1, new string('a', 64));
+        SchemaFingerprint corpus = new(SchemaFingerprintAlgorithm.Sha256SourceToolsBlobV1, new string('b', 64));
+        McpManifest manifest = new(
+            "frontcomposer.mcp.v1",
+            [new McpCommandDescriptor(
+                "Billing.PayInvoiceCommand.Execute",
+                "Billing.PayInvoiceCommand",
+                "Billing",
+                "Pay invoice",
+                null,
+                null,
+                [],
+                [],
+                nested)],
+            []);
+
+        FrontComposerMcpException ex = Should.Throw<FrontComposerMcpException>(
+            () => FrontComposerMcpRuntimeManifestAggregator.Compute([manifest], [corpus]));
+
+        ex.Category.ShouldBe(FrontComposerMcpFailureCategory.SchemaIntegrityMismatch);
+    }
+
+    [Fact]
+    public void DescriptorRegistry_DiConstruction_UsesCorpusAwareConstructor() {
+        CountingCorpusFingerprintProvider provider = new([]);
+        ServiceCollection services = [];
+        services.Configure<FrontComposerMcpOptions>(_ => { });
+        services.AddSingleton<ISkillCorpusFingerprintProvider>(provider);
+        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+
+        _ = services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
+
+        provider.CallCount.ShouldBe(1, "DI must select the constructor that receives corpus providers.");
+    }
+
+    [Fact]
+    public void DescriptorRegistry_DiConstruction_InvokesAllRegisteredCorpusProviders() {
+        // 11-5 review P5 / T3: T3 required "DI composition coverage with at least two corpus
+        // providers and a zero-provider case." This pins the multi-provider seam — both
+        // providers must be invoked during registry construction, not just the first or the
+        // last-registered one. A regression that consumed only IEnumerable<T>.First() or
+        // GetService<ISkillCorpusFingerprintProvider>() (single resolution) would fail.
+        CountingCorpusFingerprintProvider providerA = new([]);
+        CountingCorpusFingerprintProvider providerB = new([]);
+        ServiceCollection services = [];
+        services.Configure<FrontComposerMcpOptions>(_ => { });
+        services.AddSingleton<ISkillCorpusFingerprintProvider>(providerA);
+        services.AddSingleton<ISkillCorpusFingerprintProvider>(providerB);
+        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+
+        _ = services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
+
+        providerA.CallCount.ShouldBe(1, "DI must invoke every registered ISkillCorpusFingerprintProvider, not only the first.");
+        providerB.CallCount.ShouldBe(1, "DI must invoke every registered ISkillCorpusFingerprintProvider, not only the last.");
+    }
+
+    [Fact]
+    public void DescriptorRegistry_DiConstruction_ZeroProviders_DoesNotFailClosed() {
+        // 11-5 review P5 / T3 / D11: the zero-corpus-provider case is the "named legacy/release-
+        // constraint path" recorded in the Story 11-5 deferred-work entries (hosts that ship no
+        // skill corpus). Registry construction must succeed; the corpus contribution to the
+        // runtime aggregate is empty. A regression that treated missing providers as fail-closed
+        // would block every host that does not ship a skill corpus.
+        ServiceCollection services = [];
+        services.Configure<FrontComposerMcpOptions>(_ => { });
+        services.AddSingleton<FrontComposerMcpDescriptorRegistry>();
+
+        FrontComposerMcpDescriptorRegistry registry = services.BuildServiceProvider().GetRequiredService<FrontComposerMcpDescriptorRegistry>();
+
+        registry.ShouldNotBeNull();
+    }
+
+    [Fact]
     public void RuntimeAggregate_TamperedNestedFingerprint_TripsIntegrityMismatch() {
         // 8-6a re-review D6: the integrity check is per-manifest scope. The build-time emitter
         // computes the manifest's claimed Fingerprint over its OWN nested fingerprints (no corpus
@@ -173,5 +247,14 @@ public sealed class AggregateManifestIntegrityTests {
 
     private sealed class StaticCorpusFingerprintProvider(IReadOnlyList<SchemaFingerprint> fingerprints) : ISkillCorpusFingerprintProvider {
         public IReadOnlyList<SchemaFingerprint> GetFingerprints() => fingerprints;
+    }
+
+    private sealed class CountingCorpusFingerprintProvider(IReadOnlyList<SchemaFingerprint> fingerprints) : ISkillCorpusFingerprintProvider {
+        public int CallCount { get; private set; }
+
+        public IReadOnlyList<SchemaFingerprint> GetFingerprints() {
+            CallCount++;
+            return fingerprints;
+        }
     }
 }

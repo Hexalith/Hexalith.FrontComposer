@@ -31,7 +31,18 @@ public sealed class ToolAdmissionSchemaGateTests {
 
         resolution.Accepted.ShouldBeFalse(
             "AC1: a stale client schema fingerprint must demote the resolution to rejected even when the tool name resolves exactly.");
-        resolution.Tool.ShouldBeNull();
+        // 11-5 review DN18 / D13: schema rejection retains an opaque correlation key for
+        // bounded internal investigation while the resolved descriptor itself is stripped from
+        // the public surface. A regression that resurfaces the full McpVisibleToolCatalogEntry
+        // on rejection would fail the Tool.ShouldBeNull assertion below.
+        resolution.Tool.ShouldBeNull(
+            "DN18: rejection responses must not retain the resolved descriptor on the public McpToolResolutionResult.Tool surface.");
+        resolution.InternalCorrelationKey.ShouldNotBeNullOrWhiteSpace(
+            "DN18: rejection responses must carry an opaque correlation key for bounded internal investigation.");
+        resolution.InternalCorrelationKey!.ShouldNotContain(
+            "Billing.PayInvoiceCommand",
+            Case.Insensitive,
+            "DN18: the correlation key must be opaque — the descriptor name must not be recoverable from it.");
         // CK4-P8: pin the sanitized failure category so a regression to UnknownTool or
         // DownstreamFailed (instead of a schema-specific category) fails the test. AC1 forbids
         // collapsing schema rejections into the generic taxonomy.
@@ -50,7 +61,12 @@ public sealed class ToolAdmissionSchemaGateTests {
             TestContext.Current.CancellationToken);
 
         resolution.Accepted.ShouldBeFalse();
-        resolution.Tool.ShouldBeNull();
+        // 11-5 review DN18 / D13: descriptor stripped from public surface; opaque correlation
+        // key remains for bounded internal investigation.
+        resolution.Tool.ShouldBeNull(
+            "DN18: unsupported-algorithm rejection responses must not retain the resolved descriptor on the public surface.");
+        resolution.InternalCorrelationKey.ShouldNotBeNullOrWhiteSpace(
+            "DN18: unsupported-algorithm rejection responses must carry an opaque correlation key.");
         // CK4-P8: pin the sanitized failure category — the unsupported-algorithm path must surface
         // as UnsupportedSchemaAlgorithm specifically, never DownstreamFailed.
         resolution.Category.ShouldBe(
