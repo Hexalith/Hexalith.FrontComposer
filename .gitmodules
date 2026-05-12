@@ -4,3 +4,6 @@
 [submodule "Hexalith.Tenants"]
 	path = Hexalith.Tenants
 	url = https://github.com/Hexalith/Hexalith.Tenants.git
+[submodule "Hexalith.Commons"]
+	path = Hexalith.Commons
+	url = https://github.com/Hexalith/Hexalith.Commons.git
