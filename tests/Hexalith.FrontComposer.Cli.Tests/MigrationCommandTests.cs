@@ -89,6 +89,58 @@ public sealed class MigrationCommandTests
     }
 
     [Fact]
+    public void ProjectSelection_RejectsNonFSharpUnsupportedSolutionProjectTypes()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string solution = Path.Combine(fixture.Root, "Acme.sln");
+        File.WriteAllText(
+            solution,
+            $$"""
+            Microsoft Visual Studio Solution File, Format Version 12.00
+            Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Acme.App", "Acme.App\Acme.App.csproj", "{11111111-1111-1111-1111-111111111111}"
+            EndProject
+            Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "Acme.Legacy", "Acme.Legacy\Acme.Legacy.vbproj", "{22222222-2222-2222-2222-222222222222}"
+            EndProject
+            """);
+
+        ProjectSelection selection = ProjectSelection.Resolve(
+            CommandOptions.Parse(["--solution", solution]),
+            fixture.Root);
+
+        selection.Success.ShouldBeFalse();
+        selection.Error.ShouldContain(".vbproj is not supported");
+        selection.ProjectPath.ShouldBeNull();
+        File.Exists(project).ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ProjectSelection_RejectsSolutionProjectsOutsideSolutionRoot()
+    {
+        using CliFixture fixture = CliFixture.Create();
+        string project = fixture.WriteProject("Acme.App", "net10.0");
+        string solutionDirectory = Path.Combine(fixture.Root, "solution");
+        _ = Directory.CreateDirectory(solutionDirectory);
+        string solution = Path.Combine(solutionDirectory, "Acme.sln");
+        File.WriteAllText(
+            solution,
+            """
+            Microsoft Visual Studio Solution File, Format Version 12.00
+            Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Acme.App", "..\Acme.App\Acme.App.csproj", "{11111111-1111-1111-1111-111111111111}"
+            EndProject
+            """);
+
+        ProjectSelection selection = ProjectSelection.Resolve(
+            CommandOptions.Parse(["--solution", solution]),
+            fixture.Root);
+
+        selection.Success.ShouldBeFalse();
+        selection.Error.ShouldContain("outside the solution directory");
+        selection.ProjectPath.ShouldBeNull();
+        File.Exists(project).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task Migrate_DefaultsToDryRunAndDoesNotWriteSource()
     {
         using CliFixture fixture = CliFixture.Create();

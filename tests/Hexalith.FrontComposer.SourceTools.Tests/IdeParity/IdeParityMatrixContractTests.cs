@@ -122,7 +122,13 @@ public sealed class IdeParityMatrixContractTests
         {
             artifactPath.Contains('\\', StringComparison.Ordinal).ShouldBeFalse(
                 $"evidenceArtifact for '{rowId}' must use forward slashes.");
-            string fullPath = Path.Combine(IdeParityRepositoryRoot.Value, artifactPath.Replace('/', Path.DirectorySeparatorChar));
+            IdeParityEvidencePath
+                .TryNormalizeProjectRelativePath(IdeParityRepositoryRoot.Value, artifactPath, caseSensitive: false, out string normalizedArtifact)
+                .ShouldBeTrue($"evidenceArtifact for '{rowId}' must be a safe repository-relative path.");
+            normalizedArtifact.ShouldBe(artifactPath);
+            artifactPath.ShouldStartWith("artifacts/ide-parity/evidence/");
+
+            string fullPath = Path.Combine(IdeParityRepositoryRoot.Value, normalizedArtifact.Replace('/', Path.DirectorySeparatorChar));
             File.Exists(fullPath).ShouldBeTrue($"Evidence artifact '{artifactPath}' for '{rowId}' must exist.");
 
             using JsonDocument manifest = LoadStrictJsonDocument(fullPath);
@@ -168,6 +174,11 @@ public sealed class IdeParityMatrixContractTests
         manifest["unexpected"] = "tampered";
         using JsonDocument tamperedManifest = JsonDocument.Parse(manifest.ToJsonString());
         ValidateEvidenceManifest(tamperedManifest.RootElement).ShouldContain("evidence-unknown-property:unexpected");
+
+        JsonArray rows = matrix["rows"]!.AsArray();
+        rows[0]!["evidenceArtifact"] = "artifacts/ide-parity/../diagnostic-registry.json";
+        using JsonDocument traversalMatrix = JsonDocument.Parse(matrix.ToJsonString());
+        ValidateMatrixDocument(traversalMatrix.RootElement).ShouldContain("matrix-evidence-artifact-unsafe:IDE-MUST-001");
 
         Should.Throw<JsonException>(() => LoadStrictJsonDocumentFromString("""{ "rows": [], }"""))
             .Message.ShouldNotBeNullOrWhiteSpace("trailing commas must stay fail-closed through System.Text.Json strict parsing.");
@@ -313,6 +324,16 @@ public sealed class IdeParityMatrixContractTests
                 continue;
             }
 
+            string rowId = row.TryGetProperty("rowId", out JsonElement rowIdElement) && rowIdElement.ValueKind == JsonValueKind.String
+                ? rowIdElement.GetString() ?? "unknown"
+                : "unknown";
+            if (row.TryGetProperty("evidenceArtifact", out JsonElement evidenceArtifact)
+                && evidenceArtifact.ValueKind == JsonValueKind.String
+                && !IsSafeEvidenceArtifactPath(evidenceArtifact.GetString() ?? string.Empty))
+            {
+                yield return "matrix-evidence-artifact-unsafe:" + rowId;
+            }
+
             foreach (JsonProperty ide in ideEvidence.EnumerateObject())
             {
                 if (!ideAllowed.Contains(ide.Name))
@@ -370,6 +391,11 @@ public sealed class IdeParityMatrixContractTests
             }
         }
     }
+
+    private static bool IsSafeEvidenceArtifactPath(string path)
+        => path.StartsWith("artifacts/ide-parity/evidence/", StringComparison.Ordinal)
+            && IdeParityEvidencePath.TryNormalizeProjectRelativePath(IdeParityRepositoryRoot.Value, path, caseSensitive: false, out string normalized)
+            && string.Equals(normalized, path, StringComparison.Ordinal);
 
     private static string RequiredString(JsonElement element, string propertyName)
     {

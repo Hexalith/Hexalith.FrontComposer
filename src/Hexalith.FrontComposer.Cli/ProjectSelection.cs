@@ -50,8 +50,14 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
                     + "; pass --project with a .csproj file.");
             }
 
-            string[] projects = parse.ProjectPaths
+            string[] canonicalProjects = parse.ProjectPaths
                 .Select(path => PathUtilities.Canonical(Path.GetFullPath(path, solutionDirectory)))
+                .ToArray();
+            if (canonicalProjects.Any(path => !IsSameOrUnder(solutionDirectory, path))) {
+                return new ProjectSelection(false, null, "Solution contains project paths outside the solution directory; pass --project with a repository-local .csproj file.");
+            }
+
+            string[] projects = canonicalProjects
                 .Where(File.Exists)
                 .Order(StringComparer.Ordinal)
                 .ToArray();
@@ -94,7 +100,7 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
             if (extension.Equals(".csproj", StringComparison.OrdinalIgnoreCase)) {
                 projectPaths.Add(projectPath);
             }
-            else if (extension.Equals(".fsproj", StringComparison.OrdinalIgnoreCase)) {
+            else if (!string.IsNullOrWhiteSpace(extension)) {
                 _ = unsupported.Add(extension);
             }
         }
@@ -141,4 +147,18 @@ internal sealed record ProjectSelection(bool Success, string? ProjectPath, strin
         string[] ProjectPaths,
         string[] UnsupportedProjectTypes,
         int MalformedLines);
+
+    private static bool IsSameOrUnder(string root, string path)
+    {
+        string normalizedRoot = PathUtilities.Canonical(root);
+        string normalizedPath = PathUtilities.Canonical(path);
+        if (string.Equals(normalizedPath, normalizedRoot, PathUtilities.PathComparison)) {
+            return true;
+        }
+
+        string rootWithSeparator = normalizedRoot.EndsWith(Path.DirectorySeparatorChar)
+            ? normalizedRoot
+            : normalizedRoot + Path.DirectorySeparatorChar;
+        return normalizedPath.StartsWith(rootWithSeparator, PathUtilities.PathComparison);
+    }
 }

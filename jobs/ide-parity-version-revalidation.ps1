@@ -78,6 +78,62 @@ function Resolve-RepoBoundPath {
     return $candidate
 }
 
+function Assert-NoDuplicateJsonProperties {
+    [CmdletBinding()]
+    param(
+        [string]$Json,
+        [string]$Path
+    )
+
+    if (-not ("FrontComposerJsonStrictness" -as [type])) {
+        Add-Type -TypeDefinition @"
+using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Text.Json;
+
+public static class FrontComposerJsonStrictness
+{
+    public static void AssertNoDuplicateProperties(string json, string path)
+    {
+        var reader = new Utf8JsonReader(
+            Encoding.UTF8.GetBytes(json),
+            new JsonReaderOptions
+            {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow
+            });
+        var scopes = new Stack<HashSet<string>>();
+        while (reader.Read())
+        {
+            switch (reader.TokenType)
+            {
+                case JsonTokenType.StartObject:
+                    scopes.Push(new HashSet<string>(StringComparer.Ordinal));
+                    break;
+                case JsonTokenType.EndObject:
+                    if (scopes.Count > 0)
+                    {
+                        scopes.Pop();
+                    }
+                    break;
+                case JsonTokenType.PropertyName:
+                    string propertyName = reader.GetString();
+                    if (scopes.Count > 0 && !scopes.Peek().Add(propertyName))
+                    {
+                        throw new JsonException("Duplicate JSON property '" + propertyName + "' is not allowed in " + path + ".");
+                    }
+                    break;
+            }
+        }
+    }
+}
+"@
+    }
+
+    [FrontComposerJsonStrictness]::AssertNoDuplicateProperties($Json, $Path)
+}
+
 function Get-VersionParts {
     [CmdletBinding()]
     param([string]$Raw)
@@ -209,8 +265,12 @@ function Write-AtomicFile([string]$Path, [string]$Content) {
         New-Item -ItemType Directory -Force -Path $directory | Out-Null
     }
     $temp = Join-Path $directory (".{0}.{1}.tmp" -f ([System.IO.Path]::GetFileName($Path)), ([System.Guid]::NewGuid().ToString("N")))
-    [System.IO.File]::WriteAllText($temp, $Content, (New-Object System.Text.UTF8Encoding($false)))
-    Move-Item -LiteralPath $temp -Destination $Path -Force
+    try {
+        [System.IO.File]::WriteAllText($temp, $Content, (New-Object System.Text.UTF8Encoding($false)))
+        Move-Item -LiteralPath $temp -Destination $Path -Force
+    } finally {
+        Remove-Item -LiteralPath $temp -ErrorAction SilentlyContinue
+    }
 }
 
 # --- main ---
@@ -222,7 +282,9 @@ if (-not (Test-Path -LiteralPath $MatrixPath)) {
     throw "Matrix file not found: $MatrixPath"
 }
 
-$matrix = Get-Content -LiteralPath $MatrixPath -Raw | ConvertFrom-Json
+$matrixJson = Get-Content -LiteralPath $MatrixPath -Raw
+Assert-NoDuplicateJsonProperties -Json $matrixJson -Path $MatrixPath
+$matrix = $matrixJson | ConvertFrom-Json
 if ($null -eq $matrix.PSObject.Properties['rows']) {
     throw "Matrix file '$MatrixPath' is missing the 'rows' array."
 }

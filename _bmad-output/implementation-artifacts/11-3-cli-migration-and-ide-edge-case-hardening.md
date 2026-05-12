@@ -1,6 +1,6 @@
 # Story 11.3: CLI, Migration, and IDE Edge-Case Hardening
 
-Status: review
+Status: done
 
 > **Epic 11** - Deferred Hardening & Release Readiness. Closes CLI migration, inspect/help, IDE manifest, path normalization, sidecar, write-safety, and generator-debug follow-ups routed from Stories 9.2 and 9.3. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -144,6 +144,14 @@ Start here: T1 inventory and classify deferred rows -> T2 fix CLI path/project/w
   - [x] Record quality-gate evidence for path policy, atomic failure behavior, strict JSON parsing, hostile sidecars, CLI/IDE JSON/help/exit-code contracts, package smoke skip/run rationale, and root-level-only submodule handling.
   - [x] Record the starting inventory snapshot, final reconciliation result, accepted-constraint risk rationale, and evidence-sanitization checks.
   - [x] Move Story 11.3 to `review` only after implementation and validation evidence are complete.
+
+### Review Findings
+
+- [x] [Review][Patch] Solution entries can select projects outside the solution root [src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:53]
+- [x] [Review][Patch] Non-F# unsupported solution project types are silently ignored [src/Hexalith.FrontComposer.Cli/ProjectSelection.cs:92]
+- [x] [Review][Patch] IDE evidence artifact paths do not reject traversal before trust [tests/Hexalith.FrontComposer.SourceTools.Tests/IdeParity/IdeParityMatrixContractTests.cs:121]
+- [x] [Review][Patch] IDE revalidation script parses matrix JSON permissively [jobs/ide-parity-version-revalidation.ps1:225]
+- [x] [Review][Patch] `$OutPath` atomic write leaves temp artifacts on failed replacement [jobs/ide-parity-version-revalidation.ps1:206]
 
 ---
 
@@ -355,6 +363,9 @@ GPT-5 Codex
 - 2026-05-12: `pwsh ./jobs/ide-parity-version-revalidation.ps1 -NoGithub -OutPath artifacts/ide-parity/revalidation-dry-run.story-11-3.md` — passed, no configured version drift and no artifact written.
 - 2026-05-12: `pwsh ./eng/validate-docs.ps1` — passed; evidence manifest `artifacts/docs/validation-manifest.json`.
 - 2026-05-12: `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --no-restore` — passed; main lane reported no failures.
+- 2026-05-12: Code-review patch validation: `dotnet test tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj --configuration Release --no-restore` — passed, 41 tests.
+- 2026-05-12: Code-review patch validation: `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "FullyQualifiedName~IdeParity" --no-restore` — passed, 35 tests.
+- 2026-05-12: Code-review patch validation: `pwsh ./jobs/ide-parity-version-revalidation.ps1 -NoGithub -OutPath artifacts/ide-parity/revalidation-dry-run.story-11-3-review.md` — passed, no configured version drift and no artifact written.
 
 ### Completion Notes List
 
@@ -366,6 +377,7 @@ GPT-5 Codex
 - 2026-05-12: Hardened migration behavior: workspace composition failures emit bounded guidance, source reads reject invalid UTF-8 and files over 16 MiB, hostile sidecar paths produce sentinel manual-only entries, and quoted `.gitmodules` submodule paths remain excluded from writes.
 - 2026-05-12: Hardened IDE parity evidence: strict duplicate-key/unknown-field/trailing-comma tests cover matrix and evidence JSON, repository-root discovery resolves symlinked base directories, `$OutPath` writes are repository-bounded/atomic, and production `Debugger.Launch()` is forbidden by test.
 - 2026-05-12: Public README/reference docs now agree on exit codes, fail flag precedence, JSON fields, path policy, diff limitations, encoding limits, Ctrl+C/SIGTERM scope, IDE manifest strictness, and HFCM `introducedIn` semantics.
+- 2026-05-12: Code-review patches applied: `.sln` project entries now reject outside-root projects and all non-`.csproj` project file formats, IDE evidence artifact paths reject traversal through the shared normalizer, and the version revalidation script rejects duplicate JSON keys and cleans temporary `$OutPath` artifacts on failed replacement.
 
 ### Release Maintainer Matrix
 
