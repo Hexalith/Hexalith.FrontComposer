@@ -18,6 +18,7 @@ namespace Hexalith.FrontComposer.SourceTools.Tests.Benchmarks;
 /// <c>IncrementalRebuildBenchmarkTests</c>; marked benchmark, not a unit gate.
 /// </summary>
 public sealed class DriftBenchmarkTests {
+    private const int RepresentativeDeclarationCount = 25;
     private const int WarmupIterations = 5;
     private const int MeasuredIterations = 20;
     private const double Nfr8MedianBudgetMs = 500.0;
@@ -25,7 +26,7 @@ public sealed class DriftBenchmarkTests {
     [Fact]
     [Trait("Category", "Performance")]
     public void IncrementalRebuild_WithDriftDetection_StaysBelowNfr8MedianBudget_CacheHit() {
-        (CSharpCompilation compilation, AdditionalText baseline) = BuildBoundedFixture(declarationCount: 25);
+        (CSharpCompilation compilation, AdditionalText baseline) = BuildBoundedFixture(declarationCount: RepresentativeDeclarationCount);
         FrontComposerGenerator generator = new();
 
         // Prime: warm-up runs that do not contribute to measurement.
@@ -49,6 +50,11 @@ public sealed class DriftBenchmarkTests {
         Array.Sort(cacheHitMs);
         double medianMs = cacheHitMs[MeasuredIterations / 2];
         double p95Ms = cacheHitMs[(int)(MeasuredIterations * 0.95)];
+        Console.WriteLine(string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            "DriftBenchmark cache-hit median={0:F3}ms p95={1:F3}ms",
+            medianMs,
+            p95Ms));
 
         medianMs.ShouldBeLessThan(Nfr8MedianBudgetMs,
             $"AC11 / NFR8 — median cache-hit incremental added overhead {medianMs:F1} ms exceeded {Nfr8MedianBudgetMs} ms budget.");
@@ -60,7 +66,7 @@ public sealed class DriftBenchmarkTests {
     [Trait("Category", "Performance")]
     public void IncrementalRebuild_WithDriftDetection_StaysBelowNfr8MedianBudget_CacheMiss() {
         FrontComposerGenerator generator = new();
-        (CSharpCompilation baseCompilation, AdditionalText baseline) = BuildBoundedFixture(declarationCount: 25);
+        (CSharpCompilation baseCompilation, AdditionalText baseline) = BuildBoundedFixture(declarationCount: RepresentativeDeclarationCount);
 
         GeneratorDriver primed = CSharpGeneratorDriver.Create(
             generators: [generator.AsSourceGenerator()],
@@ -83,6 +89,11 @@ public sealed class DriftBenchmarkTests {
         Array.Sort(cacheMissMs);
         double medianMs = cacheMissMs[MeasuredIterations / 2];
         double p95Ms = cacheMissMs[(int)(MeasuredIterations * 0.95)];
+        Console.WriteLine(string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            "DriftBenchmark cache-miss median={0:F3}ms p95={1:F3}ms",
+            medianMs,
+            p95Ms));
 
         medianMs.ShouldBeLessThan(Nfr8MedianBudgetMs,
             $"AC11 / NFR8 — median cache-miss incremental added overhead {medianMs:F1} ms exceeded {Nfr8MedianBudgetMs} ms budget.");
@@ -115,10 +126,20 @@ public sealed class DriftBenchmarkTests {
 
     private static CSharpCompilation MutateOneDeclaration(CSharpCompilation compilation, int iteration) {
         SyntaxTree existing = compilation.SyntaxTrees.First();
-        string mutated = existing.ToString().Replace(
-            "public int Priority",
-            iteration % 2 == 0 ? "public int? Priority" : "public int Priority",
-            StringComparison.Ordinal);
+        string source = existing.ToString();
+        int declarationIndex = iteration % RepresentativeDeclarationCount;
+        string target = string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            "public partial class P{0:D2} {{ public string Id {{ get; set; }} = string.Empty; public int Priority",
+            declarationIndex);
+        string replacement = string.Format(
+            System.Globalization.CultureInfo.InvariantCulture,
+            "public partial class P{0:D2} {{ public string Id {{ get; set; }} = string.Empty; public int? Priority",
+            declarationIndex);
+        string mutated = source.Replace(target, replacement, StringComparison.Ordinal);
+        mutated.ShouldNotBe(
+            source,
+            "AC11 — cache-miss benchmark must mutate exactly one targeted declaration per iteration.");
         return compilation.ReplaceSyntaxTree(existing, CSharpSyntaxTree.ParseText(mutated));
     }
 }

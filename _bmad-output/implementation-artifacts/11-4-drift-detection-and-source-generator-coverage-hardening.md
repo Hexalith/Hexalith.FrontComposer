@@ -1,6 +1,6 @@
 # Story 11.4: Drift Detection and Source Generator Coverage Hardening
 
-Status: review
+Status: done
 
 > **Epic 11** - Deferred Hardening & Release Readiness. Closes drift-detection, SourceTools generator coverage, metadata-drift tests, performance evidence, deterministic output, and older parser/transform/emitter follow-ups routed from Stories 9.1, 1.4, 1.5, 1.8, and related SourceTools reviews. Applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -146,6 +146,11 @@ Start here: T1 inventory Story 11.4 deferred rows -> T2 patch HFC1070 and drift 
   - [x] Record SourceTools fixture corpus, expected drift/generator artifacts, redaction evidence, benchmark status, and any accepted constraints in the Dev Agent Record.
   - [x] For each accepted constraint, record likelihood, impact, release risk, owner, validation evidence, and the condition that reopens the decision.
   - [x] Move Story 11.4 to `review` only after implementation and validation evidence are complete.
+
+### Review Findings
+
+- [x] [Review][Patch] Cache-miss benchmark mutates the full fixture instead of one declaration [tests/Hexalith.FrontComposer.SourceTools.Tests/Benchmarks/DriftBenchmarkTests.cs:116] — fixed 2026-05-12; `MutateOneDeclaration` now targets a single representative declaration per iteration.
+- [x] [Review][Patch] Benchmark evidence omits the actual median and p95 results required by AC23 [_bmad-output/implementation-artifacts/11-4-drift-detection-and-source-generator-coverage-hardening.md:347] — fixed 2026-05-12; Dev Agent Record now includes measured cache-hit/cache-miss median and p95 values.
 
 ---
 
@@ -341,10 +346,12 @@ GPT-5 Codex
 - 2026-05-12: Validation commands:
   - `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release` -> Passed, 935 tests, 0 failed, 0 skipped.
   - `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=Performance|FullyQualifiedName~DriftBenchmark"` -> Passed, 6 tests, 0 failed, 0 skipped.
+  - `dotnet test tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --filter "Category=Performance|FullyQualifiedName~DriftBenchmark"` -> Passed after review patch, 6 tests, 0 failed, 0 skipped.
+  - Temporary direct benchmark evidence host outside the repository invoked `DriftBenchmarkTests` directly after the review patch -> Passed; used only to capture passing-test stdout values suppressed by the VSTest runner.
   - `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -> Build/test orchestration failed due Windows DLL copy locks from a stale `Hexalith.FrontComposer.Testing.Tests.exe` process; completed projects had passed before the copy failure.
   - `dotnet test tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -> Passed, 11 tests, 0 failed, 0 skipped.
   - `dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` -> Passed: Contracts 159, MCP 270 passed/1 skipped, CLI 41, Shell 1567, SourceTools 929, Testing 11; Shell.Tests.Bench had no matching non-performance tests.
-- 2026-05-12: Benchmark evidence: `DriftBenchmarkTests` is blocking under `Category=Performance`; representative bounded fixture uses 25 declarations, 5 warmup iterations, 20 measured iterations, 500 ms median budget, and 1000 ms p95 soft budget for cache-hit and cache-miss paths.
+- 2026-05-12: Benchmark evidence: `DriftBenchmarkTests` is blocking under `Category=Performance`; representative bounded fixture uses 25 declarations, 5 warmup iterations, 20 measured iterations, 500 ms median budget, and 1000 ms p95 soft budget for cache-hit and cache-miss paths. Review-patched run used .NET SDK 10.0.107 on Windows host `DESKTOP-VIOG240`; cache-hit median 0.322 ms and p95 0.452 ms; cache-miss median 6.739 ms and p95 39.001 ms.
 - 2026-05-12: Accepted/split constraints with release rationale are recorded in `deferred-work.md` for SourceText equality, descriptor cloning, diagnostic message parameterization, contract-level description metadata, duplicate-origin detail, truncation sort key, dictionary allocation, redaction precedence docs, malformed parse silence, property ordering, policy alias/Unicode semantics, destructive renderer snapshots, destructive regex allocation, conflicting DisplayLabels, DisplayLabel partial cache edge, and HFC1010 emission wiring.
 
 ### Completion Notes List
