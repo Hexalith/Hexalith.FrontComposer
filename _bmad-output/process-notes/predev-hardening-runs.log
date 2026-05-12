@@ -186,3 +186,4 @@
 2026-05-11T23:08:37+02:00	advanced-elicitation	11-6-shell-ux-accessibility-and-sample-coverage-follow-ups	ok	advanced elicitation applied; added row-evidence, fail-closed dependency, hostile metadata, scoring, evidence-map, and baseline guardrails
 2026-05-12T00:04:54+02:00	party-mode-review	11-7-eventstore-reliability-and-ci-governance-follow-ups	ok	party-mode hardening applied; added row disposition, HTTP matrix, fail-closed, SignalR, provider parity, release ordering, validation lane, redaction, and submodule guardrails
 2026-05-12T01:03:17+02:00	advanced-elicitation	11-7-eventstore-reliability-and-ci-governance-follow-ups	ok	advanced elicitation applied; added ledger drift, zero-evidence, telemetry cardinality, fake-clock retry, contract drift, and rerun guardrails
+2026-05-12T02:03:40+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
