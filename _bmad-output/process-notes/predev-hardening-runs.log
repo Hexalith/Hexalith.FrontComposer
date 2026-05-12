@@ -188,3 +188,4 @@
 2026-05-12T01:03:17+02:00	advanced-elicitation	11-7-eventstore-reliability-and-ci-governance-follow-ups	ok	advanced elicitation applied; added ledger drift, zero-evidence, telemetry cardinality, fake-clock retry, contract drift, and rerun guardrails
 2026-05-12T02:03:40+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
 2026-05-12T03:02:08+02:00	none	-	none	ready buffer satisfied and all ready stories already have party-mode and advanced-elicitation traces
+2026-05-12T04:02:07+02:00	none	-	none	ready buffer complete; all ready stories already reviewed and elicited
