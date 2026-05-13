@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-12 (Story 11.5 fresh review patch pass complete: DN19 EventStore pointer removed; DN20 admission-path fingerprint conflict coverage added; DN21 requested-name redaction semantics corrected; DN22 ledger closure expanded to explicit row-scoped matrix; P10-P13 strengthened branch, retry, culture, and enum/canonical-material tests. 291 MCP / 2998 main-lane tests pass. Moved to done.)"
+last_updated: "2026-05-13 (Story 11.6 complete: dev-mode localization/icon/registration/selection/starter-template hardening, Counter sample accessibility/analyzer evidence, and 287-row ledger reconciliation recorded. Main regression lane passed. Moved to review.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -150,5 +150,5 @@ development_status:
   11-3-cli-migration-and-ide-edge-case-hardening: done
   11-4-drift-detection-and-source-generator-coverage-hardening: done
   11-5-mcp-schema-negotiation-and-agent-contract-hardening: done
-  11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: ready-for-dev
-  11-7-eventstore-reliability-and-ci-governance-follow-ups: ready-for-dev
+  11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: review
+  11-7-eventstore-reliability-and-ci-governance-follow-ups: review

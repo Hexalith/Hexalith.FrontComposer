@@ -53,6 +53,22 @@ public sealed class DevModeOverlayControllerTests {
         controller.SelectedNode.ShouldBeNull();
     }
 
+    [Fact]
+    public void Register_SameKeyNewEpochRefreshesSelectedNode() {
+        DevModeOverlayController controller = new();
+        ComponentTreeNode first = CreateNode("counter-name", 7);
+        ComponentTreeNode second = CreateNode("counter-name", 8);
+
+        controller.Toggle();
+        using IDisposable firstRegistration = controller.Register(first);
+        controller.Open("counter-name", renderEpoch: 7).ShouldBeTrue();
+
+        using IDisposable secondRegistration = controller.Register(second);
+
+        controller.SelectedAnnotationKey.ShouldBe("counter-name");
+        controller.SelectedNode.ShouldBe(second);
+    }
+
     private static ComponentTreeNode CreateNode(string key, long epoch)
         => new(
             AnnotationKey: key,

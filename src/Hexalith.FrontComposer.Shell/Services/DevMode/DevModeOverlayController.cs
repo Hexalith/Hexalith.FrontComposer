@@ -9,7 +9,10 @@ namespace Hexalith.FrontComposer.Shell.Services.DevMode;
 /// </summary>
 public sealed class DevModeOverlayController : IDevModeOverlayController {
     private readonly ConcurrentDictionary<string, ComponentTreeNode> _nodes = new(StringComparer.Ordinal);
+    private readonly object _selectionLock = new();
     private int _isActive;
+    private string? _selectedAnnotationKey;
+    private ComponentTreeNode? _selectedNode;
 
     /// <inheritdoc />
     public event EventHandler? Changed;
@@ -18,10 +21,22 @@ public sealed class DevModeOverlayController : IDevModeOverlayController {
     public bool IsActive => Volatile.Read(ref _isActive) == 1;
 
     /// <inheritdoc />
-    public string? SelectedAnnotationKey { get; private set; }
+    public string? SelectedAnnotationKey {
+        get {
+            lock (_selectionLock) {
+                return _selectedAnnotationKey;
+            }
+        }
+    }
 
     /// <inheritdoc />
-    public ComponentTreeNode? SelectedNode { get; private set; }
+    public ComponentTreeNode? SelectedNode {
+        get {
+            lock (_selectionLock) {
+                return _selectedNode;
+            }
+        }
+    }
 
     /// <inheritdoc />
     public void Toggle() {
@@ -33,8 +48,10 @@ public sealed class DevModeOverlayController : IDevModeOverlayController {
 
         bool nowActive = previous == 0;
         if (!nowActive) {
-            SelectedAnnotationKey = null;
-            SelectedNode = null;
+            lock (_selectionLock) {
+                _selectedAnnotationKey = null;
+                _selectedNode = null;
+            }
         }
 
         NotifyChanged();
@@ -47,14 +64,20 @@ public sealed class DevModeOverlayController : IDevModeOverlayController {
         }
 
         if (!_nodes.TryGetValue(annotationKey, out ComponentTreeNode? node)) {
-            SelectedAnnotationKey = null;
-            SelectedNode = null;
+            lock (_selectionLock) {
+                _selectedAnnotationKey = null;
+                _selectedNode = null;
+            }
+
             NotifyChanged();
             return false;
         }
 
-        SelectedAnnotationKey = annotationKey;
-        SelectedNode = node;
+        lock (_selectionLock) {
+            _selectedAnnotationKey = annotationKey;
+            _selectedNode = node;
+        }
+
         NotifyChanged();
         return true;
     }
@@ -66,26 +89,35 @@ public sealed class DevModeOverlayController : IDevModeOverlayController {
         }
 
         if (!_nodes.TryGetValue(annotationKey, out ComponentTreeNode? node) || node.RenderEpoch != renderEpoch) {
-            SelectedAnnotationKey = null;
-            SelectedNode = null;
+            lock (_selectionLock) {
+                _selectedAnnotationKey = null;
+                _selectedNode = null;
+            }
+
             NotifyChanged();
             return false;
         }
 
-        SelectedAnnotationKey = annotationKey;
-        SelectedNode = node;
+        lock (_selectionLock) {
+            _selectedAnnotationKey = annotationKey;
+            _selectedNode = node;
+        }
+
         NotifyChanged();
         return true;
     }
 
     /// <inheritdoc />
     public void Close() {
-        if (SelectedAnnotationKey is null && SelectedNode is null) {
-            return;
+        lock (_selectionLock) {
+            if (_selectedAnnotationKey is null && _selectedNode is null) {
+                return;
+            }
+
+            _selectedAnnotationKey = null;
+            _selectedNode = null;
         }
 
-        SelectedAnnotationKey = null;
-        SelectedNode = null;
         NotifyChanged();
     }
 
@@ -95,15 +127,23 @@ public sealed class DevModeOverlayController : IDevModeOverlayController {
         ArgumentException.ThrowIfNullOrWhiteSpace(node.AnnotationKey);
 
         _nodes[node.AnnotationKey] = node;
+        lock (_selectionLock) {
+            if (string.Equals(_selectedAnnotationKey, node.AnnotationKey, StringComparison.Ordinal)) {
+                _selectedNode = node;
+            }
+        }
+
         NotifyChanged();
         return new Registration(this, node.AnnotationKey);
     }
 
     private void Unregister(string annotationKey) {
         _ = _nodes.TryRemove(annotationKey, out _);
-        if (string.Equals(SelectedAnnotationKey, annotationKey, StringComparison.Ordinal)) {
-            SelectedAnnotationKey = null;
-            SelectedNode = null;
+        lock (_selectionLock) {
+            if (string.Equals(_selectedAnnotationKey, annotationKey, StringComparison.Ordinal)) {
+                _selectedAnnotationKey = null;
+                _selectedNode = null;
+            }
         }
 
         NotifyChanged();

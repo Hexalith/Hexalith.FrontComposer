@@ -6,9 +6,9 @@
    being fixed (Typography.Caption FcTypoToken / FluentLabel.Typography enum mismatch
    in ProjectionRoleBodyEmitter.cs:838). Reaching the channel from inside the slot is
    safe here; we just don't bind a description on CounterProjection.Count yet. *@
-<span class="counter-count-slot" aria-label="@AriaLabel" title="@(Description ?? string.Empty)">
-    <strong>@FormattedValue</strong>
-    <span class="counter-count-slot__label">@Label</span>
+<span class="counter-count-slot" aria-labelledby="@($"{LabelId} {ValueId}")" title="@(Description ?? string.Empty)">
+    <strong id="@ValueId">@FormattedValue</strong>
+    <span id="@LabelId" class="counter-count-slot__label">@Label</span>
 </span>
 
 @code {
@@ -21,5 +21,17 @@
 
     private string? Description => Context.Field.Description;
 
-    private string AriaLabel => $"{Label}: {FormattedValue}";
+    private string LabelId => $"counter-count-slot-{Identifier(Context.Field.Name)}-label";
+
+    private string ValueId => $"counter-count-slot-{Identifier(Context.Field.Name)}-value";
+
+    private static string Identifier(string value) {
+        if (string.IsNullOrWhiteSpace(value)) {
+            return "field";
+        }
+
+        return new string([.. value
+            .Select(static c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-')
+            .Where(static c => char.IsLetterOrDigit(c) || c == '-')]);
+    }
 }

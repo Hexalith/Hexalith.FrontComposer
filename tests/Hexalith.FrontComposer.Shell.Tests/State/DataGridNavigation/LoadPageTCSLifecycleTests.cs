@@ -121,6 +121,20 @@ public sealed class LoadPageTCSLifecycleTests {
     }
 
     [Fact]
+    public async Task SchemaMismatchFailure_PropagatesViaTrySetException_AndRemovesPendingCompletion() {
+        TaskCompletionSource<object> tcs = new();
+        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, tcs));
+
+        state = LoadedPageReducers.ReduceLoadPageFailed(
+            state,
+            new LoadPageFailedAction(ViewKey, 0, "Projection schema mismatch. Keeping the current page visible."));
+
+        state.PendingCompletionsByKey.ContainsKey((ViewKey, 0)).ShouldBeFalse();
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(async () => await tcs.Task);
+        ex.Message.ShouldContain("schema mismatch");
+    }
+
+    [Fact]
     public void DoubleRegistrationIdempotency_StaleSuccessForReplacedEntry_DoesNotResolveNewTcs() {
         TaskCompletionSource<object> first = new();
         TaskCompletionSource<object> second = new();

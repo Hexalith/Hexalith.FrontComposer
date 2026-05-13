@@ -7,6 +7,11 @@ namespace Hexalith.FrontComposer.Shell.Infrastructure.EventStore;
 /// </summary>
 public sealed class EventStoreOptions {
     /// <summary>
+    /// Default maximum serialized UTF-8 response-body size accepted from EventStore.
+    /// </summary>
+    public const int DefaultMaxResponseBytes = 1_048_576;
+
+    /// <summary>
     /// Gets or sets the EventStore service base address.
     /// </summary>
     public Uri? BaseAddress { get; set; }
@@ -40,6 +45,11 @@ public sealed class EventStoreOptions {
     /// Gets or sets the maximum serialized UTF-8 body size accepted before send.
     /// </summary>
     public int MaxRequestBytes { get; set; } = EventStoreValidation.DefaultMaxRequestBytes;
+
+    /// <summary>
+    /// Gets or sets the maximum serialized UTF-8 query response-body size accepted before parsing.
+    /// </summary>
+    public int MaxResponseBytes { get; set; } = DefaultMaxResponseBytes;
 
     /// <summary>
     /// Gets or sets a value indicating whether a bearer token must be provided before sending.

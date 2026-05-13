@@ -30,6 +30,22 @@ public sealed class AddFrontComposerDevModeExtensionsTests {
     }
 #endif
 
+#if DEBUG
+    [Fact]
+    public void AddFrontComposerDevMode_RegistersDevModeServicesWithFactoryRegisteredDevelopmentEnvironment() {
+        ServiceCollection services = [];
+        services.AddLogging();
+        services.AddSingleton<IHostEnvironment>(_ => new TestHostEnvironment("Development"));
+
+        services.AddFrontComposerDevMode();
+
+        services.ShouldContain(d => d.ServiceType == typeof(IDevModeOverlayController) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(IRazorEmitter) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(IClipboardJSModule) && d.Lifetime == ServiceLifetime.Scoped);
+        services.ShouldContain(d => d.ServiceType == typeof(IDevModeAnnotationSnapshotVisitor) && d.Lifetime == ServiceLifetime.Scoped);
+    }
+#endif
+
     [Fact]
     public void AddFrontComposerDevMode_IsNoOpOutsideDevelopment() {
         ServiceCollection services = [];

@@ -302,6 +302,39 @@ public class EventStoreQueryCacheIntegrationTests {
     }
 
     [Fact]
+    public async Task QueryAsync_InvalidCachedETag_EvictsEntryAndDoesNotSendValidator() {
+        string discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!;
+        string key = BuildKey(0);
+        await _storage.SetAsync(
+            key,
+            new ETagCacheEntry(
+                ETag: "\"v1\"\r\nInjected: value",
+                Payload: """{"payload":[{"id":"order-1"}]}""",
+                CachedAtUtcTicks: 1,
+                LastAccessedUtcTicks: 1,
+                FormatVersion: ETagCacheEntry.CurrentFormatVersion,
+                PayloadVersion: 1,
+                Discriminator: discriminator),
+            TestContext.Current.CancellationToken);
+
+        ScriptedHandler handler = new();
+        handler.Script.Add(req => {
+            req.Headers.Contains("If-None-Match").ShouldBeFalse();
+            return new HttpResponseMessage(HttpStatusCode.OK) {
+                Content = new StringContent("""{"payload":[{"id":"order-2"}]}""", Encoding.UTF8, "application/json"),
+            };
+        });
+        EventStoreQueryClient sut = NewClient(handler);
+
+        QueryResult<OrderProjection> result = await sut.QueryAsync<OrderProjection>(
+            BuildRequest(cacheDiscriminator: discriminator),
+            TestContext.Current.CancellationToken);
+
+        result.Items.Single().Id.ShouldBe("order-2");
+        (await _storage.GetAsync<ETagCacheEntry>(key, TestContext.Current.CancellationToken)).ShouldBeNull();
+    }
+
+    [Fact]
     public async Task RemoveByProjectionTypeAsync_WithTenantUserScope_DoesNotRemoveOtherTenantEntries() {
         string discriminator = ETagCacheDiscriminator.ForProjectionPage(ProjectionType, 0, 25)!;
         string tenantAKey = $"{Tenant}:{User}:etag:{discriminator}";

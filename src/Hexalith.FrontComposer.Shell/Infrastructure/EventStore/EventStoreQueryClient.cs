@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Diagnostics;
 using System.Net.Http.Headers;
+using System.Text;
 using System.Text.Json;
 
 using Hexalith.FrontComposer.Contracts;
@@ -118,10 +119,15 @@ public sealed class EventStoreQueryClient(
                 ifNoneMatch.Add(requestEtags[i]);
             }
 
-            if (cachedEntry is not null
-                && !ContainsHeaderInjectionChar(cachedEntry.ETag)
-                && !ifNoneMatch.Contains(cachedEntry.ETag, StringComparer.Ordinal)) {
-                ifNoneMatch.Add(cachedEntry.ETag);
+            if (cachedEntry is not null) {
+                if (ContainsHeaderInjectionChar(cachedEntry.ETag)) {
+                    if (!string.IsNullOrEmpty(cacheKey)) {
+                        await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+                else if (!ifNoneMatch.Contains(cachedEntry.ETag, StringComparer.Ordinal)) {
+                    ifNoneMatch.Add(cachedEntry.ETag);
+                }
             }
 
             if (ifNoneMatch.Count > 0) {
@@ -206,7 +212,7 @@ public sealed class EventStoreQueryClient(
 
                 case QueryClassificationOutcome.Ok: {
                     FrontComposerTelemetry.SetOutcome(activity, "ok");
-                    string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    string body = await ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, cancellationToken).ConfigureAwait(false);
                     IReadOnlyList<T> items;
                     int totalCount;
                     try {
@@ -432,6 +438,48 @@ public sealed class EventStoreQueryClient(
         }
 
         return false;
+    }
+
+    private static async Task<string> ReadBoundedResponseBodyAsync(
+        HttpContent content,
+        int maxResponseBytes,
+        CancellationToken cancellationToken) {
+        if (maxResponseBytes <= 0) {
+            throw new InvalidOperationException("EventStore MaxResponseBytes must be positive.");
+        }
+
+        if (content.Headers.ContentLength is { } contentLength && contentLength > maxResponseBytes) {
+            throw new InvalidOperationException("EventStore query response exceeded MaxResponseBytes.");
+        }
+
+        using Stream stream = await content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+        using MemoryStream bounded = new();
+        byte[] buffer = new byte[8192];
+        while (true) {
+            int read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false);
+            if (read == 0) {
+                break;
+            }
+
+            if (bounded.Length + read > maxResponseBytes) {
+                throw new InvalidOperationException("EventStore query response exceeded MaxResponseBytes.");
+            }
+
+            bounded.Write(buffer, 0, read);
+        }
+
+        Encoding encoding = Encoding.UTF8;
+        string? charset = content.Headers.ContentType?.CharSet;
+        if (!string.IsNullOrWhiteSpace(charset)) {
+            try {
+                encoding = Encoding.GetEncoding(charset);
+            }
+            catch (ArgumentException) {
+                encoding = Encoding.UTF8;
+            }
+        }
+
+        return encoding.GetString(bounded.ToArray());
     }
 
     [SuppressMessage(

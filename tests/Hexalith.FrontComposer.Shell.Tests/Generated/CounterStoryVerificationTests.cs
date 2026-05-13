@@ -112,7 +112,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         using CultureScope _ = new(CultureInfo.InvariantCulture);
 
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
-            Guid.NewGuid().ToString(),
+            "counter-level3-slot",
             [
                 new CounterProjection
                 {
@@ -221,7 +221,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
 
             // Slot replaces Count cell content.
             markup.ShouldContain("counter-count-slot");
-            markup.ShouldContain("aria-label=\"Count: 1,234\"");
+            markup.ShouldContain("aria-labelledby=\"counter-count-slot-count-label counter-count-slot-count-value\"");
 
             // GC-P3 — DataGrid envelope and adjacent generated rendering preserved.
             markup.ShouldContain("data-fc-datagrid");
@@ -267,7 +267,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
         using CultureScope _ = new(CultureInfo.InvariantCulture);
 
         dispatcher.Dispatch(new CounterProjectionLoadedAction(
-            Guid.NewGuid().ToString(),
+            "counter-invalid-slot",
             [
                 new CounterProjection
                 {
@@ -351,7 +351,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
             // Level 3 slot per spec line 281 ("the helper checks a Level 3 slot descriptor for
             // (projection, role, field) and falls back to ... generated default field renderer").
             markup.ShouldContain("counter-count-slot");
-            markup.ShouldContain("aria-label=\"Count: 1,234\"");
+            markup.ShouldContain("aria-labelledby=\"counter-count-slot-count-label counter-count-slot-count-value\"");
         });
     }
 
@@ -395,7 +395,7 @@ public sealed class CounterStoryVerificationTests : GeneratedComponentTestBase
             // Lower-level rendering appears only through explicit safe delegates used by the
             // replacement. Count flows through the Level 3 slot; LastUpdated uses generated field rendering.
             markup.ShouldContain("counter-count-slot");
-            markup.ShouldContain("aria-label=\"Count: 1,234\"");
+            markup.ShouldContain("aria-labelledby=\"counter-count-slot-count-label counter-count-slot-count-value\"");
             markup.ShouldContain("04/14/2026");
         });
     }

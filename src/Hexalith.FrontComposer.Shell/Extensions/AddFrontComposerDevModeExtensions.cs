@@ -64,9 +64,16 @@ public static class AddFrontComposerDevModeExtensions {
             }
         }
 
-        // Fallback: ASP.NET Core's host builder registers IHostEnvironment via instance, but custom
-        // test hosts may use a factory. Adopters using factory registration must call the explicit
-        // AddFrontComposerDevMode(services, env) overload — the no-arg path fails closed (no-op).
+        for (int i = services.Count - 1; i >= 0; i--) {
+            ServiceDescriptor descriptor = services[i];
+            if (descriptor.ServiceType != typeof(IHostEnvironment) || descriptor.ImplementationFactory is null) {
+                continue;
+            }
+
+            using ServiceProvider provider = services.BuildServiceProvider();
+            return provider.GetService<IHostEnvironment>();
+        }
+
         return null;
     }
 

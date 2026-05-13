@@ -24,6 +24,8 @@ public sealed class ReconciliationSweepFeature : Feature<ReconciliationSweepStat
 }
 
 public static class ReconciliationSweepReducers {
+    private const int MaxSweepMarkers = 512;
+
     [ReducerMethod]
     public static ReconciliationSweepState ReduceMark(ReconciliationSweepState state, MarkReconciliationSweepAction action) {
         ArgumentNullException.ThrowIfNull(state);
@@ -38,6 +40,10 @@ public static class ReconciliationSweepReducers {
         foreach (string viewKey in action.ViewKeys.Distinct(StringComparer.Ordinal)) {
             if (string.IsNullOrWhiteSpace(viewKey)) {
                 continue;
+            }
+
+            if (!next.ContainsKey(viewKey) && next.Count >= MaxSweepMarkers) {
+                break;
             }
 
             // P20 — skip markers that are already expired at the point of insertion. They would

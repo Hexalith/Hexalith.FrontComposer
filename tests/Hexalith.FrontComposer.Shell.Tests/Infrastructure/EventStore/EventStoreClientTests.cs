@@ -174,6 +174,36 @@ public sealed class EventStoreClientTests {
     }
 
     [Fact]
+    public async Task QueryClient_RejectsOversizedResponseBody_BeforeParsing() {
+        RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK) {
+            Content = new StringContent("""{"payload":[{"id":"order-1"}]}""", Encoding.UTF8, "application/json"),
+        });
+        EventStoreOptions options = Options().Value;
+        options.MaxResponseBytes = 8;
+        EventStoreQueryClient sut = new(
+            new SingleClientFactory(handler),
+            Microsoft.Extensions.Options.Options.Create(options),
+            new TestUserContextAccessor("acme", "alice"),
+            EventStoreTestSupport.CreateClassifier(),
+            new EventStoreTestSupport.NoCache(),
+            new EventStoreTestSupport.RecordingAuthRedirector(),
+            NullLogger<EventStoreQueryClient>.Instance);
+
+        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(
+            async () => await sut.QueryAsync<OrderProjection>(
+                new QueryRequest(
+                    ProjectionType: "orders",
+                    TenantId: "acme",
+                    Domain: "orders",
+                    AggregateId: "order-1",
+                    QueryType: "GetOrders"),
+                TestContext.Current.CancellationToken).ConfigureAwait(true)).ConfigureAwait(true);
+
+        ex.Message.ShouldContain("MaxResponseBytes");
+        handler.Requests.Count.ShouldBe(1);
+    }
+
+    [Fact]
     public async Task QueryClient_RejectsMoreThanTenEtags_BeforeSend() {
         RecordingHandler handler = new(_ => new HttpResponseMessage(HttpStatusCode.OK));
         EventStoreQueryClient sut = new(

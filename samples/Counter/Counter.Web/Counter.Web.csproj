@@ -12,6 +12,7 @@
     <!-- Story 6-2 T9 — discover [ProjectionTemplate] markers authored in this Razor/Web project. -->
     <ProjectReference Include="..\..\..\src\Hexalith.FrontComposer.SourceTools\Hexalith.FrontComposer.SourceTools.csproj"
                       OutputItemType="Analyzer"
+                      PrivateAssets="all"
                       ReferenceOutputAssembly="false"
                       SetTargetFramework="TargetFramework=netstandard2.0" />
   </ItemGroup>

@@ -19,6 +19,18 @@ public sealed class ReconciliationSweepReducersTests {
     }
 
     [Fact]
+    public void MarkReconciliationSweepAction_CapsMarkersWhenClearSchedulingFallsBehind() {
+        DateTimeOffset expires = new(2026, 4, 26, 12, 0, 1, TimeSpan.Zero);
+        string[] lanes = Enumerable.Range(0, 600).Select(static i => $"orders-{i:000}").ToArray();
+
+        ReconciliationSweepState next = ReconciliationSweepReducers.ReduceMark(
+            new ReconciliationSweepState(),
+            new MarkReconciliationSweepAction(12, lanes, expires));
+
+        next.MarkersByViewKey.Count.ShouldBe(512);
+    }
+
+    [Fact]
     public void ClearExpiredReconciliationSweeps_RemovesExpiredMarkersOnly() {
         DateTimeOffset now = new(2026, 4, 26, 12, 0, 1, TimeSpan.Zero);
         ReconciliationSweepState state = new() {

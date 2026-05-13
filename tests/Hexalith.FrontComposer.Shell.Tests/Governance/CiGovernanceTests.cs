@@ -86,6 +86,8 @@ public sealed class CiGovernanceTests {
             string text = File.ReadAllText(workflow);
             text.ShouldNotContain("submodules: recursive", Case.Sensitive, Path.GetFileName(workflow));
             text.ShouldNotContain("git submodule update --init --recursive", Case.Sensitive, Path.GetFileName(workflow));
+            text.ShouldNotContain("git submodule update --recursive", Case.Sensitive, Path.GetFileName(workflow));
+            text.ShouldNotContain("--recurse-submodules", Case.Sensitive, Path.GetFileName(workflow));
         }
     }
 

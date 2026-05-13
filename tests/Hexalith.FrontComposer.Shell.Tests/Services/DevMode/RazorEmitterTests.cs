@@ -90,17 +90,57 @@ public sealed class RazorEmitterTests {
         source.ShouldNotContain("grandchild");
     }
 
+    [Fact]
+    public void EmitStarterTemplate_RecordsRepeatedChildGraphsWithoutReemittingSubtree() {
+        RazorEmitter emitter = new();
+        ComponentTreeNode repeated = CreateNode(CustomizationLevel.Level1, annotationKey: "shared-child");
+        ComponentTreeNode node = CreateNode(
+            CustomizationLevel.Level2,
+            children: [
+                repeated,
+                repeated,
+            ]);
+
+        string source = emitter.EmitStarterTemplate(node, CustomizationLevel.Level2);
+
+        source.ShouldContain("shared-child");
+        source.ShouldContain("Component tree reference already emitted: shared-child");
+        CountOccurrences(source, "shared-child (Level1)").ShouldBe(1);
+    }
+
+    [Fact]
+    public void EmitStarterTemplate_GenericArityProducesDistinctStarterNames() {
+        RazorEmitter emitter = new();
+        ComponentTreeNode arityOne = CreateNode(
+            CustomizationLevel.Level2,
+            annotationKey: "generic-one",
+            projectionTypeName: "Acme.Domain.Generic`1[[Acme.Domain.Customer]]");
+        ComponentTreeNode arityTwo = CreateNode(
+            CustomizationLevel.Level2,
+            annotationKey: "generic-two",
+            projectionTypeName: "Acme.Domain.Generic`2[[Acme.Domain.Customer],[Acme.Domain.Region]]");
+
+        string sourceOne = emitter.EmitStarterTemplate(arityOne, CustomizationLevel.Level2);
+        string sourceTwo = emitter.EmitStarterTemplate(arityTwo, CustomizationLevel.Level2);
+
+        sourceOne.ShouldContain("Generic_Arity1_CustomerTemplate");
+        sourceTwo.ShouldContain("Generic_Arity2_Customer_RegionTemplate");
+        sourceOne.ShouldNotContain("Generic_Arity2_Customer_RegionTemplate");
+        sourceTwo.ShouldNotContain("Generic_Arity1_CustomerTemplate");
+    }
+
     private static ComponentTreeNode CreateNode(
         CustomizationLevel level,
         string annotationKey = "counter-grid",
+        string projectionTypeName = "Counter.Contracts.CounterProjection",
         ImmutableArray<ComponentTreeNode> children = default,
         ImmutableArray<ComponentTreeStaleReason> staleReasons = default)
         => new(
             AnnotationKey: annotationKey,
             Convention: new ConventionDescriptor("Generated DataGrid", "Generated grid body.", "Use the lowest viable override.", level),
-            ContractTypeName: level == CustomizationLevel.Level3 ? "string" : "Counter.Contracts.CounterProjection",
+            ContractTypeName: level == CustomizationLevel.Level3 ? "string" : projectionTypeName,
             CurrentLevel: level,
-            OriginatingProjectionTypeName: "Counter.Contracts.CounterProjection",
+            OriginatingProjectionTypeName: projectionTypeName,
             Role: null,
             FieldAccessor: "Name",
             Children: children,
@@ -109,4 +149,15 @@ public sealed class RazorEmitterTests {
             DescriptorHash: "sha256:abc",
             SourceComponentIdentity: "CounterProjection.Default",
             StaleReasons: staleReasons);
+
+    private static int CountOccurrences(string value, string match) {
+        int count = 0;
+        int index = 0;
+        while ((index = value.IndexOf(match, index, StringComparison.Ordinal)) >= 0) {
+            count++;
+            index += match.Length;
+        }
+
+        return count;
+    }
 }

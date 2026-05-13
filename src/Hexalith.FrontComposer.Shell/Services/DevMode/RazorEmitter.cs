@@ -139,13 +139,21 @@ public sealed partial class RazorEmitter : IRazorEmitter {
     private void AppendTree(StringBuilder sb, ComponentTreeNode node) {
         _ = sb.AppendLine();
         _ = sb.AppendLine("@* Component tree snapshot:");
-        AppendNode(sb, node, depth: 0);
+        AppendNode(sb, node, depth: 0, visited: new HashSet<string>(StringComparer.Ordinal));
         _ = sb.AppendLine("*@");
     }
 
-    private void AppendNode(StringBuilder sb, ComponentTreeNode node, int depth) {
+    private void AppendNode(StringBuilder sb, ComponentTreeNode node, int depth, HashSet<string> visited) {
         if (depth >= _options.DevMode.MaxNodeDepth) {
             _ = sb.AppendLine($"{Indent(depth)}- Component tree truncated at MaxNodeDepth={_options.DevMode.MaxNodeDepth}");
+            return;
+        }
+
+        string annotationKey = string.IsNullOrWhiteSpace(node.AnnotationKey)
+            ? node.SourceComponentIdentity
+            : node.AnnotationKey;
+        if (!visited.Add(annotationKey)) {
+            _ = sb.AppendLine($"{Indent(depth)}- Component tree reference already emitted: {Comment(annotationKey)}");
             return;
         }
 
@@ -161,7 +169,7 @@ public sealed partial class RazorEmitter : IRazorEmitter {
                 return;
             }
 
-            AppendNode(sb, child, depth + 1);
+            AppendNode(sb, child, depth + 1, visited);
             count++;
         }
     }
@@ -172,9 +180,44 @@ public sealed partial class RazorEmitter : IRazorEmitter {
         => string.IsNullOrWhiteSpace(value) ? "object" : SanitizedTypeNameRegex().Replace(value, string.Empty);
 
     private static string ShortTypeName(string value) {
+        if (TryGetClrGenericStarterName(value, out string genericName)) {
+            return genericName;
+        }
+
         string sanitized = TypeName(value);
         int index = sanitized.LastIndexOf('.');
         return index >= 0 ? sanitized[(index + 1)..] : sanitized;
+    }
+
+    private static bool TryGetClrGenericStarterName(string value, out string genericName) {
+        genericName = string.Empty;
+        int tickIndex = value.IndexOf('`', StringComparison.Ordinal);
+        if (tickIndex < 0 || tickIndex + 1 >= value.Length || !char.IsDigit(value[tickIndex + 1])) {
+            return false;
+        }
+
+        int arityEnd = tickIndex + 1;
+        while (arityEnd < value.Length && char.IsDigit(value[arityEnd])) {
+            arityEnd++;
+        }
+
+        string baseName = SimpleTypeName(value[..tickIndex]);
+        string arity = value[(tickIndex + 1)..arityEnd];
+        string[] arguments = [.. ClrGenericArgumentRegex()
+            .Matches(value[arityEnd..])
+            .Select(static m => SimpleTypeName(m.Groups[1].Value))
+            .Where(static s => !string.IsNullOrWhiteSpace(s))];
+
+        genericName = arguments.Length == 0
+            ? $"{baseName}_Arity{arity}"
+            : $"{baseName}_Arity{arity}_{string.Join("_", arguments)}";
+        return true;
+    }
+
+    private static string SimpleTypeName(string value) {
+        string sanitized = TypeName(value);
+        int index = sanitized.LastIndexOf('.');
+        return Identifier(index >= 0 ? sanitized[(index + 1)..] : sanitized);
     }
 
     private static string Identifier(string value) {
@@ -205,4 +248,7 @@ public sealed partial class RazorEmitter : IRazorEmitter {
 
     [GeneratedRegex(@"[^A-Za-z0-9_.,<> ]")]
     private static partial Regex SanitizedTypeNameRegex();
+
+    [GeneratedRegex(@"\[\[?([A-Za-z_][A-Za-z0-9_.]*)")]
+    private static partial Regex ClrGenericArgumentRegex();
 }
