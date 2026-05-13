@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -81,14 +82,56 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void Workflows_UseRootLevelSubmodulesOnly() {
+        // Story 11.7 code review P-7 — match enabling forms of recursive submodule commands
+        // and flag values with whitespace tolerance. Explicitly allow disable-forms
+        // (e.g. `--recurse-submodules=no`) and YAML comments that mention the flag.
+        Regex recursiveCommand = new(
+            @"\bgit\s+submodule\s+update\b(?:(?!\r?\n)[^\r\n])*?\s--recursive\b",
+            RegexOptions.CultureInvariant);
+        Regex recurseFlagEnabling = new(
+            @"--recurse-submodules(?:\s|=(?:true|yes|on-demand))",
+            RegexOptions.CultureInvariant);
+        Regex submodulesRecursive = new(
+            @"\bsubmodules\s*:\s*recursive\b",
+            RegexOptions.CultureInvariant);
+
         string root = RepositoryRoot();
         foreach (string workflow in Directory.EnumerateFiles(Path.Combine(root, ".github/workflows"), "*.yml")) {
-            string text = File.ReadAllText(workflow);
-            text.ShouldNotContain("submodules: recursive", Case.Sensitive, Path.GetFileName(workflow));
-            text.ShouldNotContain("git submodule update --init --recursive", Case.Sensitive, Path.GetFileName(workflow));
-            text.ShouldNotContain("git submodule update --recursive", Case.Sensitive, Path.GetFileName(workflow));
-            text.ShouldNotContain("--recurse-submodules", Case.Sensitive, Path.GetFileName(workflow));
+            string name = Path.GetFileName(workflow);
+            string text = StripYamlComments(File.ReadAllText(workflow));
+            recursiveCommand.IsMatch(text).ShouldBeFalse($"{name} must not enable recursive submodule updates.");
+            recurseFlagEnabling.IsMatch(text).ShouldBeFalse($"{name} must not enable --recurse-submodules.");
+            submodulesRecursive.IsMatch(text).ShouldBeFalse($"{name} must not use submodules: recursive.");
         }
+    }
+
+    private static string StripYamlComments(string yaml) {
+        // Remove YAML comments (anything from `#` to end-of-line) so a comment that mentions
+        // a forbidden command cannot trigger the assertion. Preserves line numbering.
+        StringBuilder sb = new(yaml.Length);
+        foreach (string line in yaml.Split('\n')) {
+            int hashIndex = -1;
+            bool inSingleQuote = false;
+            bool inDoubleQuote = false;
+            for (int i = 0; i < line.Length; i++) {
+                char ch = line[i];
+                if (ch == '\'' && !inDoubleQuote) {
+                    inSingleQuote = !inSingleQuote;
+                }
+                else if (ch == '"' && !inSingleQuote) {
+                    inDoubleQuote = !inDoubleQuote;
+                }
+                else if (ch == '#' && !inSingleQuote && !inDoubleQuote) {
+                    hashIndex = i;
+                    break;
+                }
+            }
+
+            sb.Append(hashIndex < 0 ? line : line[..hashIndex]);
+            sb.Append('\n');
+        }
+
+        return sb.ToString();
     }
 
     [Fact]

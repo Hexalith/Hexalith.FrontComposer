@@ -319,7 +319,20 @@ public class EventStoreQueryCacheIntegrationTests {
 
         ScriptedHandler handler = new();
         handler.Script.Add(req => {
+            // Story 11.7 code review P-9 — `If-None-Match` absence is the primary check, but
+            // we also assert that no other request header smuggled the injected fragments
+            // (`\r\n` or `Injected:`). A defense-in-depth assertion catches a future refactor
+            // that might copy the bad ETag into a custom header before discovering the
+            // injection char.
             req.Headers.Contains("If-None-Match").ShouldBeFalse();
+            foreach (KeyValuePair<string, IEnumerable<string>> header in req.Headers) {
+                foreach (string value in header.Value) {
+                    value.ShouldNotContain("\r", Case.Sensitive, $"{header.Key} carried CR");
+                    value.ShouldNotContain("\n", Case.Sensitive, $"{header.Key} carried LF");
+                    value.ShouldNotContain("Injected:", Case.Sensitive, $"{header.Key} carried injected fragment");
+                }
+            }
+
             return new HttpResponseMessage(HttpStatusCode.OK) {
                 Content = new StringContent("""{"payload":[{"id":"order-2"}]}""", Encoding.UTF8, "application/json"),
             };

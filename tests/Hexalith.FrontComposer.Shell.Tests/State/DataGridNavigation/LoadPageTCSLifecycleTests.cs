@@ -120,19 +120,16 @@ public sealed class LoadPageTCSLifecycleTests {
         _ = reducers;
     }
 
-    [Fact]
-    public async Task SchemaMismatchFailure_PropagatesViaTrySetException_AndRemovesPendingCompletion() {
-        TaskCompletionSource<object> tcs = new();
-        LoadedPageState state = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), MakeLoadPage(ViewKey, 0, tcs));
-
-        state = LoadedPageReducers.ReduceLoadPageFailed(
-            state,
-            new LoadPageFailedAction(ViewKey, 0, "Projection schema mismatch. Keeping the current page visible."));
-
-        state.PendingCompletionsByKey.ContainsKey((ViewKey, 0)).ShouldBeFalse();
-        InvalidOperationException ex = await Should.ThrowAsync<InvalidOperationException>(async () => await tcs.Task);
-        ex.Message.ShouldContain("schema mismatch");
-    }
+    // Removed by Story 11.7 code review (DN-2 option 2): a former
+    // SchemaMismatchFailure_PropagatesViaTrySetException_AndRemovesPendingCompletion test
+    // fabricated the English message "Projection schema mismatch. Keeping the current page
+    // visible." as input and asserted the same substring back. Production code in
+    // LoadPageEffects dispatches the localized SectionUpdatingText resource, not the
+    // hardcoded string. AC16 end-to-end coverage now lives in
+    // LoadPageEffectIntegrationTests.SchemaMismatch_DispatchesSectionUpdatingCopy_AndResolvesTcsViaReducer
+    // which drives from the real ProjectionSchemaMismatchException catch through to the TCS.
+    // Generic LoadPageFailedAction propagation remains covered by
+    // EffectException_PropagatesViaTrySetException_IntoProvider above.
 
     [Fact]
     public void DoubleRegistrationIdempotency_StaleSuccessForReplacedEntry_DoesNotResolveNewTcs() {

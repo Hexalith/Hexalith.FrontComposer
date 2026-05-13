@@ -36,8 +36,10 @@ internal sealed class EventStoreOptionsValidator : IValidateOptions<EventStoreOp
             return ValidateOptionsResult.Fail("MaxRequestBytes must be positive.");
         }
 
-        if (options.MaxResponseBytes <= 0) {
-            return ValidateOptionsResult.Fail("MaxResponseBytes must be positive.");
+        if (options.MaxResponseBytes < EventStoreOptions.MinAllowedResponseBytes
+            || options.MaxResponseBytes > EventStoreOptions.MaxAllowedResponseBytes) {
+            return ValidateOptionsResult.Fail(
+                $"MaxResponseBytes must be between {EventStoreOptions.MinAllowedResponseBytes} and {EventStoreOptions.MaxAllowedResponseBytes}.");
         }
 
         return ValidateOptionsResult.Success;

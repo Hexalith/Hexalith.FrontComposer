@@ -13,7 +13,11 @@ public sealed record ReconciliationSweepState {
 /// <summary>Transient marker for a changed visible lane.</summary>
 public sealed record ReconciliationSweepMarker(long Epoch, DateTimeOffset ExpiresAt);
 
-public sealed record MarkReconciliationSweepAction(long Epoch, IReadOnlyList<string> ViewKeys, DateTimeOffset ExpiresAt);
+public sealed record MarkReconciliationSweepAction(
+    long Epoch,
+    IReadOnlyList<string> ViewKeys,
+    DateTimeOffset ExpiresAt,
+    DateTimeOffset Now);
 
 public sealed record ClearExpiredReconciliationSweepsAction(DateTimeOffset Now);
 
@@ -35,6 +39,15 @@ public static class ReconciliationSweepReducers {
         // .Distinct() under the Fluxor pipeline.
         ArgumentNullException.ThrowIfNull(action.ViewKeys);
 
+        // P20 (Story 11.7 code review DN-1) — the incoming action carries the dispatcher's
+        // observation of the wall clock. If the markers it requests are already expired (or
+        // would be by the time the next ClearExpired sweep runs), they cannot produce any
+        // user-visible state and must not consume cap slots that would then crowd out fresh
+        // markers from later actions.
+        if (action.ExpiresAt <= action.Now) {
+            return state;
+        }
+
         ImmutableDictionary<string, ReconciliationSweepMarker> next = state.MarkersByViewKey;
         bool mutated = false;
         foreach (string viewKey in action.ViewKeys.Distinct(StringComparer.Ordinal)) {
@@ -43,12 +56,24 @@ public static class ReconciliationSweepReducers {
             }
 
             if (!next.ContainsKey(viewKey) && next.Count >= MaxSweepMarkers) {
-                continue;
+                // P21 (Story 11.7 code review DN-1) — when the cap is saturated, evict the
+                // marker with the earliest ExpiresAt and let this newer key take its slot.
+                // Order-dependent first-in-wins would let a stale burst lock out every fresh
+                // lane until the legacy markers expire; an LRU-by-expiry policy keeps the
+                // most-recently-needed reconciliation state in memory.
+                KeyValuePair<string, ReconciliationSweepMarker> oldest = next
+                    .OrderBy(static kv => kv.Value.ExpiresAt)
+                    .First();
+                if (oldest.Value.ExpiresAt >= action.ExpiresAt) {
+                    // The incoming marker would itself be the earliest-expiring; dropping
+                    // it keeps the existing set intact.
+                    continue;
+                }
+
+                next = next.Remove(oldest.Key);
+                mutated = true;
             }
 
-            // P20 — skip markers that are already expired at the point of insertion. They would
-            // immediately be removed by the next ClearExpired pass anyway and there is no
-            // user-visible state to render for them.
             ReconciliationSweepMarker marker = new(action.Epoch, action.ExpiresAt);
             ImmutableDictionary<string, ReconciliationSweepMarker> mutated_next = next.SetItem(viewKey, marker);
             if (!ReferenceEquals(mutated_next, next)) {

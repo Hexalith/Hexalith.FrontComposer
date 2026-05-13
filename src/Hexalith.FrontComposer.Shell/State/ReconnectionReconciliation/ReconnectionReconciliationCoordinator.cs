@@ -120,9 +120,10 @@ public sealed class ReconnectionReconciliationCoordinator : IReconnectionReconci
             // DN1=a — dispatch sweep markers for changed lanes BEFORE Complete so subscribers
             // see Refreshed and the marker state in the same render cycle.
             if (result.ChangedViewKeys.Count > 0) {
-                DateTimeOffset expiresAt = _timeProvider.GetUtcNow() + SweepTtl;
+                DateTimeOffset now = _timeProvider.GetUtcNow();
+                DateTimeOffset expiresAt = now + SweepTtl;
                 try {
-                    _dispatcher.Dispatch(new MarkReconciliationSweepAction(epoch, result.ChangedViewKeys, expiresAt));
+                    _dispatcher.Dispatch(new MarkReconciliationSweepAction(epoch, result.ChangedViewKeys, expiresAt, now));
                 }
                 catch (Exception ex) when (ex is not OutOfMemoryException) {
                     _logger.LogWarning(

@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-13 (Story 11.6 code review done: 3 patches applied — ReconciliationSweepReducer break→continue, CounterCountSlot Identifier edge-case fallback, EventStoreQueryClient NotSupportedException catch; P2 false positive resolved. Story moved to done.)"
+last_updated: "2026-05-13 (Story 11.7 code review done: 16 patches applied — 3 decision-needed resolutions [sweep cap LRU-by-expiry + expired-skip, schema-mismatch test restructure to drive from real LoadPageEffects path, DW-0461 named owner + reopen trigger] and 13 patches across EventStoreQueryClient bounded-read budget cap / cache eviction safety / charset fallback log / cached payload size check / dead guard removal / ToArray double-alloc fix / validator floor+ceiling / CI governance regex / ETag injection header CR-LF assertion / ledger Reopen-trigger fields / Dev Agent Record AC35 fingerprint + AC40 idempotency + 13-row carry-forward acknowledgment. Story moved to done.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -151,4 +151,4 @@ development_status:
   11-4-drift-detection-and-source-generator-coverage-hardening: done
   11-5-mcp-schema-negotiation-and-agent-contract-hardening: done
   11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: done
-  11-7-eventstore-reliability-and-ci-governance-follow-ups: review
+  11-7-eventstore-reliability-and-ci-governance-follow-ups: done

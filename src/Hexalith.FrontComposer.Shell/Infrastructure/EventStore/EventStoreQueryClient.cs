@@ -58,6 +58,23 @@ public sealed class EventStoreQueryClient(
             ? null
             : await cache.TryGetAsync(cacheKey, request.CachePayloadVersion, cancellationToken).ConfigureAwait(false);
 
+        // E9 — a cached payload that was written when MaxResponseBytes was higher must not
+        // bypass a lowered cap by re-entering through the 304 path. Evict entries whose UTF-8
+        // byte count now exceeds the configured cap. Eviction failure is non-fatal; we treat
+        // the entry as absent for this request.
+        if (cachedEntry is not null
+            && Encoding.UTF8.GetByteCount(cachedEntry.Payload) > current.MaxResponseBytes) {
+            try {
+                await cache.RemoveAsync(cacheKey!, CancellationToken.None).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException) {
+                FrontComposerLog.QueryCachePoisonEtagEvictionFailed(logger, ex.GetType().Name);
+            }
+
+            FrontComposerLog.QueryCacheOversizeEntryEvicted(logger);
+            cachedEntry = null;
+        }
+
         QueryResult<T> result = await ExecuteAsync<T>(
             request,
             current,
@@ -120,9 +137,20 @@ public sealed class EventStoreQueryClient(
             }
 
             if (cachedEntry is not null) {
+                // P-6 — cachedEntry is non-null implies cache.TryGetAsync succeeded, which
+                // requires cacheKey is not null. The previous IsNullOrEmpty guard was dead
+                // defensive code that hid the invariant.
+                Debug.Assert(cacheKey is not null);
                 if (ContainsHeaderInjectionChar(cachedEntry.ETag)) {
-                    if (!string.IsNullOrEmpty(cacheKey)) {
-                        await cache.RemoveAsync(cacheKey, cancellationToken).ConfigureAwait(false);
+                    // P-2 (F3) — use CancellationToken.None so a caller-side cancel between
+                    // cache load and eviction does not leave the poison entry in storage to be
+                    // re-read on the next request. Swallow non-cancellation failures so the
+                    // request can still proceed (without re-attaching the bad ETag).
+                    try {
+                        await cache.RemoveAsync(cacheKey, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException) {
+                        FrontComposerLog.QueryCachePoisonEtagEvictionFailed(logger, ex.GetType().Name);
                     }
                 }
                 else if (!ifNoneMatch.Contains(cachedEntry.ETag, StringComparer.Ordinal)) {
@@ -212,7 +240,7 @@ public sealed class EventStoreQueryClient(
 
                 case QueryClassificationOutcome.Ok: {
                     FrontComposerTelemetry.SetOutcome(activity, "ok");
-                    string body = await ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, cancellationToken).ConfigureAwait(false);
+                    string body = await ReadBoundedResponseBodyAsync(response.Content, current.MaxResponseBytes, logger, cancellationToken).ConfigureAwait(false);
                     IReadOnlyList<T> items;
                     int totalCount;
                     try {
@@ -443,6 +471,7 @@ public sealed class EventStoreQueryClient(
     private static async Task<string> ReadBoundedResponseBodyAsync(
         HttpContent content,
         int maxResponseBytes,
+        ILogger logger,
         CancellationToken cancellationToken) {
         if (maxResponseBytes <= 0) {
             throw new InvalidOperationException("EventStore MaxResponseBytes must be positive.");
@@ -456,7 +485,11 @@ public sealed class EventStoreQueryClient(
         using MemoryStream bounded = new();
         byte[] buffer = new byte[8192];
         while (true) {
-            int read = await stream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken).ConfigureAwait(false);
+            // P-1 (F1) — cap each read at "remaining budget + 1" so a single ReadAsync cannot
+            // pull MaxResponseBytes + 8 KB - 1 bytes off the wire before the cap fires.
+            int remaining = maxResponseBytes - (int)bounded.Length + 1;
+            int requestSize = Math.Min(buffer.Length, remaining);
+            int read = await stream.ReadAsync(buffer.AsMemory(0, requestSize), cancellationToken).ConfigureAwait(false);
             if (read == 0) {
                 break;
             }
@@ -475,11 +508,17 @@ public sealed class EventStoreQueryClient(
                 encoding = Encoding.GetEncoding(charset);
             }
             catch (Exception ex) when (ex is ArgumentException or NotSupportedException) {
+                // P-4 (F2/E7) — explicit signal that an unrecognized charset was rewritten to
+                // UTF-8 so operators can correlate downstream mojibake or schema-mismatch
+                // failures with a server lying about its Content-Type.
+                FrontComposerLog.QueryResponseCharsetFallback(logger, ex.GetType().Name);
                 encoding = Encoding.UTF8;
             }
         }
 
-        return encoding.GetString(bounded.ToArray());
+        // P-8 (F9) — avoid bounded.ToArray() which doubles peak memory. GetBuffer() returns
+        // the publicly-visible underlying array (MemoryStream default ctor enables this).
+        return encoding.GetString(bounded.GetBuffer(), 0, (int)bounded.Length);
     }
 
     [SuppressMessage(

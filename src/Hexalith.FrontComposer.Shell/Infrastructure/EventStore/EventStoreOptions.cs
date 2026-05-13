@@ -12,6 +12,18 @@ public sealed class EventStoreOptions {
     public const int DefaultMaxResponseBytes = 1_048_576;
 
     /// <summary>
+    /// Lower bound (inclusive) for <see cref="MaxResponseBytes"/>. Below this the smallest
+    /// legal JSON envelope (<c>{"payload":[]}</c>) cannot fit and every query bricks at runtime.
+    /// </summary>
+    public const int MinAllowedResponseBytes = 1024;
+
+    /// <summary>
+    /// Upper bound (inclusive) for <see cref="MaxResponseBytes"/>. Above this an oversize
+    /// response could exhaust process memory before the streaming cap fires.
+    /// </summary>
+    public const int MaxAllowedResponseBytes = 64 * 1024 * 1024;
+
+    /// <summary>
     /// Gets or sets the EventStore service base address.
     /// </summary>
     public Uri? BaseAddress { get; set; }

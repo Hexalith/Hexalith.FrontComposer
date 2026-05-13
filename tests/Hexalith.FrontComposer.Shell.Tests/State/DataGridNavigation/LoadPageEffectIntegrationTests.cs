@@ -167,6 +167,48 @@ public sealed class LoadPageEffectIntegrationTests {
     }
 
     [Fact]
+    public async Task SchemaMismatch_DispatchesSectionUpdatingCopy_AndResolvesTcsViaReducer() {
+        // Story 11.7 code review DN-2 — prove AC16 end-to-end by chaining the real effect
+        // dispatch with the reducer:
+        // ProjectionSchemaMismatchException → LoadPageFailedAction(SectionUpdatingText copy)
+        // → reducer fails the pending TCS and removes the pending-completion entry.
+        //
+        // The SUT is wired with an empty `IState<LoadedPageState>` because the defensive
+        // guarantee-terminal-dispatch finally clause in LoadPageEffects dispatches a SECOND
+        // LoadPageFailedAction when the substituted state still reports the entry as pending.
+        // The reducer assertion uses a real pending state populated separately.
+        IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
+        loader.LoadPageAsync(
+            Arg.Any<string>(), Arg.Any<int>(), Arg.Any<int>(),
+            Arg.Any<IImmutableDictionary<string, string>>(),
+            Arg.Any<string?>(), Arg.Any<bool>(), Arg.Any<string?>(),
+            Arg.Any<CancellationToken>())
+        .Returns<Task<ProjectionPageResult>>(_ => throw new ProjectionSchemaMismatchException("OrdersProjection"));
+
+        TaskCompletionSource<object> tcs = new();
+        LoadPageAction loadPage = MakeAction(tcs);
+
+        LoadPageEffects sut = MakeSut(loader, new LoadedPageState { PendingCompletionsByKey = ImmutableDictionary<(string ViewKey, int Skip), TaskCompletionSource<object>>.Empty });
+        RecordingDispatcher dispatcher = new();
+        await sut.HandleLoadPageAsync(loadPage, dispatcher);
+
+        LoadPageFailedAction failed = dispatcher.Single<LoadPageFailedAction>();
+        failed.ErrorMessage.ShouldBe("This section is being updated");
+        failed.Completion.ShouldBeSameAs(tcs);
+
+        // Drive the dispatched action through the reducer to prove AC16: pending entry
+        // removed and the action-carried TCS resolved to InvalidOperationException carrying
+        // the localized user-visible copy.
+        LoadedPageState pendingState = LoadedPageReducers.ReduceLoadPage(new LoadedPageState(), loadPage);
+        pendingState.PendingCompletionsByKey.ContainsKey((ViewKey, 0)).ShouldBeTrue();
+
+        LoadedPageState afterFailure = LoadedPageReducers.ReduceLoadPageFailed(pendingState, failed);
+        afterFailure.PendingCompletionsByKey.ContainsKey((ViewKey, 0)).ShouldBeFalse();
+        InvalidOperationException tcsException = await Should.ThrowAsync<InvalidOperationException>(async () => await tcs.Task);
+        tcsException.Message.ShouldBe("This section is being updated");
+    }
+
+    [Fact]
     public async Task CancellationPath_DispatchesLoadPageCancelled() {
         IProjectionPageLoader loader = Substitute.For<IProjectionPageLoader>();
         TaskCompletionSource<ProjectionPageResult> loaderCompletion = new();

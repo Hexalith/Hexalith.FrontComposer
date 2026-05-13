@@ -1,6 +1,6 @@
 # Story 11.7: EventStore Reliability and CI Governance Follow-ups
 
-Status: review
+Status: done
 
 > **Epic 11** - Deferred Hardening & Release Readiness. Closes EventStore integration, realtime reliability, command-status polling, telemetry/exporter, release workflow, and CI governance follow-ups routed from Epics 1, 3, 5, and 10. Applies lessons **L03**, **L06**, **L07**, **L08**, **L10**, and **L14**.
 
@@ -317,6 +317,40 @@ Start here: T1 inventory Story 11.7 rows -> T2 classify fix/accept/split -> T3 h
 - [Source: `_bmad-output/process-notes/story-creation-lessons.md#L14--Bounded-by-policy-beats-documented-unbounded-for-any-in-memory-cache`] - runtime cache/marker bound guidance.
 - [Source: `_bmad-output/project-context.md`] - project rules for EventStore channels, tenancy, tests, redaction, release work, and submodules.
 
+### Review Findings
+
+_Code review 2026-05-13 (`/bmad-code-review 11.7`) — Blind Hunter, Edge Case Hunter, Acceptance Auditor in parallel against the scoped File List diff (`92efdff..HEAD` on the 10 declared files). Auditor verdict: **PASS-WITH-CAVEATS**._
+
+#### Decision-needed (3)
+
+- [x] [Review][Decision] Sweep marker cap design — P20 comment claims "skip markers already expired at the point of insertion" but `ReduceMark` does not compare `action.ExpiresAt` to any clock, so the new 512-cap can be saturated by already-expired markers before `ClearExpired` runs, after which fresh sweeps are silently dropped (no log, no `Dropped` counter, no LRU). Multiple plausible fixes: (a) implement expired-skip using an injected clock or `action.Now`, (b) when at cap, evict the marker with the earliest `ExpiresAt`, (c) surface a `DroppedSweepMarkerCount` on state. Source: edge E1 (High) + blind F5/F6 + edge E2. `[ReconciliationSweepState.cs:45-52]`
+- [x] [Review][Decision] `SchemaMismatchFailure_PropagatesViaTrySetException_AndRemovesPendingCompletion` is tautological — the test fabricates the English message `"Projection schema mismatch. Keeping the current page visible."` and asserts the same substring back, but production code in `LoadPageEffects` dispatches the localized `SectionUpdatingText` resource ("This section is being updated"), which does not contain `"schema mismatch"`. Two fixes: delete the test (redundant with `EffectException_PropagatesViaTrySetException_IntoProvider`) or drive it from the effect that catches `ProjectionSchemaMismatchException` and assert the localizer key contract. Source: blind F11 + edge E3 (Medium). `[LoadPageTCSLifecycleTests.cs:124]`
+- [x] [Review][Decision] DW-0461 (pending-command provider parity, release-blocking split) names "EventStore pending-status provider story" as owner — a story-title placeholder, not a named team or future story key — and has no explicit `Reopen trigger:` field. AC32 / D15 / D10 require a concrete named owner and reopen trigger. Source: auditor Gap-3. `[deferred-work.md DW-0461]`
+
+#### Patch (13)
+
+- [x] [Review][Patch] `ReadBoundedResponseBodyAsync` reads up to 8 KB beyond `MaxResponseBytes` before throwing — fixed 8192-byte buffer ignores remaining budget; cap reads to `Math.Min(buffer.Length, maxResponseBytes - (int)bounded.Length + 1)`. Source: blind F1 (Medium). `[EventStoreQueryClient.cs:460-470]`
+- [x] [Review][Patch] `cache.RemoveAsync` on header-injection-poisoned ETag uses the caller's `cancellationToken` — a cancellation between cache load and eviction leaves the poison entry in storage to be re-read next request. Use `CancellationToken.None` with try/catch + sanitized log. Source: blind F3 (Medium). `[EventStoreQueryClient.cs:122-128]`
+- [x] [Review][Patch] Cached payload bypasses lowered `MaxResponseBytes` on the 304 path — `DeserializeNotModifiedFromCache` returns `entry.Payload` directly. If operators lower the cap below a previously-cached payload, the larger payload keeps round-tripping. Enforce the cap when loading the cache entry, or invalidate over-cap entries. Source: edge E9 (Medium). `[EventStoreQueryClient.cs:215 / DeserializeNotModifiedFromCache]`
+- [x] [Review][Patch] Silent UTF-8 fallback on unknown/non-UTF-8 charset — `Encoding.GetEncoding(charset)` throws are swallowed without telemetry, and a server lying about charset (e.g. `utf-16` for UTF-8 bytes) produces mojibake downstream. EventStore contract is UTF-8 only; add a sanitized warning log on fallback. Source: blind F2 + edge E7 (Low). `[EventStoreQueryClient.cs:471-484]`
+- [x] [Review][Patch] `EventStoreOptionsValidator` accepts `MaxResponseBytes = 1` (bricks every query) and `int.MaxValue` (negates the cap). Add a sane floor (e.g. ≥ `MaxRequestBytes` or `>= 1024`) and a defensible upper bound. Source: blind F8 + edge E4 (Low). `[EventStoreOptionsValidator.cs:39-42]`
+- [x] [Review][Patch] Dead `!string.IsNullOrEmpty(cacheKey)` guard inside `cachedEntry is not null` branch — the lookup at line 57 already proves `cacheKey` is non-empty. Remove the guard or replace with `Debug.Assert`. Source: blind F4 + edge E5 (Low). `[EventStoreQueryClient.cs:124]`
+- [x] [Review][Patch] CI governance substring assertions are easy to bypass and over-broad — `text.ShouldNotContain("--recurse-submodules")` fires on the legitimate disable-form `--recurse-submodules=no` and on YAML comments, and the existing substring matches are defeated by double whitespace. Switch to a regex with `\s+` tolerance that matches only enabling forms (`--recurse-submodules(\s|=true|=yes|=on-demand)`). Source: blind F12 + edge E6 (Low). `[CiGovernanceTests.cs:88-91]`
+- [x] [Review][Patch] `ReadBoundedResponseBodyAsync` doubles peak memory via `bounded.ToArray()` — use `bounded.GetBuffer().AsSpan(0, (int)bounded.Length)` with `Encoding.GetString` to avoid the second allocation. Source: blind F9 (Low). `[EventStoreQueryClient.cs:481]`
+- [x] [Review][Patch] ETag injection eviction test only asserts `If-None-Match` is absent — does not verify no other header carries `\r`/`\n`. Strengthen by enumerating all request headers and asserting no value contains a CR/LF. Source: blind F10 (Low). `[EventStoreQueryCacheIntegrationTests.cs:318]`
+- [x] [Review][Patch] **AC1/AC4/AC28** — 13 ledger rows authored by Story 11.6's reconciliation pass remain `split-to-named-story` with `Decision owner: Story 11.7` (DW-0210, DW-0230, DW-0232–DW-0235, DW-0241, DW-0247, DW-0371, DW-0423, DW-0439, DW-0502, DW-0558). The Dev Agent Record's "ending active Story 11.7 owner count is 0" refers only to the legacy `Owner:` field and overlooks these. Add a Dev Agent Record subsection listing all 13 rows and either re-classify each (accepted-with-risk / fixed-in-11.7 / split-to-a-real-owner / superseded) or explicitly acknowledge them as carried-forward Story 11.7 deliverables. Source: auditor Gap-1. `[deferred-work.md]`
+- [x] [Review][Patch] **AC3/D10** — split rows DW-0445, DW-0449, DW-0450, DW-0460 carry `Reason:` and `Residual release-gate risk:` but no `Reopen trigger:` field. Append explicit reopen triggers to each. Source: auditor Gap-2. `[deferred-work.md]`
+- [x] [Review][Patch] **AC35/D20** — start/end row-count/fingerprint is prose-only. Add starting count (before reconciliation), ending count, and a content fingerprint (e.g. SHA-256 of the Story-11.7-owned row subset or line-range hash) to the Dev Agent Record. Source: auditor Gap-4. `[Dev Agent Record line 348]`
+- [x] [Review][Patch] **AC40/D24** — idempotency assertion is config-only (`--skip-duplicate`, sealed `partial-publish-incident.json`); no governance test asserts the second-run idempotent path. Either acknowledge AC40 as discharged-by-construction in the Dev Agent Record with explicit evidence pointers, or add a release-evidence test that simulates the second-run path. Source: auditor Gap-5. `[.releaserc.json:12 / DW-0335]`
+
+#### Defer (1)
+
+- [x] [Review][Defer] Empty `200 OK` body now surfaces as `ProjectionSchemaMismatchException` via `JsonDocument.Parse("")` — pre-existing behavior preserved by the bounded-read path; not introduced by this diff. Logged to deferred-work ledger for a follow-up empty-body classification category. Source: edge E8 (Low). `[EventStoreQueryClient.cs:219-242]`
+
+#### Dismissed (1)
+
+- Oversize-response test asserts on the exception message substring `"MaxResponseBytes"` — coupling to copy is mild and the test still proves the intended behavior (throw before parse + only one HTTP request issued). Source: blind F7 (Nit).
+
 ---
 
 ## Dev Agent Record
@@ -346,6 +380,47 @@ GPT-5 Codex
 - 2026-05-13: Added deterministic reconnection sweep marker cap coverage and schema-mismatch `LoadPageFailedAction` TCS completion coverage.
 - 2026-05-13: Tightened CI governance assertions to reject recursive nested submodule command forms while preserving root-level `submodules: true`.
 - 2026-05-13: Reconciled 65 active Story 11.7 ledger rows to final dispositions: 10 `fixed-in-11.7`, 29 `accepted-with-risk`, 23 `split-to-named-story`, 3 `superseded`; ending active Story 11.7 owner count is 0. Provider-backed pending-command status remains a named release-blocking split because the current runtime has only the `IPendingCommandStatusQuery` seam/null provider and no status endpoint contract or status-resource metadata.
+
+#### Story 11.7 Row Inventory — AC35 Evidence (Story 11.7 code review P-12)
+
+The ledger records the AC35 fingerprint inline at `_bmad-output/implementation-artifacts/deferred-work.md` line ~58 (the "Story 11.7 execution update (2026-05-13)" paragraph). Pinning that evidence here so the Dev Agent Record carries the AC35 claim:
+
+- **Starting expectation:** 71 routed Story 11.7 rows at story creation (per the story spec narrative and Dev Agent Cheat Sheet row-count entry).
+- **Starting reconciliation set:** 65 active `Owner: Story 11.7` markers at implementation start; the 6-row delta to 71 is explained by Story 11.5/11.6 reconciliation passes resolving or superseding rows that crossed Story 11.7's bucket.
+- **Starting fingerprint:** `sha256:78870a0e6c3733a0ecf3670cc061d7d4f3f815cb13698945ae9cb57706ae2a30` computed over the ordered Story-11.7-owned row-id list at implementation start.
+- **Ending active `Owner: Story 11.7` count:** 0.
+- **Ending dispositions:** 10 `fixed-in-11.7` + 29 `accepted-with-risk` + 23 `split-to-named-story` + 3 `superseded` = 65 rows reconciled with one final disposition each.
+
+#### Carry-Forward Decision-Owner Acknowledgment (Story 11.7 code review P-10 / AC1, AC4, AC28)
+
+Story 11.6's pre-release reconciliation pass routed an additional batch of rows to Story 11.7 as `split-to-named-story` with `Decision owner: Story 11.7`. The "ending active Story 11.7 owner count is 0" claim above refers to the legacy `Owner: Story 11.7` marker only and does not cover these `Decision owner: Story 11.7` carry-forwards. They are explicitly tracked here as carried-forward Story 11.7 deliverables that remain `split-to-named-story` until a downstream named-owner story (a future Story 12.x or a dedicated architecture-decision row) absorbs them. None of the 13 rows are release-blocking individually; each is medium- or low-impact and the residual risk is captured on the ledger row itself.
+
+| Row | Title (short) | Final route |
+| --- | --- | --- |
+| DW-0210 | AC10 hot-reload proof artefacts | downstream named-owner story (Story 12.x hot-reload evidence) |
+| DW-0230 | `ProjectionConnectionTelemetryTests` structured-state rewrite | downstream named-owner story (Shell telemetry tests) |
+| DW-0232 | Strict ULID format on server-supplied correlationId | Architecture — EventStore status-endpoint contract (paired with DW-0461) |
+| DW-0233 | Full redaction-on-failure-paths test matrix | downstream named-owner story (telemetry/redaction governance) |
+| DW-0234 | F42 outer-catch overwrites inner failure tag | downstream named-owner story (diagnostic-catalog tightening) |
+| DW-0235 | `SafeIdentifier` 64-char truncation indicator | downstream named-owner story (Shell telemetry policy) |
+| DW-0241 | Cache write fire-and-forget activity tag | downstream named-owner story (telemetry policy) |
+| DW-0247 | `MaxResponseBytes` guard | superseded by Story 11.7 code review P-1 (this story) — see DW-0249 |
+| DW-0371 | Renderer `CircuitHandler` for popover reconnect | downstream named-owner story (Story 12.x reconnect UX) |
+| DW-0423 | Type specimen + Playwright visual diffing + axe-core | Story 10-2 / accessibility CI gates |
+| DW-0439 | `HydrationState=Hydrated` on hydrate error paths | downstream named-owner story (Shell hydration policy) |
+| DW-0502 | `Resolve` telemetry on null-return/ambiguous flag | downstream named-owner story (Story 6-6 runtime diagnostics) |
+| DW-0558 | Counter sample project-reference analyzer pattern | downstream named-owner story (Story 11.6/Counter sample polish) |
+
+DW-0247 (`MaxResponseBytes` guard) is in fact closed by this story's P-1 / DW-0249 patch; the row remains historically `Decision owner: Story 11.7` because Story 11.6's matrix rewrite predated this code review. Treat DW-0247 as `superseded by DW-0249` going forward.
+
+#### AC40 — Release Rerun Idempotency Acknowledgment (Story 11.7 code review P-13)
+
+AC40 ("release reruns are idempotent or explicitly blocked before irreversible side effects") is discharged by construction rather than by a dedicated executed assertion:
+
+- **NuGet push idempotency:** `dotnet nuget push --skip-duplicate` (release.yml) makes a re-run a no-op when a package version has already been published.
+- **Partial-publish reconciliation:** `.releaserc.json:12` emits a sealed `partial-publish-incident.json` artifact on push failure, blocking the run from advancing to tag/changelog/GitHub-Release steps until a human reconciles.
+- **Evidence path:** DW-0335 (`fixed-in-11.7`) and the `CiGovernanceTests.ReleaseWorkflow_AddsSbomSigningAttestationAndManifestGatesAfterBlockingTests` test prove the manifest-gate ordering. AC40 does not have a dedicated rerun-simulation test in this story; if a release-evidence helper-level idempotency assertion is needed for a future gate, file it as a follow-up under the Release governance owner.
+- **Residual release risk:** a tag/changelog or GitHub-Release step that fails after a successful `dotnet nuget push` requires manual reconciliation (delete the duplicate tag or empty release) before the next run can proceed; the sealed incident manifest is the bounded evidence trail for that reconciliation.
 
 ### Change Log
 

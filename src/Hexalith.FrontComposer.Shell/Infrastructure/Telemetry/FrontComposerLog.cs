@@ -62,6 +62,24 @@ internal static partial class FrontComposerLog {
     public static partial void QueryCacheWriteFailed(ILogger logger, string failureCategory);
 
     [LoggerMessage(
+        EventId = 5614,
+        Level = LogLevel.Warning,
+        Message = "EventStore query cache poison-ETag eviction failed. FailureCategory={FailureCategory}")]
+    public static partial void QueryCachePoisonEtagEvictionFailed(ILogger logger, string failureCategory);
+
+    [LoggerMessage(
+        EventId = 5615,
+        Level = LogLevel.Warning,
+        Message = "EventStore query response advertised non-resolvable Content-Type charset; falling back to UTF-8. FailureCategory={FailureCategory}")]
+    public static partial void QueryResponseCharsetFallback(ILogger logger, string failureCategory);
+
+    [LoggerMessage(
+        EventId = 5616,
+        Level = LogLevel.Warning,
+        Message = "EventStore query cache entry exceeded configured MaxResponseBytes and was evicted before the request was sent.")]
+    public static partial void QueryCacheOversizeEntryEvicted(ILogger logger);
+
+    [LoggerMessage(
         EventId = 5620,
         Level = LogLevel.Information,
         Message = "EventStore projection connection state changed. Status={Status}, Attempt={Attempt}, FailureCategory={FailureCategory}, SuppressedCount={SuppressedCount}")]
