@@ -24,6 +24,32 @@ so that top-level epic status reflects the real release-readiness state.
 
 A release owner should be able to inspect `_bmad-output/implementation-artifacts/deferred-work.md`, `_bmad-output/implementation-artifacts/sprint-status.yaml`, and the Story 12.1 Dev Agent Record and know whether Epic 11 is truly done, still blocked by named row-level release gates, or done with explicitly accepted constraints.
 
+### Source Of Truth Contract
+
+Story 12.1 has four source surfaces, and conflicts must be resolved in this order:
+
+| Surface | Role | Contract |
+| --- | --- | --- |
+| `_bmad-output/implementation-artifacts/deferred-work.md` | Primary row-state source | Detailed bullet rows containing `Reconciliation:` and `Row: DW-####` define the current ledger state. |
+| Epic 11 story artifacts and retrospective | Evidence source | Completion notes, validation, and accepted constraints can justify row final states, but cannot close rows without exact row IDs. |
+| `_bmad-output/implementation-artifacts/sprint-status.yaml` | Status source | `epic-11` may change only when the row-level decision table names the evidence supporting the status. |
+| Story 12.1 Dev Agent Record | Audit source | Must summarize before/after counts, row IDs, fingerprints, mismatches, exceptions, validation commands, and redacted evidence links. |
+
+Marker parity is not release certification. This story may recommend or record whether `epic-11` is `done` or remains `in-progress`, but it does not certify the release, replace the trusted release checklist, or imply Stories 12.2 through 12.5 are complete.
+
+### Deterministic Starting Row Inventory
+
+The implementer must verify this frozen inventory before editing ledger rows. If counts or row-id hashes differ, stop and record the drift before changing `deferred-work.md`.
+
+| Source story / marker | Count | Ordered row IDs | Row-id hash | Target marker rule |
+| --- | ---: | --- | --- | --- |
+| Story 11.2 | 2 | `DW-0057`, `DW-0064` | `sha256:2d2ecbb221a30d7a7893536177d2e457cea1f4fdf2f68603aacb8fe9f1147e34` | Convert each row to `Resolved`, `Accepted constraint`, `Split to named story`, `Non-action decision`, or a named release gate with owner/evidence/reopen trigger. |
+| Story 11.4 | 7 | `DW-0325`, `DW-0332`, `DW-0333`, `DW-0336`, `DW-0339`, `DW-0340`, `DW-0347` | `sha256:834c8e8ab9c8bc6a509c66261ef7bd18d76a729f6bd4ce156fafedc247e21977` | Convert each row to a final state or named release gate; preserve ambiguity instead of normalizing it away. |
+| Story 11.5 | 205 | `DW-0058`, `DW-0067`, `DW-0068`, `DW-0069`, `DW-0070`, `DW-0071`, `DW-0072`, `DW-0073`, `DW-0074`, `DW-0075`, `DW-0076`, `DW-0077`, `DW-0078`, `DW-0079`, `DW-0080`, `DW-0081`, `DW-0082`, `DW-0083`, `DW-0084`, `DW-0085`, `DW-0086`, `DW-0087`, `DW-0088`, `DW-0089`, `DW-0090`, `DW-0091`, `DW-0092`, `DW-0093`, `DW-0094`, `DW-0095`, `DW-0096`, `DW-0097`, `DW-0098`, `DW-0099`, `DW-0100`, `DW-0101`, `DW-0102`, `DW-0103`, `DW-0104`, `DW-0105`, `DW-0106`, `DW-0107`, `DW-0108`, `DW-0109`, `DW-0110`, `DW-0111`, `DW-0112`, `DW-0113`, `DW-0114`, `DW-0115`, `DW-0116`, `DW-0117`, `DW-0118`, `DW-0119`, `DW-0120`, `DW-0121`, `DW-0122`, `DW-0123`, `DW-0124`, `DW-0125`, `DW-0126`, `DW-0127`, `DW-0128`, `DW-0129`, `DW-0130`, `DW-0131`, `DW-0132`, `DW-0133`, `DW-0134`, `DW-0135`, `DW-0136`, `DW-0137`, `DW-0138`, `DW-0139`, `DW-0140`, `DW-0141`, `DW-0142`, `DW-0143`, `DW-0144`, `DW-0145`, `DW-0146`, `DW-0147`, `DW-0148`, `DW-0149`, `DW-0150`, `DW-0151`, `DW-0152`, `DW-0153`, `DW-0154`, `DW-0155`, `DW-0156`, `DW-0157`, `DW-0158`, `DW-0159`, `DW-0160`, `DW-0161`, `DW-0162`, `DW-0163`, `DW-0164`, `DW-0165`, `DW-0166`, `DW-0167`, `DW-0168`, `DW-0169`, `DW-0170`, `DW-0171`, `DW-0172`, `DW-0173`, `DW-0174`, `DW-0175`, `DW-0176`, `DW-0177`, `DW-0178`, `DW-0179`, `DW-0180`, `DW-0181`, `DW-0182`, `DW-0183`, `DW-0184`, `DW-0185`, `DW-0186`, `DW-0187`, `DW-0188`, `DW-0189`, `DW-0190`, `DW-0191`, `DW-0192`, `DW-0193`, `DW-0194`, `DW-0195`, `DW-0196`, `DW-0197`, `DW-0198`, `DW-0199`, `DW-0200`, `DW-0201`, `DW-0202`, `DW-0203`, `DW-0253`, `DW-0254`, `DW-0255`, `DW-0341`, `DW-0342`, `DW-0343`, `DW-0344`, `DW-0576`, `DW-0577`, `DW-0578`, `DW-0579`, `DW-0580`, `DW-0581`, `DW-0582`, `DW-0583`, `DW-0584`, `DW-0585`, `DW-0586`, `DW-0587`, `DW-0590`, `DW-0591`, `DW-0592`, `DW-0593`, `DW-0594`, `DW-0595`, `DW-0596`, `DW-0597`, `DW-0598`, `DW-0599`, `DW-0600`, `DW-0601`, `DW-0602`, `DW-0603`, `DW-0604`, `DW-0605`, `DW-0606`, `DW-0607`, `DW-0608`, `DW-0609`, `DW-0610`, `DW-0611`, `DW-0612`, `DW-0613`, `DW-0614`, `DW-0616`, `DW-0619`, `DW-0620`, `DW-0622`, `DW-0623`, `DW-0624`, `DW-0625`, `DW-0626`, `DW-0627`, `DW-0628`, `DW-0629`, `DW-0630`, `DW-0631`, `DW-0632`, `DW-0633`, `DW-0634`, `DW-0635`, `DW-0636`, `DW-0637`, `DW-0638`, `DW-0639`, `DW-0640`, `DW-0641` | `sha256:d0df4a8ff4f113e059c582a69ad2f67fa947d65d62baaff13190ce7d0c780e83` | Route row-addressably to Story 12.2 or another named owner unless existing evidence proves closure row by row. Category grouping is allowed only when every row ID is listed. |
+| Product/Architecture decision | 1 | `DW-0666` | `sha256:0ec43b9135c0c534e514d8857cc8f41512e54d3e98bfda1ce7804114c342ef0d` | Must be classified as a selected Product/Architecture outcome, named release gate, or blocker. Do not defer silently if `epic-11` status is changed. |
+
+Fingerprint contract: row-id hashes are computed from the ordered `DW-####` list using UTF-8 and LF separators. Row-content evidence hashes, if produced, must normalize whitespace, exclude timestamps/local paths, and document excluded volatile fields.
+
 ---
 
 ## Dev Agent Cheat Sheet
@@ -61,6 +87,13 @@ Start here: T1 snapshot current ledger rows -> T2 compare against Epic 11 story 
 | AC11 | The implementation changes `_bmad-output/implementation-artifacts/sprint-status.yaml` | The Epic 11 decision is recorded | `epic-11` is either marked `done` with rationale or deliberately kept `in-progress` with named blocking rows/gates; Story 12.1 itself moves through the normal implementation status only when actual dev work occurs. |
 | AC12 | Story 12.1 completes | Validation runs | A deterministic validation script reports zero current `Owner: Story 11.2`, `Owner: Story 11.4`, and stale `Owner: Story 11.5` markers unless open markers are explicitly named release gates; status-artifact consistency still has no drift. |
 | AC13 | The story record is updated | The Dev Agent Record is completed | It lists changed files, validation commands and outcomes, final counts/fingerprints, deferred decisions, and whether `epic-11` was marked done or left in progress. |
+| AC14 | The starting row inventory is captured | The implementer compares `deferred-work.md` against the deterministic inventory table | Counts, ordered row IDs, and hashes match before edits; any mismatch blocks ledger mutation until recorded as drift. |
+| AC15 | A row final state affects `epic-11` status | The status decision is written | The decision cites exact row IDs, evidence paths, owner, release impact, and reopen trigger; aggregate-only claims are rejected. |
+| AC16 | `DW-0666` is evaluated | Story 12.1 completes or changes `epic-11` status | The decision has named Product and Architecture owners, selected outcome or explicit blocker, decision date, release consequence, evidence pointer, and closure trigger. |
+| AC17 | A release owner reviews the story output | The ledger and Dev Agent Record are complete | A stakeholder-readable summary states before/after counts, mismatches, exceptions, residual gates, and the recommended `epic-11` outcome: move to `done`, remain `in-progress`, split residual work, or block release. |
+| AC18 | The ledger, sprint status, story artifact, and generated evidence disagree | Validation runs | The run fails with the mismatched row/status/artifact key and remediation pointer; partial manual edits are not accepted. |
+| AC19 | Evidence or reports include paths, tenant/user data, tokens, payloads, machine names, or URLs | Validation runs | Redaction checks prove sensitive values are absent or replaced by bounded placeholders before evidence is committed. |
+| AC20 | Validation is wired or documented | Story 12.1 completes | The Dev Agent Record states whether row parity, zero-current-marker, redaction, and status consistency checks are blocking in PR validation, release validation, or both. |
 
 ---
 
@@ -70,6 +103,7 @@ Start here: T1 snapshot current ledger rows -> T2 compare against Epic 11 story 
   - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom before edits.
   - [ ] Count current `Reconciliation:` markers by owner using detailed bullet rows only, not top-level prose or resolution-summary sections.
   - [ ] Record ordered row IDs and SHA-256 fingerprints for Story 11.2, Story 11.4, Story 11.5, and `Needs Product/Architecture decision` rows.
+  - [ ] Compare the counts and row-id hashes against the deterministic starting inventory table before editing any ledger row.
   - [ ] Save the script or command transcript in the Dev Agent Record so the audit can be repeated.
 
 - [ ] T2. Compare ledger state to Epic 11 evidence (AC2)
@@ -92,20 +126,33 @@ Start here: T1 snapshot current ledger rows -> T2 compare against Epic 11 story 
 
 - [ ] T5. Surface Product/Architecture decision row `DW-0666` (AC9)
   - [ ] Name the decision: whether docs slug validation should reject UNC-like `//server/share` and drive-relative `C:foo` forms.
-  - [ ] Record policy options, recommended default if evidence supports one, owner, evidence path, downstream impact, and closure trigger.
+  - [ ] Record policy options, recommended default if evidence supports one, Product owner, Architecture owner, decision date, evidence path, downstream impact, release consequence, and closure trigger.
+  - [ ] If no Product/Architecture outcome is selected, leave `epic-11` `in-progress` or record `DW-0666` as an explicit release blocker; do not hide it as a generic deferred item.
   - [ ] Ensure the row no longer hides inside a broad diagnostic-governance bucket.
 
 - [ ] T6. Record Epic 11 top-level status decision (AC8, AC10, AC11)
   - [ ] Update the deferred-work top summary to match detailed row counts.
-  - [ ] Decide whether `epic-11` should move from `in-progress` to `done`.
+  - [ ] Decide whether `epic-11` should move from `in-progress` to `done` using the allowed outcomes table below.
   - [ ] If `epic-11` remains `in-progress`, name the exact blocking rows or release gates.
   - [ ] If `epic-11` is marked `done`, record why remaining Epic 12 work is release certification rather than Epic 11 incompletion.
+  - [ ] Write a release-owner-readable summary covering before/after counts, mismatches, residual gates, evidence links, and final recommendation.
 
 - [ ] T7. Validate and record completion evidence (AC12, AC13)
   - [ ] Re-run the row inventory script after edits and record final counts/fingerprints.
   - [ ] Re-run sprint status YAML parse and status-artifact consistency checks.
+  - [ ] Re-run redaction checks against committed evidence/report text and document the sensitive-token fixture values used.
+  - [ ] Confirm ledger-to-report/status consistency is bidirectional: ledger rows, story Dev Agent Record, and `sprint-status.yaml` agree.
   - [ ] Run `git diff --check`.
   - [ ] Update this story's Dev Agent Record with validation, changed files, final status decision, and residual release gates.
+
+### Allowed Epic 11 Decision Outcomes
+
+| Outcome | Required evidence | Status effect |
+| --- | --- | --- |
+| Move `epic-11` to `done` | Every Story 11.2/11.4/11.5 current marker has a row-scoped final state or named release-certification owner, `DW-0666` has a selected Product/Architecture outcome, and no row remains as an unnamed release gate. | Update `epic-11: done` with rationale and evidence links. |
+| Keep `epic-11` `in-progress` | One or more rows remain unresolved Epic 11 completion work, or `DW-0666` has no selected Product/Architecture outcome. | Keep `epic-11: in-progress` and name exact blocking row IDs. |
+| Split residual work | A row belongs to a named Story 12.x release-certification owner or another named backlog story with evidence and reopen trigger. | `epic-11` may be `done` only if the split is release certification rather than unfinished Epic 11 scope. |
+| Block release | A row is a deliberate release gate with missing evidence or a Product/Architecture decision is unresolved. | Keep `epic-11` status truthful and record the release blocker. |
 
 ---
 
@@ -121,6 +168,12 @@ Start here: T1 snapshot current ledger rows -> T2 compare against Epic 11 story 
 | D6 | `epic-11` status must communicate readiness truth, not bookkeeping neatness. | Moving the epic to done is valid only if remaining work is clearly release certification rather than unresolved Epic 11 scope. |
 | D7 | Product/Architecture decisions must be explicit rows, not hidden in prose. | `DW-0666` requires a named policy decision before docs-slug closure is honest. |
 | D8 | No recursive nested submodule commands are needed for this story. | The work is repository artifact reconciliation; root-level submodule policy remains unchanged. |
+| D9 | Marker parity is not release certification. | Story 12.1 can align evidence and status, but release approval remains with dedicated certification evidence and owner sign-off. |
+| D10 | The deterministic inventory table is a pre-edit gate. | Prevents a developer from mutating a ledger that drifted since story creation. |
+| D11 | `DW-0666` is a hard Product/Architecture gate when changing `epic-11`. | The story's status decision is not truthful if a named policy decision remains unresolved but hidden. |
+| D12 | Sprint status changes must cite row-scoped evidence. | Status updates without row IDs recreate the stale-marker problem Epic 12 exists to fix. |
+| D13 | Story 12.1 must preserve unresolved ambiguity. | Ambiguous rows should become named blockers or splits, not optimistic closure prose. |
+| D14 | Validation outputs must be deterministic and redacted. | Release evidence cannot depend on local paths, machine names, timestamps, tenant/user values, tokens, or unbounded logs. |
 
 ---
 
@@ -134,6 +187,13 @@ Start here: T1 snapshot current ledger rows -> T2 compare against Epic 11 story 
 | `_bmad-output/process-notes/story-creation-lessons.md` | Update only if new reusable lesson emerges | Append-only; do not rewrite existing lessons. |
 
 No production source, test source, docs generated site, release workflow, MCP implementation, EventStore implementation, or submodule content should be changed for this story unless a later human decision expands scope.
+
+### Non-Goals
+
+- No broad deferred-work cleanup beyond the Story 11.2, Story 11.4, Story 11.5, and `DW-0666` marker parity decision.
+- No MCP contract snapshot closure beyond row-addressable routing to Story 12.2 or evidence already present in repository artifacts.
+- No EventStore pending-command provider implementation, trusted release dry-run, package signing, SBOM generation, accessibility sign-off, stakeholder acceptance collection, or docs-site generation.
+- No Epic 11 semantic rewrite: historical story completion evidence is consumed as evidence, not rewritten to change what Epic 11 originally delivered.
 
 ---
 
@@ -152,8 +212,12 @@ No production source, test source, docs generated site, release workflow, MCP im
   - parses only detailed bullet rows containing `Reconciliation:`;
   - counts current `Owner: Story 11.2`, `Owner: Story 11.4`, `Owner: Story 11.5`, and `Needs Product/Architecture decision`;
   - emits ordered row IDs and SHA-256 hashes;
+  - sorts rows by first appearance in `deferred-work.md`, not lexical order, and uses UTF-8 plus LF separators for row-id hashes;
   - fails if a detailed row has no `Row: DW-####` marker.
 - Re-run the YAML/status-artifact consistency check used by the recurring hardening job.
+- Run a zero-current-marker gate that fails if any Story 11.2/11.4/11.5 current owner remains without an explicit final state, named release gate, or named split owner.
+- Run a redaction check over any committed evidence/report text using fixture values for local absolute paths, tenant IDs, user names, machine names, bearer tokens, command payload fragments, and raw URLs.
+- Regenerate any ledger-derived report from `deferred-work.md` and compare it to committed evidence so manual ledger/report drift is detected.
 - Run `git diff --check` before review.
 - Run broader `dotnet test` only if implementation touches source, test, workflow, or validation script code. For ledger/status-only edits, command evidence plus deterministic row scripts are the relevant validation.
 
@@ -215,12 +279,25 @@ GPT-5 Codex
 ### Completion Notes List
 
 - 2026-05-13: Created the Story 12.1 developer guide and marked it ready for development. Ready for party-mode review on a later recurring run.
+- 2026-05-13: Party-mode review applied pre-development hardening for row-level evidence contracts, `DW-0666` ownership, deterministic validation, release-owner summary, and Epic 11 status decision guardrails.
 
 ### Change Log
 
 - 2026-05-13: Created Story 12.1 and marked ready-for-dev.
+- 2026-05-13: Applied party-mode review hardening; added source-of-truth contract, deterministic starting inventory, AC14-AC20, allowed Epic 11 outcomes, D9-D14, non-goals, stronger validation, and canonical review trace.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/12-1-ledger-marker-parity-and-epic-status-decision.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+## Party-Mode Review
+
+- **Date/time:** 2026-05-13T20:45:15+02:00
+- **Selected story:** `12-1-ledger-marker-parity-and-epic-status-decision`
+- **Command/skill invocation used:** `/bmad-party-mode 12-1-ledger-marker-parity-and-epic-status-decision; review;`
+- **Participating BMAD agents:** Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor)
+- **Findings summary:** All four agents recommended `needs-story-update`, not `blocked`. Winston flagged row-addressable ledger contracts, Epic 11/Epic 12 boundary risk, sprint-status truthfulness, and release-certification boundaries. Amelia flagged executable row inventory, deterministic Epic 11 status rules, task order, and copy-pasteable validation. John flagged `DW-0666` ownership, release-owner-readable outcome language, decision-budget control, and RACI clarity. Murat flagged deterministic scripts, fingerprint reproducibility, zero-current-marker gating, redaction evidence, bidirectional status consistency, report drift, and validation-lane ownership.
+- **Changes applied:** Added a Source Of Truth Contract; added a Deterministic Starting Row Inventory with row IDs and hashes; added AC14-AC20 for inventory drift, row-scoped status evidence, `DW-0666`, stakeholder summary, consistency, redaction, and validation-lane expectations; tightened T1, T5, T6, and T7; added allowed Epic 11 decision outcomes; added D9-D14; added non-goals; expanded Testing Strategy with deterministic ordering, zero-current-marker, redaction, and ledger/report regeneration checks.
+- **Findings deferred:** Whether fingerprint changes are always blocking or can use an intentional baseline-update workflow; whether zero-current-marker failures block all PRs or release/readiness lanes only; final Product/Architecture outcome for `DW-0666`; final release-certification approval owner after parity evidence is assembled.
+- **Final recommendation:** `ready-for-dev`

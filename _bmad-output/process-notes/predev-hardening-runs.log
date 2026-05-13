@@ -197,3 +197,4 @@
 2026-05-13T19:38:04+02:00	create-story	12-3-eventstore-pending-command-provider-release-gate	ok	created Story 12.3 EventStore pending-command provider release gate and marked ready-for-dev
 2026-05-13T19:45:37+02:00	create-story	12-4-trusted-release-evidence-dry-run	ok	Created Story 12.4 trusted release evidence dry run and marked ready-for-dev.
 2026-05-13T20:03:30+02:00	create-story	12-5-accessibility-and-stakeholder-acceptance-evidence-pack	ok	created Story 12.5 accessibility and stakeholder acceptance evidence pack and marked ready-for-dev
+2026-05-13T20:45:15+02:00	party-mode-review	12-1-ledger-marker-parity-and-epic-status-decision	ok	party-mode hardening applied; added row evidence contracts, DW-0666 gate, deterministic validation, release-owner summary, and status decision guardrails
