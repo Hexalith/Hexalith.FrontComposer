@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-13 (Created Story 12.1 ledger marker parity and epic status decision; epic-12 moved to in-progress and 12-1 marked ready-for-dev.)"
+last_updated: "2026-05-13 (Created Story 12.2 MCP ledger closure and contract snapshot decisions; 12-2 marked ready-for-dev.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -157,7 +157,7 @@ development_status:
   # Epic 12: Release Certification and Evidence Alignment
   epic-12: in-progress
   12-1-ledger-marker-parity-and-epic-status-decision: ready-for-dev
-  12-2-mcp-ledger-closure-and-contract-snapshot-decisions: backlog
+  12-2-mcp-ledger-closure-and-contract-snapshot-decisions: ready-for-dev
   12-3-eventstore-pending-command-provider-release-gate: backlog
   12-4-trusted-release-evidence-dry-run: backlog
   12-5-accessibility-and-stakeholder-acceptance-evidence-pack: backlog
