@@ -64,6 +64,9 @@ public static class AddFrontComposerDevModeExtensions {
             }
         }
 
+        // Factory-registered IHostEnvironment path: build a temporary provider to resolve the
+        // environment. Call AddFrontComposerDevMode() only after ILoggingBuilder and IHostEnvironment
+        // are registered; any missing dependency will throw here in DEBUG builds.
         for (int i = services.Count - 1; i >= 0; i--) {
             ServiceDescriptor descriptor = services[i];
             if (descriptor.ServiceType != typeof(IHostEnvironment) || descriptor.ImplementationFactory is null) {

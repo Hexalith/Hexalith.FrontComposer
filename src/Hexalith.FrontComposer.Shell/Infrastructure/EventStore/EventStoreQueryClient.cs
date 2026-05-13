@@ -474,7 +474,7 @@ public sealed class EventStoreQueryClient(
             try {
                 encoding = Encoding.GetEncoding(charset);
             }
-            catch (ArgumentException) {
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException) {
                 encoding = Encoding.UTF8;
             }
         }

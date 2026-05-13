@@ -30,8 +30,9 @@
             return "field";
         }
 
-        return new string([.. value
+        string result = new string([.. value
             .Select(static c => char.IsLetterOrDigit(c) ? char.ToLowerInvariant(c) : '-')
-            .Where(static c => char.IsLetterOrDigit(c) || c == '-')]);
+            .Where(static c => char.IsLetterOrDigit(c) || c == '-')]).Trim('-');
+        return string.IsNullOrEmpty(result) ? "field" : result;
     }
 }

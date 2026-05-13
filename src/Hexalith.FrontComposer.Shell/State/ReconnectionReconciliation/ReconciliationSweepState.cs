@@ -43,7 +43,7 @@ public static class ReconciliationSweepReducers {
             }
 
             if (!next.ContainsKey(viewKey) && next.Count >= MaxSweepMarkers) {
-                break;
+                continue;
             }
 
             // P20 — skip markers that are already expired at the point of insertion. They would
