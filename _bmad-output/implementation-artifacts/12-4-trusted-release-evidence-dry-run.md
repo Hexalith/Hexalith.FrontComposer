@@ -39,6 +39,9 @@ A release owner should be able to inspect Story 12.4 evidence and know whether t
 | Evidence safety | Evidence must be bounded and sanitized: no certificate material, passwords, API keys, OIDC tokens, NuGet keys, tenant/user values, command payloads, local absolute paths, raw response bodies, or unbounded workflow logs. |
 | Current package inventory | Expected packable packages are `Hexalith.FrontComposer.Cli`, `Contracts`, `Mcp`, `Schema`, `Shell`, and `Testing`; `SourceTools` is intentionally non-packable with an exception. |
 | Scope guardrail | Do not redesign semantic-release, package topology, CI lane strategy, MCP, EventStore provider behavior, accessibility evidence, docs-site generation, or submodule strategy unless the dry run proves a named release blocker. |
+| Release classification | Final output must be one of `ready`, `blocked`, or `fallback-approved`; candidate PR/fork/local evidence can never authorize publishing. |
+| Approval contract | NuGet publish, tag/changelog push, GitHub Release creation, attestation upload, attestation fallback, partial-publish recovery, and failed-release rerun need named owner approval before side effects. |
+| Negative fixture proof | The implementation must include deterministic fixtures proving false release-ready records fail closed without real publishing, GitHub Release, or attestation network calls. |
 | Validation | Run release evidence helpers and static workflow checks; run broader tests only if source/workflow changes require them. |
 
 Start here: T1 snapshot release workflow and package inventory -> T2 prove no side effects before checks -> T3 execute trusted dry-run or equivalent local candidate proof -> T4 verify manifest/signing/SBOM/checksum/evidence contracts -> T5 record blockers/fallbacks -> T6 update release-readiness notes and Dev Agent Record.
@@ -70,6 +73,14 @@ Start here: T1 snapshot release workflow and package inventory -> T2 prove no si
 | AC19 | Release budget evidence is generated | The dry run or real release completes | Release minutes, tag-to-nuget latency, package count, run id, publish status, and package-count-collapse trigger state are recorded or explicitly marked unavailable. |
 | AC20 | The dry run completes | Story evidence is updated | Story 12.4 records whether release evidence is ready, blocked, or ready with approved fallback, and names all residual release gates. |
 | AC21 | Story 12.4 closes | Validation runs | Release evidence helper commands, manifest checks, status-artifact consistency, and `git diff --check` outcomes are recorded; source/workflow tests are run if touched. |
+| AC22 | A release context is classified | Evidence is evaluated | The classifier records event name, ref, upstream/fork status, token permissions, dry-run flag, explicit approval flag, and rerun/partial-release state, then maps the run to `trusted-main-or-release`, `pr-same-repo`, `fork-pr`, `local-candidate`, `rerun-review`, or `approved-fallback`. |
+| AC23 | A final `ready` result is requested | Release evidence is evaluated | `ready` is allowed only from machine-validated, normalized, sanitized, sealed evidence generated in a trusted write-capable context; workflow intent, branch name alone, or file presence cannot produce `ready`. |
+| AC24 | A dry run or candidate run reaches side-effect-capable steps | Workflow and semantic-release guards execute | NuGet publish, tag/changelog push, GitHub Release creation, and attestation upload are unreachable unless a sealed `ready` classification and explicit owner approval are present; normal dry runs may only create local files, workflow artifacts, log annotations, and summaries. |
+| AC25 | A release owner reviews the evidence | Story or workflow evidence is summarized | The decision output contains final classification, release action grouped blocking reasons, context class, approval status and approver identity when relevant, whether candidate evidence was used, and the next required owner action. |
+| AC26 | An approval-dependent release action is possible | Evidence is prepared | The approval matrix covers NuGet publish, tag/changelog push, GitHub Release creation, attestation upload, attestation fallback, partial-publish recovery, and rerun after failed or partial release, including owner, mechanism, evidence, and blocking/fallback effect. |
+| AC27 | Attestation or another external path uses fallback evidence | Release readiness is classified | Fallback is visibly classified as `fallback-approved`, never equivalent to full `ready`, and records reason, approver, timestamp, affected artifact/version, scope, expiry or revalidation trigger, reopen event, release-note impact, and sanitized evidence pointer. |
+| AC28 | False release-ready conditions are tested | Validation fixtures run | Deterministic fixtures cover missing inventory package, skipped tests, zero tests, unsigned package, stale or missing timestamp, missing SBOM, checksum mismatch, unsealed manifest, PR/fork/local candidate context, recursive submodule command, path leakage, token-like leakage, and dry-run side-effect attempts. |
+| AC29 | Evidence redaction is tested with hostile input | Evidence output is generated | Token-shaped values, Windows and Unix absolute paths, usernames, tenant/user identifiers, credentialed URLs, raw log fragments, environment dumps, signing material markers, and workflow-command strings are sanitized or block release classification deterministically. |
 
 ---
 
@@ -85,9 +96,11 @@ Start here: T1 snapshot release workflow and package inventory -> T2 prove no si
 - [ ] T2. Prove ordering before irreversible side effects (AC3, AC13, AC14)
   - [ ] Build a step-order table that names the first irreversible operation and every blocking check that must precede it.
   - [ ] Verify blocking tests, package inventory, SBOM, signing verification, checksums, manifest sealing, manifest verification, attestation/fallback state, and redaction checks complete before NuGet push, tag/changelog push, GitHub Release creation, or attestation upload.
+  - [ ] Put side-effect guards adjacent to each side-effect-capable workflow or semantic-release operation, not only inside shared helper code.
+  - [ ] Make the side-effect phase depend on a sealed `ready` classification plus explicit owner approval.
   - [ ] Record partial-publish/rerun behavior and manual reconciliation requirements for package, tag, changelog, GitHub Release, and attestation drift.
 
-- [ ] T3. Execute dry-run evidence generation without publish mutation (AC4-AC7, AC11, AC12, AC15)
+- [ ] T3. Execute dry-run evidence generation without publish mutation (AC4-AC7, AC11, AC12, AC15, AC22-AC24)
   - [ ] Run package inventory:
 
 ```powershell
@@ -97,11 +110,15 @@ python eng\release_evidence.py inventory --root . --expected eng\release-package
   - [ ] If local pack/SBOM/signing cannot run safely because credentials are absent, record the unavailable path as candidate evidence and do not fake success.
   - [ ] Generate a candidate checksum/manifest fixture only from concrete local artifacts under an approved evidence root; never use placeholder hashes as passing evidence.
   - [ ] Run `verify-manifest` against the candidate manifest or record why no valid manifest can be produced outside a trusted release run.
+  - [ ] Assert `trusted-main-or-release`, `pr-same-repo`, `fork-pr`, `local-candidate`, `rerun-review`, and `approved-fallback` fixture contexts map to the expected final classification.
+  - [ ] Prove candidate PR/fork/local evidence cannot authorize NuGet publish, tag/changelog push, GitHub Release creation, or attestation upload.
 
-- [ ] T4. Resolve attestation, signing, and external dependency states (AC8-AC10, AC16)
+- [ ] T4. Resolve attestation, signing, and external dependency states (AC8-AC10, AC16, AC25-AC27)
   - [ ] Determine whether GitHub artifact attestations are supported in the repository context; if supported, identify the required pre-publish attestation and verification step.
   - [ ] If `ATTESTATION_UNSUPPORTED=true` remains the path, record the owner, approval evidence, expiry/revalidation trigger, and whether release notes must mention checksum/signature/SBOM provenance without attestations.
   - [ ] Classify timestamp-authority, NuGet, GitHub Release, SBOM metadata, and signing-certificate unavailability as fail-closed blockers or approved fallbacks.
+  - [ ] Create the approval matrix for NuGet publish, tag/changelog push, GitHub Release creation, attestation upload, attestation fallback, partial-publish recovery, and rerun after failed or partial release.
+  - [ ] Generate a release-owner decision output with `ready`, `blocked`, or `fallback-approved`, grouped reasons, approval identity, context class, and next action.
   - [ ] Run or document a redaction scan over generated release evidence.
 
 - [ ] T5. Update release-readiness artifacts (AC19, AC20)
@@ -111,6 +128,7 @@ python eng\release_evidence.py inventory --root . --expected eng\release-package
   - [ ] Keep Story 12.5 accessibility/stakeholder evidence and Story 12.3 provider behavior outside this story.
 
 - [ ] T6. Validate completion (AC16, AC21)
+  - [ ] Run required negative fixtures for missing package inventory, skipped/zero tests, unsigned or untimestamped packages, missing SBOM, checksum mismatch, unsealed manifest, untrusted contexts, recursive submodule commands, redaction leakage, and dry-run side-effect attempts.
   - [ ] Run status-artifact consistency.
   - [ ] Run `git diff --check`.
   - [ ] Run focused release governance tests if workflow/helper source changed.
@@ -130,6 +148,12 @@ python eng\release_evidence.py inventory --root . --expected eng\release-package
 | D6 | Evidence is hostile input. | Tool output, package metadata, markdown, and diagnostics can leak secrets or inject misleading workflow summaries unless escaped and bounded. |
 | D7 | Missing signing, timestamp, NuGet, GitHub Release, or attestation paths are release blockers unless explicitly accepted. | A dry run that cannot prove the external path must not imply release readiness. |
 | D8 | No recursive nested submodule commands are needed. | Release checkout must honor the root-level submodule policy already encoded in project rules. |
+| D9 | `ready` requires trusted context plus sealed machine evidence; branch name or workflow intent is insufficient. | The party-mode review identified false release-ready classification as the highest-risk architecture failure. |
+| D10 | Candidate PR, fork, and local evidence may inform blockers but cannot authorize publishing. | Untrusted or non-credentialed contexts cannot prove protected credentials, OIDC, NuGet, GitHub Release, or attestation behavior. |
+| D11 | Irreversible operations need adjacent guards and owner approval. | Guarding only in shared helper code leaves semantic-release or workflow steps able to drift into side effects. |
+| D12 | Approved fallback remains `fallback-approved`, not full `ready`. | Release owners must see the residual risk instead of receiving a visually equivalent success state. |
+| D13 | Negative fixtures are mandatory but bounded. | The story needs deterministic fail-closed proof without real package publishing, GitHub Release, or network-dependent attestation calls. |
+| D14 | Release-owner output is part of the contract. | The release owner needs a concise decision artifact, not only raw workflow evidence. |
 
 ---
 
@@ -149,6 +173,18 @@ No unrelated MCP, EventStore provider, accessibility, stakeholder acceptance, do
 
 ---
 
+## Implementation Enforcement Map
+
+| Surface | Enforcement responsibility |
+| --- | --- |
+| `.github/workflows/release.yml` | Classify trusted/candidate/fallback context; keep least-privilege permissions; keep root-level submodule checkout only; gate dry-run behavior; ensure side-effect steps depend on sealed `ready` plus owner approval. |
+| `.releaserc.json` | Ensure semantic-release prepare/publish behavior cannot push tags, changelog commits, GitHub Releases, or package assets from candidate evidence mode. |
+| `eng/release_evidence.py` | Validate inventory, test results, SBOM, signatures, timestamps, checksums, attestation/fallback state, manifest sealing, path normalization, redaction, and final classification. |
+| `eng/release-package-inventory.json` | Remain the authoritative package set and symbol/SBOM/signing expectation source; unexpected packable projects fail closed. |
+| Story evidence / release-owner notes | Present `ready`, `blocked`, or `fallback-approved`, grouped blocking reasons, approvals, context class, sanitized evidence pointers, and next owner action. |
+
+---
+
 ## Project Structure Notes
 
 - Release workflow lives in `.github/workflows/release.yml`; release orchestration is split between workflow steps and `.releaserc.json`.
@@ -164,6 +200,18 @@ No unrelated MCP, EventStore provider, accessibility, stakeholder acceptance, do
 - Start with static release graph review and `eng/release_evidence.py inventory`.
 - Exercise `checksums`, `prepare-manifest`, `seal-manifest`, `verify-manifest`, and `path-check` against controlled fixture artifacts if real package/sign/SBOM artifacts are unavailable.
 - Add focused tests or helper fixtures only if a helper defect is found. Do not broaden into a release-system rewrite.
+- Keep negative fixtures small and deterministic; do not invoke real NuGet publish, GitHub Release APIs, external signing services, or network-dependent attestation services in unit tests.
+- Required context fixtures: `trusted-main-or-release`, `pr-same-repo`, `fork-pr`, `local-candidate`, `rerun-review`, and `approved-fallback`, each with explicit expected classification.
+- Required failure fixtures: missing inventory package, skipped tests, zero tests, unsigned package, stale or missing timestamp, missing SBOM, checksum mismatch, unsealed manifest, recursive submodule command, path leakage, token-like leakage, hostile markdown/workflow-command output, and dry-run side-effect attempt.
+- Suggested validation commands, adjusted only if implementation changes the CLI contract:
+
+```powershell
+python eng\release_evidence.py inventory --root . --expected eng\release-package-inventory.json --output artifacts\release\story-12-4-package-inventory.json
+python eng\release_evidence.py path-check --root . --path artifacts\release\story-12-4-package-inventory.json
+python eng\release_evidence.py verify-manifest --manifest artifacts\release\story-12-4-manifest.json
+dotnet test --configuration Release
+```
+
 - Run workflow lint/static inspection when workflow edits occur.
 - Run `git diff --check` and status-artifact consistency before review.
 
@@ -191,6 +239,7 @@ No unrelated MCP, EventStore provider, accessibility, stakeholder acceptance, do
 | Package-count collapse evaluation if three consecutive release budget breaches occur. | Release owner after Story 12.4 evidence |
 | Real attestation implementation if approved fallback expires or GitHub support becomes available. | Release owner / CI governance follow-up |
 | Release dashboard that rolls Pact, mutation, accessibility, quarantine, and release evidence into one view. | Future release dashboard/process story |
+| Exact attestation fallback approving authority, evidence-retention location, release-budget blocking threshold, and partial-publish recovery policy. | Release owner / architecture decision before publish authorization |
 
 ---
 
@@ -228,14 +277,30 @@ GPT-5 Codex
 - 2026-05-13: Story created via `/bmad-create-story 12-4-trusted-release-evidence-dry-run` during recurring pre-dev hardening job.
 - 2026-05-13: Pre-creation audit parsed `sprint-status.yaml`, confirmed status-artifact consistency had no drift, found ready buffer count 3, and selected the first backlog story `12-4-trusted-release-evidence-dry-run`.
 - 2026-05-13: Starting release evidence audit identified current release workflow files `.github/workflows/release.yml`, `.releaserc.json`, helper `eng/release_evidence.py`, inventory `eng/release-package-inventory.json`, and expected packable package set `Cli`, `Contracts`, `Mcp`, `Schema`, `Shell`, and `Testing`.
+- 2026-05-13T21:27:32+02:00: `/bmad-party-mode 12-4-trusted-release-evidence-dry-run; review;` with Winston, Amelia, John, and Murat. All four reviewers recommended `needs-story-update` before development, focused on release context classification, owner approvals, adjacent side-effect guards, fallback visibility, deterministic negative fixtures, redaction, root-only submodule proof, and release-owner decision output.
 
 ### Completion Notes List
 
 - 2026-05-13: Created the Story 12.4 developer guide and marked it ready for development. Ready for party-mode review on a later recurring run.
+- 2026-05-13: Party-mode review findings applied inline. Added release context matrix requirements, release-ready derivation, owner approval matrix, side-effect contract, fallback classification, deterministic negative fixtures, implementation enforcement map, validation commands, and release-owner decision output. Final recommendation after applying low-risk updates: `ready-for-dev`.
+
+### Party-Mode Review Trace
+
+| Field | Value |
+| --- | --- |
+| ISO date and time | 2026-05-13T21:27:32+02:00 |
+| Selected story key | `12-4-trusted-release-evidence-dry-run` |
+| Command / skill invocation | `/bmad-party-mode 12-4-trusted-release-evidence-dry-run; review;` |
+| Participating BMAD agents | Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect) |
+| Findings summary | Initial consensus was `needs-story-update`: the story needed explicit release-context classification, owner approval boundaries, adjacent side-effect guards, fallback visibility, release-owner decision output, file-level enforcement map, deterministic negative fixtures, hostile redaction cases, and root-only submodule proof before development. |
+| Changes applied | Added AC22-AC29, Decisions D9-D14, implementation enforcement map, release classification and approval guidance in the cheat sheet, side-effect gating subtasks, classification/fallback/approval tasks, required negative fixtures, validation command examples, and release-owner output requirements. |
+| Findings deferred | Exact attestation fallback approving authority, evidence-retention location, release-budget blocking threshold, and partial-publish recovery policy remain release-owner / architecture decisions before publish authorization. |
+| Final recommendation | `ready-for-dev` |
 
 ### Change Log
 
 - 2026-05-13: Created Story 12.4 and marked ready-for-dev.
+- 2026-05-13: Party-mode review applied; hardened release classification, approval, side-effect, fallback, fixture, redaction, and owner-output guardrails.
 
 ### File List
 
