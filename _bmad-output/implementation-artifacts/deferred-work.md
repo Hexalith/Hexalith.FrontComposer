@@ -14,6 +14,20 @@ Backlog buckets:
 - **Story 11.6** — shell UX, accessibility, visual/localization/RTL, sample-domain, and customization-gradient follow-ups.
 - **Story 11.7** — EventStore reliability, realtime behavior, telemetry/exporter guidance, CI/release governance, and release-readiness blockers.
 
+## Release Certification Routing Status (2026-05-13)
+
+Epic 12 owns release-certification evidence alignment after Epic 11 story completion. It is tracked in `_bmad-output/planning-artifacts/epics/epic-12-release-certification-evidence-alignment.md` and was approved through `_bmad-output/planning-artifacts/sprint-change-proposal-2026-05-13.md`.
+
+Certification buckets:
+
+- **Story 12.1** — ledger marker parity and the Epic 11 top-level status decision.
+- **Story 12.2** — MCP/Story 11.5 row-state reconciliation and contract snapshot decisions.
+- **Story 12.3** — provider-backed pending-command status release gating.
+- **Story 12.4** — trusted release evidence dry-run validation.
+- **Story 12.5** — manual accessibility and stakeholder acceptance evidence.
+
+Historical `Reconciliation:` markers remain the row-level source of truth until Story 12.1 or Story 12.2 updates the detailed rows. Epic 12 does not silently close existing Story 11.x markers; it names the certification work needed to resolve them.
+
 ## Reconciliation Status (2026-05-11)
 
 Story 11.1 reconciled the historical ledger into row-scoped current markers. Each bullet item under a `## Deferred from:` heading now has a deterministic `Row: DW-####` marker plus exactly one current-state marker in the same bullet: `Owner: Story 11.2` through `Owner: Story 11.7`, `Resolved YYYY-MM-DD`, `Superseded by`, `Duplicate of`, `Non-action decision`, `Split parent`, or `Needs Product/Architecture decision`. Historical owner wording remains intact as audit text only; the `Reconciliation:` marker is the current owner/state.

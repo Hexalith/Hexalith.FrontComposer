@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-13 (Story 11.7 code review done: 16 patches applied — 3 decision-needed resolutions [sweep cap LRU-by-expiry + expired-skip, schema-mismatch test restructure to drive from real LoadPageEffects path, DW-0461 named owner + reopen trigger] and 13 patches across EventStoreQueryClient bounded-read budget cap / cache eviction safety / charset fallback log / cached payload size check / dead guard removal / ToArray double-alloc fix / validator floor+ceiling / CI governance regex / ETag injection header CR-LF assertion / ledger Reopen-trigger fields / Dev Agent Record AC35 fingerprint + AC40 idempotency + 13-row carry-forward acknowledgment. Story moved to done.)"
+last_updated: "2026-05-13 (Approved sprint change proposal applied: Epic 12 Release Certification and Evidence Alignment added as backlog; epic-11 remains in-progress pending ledger-marker and release-readiness decision.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -152,3 +152,13 @@ development_status:
   11-5-mcp-schema-negotiation-and-agent-contract-hardening: done
   11-6-shell-ux-accessibility-and-sample-coverage-follow-ups: done
   11-7-eventstore-reliability-and-ci-governance-follow-ups: done
+  epic-11-retrospective: done
+
+  # Epic 12: Release Certification and Evidence Alignment
+  epic-12: backlog
+  12-1-ledger-marker-parity-and-epic-status-decision: backlog
+  12-2-mcp-ledger-closure-and-contract-snapshot-decisions: backlog
+  12-3-eventstore-pending-command-provider-release-gate: backlog
+  12-4-trusted-release-evidence-dry-run: backlog
+  12-5-accessibility-and-stakeholder-acceptance-evidence-pack: backlog
+  epic-12-retrospective: optional

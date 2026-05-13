@@ -17,3 +17,4 @@
   - [Epic 9: Developer Tooling & Documentation](#epic-9-developer-tooling-documentation)
   - [Epic 10: Framework Quality & Adopter Confidence](#epic-10-framework-quality-adopter-confidence)
   - [Epic 11: Deferred Hardening & Release Readiness](#epic-11-deferred-hardening-release-readiness)
+  - [Epic 12: Release Certification & Evidence Alignment](#epic-12-release-certification-evidence-alignment)

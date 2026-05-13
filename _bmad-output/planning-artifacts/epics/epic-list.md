@@ -16,6 +16,7 @@
 - **v1-rc (feature-complete):** Epics 1-8 -- all surfaces (web, agent, customization) functional with auth
 - **v1 (ship):** Epics 1-10 -- full tooling, documentation, and quality gates
 - **v1 hardening / release readiness:** Epic 11 -- deferred review findings reconciled into owned backlog work before release certification
+- **v1 release certification:** Epic 12 -- ledger parity, provider-backed release gates, trusted release evidence, accessibility verification, and stakeholder acceptance aligned before v1 release
 
 ### Epic 1: Project Scaffolding & First Auto-Generated View
 Developer can scaffold a FrontComposer project, register a domain with minimal ceremony, and see an auto-generated DataGrid from [Projection]-annotated types running in an Aspire topology. Includes the W1 architecture phase: MSBuild spine (Directory.Build.props, Directory.Packages.props, deps.local.props), Contracts package with attributes, SourceTools generator stub, Counter sample domain, CI gates 1-3, semantic-release pipeline, and hot reload for domain attribute changes. Includes a Fluent UI v5 migration contingency story to handle potential breaking changes if v5 goes GA during development.
@@ -61,6 +62,10 @@ Framework provides test host/utilities for adopters, automated CI gates (accessi
 ### Epic 11: Deferred Hardening & Release Readiness
 Product, engineering, and quality stakeholders can close the deferred-work ledger through owned backlog stories instead of leaving release-critical hardening scattered across review notes. This epic consolidates deferred items from `_bmad-output/implementation-artifacts/deferred-work.md` into seven backlog buckets: ledger reconciliation, diagnostic governance, CLI/IDE hardening, drift/source-generator coverage, MCP/schema hardening, shell UX/accessibility/sample coverage, and EventStore/CI/release-governance follow-ups.
 **FRs covered:** Cross-cutting follow-up coverage for FR7, FR48, FR49-FR61, FR63-FR69, FR71-FR82, and release-readiness NFRs already mapped to Epics 5, 8, 9, and 10.
+
+### Epic 12: Release Certification & Evidence Alignment
+Release owners can certify v1 readiness from row-level ledger state, provider-backed runtime evidence, trusted release-context evidence, manual accessibility logs, and stakeholder acceptance rather than inferring readiness from completed story statuses. This epic converts the Epic 11 retrospective findings into a narrow certification track before v1 release readiness is claimed.
+**FRs covered:** Release-certification coverage for FR48, FR49-FR61, FR71-FR82, accessibility verification, EventStore/MCP release gates, signed release/SBOM evidence, and stakeholder acceptance evidence already required by the PRD and NFRs.
 
 ---
 
