@@ -194,3 +194,4 @@
 2026-05-12T07:04:03+02:00	none	-	none	ready buffer complete; all ready stories already reviewed and elicited
 2026-05-13T18:59:29+02:00	create-story	12-1-ledger-marker-parity-and-epic-status-decision	ok	created Story 12.1 ledger marker parity and epic status decision and marked ready-for-dev
 2026-05-13T19:29:37+02:00	create-story	12-2-mcp-ledger-closure-and-contract-snapshot-decisions	ok	created Story 12.2 MCP ledger closure and contract snapshot decisions and marked ready-for-dev
+2026-05-13T19:38:04+02:00	create-story	12-3-eventstore-pending-command-provider-release-gate	ok	created Story 12.3 EventStore pending-command provider release gate and marked ready-for-dev
