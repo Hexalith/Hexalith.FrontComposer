@@ -208,3 +208,4 @@
 2026-05-14T11:36:04+02:00	advanced-elicitation	12-4-trusted-release-evidence-dry-run	ok	advanced elicitation applied; added release-definition drift, post-seal identity, typed classification, concurrency, fallback invalidation, and partial-output guardrails
 2026-05-14T12:03:31+02:00	advanced-elicitation	12-5-accessibility-and-stakeholder-acceptance-evidence-pack	ok	advanced elicitation applied; added gate identity, stale evidence, auditable approvals, external evidence manifests, proxy sign-off, and machine-readable classification guardrails
 2026-05-14T12:56:43+02:00	none	-	none	no backlog story available; ready stories already have party-mode and advanced-elicitation traces
+2026-05-14T13:02:54+02:00	none	-	none	no backlog story available; ready stories already have party-mode and advanced-elicitation traces
