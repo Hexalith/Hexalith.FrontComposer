@@ -101,6 +101,12 @@ The final release classification is fail-closed:
 | AC27 | The pack references Story 10.2 or Story 11.6 evidence | The release classification is reviewed | The reference states whether the evidence is automated, representative, manual, blocked, accepted, or roadmap; no wording claims broad accessibility validation from representative evidence. |
 | AC28 | Stakeholder acceptance contains any constraint, blocker, or roadmap item | The sign-off is reviewed | Product, Quality/Test, Release Owner, and Accessibility/Stakeholder sign-offs are recorded separately with date, scope, evidence path, and open conditions. |
 | AC29 | A future automation or Playwright expansion is proposed during implementation | Scope is assessed | The expansion is split to a named follow-up unless it is required to verify changed executable behavior in this story. |
+| AC30 | A gate appears in more than one evidence table, register, or stakeholder note | The final release classification is prepared | Exactly one canonical gate status wins, duplicate or contradictory statuses are listed as blockers, and the evidence pack cannot claim `ready` or `ready-with-accepted-constraints` until the contradiction is resolved. |
+| AC31 | An accepted constraint or stakeholder approval references an external conversation, ticket, or artifact | The release owner reviews the evidence | The reference is repository-visible or otherwise auditable, names approver authority, date, scope, retention owner, and sanitized evidence pointer; private or stale references block the release classification. |
+| AC32 | The release branch, tag, commit, browser/AT version, UX baseline, or responsive tier changes after evidence is collected | The evidence pack is finalized | The affected gate is revalidated, explicitly accepted as stale with owner and trigger, or marked blocked; old evidence is not silently reused for a changed release candidate. |
+| AC33 | Evidence includes screenshots, recordings, exported logs, attachments, or links outside the repository | The redaction review runs | A bounded evidence manifest records artifact type, source, retention owner, checksum or immutable reference when available, sanitization result, and approved exceptions. |
+| AC34 | A stakeholder signs off through a delegate or proxy | The sign-off is recorded | Delegation authority, scope, expiration, and approving role are explicit; otherwise the sign-off is treated as missing. |
+| AC35 | The final classification is written in prose, markdown tables, or release notes | Validation runs | One machine-readable summary records the final enum, residual gates, accepted constraints, blockers, sign-off refs, and evidence pack version; conflicting prose cannot override it. |
 
 ---
 
@@ -119,6 +125,8 @@ The final release classification is fail-closed:
   - [ ] Preserve required Story 10.2 fields and add release-certification classification fields only where needed.
   - [ ] Add the Evidence Status Contract fields so missing checks cannot be misread as pass and every status can be audited back to AC/task IDs.
   - [ ] Add an Accepted Constraints Register, Post-v1 Roadmap Register, Stakeholder Acceptance section, Adopter Communication section, and Release Classification section.
+  - [ ] Assign stable gate IDs for every manual AT, device, broader accessibility, stakeholder, constraint, roadmap, and final-classification row so duplicates can be reconciled deterministically.
+  - [ ] Add an evidence manifest section for any screenshots, recordings, exported logs, repository-external links, or retained artifacts, including sanitization status and retention owner.
 
 - [ ] T3. Classify manual screen-reader and real-device evidence (AC3-AC8)
   - [ ] For each required screen-reader/browser pairing, record completed/blocked/accepted-constraint status.
@@ -126,6 +134,7 @@ The final release classification is fail-closed:
   - [ ] If a pairing is blocked or accepted, record release impact, owner, expiry/revalidation trigger, and reopen event.
   - [ ] Record tablet and phone fallback checks using the responsive tier commitments from the UX spec.
   - [ ] Reject any `completed` status that lacks dated manual evidence or tries to substitute automated axe/specimen evidence for manual AT/device proof.
+  - [ ] Bind each completed manual evidence row to release branch/tag/commit plus browser, OS, AT, responsive tier, and UX baseline versions; reclassify stale rows if any of those inputs change before release.
 
 - [ ] T4. Classify broader accessibility constraints (AC9-AC11, AC16, AC17)
   - [ ] Classify cross-AT, localization, RTL, zoom, forced-colors, and reduced-motion as v1 blocker, accepted v1 constraint, or post-v1 roadmap.
@@ -133,6 +142,8 @@ The final release classification is fail-closed:
   - [ ] If evidence reveals a release-blocking defect, record the blocker and split or fix only the narrow defect that is necessary for release honesty.
   - [ ] Ensure accepted constraints include owner, likelihood, impact, downstream consumer impact, adopter communication need, evidence, and trigger.
   - [ ] Ensure any post-v1 roadmap item has a named owner, story or roadmap reference, target release or non-planning rationale, release impact, and reopen event.
+  - [ ] Resolve duplicate or contradictory statuses across the gate matrix, accepted-constraint register, roadmap register, and stakeholder notes before writing the final classification.
+  - [ ] Treat stale, private, or unauditable accepted-constraint approval refs as blockers until a repository-visible or retained auditable reference is recorded.
 
 - [ ] T5. Capture stakeholder acceptance (AC12, AC13, AC20)
   - [ ] Record Product acceptance status, Quality/Test acceptance status, Release-owner acceptance status, and Accessibility/stakeholder acceptance status.
@@ -140,12 +151,15 @@ The final release classification is fail-closed:
   - [ ] Classify every open feedback item as blocking, accepted constraint, post-v1 roadmap, or non-action decision.
   - [ ] State the final release classification: `ready`, `blocked`, or `ready-with-accepted-constraints`.
   - [ ] Require separate Product, Quality/Test, Release Owner, and Accessibility/Stakeholder approvals when a blocker, accepted constraint, or roadmap item affects release classification.
+  - [ ] Record delegation authority, scope, and expiration when any stakeholder sign-off is provided by a proxy; reject proxy approval that cannot prove authority.
 
 - [ ] T6. Validate and record closure (AC14, AC18-AC20)
   - [ ] Run status-artifact consistency.
   - [ ] Run `git diff --check`.
   - [ ] Run or document a bounded redaction review over changed evidence artifacts for local absolute paths, secrets, cookies, tenant/user values, raw payloads, full DOM dumps, and unbounded logs.
   - [ ] Check that every status references an evidence artifact or approved exception and that no `ready`/`ready-with-accepted-constraints` classification is produced with missing required fields.
+  - [ ] Check that the final release summary has one machine-readable classification enum, evidence pack version, residual gates, blockers, accepted constraints, roadmap refs, and sign-off refs.
+  - [ ] Check that no prose, table row, or release note contradicts the machine-readable classification summary.
   - [ ] Run docs/evidence validation or focused Playwright/docs checks only if changed files require executable validation.
   - [ ] Update this story's Dev Agent Record with changed files, validation, blockers, accepted constraints, final classification, and residual gates.
 
@@ -169,6 +183,12 @@ The final release classification is fail-closed:
 | D12 | Post-v1 roadmap status is allowed only with a named owner and story/roadmap reference. | L10 requires story-specific ownership instead of vague future deferrals. |
 | D13 | Redaction review is part of the evidence contract. | Release evidence can leak sensitive data even when the implementation is correct. |
 | D14 | New automation belongs outside Story 12.5 unless executable behavior changes here. | Preserves L06/L07 budget and keeps this story focused on evidence alignment rather than broad test expansion. |
+| D15 | Gate IDs are stable and final status is single-source. | Duplicate manual, stakeholder, constraint, and roadmap rows otherwise let contradictory release claims survive review. |
+| D16 | Evidence freshness is bound to release candidate identity and environment versions. | Manual AT/device evidence can become stale when branch, tag, commit, browser, OS, AT, UX baseline, or responsive-tier assumptions change. |
+| D17 | Constraint approvals and stakeholder sign-offs must be auditable outside private chat. | Release readiness evidence has to survive turnover, audit, and future reruns without relying on memory. |
+| D18 | External evidence requires a manifest and retention owner. | Screenshots, recordings, logs, and external links are useful only if bounded, retained, sanitized, and traceable. |
+| D19 | Proxy sign-off is valid only with explicit delegated authority. | A delegated approval without scope or expiration can accidentally bypass the real Product, Quality, Release Owner, or Accessibility decision maker. |
+| D20 | The final classification must have one machine-readable summary. | Prose-only release decisions are easy to contradict and hard for later automation or release owners to verify. |
 
 ---
 
@@ -266,6 +286,18 @@ No unrelated Shell redesign, Fluent UI upgrade, broad localization/RTL implement
 - Findings deferred: Exact future AT/device matrix expansion, broad localization/RTL coverage, Shell focus-management redesign, additional Playwright automation, official signature medium, and release acceptance thresholds remain Product/Accessibility/Release Owner decisions or split follow-up work unless the Story 12.5 evidence pack reveals a release blocker.
 - Final recommendation: `ready-for-dev`
 
+## Advanced Elicitation
+
+- Date: 2026-05-14T12:03:31+02:00
+- Selected story key: `12-5-accessibility-and-stakeholder-acceptance-evidence-pack`
+- Command/skill invocation used: `/bmad-advanced-elicitation 12-5-accessibility-and-stakeholder-acceptance-evidence-pack`
+- Batch 1 methods: Pre-mortem Analysis; Failure Mode Analysis; Red Team vs Blue Team; Security Audit Personas; Self-Consistency Validation.
+- Reshuffled Batch 2 methods: Chaos Monkey Scenarios; Hindsight Reflection; Occam's Razor Application; Comparative Analysis Matrix; Architecture Decision Records.
+- Findings summary: The story was already strong on manual-evidence honesty, but the elicitation found remaining release-readiness traps: duplicated gate statuses could produce conflicting classifications, accepted-constraint approvals could point to private or stale evidence, manual AT/device evidence could become stale when the release candidate or environment changes, external screenshots/logs need retention and redaction manifesting, proxy stakeholder sign-off needs authority proof, and prose-only final classification is too easy to contradict.
+- Changes applied: Added AC30-AC35 for canonical gate status, auditable approval refs, release-candidate freshness, external evidence manifesting, proxy sign-off authority, and machine-readable final classification; tightened T2-T6 with stable gate IDs, evidence manifest, stale-evidence reclassification, duplicate-status reconciliation, approval auditability, delegation checks, final summary validation, and contradiction checks; added Decisions D15-D20 for gate identity, freshness, auditable sign-offs, external evidence retention, proxy authority, and machine-readable classification.
+- Findings deferred: Exact evidence-pack schema filename, release-owner approval medium, retention duration, checksum format, and any automation that reads the machine-readable summary remain implementation or Product/Release Owner decisions unless existing repository conventions already define them.
+- Final recommendation: `ready-for-dev`
+
 ---
 
 ## Dev Agent Record
@@ -280,16 +312,19 @@ GPT-5 Codex
 - 2026-05-13: Pre-creation audit parsed `sprint-status.yaml`, confirmed status-artifact consistency had no drift, found ready buffer count 4, and selected the first backlog story `12-5-accessibility-and-stakeholder-acceptance-evidence-pack`.
 - 2026-05-13: Starting evidence audit identified current manual evidence docs under `docs/accessibility-verification/`, automated specimen manifest `tests/e2e/specimens/frontcomposer-specimen-manifest.json`, Epic 12 Story 12.5 scope, Story 10.2 automated gate, Story 11.6 representative evidence, and Epic 11 retrospective gaps.
 - 2026-05-13T22:34:15+02:00: Party-mode review applied via `/bmad-party-mode 12-5-accessibility-and-stakeholder-acceptance-evidence-pack; review;` with Winston, Amelia, John, and Murat. Added fail-closed evidence status, manual completion, stakeholder approval, roadmap ownership, redaction, and automation-scope guardrails.
+- 2026-05-14T12:03:31+02:00: Advanced elicitation applied via `/bmad-advanced-elicitation 12-5-accessibility-and-stakeholder-acceptance-evidence-pack`. Added canonical gate identity, evidence freshness, approval auditability, external evidence manifest, proxy sign-off authority, and machine-readable final classification guardrails.
 
 ### Completion Notes List
 
 - 2026-05-13: Created the Story 12.5 developer guide and marked it ready for development. Ready for party-mode review on a later recurring run.
 - 2026-05-13: Party-mode review hardened the story and left it `ready-for-dev` for later advanced elicitation.
+- 2026-05-14: Advanced elicitation hardened the story and left it `ready-for-dev` for development.
 
 ### Change Log
 
 - 2026-05-13: Created Story 12.5 and marked ready-for-dev.
 - 2026-05-13: Applied party-mode review hardening for evidence status, fail-closed release classification, stakeholder approvals, redaction proof, and scope guardrails.
+- 2026-05-14: Applied advanced elicitation hardening for gate identity, stale evidence, auditable approvals, external evidence manifests, proxy sign-off authority, and machine-readable final classification.
 
 ### File List
 
