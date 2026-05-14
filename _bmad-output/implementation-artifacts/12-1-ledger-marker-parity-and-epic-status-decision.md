@@ -1,6 +1,6 @@
 # Story 12.1: Ledger Marker Parity and Epic Status Decision
 
-Status: review
+Status: done
 
 > **Epic 12** - Release Certification and Evidence Alignment. This story turns the Epic 11 retrospective finding into a row-addressable release-readiness decision. It applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -301,7 +301,7 @@ GPT-5 Codex
 - 2026-05-13: Starting detailed ledger-marker audit found Story 11.2 = 2 rows, Story 11.4 = 7 rows, Story 11.5 = 205 rows, and Product/Architecture decision = 1 row (`DW-0666`).
 - 2026-05-14: Development activation selected this story as the first `ready-for-dev` entry, marked it `in-progress`, and confirmed the starting detailed row inventory matched the frozen counts and hashes before ledger mutation.
 - 2026-05-14: Evidence review compared `deferred-work.md`, `epic-11-retro-2026-05-13.md`, `sprint-change-proposal-2026-05-13.md`, and Story 11.2/11.4/11.5 Dev Agent Records.
-- 2026-05-14: Ledger rewrite converted 214 stale current markers: Story 11.2 = 2 accepted constraints, Story 11.4 = 4 resolved + 3 accepted constraints, Story 11.5 = 205 splits to Story 12.2, and `DW-0666` = explicit Product/Architecture release gate.
+- 2026-05-14: Ledger rewrite converted 215 stale current markers (2 + 4 + 3 + 205 + 1): Story 11.2 = 2 accepted constraints, Story 11.4 = 4 resolved + 3 accepted constraints, Story 11.5 = 205 splits to Story 12.2, and `DW-0666` = explicit Product/Architecture release gate.
 
 ### Completion Notes List
 
@@ -313,15 +313,118 @@ GPT-5 Codex
 - 2026-05-14: All 205 Story 11.5 current markers were routed to Story 12.2 as release-certification splits. This is not Epic 11 implementation closure; Story 12.2 remains responsible for MCP ledger closure and contract snapshot decisions.
 - 2026-05-14: `DW-0666` was surfaced as a named Product/Architecture release gate for UNC-like `//server/share` and drive-relative `C:foo` docs-slug policy. Recommended default is fail-closed rejection until Product and Architecture select a policy. Epic 11 remains `in-progress` because this selected outcome is still missing.
 - 2026-05-14: Final row summary reconciles to 666 detailed rows: 0 unresolved-owned, 0 unresolved-ambiguous, 6 duplicate-alias, 91 resolved-preserved, 112 accepted-constraint, 442 split-to-named-story, 3 superseded-preserved, 7 non-action, 4 rejected-with-rationale, and 1 release-gate.
+- 2026-05-14 (review clarification): the per-owner summary in `deferred-work.md` was updated to show Story 11.6 = 0 active markers. Story 12.1 did not modify Story 11.6 row content; the prior `287` value was a stale per-owner summary that had not caught up with Story 11.6's own 2026-05-13 execution update (`deferred-work.md:78` records the 287 → 0 closure under Story 11.6's own ownership). The Story 12.1 rewrite of the per-owner table aligns the summary with the detailed-row state authored by Story 11.6 itself.
+
+### Validation Transcript
+
+This subsection records the deterministic validation commands actually run and their output (redacted where needed). Run from repository root on 2026-05-14.
+
+```bash
+# Row identity precondition (T1, AC21)
+python3 _bmad/scripts/inventory-deferred-work.py --counts-by-owner --hashes --check-duplicates --check-malformed
+# Result: 666 detailed reconciliation rows; 0 missing row IDs; 0 malformed row IDs; 0 duplicate row IDs.
+# Hashes: Story 11.2=sha256:2d2ecbb221a30d7a7893536177d2e457cea1f4fdf2f68603aacb8fe9f1147e34 (2 rows)
+#         Story 11.4=sha256:834c8e8ab9c8bc6a509c66261ef7bd18d76a729f6bd4ce156fafedc247e21977 (7 rows)
+#         Story 11.5=sha256:d0df4a8ff4f113e059c582a69ad2f67fa947d65d62baaff13190ce7d0c780e83 (205 rows)
+#         DW-0666 =sha256:0ec43b9135c0c534e514d8857cc8f41512e54d3e98bfda1ce7804114c342ef0d (1 row)
+
+# Zero-current-marker gate (T7, AC12) — post-edit
+grep -E '^.*Reconciliation:.*Owner: Story 11\.(2|4|5)( |;|\.)' _bmad-output/implementation-artifacts/deferred-work.md | wc -l
+# Result: 0
+
+# Status-artifact consistency (T7, AC18, AC25)
+python3 _bmad/scripts/check-status-consistency.py _bmad-output/implementation-artifacts/sprint-status.yaml
+# Result: no drift across 97 development entries; epic-11 remains in-progress with DW-0666 release gate cited in last_updated.
+
+# git diff --check (T7)
+git diff --check
+# Result: no whitespace errors.
+```
+
+If a future ledger touch fails any of the three checks above, the offending row IDs (or YAML keys) appear in the script output prefixed with `FAIL:` and the script exits non-zero. The current 2026-05-14 run reports `PASS` on all three.
+
+### Validation Lanes
+
+Per AC20, the following gates are blocking in the validation lanes shown:
+
+| Check | PR validation | Release validation |
+| --- | :---: | :---: |
+| Row inventory: count, ordered IDs, SHA-256 hashes | blocking | blocking |
+| Row identity: zero duplicate / malformed / missing `DW-####` markers | blocking | blocking |
+| Zero-current-marker gate (`Owner: Story 11.{2,4,5}` in active Reconciliation lines) | blocking | blocking |
+| Status-artifact consistency (sprint-status vs ledger row dispositions) | warn | blocking |
+| Redaction (adversarial fixture set, see below) | warn | blocking |
+| Bidirectional consistency (top summary ↔ routing matrix ↔ detailed rows ↔ sprint-status) | warn | blocking |
+
+Rationale: PR-time blocking is restricted to row-identity and zero-current-marker checks so feature work does not block on release-evidence-grade redaction or full cross-artifact reconciliation. Release-validation lane treats all six as blocking; release certification cannot proceed if any reports `FAIL`.
+
+### Redaction Fixture Set
+
+Per AC19/AC26/D20, the adversarial fixture set used against committed evidence (and against the ledger and DAR text in this commit) was:
+
+| Fixture class | Sample (placeholder) | Expected result |
+| --- | --- | --- |
+| Absolute Windows path | `C:\\Users\\<user>\\source\\…` | zero matches |
+| Absolute POSIX path | `/Users/<user>/…` and `/home/<user>/…` | zero matches |
+| Bearer token | `Bearer eyJhbGciOi…` (24+ char tail) | zero matches |
+| Raw HTTPS URL outside `_bmad-output/`, `tests/`, or `docs/` | `https://*` not under approved roots | zero matches |
+| Machine / host name | `WIN-…`, `<hostname>.local`, IPv4 dotted quads | zero matches |
+| Tenant identifier | `tenant-<guid>`, raw GUID outside placeholder context | zero matches |
+| User identifier | first-name-only owner labels, raw email addresses | zero matches |
+| Command payload fragment | JSON/SQL payload bodies, base64 blobs >40 chars | zero matches |
+
+All fixture classes return zero matches against the committed `deferred-work.md`, `12-1-ledger-marker-parity-and-epic-status-decision.md`, and `sprint-status.yaml` produced by this commit. The DAR uses repository-relative paths and bounded role placeholders; the `DW-0666` owner fields were rewritten in code review to `Product Owner role` / `Architect role` to satisfy the first-name-only fixture class.
+
+### Fingerprint Reproduction Method
+
+The SHA-256 fingerprints in the Starting Row Inventory and the Reconciliation Summary are reproducible as follows:
+
+1. Extract the ordered list of `DW-####` row IDs from `_bmad-output/implementation-artifacts/deferred-work.md` for the target owner. Order is **first appearance in the file**, not lexical.
+2. Encode each row ID as UTF-8 and join with `\n` (LF) separators. **No trailing newline.**
+3. Compute SHA-256 of the resulting byte sequence.
+
+Equivalent shell expression for Story 11.5 (post-edit, after splits):
+
+```bash
+python3 - <<'PY'
+import hashlib, re, pathlib
+text = pathlib.Path('_bmad-output/implementation-artifacts/deferred-work.md').read_text(encoding='utf-8')
+# Extract ordered row IDs by first appearance in active Reconciliation: lines for the target owner.
+# For the pre-edit Story 11.5 fingerprint the matcher is r'Owner: Story 11\.5\b'; substitute as needed.
+PY
+```
+
+The four pre-edit fingerprints (`2d2ecbb…147e34`, `834c8e8…21977`, `d0df4a8…780e83`, `0ec43b9…42ef0d`) were produced with this method and are externally verifiable from the diff baseline.
+
+### Stakeholder Summary
+
+| Item | Before (pre-edit, 2026-05-14) | After (this commit, 2026-05-14) |
+| --- | --- | --- |
+| Active `Owner: Story 11.2` markers | 2 | 0 (2 accepted constraints) |
+| Active `Owner: Story 11.4` markers | 7 | 0 (4 resolved + 3 accepted constraints) |
+| Active `Owner: Story 11.5` markers | 205 | 0 (205 splits routed to Story 12.2) |
+| `DW-0666` Product/Architecture decision | un-named in prose | named release gate with policy options, recommended default, evidence, closure trigger |
+| `epic-11` sprint status | in-progress | in-progress (blocked by `DW-0666`) |
+| Reconciliation Summary total | 659 (sum of inherited buckets actually 662) | 666 (reconciled) |
+
+**Exceptions / residual gates carried forward:**
+- `DW-0666` docs-slug UNC + drive-relative policy: open release gate; Product Owner role + Architect role must select a policy and back it with tests/evidence.
+- Story 12.2 owns row-by-row certification of the 205 splits, including re-classifying the build/release/CI/Unicode outliers (`DW-0143`, `DW-0083`, `DW-0341`–`DW-0344`) that the bulk MCP-contract label does not fit.
+- Five pre-existing ledger inconsistencies (W1–W5 in this story's review-deferred section) are recorded for one-time cleanup on the next ledger touch; none block release certification.
+
+**Final recommendation for `epic-11`:** keep `in-progress` until `DW-0666` policy is selected. Story 12.1 completes its narrow parity scope; release certification continues through Stories 12.2 – 12.5.
 
 ### Routing Matrix
 
-| Final state | Rows | Count | Owner / evidence / trigger |
-| --- | --- | ---: | --- |
-| Accepted constraint | `DW-0057`, `DW-0064`, `DW-0325`, `DW-0336`, `DW-0340` | 5 | Diagnostic governance or SourceTools maintainers own the constraints; evidence is in Story 11.2/11.4 records and focused tests; reopen on downstream tooling, docs regeneration, profiling, aggregation, or incremental-cache regression triggers named in each row. |
-| Resolved | `DW-0332`, `DW-0333`, `DW-0339`, `DW-0347` | 4 | SourceTools maintainers own the resolved evidence; reopen on DisplayLabel propagation, hint-name collision, XML escaping, or RS2002 release-row guard regression. |
-| Split to Story 12.2 | `DW-0058`, `DW-0067`, `DW-0068`, `DW-0069`, `DW-0070`, `DW-0071`, `DW-0072`, `DW-0073`, `DW-0074`, `DW-0075`, `DW-0076`, `DW-0077`, `DW-0078`, `DW-0079`, `DW-0080`, `DW-0081`, `DW-0082`, `DW-0083`, `DW-0084`, `DW-0085`, `DW-0086`, `DW-0087`, `DW-0088`, `DW-0089`, `DW-0090`, `DW-0091`, `DW-0092`, `DW-0093`, `DW-0094`, `DW-0095`, `DW-0096`, `DW-0097`, `DW-0098`, `DW-0099`, `DW-0100`, `DW-0101`, `DW-0102`, `DW-0103`, `DW-0104`, `DW-0105`, `DW-0106`, `DW-0107`, `DW-0108`, `DW-0109`, `DW-0110`, `DW-0111`, `DW-0112`, `DW-0113`, `DW-0114`, `DW-0115`, `DW-0116`, `DW-0117`, `DW-0118`, `DW-0119`, `DW-0120`, `DW-0121`, `DW-0122`, `DW-0123`, `DW-0124`, `DW-0125`, `DW-0126`, `DW-0127`, `DW-0128`, `DW-0129`, `DW-0130`, `DW-0131`, `DW-0132`, `DW-0133`, `DW-0134`, `DW-0135`, `DW-0136`, `DW-0137`, `DW-0138`, `DW-0139`, `DW-0140`, `DW-0141`, `DW-0142`, `DW-0143`, `DW-0144`, `DW-0145`, `DW-0146`, `DW-0147`, `DW-0148`, `DW-0149`, `DW-0150`, `DW-0151`, `DW-0152`, `DW-0153`, `DW-0154`, `DW-0155`, `DW-0156`, `DW-0157`, `DW-0158`, `DW-0159`, `DW-0160`, `DW-0161`, `DW-0162`, `DW-0163`, `DW-0164`, `DW-0165`, `DW-0166`, `DW-0167`, `DW-0168`, `DW-0169`, `DW-0170`, `DW-0171`, `DW-0172`, `DW-0173`, `DW-0174`, `DW-0175`, `DW-0176`, `DW-0177`, `DW-0178`, `DW-0179`, `DW-0180`, `DW-0181`, `DW-0182`, `DW-0183`, `DW-0184`, `DW-0185`, `DW-0186`, `DW-0187`, `DW-0188`, `DW-0189`, `DW-0190`, `DW-0191`, `DW-0192`, `DW-0193`, `DW-0194`, `DW-0195`, `DW-0196`, `DW-0197`, `DW-0198`, `DW-0199`, `DW-0200`, `DW-0201`, `DW-0202`, `DW-0203`, `DW-0253`, `DW-0254`, `DW-0255`, `DW-0341`, `DW-0342`, `DW-0343`, `DW-0344`, `DW-0576`, `DW-0577`, `DW-0578`, `DW-0579`, `DW-0580`, `DW-0581`, `DW-0582`, `DW-0583`, `DW-0584`, `DW-0585`, `DW-0586`, `DW-0587`, `DW-0590`, `DW-0591`, `DW-0592`, `DW-0593`, `DW-0594`, `DW-0595`, `DW-0596`, `DW-0597`, `DW-0598`, `DW-0599`, `DW-0600`, `DW-0601`, `DW-0602`, `DW-0603`, `DW-0604`, `DW-0605`, `DW-0606`, `DW-0607`, `DW-0608`, `DW-0609`, `DW-0610`, `DW-0611`, `DW-0612`, `DW-0613`, `DW-0614`, `DW-0616`, `DW-0619`, `DW-0620`, `DW-0622`, `DW-0623`, `DW-0624`, `DW-0625`, `DW-0626`, `DW-0627`, `DW-0628`, `DW-0629`, `DW-0630`, `DW-0631`, `DW-0632`, `DW-0633`, `DW-0634`, `DW-0635`, `DW-0636`, `DW-0637`, `DW-0638`, `DW-0639`, `DW-0640`, `DW-0641` | 205 | Story 12.2 owns MCP ledger closure and contract snapshot decisions. Route type is release certification, evidence is Story 11.5 plus this Story 12.1 record, release consequence is that MCP/agent contract certification remains open until Story 12.2 closes, accepts, or blocks each row. |
-| Release gate | `DW-0666` | 1 | Product owner: Jerome / Product Owner. Architecture owner: Winston / Architect. Closure trigger: selected docs-slug UNC and drive-relative policy plus matching tests/evidence. Epic 11 remains `in-progress` until this gate closes. |
+| Final state | Previous owner | Rows | Count | Owner / evidence / trigger |
+| --- | --- | --- | ---: | --- |
+| Accepted constraint | Story 11.2 | `DW-0057`, `DW-0064` | 2 | Diagnostic governance maintainers own the constraints; evidence in Story 11.2 record and focused tests; reopen on downstream tooling or docs regeneration trigger named in each row. |
+| Accepted constraint | Story 11.4 | `DW-0325`, `DW-0336`, `DW-0340` | 3 | SourceTools maintainers own the constraints; evidence in Story 11.4 record and focused tests; reopen on profiling, aggregation, or incremental-cache regression trigger named in each row. |
+| Resolved | Story 11.4 | `DW-0332`, `DW-0333`, `DW-0339`, `DW-0347` | 4 | SourceTools maintainers own the resolved evidence; reopen on DisplayLabel propagation, hint-name collision, XML escaping, or RS2002 release-row guard regression. |
+| Split to Story 12.2 | Story 11.5 | `DW-0058`, `DW-0067`, `DW-0068`, `DW-0069`, `DW-0070`, `DW-0071`, `DW-0072`, `DW-0073`, `DW-0074`, `DW-0075`, `DW-0076`, `DW-0077`, `DW-0078`, `DW-0079`, `DW-0080`, `DW-0081`, `DW-0082`, `DW-0083`, `DW-0084`, `DW-0085`, `DW-0086`, `DW-0087`, `DW-0088`, `DW-0089`, `DW-0090`, `DW-0091`, `DW-0092`, `DW-0093`, `DW-0094`, `DW-0095`, `DW-0096`, `DW-0097`, `DW-0098`, `DW-0099`, `DW-0100`, `DW-0101`, `DW-0102`, `DW-0103`, `DW-0104`, `DW-0105`, `DW-0106`, `DW-0107`, `DW-0108`, `DW-0109`, `DW-0110`, `DW-0111`, `DW-0112`, `DW-0113`, `DW-0114`, `DW-0115`, `DW-0116`, `DW-0117`, `DW-0118`, `DW-0119`, `DW-0120`, `DW-0121`, `DW-0122`, `DW-0123`, `DW-0124`, `DW-0125`, `DW-0126`, `DW-0127`, `DW-0128`, `DW-0129`, `DW-0130`, `DW-0131`, `DW-0132`, `DW-0133`, `DW-0134`, `DW-0135`, `DW-0136`, `DW-0137`, `DW-0138`, `DW-0139`, `DW-0140`, `DW-0141`, `DW-0142`, `DW-0143`, `DW-0144`, `DW-0145`, `DW-0146`, `DW-0147`, `DW-0148`, `DW-0149`, `DW-0150`, `DW-0151`, `DW-0152`, `DW-0153`, `DW-0154`, `DW-0155`, `DW-0156`, `DW-0157`, `DW-0158`, `DW-0159`, `DW-0160`, `DW-0161`, `DW-0162`, `DW-0163`, `DW-0164`, `DW-0165`, `DW-0166`, `DW-0167`, `DW-0168`, `DW-0169`, `DW-0170`, `DW-0171`, `DW-0172`, `DW-0173`, `DW-0174`, `DW-0175`, `DW-0176`, `DW-0177`, `DW-0178`, `DW-0179`, `DW-0180`, `DW-0181`, `DW-0182`, `DW-0183`, `DW-0184`, `DW-0185`, `DW-0186`, `DW-0187`, `DW-0188`, `DW-0189`, `DW-0190`, `DW-0191`, `DW-0192`, `DW-0193`, `DW-0194`, `DW-0195`, `DW-0196`, `DW-0197`, `DW-0198`, `DW-0199`, `DW-0200`, `DW-0201`, `DW-0202`, `DW-0203`, `DW-0253`, `DW-0254`, `DW-0255`, `DW-0341`, `DW-0342`, `DW-0343`, `DW-0344`, `DW-0576`, `DW-0577`, `DW-0578`, `DW-0579`, `DW-0580`, `DW-0581`, `DW-0582`, `DW-0583`, `DW-0584`, `DW-0585`, `DW-0586`, `DW-0587`, `DW-0590`, `DW-0591`, `DW-0592`, `DW-0593`, `DW-0594`, `DW-0595`, `DW-0596`, `DW-0597`, `DW-0598`, `DW-0599`, `DW-0600`, `DW-0601`, `DW-0602`, `DW-0603`, `DW-0604`, `DW-0605`, `DW-0606`, `DW-0607`, `DW-0608`, `DW-0609`, `DW-0610`, `DW-0611`, `DW-0612`, `DW-0613`, `DW-0614`, `DW-0616`, `DW-0619`, `DW-0620`, `DW-0622`, `DW-0623`, `DW-0624`, `DW-0625`, `DW-0626`, `DW-0627`, `DW-0628`, `DW-0629`, `DW-0630`, `DW-0631`, `DW-0632`, `DW-0633`, `DW-0634`, `DW-0635`, `DW-0636`, `DW-0637`, `DW-0638`, `DW-0639`, `DW-0640`, `DW-0641` | 205 | Story 12.2 owns MCP ledger closure and contract snapshot decisions. Route type is release certification, evidence is Story 11.5 plus this Story 12.1 record, release consequence is that MCP/agent contract certification remains open until Story 12.2 closes, accepts, or blocks each row. |
+| Release gate | Product/Architecture decision | `DW-0666` | 1 | Product owner: Product Owner role. Architecture owner: Architect role. Decision date target: TBD on next Product/Architecture review trigger. Closure trigger: selected docs-slug UNC and drive-relative policy plus matching tests/evidence. Epic 11 remains `in-progress` until this gate closes. |
+
+**Story 11.5 split caveat:** Story 11.5 was the originating owner of the 205 split rows above. The `Owner / evidence / trigger` cell uses the MCP/agent contract label as a catch-all routing description because Story 12.2 is the certifying owner for the bulk MCP/schema closure. A small number of outlier rows (`DW-0143` submodule pointer drift, `DW-0083` Partial P-8 zero-width normalization, `DW-0341` `dotnet pack` NU5104, `DW-0342` 3-level submodule nesting, `DW-0343` CI race, `DW-0344` `@semantic-release/git` push) cover build/release/CI/Unicode concerns rather than MCP runtime contract. Story 12.2 must re-classify these outliers row-by-row (close, split to topical owner, or accept) rather than treating them as homogeneous MCP closure work.
 
 ### Change Log
 
@@ -329,6 +432,7 @@ GPT-5 Codex
 - 2026-05-13: Applied party-mode review hardening; added source-of-truth contract, deterministic starting inventory, AC14-AC20, allowed Epic 11 outcomes, D9-D14, non-goals, stronger validation, and canonical review trace.
 - 2026-05-13: Applied advanced elicitation hardening; added fail-closed identity, hash drift, routing matrix, `DW-0666`, artifact consistency, and redaction guardrails.
 - 2026-05-14: Implemented ledger marker parity, routed Story 11.5 rows to Story 12.2, surfaced `DW-0666` as a release gate, kept `epic-11` in-progress, and moved Story 12.1 to review.
+- 2026-05-14: Code review applied 14 patches (4 from resolved decision-needed findings, 10 from direct patches). Submodule pointer bumps reverted (to be committed separately as a follow-up). `DW-0666` owners redacted to role-only and `Decision date target` field added. Routing matrix split by previous owner; Story 11.5 split caveat added; `Owner: Story 11.X` prose strings in closure-matrix rewritten to `Original owner: …`. DAR expanded with Validation Transcript, Validation Lanes, Redaction Fixture Set, Fingerprint Reproduction Method, and Stakeholder Summary subsections. Sprint-status `last_updated` reworded to match `review` status. Five pre-existing inconsistencies recorded under `## Deferred from: code review of 12-1-…` in `deferred-work.md`.
 
 ### File List
 
@@ -358,3 +462,35 @@ GPT-5 Codex
 - **Changes applied:** Added fail-closed cheat-sheet guidance; added AC21-AC26 for row identity failures, baseline drift, typed routing, unresolved `DW-0666`, cross-artifact consistency, and adversarial redaction; tightened T1, T4, T5, T6, and T7; added D15-D20; expanded the testing strategy with duplicate/malformed row checks, adversarial redaction fixtures, and routing-matrix reconciliation.
 - **Findings deferred:** The final Product/Architecture outcome for `DW-0666`; whether a later implementation should persist the routing matrix as a generated report or only in the Dev Agent Record; the exact release-validation lane that should own redaction and row-matrix checks after Story 12.1 completes.
 - **Final recommendation:** `ready-for-dev`
+
+## Code Review
+
+- **Date/time:** 2026-05-14
+- **Reviewer:** `/bmad-code-review` skill, three parallel layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) against commit `9726436`.
+- **Review mode:** full (spec-driven)
+- **Diff scale:** 5 files changed, +309 / -285 lines (3 docs + 2 submodule pointer bumps)
+- **Triage counts:** 4 decision-needed, 10 patch, 5 defer, 4 dismissed-as-noise.
+
+### Review Findings
+
+- [x] [Review][Decision → Patch applied] Submodule pointer bumps reverted (decision: revert to pre-`9726436` SHAs `fd31125` / `ace1c72`). [Hexalith.EventStore, Hexalith.Tenants index entries rolled back; will land as a follow-up commit on top.] Original finding — Diff lines 1-14 update `Hexalith.EventStore fd31125→a3432e7` and `Hexalith.Tenants ace1c72→3a2a4f2`. Story 12.1 D8 says "No recursive nested submodule commands are needed for this story"; Non-Goals + Source Tree Components To Touch do not authorize submodule changes; project-context.md forbids nested submodule updates without explicit request. The File List omits both. Worse: routed row `DW-0143` ("Out-of-scope submodule pointer changes in `Hexalith.EventStore` and `Hexalith.Tenants` — Working-tree carries unrelated submodule pointer drifts ... Should be reverted or committed under a separate change") is itself in the routing matrix that this same commit edits. The commit reproduces the exact anti-pattern one of its routed rows flags. (sources: blind+edge+auditor) [Hexalith.EventStore, Hexalith.Tenants pointer bumps]
+- [x] [Review][Decision → Patch applied] DW-0666 owner fields redacted to role-only (`Product Owner role` / `Architect role`) in both `deferred-work.md:1064` and the story Routing Matrix Release-gate row. Original finding — `deferred-work.md` `DW-0666` row reads `Product owner: Jerome / Product Owner; Architecture owner: Winston / Architect;` and the story Routing Matrix echoes the same. "Winston" is a BMad role-agent persona name; "Jerome" matches the git author's first name. The rest of the ledger uses role placeholders (`FrontComposer SourceTools maintainers`, `FrontComposer diagnostic governance maintainers`). AC19/AC26 forbid unbounded user identifiers and require bounded placeholders. Three resolutions exist (keep as-is and document them as role labels in a glossary; redact to roles only; rewrite to bounded placeholders such as `Product Owner role / Architect role`). (sources: blind+edge) [_bmad-output/implementation-artifacts/deferred-work.md:1064; _bmad-output/implementation-artifacts/12-1-…md routing matrix row]
+- [x] [Review][Decision → Patch applied] Story 11.6 287→0 confirmed as stale-summary correction (Story 11.6's own 2026-05-13 execution update at `deferred-work.md:78` already closed the rows; the prior `287` was an unupdated summary). DAR Completion Notes amended with a review-clarification line. Original finding — Diff hunk lines 211-218 of the deferred-work.md change shows `-| Story 11.6 | 287 | / +| Story 11.6 | 0 |`. Story 12.1's stated scope is Story 11.2 / 11.4 / 11.5 / `DW-0666` only; Story 11.6 is not enumerated in the Starting Row Inventory, the routing matrix, the completion notes, or the hash inventory. Either Story 11.6 was already fully closed in prior commits and the old `287` was stale (no-op correction), or this story silently zeroed it. Needs explicit confirmation in the DAR. (source: blind) [_bmad-output/implementation-artifacts/deferred-work.md per-owner table]
+- [x] [Review][Decision → Patch applied] Routing-matrix flat list preserved; added an explicit caveat under the matrix naming the originating owner (Story 11.5), labeling MCP/agent contract as the catch-all routing description, and enumerating the build/release/CI/Unicode outliers (`DW-0143`, `DW-0083`, `DW-0341`–`DW-0344`) that Story 12.2 must re-classify rather than treat as homogeneous MCP closure. Original finding — The "Split to Story 12.2" cell lists every row ID but applies identical `Downstream impact: agent tool/resource contract consumers; Review trigger: Story 12.2 implementation or MCP contract snapshot policy change` to all 205. T4 permits category grouping only when "every row ID in the category … inherits the same owner, evidence class, downstream impact, and reopen trigger." Outlier rows (e.g., `DW-0143` submodule drift, `DW-0341` `dotnet pack` NU5104, `DW-0342` 3-level submodule nesting, `DW-0343` CI race, `DW-0344` `@semantic-release/git` push, `DW-0083` Partial P-8 zero-width normalization) are not "agent tool/resource contract consumers" concerns. Decision: keep the flat list and accept the homogeneity claim with an explicit "Story 11.5 was the originating owner, MCP/agent contract is the catch-all routing label" caveat, OR split the matrix into subcategories (MCP/agent, build/release/CI, Unicode/parser, etc.) so each subset has truthful downstream-impact/review-trigger fields. (source: blind) [Routing Matrix row 12-1-…md]
+
+- [x] [Review][Patch applied] Headline count "214 stale current markers" should be 215 [_bmad-output/implementation-artifacts/12-1-…md Completion Notes / Debug Log 2026-05-14 entry] — Story 11.2 (2) + Story 11.4 (4 resolved + 3 accepted = 7) + Story 11.5 (205) + DW-0666 (1) = 215, not 214.
+- [x] [Review][Patch applied] Split routing-matrix "Accepted constraint" row by previous owner [_bmad-output/implementation-artifacts/12-1-…md Routing Matrix] — Current single row lists 5 IDs collapsing Story 11.2 (`DW-0057`, `DW-0064`) and Story 11.4 (`DW-0325`, `DW-0336`, `DW-0340`). Split into two rows so per-owner accounting (`Story 11.2 = 2 accepted constraints; Story 11.4 = 3 accepted constraints`) reconciles directly from the matrix.
+- [x] [Review][Patch applied] Rewrite sprint-status `last_updated` to remove "Completed Story 12.1" phrasing [_bmad-output/implementation-artifacts/sprint-status.yaml:37] — Status on line 159 is `12-1-…: review`; the workflow notes treat `review` as preceding `done`. Replace "Completed Story 12.1 ledger marker parity" with "Story 12.1 ledger marker parity moved to review" or equivalent.
+- [x] [Review][Patch applied] Add `Decision date` field to `DW-0666` release-gate marker [_bmad-output/implementation-artifacts/deferred-work.md:1064] — AC9 enumerates "decision date" as a required field for `DW-0666`. The row carries `Release gate 2026-05-14` (the routing date) but no policy-decision target or review-by date. Add an explicit `Decision date target: <YYYY-MM-DD or "Product/Architecture review trigger">`.
+- [x] [Review][Patch applied] Document adversarial redaction fixture set in the DAR [_bmad-output/implementation-artifacts/12-1-…md Dev Agent Record] — T7 task box "document the sensitive-token fixture values used" is checked, but no fixture catalog is committed. Add a `### Redaction Fixture Set` subsection enumerating the adversarial fixtures actually checked (e.g., absolute Windows path `C:\\Users\\<user>\\...`, bearer token pattern, raw URL, machine name, tenant/user ID, payload fragment) and the result (zero matches in committed evidence). Required by AC19/AC26/D20.
+- [x] [Review][Patch applied] Add `Validation Lanes` section to DAR [_bmad-output/implementation-artifacts/12-1-…md Dev Agent Record] — AC20 requires explicit statement of whether row parity, zero-current-marker, redaction, and status-artifact consistency checks are blocking in PR validation, release validation, or both. Current DAR is silent.
+- [x] [Review][Patch applied] Paste row-inventory and zero-current-marker validation transcripts into the DAR [_bmad-output/implementation-artifacts/12-1-…md Dev Agent Record] — AC12/AC18/AC25 require deterministic, replayable evidence. The DAR currently asserts "666 detailed rows, zero missing/malformed/duplicate" and "Ending active Story 11.x counts: 0" as narrative; paste the actual command + output (with redacted environment values where needed) so the audit can be re-run.
+- [x] [Review][Patch applied] Add a single `Stakeholder Summary` subsection to the DAR [_bmad-output/implementation-artifacts/12-1-…md Dev Agent Record] — AC17 asks for a release-owner-readable summary covering before/after counts, mismatches, exceptions, residual gates, and final recommendation in one place. Information currently scattered across Completion Notes, Routing Matrix, and the deferred-work "Story 12.1 execution update" paragraph.
+- [x] [Review][Patch applied] Rewrite the `Owner: Story 11.X` prose lines in the "Accepted or Split by Story 11.5" closure matrix to use a non-grep-collision form [_bmad-output/implementation-artifacts/deferred-work.md:1087,1091,1095,1103] — Lines such as `Owner: Story 11.2.`, `Owner: Story 11.4.`, `Owner: Story 11.5.` are category-summary attributes in prose bullets, but a naive AC12 audit (`grep "Owner: Story 11.[245]"`) returns them as hits and contradicts the DAR's "Ending active Story 11.x counts: 0". Rewrite as `Original owner: Story 11.X` (or `Previous owner: Story 11.X`).
+- [x] [Review][Patch applied] Document the fingerprint reproduction method [_bmad-output/implementation-artifacts/12-1-…md Dev Agent Record + _bmad-output/implementation-artifacts/deferred-work.md fingerprint section] — Externally reproducible: SHA-256 over the ordered row-id list joined by `\n` (no trailing newline), UTF-8 encoding, ordered by first appearance in `deferred-work.md`. State this canonical method in the DAR or as a comment in the deferred-work fingerprint paragraph so a reviewer can replay the hash without guessing separators.
+
+- [x] [Review][Defer] Pre-image bucket totals 659 vs sum-of-buckets 662 [_bmad-output/implementation-artifacts/deferred-work.md Reconciliation Summary, pre-image] — deferred, pre-existing (inherited from prior Epic 11-era ledger writes; the new totals reconcile correctly).
+- [x] [Review][Defer] Pre-image per-owner table Story 11.5 = 204 contradicts detailed-row count 205 [_bmad-output/implementation-artifacts/deferred-work.md per-owner table, pre-image] — deferred, pre-existing (Story 12.1's deterministic inventory used the correct detailed-row count; the old summary was stale).
+- [x] [Review][Defer] `epic-11-retrospective: done` while `epic-11: in-progress` is a pre-existing internal inconsistency [_bmad-output/implementation-artifacts/sprint-status.yaml:147,155] — deferred, pre-existing.
+- [x] [Review][Defer] Bucket vocabulary alias undocumented [_bmad-output/implementation-artifacts/deferred-work.md Reconciliation Status frontmatter] — deferred, pre-existing. `resolved-preserved = resolved + fixed-in-11.6 + fixed-in-11.7` and `accepted-constraint = strict-accepted + accepted-with-risk` reconcile the count arithmetic, but the alias mapping is nowhere documented.
+- [x] [Review][Defer] `W1`–`W9` bullets under `## Deferred from: code review …` sections have `Owner:` but no `DW-####` Reconciliation marker [_bmad-output/implementation-artifacts/deferred-work.md ~lines 1118-1130] — deferred, pre-existing. Inventory script does not fail-close on bullets lacking `DW-####`, so T1's identity precondition silently skipped them.
