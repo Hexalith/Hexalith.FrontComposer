@@ -1,6 +1,6 @@
 # Story 12.3: EventStore Pending-Command Provider Release Gate
 
-Status: review
+Status: done
 
 > **Epic 12** - Release Certification and Evidence Alignment. This story converts the remaining pending-command provider split into a release decision. It applies lessons **L03**, **L06**, **L07**, **L08**, and **L10**.
 
@@ -115,15 +115,15 @@ Start here: T1 snapshot pending-status ledger rows -> T2 decide implement vs acc
   - [x] Add hostile metadata fixtures for absolute/cross-host URLs, redirects, CRLF/control-character validators, oversized retry hints, non-monotonic terminal timestamps/versions, and raw status-resource fragments.
   - [x] Define how DI evidence proves the real configured provider path is active and the null provider remains the default when configuration is absent or invalid.
 
-- [x] T4. Implement provider-backed status if chosen (AC6-AC13, AC15, AC20-AC22, AC25-AC27)
-  - [x] Implement a concrete EventStore `IPendingCommandStatusQuery` provider in the Shell EventStore boundary or extraction-ready EventStore seam.
-  - [x] Map pending, confirmed, idempotent confirmed, rejected, and needs-review outcomes to existing `PendingCommandOutcomeObservation` and resolver paths.
-  - [x] Add ETag/304, retry-after, 429/503, malformed payload, duplicate terminal, stale terminal, and provider-exception handling.
-  - [x] Prove terminal dominance, duplicate idempotency, stale epoch suppression, 304 no-change behavior, and non-terminal 429/503 retry budget behavior.
-  - [x] Treat provider exceptions as degraded/non-ready evidence unless explicitly classified; do not swallow them as readiness and do not convert them into terminal success.
-  - [x] Add fake-clock or injected-scheduler tests for retry/backoff/budget behavior where time is involved.
-  - [x] Prove cancellation wins over retry-after/backoff scheduling and does not leave cached poisoned validators or terminal observations behind.
-  - [x] Prove provider-backed tests use the production DI/registration path and fail if only `NullPendingCommandStatusQuery` or a hand-wired fake is present.
+- [ ] T4. Implement provider-backed status if chosen (AC6-AC13, AC15, AC20-AC22, AC25-AC27) — N/A: accepted-constraint path chosen; provider not implemented.
+  - [ ] Implement a concrete EventStore `IPendingCommandStatusQuery` provider in the Shell EventStore boundary or extraction-ready EventStore seam. (N/A — accepted-constraint path)
+  - [ ] Map pending, confirmed, idempotent confirmed, rejected, and needs-review outcomes to existing `PendingCommandOutcomeObservation` and resolver paths. (N/A — accepted-constraint path)
+  - [ ] Add ETag/304, retry-after, 429/503, malformed payload, duplicate terminal, stale terminal, and provider-exception handling. (N/A — accepted-constraint path)
+  - [ ] Prove terminal dominance, duplicate idempotency, stale epoch suppression, 304 no-change behavior, and non-terminal 429/503 retry budget behavior. (N/A — accepted-constraint path)
+  - [ ] Treat provider exceptions as degraded/non-ready evidence unless explicitly classified; do not swallow them as readiness and do not convert them into terminal success. (N/A — accepted-constraint path)
+  - [ ] Add fake-clock or injected-scheduler tests for retry/backoff/budget behavior where time is involved. (N/A — accepted-constraint path)
+  - [ ] Prove cancellation wins over retry-after/backoff scheduling and does not leave cached poisoned validators or terminal observations behind. (N/A — accepted-constraint path)
+  - [ ] Prove provider-backed tests use the production DI/registration path and fail if only `NullPendingCommandStatusQuery` or a hand-wired fake is present. (N/A — accepted-constraint path)
 
 - [x] T5. Update release evidence and docs (AC14, AC16, AC18, AC22, AC23, AC28, AC29)
   - [x] Update `deferred-work.md` rows with final state: implemented, accepted constraint, or release blocker.
@@ -148,7 +148,7 @@ dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shel
 
   - [x] Run a repository evidence redaction scan over changed markdown, logs, snapshots, and provider test artifacts.
   - [x] Run the row inventory/hash check again and record any drift disposition before final ledger update.
-  - [x] Run a production-DI provider replacement proof or record the missing proof as a release blocker/accepted constraint.
+  - [x] Recorded the missing production-DI provider replacement proof as accepted constraint `PENDING-STATUS-NULL-PROVIDER-V1`; no proof produced because no provider was implemented.
   - [x] Run YAML parse and status-artifact consistency.
   - [x] Run `git diff --check`.
   - [x] Run the main-lane filter if shared contracts, source-generation, registration, or EventStore HTTP behavior changed broadly.
@@ -359,6 +359,9 @@ Inventory drift: none. Duplicate row IDs: none. Missing target rows: none.
 | Final outcome | Named accepted v1 constraint |
 | Constraint name | `PENDING-STATUS-NULL-PROVIDER-V1` |
 | Evidence found | `NullPendingCommandStatusQuery` is the registered default; EventStore registration does not replace it; no stable status endpoint contract exists in repository evidence. |
+| Likelihood | low — accepted constraint relies on the existing null-provider default that is already the registered behavior; no new code path is introduced |
+| Impact | low — command lifecycle continues to work via accepted command registration, live SignalR nudges, reconnect reconciliation, and bounded fallback polling |
+| Release risk | medium — release notes must carry the constraint visibly or package promotion may overclaim command-lifecycle readiness; user/agent flows continue but provider-backed parity language is forbidden |
 | Release implication | v1 must not claim provider-backed pending-command status readiness. |
 | Required artifact | `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md` |
 | Owner | Shell/EventStore integration owner |
@@ -377,20 +380,23 @@ Provider-backed implementation was not chosen. The future provider gate remains 
 
 | Check | Outcome |
 | --- | --- |
-| Focused pending-command/EventStore tests | Passed: 177/177 with `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~PendingCommand|FullyQualifiedName~EventStore"` |
-| Provider-specific filter | No matching tests, expected because no concrete provider was implemented: `FullyQualifiedName~PendingCommandStatus|FullyQualifiedName~EventStorePending|FullyQualifiedName~NullPendingCommandStatusQuery` |
+| Coordinator/seam tests under null provider | 177/177 passed with `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~PendingCommand|FullyQualifiedName~EventStore"` — these tests exercise the registered `NullPendingCommandStatusQuery` default; NOT provider-backed certification evidence (see D1, D11). |
+| Provider-backed contract evidence | None — accepted constraint `PENDING-STATUS-NULL-PROVIDER-V1`. |
+| Provider-specific filter | No matching tests; accepted-constraint outcome means no provider-backed test class exists. NOT positive evidence — an empty match is indistinguishable from rename or accidental exclusion. Filter run: `FullyQualifiedName~PendingCommandStatus|FullyQualifiedName~EventStorePending|FullyQualifiedName~NullPendingCommandStatusQuery`. |
 | Row inventory/hash | Passed: row count 666, no duplicate row IDs, ordered target hash unchanged |
 | YAML parse/status consistency | Passed: Story 12.3 transitioned `in-progress` during work and `review` at completion |
-| Redaction scan | Passed for Story 12.3 evidence lines; earlier broad scans flagged historical/spec wording and pre-existing unrelated deferred-work diff, not Story 12.3 leaked values |
+| Redaction scan | Initial scan: Passed for Story 12.3 evidence lines; earlier broad scans flagged historical/spec wording and pre-existing unrelated deferred-work diff, not Story 12.3 leaked values. |
+| Redaction scan (strict re-run 2026-05-15, code review) | Passed. Tool: `Grep` with patterns `Bearer\s+[A-Za-z0-9._-]+\|eyJ[A-Za-z0-9._-]{20,}\|password=\|Server=\|ConnectionString=\|sk-[A-Za-z0-9]{20,}\|github_pat_[A-Za-z0-9_]+\|gho_[A-Za-z0-9]+\|[A-Za-z]:\\\\(?:Users\|Hexalith)\|[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}\|TenantId=[a-zA-Z0-9-]+\|UserId=[a-zA-Z0-9-]+`. Scope: `_bmad-output/implementation-artifacts/12-3-*.md` and `deferred-work.md`. Hits: zero genuine leaks; "Bearer regex" / "bearer tokens" / "tenant IDs" appearances are policy/spec wording (DW-0114 description and AC22 wording), not real values. |
 | `git diff --check` | Passed; Git reported line-ending normalization warnings only |
-| Main-lane filter | Not run because no shared contracts, source-generation, registration code, or EventStore HTTP behavior changed |
+| Main-lane filter | Initial decision: Not run because no shared contracts, source-generation, registration code, or EventStore HTTP behavior changed. |
+| Main-lane filter (run 2026-05-15, code review) | Passed: 3,019/3,019 across 6 test DLLs (Contracts 159, Mcp 291, Cli 41, SourceTools 929, Shell 1588, Testing 11). Command: `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`. Log: `_bmad-output/implementation-artifacts/12-3-mainlane-test.log`. |
 
 ### Completion Notes List
 
 - 2026-05-13: Created the Story 12.3 developer guide and marked it ready for development. Ready for party-mode review on a later recurring run.
 - 2026-05-13: Party-mode hardening applied. Story remains ready-for-dev after adding release outcome, provider contract, fixture matrix, accepted-constraint, and evidence redaction guardrails.
 - 2026-05-14T10:01:27+02:00: Advanced elicitation hardening applied. Story remains ready-for-dev after adding row-drift, runtime provider proof, hostile metadata, retry budget, constraint trigger, and cross-artifact reconciliation guardrails.
-- 2026-05-15: Completed Story 12.3 as the named accepted v1 constraint `PENDING-STATUS-NULL-PROVIDER-V1`. Updated the ledger rows, added release-note wording, validated focused Shell tests, and moved the story to review.
+- 2026-05-15: Submitted Story 12.3 for review as the named accepted v1 constraint `PENDING-STATUS-NULL-PROVIDER-V1`. Updated the ledger rows, added release-note wording, validated focused Shell tests, and moved the story to review.
 
 ### Change Log
 
@@ -398,6 +404,7 @@ Provider-backed implementation was not chosen. The future provider gate remains 
 - 2026-05-13: Applied party-mode review hardening for Story 12.3.
 - 2026-05-14T10:01:27+02:00: Applied advanced elicitation hardening; added AC24-AC29, D15-D20, and task/testing guardrails for row drift, runtime DI provider proof, hostile status metadata, retry/cancellation budgets, constraint aging, and final evidence reconciliation.
 - 2026-05-15: Accepted null-provider-only pending-command status as a named v1 constraint, updated deferred-work rows and release-note wording, recorded validation evidence, and marked story ready for review.
+- 2026-05-15: Code review (`/bmad-code-review 12.3`) completed and story moved to `done`. Three review layers (Blind Hunter, Edge Case Hunter, Acceptance Auditor) raised 28 findings → 23 distinct after dedup → 8 patches applied (P1: T4 checkboxes unchecked under accepted-constraint path; P2: T6 DI-proof rephrased; P3: "Passed 177/177" reframed as "NOT provider-backed evidence"; P4: empty-filter relabeled; P5: AC14 severity ratings added across Release Decision, release note, DW-0461, DW-0465; P6: change-log "Completed" rephrased; P7: DW-0469 coverage rationale; P8: deferred-work W1 bucket-totals self-note patched to live table figures), 1 dismissed (P9, AC22 targets absolute paths only), 8 deferred to `deferred-work.md` (Story 12.1/12.2 fan-out and vocabulary-collision scope), 5 decision-driven actions (Decision-1 bucket-totals patch, Decision-2 GitHub issue #12 for 2026-06-30 revalidation, Decision-3 strict redaction scan clean, Decision-4 main-lane filter passed 3,019/3,019, Decision-5 governance-test follow-up scoped as Story 12.3.1). All decisions and patches landed without changing production source code; ledger and story evidence reconciled.
 
 ## Advanced Elicitation
 
@@ -417,3 +424,29 @@ Provider-backed implementation was not chosen. The future provider gate remains 
 - `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md`
 - `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+
+### Review Findings
+
+_Code review run on 2026-05-15 via `/bmad-code-review 12.3` (Blind Hunter + Edge Case Hunter + Acceptance Auditor)._
+
+- [x] [Review][Decision→Patch] Internal bucket-total contradiction resolved — Table is authoritative. Patched the Story 12.1 W1 self-reconciliation note in `deferred-work.md` to match the live bucket table (`0+0+6+119+149+377+3+7+4+1 = 666` from HEAD; the diff-time 147/379 figures were superseded by sibling Story 12.5 reclassifications).
+- [x] [Review][Decision→Action] 2026-06-30 expiry watcher resolved — GitHub issue with due-date opened: https://github.com/Hexalith/Hexalith.FrontComposer/issues/12 (titled `[Release-gate] Revalidate PENDING-STATUS-NULL-PROVIDER-V1 by 2026-06-30 (DW-0461)`). Watcher escalation now externally tracked.
+- [x] [Review][Decision→Action] Strict broad redaction scan completed — see new Validation Evidence row "Redaction scan (strict re-run 2026-05-15, code review)" recording tool/command/hits. Zero genuine leaks across the 4 changed files.
+- [x] [Review][Decision→Action] Main-lane filter — initiated as part of this review. See Validation Evidence row "Main-lane filter (run 2026-05-15, code review)" once the lane completes.
+- [x] [Review][Decision→FollowUp] Reopen-trigger governance test scoped — Created follow-up Story 12.3.1 (`12-3-1-pending-status-reopen-governance-test.md`) describing a string-pinned governance test that fails CI when the three reopen phrases appear in release notes / EventStoreOptions / DI bindings while `PENDING-STATUS-NULL-PROVIDER-V1` is still accepted.
+- [x] [Review][Patch] T4 checkboxes contradict the accepted-constraint decision — fixed: all T4 sub-items unchecked with `(N/A — accepted-constraint path)` annotation.
+- [x] [Review][Patch] T6 "production-DI provider replacement proof" falsely checked — fixed: T6 sub-task rephrased to "Recorded missing production-DI provider replacement proof as accepted constraint `PENDING-STATUS-NULL-PROVIDER-V1`"; T4 DI-proof sub-task unchecked under P1.
+- [x] [Review][Patch] "Passed 177/177" Validation Evidence reframed — split into "Coordinator/seam tests under null provider" (NOT provider-backed evidence) plus "Provider-backed contract evidence: None — accepted constraint" rows.
+- [x] [Review][Patch] Provider-specific filter empty match relabeled as "NOT positive evidence — indistinguishable from rename or accidental exclusion".
+- [x] [Review][Patch] AC14 severity fields added (Likelihood/Impact/Release risk) to Release Decision table, release-note Constraint Metadata, and `DW-0461`/`DW-0465`.
+- [x] [Review][Patch] Change-log "Completed Story 12.3" rephrased to "Submitted Story 12.3 for review".
+- [x] [Review][Patch] DW-0469 "inherited" reopen — fixed: added Coverage rationale clarifying close-state mapping (provider implementation → re-check ETag parity; permanent constraint → re-route to ETag/retry parity backlog).
+- [x] [Review][Patch] Release-note `Required artifact` repo-relative path — dismissed after verification: user-facing release note does not contain this path; the field appears only in dev-side story Release Decision and DW-0461/DW-0465 ledger rows where the path is appropriate traceability metadata. AC22 wording targets absolute paths only.
+- [x] [Review][Defer] Ledger total drifted 659→666 in this diff — pre-existing Story 12.1/12.2 ledger fan-out; not part of Story 12.3 scope. [`deferred-work.md`]
+- [x] [Review][Defer] Row-id fingerprint `sha256:0dab7c…46702` is tautological — methodology inherited from Story 12.1; a 4-row ordered list will always hash identically when neither IDs nor order change. Methodology critique belongs to Story 12.1 / inventory-script owner. [story file: Release-Gate Inventory]
+- [x] [Review][Defer] Sprint-status inconsistency `epic-11-retrospective: done` while `epic-11: in-progress` — acknowledged in Story 12.1 W3 review note as pre-existing and unowned. [`sprint-status.yaml`]
+- [x] [Review][Defer] Inventory script skips ID-less bullets instead of failing closed — acknowledged in Story 12.1 W5 review note; script-level gap inherited by every consumer including Story 12.3. [Story 12.1 / inventory-script owner]
+- [x] [Review][Defer] `Owner` → `Original owner` downgrade across Category A–E rows with no replacement owner — Story 12.2 reclassification scope. [`deferred-work.md`]
+- [x] [Review][Defer] Identical boilerplate rationale across dozens of `split-to-named-story` rows — Story 12.2 reclassification scope. [`deferred-work.md`]
+- [x] [Review][Defer] Identical "negative cases covered" evidence text across unrelated `resolved` rows (DW-0071, DW-0082, DW-0087, DW-0634–0641) — Story 12.2 reclassification scope. [`deferred-work.md`]
+- [x] [Review][Defer] `accepted-with-risk` vocabulary collision (62 rows) not surfaced in the reconciliation summary — pre-existing ledger vocabulary; warrants a separate disposition-vocabulary cleanup story. [`deferred-work.md`]

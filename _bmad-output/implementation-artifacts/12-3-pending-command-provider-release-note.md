@@ -14,6 +14,9 @@ Command dispatch, lifecycle registration, live projection nudges, reconnect reco
 | --- | --- |
 | Constraint name | `PENDING-STATUS-NULL-PROVIDER-V1` |
 | Final outcome | Named accepted v1 constraint |
+| Likelihood | low |
+| Impact | low |
+| Release risk | medium |
 | Owner | Shell/EventStore integration owner |
 | Trigger watcher | Release owner role |
 | Linked row | `DW-0461` |
