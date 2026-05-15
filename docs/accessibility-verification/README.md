@@ -28,11 +28,49 @@ Required fields:
 - Reviewer or sign-off owner
 - Evidence attachment paths or links
 
+Story 12.5 release-certification logs must also record:
+
+- Stable gate id
+- Task and acceptance-criteria ids
+- Canonical gate status: `completed`, `not performed`, `blocked`, `accepted v1 constraint`, or `post-v1 roadmap`
+- Release impact and owner for any incomplete gate
+- Reopen event or revalidation trigger
+- Approval reference for completed or accepted gates
+- Sanitization/redaction status for every evidence path or retained artifact
+- Release classification summary: `ready`, `blocked`, or `ready-with-accepted-constraints`
+
 Minimum manual matrix before release/package promotion:
 
 - NVDA with Firefox
 - JAWS with Chrome
 - VoiceOver with Safari
+
+Tablet and phone fallback checks are also release-candidate gates. Classify tablet against the touch-adapted UX tier. Classify phone against the functional-fallback commitment, not full daily-use design support.
+
+Manual assistive-technology, tablet, and phone gates are complete only when dated manual evidence exists. Automated axe, keyboard, focus, forced-colors, reduced-motion, zoom/reflow, visual baseline, and specimen-manifest evidence can support release decisions, but must not be used as a substitute for manual screen-reader or real-device completion.
+
+## Release Evidence Packs
+
+Release evidence packs should include one canonical row per gate. If the same gate appears in multiple tables or notes, the stable gate id decides which row is canonical, and any contradiction blocks the release classification until resolved.
+
+Each pack should include:
+
+- Current evidence inventory before template or pack edits
+- Manual screen-reader matrix
+- Real-device matrix
+- Broader accessibility classification for cross-AT, localization, RTL, zoom, forced-colors, and reduced-motion scope
+- Accepted constraints register
+- Post-v1 roadmap register
+- Stakeholder acceptance records for Product, Quality/Test, Release Owner, and Accessibility/Stakeholder roles
+- Adopter communication notes
+- Evidence manifest for screenshots, recordings, exported logs, external links, or retained artifacts
+- Machine-readable final classification summary
+
+Final classification is fail-closed:
+
+- `ready` requires every required gate to be completed with sanitized evidence and stakeholder sign-off.
+- `ready-with-accepted-constraints` requires every incomplete gate to be an approved accepted constraint or named post-v1 roadmap item.
+- `blocked` is required when a required gate is not performed, blocked, missing required fields, missing an owner, missing sanitization proof, or missing required stakeholder approval.
 
 ## Automated Evidence
 

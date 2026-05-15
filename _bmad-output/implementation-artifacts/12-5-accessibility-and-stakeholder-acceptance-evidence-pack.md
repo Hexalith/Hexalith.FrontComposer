@@ -1,6 +1,6 @@
 # Story 12.5: Accessibility and Stakeholder Acceptance Evidence Pack
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 12** - Release Certification and Evidence Alignment. This story captures the non-automated release gates for manual accessibility verification and stakeholder acceptance. It applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -112,56 +112,56 @@ The final release classification is fail-closed:
 
 ## Tasks / Subtasks
 
-- [ ] T1. Inventory current evidence and promises (AC1, AC2, AC7, AC9)
-  - [ ] Review `docs/accessibility-verification/README.md` and `manual-log-template.md`.
-  - [ ] Review Story 10.2 automated evidence scope and Story 11.6 accepted/split accessibility, localization, RTL, and sample evidence rows.
-  - [ ] Review `_bmad-output/planning-artifacts/ux-design-specification/responsive-design-accessibility.md` for manual matrix, responsive tiers, and verification log requirements.
-  - [ ] Record which evidence is automated, manual, representative, missing, blocked, or accepted constraint before changing any templates.
-  - [ ] Record the exact required release gates before editing: NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari, tablet, phone fallback, cross-AT, localization, RTL, zoom, forced-colors, reduced-motion, Product acceptance, Quality/Test acceptance, Release Owner acceptance, and Accessibility/Stakeholder acceptance.
+- [x] T1. Inventory current evidence and promises (AC1, AC2, AC7, AC9)
+  - [x] Review `docs/accessibility-verification/README.md` and `manual-log-template.md`.
+  - [x] Review Story 10.2 automated evidence scope and Story 11.6 accepted/split accessibility, localization, RTL, and sample evidence rows.
+  - [x] Review `_bmad-output/planning-artifacts/ux-design-specification/responsive-design-accessibility.md` for manual matrix, responsive tiers, and verification log requirements.
+  - [x] Record which evidence is automated, manual, representative, missing, blocked, or accepted constraint before changing any templates.
+  - [x] Record the exact required release gates before editing: NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari, tablet, phone fallback, cross-AT, localization, RTL, zoom, forced-colors, reduced-motion, Product acceptance, Quality/Test acceptance, Release Owner acceptance, and Accessibility/Stakeholder acceptance.
 
-- [ ] T2. Create the release evidence pack shape (AC3-AC5, AC14, AC15)
-  - [ ] Create a dated release-candidate log under `docs/accessibility-verification/` or a bounded repository artifact named for the release branch/tag candidate.
-  - [ ] Include separate sections for NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari, tablet, phone fallback, broader accessibility matrix, and stakeholder acceptance.
-  - [ ] Preserve required Story 10.2 fields and add release-certification classification fields only where needed.
-  - [ ] Add the Evidence Status Contract fields so missing checks cannot be misread as pass and every status can be audited back to AC/task IDs.
-  - [ ] Add an Accepted Constraints Register, Post-v1 Roadmap Register, Stakeholder Acceptance section, Adopter Communication section, and Release Classification section.
-  - [ ] Assign stable gate IDs for every manual AT, device, broader accessibility, stakeholder, constraint, roadmap, and final-classification row so duplicates can be reconciled deterministically.
-  - [ ] Add an evidence manifest section for any screenshots, recordings, exported logs, repository-external links, or retained artifacts, including sanitization status and retention owner.
+- [x] T2. Create the release evidence pack shape (AC3-AC5, AC14, AC15)
+  - [x] Create a dated release-candidate log under `docs/accessibility-verification/` or a bounded repository artifact named for the release branch/tag candidate.
+  - [x] Include separate sections for NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari, tablet, phone fallback, broader accessibility matrix, and stakeholder acceptance.
+  - [x] Preserve required Story 10.2 fields and add release-certification classification fields only where needed.
+  - [x] Add the Evidence Status Contract fields so missing checks cannot be misread as pass and every status can be audited back to AC/task IDs.
+  - [x] Add an Accepted Constraints Register, Post-v1 Roadmap Register, Stakeholder Acceptance section, Adopter Communication section, and Release Classification section.
+  - [x] Assign stable gate IDs for every manual AT, device, broader accessibility, stakeholder, constraint, roadmap, and final-classification row so duplicates can be reconciled deterministically.
+  - [x] Add an evidence manifest section for any screenshots, recordings, exported logs, repository-external links, or retained artifacts, including sanitization status and retention owner.
 
-- [ ] T3. Classify manual screen-reader and real-device evidence (AC3-AC8)
-  - [ ] For each required screen-reader/browser pairing, record completed/blocked/accepted-constraint status.
-  - [ ] If a pairing is completed, record versions, route/flow, results, issue links, and sign-off owner.
-  - [ ] If a pairing is blocked or accepted, record release impact, owner, expiry/revalidation trigger, and reopen event.
-  - [ ] Record tablet and phone fallback checks using the responsive tier commitments from the UX spec.
-  - [ ] Reject any `completed` status that lacks dated manual evidence or tries to substitute automated axe/specimen evidence for manual AT/device proof.
-  - [ ] Bind each completed manual evidence row to release branch/tag/commit plus browser, OS, AT, responsive tier, and UX baseline versions; reclassify stale rows if any of those inputs change before release.
+- [x] T3. Classify manual screen-reader and real-device evidence (AC3-AC8)
+  - [x] For each required screen-reader/browser pairing, record completed/blocked/accepted-constraint status.
+  - [x] If a pairing is completed, record versions, route/flow, results, issue links, and sign-off owner.
+  - [x] If a pairing is blocked or accepted, record release impact, owner, expiry/revalidation trigger, and reopen event.
+  - [x] Record tablet and phone fallback checks using the responsive tier commitments from the UX spec.
+  - [x] Reject any `completed` status that lacks dated manual evidence or tries to substitute automated axe/specimen evidence for manual AT/device proof.
+  - [x] Bind each completed manual evidence row to release branch/tag/commit plus browser, OS, AT, responsive tier, and UX baseline versions; reclassify stale rows if any of those inputs change before release.
 
-- [ ] T4. Classify broader accessibility constraints (AC9-AC11, AC16, AC17)
-  - [ ] Classify cross-AT, localization, RTL, zoom, forced-colors, and reduced-motion as v1 blocker, accepted v1 constraint, or post-v1 roadmap.
-  - [ ] Use Story 11.6 evidence for representative Shell/dev-mode/localization decisions, but do not inflate it into broad manual verification.
-  - [ ] If evidence reveals a release-blocking defect, record the blocker and split or fix only the narrow defect that is necessary for release honesty.
-  - [ ] Ensure accepted constraints include owner, likelihood, impact, downstream consumer impact, adopter communication need, evidence, and trigger.
-  - [ ] Ensure any post-v1 roadmap item has a named owner, story or roadmap reference, target release or non-planning rationale, release impact, and reopen event.
-  - [ ] Resolve duplicate or contradictory statuses across the gate matrix, accepted-constraint register, roadmap register, and stakeholder notes before writing the final classification.
-  - [ ] Treat stale, private, or unauditable accepted-constraint approval refs as blockers until a repository-visible or retained auditable reference is recorded.
+- [x] T4. Classify broader accessibility constraints (AC9-AC11, AC16, AC17)
+  - [x] Classify cross-AT, localization, RTL, zoom, forced-colors, and reduced-motion as v1 blocker, accepted v1 constraint, or post-v1 roadmap.
+  - [x] Use Story 11.6 evidence for representative Shell/dev-mode/localization decisions, but do not inflate it into broad manual verification.
+  - [x] If evidence reveals a release-blocking defect, record the blocker and split or fix only the narrow defect that is necessary for release honesty.
+  - [x] Ensure accepted constraints include owner, likelihood, impact, downstream consumer impact, adopter communication need, evidence, and trigger.
+  - [x] Ensure any post-v1 roadmap item has a named owner, story or roadmap reference, target release or non-planning rationale, release impact, and reopen event.
+  - [x] Resolve duplicate or contradictory statuses across the gate matrix, accepted-constraint register, roadmap register, and stakeholder notes before writing the final classification.
+  - [x] Treat stale, private, or unauditable accepted-constraint approval refs as blockers until a repository-visible or retained auditable reference is recorded.
 
-- [ ] T5. Capture stakeholder acceptance (AC12, AC13, AC20)
-  - [ ] Record Product acceptance status, Quality/Test acceptance status, Release-owner acceptance status, and Accessibility/stakeholder acceptance status.
-  - [ ] Record approver, date, scope, evidence path, open feedback, release condition, and final decision for each stakeholder group.
-  - [ ] Classify every open feedback item as blocking, accepted constraint, post-v1 roadmap, or non-action decision.
-  - [ ] State the final release classification: `ready`, `blocked`, or `ready-with-accepted-constraints`.
-  - [ ] Require separate Product, Quality/Test, Release Owner, and Accessibility/Stakeholder approvals when a blocker, accepted constraint, or roadmap item affects release classification.
-  - [ ] Record delegation authority, scope, and expiration when any stakeholder sign-off is provided by a proxy; reject proxy approval that cannot prove authority.
+- [x] T5. Capture stakeholder acceptance (AC12, AC13, AC20)
+  - [x] Record Product acceptance status, Quality/Test acceptance status, Release-owner acceptance status, and Accessibility/stakeholder acceptance status.
+  - [x] Record approver, date, scope, evidence path, open feedback, release condition, and final decision for each stakeholder group.
+  - [x] Classify every open feedback item as blocking, accepted constraint, post-v1 roadmap, or non-action decision.
+  - [x] State the final release classification: `ready`, `blocked`, or `ready-with-accepted-constraints`.
+  - [x] Require separate Product, Quality/Test, Release Owner, and Accessibility/Stakeholder approvals when a blocker, accepted constraint, or roadmap item affects release classification.
+  - [x] Record delegation authority, scope, and expiration when any stakeholder sign-off is provided by a proxy; reject proxy approval that cannot prove authority.
 
-- [ ] T6. Validate and record closure (AC14, AC18-AC20)
-  - [ ] Run status-artifact consistency.
-  - [ ] Run `git diff --check`.
-  - [ ] Run or document a bounded redaction review over changed evidence artifacts for local absolute paths, secrets, cookies, tenant/user values, raw payloads, full DOM dumps, and unbounded logs.
-  - [ ] Check that every status references an evidence artifact or approved exception and that no `ready`/`ready-with-accepted-constraints` classification is produced with missing required fields.
-  - [ ] Check that the final release summary has one machine-readable classification enum, evidence pack version, residual gates, blockers, accepted constraints, roadmap refs, and sign-off refs.
-  - [ ] Check that no prose, table row, or release note contradicts the machine-readable classification summary.
-  - [ ] Run docs/evidence validation or focused Playwright/docs checks only if changed files require executable validation.
-  - [ ] Update this story's Dev Agent Record with changed files, validation, blockers, accepted constraints, final classification, and residual gates.
+- [x] T6. Validate and record closure (AC14, AC18-AC20)
+  - [x] Run status-artifact consistency.
+  - [x] Run `git diff --check`.
+  - [x] Run or document a bounded redaction review over changed evidence artifacts for local absolute paths, secrets, cookies, tenant/user values, raw payloads, full DOM dumps, and unbounded logs.
+  - [x] Check that every status references an evidence artifact or approved exception and that no `ready`/`ready-with-accepted-constraints` classification is produced with missing required fields.
+  - [x] Check that the final release summary has one machine-readable classification enum, evidence pack version, residual gates, blockers, accepted constraints, roadmap refs, and sign-off refs.
+  - [x] Check that no prose, table row, or release note contradicts the machine-readable classification summary.
+  - [x] Run docs/evidence validation or focused Playwright/docs checks only if changed files require executable validation.
+  - [x] Update this story's Dev Agent Record with changed files, validation, blockers, accepted constraints, final classification, and residual gates.
 
 ---
 
@@ -313,20 +313,42 @@ GPT-5 Codex
 - 2026-05-13: Starting evidence audit identified current manual evidence docs under `docs/accessibility-verification/`, automated specimen manifest `tests/e2e/specimens/frontcomposer-specimen-manifest.json`, Epic 12 Story 12.5 scope, Story 10.2 automated gate, Story 11.6 representative evidence, and Epic 11 retrospective gaps.
 - 2026-05-13T22:34:15+02:00: Party-mode review applied via `/bmad-party-mode 12-5-accessibility-and-stakeholder-acceptance-evidence-pack; review;` with Winston, Amelia, John, and Murat. Added fail-closed evidence status, manual completion, stakeholder approval, roadmap ownership, redaction, and automation-scope guardrails.
 - 2026-05-14T12:03:31+02:00: Advanced elicitation applied via `/bmad-advanced-elicitation 12-5-accessibility-and-stakeholder-acceptance-evidence-pack`. Added canonical gate identity, evidence freshness, approval auditability, external evidence manifest, proxy sign-off authority, and machine-readable final classification guardrails.
+- 2026-05-15: Loaded `_bmad-output/project-context.md`, Story 12.5, sprint status, current accessibility verification docs, Story 10.2 automated specimen evidence, Story 11.6 representative accessibility/localization evidence, UX responsive/accessibility requirements, and `tests/e2e/specimens/frontcomposer-specimen-manifest.json`.
+- 2026-05-15: Updated Story 12.5 and `sprint-status.yaml` from `ready-for-dev` to `in-progress` before implementation.
+- 2026-05-15: Created `docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md` with stable gate IDs, fail-closed manual AT/device/stakeholder blockers, post-v1 roadmap rows, evidence manifest, and machine-readable `final_classification: blocked`.
+- 2026-05-15: Updated `docs/accessibility-verification/README.md` and `manual-log-template.md` with Story 12.5 release-certification fields while preserving Story 10.2 manual log expectations.
+- 2026-05-15: `python jobs/preflight-code-review.py --repo . --out $env:TEMP\frontcomposer-12-5-preflight.json` reported YAML parse OK and status-artifact consistency pass (`no drift across 73 story keys`); overall preflight was fail only because the working tree had the intentional Story 12.5 edits.
+- 2026-05-15: `git diff --check` passed after line-ending normalization.
+- 2026-05-15: Redaction scan passed for the changed accessibility evidence docs, sprint status, and Story 12.5 record with no local absolute paths, bearer values, cookie headers, tenant/user assignments, secret assignments, or token assignments.
+- 2026-05-15: Machine-readable classification check found exactly one YAML `final_classification: "blocked"` and matching prose final classification.
+- 2026-05-15: Final validation after moving the story to review: `rg -n "\[ \]" _bmad-output/implementation-artifacts/12-5-accessibility-and-stakeholder-acceptance-evidence-pack.md` found no unchecked tasks; `python jobs/preflight-code-review.py --repo . --out $env:TEMP\frontcomposer-12-5-final-preflight.json` again reported YAML parse OK and status-artifact consistency pass (`no drift across 73 story keys`), with only the expected dirty-working-tree preflight failure from the current story edits.
+
+### Implementation Plan
+
+- Preserve Story 10.2 automated accessibility evidence as supporting evidence only, not a substitute for manual screen-reader or real-device completion.
+- Create repository-visible release evidence that names every required manual/stakeholder gate and blocks release readiness when evidence or approvals are missing.
+- Keep Story 12.5 scoped to documentation/evidence artifacts; do not add Playwright automation or Shell UI changes because no executable behavior changed.
 
 ### Completion Notes List
 
 - 2026-05-13: Created the Story 12.5 developer guide and marked it ready for development. Ready for party-mode review on a later recurring run.
 - 2026-05-13: Party-mode review hardened the story and left it `ready-for-dev` for later advanced elicitation.
 - 2026-05-14: Advanced elicitation hardened the story and left it `ready-for-dev` for development.
+- 2026-05-15: Implemented the Story 12.5 accessibility and stakeholder acceptance evidence pack. Manual NVDA + Firefox, JAWS + Chrome, VoiceOver + Safari, tablet, phone fallback, and stakeholder sign-off gates are blocked because no dated manual evidence or auditable approvals exist in the repository.
+- 2026-05-15: Classified broad cross-AT, localization, RTL, and extra zoom/forced-colors/reduced-motion matrices as post-v1 roadmap items with named owner roles and reopen events, while preserving Story 10.2 automated specimen evidence as supporting evidence only.
+- 2026-05-15: Final release classification is `blocked`; residual gates are `AT-NVDA-FIREFOX`, `AT-JAWS-CHROME`, `AT-VOICEOVER-SAFARI`, `DEVICE-TABLET`, `DEVICE-PHONE-FALLBACK`, `STAKEHOLDER-PRODUCT`, `STAKEHOLDER-QUALITY`, `STAKEHOLDER-RELEASE-OWNER`, and `STAKEHOLDER-ACCESSIBILITY`.
 
 ### Change Log
 
 - 2026-05-13: Created Story 12.5 and marked ready-for-dev.
 - 2026-05-13: Applied party-mode review hardening for evidence status, fail-closed release classification, stakeholder approvals, redaction proof, and scope guardrails.
 - 2026-05-14: Applied advanced elicitation hardening for gate identity, stale evidence, auditable approvals, external evidence manifests, proxy sign-off authority, and machine-readable final classification.
+- 2026-05-15: Added the dated release-candidate evidence pack, tightened manual accessibility evidence docs/templates, recorded fail-closed blocked classification, and moved the story to review.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/12-5-accessibility-and-stakeholder-acceptance-evidence-pack.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `docs/accessibility-verification/README.md`
+- `docs/accessibility-verification/manual-log-template.md`
+- `docs/accessibility-verification/release-candidate-2026-05-15-evidence-pack.md`
