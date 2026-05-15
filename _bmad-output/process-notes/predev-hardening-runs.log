@@ -225,3 +225,4 @@
 2026-05-15T10:02:48+02:00	none	-	none	no backlog story available; ready stories already have party-mode and advanced-elicitation traces
 2026-05-15T11:02:11+02:00	none	-	none	no backlog story available; ready stories already have party-mode and advanced-elicitation traces
 2026-05-15T12:03:02+02:00	none	-	none	no backlog story available; ready stories already have party-mode and advanced-elicitation traces
+2026-05-15T18:26:00+02:00	party-mode-review	12-3-1-pending-status-reopen-governance-test	ok	party-mode review applied; clarified DW-0461 lifecycle, metadata bounds, DI/options assertions, fixtures, ownership, and Story 12.5 non-coupling
