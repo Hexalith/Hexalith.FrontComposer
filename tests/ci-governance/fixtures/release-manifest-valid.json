@@ -18,5 +18,10 @@
       "attestation_status": "approved-unsupported",
       "publish_status": "pending"
     }
-  ]
+  ],
+  "seal": {
+    "algorithm": "sha256",
+    "hash": "815100f5affee8af2f707c35073a4225216ef2e800be405805d91e5cffa121a0",
+    "sealed_at": "2026-05-15T00:00:00+00:00"
+  }
 }

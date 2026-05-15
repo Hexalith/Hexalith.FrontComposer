@@ -31,6 +31,33 @@ REQUIRED_ROW_FIELDS = [
     "attestation_status",
     "publish_status",
 ]
+RELEASE_DEFINITION_FILES = [
+    ".github/workflows/release.yml",
+    ".releaserc.json",
+    "eng/release_evidence.py",
+    "eng/release-package-inventory.json",
+    "Directory.Packages.props",
+]
+BLOCKING_CHECKS = {
+    "checksums_status": "valid",
+    "helper_state": "success",
+    "inventory_status": "valid",
+    "paths_status": "normalized",
+    "redaction_status": {"passed", "sanitized"},
+    "sbom_status": "present",
+    "semantic_release_state": "matches",
+    "signing_status": "verified",
+    "test_status": "passed",
+    "timestamp_status": "verified",
+}
+DANGEROUS_EVIDENCE_PATTERNS = [
+    re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+"),
+    re.compile(r"\b(?:sk-|ghp_|github_pat_|xox[baprs]-)[-A-Za-z0-9_]{12,}\b"),
+    re.compile(r"\b[A-Z]:\\[^ \r\n]+"),
+    re.compile(r"(?<![\w/])/(?:home|Users|tmp|var)/[^ \r\n]+"),
+    re.compile(r"(?i)\b(tenant|tenantid|user|userid|commandpayload)\s*[:=]\s*[^,; \r\n]+"),
+    re.compile(r"^::", re.MULTILINE),
+]
 
 
 def sanitize(value: Any, max_len: int = MAX_FIELD) -> str:
@@ -66,6 +93,10 @@ def sha256_file(path: pathlib.Path) -> str:
         for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def normalize_under_root(root: pathlib.Path, name: str) -> pathlib.Path:
@@ -121,6 +152,208 @@ def is_placeholder(value: Any) -> bool:
 
 def looks_like_sha256(value: Any) -> bool:
     return bool(SHA256_RE.fullmatch(str(value or "")))
+
+
+def deep_merge(base: Any, override: Any) -> Any:
+    if isinstance(base, dict) and isinstance(override, dict):
+        merged = {k: deep_merge(v, {}) for k, v in base.items()}
+        for key, value in override.items():
+            merged[key] = deep_merge(merged.get(key), value)
+        return merged
+    if isinstance(base, list) and isinstance(override, list):
+        merged = [deep_merge(item, {}) for item in base]
+        for index, value in enumerate(override):
+            if index < len(merged):
+                merged[index] = deep_merge(merged[index], value)
+            else:
+                merged.append(deep_merge(value, {}))
+        return merged
+    if override == {}:
+        if isinstance(base, dict):
+            return {k: deep_merge(v, {}) for k, v in base.items()}
+        if isinstance(base, list):
+            return [deep_merge(item, {}) for item in base]
+        return base
+    return override if override is not None else base
+
+
+def manifest_diagnostics(manifest: dict[str, Any]) -> list[str]:
+    diagnostics: list[str] = []
+    rows = manifest.get("packages", [])
+    if not isinstance(rows, list) or not rows:
+        diagnostics.append("package rows are required")
+    version = None
+    for row in rows if isinstance(rows, list) else []:
+        for field in REQUIRED_ROW_FIELDS:
+            if not row.get(field):
+                diagnostics.append(f"{row.get('package_id', '<unknown>')}: missing {field}")
+        version = version or row.get("version")
+        if row.get("version") != version:
+            diagnostics.append("lockstep version drift")
+        if row.get("signing_status") != "verified":
+            diagnostics.append(f"{row.get('package_id')}: signing not verified")
+        if row.get("timestamp_status", "verified") != "verified":
+            diagnostics.append(f"{row.get('package_id')}: timestamp not verified")
+        if row.get("attestation_status") not in {"attested", "approved-unsupported"}:
+            diagnostics.append(f"{row.get('package_id')}: attestation state invalid")
+        if str(row.get("checksum", "")).startswith("pending-") or not looks_like_sha256(row.get("checksum")):
+            diagnostics.append(f"{row.get('package_id')}: checksum must be a concrete sha256")
+        if str(row.get("artifact_path", "")).startswith("nupkgs/"):
+            diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
+    for field in ["commit_sha", "tag", "run_id", "workflow_ref", "sbom_hash", "benchmark_summary_hash"]:
+        if not manifest.get(field):
+            diagnostics.append(f"manifest missing {field}")
+    if str(manifest.get("sbom_hash", "")).startswith("pending-") or not looks_like_sha256(manifest.get("sbom_hash")):
+        diagnostics.append("manifest sbom_hash must be a concrete sha256")
+    if str(manifest.get("benchmark_summary_hash", "")).startswith("pending-"):
+        diagnostics.append("manifest benchmark_summary_hash must not be pending")
+    seal = manifest.get("seal", {})
+    if not isinstance(seal, dict) or seal.get("algorithm") != "sha256" or not looks_like_sha256(seal.get("hash")):
+        diagnostics.append("manifest seal with sha256 hash is required")
+    else:
+        canonical = json.dumps({k: v for k, v in manifest.items() if k != "seal"}, sort_keys=True, separators=(",", ":"))
+        if seal.get("hash") != sha256_text(canonical):
+            diagnostics.append("manifest seal hash does not match manifest contents")
+    return diagnostics
+
+
+def classify_context(context: dict[str, Any]) -> str:
+    event_name = str(context.get("event_name", "local"))
+    ref = str(context.get("ref", "local"))
+    protected = str(context.get("ref_protected", "false")).lower() == "true" or context.get("ref_protected") is True
+    from_fork = str(context.get("from_fork", "false")).lower() == "true" or context.get("from_fork") is True
+    dry_run = str(context.get("dry_run", "false")).lower() == "true" or context.get("dry_run") is True
+    run_attempt = int(context.get("run_attempt", 1) or 1)
+    partial_publish = str(context.get("partial_publish_state", "none"))
+    if partial_publish != "none" or run_attempt > 1:
+        return "rerun-review"
+    if from_fork:
+        return "fork-pr"
+    if event_name in {"pull_request", "pull_request_target"}:
+        return "pr-same-repo"
+    if dry_run or event_name in {"local", ""} or ref == "local":
+        return "local-candidate"
+    trusted_event = event_name in {"push", "workflow_dispatch", "workflow_run", "schedule"}
+    trusted_ref = protected or ref in {"refs/heads/main", "main"} or ref.startswith("refs/tags/v")
+    if trusted_event and trusted_ref:
+        return "trusted-main-or-release"
+    return "local-candidate"
+
+
+def release_definition_fingerprints(root: pathlib.Path) -> dict[str, str]:
+    fingerprints: dict[str, str] = {}
+    for name in RELEASE_DEFINITION_FILES:
+        path = root / name
+        fingerprints[name] = sha256_file(path) if path.exists() else "missing"
+    return fingerprints
+
+
+def fallback_complete(fallback: dict[str, Any]) -> bool:
+    required = [
+        "affected_artifact",
+        "approver",
+        "evidence",
+        "expires_at",
+        "reason",
+        "release_note_impact",
+        "reopen_event",
+        "scope",
+    ]
+    if any(not fallback.get(field) for field in required):
+        return False
+    try:
+        expiry = dt.date.fromisoformat(str(fallback["expires_at"]))
+    except ValueError:
+        return False
+    return expiry >= dt.datetime.now(dt.timezone.utc).date()
+
+
+def contains_dangerous_evidence(value: Any) -> bool:
+    text = json.dumps(value, sort_keys=True) if isinstance(value, (dict, list)) else str(value or "")
+    return any(pattern.search(text) for pattern in DANGEROUS_EVIDENCE_PATTERNS)
+
+
+def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path) -> dict[str, Any]:
+    context = evidence.get("context", {})
+    checks = evidence.get("checks", {})
+    approval = evidence.get("approval", {})
+    attestation = evidence.get("attestation", {})
+    manifest = evidence.get("manifest", {})
+    context_class = classify_context(context if isinstance(context, dict) else {})
+    blocking: list[str] = []
+    fallback_reasons: list[str] = []
+
+    if context_class != "trusted-main-or-release":
+        blocking.append(f"candidate evidence from {context_class} cannot authorize publishing")
+    if not approval.get("approved") or not approval.get("approver"):
+        blocking.append("explicit release-owner approval is required before side effects")
+
+    for key, expected in BLOCKING_CHECKS.items():
+        actual = checks.get(key)
+        if isinstance(expected, set):
+            if actual not in expected:
+                blocking.append(f"{key} must be one of {sorted(expected)}; actual={sanitize(actual)}")
+        elif actual != expected:
+            blocking.append(f"{key} must be {expected}; actual={sanitize(actual)}")
+
+    if int(checks.get("test_count", 0) or 0) <= 0:
+        blocking.append("release tests must record at least one executed test")
+    if not checks.get("trx_present"):
+        blocking.append("release TRX evidence is required")
+    if checks.get("dry_run_side_effect_attempt"):
+        blocking.append("dry-run side-effect attempt was detected")
+    if checks.get("recursive_submodule_command"):
+        blocking.append("recursive nested submodule command is not allowed")
+    if checks.get("release_definition_drift"):
+        blocking.append("release-definition fingerprints drifted after evidence generation")
+    if checks.get("post_seal_artifact_mutation"):
+        blocking.append("post-seal artifact mutation detected")
+    if checks.get("concurrent_same_version"):
+        blocking.append("same-version concurrent or stale release attempt requires owner review")
+    if contains_dangerous_evidence(checks.get("raw_evidence")) and checks.get("redaction_status") != "sanitized":
+        blocking.append("redaction scan found unsafe raw evidence")
+
+    if isinstance(manifest, dict):
+        for diagnostic in manifest_diagnostics(manifest):
+            blocking.append(f"manifest: {diagnostic}")
+    else:
+        blocking.append("manifest evidence is required")
+
+    status = attestation.get("status")
+    if status == "approved-unsupported":
+        fallback = attestation.get("fallback", {})
+        if isinstance(fallback, dict) and fallback_complete(fallback):
+            fallback_reasons.append("GitHub artifact attestation unavailable; approved unsupported-attestation fallback is in force")
+        else:
+            blocking.append("unsupported-attestation fallback is missing, stale, or incomplete")
+    elif status != "attested":
+        blocking.append(f"attestation status must be attested or approved-unsupported; actual={sanitize(status)}")
+
+    classification = "blocked" if blocking else ("fallback-approved" if fallback_reasons else "ready")
+    publish_authorized = classification in {"ready", "fallback-approved"} and context_class == "trusted-main-or-release" and bool(approval.get("approved"))
+    next_action = "publish may proceed with approved owner action" if publish_authorized else "resolve blocking release gates before publishing"
+    if classification == "fallback-approved":
+        next_action = "release owner must consciously accept the approved fallback before publish"
+
+    return {
+        "approval": {
+            "approved": bool(approval.get("approved")),
+            "approver": sanitize(approval.get("approver", "")),
+            "mechanism": sanitize(approval.get("mechanism", "")),
+        },
+        "candidate_evidence_used": context_class != "trusted-main-or-release",
+        "classification": classification,
+        "context_class": context_class,
+        "decision_contract": "frontcomposer.release-readiness.v1",
+        "grouped_reasons": {
+            "blocking": [sanitize(reason) for reason in blocking],
+            "fallback": [sanitize(reason) for reason in fallback_reasons],
+        },
+        "next_owner_action": next_action,
+        "publish_authorized": publish_authorized,
+        "release_definition_fingerprints": release_definition_fingerprints(root),
+        "sanitized_raw_evidence": sanitize(checks.get("raw_evidence", "")),
+    }
 
 
 def inventory(args: argparse.Namespace) -> int:
@@ -184,35 +417,44 @@ def checksums(args: argparse.Namespace) -> int:
     return 0 if payload else 1
 
 
+def test_results(args: argparse.Namespace) -> int:
+    results_dir = pathlib.Path(args.results_dir)
+    diagnostics: list[str] = []
+    trx_files = sorted(results_dir.rglob("*.trx")) if results_dir.exists() else []
+    executed = 0
+    total = 0
+    for trx in trx_files:
+        try:
+            root = ET.parse(trx).getroot()
+        except ET.ParseError as exc:
+            diagnostics.append(f"{trx.name}: invalid TRX XML: {exc}")
+            continue
+        counters = next((element for element in root.iter() if element.tag.endswith("Counters")), None)
+        if counters is None:
+            diagnostics.append(f"{trx.name}: missing Counters element")
+            continue
+        executed += int(counters.attrib.get("executed", counters.attrib.get("total", "0")))
+        total += int(counters.attrib.get("total", "0"))
+    if not trx_files:
+        diagnostics.append("release TRX evidence is missing")
+    if executed <= 0:
+        diagnostics.append("release tests executed zero tests")
+    payload = {
+        "diagnostics": [sanitize(diagnostic) for diagnostic in diagnostics],
+        "status": "valid" if not diagnostics else "invalid",
+        "test_count": executed,
+        "total_count": total,
+        "trx_files": [sanitize(str(path.relative_to(results_dir)).replace("\\", "/")) for path in trx_files],
+        "trx_present": bool(trx_files),
+    }
+    if args.output:
+        write_json(args.output, payload)
+    return 0 if not diagnostics else 1
+
+
 def verify_manifest(args: argparse.Namespace) -> int:
     manifest = read_json(args.manifest)
-    diagnostics: list[str] = []
-    rows = manifest.get("packages", [])
-    if not isinstance(rows, list) or not rows:
-        diagnostics.append("package rows are required")
-    version = None
-    for row in rows:
-        for field in REQUIRED_ROW_FIELDS:
-            if not row.get(field):
-                diagnostics.append(f"{row.get('package_id', '<unknown>')}: missing {field}")
-        version = version or row.get("version")
-        if row.get("version") != version:
-            diagnostics.append("lockstep version drift")
-        if row.get("signing_status") != "verified":
-            diagnostics.append(f"{row.get('package_id')}: signing not verified")
-        if row.get("attestation_status") not in {"attested", "approved-unsupported"}:
-            diagnostics.append(f"{row.get('package_id')}: attestation state invalid")
-        if str(row.get("checksum", "")).startswith("pending-") or not looks_like_sha256(row.get("checksum")):
-            diagnostics.append(f"{row.get('package_id')}: checksum must be a concrete sha256")
-        if str(row.get("artifact_path", "")).startswith("nupkgs/"):
-            diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
-    for field in ["commit_sha", "tag", "run_id", "workflow_ref", "sbom_hash", "benchmark_summary_hash"]:
-        if not manifest.get(field):
-            diagnostics.append(f"manifest missing {field}")
-    if str(manifest.get("sbom_hash", "")).startswith("pending-") or not looks_like_sha256(manifest.get("sbom_hash")):
-        diagnostics.append("manifest sbom_hash must be a concrete sha256")
-    if str(manifest.get("benchmark_summary_hash", "")).startswith("pending-"):
-        diagnostics.append("manifest benchmark_summary_hash must not be pending")
+    diagnostics = manifest_diagnostics(manifest)
     if args.output:
         write_json(args.output, {"status": "valid" if not diagnostics else "invalid", "diagnostics": diagnostics})
     return 0 if not diagnostics else 1
@@ -352,6 +594,105 @@ def path_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def classify_release(args: argparse.Namespace) -> int:
+    if args.evidence:
+        evidence = read_json(args.evidence)
+    else:
+        manifest = read_json(args.manifest) if args.manifest else {}
+        test_payload = read_json(args.test_results) if args.test_results else {}
+        evidence = {
+            "approval": {
+                "approved": str(args.owner_approved).lower() == "true",
+                "approver": args.approver,
+                "mechanism": args.approval_mechanism,
+            },
+            "attestation": {
+                "fallback": {
+                    "affected_artifact": args.fallback_affected_artifact,
+                    "approver": args.fallback_approver,
+                    "evidence": args.fallback_evidence,
+                    "expires_at": args.fallback_expires_at,
+                    "reason": args.fallback_reason,
+                    "release_note_impact": args.fallback_release_note_impact,
+                    "reopen_event": args.fallback_reopen_event,
+                    "scope": args.fallback_scope,
+                },
+                "status": args.attestation_status,
+            },
+            "checks": {
+                "checksums_status": args.checksums_status,
+                "concurrent_same_version": str(args.concurrent_same_version).lower() == "true",
+                "dry_run_side_effect_attempt": str(args.dry_run_side_effect_attempt).lower() == "true",
+                "helper_state": args.helper_state,
+                "inventory_status": args.inventory_status,
+                "paths_status": args.paths_status,
+                "post_seal_artifact_mutation": str(args.post_seal_artifact_mutation).lower() == "true",
+                "raw_evidence": args.raw_evidence,
+                "recursive_submodule_command": str(args.recursive_submodule_command).lower() == "true",
+                "redaction_status": args.redaction_status,
+                "release_definition_drift": str(args.release_definition_drift).lower() == "true",
+                "sbom_status": args.sbom_status,
+                "semantic_release_state": args.semantic_release_state,
+                "signing_status": args.signing_status,
+                "test_count": int(test_payload.get("test_count", args.test_count) or 0),
+                "test_status": "passed" if test_payload.get("status", args.test_status) == "valid" else test_payload.get("status", args.test_status),
+                "timestamp_status": args.timestamp_status,
+                "trx_present": bool(test_payload.get("trx_present", str(args.trx_present).lower() == "true")),
+            },
+            "context": {
+                "dry_run": str(args.dry_run).lower() == "true",
+                "event_name": args.event_name,
+                "from_fork": str(args.from_fork).lower() == "true",
+                "partial_publish_state": args.partial_publish_state,
+                "ref": args.ref,
+                "ref_protected": str(args.ref_protected).lower() == "true",
+                "run_attempt": args.run_attempt,
+            },
+            "manifest": manifest,
+        }
+    decision = classify_release_payload(evidence, pathlib.Path(args.root))
+    if args.output:
+        write_json(args.output, decision)
+    if args.require_publishable and not decision["publish_authorized"]:
+        print("; ".join(decision["grouped_reasons"]["blocking"]) or decision["classification"], file=sys.stderr)
+        return 1
+    return 0
+
+
+def classify_fixtures(args: argparse.Namespace) -> int:
+    payload = read_json(args.fixtures)
+    base = payload.get("base_evidence", {})
+    results = []
+    mismatches = []
+    for case in payload.get("cases", []):
+        evidence = deep_merge(base, case.get("override", {}))
+        decision = classify_release_payload(evidence, pathlib.Path(args.root))
+        result = {
+            "classification": decision["classification"],
+            "context_class": decision["context_class"],
+            "name": case.get("name", ""),
+            "publish_authorized": decision["publish_authorized"],
+        }
+        expected_classification = case.get("expected_classification")
+        expected_context = case.get("expected_context_class")
+        expected_publish = case.get("expected_publish_authorized")
+        if expected_classification and decision["classification"] != expected_classification:
+            mismatches.append(f"{case.get('name')}: classification {decision['classification']} != {expected_classification}")
+        if expected_context and decision["context_class"] != expected_context:
+            mismatches.append(f"{case.get('name')}: context {decision['context_class']} != {expected_context}")
+        if expected_publish is not None and decision["publish_authorized"] != expected_publish:
+            mismatches.append(f"{case.get('name')}: publish_authorized {decision['publish_authorized']} != {expected_publish}")
+        results.append(result)
+    output = {
+        "diagnostics": mismatches,
+        "results": results,
+        "status": "valid" if not mismatches else "invalid",
+    }
+    if args.output:
+        write_json(args.output, output)
+    return 0 if not mismatches else 1
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -367,6 +708,11 @@ def main() -> int:
     chk.add_argument("--pattern", action="append", required=True)
     chk.add_argument("--output", required=True)
     chk.set_defaults(func=checksums)
+
+    tests = sub.add_parser("test-results")
+    tests.add_argument("--results-dir", required=True)
+    tests.add_argument("--output")
+    tests.set_defaults(func=test_results)
 
     ver = sub.add_parser("verify-manifest")
     ver.add_argument("--manifest", required=True)
@@ -418,6 +764,58 @@ def main() -> int:
     path.add_argument("--name", required=True)
     path.add_argument("--output")
     path.set_defaults(func=path_check)
+
+    classify = sub.add_parser("classify-release")
+    classify.add_argument("--root", default=".")
+    classify.add_argument("--evidence")
+    classify.add_argument("--manifest")
+    classify.add_argument("--output")
+    classify.add_argument("--require-publishable", action="store_true")
+    classify.add_argument("--test-results")
+    classify.add_argument("--event-name", default=os.environ.get("GITHUB_EVENT_NAME", "local"))
+    classify.add_argument("--ref", default=os.environ.get("GITHUB_REF", "local"))
+    classify.add_argument("--ref-protected", default=os.environ.get("GITHUB_REF_PROTECTED", "false"))
+    classify.add_argument("--from-fork", default="false")
+    classify.add_argument("--dry-run", default="false")
+    classify.add_argument("--run-attempt", type=int, default=int(os.environ.get("GITHUB_RUN_ATTEMPT", "1")))
+    classify.add_argument("--partial-publish-state", default="none")
+    classify.add_argument("--owner-approved", default=os.environ.get("RELEASE_OWNER_APPROVED", "false"))
+    classify.add_argument("--approver", default=os.environ.get("RELEASE_APPROVER", ""))
+    classify.add_argument("--approval-mechanism", default=os.environ.get("RELEASE_APPROVAL_MECHANISM", ""))
+    classify.add_argument("--attestation-status", default=os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported"))
+    classify.add_argument("--fallback-affected-artifact", default="release package set")
+    classify.add_argument("--fallback-approver", default=os.environ.get("RELEASE_ATTESTATION_FALLBACK_APPROVER", ""))
+    classify.add_argument("--fallback-evidence", default="release-evidence/attestation-unavailable.md")
+    classify.add_argument("--fallback-expires-at", default=os.environ.get("RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT", ""))
+    classify.add_argument("--fallback-reason", default="GitHub artifact attestations unavailable in this repository context")
+    classify.add_argument("--fallback-release-note-impact", default="Release notes must mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.")
+    classify.add_argument("--fallback-reopen-event", default="GitHub artifact attestations become available or release evidence contract changes")
+    classify.add_argument("--fallback-scope", default="current release attempt")
+    classify.add_argument("--checksums-status", default="valid")
+    classify.add_argument("--concurrent-same-version", default="false")
+    classify.add_argument("--dry-run-side-effect-attempt", default="false")
+    classify.add_argument("--helper-state", default="success")
+    classify.add_argument("--inventory-status", default="valid")
+    classify.add_argument("--paths-status", default="normalized")
+    classify.add_argument("--post-seal-artifact-mutation", default="false")
+    classify.add_argument("--raw-evidence", default="")
+    classify.add_argument("--recursive-submodule-command", default="false")
+    classify.add_argument("--redaction-status", default="passed")
+    classify.add_argument("--release-definition-drift", default="false")
+    classify.add_argument("--sbom-status", default="present")
+    classify.add_argument("--semantic-release-state", default="matches")
+    classify.add_argument("--signing-status", default="verified")
+    classify.add_argument("--test-count", type=int, default=1)
+    classify.add_argument("--test-status", default="passed")
+    classify.add_argument("--timestamp-status", default="verified")
+    classify.add_argument("--trx-present", default="true")
+    classify.set_defaults(func=classify_release)
+
+    fixtures = sub.add_parser("classify-fixtures")
+    fixtures.add_argument("--root", default=".")
+    fixtures.add_argument("--fixtures", required=True)
+    fixtures.add_argument("--output")
+    fixtures.set_defaults(func=classify_fixtures)
 
     args = parser.parse_args()
     return args.func(args)

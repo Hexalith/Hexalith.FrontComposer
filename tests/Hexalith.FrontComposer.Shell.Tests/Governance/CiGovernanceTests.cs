@@ -182,6 +182,8 @@ public sealed class CiGovernanceTests {
 
         workflow.IndexOf("Run All Tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
         workflow.IndexOf("Record approved attestation fallback before publish", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.ShouldContain("Verify release test evidence");
+        workflow.ShouldContain("release-evidence/test-results.json");
         workflow.ShouldContain("Preflight package inventory");
         workflow.ShouldContain("Require governed attestation fallback before publish");
         workflow.ShouldContain("attestation-unavailable.md");
@@ -347,6 +349,90 @@ public sealed class CiGovernanceTests {
         ]);
         pathEscape.ExitCode.ShouldNotBe(0);
         pathEscape.Error.ShouldContain("escapes approved root");
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_ClassifiesReleaseReadinessFixtures() {
+        string root = RepositoryRoot();
+        string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-{Guid.NewGuid():N}.json");
+
+        string fixtureJson = File.ReadAllText(fixtures);
+        string[] requiredCases = [
+            "trusted-ready",
+            "approved-fallback",
+            "missing-inventory-package",
+            "skipped-tests",
+            "zero-tests",
+            "unsigned-package",
+            "stale-missing-timestamp",
+            "missing-sbom",
+            "checksum-mismatch",
+            "unsealed-manifest",
+            "pr-same-repo",
+            "fork-pr",
+            "local-candidate",
+            "recursive-submodule-command",
+            "path-leakage",
+            "token-like-leakage",
+            "hostile-workflow-command",
+            "dry-run-side-effect-attempt",
+            "stale-release-definition-fingerprint",
+            "post-seal-package-mutation",
+            "concurrent-same-version-run",
+            "stale-fallback-approval",
+            "partial-helper-output",
+            "rerun-review",
+        ];
+
+        foreach (string requiredCase in requiredCases) {
+            fixtureJson.ShouldContain(requiredCase);
+        }
+
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "classify-fixtures",
+            "--fixtures", fixtures,
+            "--output", output,
+        ]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("status").GetString().ShouldBe("valid");
+
+        JsonElement trustedReady = doc.RootElement.GetProperty("results").EnumerateArray()
+            .Single(r => r.GetProperty("name").GetString() == "trusted-ready");
+        trustedReady.GetProperty("classification").GetString().ShouldBe("ready");
+        trustedReady.GetProperty("publish_authorized").GetBoolean().ShouldBeTrue();
+
+        JsonElement localCandidate = doc.RootElement.GetProperty("results").EnumerateArray()
+            .Single(r => r.GetProperty("name").GetString() == "local-candidate");
+        localCandidate.GetProperty("context_class").GetString().ShouldBe("local-candidate");
+        localCandidate.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
+
+        JsonElement fallback = doc.RootElement.GetProperty("results").EnumerateArray()
+            .Single(r => r.GetProperty("name").GetString() == "approved-fallback");
+        fallback.GetProperty("classification").GetString().ShouldBe("fallback-approved");
+        fallback.GetProperty("publish_authorized").GetBoolean().ShouldBeTrue();
+    }
+
+    [Fact]
+    public void ReleaseWorkflow_GatesPublishSideEffectsOnTypedReadinessAndOwnerApproval() {
+        string root = RepositoryRoot();
+        string workflow = File.ReadAllText(Path.Combine(root, ".github/workflows/release.yml"));
+        string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
+
+        workflow.ShouldContain("release_owner_approved");
+        workflow.ShouldContain("RELEASE_OWNER_APPROVED");
+        workflow.ShouldContain("RELEASE_APPROVER");
+        workflow.ShouldContain("Release owner approval gate");
+
+        releaseConfig.ShouldContain("classify-release");
+        releaseConfig.ShouldContain("--require-publishable");
+        releaseConfig.IndexOf("verify-manifest", StringComparison.Ordinal).ShouldBeLessThan(
+            releaseConfig.IndexOf("classify-release", StringComparison.Ordinal));
+        releaseConfig.IndexOf("classify-release", StringComparison.Ordinal).ShouldBeLessThan(
+            releaseConfig.IndexOf("dotnet nuget push", StringComparison.Ordinal));
     }
 
     [Fact]

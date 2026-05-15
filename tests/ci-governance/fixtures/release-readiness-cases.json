@@ -1,0 +1,350 @@
+{
+  "base_evidence": {
+    "approval": {
+      "approved": true,
+      "approver": "release-owner",
+      "mechanism": "workflow_dispatch"
+    },
+    "attestation": {
+      "status": "attested"
+    },
+    "checks": {
+      "checksums_status": "valid",
+      "concurrent_same_version": false,
+      "dry_run_side_effect_attempt": false,
+      "helper_state": "success",
+      "inventory_status": "valid",
+      "paths_status": "normalized",
+      "post_seal_artifact_mutation": false,
+      "recursive_submodule_command": false,
+      "redaction_status": "passed",
+      "release_definition_drift": false,
+      "sbom_status": "present",
+      "semantic_release_state": "matches",
+      "signing_status": "verified",
+      "test_count": 42,
+      "test_status": "passed",
+      "timestamp_status": "verified",
+      "trx_present": true
+    },
+    "context": {
+      "dry_run": false,
+      "event_name": "workflow_dispatch",
+      "from_fork": false,
+      "partial_publish_state": "none",
+      "ref": "refs/heads/main",
+      "ref_protected": true,
+      "run_attempt": 1
+    },
+    "manifest": {
+      "benchmark_summary_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "commit_sha": "abc123",
+      "packages": [
+        {
+          "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+          "attestation_status": "attested",
+          "checksum": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "commit_sha": "abc123",
+          "package_id": "Hexalith.FrontComposer.Contracts",
+          "publish_status": "pending",
+          "sbom_component": "Hexalith.FrontComposer.Contracts",
+          "signing_status": "verified",
+          "symbol_artifact": "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+          "timestamp_status": "verified",
+          "version": "1.2.3"
+        }
+      ],
+      "run_id": "42",
+      "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "seal": {
+        "algorithm": "sha256",
+        "hash": "4b296de8c29cf069d0cd9900b85fb464f13ae75c41b6795dd3720bc1224eff20",
+        "sealed_at": "2026-05-15T00:00:00+00:00"
+      },
+      "tag": "v1.2.3",
+      "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3"
+    }
+  },
+  "cases": [
+    {
+      "name": "trusted-ready",
+      "expected_classification": "ready",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": true
+    },
+    {
+      "name": "approved-fallback",
+      "expected_classification": "fallback-approved",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": true,
+      "override": {
+        "attestation": {
+          "fallback": {
+            "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+            "approver": "release-owner",
+            "evidence": "release-evidence/attestation-unavailable.md",
+            "expires_at": "2026-12-31",
+            "reason": "GitHub artifact attestations unavailable for this repository context",
+            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
+            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
+            "scope": "v1 release candidate"
+          },
+          "status": "approved-unsupported"
+        },
+        "manifest": {
+          "packages": [
+            {
+              "attestation_status": "approved-unsupported"
+            }
+          ],
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "374a581df94b943d0cc0d85d1653073d446dadae8bed85461f18a170f2d17388",
+            "sealed_at": "2026-05-15T00:00:00+00:00"
+          }
+        }
+      }
+    },
+    {
+      "name": "missing-inventory-package",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "inventory_status": "invalid"
+        }
+      }
+    },
+    {
+      "name": "skipped-tests",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "test_status": "skipped"
+        }
+      }
+    },
+    {
+      "name": "zero-tests",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "test_count": 0
+        }
+      }
+    },
+    {
+      "name": "unsigned-package",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "signing_status": "unsigned"
+        },
+        "manifest": {
+          "packages": [
+            {
+              "signing_status": "unsigned"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "stale-missing-timestamp",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "timestamp_status": "missing"
+        },
+        "manifest": {
+          "packages": [
+            {
+              "timestamp_status": "missing"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "missing-sbom",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "sbom_status": "missing"
+        },
+        "manifest": {
+          "sbom_hash": ""
+        }
+      }
+    },
+    {
+      "name": "checksum-mismatch",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "checksums_status": "mismatch"
+        },
+        "manifest": {
+          "packages": [
+            {
+              "checksum": "pending-checksum"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "unsealed-manifest",
+      "expected_classification": "blocked",
+      "override": {
+        "manifest": {
+          "seal": {
+            "algorithm": ""
+          }
+        }
+      }
+    },
+    {
+      "name": "pr-same-repo",
+      "expected_classification": "blocked",
+      "expected_context_class": "pr-same-repo",
+      "override": {
+        "context": {
+          "event_name": "pull_request",
+          "ref": "refs/pull/4/merge",
+          "ref_protected": false
+        }
+      }
+    },
+    {
+      "name": "fork-pr",
+      "expected_classification": "blocked",
+      "expected_context_class": "fork-pr",
+      "override": {
+        "context": {
+          "event_name": "pull_request",
+          "from_fork": true,
+          "ref": "refs/pull/5/merge",
+          "ref_protected": false
+        }
+      }
+    },
+    {
+      "name": "local-candidate",
+      "expected_classification": "blocked",
+      "expected_context_class": "local-candidate",
+      "override": {
+        "context": {
+          "dry_run": true,
+          "event_name": "local",
+          "ref": "local"
+        }
+      }
+    },
+    {
+      "name": "recursive-submodule-command",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "recursive_submodule_command": true
+        }
+      }
+    },
+    {
+      "name": "path-leakage",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "raw_evidence": "C:\\Users\\Jerome\\secret\\release.log"
+        }
+      }
+    },
+    {
+      "name": "token-like-leakage",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "raw_evidence": "Bearer ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    },
+    {
+      "name": "hostile-workflow-command",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "raw_evidence": "::set-output name=ready::true"
+        }
+      }
+    },
+    {
+      "name": "dry-run-side-effect-attempt",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "dry_run_side_effect_attempt": true
+        },
+        "context": {
+          "dry_run": true
+        }
+      }
+    },
+    {
+      "name": "stale-release-definition-fingerprint",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "release_definition_drift": true
+        }
+      }
+    },
+    {
+      "name": "post-seal-package-mutation",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "post_seal_artifact_mutation": true
+        }
+      }
+    },
+    {
+      "name": "concurrent-same-version-run",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "concurrent_same_version": true
+        }
+      }
+    },
+    {
+      "name": "stale-fallback-approval",
+      "expected_classification": "blocked",
+      "override": {
+        "attestation": {
+          "fallback": {
+            "expires_at": "2026-01-01"
+          },
+          "status": "approved-unsupported"
+        }
+      }
+    },
+    {
+      "name": "partial-helper-output",
+      "expected_classification": "blocked",
+      "override": {
+        "checks": {
+          "helper_state": "partial"
+        }
+      }
+    },
+    {
+      "name": "rerun-review",
+      "expected_classification": "blocked",
+      "expected_context_class": "rerun-review",
+      "override": {
+        "context": {
+          "run_attempt": 2
+        }
+      }
+    }
+  ]
+}

@@ -4,6 +4,16 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      release_owner_approved:
+        description: 'Approve release side effects after reviewing sealed readiness evidence'
+        required: true
+        type: boolean
+        default: false
+      release_approver:
+        description: 'Named release owner approving publish/tag/release side effects'
+        required: true
+        type: string
 
 concurrency:
   group: release
@@ -11,6 +21,14 @@ concurrency:
 
 permissions:
   contents: read
+
+env:
+  RELEASE_APPROVAL_MECHANISM: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch_input' || 'repository_variable' }}
+  RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER || '' }}
+  RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || inputs.release_approver || vars.RELEASE_APPROVER || '' }}
+  RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT || '' }}
+  RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}
+  RELEASE_OWNER_APPROVED: ${{ inputs.release_owner_approved || vars.RELEASE_OWNER_APPROVED || 'false' }}
 
 jobs:
   release:
@@ -68,9 +86,8 @@ jobs:
           DiffEngine_Disabled: true
         run: dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
 
-      # Guard: fail fast if no tests ran (silent exit 0 with 0 tests would still trigger release).
-      - name: Verify tests actually ran
-        run: find ./TestResults -name 'release-results.trx' -type f | grep -q .
+      - name: Verify release test evidence
+        run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json
 
       - name: Install semantic-release
         env:
@@ -106,6 +123,17 @@ jobs:
           GitHub artifact/SBOM attestation is unavailable for this repository plan, visibility, or permission context.
           Checksums, NuGet author signatures, RFC 3161 timestamps, SBOM, commit SHA, tag, run id, and workflow ref remain the blocking provenance evidence.
           NOTE
+
+      - name: Release owner approval gate
+        run: |
+          if [ "$RELEASE_OWNER_APPROVED" != "true" ] || [ -z "$RELEASE_APPROVER" ]; then
+            {
+              echo '## Release owner approval required'
+              echo
+              echo 'A named release owner must approve NuGet publish, tag/changelog push, GitHub Release creation, and attestation or fallback side effects before semantic-release can run.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
 
       - name: Configure git credentials
         run: git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/Hexalith/Hexalith.FrontComposer.git
