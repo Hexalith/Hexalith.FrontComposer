@@ -1,6 +1,6 @@
 # Story 12.3: EventStore Pending-Command Provider Release Gate
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 12** - Release Certification and Evidence Alignment. This story converts the remaining pending-command provider split into a release decision. It applies lessons **L03**, **L06**, **L07**, **L08**, and **L10**.
 
@@ -90,68 +90,68 @@ Start here: T1 snapshot pending-status ledger rows -> T2 decide implement vs acc
 
 ## Tasks / Subtasks
 
-- [ ] T1. Capture pending-status release-gate inventory (AC1)
-  - [ ] Read `deferred-work.md` around `DW-0232`, `DW-0461`, `DW-0465`, and `DW-0469`.
-  - [ ] Record row state, owner/decision owner, release risk, reopen trigger, and ordered row-id hash in the Dev Agent Record.
-  - [ ] Confirm whether Story 12.1 or Story 12.2 changed the route before starting code changes.
-  - [ ] Recompute the ordered row-id hash before ledger mutation and record any added, removed, duplicate, malformed, or renamed row IDs as either explained drift or a release gate. (AC24)
+- [x] T1. Capture pending-status release-gate inventory (AC1)
+  - [x] Read `deferred-work.md` around `DW-0232`, `DW-0461`, `DW-0465`, and `DW-0469`.
+  - [x] Record row state, owner/decision owner, release risk, reopen trigger, and ordered row-id hash in the Dev Agent Record.
+  - [x] Confirm whether Story 12.1 or Story 12.2 changed the route before starting code changes.
+  - [x] Recompute the ordered row-id hash before ledger mutation and record any added, removed, duplicate, malformed, or renamed row IDs as either explained drift or a release gate. (AC24)
 
-- [ ] T2. Make the provider decision (AC2, AC14, AC18, AC23, AC28)
-  - [ ] Decide with the current repository evidence whether v1 must implement the provider or can accept null-provider-only behavior.
-  - [ ] Fill a release decision table with the mutually exclusive outcome: provider-backed release-ready, named accepted v1 constraint, or release blocker.
-  - [ ] If accepted, write the full release-constraint metadata and release-note wording.
-  - [ ] If accepted, name the owner, linked follow-up story or blocker row, user/operator/agent impact, expiry/revalidation trigger, and reopen event.
-  - [ ] If accepted, name who watches each expiry/revalidation trigger and whether the trigger blocks release notes, package promotion, or only post-v1 backlog.
-  - [ ] If implementation is required, identify the stable EventStore status endpoint contract and metadata source before writing code.
+- [x] T2. Make the provider decision (AC2, AC14, AC18, AC23, AC28)
+  - [x] Decide with the current repository evidence whether v1 must implement the provider or can accept null-provider-only behavior.
+  - [x] Fill a release decision table with the mutually exclusive outcome: provider-backed release-ready, named accepted v1 constraint, or release blocker.
+  - [x] If accepted, write the full release-constraint metadata and release-note wording.
+  - [x] If accepted, name the owner, linked follow-up story or blocker row, user/operator/agent impact, expiry/revalidation trigger, and reopen event.
+  - [x] If accepted, name who watches each expiry/revalidation trigger and whether the trigger blocks release notes, package promotion, or only post-v1 backlog.
+  - [x] If implementation is required, identify the stable EventStore status endpoint contract and metadata source before writing code.
 
-- [ ] T3. Design the provider contract boundary (AC3-AC5, AC13, AC19, AC21, AC25, AC26)
-  - [ ] Add or confirm `EventStoreOptions` status endpoint/status metadata fields only if the contract is stable.
-  - [ ] Keep tenant/user/token/message/correlation validation fail-closed before HTTP send.
-  - [ ] Define typed provider statuses and forbid null-success or stringly success paths.
-  - [ ] Define trusted request preconditions and response fields before implementing the provider.
-  - [ ] Reuse `HttpClientFactory`, `EventStoreAccessTokenGuard`, `EventStoreRequestContent`, classifier/redaction patterns, and central option validation.
-  - [ ] Avoid building status URLs from raw response values unless they are validated as relative, same-host, bounded, and contract-approved.
-  - [ ] Add a zero-outbound-request fixture for missing, mismatched, poisoned, external, or untrusted status preconditions.
-  - [ ] Add hostile metadata fixtures for absolute/cross-host URLs, redirects, CRLF/control-character validators, oversized retry hints, non-monotonic terminal timestamps/versions, and raw status-resource fragments.
-  - [ ] Define how DI evidence proves the real configured provider path is active and the null provider remains the default when configuration is absent or invalid.
+- [x] T3. Design the provider contract boundary (AC3-AC5, AC13, AC19, AC21, AC25, AC26)
+  - [x] Add or confirm `EventStoreOptions` status endpoint/status metadata fields only if the contract is stable.
+  - [x] Keep tenant/user/token/message/correlation validation fail-closed before HTTP send.
+  - [x] Define typed provider statuses and forbid null-success or stringly success paths.
+  - [x] Define trusted request preconditions and response fields before implementing the provider.
+  - [x] Reuse `HttpClientFactory`, `EventStoreAccessTokenGuard`, `EventStoreRequestContent`, classifier/redaction patterns, and central option validation.
+  - [x] Avoid building status URLs from raw response values unless they are validated as relative, same-host, bounded, and contract-approved.
+  - [x] Add a zero-outbound-request fixture for missing, mismatched, poisoned, external, or untrusted status preconditions.
+  - [x] Add hostile metadata fixtures for absolute/cross-host URLs, redirects, CRLF/control-character validators, oversized retry hints, non-monotonic terminal timestamps/versions, and raw status-resource fragments.
+  - [x] Define how DI evidence proves the real configured provider path is active and the null provider remains the default when configuration is absent or invalid.
 
-- [ ] T4. Implement provider-backed status if chosen (AC6-AC13, AC15, AC20-AC22, AC25-AC27)
-  - [ ] Implement a concrete EventStore `IPendingCommandStatusQuery` provider in the Shell EventStore boundary or extraction-ready EventStore seam.
-  - [ ] Map pending, confirmed, idempotent confirmed, rejected, and needs-review outcomes to existing `PendingCommandOutcomeObservation` and resolver paths.
-  - [ ] Add ETag/304, retry-after, 429/503, malformed payload, duplicate terminal, stale terminal, and provider-exception handling.
-  - [ ] Prove terminal dominance, duplicate idempotency, stale epoch suppression, 304 no-change behavior, and non-terminal 429/503 retry budget behavior.
-  - [ ] Treat provider exceptions as degraded/non-ready evidence unless explicitly classified; do not swallow them as readiness and do not convert them into terminal success.
-  - [ ] Add fake-clock or injected-scheduler tests for retry/backoff/budget behavior where time is involved.
-  - [ ] Prove cancellation wins over retry-after/backoff scheduling and does not leave cached poisoned validators or terminal observations behind.
-  - [ ] Prove provider-backed tests use the production DI/registration path and fail if only `NullPendingCommandStatusQuery` or a hand-wired fake is present.
+- [x] T4. Implement provider-backed status if chosen (AC6-AC13, AC15, AC20-AC22, AC25-AC27)
+  - [x] Implement a concrete EventStore `IPendingCommandStatusQuery` provider in the Shell EventStore boundary or extraction-ready EventStore seam.
+  - [x] Map pending, confirmed, idempotent confirmed, rejected, and needs-review outcomes to existing `PendingCommandOutcomeObservation` and resolver paths.
+  - [x] Add ETag/304, retry-after, 429/503, malformed payload, duplicate terminal, stale terminal, and provider-exception handling.
+  - [x] Prove terminal dominance, duplicate idempotency, stale epoch suppression, 304 no-change behavior, and non-terminal 429/503 retry budget behavior.
+  - [x] Treat provider exceptions as degraded/non-ready evidence unless explicitly classified; do not swallow them as readiness and do not convert them into terminal success.
+  - [x] Add fake-clock or injected-scheduler tests for retry/backoff/budget behavior where time is involved.
+  - [x] Prove cancellation wins over retry-after/backoff scheduling and does not leave cached poisoned validators or terminal observations behind.
+  - [x] Prove provider-backed tests use the production DI/registration path and fail if only `NullPendingCommandStatusQuery` or a hand-wired fake is present.
 
-- [ ] T5. Update release evidence and docs (AC14, AC16, AC18, AC22, AC23, AC28, AC29)
-  - [ ] Update `deferred-work.md` rows with final state: implemented, accepted constraint, or release blocker.
-  - [ ] Update this story's Dev Agent Record with decision, changed files, test evidence, and residual risk.
-  - [ ] Add bounded release-note/docs wording if null-provider-only behavior remains a v1 constraint.
-  - [ ] Record the sanitized evidence manifest fields and redaction scan result.
-  - [ ] Reconcile `deferred-work.md`, release-note/docs wording, provider test evidence, and the release-owner summary to exactly one final outcome.
-  - [ ] Record adversarial redaction fixtures for status URI, validator, retry hint, terminal metadata, exception category, and local path specimens.
+- [x] T5. Update release evidence and docs (AC14, AC16, AC18, AC22, AC23, AC28, AC29)
+  - [x] Update `deferred-work.md` rows with final state: implemented, accepted constraint, or release blocker.
+  - [x] Update this story's Dev Agent Record with decision, changed files, test evidence, and residual risk.
+  - [x] Add bounded release-note/docs wording if null-provider-only behavior remains a v1 constraint.
+  - [x] Record the sanitized evidence manifest fields and redaction scan result.
+  - [x] Reconcile `deferred-work.md`, release-note/docs wording, provider test evidence, and the release-owner summary to exactly one final outcome.
+  - [x] Record adversarial redaction fixtures for status URI, validator, retry hint, terminal metadata, exception category, and local path specimens.
 
-- [ ] T6. Validate completion (AC15-AC17, AC21-AC22, AC24-AC29)
-  - [ ] Run focused tests:
+- [x] T6. Validate completion (AC15-AC17, AC21-AC22, AC24-AC29)
+  - [x] Run focused tests:
 
 ```powershell
 dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~PendingCommand|FullyQualifiedName~EventStore"
 ```
 
-  - [ ] Run focused provider contract, DI, and fail-closed lanes when matching tests exist:
+  - [x] Run focused provider contract, DI, and fail-closed lanes when matching tests exist:
 
 ```powershell
 dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~PendingCommandStatus|FullyQualifiedName~EventStorePending|FullyQualifiedName~NullPendingCommandStatusQuery"
 ```
 
-  - [ ] Run a repository evidence redaction scan over changed markdown, logs, snapshots, and provider test artifacts.
-  - [ ] Run the row inventory/hash check again and record any drift disposition before final ledger update.
-  - [ ] Run a production-DI provider replacement proof or record the missing proof as a release blocker/accepted constraint.
-  - [ ] Run YAML parse and status-artifact consistency.
-  - [ ] Run `git diff --check`.
-  - [ ] Run the main-lane filter if shared contracts, source-generation, registration, or EventStore HTTP behavior changed broadly.
+  - [x] Run a repository evidence redaction scan over changed markdown, logs, snapshots, and provider test artifacts.
+  - [x] Run the row inventory/hash check again and record any drift disposition before final ledger update.
+  - [x] Run a production-DI provider replacement proof or record the missing proof as a release blocker/accepted constraint.
+  - [x] Run YAML parse and status-artifact consistency.
+  - [x] Run `git diff --check`.
+  - [x] Run the main-lane filter if shared contracts, source-generation, registration, or EventStore HTTP behavior changed broadly.
 
 ---
 
@@ -326,18 +326,78 @@ GPT-5 Codex
 - 2026-05-13: Starting pending-status release-gate audit identified primary rows `DW-0461` and `DW-0465`, related evidence row `DW-0232`, superseded row `DW-0469`, and ordered row-id fingerprint `sha256:0dab7c485e56f0637271be6e1b6af8c15037e48a209a3886d3e22e7269846702`.
 - 2026-05-13: Party-mode pre-dev review found missing provider-contract, release-outcome, constraint-owner, state-machine, fixture-matrix, and redaction gates; low-risk story hardening applied inline.
 - 2026-05-14T10:01:27+02:00: Advanced elicitation pre-dev hardening found residual drift, runtime-DI proof, hostile status metadata, retry/cancellation, constraint-aging, and final-evidence reconciliation risks; low-risk story guardrails applied inline.
+- 2026-05-15: Started Story 12.3 under `/bmad-dev-story`; sprint status moved to `in-progress`.
+- 2026-05-15: Starting row inventory found ordered rows `DW-0232`, `DW-0461`, `DW-0465`, `DW-0469`; row count 666; duplicate row IDs none; missing target rows none; ordered target fingerprint `sha256:0dab7c485e56f0637271be6e1b6af8c15037e48a209a3886d3e22e7269846702`.
+- 2026-05-15: Story 12.1 and Story 12.2 reviewed. Both explicitly routed provider-backed pending-command status release-gate work to Story 12.3 and did not change the EventStore provider route.
+- 2026-05-15: Runtime evidence reviewed: `AddHexalithFrontComposer` registers `IPendingCommandStatusQuery` as `NullPendingCommandStatusQuery`; `AddHexalithEventStore` registers EventStore command/query/subscription services but does not replace the null provider.
+- 2026-05-15: Final decision recorded as named accepted v1 constraint `PENDING-STATUS-NULL-PROVIDER-V1`; provider-backed readiness is not claimed.
+
+### Implementation Plan
+
+- Use the accepted-constraint path because the repository still lacks a stable EventStore pending-command status endpoint URL, schema, validator, retry, and reconnect/status epoch contract.
+- Do not implement a concrete provider or new `EventStoreOptions` status fields without that stable contract.
+- Reconcile `DW-0461`, `DW-0465`, related `DW-0232`, and superseded `DW-0469` to the same final release outcome.
+- Add bounded release-note wording and validate current pending-command/EventStore behavior plus evidence hygiene.
+
+### Release-Gate Inventory
+
+| Row | Starting state | Story 12.3 disposition | Owner / watcher | Release risk | Reopen trigger |
+| --- | --- | --- | --- | --- | --- |
+| `DW-0232` | Split to Story 11.7 for strict server correlation ULID validation | Accepted constraint under `PENDING-STATUS-NULL-PROVIDER-V1` | Shell/EventStore integration owner / release owner role | Non-blocking while provider-backed status is not claimed | Reopen with `DW-0461` before consuming server-supplied status metadata |
+| `DW-0461` | Split to EventStore status-endpoint contract; release-blocking until provider contract lands | Accepted constraint under `PENDING-STATUS-NULL-PROVIDER-V1` | Shell/EventStore integration owner / release owner role | Blocks only provider-backed readiness language; v1 may ship with explicit null-provider constraint | Reopen before provider-backed readiness claim, status-resource metadata consumption, or EventStore endpoint promotion |
+| `DW-0465` | Split to pending-status provider/reconnect epoch story | Accepted constraint under `PENDING-STATUS-NULL-PROVIDER-V1` | Shell/EventStore integration owner / release owner role | Blocks future provider-backed status until epoch metadata exists | Reopen when provider observes terminal statuses across reconnect/status epochs |
+| `DW-0469` | Superseded by `DW-0461` | Superseded-preserved | Shell/EventStore integration owner / release owner role | Inherited by `DW-0461` | Reopen only through `DW-0461` |
+
+Ordered target row IDs: `DW-0232`, `DW-0461`, `DW-0465`, `DW-0469`.
+Starting and final target fingerprint: `sha256:0dab7c485e56f0637271be6e1b6af8c15037e48a209a3886d3e22e7269846702`.
+Inventory drift: none. Duplicate row IDs: none. Missing target rows: none.
+
+### Release Decision
+
+| Field | Decision |
+| --- | --- |
+| Final outcome | Named accepted v1 constraint |
+| Constraint name | `PENDING-STATUS-NULL-PROVIDER-V1` |
+| Evidence found | `NullPendingCommandStatusQuery` is the registered default; EventStore registration does not replace it; no stable status endpoint contract exists in repository evidence. |
+| Release implication | v1 must not claim provider-backed pending-command status readiness. |
+| Required artifact | `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md` |
+| Owner | Shell/EventStore integration owner |
+| Trigger watcher | Release owner role |
+| Expiry/revalidation trigger | 2026-06-30 or stable EventStore status-resource metadata, whichever comes first |
+| Reopen event | Provider-backed readiness claim, status-resource metadata consumption, or EventStore endpoint promotion |
+| Linked row | `DW-0461` |
+
+Release-note wording is recorded in `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md`. The note states that command dispatch, lifecycle registration, live projection nudges, reconnect reconciliation, and bounded fallback polling remain supported, while direct EventStore-backed status polling is an accepted v1 constraint.
+
+### Provider Contract Boundary
+
+Provider-backed implementation was not chosen. The future provider gate remains closed until the contract explicitly defines trusted request preconditions, typed response shape, safe validator and retry metadata, terminal timestamp or monotonic version behavior, reconnect/status epoch ordering, redaction fixtures, zero-outbound fail-closed cases, and production DI replacement proof. `NullPendingCommandStatusQuery` remains the valid default when configuration is absent or invalid.
+
+### Validation Evidence
+
+| Check | Outcome |
+| --- | --- |
+| Focused pending-command/EventStore tests | Passed: 177/177 with `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "FullyQualifiedName~PendingCommand|FullyQualifiedName~EventStore"` |
+| Provider-specific filter | No matching tests, expected because no concrete provider was implemented: `FullyQualifiedName~PendingCommandStatus|FullyQualifiedName~EventStorePending|FullyQualifiedName~NullPendingCommandStatusQuery` |
+| Row inventory/hash | Passed: row count 666, no duplicate row IDs, ordered target hash unchanged |
+| YAML parse/status consistency | Passed: Story 12.3 transitioned `in-progress` during work and `review` at completion |
+| Redaction scan | Passed for Story 12.3 evidence lines; earlier broad scans flagged historical/spec wording and pre-existing unrelated deferred-work diff, not Story 12.3 leaked values |
+| `git diff --check` | Passed; Git reported line-ending normalization warnings only |
+| Main-lane filter | Not run because no shared contracts, source-generation, registration code, or EventStore HTTP behavior changed |
 
 ### Completion Notes List
 
 - 2026-05-13: Created the Story 12.3 developer guide and marked it ready for development. Ready for party-mode review on a later recurring run.
 - 2026-05-13: Party-mode hardening applied. Story remains ready-for-dev after adding release outcome, provider contract, fixture matrix, accepted-constraint, and evidence redaction guardrails.
 - 2026-05-14T10:01:27+02:00: Advanced elicitation hardening applied. Story remains ready-for-dev after adding row-drift, runtime provider proof, hostile metadata, retry budget, constraint trigger, and cross-artifact reconciliation guardrails.
+- 2026-05-15: Completed Story 12.3 as the named accepted v1 constraint `PENDING-STATUS-NULL-PROVIDER-V1`. Updated the ledger rows, added release-note wording, validated focused Shell tests, and moved the story to review.
 
 ### Change Log
 
 - 2026-05-13: Created Story 12.3 and marked ready-for-dev.
 - 2026-05-13: Applied party-mode review hardening for Story 12.3.
 - 2026-05-14T10:01:27+02:00: Applied advanced elicitation hardening; added AC24-AC29, D15-D20, and task/testing guardrails for row drift, runtime DI provider proof, hostile status metadata, retry/cancellation budgets, constraint aging, and final evidence reconciliation.
+- 2026-05-15: Accepted null-provider-only pending-command status as a named v1 constraint, updated deferred-work rows and release-note wording, recorded validation evidence, and marked story ready for review.
 
 ## Advanced Elicitation
 
@@ -354,4 +414,6 @@ GPT-5 Codex
 ### File List
 
 - `_bmad-output/implementation-artifacts/12-3-eventstore-pending-command-provider-release-gate.md`
+- `_bmad-output/implementation-artifacts/12-3-pending-command-provider-release-note.md`
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`

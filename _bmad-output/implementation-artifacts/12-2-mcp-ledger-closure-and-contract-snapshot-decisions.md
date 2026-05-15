@@ -1,6 +1,6 @@
 # Story 12.2: MCP Ledger Closure and Contract Snapshot Decisions
 
-Status: ready-for-dev
+Status: review
 
 > **Epic 12** - Release Certification and Evidence Alignment. This story converts the remaining Story 11.5 MCP ledger ambiguity into row-addressable release evidence. It applies lessons **L06**, **L07**, **L08**, and **L10**.
 
@@ -84,60 +84,60 @@ Start here: T1 snapshot active Story 11.5 rows -> T2 map each row to Story 11.5 
 
 ## Tasks / Subtasks
 
-- [ ] T1. Capture starting Story 11.5 ledger inventory (AC1, AC14)
-  - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom before edits.
-  - [ ] Count detailed rows containing both `Reconciliation:` and `Owner: Story 11.5`.
-  - [ ] Record a deterministic inventory table with `count`, `first_id`, `last_id`, `section_distribution`, `starting_hash`, and sanitized `generated_at` timestamp.
-  - [ ] Preserve the starting fingerprint in the Dev Agent Record.
-  - [ ] Compare the implementation-time inventory to the creation baseline and fail closed on unexplained count/hash drift, duplicate row IDs, malformed row IDs, or missing `Row: DW-####` markers.
+- [x] T1. Capture starting Story 11.5 ledger inventory (AC1, AC14)
+  - [x] Read `_bmad-output/implementation-artifacts/deferred-work.md` from top to bottom before edits.
+  - [x] Count detailed rows containing both `Reconciliation:` and `Owner: Story 11.5`.
+  - [x] Record a deterministic inventory table with `count`, `first_id`, `last_id`, `section_distribution`, `starting_hash`, and sanitized `generated_at` timestamp.
+  - [x] Preserve the starting fingerprint in the Dev Agent Record.
+  - [x] Compare the implementation-time inventory to the creation baseline and fail closed on unexplained count/hash drift, duplicate row IDs, malformed row IDs, or missing `Row: DW-####` markers.
 
-- [ ] T2. Compare active rows against Story 11.5 evidence (AC2, AC3, AC6)
-  - [ ] Review `_bmad-output/implementation-artifacts/11-5-mcp-schema-negotiation-and-agent-contract-hardening.md`.
-  - [ ] Review the Story 11.5 fixed-row list and category matrices A-E in `deferred-work.md`.
-  - [ ] Verify that each claimed fixed row has evidence in MCP source/tests or Story 11.5 validation records.
-  - [ ] Mark broad or range-only closure claims as insufficient until row IDs and inherited metadata are explicit.
+- [x] T2. Compare active rows against Story 11.5 evidence (AC2, AC3, AC6)
+  - [x] Review `_bmad-output/implementation-artifacts/11-5-mcp-schema-negotiation-and-agent-contract-hardening.md`.
+  - [x] Review the Story 11.5 fixed-row list and category matrices A-E in `deferred-work.md`.
+  - [x] Verify that each claimed fixed row has evidence in MCP source/tests or Story 11.5 validation records.
+  - [x] Mark broad or range-only closure claims as insufficient until row IDs and inherited metadata are explicit.
 
-- [ ] T3. Classify adjacent non-MCP rows (AC4, AC5, AC11)
-  - [ ] Split diagnostic registry/docs governance rows to Story 11.2 or a named diagnostic/docs follow-up.
-  - [ ] Split SourceTools/schema-generation rows to Story 11.4 or a named schema-fingerprint follow-up.
-  - [ ] For diagnostic UX/path-truncation polish, decide whether it is a v1 release concern, v1.x accepted constraint, or Story 11.2 docs/diagnostic owner.
-  - [ ] Record downstream MCP impact as `none`, `contract-adjacent`, or `release-gate` for each grouped set.
-  - [ ] Classify non-MCP rows without reanalyzing or resolving their implementation scope inside Story 12.2; assign them to a named story, named follow-up, or explicit release gate per L10.
+- [x] T3. Classify adjacent non-MCP rows (AC4, AC5, AC11)
+  - [x] Split diagnostic registry/docs governance rows to Story 11.2 or a named diagnostic/docs follow-up.
+  - [x] Split SourceTools/schema-generation rows to Story 11.4 or a named schema-fingerprint follow-up.
+  - [x] For diagnostic UX/path-truncation polish, decide whether it is a v1 release concern, v1.x accepted constraint, or Story 11.2 docs/diagnostic owner.
+  - [x] Record downstream MCP impact as `none`, `contract-adjacent`, or `release-gate` for each grouped set.
+  - [x] Classify non-MCP rows without reanalyzing or resolving their implementation scope inside Story 12.2; assign them to a named story, named follow-up, or explicit release gate per L10.
 
-- [ ] T4. Verify MCP contract snapshot and fail-closed behavior before ledger mutation (AC6, AC9, AC10, AC16, AC21)
-  - [ ] Audit Story 11.5 tests for negotiation, tool admission, command invocation, projection reader, auth header parsing, skill resources, aggregate manifest integrity, and `Story11_5ResolutionTests`.
-  - [ ] Confirm compatible-additive/current-server validation happens before side effects.
-  - [ ] Confirm hidden/unknown/tenant/schema/fingerprint precedence remains fail-closed and public responses stay bounded.
-  - [ ] Confirm descriptor/fingerprint memoized failures produce stable sanitized categories on retry.
-  - [ ] Confirm negotiation, tenant validation, descriptor/corpus selection, and side-effect admission share one immutable snapshot or epoch; reject, restart, or fail closed when the snapshot is absent, stale, expired, or divergent.
-  - [ ] Cover negative cases for invalid negotiation, ambiguous or missing tenant, unknown descriptor, missing corpus, failed admission, attempted side effects before admission, public category instability, and stale epoch behavior.
-  - [ ] Include mid-request descriptor/corpus/fingerprint change, stale retry, memoized failure reuse, and wrong-tenant replay in the closure evidence matrix or leave the affected rows as release gates.
-  - [ ] If evidence is missing, add focused MCP tests or split the row to a named release gate.
+- [x] T4. Verify MCP contract snapshot and fail-closed behavior before ledger mutation (AC6, AC9, AC10, AC16, AC21)
+  - [x] Audit Story 11.5 tests for negotiation, tool admission, command invocation, projection reader, auth header parsing, skill resources, aggregate manifest integrity, and `Story11_5ResolutionTests`.
+  - [x] Confirm compatible-additive/current-server validation happens before side effects.
+  - [x] Confirm hidden/unknown/tenant/schema/fingerprint precedence remains fail-closed and public responses stay bounded.
+  - [x] Confirm descriptor/fingerprint memoized failures produce stable sanitized categories on retry.
+  - [x] Confirm negotiation, tenant validation, descriptor/corpus selection, and side-effect admission share one immutable snapshot or epoch; reject, restart, or fail closed when the snapshot is absent, stale, expired, or divergent.
+  - [x] Cover negative cases for invalid negotiation, ambiguous or missing tenant, unknown descriptor, missing corpus, failed admission, attempted side effects before admission, public category instability, and stale epoch behavior.
+  - [x] Include mid-request descriptor/corpus/fingerprint change, stale retry, memoized failure reuse, and wrong-tenant replay in the closure evidence matrix or leave the affected rows as release gates.
+  - [x] If evidence is missing, add focused MCP tests or split the row to a named release gate.
 
-- [ ] T5. Resolve accepted constraints and release gates (AC7, AC8, AC11, AC12, AC17, AC18, AC22)
-  - [ ] Decide the v1 status of missing claimed fingerprint behavior.
-  - [ ] Decide the v1 status of runtime corpus aggregate publication and build-time corpus signing/baseline materialization.
-  - [ ] Decide whether public category compatibility is fully pinned, accepted as v1 constraint, or requires release notes.
-  - [ ] Decide whether enum/display-label parity can remain outside MCP contract material.
-  - [ ] For every accepted constraint, complete a matrix with `row_id`, `owner`, `target story or gate`, `likelihood`, `impact`, `release risk`, `downstream agent/adopter impact`, `evidence`, `expiry/revalidation trigger`, `release-note requirement`, and `regression guard`.
-  - [ ] State whether one blocking MCP contract row blocks v1 release, and name the release decision owner for any exception.
-  - [ ] For every expiry/revalidation trigger, name the watcher, artifact to update, release-note impact, and package-promotion impact so accepted constraints cannot age silently.
+- [x] T5. Resolve accepted constraints and release gates (AC7, AC8, AC11, AC12, AC17, AC18, AC22)
+  - [x] Decide the v1 status of missing claimed fingerprint behavior.
+  - [x] Decide the v1 status of runtime corpus aggregate publication and build-time corpus signing/baseline materialization.
+  - [x] Decide whether public category compatibility is fully pinned, accepted as v1 constraint, or requires release notes.
+  - [x] Decide whether enum/display-label parity can remain outside MCP contract material.
+  - [x] For every accepted constraint, complete a matrix with `row_id`, `owner`, `target story or gate`, `likelihood`, `impact`, `release risk`, `downstream agent/adopter impact`, `evidence`, `expiry/revalidation trigger`, `release-note requirement`, and `regression guard`.
+  - [x] State whether one blocking MCP contract row blocks v1 release, and name the release decision owner for any exception.
+  - [x] For every expiry/revalidation trigger, name the watcher, artifact to update, release-note impact, and package-promotion impact so accepted constraints cannot age silently.
 
-- [ ] T6. Update ledger and story evidence (AC3, AC7, AC11, AC13, AC15, AC19, AC20)
-  - [ ] Replace active Story 11.5 current markers with row-addressable final states or explicit release gates.
-  - [ ] Update the Story 11.5 resolution marker summary if it currently contradicts detailed row state.
-  - [ ] Add the `Story 12.2 Release Owner Summary` with final counts, validation, decisions, changed files, accepted constraints, splits, release gates, and residual risk.
-  - [ ] Update this Story 12.2 Dev Agent Record with final counts, validation commands and outcomes, decisions, changed files, sanitization check, and evidence locations.
-  - [ ] Reconcile final counters across the ledger top summary, detailed row markers, release-owner summary, Dev Agent Record, and any Story 12.1 routing references.
-  - [ ] Keep historical review text and original row IDs intact.
+- [x] T6. Update ledger and story evidence (AC3, AC7, AC11, AC13, AC15, AC19, AC20)
+  - [x] Replace active Story 11.5 current markers with row-addressable final states or explicit release gates.
+  - [x] Update the Story 11.5 resolution marker summary if it currently contradicts detailed row state.
+  - [x] Add the `Story 12.2 Release Owner Summary` with final counts, validation, decisions, changed files, accepted constraints, splits, release gates, and residual risk.
+  - [x] Update this Story 12.2 Dev Agent Record with final counts, validation commands and outcomes, decisions, changed files, sanitization check, and evidence locations.
+  - [x] Reconcile final counters across the ledger top summary, detailed row markers, release-owner summary, Dev Agent Record, and any Story 12.1 routing references.
+  - [x] Keep historical review text and original row IDs intact.
 
-- [ ] T7. Validate completion (AC12, AC14, AC15)
-  - [ ] Re-run active Story 11.5 row inventory and record final count/fingerprint.
-  - [ ] Re-run sprint status YAML parse and status-artifact consistency checks.
-  - [ ] Run `git diff --check`.
-  - [ ] Scan changed evidence for forbidden raw headers, payloads, tokens, tenant/user identifiers, exception dumps, local absolute paths, descriptor dumps, and unbounded logs.
-  - [ ] Include adversarial MCP redaction fixtures for descriptor dumps, manifest paths, bearer-style headers, tenant/user claims, command payload fragments, correlation IDs, and raw tool/resource URIs.
-  - [ ] Run focused MCP tests if any MCP source or test files changed.
+- [x] T7. Validate completion (AC12, AC14, AC15)
+  - [x] Re-run active Story 11.5 row inventory and record final count/fingerprint.
+  - [x] Re-run sprint status YAML parse and status-artifact consistency checks.
+  - [x] Run `git diff --check`.
+  - [x] Scan changed evidence for forbidden raw headers, payloads, tokens, tenant/user identifiers, exception dumps, local absolute paths, descriptor dumps, and unbounded logs.
+  - [x] Include adversarial MCP redaction fixtures for descriptor dumps, manifest paths, bearer-style headers, tenant/user claims, command payload fragments, correlation IDs, and raw tool/resource URIs.
+  - [x] Run focused MCP tests if any MCP source or test files changed.
 
 ---
 
@@ -279,18 +279,34 @@ GPT-5 Codex
 - 2026-05-13: Pre-creation audit parsed `sprint-status.yaml`, confirmed status-artifact consistency had no drift, found ready buffer count 1, and selected the first backlog story `12-2-mcp-ledger-closure-and-contract-snapshot-decisions`.
 - 2026-05-13: Starting detailed ledger-marker audit found 205 active `Owner: Story 11.5` rows with ordered row-id fingerprint `sha256:d0df4a8ff4f113e059c582a69ad2f67fa947d65d62baaff13190ce7d0c780e83`.
 - 2026-05-13T20:50:14+02:00: `/bmad-party-mode 12-2-mcp-ledger-closure-and-contract-snapshot-decisions; review;` completed with Winston, Amelia, John, and Murat; all four initially recommended `needs-story-update` before dev.
+- 2026-05-14T12:55:12+02:00: Development started; `sprint-status.yaml` moved Story 12.2 from `ready-for-dev` to `in-progress`.
+- 2026-05-14T12:55:12+02:00: T1 inventory read `deferred-work.md` before ledger edits. Active `Owner: Story 11.5` rows now count `0` because Story 12.1 already split the 205-row set to Story 12.2. Story 12.2-routed rows with `Previous owner was Story 11.5` count `205`, first `DW-0058`, last `DW-0641`, ordered row-id hash `sha256:d0df4a8ff4f113e059c582a69ad2f67fa947d65d62baaff13190ce7d0c780e83`, no duplicate IDs, no malformed IDs, and no missing `Row: DW-####` markers. The drift is explained by the Story 12.1 execution update in `deferred-work.md`.
+- 2026-05-14T13:00:00+02:00: T2-T5 evidence pass reviewed Story 11.5 fixed rows, DN19-DN22 patch notes, Category A-E row-scoped matrix, D11/DN9/DN14/DN15 accepted constraints, and MCP runtime tests. No production code changes were required because current Story 11.5 MCP evidence already covers fail-closed admission, zero side effects before admission, public-category stability, redaction, tenant/hidden precedence, descriptor stripping, and fingerprint/corpus conflict behavior.
+- 2026-05-14T13:00:00+02:00: MCP validation before ledger mutation passed: `dotnet test tests\Hexalith.FrontComposer.Mcp.Tests\Hexalith.FrontComposer.Mcp.Tests.csproj --configuration Release` — 291 passed, 0 failed, 0 skipped.
+- 2026-05-14T13:00:00+02:00: T6 ledger update replaced the 205 Story 12.2 route markers with final row-addressable classifications: 28 `resolved`, 35 `accepted-constraint`, 142 `split-to-named-story`, and 0 MCP release gates. Final audited row-id hash remains `sha256:d0df4a8ff4f113e059c582a69ad2f67fa947d65d62baaff13190ce7d0c780e83`; no active `Owner: Story 11.5` or open `Destination: Story 12.2` markers remain.
+- 2026-05-14T13:08:24+02:00: T7 final inventory passed: 205 final Story 11.5-derived rows, first `DW-0058`, last `DW-0641`, final hash `sha256:d0df4a8ff4f113e059c582a69ad2f67fa947d65d62baaff13190ce7d0c780e83`, no duplicate IDs, no missing row markers, no active `Owner: Story 11.5`, and no open `Destination: Story 12.2` markers.
+- 2026-05-14T13:08:24+02:00: YAML/status consistency passed before review transition (`sprint-status.yaml` and story file both `in-progress`); after completion both were moved to `review`.
+- 2026-05-14T13:08:24+02:00: `git diff --check` passed after CRLF restoration.
+- 2026-05-14T13:08:24+02:00: MCP-specific redaction scan over changed evidence passed with zero evidence leaks for bearer-style headers, token-shaped values, tenant/user claim assignments, local absolute paths, payload excerpts, descriptor excerpts, raw tool/resource URIs, and correlation-id values. Checklist category labels were reviewed as labels, not evidence excerpts.
+- 2026-05-14T13:08:24+02:00: Full main-lane regression passed after clearing a stale test process from the earlier timed-out run and using single-node MSBuild: `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" -m:1` — SourceTools 929, Contracts 159, Shell 1586, MCP 291, CLI 41, Testing 11 passed. The Shell benchmark project had no tests matching the filtered lane, as expected.
 
 ### Completion Notes List
 
 - 2026-05-13: Created the Story 12.2 developer guide and marked it ready for development. Ready for party-mode review on a later recurring run.
 - 2026-05-13T20:50:14+02:00: Party-mode review applied low-risk story hardening for runtime MCP evidence, release-owner summary, accepted-constraint grouping, named split ownership, snapshot/epoch proof, redaction validation, and deterministic completion checks.
 - 2026-05-14T01:10:20+02:00: Advanced elicitation applied low-risk hardening for inventory identity drift, matrix-overclosure prevention, snapshot/epoch retry paths, accepted-constraint aging, cross-artifact counter reconciliation, and MCP-specific redaction fixtures.
+- 2026-05-14: T1 completed. The implementation-time audit target is the Story 12.2-routed 205-row set created by Story 12.1, not active `Owner: Story 11.5` markers. The audit target matches the creation baseline count, first/last row, and ordered row-id fingerprint.
+- 2026-05-14: T2-T6 completed. Story 11.5 source/test evidence was sufficient, so no MCP source or test files changed. The ledger now carries final Story 12.2 row classifications and a release-owner summary; accepted constraints are non-blocking for v1 and have trigger/owner/regression-guard metadata.
+- 2026-05-14: T7 completed. Final inventory, status consistency, whitespace check, redaction scan, focused MCP tests, and full main-lane regression all passed. Story moved to `review`.
 
 ### Change Log
 
 - 2026-05-13: Created Story 12.2 and marked ready-for-dev.
 - 2026-05-13T20:50:14+02:00: Party-mode review findings applied; added AC16-AC22, D11-D16, evidence-contract guardrails, runtime negative-case validation, release-owner summary requirements, and canonical party-mode trace.
 - 2026-05-14T01:10:20+02:00: Applied advanced elicitation hardening; added AC23-AC28, D17-D22, task/testing guardrails for row identity, matrix closure proof, snapshot/epoch retries, constraint aging, counter reconciliation, and adversarial MCP redaction.
+- 2026-05-14: Started Story 12.2 implementation and recorded the deterministic starting ledger inventory.
+- 2026-05-14: Certified Story 11.5 MCP ledger rows through Story 12.2; updated detailed ledger rows, top summary counters, and release-owner summary.
+- 2026-05-14: Completed Story 12.2 validation and moved story to review.
 
 ## Party-Mode Review
 
@@ -317,5 +333,6 @@ GPT-5 Codex
 
 ### File List
 
+- `_bmad-output/implementation-artifacts/deferred-work.md`
 - `_bmad-output/implementation-artifacts/12-2-mcp-ledger-closure-and-contract-snapshot-decisions.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`

@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-14 (Story 12.1 code review completed and moved to done; 14 patches applied, 5 pre-existing items deferred; epic-11 remains in-progress on DW-0666 release gate.)"
+last_updated: "2026-05-15 (Story 12.3 completed; EventStore pending-command provider release gate accepted as a named v1 constraint and moved to review.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -157,8 +157,8 @@ development_status:
   # Epic 12: Release Certification and Evidence Alignment
   epic-12: in-progress
   12-1-ledger-marker-parity-and-epic-status-decision: done
-  12-2-mcp-ledger-closure-and-contract-snapshot-decisions: ready-for-dev
-  12-3-eventstore-pending-command-provider-release-gate: ready-for-dev
+  12-2-mcp-ledger-closure-and-contract-snapshot-decisions: review
+  12-3-eventstore-pending-command-provider-release-gate: review
   12-4-trusted-release-evidence-dry-run: ready-for-dev
   12-5-accessibility-and-stakeholder-acceptance-evidence-pack: ready-for-dev
   epic-12-retrospective: optional
