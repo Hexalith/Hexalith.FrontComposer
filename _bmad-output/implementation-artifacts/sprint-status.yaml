@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-16 (Story 12.3.1 pending-status reopen governance test implemented and moved to review; governance lane passed 71/71; main filtered solution lane passed 3,037; git diff check clean except LF-to-CRLF normalization warnings on touched BMad files.)"
+last_updated: "2026-05-16 (Story 12.3.1 reviewed via bmad-code-review: 8 patches applied (heading/caption bypasses, AC4 PendingCommand+Status, keyed DI, path-escape, CHANGELOG case, Assert.Skip, fenced code), 1 patch deferred to CR-12-3-1-D6 (AC3 budget vs production release-note conflict) + CR-12-3-1-D1..D5 lower-severity defers; governance lane 75/75, main-lane filter 2,882 passed; story moved to done.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -159,7 +159,7 @@ development_status:
   12-1-ledger-marker-parity-and-epic-status-decision: done
   12-2-mcp-ledger-closure-and-contract-snapshot-decisions: done
   12-3-eventstore-pending-command-provider-release-gate: done
-  12-3-1-pending-status-reopen-governance-test: review
+  12-3-1-pending-status-reopen-governance-test: done
   12-4-trusted-release-evidence-dry-run: review
   12-5-accessibility-and-stakeholder-acceptance-evidence-pack: review
   epic-12-retrospective: optional

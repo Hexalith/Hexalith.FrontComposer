@@ -1,6 +1,6 @@
 # Story 12.3.1: Pending-Status Reopen-Trigger Governance Test
 
-Status: review
+Status: done
 
 > Follow-up to Story 12.3. Story 12.3 accepted `PENDING-STATUS-NULL-PROVIDER-V1` as a named v1 constraint. This story adds a blocking governance test so the three reopen triggers cannot appear silently in release notes, EventStore options, or framework DI while that constraint remains accepted.
 
@@ -88,6 +88,27 @@ so that the v1 null-provider constraint cannot be silently invalidated by releas
   - [x] Run `git diff --check`.
   - [x] Update this story's Dev Agent Record with validation evidence and changed files.
 
+### Review Findings
+
+_Code review 2026-05-16 (bmad-code-review). Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor. Reviewed commit `c8cbd2c`._
+
+- [x] [Review][Decision][Resolved] Out-of-scope `Hexalith.EventStore` submodule pointer bump bundled into the commit [`Hexalith.EventStore` `c0d439d`→`b802f4d`] — Resolved 2026-05-16: documented in Source Tree Components To Touch and Completion Notes; the 5 commits in range cover Story 22.6 projection-rebuild orchestrator hardening and read APIs, unrelated to Story 12.3.1's pending-command status scope. No code change.
+- [x] [Review][Decision][Resolved] Hard-coded classification field name `Final classification 2026-05-15` pins to a specific dated event [`PendingStatusReopenGovernanceTests.cs:19`] — Resolved 2026-05-16: strict dated pin retained intentionally. Release ops must update the test alongside any reclassification; the fail-closed bias matches the spec's "fail closed on ambiguous ledger state" rule. No code change.
+- [x] [Review][Patch][Applied 2026-05-16] Heading-line trigger bypass — `IsInsideConstraintMetadataAllowance` now rejects matches sitting on the Constraint Metadata caption line itself (`start == matchIndex` short-circuit) [`PendingStatusReopenGovernanceTests.cs`]. New regression test `ReleaseNoteTriggerScanner_RejectsHeadingAndFakeTableCaptionBypasses` covers the bypass.
+- [x] [Review][Patch][Applied 2026-05-16] Caption-substring bypass via arbitrary table data row — `ContainsConstraintMetadataCaption` table-row branch now requires the first non-empty cell to start with `Constraint Metadata` [`PendingStatusReopenGovernanceTests.cs`]. Heading and `Table:` captions unchanged. Covered by the same regression test above (`| Note: see Constraint Metadata below |` is rejected; `| Constraint Metadata |` is accepted).
+- [x] [Review][Patch][Applied 2026-05-16] AC4 PendingCommand+Status non-contiguous combinations — `IsSuspiciousStatusContractProperty` now flags any property name containing both `PendingCommand` and `Status` regardless of order [`PendingStatusReopenGovernanceTests.cs`]. New theory inline data covers `PendingCommandReadinessStatus` and `StatusForPendingCommand`.
+- [x] [Review][Patch][Applied 2026-05-16] Keyed-service descriptors handled explicitly — `FindPendingStatusDescriptorViolations` partitions keyed vs unkeyed descriptors, requires at least one unkeyed descriptor, and rejects any keyed descriptor outright (previously `descriptor.ImplementationType` would throw on keyed registrations) [`PendingStatusReopenGovernanceTests.cs`]. New test cases for `keyed-only` and `mixed unkeyed + keyed` scenarios added to `PendingStatusDiDescriptorClassifier_FailsHiddenOrProviderBackedDescriptors`.
+- [x] [Review][Patch][Applied 2026-05-16] `RelativePath` sibling-directory bypass closed — comparison now requires either exact match with the root or that the full path starts with `<root><DirectorySeparatorChar>`, preventing `D:\Hexalith.FrontComposer.Evil\…` from passing as inside `D:\Hexalith.FrontComposer` [`PendingStatusReopenGovernanceTests.cs`].
+- [x] [Review][Patch][Applied 2026-05-16] `CHANGELOG*.md` and `*release-note*.md` globs are case-insensitive on Linux — `EnumerationOptions { MatchCasing = MatchCasing.CaseInsensitive }` added to all three release-surface enumerations (docs recursive, CHANGELOG top-level, implementation-artifacts top-level) [`PendingStatusReopenGovernanceTests.cs`].
+- [x] [Review][Patch][Applied 2026-05-16] Inactive-guard branches now use `Assert.Skip(state.Diagnostic)` so the three release-note / EventStoreOptions / DI tests show as skipped (not silently green) when `DW-0461` is well-formed but non-accepted [`PendingStatusReopenGovernanceTests.cs`].
+- [x] [Review][Patch][Deferred → CR-12-3-1-D6] Metadata budget "12 non-blank lines" (AC3 literal) is incompatible with the production release note — the approved `12-3-pending-command-provider-release-note.md` `Constraint Metadata` table has 14 data rows + header/separator (~16 non-blank lines). Applying the spec-literal counting rule would push the `Agent impact` trigger line outside the window and break the running guard against the approved release note. The dev's `tableMode` exception (12 data rows; header/separator/prose flexibility) is the pragmatic interpretation and must remain until the spec is reconciled with the actual content. Logged as deferred follow-up `CR-12-3-1-D6` in `deferred-work.md`; AC3 wording should be revised separately.
+- [x] [Review][Patch][Applied 2026-05-16] Fenced code-block immunity — `ScanReleaseNoteLines` and `CountReleaseNoteTriggerHits` now toggle an `insideFence` flag when a line trimmed-start begins with ```` ``` ````, skipping trigger detection inside fenced blocks. New regression test `ReleaseNoteTriggerScanner_IgnoresTriggersInsideFencedCodeBlocks` covers both the in-fence and post-fence cases.
+- [x] [Review][Defer] Smart-quote / non-breaking-hyphen / en-dash variants of trigger phrases evade the scanner [`PendingStatusReopenGovernanceTests.cs:24-28`] — deferred, low real-world likelihood for release-note authoring; documenting at the time it bites is more useful than a generic Unicode-normalisation pass.
+- [x] [Review][Defer] `EventStoreOptions` reflection only inspects public instance properties — explicit interface implementations and added fields are invisible [`PendingStatusReopenGovernanceTests.cs:65-68`] — deferred, requires broader reflection design (incl. fields, non-public, indexers). Today the type uses plain auto-properties.
+- [x] [Review][Defer] Per-file `MaxDiagnostics` cap and global `FormatDiagnostics` cap stack, producing a single opaque "additional diagnostics suppressed: N" when many files violate [`PendingStatusReopenGovernanceTests.cs:341-371,538-546`] — deferred, the bounded-diagnostics intent is satisfied at the per-file level; the global suppression line is a UX nice-to-have, not a correctness defect.
+- [x] [Review][Defer] Suppression count mixes allowed (metadata-window) hits with real violations [`PendingStatusReopenGovernanceTests.cs:363-368,373-374`] — deferred, only misleads in the rare case of a giant allowed metadata block PLUS exactly `MaxDiagnostics` real violations in the same file; not a correctness gap.
+- [x] [Review][Defer] Singleton-instance Null provider violation message ("must use ImplementationType NullPendingCommandStatusQuery") doesn't name the descriptor shape as the root cause [`PendingStatusReopenGovernanceTests.cs:511-521`] — deferred, diagnostic clarity nit; the underlying detection is correct.
+
 ---
 
 ## Dev Notes
@@ -173,6 +194,8 @@ No external API or library change is required for this story. Use the repository
 | `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs` | Create | Primary implementation. Keep helpers private to the test class unless another governance test already needs them. |
 | `_bmad-output/implementation-artifacts/12-3-1-pending-status-reopen-governance-test.md` | Update | Dev Agent Record, validation evidence, completion notes, and file list during implementation. |
 | `_bmad-output/implementation-artifacts/sprint-status.yaml` | Update | Move story through `in-progress`, `review`, and `done` during dev/review workflows. |
+| `Hexalith.EventStore` (submodule pointer) | Updated | Submodule pointer advanced from `c0d439d` → `b802f4d` (5 commits) as a routine tracking refresh; range covers Story 22.6 projection-rebuild orchestrator hardening, read APIs, and checkpoint-store work that is unrelated to this story's pending-command status scope. No production code or contract relied on by Story 12.3.1 was affected. Logged so the governance lane reviewer can audit submodule-scope compliance. |
+| `Hexalith.Tenants` (submodule pointer) | Updated | Submodule pointer advanced from `22ed0d2` → `fcf44bc` (3 commits: tenant audit projection hardening, internal EventStore submodule update, release tag 1.4.1) as a routine tracking refresh observed during code-review test runs. None of the commits touch pending-command status surfaces or any production code path Story 12.3.1 depends on. Logged for submodule-scope audit. |
 
 Read-only implementation inputs:
 
@@ -287,13 +310,18 @@ GPT-5 Codex
 - Validation passed: `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"` (71/71).
 - Validation passed: `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` (3,037 passed; Shell bench project reported no matching tests for this filter).
 - Validation passed: `git diff --check` (no whitespace errors; Git reported LF-to-CRLF normalization warnings for touched BMad files).
+- Bundled an unrelated `Hexalith.EventStore` submodule tracking refresh (`c0d439d` → `b802f4d`, 5 Story 22.6 commits: projection-rebuild orchestrator hardening, read APIs, checkpoint-store work) into the same commit. The bump does not touch pending-command status surfaces or any production code path Story 12.3.1 depends on. Logged here so the governance lane reviewer can verify the spec's submodule-scope guardrail at audit time.
+- During code-review test runs the `Hexalith.Tenants` submodule pointer also advanced (`22ed0d2` → `fcf44bc`, 3 commits: tenant audit projection hardening, internal EventStore submodule update, release tag 1.4.1). Same submodule-scope audit logging applies; none of these commits affect Story 12.3.1's pending-status governance scope.
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/12-3-1-pending-status-reopen-governance-test.md`
 - `_bmad-output/implementation-artifacts/sprint-status.yaml`
 - `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs`
+- `Hexalith.EventStore` (submodule pointer `c0d439d` → `b802f4d`; routine tracking refresh, unrelated to Story 12.3.1 scope)
+- `Hexalith.Tenants` (submodule pointer `22ed0d2` → `fcf44bc`; routine tracking refresh observed during code-review test runs, unrelated to Story 12.3.1 scope)
 
 ### Change Log
 
 - 2026-05-16: Added pending-status reopen-trigger governance tests and moved story to review.
+- 2026-05-16: Code review (bmad-code-review): 2 decision-needed resolved (submodule bump documented; dated classification pin retained), 8 patches applied (heading-line bypass, fake-caption bypass, AC4 PendingCommand+Status, keyed DI, RelativePath sibling-dir, CHANGELOG case-insensitive, `Assert.Skip`, fenced code blocks), 1 patch deferred to CR-12-3-1-D6 (AC3 12-line budget vs production release-note conflict), 5 lower-severity items deferred (CR-12-3-1-D1..D5). Added regression tests `ReleaseNoteTriggerScanner_RejectsHeadingAndFakeTableCaptionBypasses`, `ReleaseNoteTriggerScanner_IgnoresTriggersInsideFencedCodeBlocks`, plus 2 new theory inline-data cases and 2 new keyed-DI scenarios. Governance lane 75/75 passed; main-lane filter 2,882 passed. Story moved to `done`.

@@ -41,7 +41,7 @@ public sealed class PendingStatusReopenGovernanceTests {
         state.IsValid.ShouldBeTrue(state.Diagnostic);
         if (!state.IsActive) {
             state.Diagnostic.ShouldContain("not active");
-            return;
+            Assert.Skip(state.Diagnostic);
         }
 
         string root = RepositoryRoot();
@@ -59,7 +59,7 @@ public sealed class PendingStatusReopenGovernanceTests {
         state.IsValid.ShouldBeTrue(state.Diagnostic);
         if (!state.IsActive) {
             state.Diagnostic.ShouldContain("not active");
-            return;
+            Assert.Skip(state.Diagnostic);
         }
 
         List<string> suspicious = FindSuspiciousOptionPropertyNames(
@@ -79,7 +79,7 @@ public sealed class PendingStatusReopenGovernanceTests {
         state.IsValid.ShouldBeTrue(state.Diagnostic);
         if (!state.IsActive) {
             state.Diagnostic.ShouldContain("not active");
-            return;
+            Assert.Skip(state.Diagnostic);
         }
 
         ServiceCollection frontComposerServices = [];
@@ -198,6 +198,64 @@ public sealed class PendingStatusReopenGovernanceTests {
         manyViolations.Last().ShouldContain("additional trigger hits suppressed");
     }
 
+    [Fact]
+    public void ReleaseNoteTriggerScanner_RejectsHeadingAndFakeTableCaptionBypasses() {
+        string[] headingLineWithTriggerAndAnchor = [
+            "## Constraint Metadata: provider-backed pending-command [PENDING-STATUS-NULL-PROVIDER-V1]",
+        ];
+        ScanReleaseNoteLines("docs/bypass-heading.md", headingLineWithTriggerAndAnchor)
+            .Count.ShouldBe(1, "a trigger sitting on the Constraint Metadata caption line itself must not be allowed");
+
+        string[] fakeTableDataRowCaption = [
+            "# Release",
+            "",
+            "| Note | See Constraint Metadata below for details |",
+            "| Constraint name | `PENDING-STATUS-NULL-PROVIDER-V1` |",
+            "| Anything | provider-backed pending-command |",
+        ];
+        ScanReleaseNoteLines("docs/bypass-fake-caption.md", fakeTableDataRowCaption)
+            .Count.ShouldBe(1, "an arbitrary table data row containing the substring must not open a Constraint Metadata window");
+
+        string[] legitimateTableCaptionRow = [
+            "# Release",
+            "",
+            "| Constraint Metadata |",
+            "| --- |",
+            "| `PENDING-STATUS-NULL-PROVIDER-V1` |",
+            "| provider-backed pending-command is forbidden |",
+        ];
+        ScanReleaseNoteLines("docs/legitimate-caption.md", legitimateTableCaptionRow)
+            .ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void ReleaseNoteTriggerScanner_IgnoresTriggersInsideFencedCodeBlocks() {
+        string[] fencedExample = [
+            "# Release",
+            "",
+            "Example of forbidden phrasing:",
+            "",
+            "```text",
+            "provider-backed pending-command status endpoint",
+            "IPendingCommandStatusQuery provider",
+            "```",
+            "",
+            "End of example.",
+        ];
+        ScanReleaseNoteLines("docs/fenced.md", fencedExample).ShouldBeEmpty();
+
+        string[] fencedThenProse = [
+            "```text",
+            "provider-backed pending-command",
+            "```",
+            "",
+            "provider-backed pending-command outside the fence",
+        ];
+        ScanReleaseNoteLines("docs/fence-then-prose.md", fencedThenProse)
+            .Single()
+            .ShouldContain(":5");
+    }
+
     [Theory]
     [InlineData("BaseAddress", false)]
     [InlineData("CommandEndpointPath", false)]
@@ -208,6 +266,8 @@ public sealed class PendingStatusReopenGovernanceTests {
     [InlineData("CommandStatusQueryProvider", true)]
     [InlineData("StatusResourceMetadata", true)]
     [InlineData("StatusQueryProvider", true)]
+    [InlineData("PendingCommandReadinessStatus", true)]
+    [InlineData("StatusForPendingCommand", true)]
     public void EventStoreOptionsPropertyClassifier_CoversSuspiciousStatusResourceNames(
         string propertyName,
         bool expectedSuspicious) {
@@ -236,6 +296,22 @@ public sealed class PendingStatusReopenGovernanceTests {
         instanceViolations.Count.ShouldBe(2);
         string.Join(Environment.NewLine, instanceViolations).ShouldContain("instance");
         string.Join(Environment.NewLine, instanceViolations).ShouldContain("Singleton");
+
+        ServiceCollection keyedOnly = [];
+        keyedOnly.AddKeyedScoped<IPendingCommandStatusQuery, NullPendingCommandStatusQuery>("primary");
+        keyedOnly.AddKeyedScoped<IPendingCommandStatusQuery, NullPendingCommandStatusQuery>("secondary");
+        List<string> keyedOnlyViolations = FindPendingStatusDescriptorViolations(keyedOnly, "keyed-only");
+        keyedOnlyViolations.Count.ShouldBe(3);
+        string joinedKeyedOnly = string.Join(Environment.NewLine, keyedOnlyViolations);
+        joinedKeyedOnly.ShouldContain("no unkeyed IPendingCommandStatusQuery descriptor registered");
+        joinedKeyedOnly.ShouldContain("key=primary");
+        joinedKeyedOnly.ShouldContain("key=secondary");
+
+        ServiceCollection mixed = [];
+        mixed.AddScoped<IPendingCommandStatusQuery, NullPendingCommandStatusQuery>();
+        mixed.AddKeyedScoped<IPendingCommandStatusQuery, NullPendingCommandStatusQuery>("primary");
+        List<string> mixedViolations = FindPendingStatusDescriptorViolations(mixed, "mixed");
+        mixedViolations.Single().ShouldContain("key=primary");
     }
 
     private static ConstraintGuardState LoadCurrentGuardState() {
@@ -300,12 +376,18 @@ public sealed class PendingStatusReopenGovernanceTests {
     }
 
     private static IEnumerable<string> EnumerateReleaseNoteSurfaces(string root) {
+        EnumerationOptions caseInsensitiveTopLevel = new() {
+            MatchCasing = MatchCasing.CaseInsensitive,
+            IgnoreInaccessible = true,
+        };
+
         string docsRoot = Path.Combine(root, "docs");
         if (Directory.Exists(docsRoot)) {
             EnumerationOptions options = new() {
                 RecurseSubdirectories = true,
                 AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.Hidden,
                 IgnoreInaccessible = true,
+                MatchCasing = MatchCasing.CaseInsensitive,
             };
             foreach (string file in Directory.EnumerateFiles(docsRoot, "*.md", options)
                 .Where(path => ShouldScanReleaseSurface(root, path))) {
@@ -313,7 +395,7 @@ public sealed class PendingStatusReopenGovernanceTests {
             }
         }
 
-        foreach (string file in Directory.EnumerateFiles(root, "CHANGELOG*.md", SearchOption.TopDirectoryOnly)
+        foreach (string file in Directory.EnumerateFiles(root, "CHANGELOG*.md", caseInsensitiveTopLevel)
             .Where(path => ShouldScanReleaseSurface(root, path))) {
             yield return file;
         }
@@ -323,7 +405,7 @@ public sealed class PendingStatusReopenGovernanceTests {
             yield break;
         }
 
-        foreach (string file in Directory.EnumerateFiles(implementationArtifacts, "*release-note*.md", SearchOption.TopDirectoryOnly)
+        foreach (string file in Directory.EnumerateFiles(implementationArtifacts, "*release-note*.md", caseInsensitiveTopLevel)
             .Where(path => ShouldScanReleaseSurface(root, path))) {
             yield return file;
         }
@@ -343,7 +425,17 @@ public sealed class PendingStatusReopenGovernanceTests {
 
     private static List<string> ScanReleaseNoteLines(string relativePath, IReadOnlyList<string> lines) {
         List<string> violations = [];
+        bool insideFence = false;
         for (int i = 0; i < lines.Count; i++) {
+            if (IsFencedCodeBlockDelimiter(lines[i])) {
+                insideFence = !insideFence;
+                continue;
+            }
+
+            if (insideFence) {
+                continue;
+            }
+
             foreach (string trigger in TriggerPhrases) {
                 if (!lines[i].Contains(trigger, StringComparison.OrdinalIgnoreCase)) {
                     continue;
@@ -370,13 +462,33 @@ public sealed class PendingStatusReopenGovernanceTests {
         return violations;
     }
 
-    private static int CountReleaseNoteTriggerHits(IReadOnlyList<string> lines)
-        => lines.Sum(line => TriggerPhrases.Count(trigger => line.Contains(trigger, StringComparison.OrdinalIgnoreCase)));
+    private static bool IsFencedCodeBlockDelimiter(string line)
+        => line.TrimStart().StartsWith("```", StringComparison.Ordinal);
+
+    private static int CountReleaseNoteTriggerHits(IReadOnlyList<string> lines) {
+        int hits = 0;
+        bool insideFence = false;
+        foreach (string line in lines) {
+            if (IsFencedCodeBlockDelimiter(line)) {
+                insideFence = !insideFence;
+                continue;
+            }
+            if (insideFence) {
+                continue;
+            }
+            hits += TriggerPhrases.Count(trigger => line.Contains(trigger, StringComparison.OrdinalIgnoreCase));
+        }
+        return hits;
+    }
 
     private static bool IsInsideConstraintMetadataAllowance(IReadOnlyList<string> lines, int matchIndex) {
         for (int start = matchIndex; start >= 0; start--) {
             string trimmed = lines[start].Trim();
             if (ContainsConstraintMetadataCaption(trimmed)) {
+                if (start == matchIndex) {
+                    return false;
+                }
+
                 MetadataWindow window = BuildConstraintMetadataWindow(lines, start);
                 return matchIndex >= window.StartIndex
                     && matchIndex <= window.EndIndex
@@ -434,11 +546,30 @@ public sealed class PendingStatusReopenGovernanceTests {
         return new MetadataWindow(startIndex, endIndex, containsConstraint);
     }
 
-    private static bool ContainsConstraintMetadataCaption(string trimmed)
-        => trimmed.Contains("Constraint Metadata", StringComparison.Ordinal)
-            && (IsMarkdownHeading(trimmed)
-                || trimmed.StartsWith("Table", StringComparison.OrdinalIgnoreCase)
-                || trimmed.StartsWith("|", StringComparison.Ordinal));
+    private static bool ContainsConstraintMetadataCaption(string trimmed) {
+        if (!trimmed.Contains("Constraint Metadata", StringComparison.Ordinal)) {
+            return false;
+        }
+
+        if (IsMarkdownHeading(trimmed) || trimmed.StartsWith("Table", StringComparison.OrdinalIgnoreCase)) {
+            return true;
+        }
+
+        if (!trimmed.StartsWith("|", StringComparison.Ordinal)) {
+            return false;
+        }
+
+        foreach (string cell in trimmed.Split('|')) {
+            string cellContent = cell.Trim();
+            if (cellContent.Length == 0) {
+                continue;
+            }
+
+            return cellContent.StartsWith("Constraint Metadata", StringComparison.Ordinal);
+        }
+
+        return false;
+    }
 
     private static bool IsMarkdownHeading(string trimmed)
         => trimmed.StartsWith("#", StringComparison.Ordinal);
@@ -487,9 +618,17 @@ public sealed class PendingStatusReopenGovernanceTests {
             return true;
         }
 
+        bool containsStatus = propertyName.Contains("Status", StringComparison.OrdinalIgnoreCase);
+        if (!containsStatus) {
+            return false;
+        }
+
         string[] resourceFragments = ["Endpoint", "Uri", "Url", "Path", "Resource", "Metadata"];
-        return propertyName.Contains("Status", StringComparison.OrdinalIgnoreCase)
-            && resourceFragments.Any(fragment => propertyName.Contains(fragment, StringComparison.OrdinalIgnoreCase));
+        if (resourceFragments.Any(fragment => propertyName.Contains(fragment, StringComparison.OrdinalIgnoreCase))) {
+            return true;
+        }
+
+        return propertyName.Contains("PendingCommand", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AssertPendingStatusDescriptorsAreNullProviderOnly(
@@ -507,8 +646,25 @@ public sealed class PendingStatusReopenGovernanceTests {
             return [$"{scenario}: no IPendingCommandStatusQuery descriptor registered; {StoryReferences}."];
         }
 
+        ServiceDescriptor[] keyedDescriptors = [.. descriptors.Where(static d => d.IsKeyedService)];
+        ServiceDescriptor[] unkeyedDescriptors = [.. descriptors.Where(static d => !d.IsKeyedService)];
+
         List<string> violations = [];
-        foreach (ServiceDescriptor descriptor in descriptors) {
+
+        if (unkeyedDescriptors.Length == 0) {
+            violations.Add(
+                $"{scenario}: no unkeyed IPendingCommandStatusQuery descriptor registered "
+                + $"(only keyed registrations would leave the unkeyed resolution null); {StoryReferences}.");
+        }
+
+        foreach (ServiceDescriptor descriptor in keyedDescriptors) {
+            violations.Add(
+                $"{scenario}: keyed IPendingCommandStatusQuery descriptor "
+                + $"(key={descriptor.ServiceKey}, lifetime={descriptor.Lifetime}) is prohibited; "
+                + $"only an unkeyed Scoped {nameof(NullPendingCommandStatusQuery)} is allowed; {StoryReferences}.");
+        }
+
+        foreach (ServiceDescriptor descriptor in unkeyedDescriptors) {
             if (descriptor.Lifetime != ServiceLifetime.Scoped) {
                 violations.Add($"{scenario}: {FormatDescriptor(descriptor)} must be Scoped; {StoryReferences}.");
             }
@@ -561,7 +717,10 @@ public sealed class PendingStatusReopenGovernanceTests {
     private static string RelativePath(string root, string path) {
         string fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         string fullPath = Path.GetFullPath(path);
-        if (!fullPath.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase)) {
+        string fullRootWithSeparator = fullRoot + Path.DirectorySeparatorChar;
+        bool isRootItself = fullPath.Equals(fullRoot, StringComparison.OrdinalIgnoreCase);
+        bool isInsideRoot = fullPath.StartsWith(fullRootWithSeparator, StringComparison.OrdinalIgnoreCase);
+        if (!isRootItself && !isInsideRoot) {
             throw new InvalidOperationException($"Path escaped repository root: {Path.GetFileName(path)}");
         }
 
