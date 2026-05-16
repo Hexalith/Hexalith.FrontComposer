@@ -1,6 +1,6 @@
 # Story 12.3.1: Pending-Status Reopen-Trigger Governance Test
 
-Status: ready-for-dev
+Status: review
 
 > Follow-up to Story 12.3. Story 12.3 accepted `PENDING-STATUS-NULL-PROVIDER-V1` as a named v1 constraint. This story adds a blocking governance test so the three reopen triggers cannot appear silently in release notes, EventStore options, or framework DI while that constraint remains accepted.
 
@@ -11,6 +11,8 @@ Status: ready-for-dev
 Story 12.3 closed with null-provider-only pending-command status as an accepted v1 constraint, not provider-backed readiness. The risk left behind is governance drift: a future edit could add provider-backed wording, consume status-resource metadata, or register a real `IPendingCommandStatusQuery` provider without reopening `DW-0461`.
 
 This story creates a small, string-pinned, fail-closed governance test in the existing Shell governance test suite. The test must parse the current ledger row, enforce the trigger guard only while `DW-0461` is still accepted under `PENDING-STATUS-NULL-PROVIDER-V1`, and produce bounded diagnostics that point developers back to `DW-0461` and Story 12.3.
+
+Central invariant: while `DW-0461` carries `PENDING-STATUS-NULL-PROVIDER-V1`, Shell composition must expose pending-command status only through `NullPendingCommandStatusQuery`. Release-note trigger phrases and `EventStoreOptions` status surfaces are tripwires, but DI composition is the primary runtime proof.
 
 ---
 
@@ -39,50 +41,52 @@ so that the v1 null-provider constraint cannot be silently invalidated by releas
 
 ## Tasks / Subtasks
 
-- [ ] T1. Add the governance test in the existing Shell governance suite (AC8)
-  - [ ] Create `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs`.
-  - [ ] Mark the class or each test with `[Trait("Category", "Governance")]`.
-  - [ ] Reuse local helper patterns from `CiGovernanceTests` and `InfrastructureGovernanceTests`: `RepositoryRoot()`, repository-relative diagnostics, `Shouldly`, and deterministic file enumeration.
+- [x] T1. Add the governance test in the existing Shell governance suite (AC8)
+  - [x] Create `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs`.
+  - [x] Mark the class or each test with `[Trait("Category", "Governance")]`.
+  - [x] Reuse local helper patterns from `CiGovernanceTests` and `InfrastructureGovernanceTests`: `RepositoryRoot()`, repository-relative diagnostics, `Shouldly`, and deterministic file enumeration.
 
-- [ ] T2. Implement the fail-closed `DW-0461` parser (AC1, AC6)
-  - [ ] Read `_bmad-output/implementation-artifacts/deferred-work.md` from the repository root.
-  - [ ] Locate exactly one row containing `Row: DW-0461`.
-  - [ ] Parse semicolon-delimited fields for `Final classification 2026-05-15` and `Constraint`.
-  - [ ] Require `Final classification 2026-05-15: accepted-constraint` and `Constraint: PENDING-STATUS-NULL-PROVIDER-V1` to activate the trigger prohibition.
-  - [ ] Treat missing row, duplicate row, missing classification, missing constraint, malformed delimiter, empty value, or changed constraint token as explicit fail-closed row-state failures.
-  - [ ] Treat a well-formed non-accepted classification as an inactive guard state with a bounded diagnostic; do not invert provider-support assertions in this story.
+- [x] T2. Implement the fail-closed `DW-0461` parser (AC1, AC6)
+  - [x] Read `_bmad-output/implementation-artifacts/deferred-work.md` from the repository root.
+  - [x] Locate exactly one row containing `Row: DW-0461`.
+  - [x] Parse semicolon-delimited fields for `Final classification 2026-05-15` and `Constraint`.
+  - [x] Require `Final classification 2026-05-15: accepted-constraint` and `Constraint: PENDING-STATUS-NULL-PROVIDER-V1` to activate the trigger prohibition.
+  - [x] Treat missing row, duplicate row, missing classification, missing constraint, malformed delimiter, empty value, or changed constraint token as explicit fail-closed row-state failures.
+  - [x] Treat a well-formed non-accepted classification as an inactive guard state with a bounded diagnostic; do not invert provider-support assertions in this story.
 
-- [ ] T3. Implement release-note trigger scanning (AC2, AC3, AC7)
-  - [ ] Enumerate only the allowed release-note surfaces: `docs/**/*.md`, root `CHANGELOG*.md`, and `_bmad-output/implementation-artifacts/*release-note*.md`.
-  - [ ] Exclude `bin`, `obj`, `.git`, `.agents`, generated site output, story files that are not release notes, and test source files.
-  - [ ] Match the three exact trigger phrases with `StringComparison.OrdinalIgnoreCase`.
-  - [ ] Allow matches only in a bounded `Constraint Metadata` window: start on a heading or table caption line containing `Constraint Metadata`, stop on the first blank line, next heading, or after 12 non-blank lines, and require `PENDING-STATUS-NULL-PROVIDER-V1` inside that same window.
-  - [ ] Report one concise line per violation using repository-relative paths and 1-based line numbers.
+- [x] T3. Implement release-note trigger scanning (AC2, AC3, AC7)
+  - [x] Enumerate only the allowed release-note surfaces: `docs/**/*.md`, root `CHANGELOG*.md`, and `_bmad-output/implementation-artifacts/*release-note*.md`.
+  - [x] Exclude `bin`, `obj`, `.git`, `.agents`, generated site output, story files that are not release notes, and test source files.
+  - [x] Match the three exact trigger phrases with `StringComparison.OrdinalIgnoreCase`.
+  - [x] Allow matches only in a bounded `Constraint Metadata` window: start on a heading or table caption line containing `Constraint Metadata`, stop on the first blank line, next heading, or after 12 non-blank lines, and require `PENDING-STATUS-NULL-PROVIDER-V1` inside that same window.
+  - [x] Report one concise line per violation using repository-relative paths and 1-based line numbers; cap reported hits so CI output cannot become an unbounded document dump.
 
-- [ ] T4. Implement `EventStoreOptions` trigger reflection (AC4)
-  - [ ] Reflect over public instance properties of `Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreOptions`.
-  - [ ] Keep current allowed properties such as `BaseAddress`, `CommandEndpointPath`, `QueryEndpointPath`, and `ProjectionChangesHubPath` green.
-  - [ ] Fail while the constraint is active if a property name indicates status endpoint/resource/metadata consumption; do not add production options for testability.
+- [x] T4. Implement `EventStoreOptions` trigger reflection (AC4)
+  - [x] Reflect over public instance properties of `Hexalith.FrontComposer.Shell.Infrastructure.EventStore.EventStoreOptions`.
+  - [x] Keep current allowed properties such as `BaseAddress`, `CommandEndpointPath`, `QueryEndpointPath`, and `ProjectionChangesHubPath` green.
+  - [x] Fail while the constraint is active if a property name indicates status endpoint/resource/metadata consumption; include suspicious terms such as `PendingStatus`, `PendingCommandStatus`, `CommandStatusQuery`, `StatusResource`, and `StatusQueryProvider`.
+  - [x] Do not snapshot or assert unrelated option shape, and do not add production options for testability.
 
-- [ ] T5. Implement DI registration guard (AC5)
-  - [ ] Build a fresh `ServiceCollection`, call `AddHexalithFrontComposer()`, and inspect all `ServiceDescriptor`s for `IPendingCommandStatusQuery`.
-  - [ ] Build a second collection with `AddHexalithFrontComposer()` followed by `AddHexalithEventStore(options => { options.BaseAddress = new Uri("https://eventstore.test"); options.RequireAccessToken = false; })`.
-  - [ ] Fail unless every `IPendingCommandStatusQuery` descriptor is scoped and uses `ImplementationType == typeof(NullPendingCommandStatusQuery)`.
-  - [ ] Treat implementation factories or instances as violations because they can hide provider-backed behavior from static review.
-  - [ ] Do not use source-text scanning as the primary DI proof; assert the effective service descriptors after invoking the extension methods.
+- [x] T5. Implement DI registration guard (AC5)
+  - [x] Build a fresh `ServiceCollection`, call `AddHexalithFrontComposer()`, and inspect all `ServiceDescriptor`s for `IPendingCommandStatusQuery`.
+  - [x] Build a second collection with `AddHexalithFrontComposer()` followed by `AddHexalithEventStore(options => { options.BaseAddress = new Uri("https://eventstore.test"); options.RequireAccessToken = false; })`.
+  - [x] Fail unless every `IPendingCommandStatusQuery` descriptor is scoped and uses `ImplementationType == typeof(NullPendingCommandStatusQuery)`.
+  - [x] Treat implementation factories or instances as violations because they can hide provider-backed behavior from static review.
+  - [x] Do not use source-text scanning as the primary DI proof; assert the effective service descriptors after invoking the extension methods.
+  - [x] Cap descriptor diagnostics to the service type, lifetime, implementation type/factory/instance category, and detected provider type if available.
 
-- [ ] T6. Add negative fixtures inside the test code (AC1-AC7)
-  - [ ] Cover accepted-constraint row parsing, missing row, duplicate row, malformed classification, and missing constraint.
-  - [ ] Cover phrase hit outside metadata, phrase hit inside valid metadata, case-insensitive hit, and bounded diagnostic formatting.
-  - [ ] Cover a near-miss phrase that must not match the exact trigger list.
-  - [ ] Cover a valid non-accepted `DW-0461` row that makes the prohibition inactive without asserting provider-backed support.
-  - [ ] Cover synthetic option-property names and synthetic service descriptors that represent a non-null provider.
+- [x] T6. Add negative fixtures inside the test code (AC1-AC7)
+  - [x] Cover accepted-constraint row parsing, missing row, duplicate row, malformed classification, and missing constraint.
+  - [x] Cover phrase hit outside metadata, phrase hit inside valid metadata, case-insensitive hit, and bounded diagnostic formatting.
+  - [x] Cover a near-miss phrase that must not match the exact trigger list.
+  - [x] Cover a valid non-accepted `DW-0461` row that makes the prohibition inactive without asserting provider-backed support.
+  - [x] Cover synthetic option-property names and synthetic service descriptors that represent a non-null provider.
 
-- [ ] T7. Validate and record results (AC8)
-  - [ ] Run `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"`.
-  - [ ] Run `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` if the implementation changes shared governance helpers or production registration behavior.
-  - [ ] Run `git diff --check`.
-  - [ ] Update this story's Dev Agent Record with validation evidence and changed files.
+- [x] T7. Validate and record results (AC8)
+  - [x] Run `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"`.
+  - [x] Run `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` if the implementation changes shared governance helpers or production registration behavior.
+  - [x] Run `git diff --check`.
+  - [x] Update this story's Dev Agent Record with validation evidence and changed files.
 
 ---
 
@@ -106,9 +110,25 @@ so that the v1 null-provider constraint cannot be silently invalidated by releas
 - Keep this as a Shell governance test. Do not create `Hexalith.FrontComposer.Governance.Tests` unless the existing governance suite cannot host it. The current CI already runs `Category=Governance` as a blocking lane.
 - Do not add package references or inline versions. The Shell test project already references xUnit v3, Shouldly, NSubstitute, and the Shell project.
 - Do not introduce YAML, markdown, or Roslyn parser dependencies for this narrow guard. Use deterministic line scanning and reflection over current assemblies.
+- Do not create shared governance infrastructure for this story unless an existing local governance-test helper already requires extension.
 - Do not modify production EventStore provider behavior, `EventStoreOptions`, or DI registrations as part of this story unless the test exposes an actual pre-existing drift.
 - Preserve root-level submodule policy. This story should not initialize, update, scan into, or depend on nested submodules.
 - Do not require, inspect, or gate on Story 12.5 stakeholder sign-off, AT, or real-device evidence artifacts. This governance test is release-constraint protection for Story 12.3 only.
+
+### Evidence Priority
+
+1. `DW-0461` is the canonical source of whether `PENDING-STATUS-NULL-PROVIDER-V1` is active.
+2. DI descriptor inspection is the primary runtime/composition proof that the active constraint still maps pending status to `NullPendingCommandStatusQuery`.
+3. Release-note phrase scanning is a governance tripwire for public or package-promotion wording that would reopen the constraint.
+4. `EventStoreOptions` reflection is a stealth-configuration guard against adding a status-resource contract while the null-provider constraint is active.
+
+### Failure Modes Covered
+
+- False pass from string-only release-note checks while DI already registers a non-null provider.
+- False positive from scanning unrelated docs, story files, test code, generated site output, or full repository text.
+- Hidden provider behavior through `ImplementationFactory` or `ImplementationInstance` descriptors.
+- Over-specific `EventStoreOptions` checks that fail on unrelated options instead of status-provider configuration drift.
+- Noisy CI diagnostics that print whole documents, local absolute paths, raw markdown tables, or unbounded descriptor/file lists.
 
 ### Failure Rules
 
@@ -135,6 +155,8 @@ Use focused tests rather than one giant assertion:
 - `EventStoreOptions_DoNotExposePendingStatusResourceContractWhileConstraintAccepted`
 - `FrontComposerDi_UsesOnlyNullPendingCommandStatusQueryWhileConstraintAccepted`
 - Optional pure helper tests for row parsing and metadata-block allow-list behavior.
+
+Preferred test class name: `PendingStatusNullProviderGovernanceTests`. Avoid names that imply provider support, such as `SupportsPendingCommandStatus`.
 
 The public tests may branch on the current `DW-0461` state. Pure helper tests should use inline synthetic strings so malformed and inverted states are covered even while the real repository is green.
 
@@ -219,23 +241,59 @@ Read-only implementation inputs:
   - Any future inversion from null-provider prohibition to provider-support assertion belongs to the story that reopens or closes `DW-0461`.
 - Final recommendation: `ready-for-dev`
 
+## Advanced Elicitation
+
+- Date/time: 2026-05-16T07:50:21+02:00
+- Selected story key: `12-3-1-pending-status-reopen-governance-test`
+- Command/skill invocation used: `/bmad-advanced-elicitation`
+- Methods applied: Red Team vs Blue Team; Failure Mode Analysis; Self-Consistency Validation; Security Audit Personas; Occam's Razor Application.
+- Participating BMAD agents: Winston (System Architect), Amelia (Senior Software Engineer), John (Product Manager), Murat (Master Test Architect and Quality Advisor).
+- Findings summary:
+  - The story needed one explicit invariant: while the named constraint is active, Shell composition must keep pending status on the null provider.
+  - DI descriptor inspection should be treated as the primary runtime/composition proof; release-note scanning and options reflection are supporting tripwires.
+  - Failure diagnostics needed capped lists and strictly repository-relative evidence.
+  - The story needed to prevent a one-off governance test from becoming shared infrastructure.
+  - Test naming should avoid implying provider-backed pending-status support.
+- Changes applied:
+  - Added the central invariant, evidence priority, failure modes covered, capped diagnostics, suspicious option terms, DI diagnostic limits, and preferred test class name.
+  - Strengthened Occam's Razor guidance by forbidding new shared governance infrastructure unless an existing local helper already needs extension.
+- Findings deferred:
+  - Future provider-backed pending-command status support remains out of scope and belongs to the story that reopens or closes `DW-0461`.
+  - Machine-readable deferred-work metadata remains a possible future governance improvement, not required for this story.
+- Final recommendation: `ready-for-dev`
+
 ---
 
 ## Dev Agent Record
 
 ### Agent Model Used
 
-TBD by dev agent.
+GPT-5 Codex
 
 ### Debug Log References
 
 - 2026-05-15: Story refreshed via `bmad-create-story 12-3-1` after Story 12.3 code review scoped the governance-test follow-up.
 - 2026-05-15: Existing draft was promoted from backlog context to ready-for-dev and hardened with concrete test home, parser rules, DI/option reflection guardrails, and validation commands.
+- 2026-05-16: Implemented `PendingStatusReopenGovernanceTests` in the Shell governance suite.
+- 2026-05-16: First governance run failed on two new-test compile issues; fixed DI factory registration fixture and analyzer-required theory parameter guard.
+- 2026-05-16: Second governance run exposed metadata-window boundary failures; adjusted the scanner to treat markdown table header/separator rows as structure and count metadata data rows.
 
 ### Completion Notes List
 
-- Pending implementation.
+- Added a fail-closed `DW-0461` guard that requires the accepted `PENDING-STATUS-NULL-PROVIDER-V1` ledger state before enforcing reopen-trigger prohibitions.
+- Added release-note trigger scanning across the allowed markdown surfaces with repository-relative, capped diagnostics and a bounded `Constraint Metadata` allowance.
+- Added negative `EventStoreOptions` reflection checks for pending-status endpoint/resource/metadata drift while keeping existing option names green.
+- Added DI descriptor checks proving `AddHexalithFrontComposer()` and `AddHexalithEventStore(...)` leave `IPendingCommandStatusQuery` scoped to `NullPendingCommandStatusQuery`, with fixtures for provider-backed, factory, and instance descriptors.
+- Validation passed: `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter "Category=Governance"` (71/71).
+- Validation passed: `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"` (3,037 passed; Shell bench project reported no matching tests for this filter).
+- Validation passed: `git diff --check` (no whitespace errors; Git reported LF-to-CRLF normalization warnings for touched BMad files).
 
 ### File List
 
 - `_bmad-output/implementation-artifacts/12-3-1-pending-status-reopen-governance-test.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/PendingStatusReopenGovernanceTests.cs`
+
+### Change Log
+
+- 2026-05-16: Added pending-status reopen-trigger governance tests and moved story to review.
