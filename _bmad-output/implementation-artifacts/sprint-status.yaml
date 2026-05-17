@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-16 (Story 12.3.1 reviewed via bmad-code-review: 8 patches applied (heading/caption bypasses, AC4 PendingCommand+Status, keyed DI, path-escape, CHANGELOG case, Assert.Skip, fenced code), 1 patch deferred to CR-12-3-1-D6 (AC3 budget vs production release-note conflict) + CR-12-3-1-D1..D5 lower-severity defers; governance lane 75/75, main-lane filter 2,882 passed; story moved to done.)"
+last_updated: "2026-05-17 (Story 12.4 follow-up code review via bmad-code-review on uncommitted in-flight patches: 10 patches applied (CR-12-4-P16 CRITICAL fallback_complete tuple-return regression at caller; P17 None-rows crash; P18 parse_expiry UTC normalization; P19 safe_run_attempt diagnostic surfacing through new classify_context tuple return; P20 parse_strict_bool tightened to true/false plus parse_approval_bool split; P21 argparse boolean flags routed through helpers; P22 GITHUB_RUN_ATTEMPT parser-construction crash; P23 D2/D3 wording corrected; P24 prepare_manifest writes timestamp_status from parse_signing_verification; P25 release_definition_fingerprints embedded in sealed manifest, fingerprint_diff wired with strict missing-sentinel handling); 2 decisions resolved (D4 land both halves of P5; D5 wire fingerprint_diff with manifest-embedded baseline); 1 deferral (Def2 safe_run_attempt float truncation); 9 dismissed (incl. Edge-Hunter Windows-regex false positive verified). Fixtures resealed; verify-manifest valid; classify-fixtures 24/24; CiGovernanceTests 20/20. Prior-round CR-12-4-P1..P15/M4/L2 still unresolved — story moved back to in-progress.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -160,6 +160,6 @@ development_status:
   12-2-mcp-ledger-closure-and-contract-snapshot-decisions: done
   12-3-eventstore-pending-command-provider-release-gate: done
   12-3-1-pending-status-reopen-governance-test: done
-  12-4-trusted-release-evidence-dry-run: review
+  12-4-trusted-release-evidence-dry-run: in-progress
   12-5-accessibility-and-stakeholder-acceptance-evidence-pack: review
   epic-12-retrospective: optional

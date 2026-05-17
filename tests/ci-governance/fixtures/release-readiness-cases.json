@@ -54,12 +54,19 @@
           "version": "1.2.3"
         }
       ],
+      "release_definition_fingerprints": {
+        ".github/workflows/release.yml": "04adc9b92bac844bbc444ab31cbcf957e770d32a3de009fb2c13145990585a07",
+        ".releaserc.json": "4e0a6288e9391bfcf27c4881f74eb51fbe25a42729a261ed9b8e656423450a23",
+        "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
+        "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd",
+        "eng/release_evidence.py": "d0b37bf7284eb352ef48219e5ecfd3fd467370d29acbdb3bd05364838cd5463b"
+      },
       "run_id": "42",
       "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "seal": {
         "algorithm": "sha256",
-        "hash": "4b296de8c29cf069d0cd9900b85fb464f13ae75c41b6795dd3720bc1224eff20",
-        "sealed_at": "2026-05-15T00:00:00+00:00"
+        "hash": "a2688c49e3eccb69824283ed3b1472c9a0f2c7bf3729f048fe5cafd623e01d44",
+        "sealed_at": "2026-05-17T00:00:00+00:00"
       },
       "tag": "v1.2.3",
       "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3"
@@ -67,16 +74,16 @@
   },
   "cases": [
     {
-      "name": "trusted-ready",
       "expected_classification": "ready",
       "expected_context_class": "trusted-main-or-release",
-      "expected_publish_authorized": true
+      "expected_publish_authorized": true,
+      "name": "trusted-ready"
     },
     {
-      "name": "approved-fallback",
       "expected_classification": "fallback-approved",
       "expected_context_class": "trusted-main-or-release",
       "expected_publish_authorized": true,
+      "name": "approved-fallback",
       "override": {
         "attestation": {
           "fallback": {
@@ -99,15 +106,15 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "374a581df94b943d0cc0d85d1653073d446dadae8bed85461f18a170f2d17388",
-            "sealed_at": "2026-05-15T00:00:00+00:00"
+            "hash": "6a836eafcacbee0b747ea208ab7ce5be2d5e6914cabab2f0b03d25e8f9d31f3c",
+            "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
       }
     },
     {
-      "name": "missing-inventory-package",
       "expected_classification": "blocked",
+      "name": "missing-inventory-package",
       "override": {
         "checks": {
           "inventory_status": "invalid"
@@ -115,8 +122,8 @@
       }
     },
     {
-      "name": "skipped-tests",
       "expected_classification": "blocked",
+      "name": "skipped-tests",
       "override": {
         "checks": {
           "test_status": "skipped"
@@ -124,8 +131,8 @@
       }
     },
     {
-      "name": "zero-tests",
       "expected_classification": "blocked",
+      "name": "zero-tests",
       "override": {
         "checks": {
           "test_count": 0
@@ -133,8 +140,8 @@
       }
     },
     {
-      "name": "unsigned-package",
       "expected_classification": "blocked",
+      "name": "unsigned-package",
       "override": {
         "checks": {
           "signing_status": "unsigned"
@@ -149,8 +156,8 @@
       }
     },
     {
-      "name": "stale-missing-timestamp",
       "expected_classification": "blocked",
+      "name": "stale-missing-timestamp",
       "override": {
         "checks": {
           "timestamp_status": "missing"
@@ -165,8 +172,8 @@
       }
     },
     {
-      "name": "missing-sbom",
       "expected_classification": "blocked",
+      "name": "missing-sbom",
       "override": {
         "checks": {
           "sbom_status": "missing"
@@ -177,8 +184,8 @@
       }
     },
     {
-      "name": "checksum-mismatch",
       "expected_classification": "blocked",
+      "name": "checksum-mismatch",
       "override": {
         "checks": {
           "checksums_status": "mismatch"
@@ -193,8 +200,8 @@
       }
     },
     {
-      "name": "unsealed-manifest",
       "expected_classification": "blocked",
+      "name": "unsealed-manifest",
       "override": {
         "manifest": {
           "seal": {
@@ -204,9 +211,9 @@
       }
     },
     {
-      "name": "pr-same-repo",
       "expected_classification": "blocked",
       "expected_context_class": "pr-same-repo",
+      "name": "pr-same-repo",
       "override": {
         "context": {
           "event_name": "pull_request",
@@ -216,9 +223,9 @@
       }
     },
     {
-      "name": "fork-pr",
       "expected_classification": "blocked",
       "expected_context_class": "fork-pr",
+      "name": "fork-pr",
       "override": {
         "context": {
           "event_name": "pull_request",
@@ -229,9 +236,9 @@
       }
     },
     {
-      "name": "local-candidate",
       "expected_classification": "blocked",
       "expected_context_class": "local-candidate",
+      "name": "local-candidate",
       "override": {
         "context": {
           "dry_run": true,
@@ -241,8 +248,8 @@
       }
     },
     {
-      "name": "recursive-submodule-command",
       "expected_classification": "blocked",
+      "name": "recursive-submodule-command",
       "override": {
         "checks": {
           "recursive_submodule_command": true
@@ -250,8 +257,8 @@
       }
     },
     {
-      "name": "path-leakage",
       "expected_classification": "blocked",
+      "name": "path-leakage",
       "override": {
         "checks": {
           "raw_evidence": "C:\\Users\\Jerome\\secret\\release.log"
@@ -259,8 +266,8 @@
       }
     },
     {
-      "name": "token-like-leakage",
       "expected_classification": "blocked",
+      "name": "token-like-leakage",
       "override": {
         "checks": {
           "raw_evidence": "Bearer ghp_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
@@ -268,8 +275,8 @@
       }
     },
     {
-      "name": "hostile-workflow-command",
       "expected_classification": "blocked",
+      "name": "hostile-workflow-command",
       "override": {
         "checks": {
           "raw_evidence": "::set-output name=ready::true"
@@ -277,8 +284,8 @@
       }
     },
     {
-      "name": "dry-run-side-effect-attempt",
       "expected_classification": "blocked",
+      "name": "dry-run-side-effect-attempt",
       "override": {
         "checks": {
           "dry_run_side_effect_attempt": true
@@ -289,8 +296,8 @@
       }
     },
     {
-      "name": "stale-release-definition-fingerprint",
       "expected_classification": "blocked",
+      "name": "stale-release-definition-fingerprint",
       "override": {
         "checks": {
           "release_definition_drift": true
@@ -298,8 +305,8 @@
       }
     },
     {
-      "name": "post-seal-package-mutation",
       "expected_classification": "blocked",
+      "name": "post-seal-package-mutation",
       "override": {
         "checks": {
           "post_seal_artifact_mutation": true
@@ -307,8 +314,8 @@
       }
     },
     {
-      "name": "concurrent-same-version-run",
       "expected_classification": "blocked",
+      "name": "concurrent-same-version-run",
       "override": {
         "checks": {
           "concurrent_same_version": true
@@ -316,8 +323,8 @@
       }
     },
     {
-      "name": "stale-fallback-approval",
       "expected_classification": "blocked",
+      "name": "stale-fallback-approval",
       "override": {
         "attestation": {
           "fallback": {
@@ -328,8 +335,8 @@
       }
     },
     {
-      "name": "partial-helper-output",
       "expected_classification": "blocked",
+      "name": "partial-helper-output",
       "override": {
         "checks": {
           "helper_state": "partial"
@@ -337,9 +344,9 @@
       }
     },
     {
-      "name": "rerun-review",
       "expected_classification": "blocked",
       "expected_context_class": "rerun-review",
+      "name": "rerun-review",
       "override": {
         "context": {
           "run_attempt": 2
