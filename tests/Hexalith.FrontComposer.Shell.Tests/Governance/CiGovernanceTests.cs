@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -352,6 +353,78 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void ReleaseEvidenceScript_DetectsPostSealArtifactMutationFromRealFiles() {
+        string root = RepositoryRoot();
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"fc-release-post-seal-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(Path.Combine(tempRoot, ".github", "workflows"));
+        Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
+        Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
+
+        string[] releaseDefinitionFiles = [
+            ".github/workflows/release.yml",
+            ".releaserc.json",
+            "eng/release_evidence.py",
+            "eng/release-package-inventory.json",
+            "Directory.Packages.props",
+        ];
+        foreach (string file in releaseDefinitionFiles) {
+            string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
+            Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+            File.WriteAllText(path, $"baseline {file}");
+        }
+
+        string artifact = Path.Combine(tempRoot, "nupkgs-signed", "Hexalith.FrontComposer.Contracts.1.2.3.nupkg");
+        string originalChecksum = Sha256Text("original package bytes");
+        File.WriteAllText(artifact, "mutated package bytes");
+
+        Dictionary<string, string> fingerprints = releaseDefinitionFiles.ToDictionary(
+            file => file,
+            file => Sha256File(Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar))));
+        string preManifest = Path.Combine(tempRoot, "pre-manifest.json");
+        string sealedManifest = Path.Combine(tempRoot, "sealed-manifest.json");
+        File.WriteAllText(preManifest, JsonSerializer.Serialize(new Dictionary<string, object?> {
+            ["benchmark_summary_hash"] = new string('c', 64),
+            ["commit_sha"] = "abc123",
+            ["packages"] = new[] {
+                new Dictionary<string, object?> {
+                    ["artifact_path"] = "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+                    ["attestation_status"] = "attested",
+                    ["checksum"] = originalChecksum,
+                    ["commit_sha"] = "abc123",
+                    ["package_id"] = "Hexalith.FrontComposer.Contracts",
+                    ["publish_status"] = "pending",
+                    ["sbom_component"] = "Hexalith.FrontComposer.Contracts",
+                    ["signing_status"] = "verified",
+                    ["symbol_artifact"] = "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+                    ["timestamp_status"] = "verified",
+                    ["version"] = "1.2.3",
+                },
+            },
+            ["release_definition_fingerprints"] = fingerprints,
+            ["run_id"] = "42",
+            ["sbom_hash"] = new string('a', 64),
+            ["tag"] = "v1.2.3",
+            ["workflow_ref"] = "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
+        }, new JsonSerializerOptions { WriteIndented = true }));
+
+        RunPython(root, [
+            "eng/release_evidence.py",
+            "seal-manifest",
+            "--manifest", preManifest,
+            "--output", sealedManifest,
+        ]).ExitCode.ShouldBe(0);
+
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "verify-manifest",
+            "--root", tempRoot,
+            "--manifest", sealedManifest,
+        ]);
+
+        result.ExitCode.ShouldNotBe(0);
+    }
+
+    [Fact]
     public void ReleaseEvidenceScript_ClassifiesReleaseReadinessFixtures() {
         string root = RepositoryRoot();
         string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
@@ -414,6 +487,11 @@ public sealed class CiGovernanceTests {
             .Single(r => r.GetProperty("name").GetString() == "approved-fallback");
         fallback.GetProperty("classification").GetString().ShouldBe("fallback-approved");
         fallback.GetProperty("publish_authorized").GetBoolean().ShouldBeTrue();
+
+        JsonElement rerun = doc.RootElement.GetProperty("results").EnumerateArray()
+            .Single(r => r.GetProperty("name").GetString() == "rerun-review");
+        (rerun.GetProperty("next_owner_action").GetString() ?? string.Empty)
+            .ShouldContain("create a fresh dispatch or new tag");
     }
 
     [Fact]
@@ -425,10 +503,23 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("release_owner_approved");
         workflow.ShouldContain("RELEASE_OWNER_APPROVED");
         workflow.ShouldContain("RELEASE_APPROVER");
+        workflow.ShouldContain("RELEASE_CONCURRENT_SAME_VERSION: true");
+        workflow.ShouldContain("Record release concurrency guard");
         workflow.ShouldContain("Release owner approval gate");
+        workflow.ShouldNotContain("vars.RELEASE_OWNER_APPROVED");
+        workflow.ShouldNotContain("RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER");
 
         releaseConfig.ShouldContain("classify-release");
         releaseConfig.ShouldContain("--require-publishable");
+        releaseConfig.ShouldContain("--evidence-root ./release-evidence");
+        releaseConfig.ShouldContain("--concurrent-same-version");
+        releaseConfig.ShouldContain("$RELEASE_CONCURRENT_SAME_VERSION");
+        releaseConfig.ShouldContain("--from-fork");
+        releaseConfig.ShouldContain("$RELEASE_FROM_FORK");
+        releaseConfig.ShouldContain("--dry-run");
+        releaseConfig.ShouldContain("$RELEASE_DRY_RUN");
+        releaseConfig.ShouldContain("partial-publish-incident");
+        releaseConfig.ShouldNotContain("--from-fork \"false\"");
         releaseConfig.IndexOf("verify-manifest", StringComparison.Ordinal).ShouldBeLessThan(
             releaseConfig.IndexOf("classify-release", StringComparison.Ordinal));
         releaseConfig.IndexOf("classify-release", StringComparison.Ordinal).ShouldBeLessThan(
@@ -783,6 +874,14 @@ public sealed class CiGovernanceTests {
         string error = errorTask.GetAwaiter().GetResult();
         return new ProcessResult(process.ExitCode, output, error);
     }
+
+    private static string Sha256File(string path) {
+        using FileStream stream = File.OpenRead(path);
+        return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
+    }
+
+    private static string Sha256Text(string text) =>
+        Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(text))).ToLowerInvariant();
 
     private sealed record ProcessResult(int ExitCode, string Output, string Error);
 }

@@ -162,9 +162,11 @@ def parse_strict_bool(value: Any, *, field: str, default: bool = False) -> tuple
     """Strict security-flag boolean (true/false only, case-insensitive). Empty -> default."""
     if isinstance(value, bool):
         return value, None
-    text = "" if value is None else str(value).strip().lower()
-    if text == "":
+    if value is None:
         return default, None
+    text = str(value).strip().lower()
+    if text == "":
+        return default, f"{field} must be true or false; actual=<empty>"
     if text in TRUTHY_LITERALS:
         return True, None
     if text in FALSY_LITERALS:
@@ -278,6 +280,8 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
         diagnostics.append("package rows are required")
     if isinstance(rows, list):
         versions = {row.get("version") for row in rows if isinstance(row, dict)}
+        if None in versions or "" in versions:
+            diagnostics.append("package version evidence is required for every row")
         if len(versions) > 1:
             diagnostics.append("lockstep version drift")
     for row in rows if isinstance(rows, list) else []:
@@ -294,6 +298,17 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
             diagnostics.append(f"{row.get('package_id')}: checksum must be a concrete sha256")
         if str(row.get("artifact_path", "")).startswith("nupkgs/"):
             diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
+        if root is not None:
+            artifact_path = str(row.get("artifact_path", ""))
+            try:
+                artifact = normalize_under_root(root, artifact_path)
+            except SystemExit as exc:
+                diagnostics.append(f"{row.get('package_id')}: artifact path invalid: {exc}")
+            else:
+                if not artifact.exists():
+                    diagnostics.append(f"{row.get('package_id')}: sealed artifact missing on disk")
+                elif looks_like_sha256(row.get("checksum")) and sha256_file(artifact) != row.get("checksum"):
+                    diagnostics.append(f"{row.get('package_id')}: sealed artifact checksum does not match on-disk artifact")
     for field in ["commit_sha", "tag", "run_id", "workflow_ref", "sbom_hash", "benchmark_summary_hash"]:
         if not manifest.get(field):
             diagnostics.append(f"manifest missing {field}")
@@ -324,6 +339,95 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
             for drift in fingerprint_diff(current, embedded):
                 diagnostics.append(f"release-definition drift: {drift}")
     return diagnostics
+
+
+def evidence_status_file(path: pathlib.Path) -> tuple[str, list[str]]:
+    if not path.exists():
+        return "missing", [f"{path.name}: evidence file is missing"]
+    try:
+        payload = read_json(path)
+    except SystemExit as exc:
+        return "partial", [f"{path.name}: {exc}"]
+    status = payload.get("status") if isinstance(payload, dict) else None
+    diagnostics = payload.get("diagnostics", []) if isinstance(payload, dict) else []
+    if status in {"valid", "success"}:
+        return "success", []
+    if status in {"invalid", "partial", "missing"}:
+        return "partial", [f"{path.name}: status={status}", *[sanitize(d) for d in diagnostics[:10]]]
+    return "partial", [f"{path.name}: status is missing or unknown"]
+
+
+def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], test_payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    diagnostics: list[str] = []
+    evidence_root = pathlib.Path(args.evidence_root) if args.evidence_root else None
+
+    verification_status = "missing"
+    inventory_status = args.inventory_status
+    paths_status = args.paths_status
+    redaction_status = args.redaction_status
+    helper_state = args.helper_state
+    if evidence_root:
+        helper_diagnostics: list[str] = []
+        verification_state, verification_diags = evidence_status_file(evidence_root / "release-verification.json")
+        inventory_state, inventory_diags = evidence_status_file(evidence_root / "package-inventory.json")
+        helper_diagnostics.extend(verification_diags)
+        helper_diagnostics.extend(inventory_diags)
+        verification_status = "valid" if verification_state == "success" else verification_state
+        inventory_status = "valid" if inventory_state == "success" else "invalid"
+        paths_status = "normalized" if not manifest_diagnostics(manifest, None) else "invalid"
+
+        raw_parts: list[str] = []
+        for child in evidence_root.rglob("*") if evidence_root.exists() else []:
+            if child.is_file() and child.stat().st_size <= 1024 * 1024:
+                raw_parts.append(child.read_text(encoding="utf-8", errors="replace"))
+        raw_text = "\n".join(raw_parts)
+        redaction_status = "unsafe" if contains_dangerous_evidence(raw_text) else "passed"
+        if args.raw_evidence:
+            raw_text = f"{raw_text}\n{args.raw_evidence}"
+        args.raw_evidence = raw_text
+        helper_state = "success" if not helper_diagnostics else "partial"
+        diagnostics.extend(helper_diagnostics)
+
+    manifest_rows = manifest.get("packages", []) if isinstance(manifest, dict) else []
+    signing_status = args.signing_status
+    timestamp_status = args.timestamp_status
+    if isinstance(manifest_rows, list) and manifest_rows:
+        signing_status = "verified" if all(row.get("signing_status") == "verified" for row in manifest_rows if isinstance(row, dict)) else "missing"
+        timestamp_status = "verified" if all(row.get("timestamp_status") == "verified" for row in manifest_rows if isinstance(row, dict)) else "missing"
+
+    sbom_hash = manifest.get("sbom_hash") if isinstance(manifest, dict) else None
+    sbom_status = args.sbom_status
+    if sbom_hash is not None:
+        sbom_status = "present" if looks_like_sha256(sbom_hash) else "missing"
+
+    checksum_status = args.checksums_status
+    if isinstance(manifest_rows, list) and manifest_rows:
+        checksum_status = "valid" if all(looks_like_sha256(row.get("checksum")) for row in manifest_rows if isinstance(row, dict)) else "mismatch"
+
+    manifest_diags = manifest_diagnostics(manifest, pathlib.Path(args.root)) if isinstance(manifest, dict) else ["manifest evidence is required"]
+    release_definition_drift = args.release_definition_drift or any("release-definition drift" in diagnostic for diagnostic in manifest_diags)
+    post_seal_mutation = args.post_seal_artifact_mutation or any("sealed artifact checksum does not match" in diagnostic for diagnostic in manifest_diags)
+
+    return {
+        "checksums_status": checksum_status,
+        "concurrent_same_version": args.concurrent_same_version,
+        "dry_run_side_effect_attempt": args.dry_run_side_effect_attempt,
+        "helper_state": helper_state,
+        "inventory_status": inventory_status,
+        "paths_status": paths_status,
+        "post_seal_artifact_mutation": post_seal_mutation,
+        "raw_evidence": args.raw_evidence,
+        "recursive_submodule_command": args.recursive_submodule_command,
+        "redaction_status": redaction_status,
+        "release_definition_drift": release_definition_drift,
+        "sbom_status": sbom_status,
+        "semantic_release_state": args.semantic_release_state,
+        "signing_status": signing_status,
+        "test_count": int(test_payload.get("test_count", args.test_count) or 0),
+        "test_status": "passed" if test_payload.get("status", args.test_status) == "valid" else test_payload.get("status", args.test_status),
+        "timestamp_status": timestamp_status,
+        "trx_present": bool(test_payload.get("trx_present", args.trx_present)),
+    }, diagnostics
 
 
 def safe_run_attempt(value: Any) -> tuple[int, str | None]:
@@ -481,6 +585,8 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
     classification = "blocked" if blocking else ("fallback-approved" if fallback_reasons else "ready")
     publish_authorized = classification in {"ready", "fallback-approved"} and context_class == "trusted-main-or-release" and bool(approval.get("approved"))
     next_action = "publish may proceed with approved owner action" if publish_authorized else "resolve blocking release gates before publishing"
+    if context_class == "rerun-review":
+        next_action = "rerun-review contexts are never publish-authorized; create a fresh dispatch or new tag to retry"
     if classification == "fallback-approved":
         next_action = "release owner must consciously accept the approved fallback before publish"
 
@@ -490,6 +596,10 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
             "approver": sanitize(approval.get("approver", "")),
             "mechanism": sanitize(approval.get("mechanism", "")),
         },
+        "advisory_artifacts": [
+            "release-evidence/release-readiness.json",
+            "release-evidence/test-results.json",
+        ],
         "candidate_evidence_used": context_class != "trusted-main-or-release",
         "classification": classification,
         "context_class": context_class,
@@ -770,6 +880,23 @@ def path_check(args: argparse.Namespace) -> int:
     return 0
 
 
+def partial_publish_incident(args: argparse.Namespace) -> int:
+    manifest = read_json(args.manifest) if args.manifest else {}
+    payload = {
+        "classification": "partial-publish-incident",
+        "decision_contract": "frontcomposer.partial-publish-incident.v1",
+        "failed_phase": sanitize(args.phase),
+        "manifest_seal": manifest.get("seal", {}) if isinstance(manifest, dict) else {},
+        "next_owner_action": "release owner must reconcile NuGet packages, symbols, tags, changelog, GitHub Release assets, and attestations before retry",
+        "run_attempt": sanitize(args.run_attempt),
+        "run_id": sanitize(args.run_id),
+        "tag": sanitize(args.tag),
+        "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    write_json(args.output, payload)
+    return 0
+
+
 def _cli_bool(value: Any, *, field: str, approval: bool = False) -> bool:
     """Parse a CLI boolean flag, failing loudly on unrecognized input."""
     parser = parse_approval_bool if approval else parse_strict_bool
@@ -785,6 +912,17 @@ def classify_release(args: argparse.Namespace) -> int:
     else:
         manifest = read_json(args.manifest) if args.manifest else {}
         test_payload = read_json(args.test_results) if args.test_results else {}
+        args.concurrent_same_version = _cli_bool(args.concurrent_same_version, field="concurrent_same_version")
+        args.dry_run_side_effect_attempt = _cli_bool(args.dry_run_side_effect_attempt, field="dry_run_side_effect_attempt")
+        args.post_seal_artifact_mutation = _cli_bool(args.post_seal_artifact_mutation, field="post_seal_artifact_mutation")
+        args.recursive_submodule_command = _cli_bool(args.recursive_submodule_command, field="recursive_submodule_command")
+        args.release_definition_drift = _cli_bool(args.release_definition_drift, field="release_definition_drift")
+        args.trx_present = _cli_bool(args.trx_present, field="trx_present")
+        checks, helper_diagnostics = derive_release_checks(args, manifest, test_payload if isinstance(test_payload, dict) else {})
+        if helper_diagnostics and checks["helper_state"] == "success":
+            checks["helper_state"] = "partial"
+        if helper_diagnostics:
+            checks["raw_evidence"] = "\n".join([str(checks.get("raw_evidence", "")), *helper_diagnostics])
         evidence = {
             "approval": {
                 "approved": _cli_bool(args.owner_approved, field="owner_approved", approval=True),
@@ -804,26 +942,7 @@ def classify_release(args: argparse.Namespace) -> int:
                 },
                 "status": args.attestation_status,
             },
-            "checks": {
-                "checksums_status": args.checksums_status,
-                "concurrent_same_version": _cli_bool(args.concurrent_same_version, field="concurrent_same_version"),
-                "dry_run_side_effect_attempt": _cli_bool(args.dry_run_side_effect_attempt, field="dry_run_side_effect_attempt"),
-                "helper_state": args.helper_state,
-                "inventory_status": args.inventory_status,
-                "paths_status": args.paths_status,
-                "post_seal_artifact_mutation": _cli_bool(args.post_seal_artifact_mutation, field="post_seal_artifact_mutation"),
-                "raw_evidence": args.raw_evidence,
-                "recursive_submodule_command": _cli_bool(args.recursive_submodule_command, field="recursive_submodule_command"),
-                "redaction_status": args.redaction_status,
-                "release_definition_drift": _cli_bool(args.release_definition_drift, field="release_definition_drift"),
-                "sbom_status": args.sbom_status,
-                "semantic_release_state": args.semantic_release_state,
-                "signing_status": args.signing_status,
-                "test_count": int(test_payload.get("test_count", args.test_count) or 0),
-                "test_status": "passed" if test_payload.get("status", args.test_status) == "valid" else test_payload.get("status", args.test_status),
-                "timestamp_status": args.timestamp_status,
-                "trx_present": bool(test_payload.get("trx_present", _cli_bool(args.trx_present, field="trx_present"))),
-            },
+            "checks": checks,
             # Raw values flow through; classify_context parses and emits typed diagnostics.
             "context": {
                 "dry_run": args.dry_run,
@@ -859,17 +978,21 @@ def classify_fixtures(args: argparse.Namespace) -> int:
             "classification": decision["classification"],
             "context_class": decision["context_class"],
             "name": case.get("name", ""),
+            "next_owner_action": decision["next_owner_action"],
             "publish_authorized": decision["publish_authorized"],
         }
         expected_classification = case.get("expected_classification")
         expected_context = case.get("expected_context_class")
         expected_publish = case.get("expected_publish_authorized")
+        expected_next_owner_action_contains = case.get("expected_next_owner_action_contains")
         if expected_classification and decision["classification"] != expected_classification:
             mismatches.append(f"{case.get('name')}: classification {decision['classification']} != {expected_classification}")
         if expected_context and decision["context_class"] != expected_context:
             mismatches.append(f"{case.get('name')}: context {decision['context_class']} != {expected_context}")
         if expected_publish is not None and decision["publish_authorized"] != expected_publish:
             mismatches.append(f"{case.get('name')}: publish_authorized {decision['publish_authorized']} != {expected_publish}")
+        if expected_next_owner_action_contains and expected_next_owner_action_contains not in decision["next_owner_action"]:
+            mismatches.append(f"{case.get('name')}: next_owner_action missing {expected_next_owner_action_contains}")
         results.append(result)
     output = {
         "diagnostics": mismatches,
@@ -924,7 +1047,7 @@ def main() -> int:
     prep.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
     prep.add_argument("--workflow-ref", default=os.environ.get("GITHUB_WORKFLOW_REF", "local"))
     prep.add_argument("--sbom-hash", default="")
-    prep.add_argument("--benchmark-summary-hash", default="candidate-benchmark-summary")
+    prep.add_argument("--benchmark-summary-hash", default="")
     prep.add_argument("--attestation-status", default=os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported"))
     prep.add_argument("--signing-verification", default="")
     prep.add_argument("--diagnostics-output")
@@ -956,8 +1079,18 @@ def main() -> int:
     path.add_argument("--output")
     path.set_defaults(func=path_check)
 
+    incident = sub.add_parser("partial-publish-incident")
+    incident.add_argument("--manifest", required=True)
+    incident.add_argument("--output", required=True)
+    incident.add_argument("--phase", required=True)
+    incident.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
+    incident.add_argument("--run-attempt", default=os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
+    incident.add_argument("--tag", default=os.environ.get("GITHUB_REF_NAME", "local"))
+    incident.set_defaults(func=partial_publish_incident)
+
     classify = sub.add_parser("classify-release")
     classify.add_argument("--root", default=".")
+    classify.add_argument("--evidence-root", default="")
     classify.add_argument("--evidence")
     classify.add_argument("--manifest")
     classify.add_argument("--output")
@@ -982,24 +1115,24 @@ def main() -> int:
     classify.add_argument("--fallback-release-note-impact", default="Release notes must mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.")
     classify.add_argument("--fallback-reopen-event", default="GitHub artifact attestations become available or release evidence contract changes")
     classify.add_argument("--fallback-scope", default="current release attempt")
-    classify.add_argument("--checksums-status", default="valid")
-    classify.add_argument("--concurrent-same-version", default="false")
+    classify.add_argument("--checksums-status", default="missing")
+    classify.add_argument("--concurrent-same-version", default="true")
     classify.add_argument("--dry-run-side-effect-attempt", default="false")
-    classify.add_argument("--helper-state", default="success")
-    classify.add_argument("--inventory-status", default="valid")
-    classify.add_argument("--paths-status", default="normalized")
+    classify.add_argument("--helper-state", default="missing")
+    classify.add_argument("--inventory-status", default="missing")
+    classify.add_argument("--paths-status", default="missing")
     classify.add_argument("--post-seal-artifact-mutation", default="false")
     classify.add_argument("--raw-evidence", default="")
     classify.add_argument("--recursive-submodule-command", default="false")
-    classify.add_argument("--redaction-status", default="passed")
+    classify.add_argument("--redaction-status", default="missing")
     classify.add_argument("--release-definition-drift", default="false")
-    classify.add_argument("--sbom-status", default="present")
-    classify.add_argument("--semantic-release-state", default="matches")
-    classify.add_argument("--signing-status", default="verified")
-    classify.add_argument("--test-count", type=int, default=1)
-    classify.add_argument("--test-status", default="passed")
-    classify.add_argument("--timestamp-status", default="verified")
-    classify.add_argument("--trx-present", default="true")
+    classify.add_argument("--sbom-status", default="missing")
+    classify.add_argument("--semantic-release-state", default="missing")
+    classify.add_argument("--signing-status", default="missing")
+    classify.add_argument("--test-count", type=int, default=0)
+    classify.add_argument("--test-status", default="missing")
+    classify.add_argument("--timestamp-status", default="missing")
+    classify.add_argument("--trx-present", default="false")
     classify.set_defaults(func=classify_release)
 
     fixtures = sub.add_parser("classify-fixtures")
@@ -1013,4 +1146,10 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except SystemExit:
+        raise
+    except Exception as exc:  # pragma: no cover - final guard for release scripts.
+        print(f"release_evidence helper crashed: {exc}", file=sys.stderr)
+        sys.exit(2)

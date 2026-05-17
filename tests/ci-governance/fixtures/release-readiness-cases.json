@@ -346,6 +346,7 @@
     {
       "expected_classification": "blocked",
       "expected_context_class": "rerun-review",
+      "expected_next_owner_action_contains": "create a fresh dispatch or new tag",
       "name": "rerun-review",
       "override": {
         "context": {

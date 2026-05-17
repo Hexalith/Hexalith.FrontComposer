@@ -23,12 +23,15 @@ permissions:
   contents: read
 
 env:
-  RELEASE_APPROVAL_MECHANISM: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch_input' || 'repository_variable' }}
-  RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER || '' }}
+  RELEASE_APPROVAL_MECHANISM: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch_input' || '' }}
+  RELEASE_APPROVER: ${{ github.event_name == 'workflow_dispatch' && inputs.release_approver || '' }}
   RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || inputs.release_approver || vars.RELEASE_APPROVER || '' }}
   RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT || '' }}
-  RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}
-  RELEASE_OWNER_APPROVED: ${{ inputs.release_owner_approved || vars.RELEASE_OWNER_APPROVED || 'false' }}
+  RELEASE_ATTESTATION_STATUS: approved-unsupported
+  RELEASE_CONCURRENT_SAME_VERSION: true
+  RELEASE_DRY_RUN: ${{ (github.event_name != 'push' && github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
+  RELEASE_FROM_FORK: ${{ github.event.pull_request.head.repo.fork || false }}
+  RELEASE_OWNER_APPROVED: ${{ github.event_name == 'workflow_dispatch' && inputs.release_owner_approved || 'false' }}
 
 jobs:
   release:
@@ -102,6 +105,15 @@ jobs:
 
       - name: Start release budget timer
         run: echo "RELEASE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
+
+      - name: Record release concurrency guard
+        run: |
+          echo "RELEASE_CONCURRENT_SAME_VERSION=false" >> "$GITHUB_ENV"
+          {
+            echo '## Release concurrency guard'
+            echo
+            echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns are still blocked separately by run-attempt classification.'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require governed attestation fallback before publish
         if: ${{ vars.ATTESTATION_UNSUPPORTED != 'true' }}
