@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-17 (Story 12.4 review follow-ups resolved: CR-12-4-P1..P15, M1..M7, and L1..L2 applied; release approval is workflow-dispatch scoped, publish classification reads machine evidence-root outputs, fork/dry-run/concurrency signals are wired, sealed artifact digests are reverified, pre-publish budget hash evidence is sealed, rerun owner action is typed, and partial-publish incidents are phase-specific. Validations passed: py_compile, .releaserc JSON parse, classify-fixtures, verify-manifest fixture, inventory, path-check, focused CiGovernanceTests 21/21, and release-filtered solution lane. Story moved to review.)"
+last_updated: "2026-05-17 (Story 12.4 round-3 code review (bmad-code-review) raised 4 decisions (CR-12-4-D6..D9, all resolved to patches) and 36 patches (CR-12-4-P26..P61) including 4 CRITICAL (P26 fallback-approver bypass via vars.RELEASE_APPROVER chain, P27 evidence-root redaction false-positives blocking every release, P28 false timestamp_status verified, P29 string-bool truthiness bypasses approval/checks gates) and 1 from D6 (P58 real gh-api concurrency detection); patches left as action items, story moved back to in-progress for follow-up implementation.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -160,6 +160,6 @@ development_status:
   12-2-mcp-ledger-closure-and-contract-snapshot-decisions: done
   12-3-eventstore-pending-command-provider-release-gate: done
   12-3-1-pending-status-reopen-governance-test: done
-  12-4-trusted-release-evidence-dry-run: review
+  12-4-trusted-release-evidence-dry-run: in-progress
   12-5-accessibility-and-stakeholder-acceptance-evidence-pack: review
   epic-12-retrospective: optional
