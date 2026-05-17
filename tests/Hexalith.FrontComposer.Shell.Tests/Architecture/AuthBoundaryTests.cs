@@ -109,7 +109,7 @@ public sealed class AuthBoundaryTests {
 
     private static string FindRepositoryRoot() {
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.sln"))) {
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
             directory = directory.Parent;
         }
 

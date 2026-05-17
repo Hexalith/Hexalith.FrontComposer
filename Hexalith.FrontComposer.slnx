@@ -1,0 +1,35 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Folder Name="/samples/">
+    <Project Path="samples/Counter/Counter.Domain/Counter.Domain.csproj" />
+    <Project Path="samples/Counter/Counter.Web/Counter.Web.csproj" />
+    <Project Path="samples/IdeParityCounter/IdeParityCounter.csproj" />
+  </Folder>
+  <Folder Name="/samples/Counter/">
+    <Project Path="samples/Counter/Counter.AppHost/Counter.AppHost.csproj" />
+    <Project Path="samples/Counter/Counter.Specimens.Domain/Counter.Specimens.Domain.csproj" />
+    <Project Path="samples/Counter/Counter.Specimens/Counter.Specimens.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Hexalith.FrontComposer.Cli/Hexalith.FrontComposer.Cli.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.Mcp/Hexalith.FrontComposer.Mcp.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.Schema/Hexalith.FrontComposer.Schema.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.Shell/Hexalith.FrontComposer.Shell.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj" />
+    <Project Path="src/Hexalith.FrontComposer.Testing/Hexalith.FrontComposer.Testing.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hexalith.FrontComposer.Cli.Tests/Hexalith.FrontComposer.Cli.Tests.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.Contracts.Tests/Hexalith.FrontComposer.Contracts.Tests.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.Mcp.Tests/Hexalith.FrontComposer.Mcp.Tests.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.Shell.Tests.Bench/Hexalith.FrontComposer.Shell.Tests.Bench.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.Shell.Tests/Hexalith.FrontComposer.Shell.Tests.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj" />
+    <Project Path="tests/Hexalith.FrontComposer.Testing.Tests/Hexalith.FrontComposer.Testing.Tests.csproj" />
+  </Folder>
+</Solution>

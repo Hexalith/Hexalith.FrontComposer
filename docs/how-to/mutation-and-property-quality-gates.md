@@ -19,7 +19,7 @@ Restore pinned tools and packages:
 
 ```bash no-compile reason="developer shell command"
 dotnet tool restore
-dotnet restore Hexalith.FrontComposer.sln
+dotnet restore Hexalith.FrontComposer.slnx
 ```
 
 Run the deterministic command idempotency property suite:

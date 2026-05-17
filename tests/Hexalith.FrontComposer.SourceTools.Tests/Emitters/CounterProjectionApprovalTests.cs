@@ -160,7 +160,7 @@ public sealed class CounterProjectionApprovalTests {
         string testDirectory = Path.GetDirectoryName(typeof(CounterProjectionApprovalTests).Assembly.Location)!;
         // Walk up from bin/Debug/netX.0 to repo root + tests/.../Emitters/
         DirectoryInfo? cursor = new(testDirectory);
-        while (cursor is not null && !File.Exists(Path.Combine(cursor.FullName, "Hexalith.FrontComposer.sln"))) {
+        while (cursor is not null && !File.Exists(Path.Combine(cursor.FullName, "Hexalith.FrontComposer.slnx"))) {
             cursor = cursor.Parent;
         }
 

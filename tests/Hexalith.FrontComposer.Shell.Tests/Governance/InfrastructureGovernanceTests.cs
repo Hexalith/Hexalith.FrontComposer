@@ -320,7 +320,7 @@ public sealed class InfrastructureGovernanceTests {
     private static string RepositoryRoot() {
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
         while (dir is not null) {
-            if (File.Exists(Path.Combine(dir.FullName, "Hexalith.FrontComposer.sln"))) {
+            if (File.Exists(Path.Combine(dir.FullName, "Hexalith.FrontComposer.slnx"))) {
                 return dir.FullName;
             }
 

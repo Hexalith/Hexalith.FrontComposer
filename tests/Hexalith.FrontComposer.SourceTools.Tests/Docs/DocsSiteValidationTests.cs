@@ -175,7 +175,7 @@ public sealed partial class DocsSiteValidationTests {
 
     private static string ProjectRoot() {
         DirectoryInfo directory = new(AppContext.BaseDirectory);
-        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.sln"))) {
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
             directory = directory.Parent!;
         }
 

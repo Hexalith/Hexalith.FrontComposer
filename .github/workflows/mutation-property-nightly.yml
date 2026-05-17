@@ -31,7 +31,7 @@ jobs:
       - name: Restore tools and packages
         run: |
           dotnet tool restore
-          dotnet restore Hexalith.FrontComposer.sln
+          dotnet restore Hexalith.FrontComposer.slnx
 
       - name: Build SourceTools tests
         run: dotnet build tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj --configuration Release --no-restore
@@ -81,7 +81,7 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore packages
-        run: dotnet restore Hexalith.FrontComposer.sln
+        run: dotnet restore Hexalith.FrontComposer.slnx
 
       - name: Run high-count lifecycle property suite
         shell: pwsh

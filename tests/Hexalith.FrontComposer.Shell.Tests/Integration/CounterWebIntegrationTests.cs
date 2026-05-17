@@ -49,11 +49,11 @@ public sealed class CounterWebIntegrationTests
 
     private static string FindRepoRoot()
     {
-        // Walks up from the test binary dir until Hexalith.FrontComposer.sln is found.
+        // Walks up from the test binary dir until Hexalith.FrontComposer.slnx is found.
         DirectoryInfo? dir = new(AppContext.BaseDirectory);
         while (dir is not null)
         {
-            if (dir.GetFiles("Hexalith.FrontComposer.sln").Length > 0)
+            if (dir.GetFiles("Hexalith.FrontComposer.slnx").Length > 0)
             {
                 return dir.FullName;
             }
@@ -61,6 +61,6 @@ public sealed class CounterWebIntegrationTests
             dir = dir.Parent;
         }
 
-        throw new InvalidOperationException("Could not locate Hexalith.FrontComposer.sln by walking up from " + AppContext.BaseDirectory);
+        throw new InvalidOperationException("Could not locate Hexalith.FrontComposer.slnx by walking up from " + AppContext.BaseDirectory);
     }
 }

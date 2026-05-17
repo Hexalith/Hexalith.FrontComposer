@@ -11,7 +11,7 @@ Production source under `src/**/*.cs` must not contain `Debugger.Launch()`. The 
 For Visual Studio, use JIT attach or attach to the active compiler server process when the launch prompt appears. If the generator does not hit a breakpoint, run a clean rebuild with shared compilation disabled:
 
 ```powershell
-dotnet build Hexalith.FrontComposer.sln -p:UseSharedCompilation=false
+dotnet build Hexalith.FrontComposer.slnx -p:UseSharedCompilation=false
 ```
 
 For Rider and VS Code with C# Dev Kit, generated-code inspection and generator-host attach behavior can differ by vendor version. Treat generator-host attach as a contributor workflow, not an adopter parity promise. The adopter-facing contract is the generated output layout published as `Hexalith.FrontComposer.Contracts.Conformance.GeneratedOutputPathContract.Template` (currently `obj/{Config}/{TFM}/generated/HexalithFrontComposer/{TypeName}.g.razor.cs`), HFC diagnostics, XML docs, and documented fallback inspection through `frontcomposer inspect`.

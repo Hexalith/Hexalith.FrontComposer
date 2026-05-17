@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/stryker-mutator/stryker-net/master/src/Stryker.CLI/Stryker.CLI/stryker-schema.json",
   "stryker-config": {
-    "solution": "Hexalith.FrontComposer.sln",
+    "solution": "Hexalith.FrontComposer.slnx",
     "project": "src/Hexalith.FrontComposer.SourceTools/Hexalith.FrontComposer.SourceTools.csproj",
     "test-projects": [
       "tests/Hexalith.FrontComposer.SourceTools.Tests/Hexalith.FrontComposer.SourceTools.Tests.csproj"

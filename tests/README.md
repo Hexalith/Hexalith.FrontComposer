@@ -32,10 +32,10 @@ dotnet test --collect:"XPlat Code Coverage"
 
 ```bash
 # Main blocking lane: excludes advisory and quarantined tests.
-dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"
+dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"
 
 # Quarantine lane: runs only quarantined tests and writes TRX evidence.
-dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
+dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
 
 # Summarize quarantine evidence without publishing raw logs.
 python .github/scripts/ci_governance.py summarize-quarantine --results-dir ./TestResults --markdown artifacts/quarantine/quarantine-summary.md --json artifacts/quarantine/quarantine-summary.json

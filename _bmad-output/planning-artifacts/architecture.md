@@ -374,7 +374,7 @@ Hexalith.FrontComposer/
 ├── deps.nuget.props                                # NuGet PackageReferences (release validation)
 ├── Directory.Build.props                           # Shared settings + deps import switch
 ├── Directory.Packages.props                        # Central package management — ALL versions pinned
-└── Hexalith.FrontComposer.sln
+└── Hexalith.FrontComposer.slnx
 ```
 
 **Render-mode-specific code:** Runtime checks via `OperatingSystem.IsBrowser()` and `IComponentRenderMode`. No separate files per render mode.
@@ -838,7 +838,7 @@ Every structural element is tagged with its creation phase. Agents MUST only cre
 
 ### Complete Project Directory Structure
 
-**Solution folders** (for IDE navigation): `src/`, `samples/`, `tests/` — configured in `.sln` to keep VS/Rider navigable as samples grow.
+**Solution folders** (for IDE navigation): `src/`, `samples/`, `tests/` — configured in `.slnx` to keep VS/Rider navigable as samples grow.
 
 **Project count by phase:**
 
@@ -1066,7 +1066,7 @@ Hexalith.FrontComposer/
 ├── .editorconfig                                        [W1] # Code style enforcement
 ├── .gitmodules                                          [W1] # EventStore + Tenants submodule refs
 ├── .gitignore                                           [W1]
-└── Hexalith.FrontComposer.sln                           [W1] # Solution folders: src/, samples/, tests/
+└── Hexalith.FrontComposer.slnx                           [W1] # Solution folders: src/, samples/, tests/
 ```
 
 ### MSBuild Constraints (resolve in W1 or debug all sprint)

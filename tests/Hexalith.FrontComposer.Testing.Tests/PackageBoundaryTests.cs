@@ -245,7 +245,7 @@ public sealed class ConsumerSmokeTests
         DirectoryInfo? directory = new(AppContext.BaseDirectory);
         while (directory is not null)
         {
-            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.sln")))
+            if (File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx")))
             {
                 return directory.FullName;
             }

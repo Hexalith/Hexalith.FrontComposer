@@ -414,7 +414,7 @@ public class RazorEmitterStrategyDispatchTests {
 
     private static string ResolveEmitterSourcePath() {
         DirectoryInfo? cursor = new(AppContext.BaseDirectory);
-        while (cursor is not null && !File.Exists(Path.Combine(cursor.FullName, "Hexalith.FrontComposer.sln"))) {
+        while (cursor is not null && !File.Exists(Path.Combine(cursor.FullName, "Hexalith.FrontComposer.slnx"))) {
             cursor = cursor.Parent;
         }
 

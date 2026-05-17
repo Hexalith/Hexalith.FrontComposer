@@ -2243,7 +2243,7 @@ public sealed partial class DiagnosticRegistryTests {
     private static DirectoryInfo ProjectRoot() {
         DirectoryInfo? current = new(AppContext.BaseDirectory);
         int depth = 0;
-        while (current is not null && !File.Exists(Path.Combine(current.FullName, "Hexalith.FrontComposer.sln"))) {
+        while (current is not null && !File.Exists(Path.Combine(current.FullName, "Hexalith.FrontComposer.slnx"))) {
             current = current.Parent;
             if (++depth > 16) {
                 break;

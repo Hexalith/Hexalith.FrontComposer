@@ -91,12 +91,12 @@ jobs:
       # Gate 1: Contracts builds in isolation targeting netstandard2.0
       - name: 'Gate 1: Contracts Build (netstandard2.0)'
         run: |
-          dotnet restore Hexalith.FrontComposer.sln
+          dotnet restore Hexalith.FrontComposer.slnx
           dotnet build src/Hexalith.FrontComposer.Contracts/Hexalith.FrontComposer.Contracts.csproj -f netstandard2.0 --configuration Release --no-restore
 
       # Gate 2: Full solution builds
       - name: 'Gate 2: Solution Build'
-        run: dotnet build Hexalith.FrontComposer.sln --configuration Release --no-restore
+        run: dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
 
       # Gate 2a: CLI tool packaging and local-tool smoke
       - name: 'Gate 2a: CLI Tool Package Smoke'
@@ -140,7 +140,7 @@ jobs:
       - name: 'Gate 2b: Infrastructure governance and telemetry contracts'
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Governance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-governance.trx"
 
       # Gate 2c: File-based consumer pacts for the FrontComposer/EventStore REST boundary.
       # This lane intentionally uses the existing root-level `submodules: true` checkout above and
@@ -211,25 +211,25 @@ jobs:
           # DIVERGENCE 2: FrontComposer has 16+ Verify .verified.txt snapshot files.
           # Without this env var, a snapshot mismatch launches a diff tool and hangs the CI runner.
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=test-results.trx" --collect:"XPlat Code Coverage"
 
       - name: 'Gate 3b: Palette E2E (e2e-palette lane)'
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results-e2e-palette.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=e2e-palette" --results-directory ./TestResults --logger "trx;LogFileName=test-results-e2e-palette.trx"
 
       - name: 'Gate 3c: Performance bench (Performance lane)'
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Performance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-performance.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Performance" --results-directory ./TestResults --logger "trx;LogFileName=test-results-performance.trx"
 
       - name: 'Gate 3d: Quarantined tests (warning-only)'
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
 
       - name: Quarantine Summary
         if: always()

@@ -82,12 +82,12 @@ jobs:
           restore-keys: nuget-
 
       - name: Restore
-        run: dotnet restore Hexalith.FrontComposer.sln
+        run: dotnet restore Hexalith.FrontComposer.slnx
 
       - name: Run All Tests
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Quarantined" --results-directory ./TestResults --logger "trx;LogFileName=release-results.trx"
 
       - name: Verify release test evidence
         run: python3 eng/release_evidence.py test-results --results-dir ./TestResults --output release-evidence/test-results.json

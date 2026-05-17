@@ -38,8 +38,8 @@ jobs:
 
       - name: Restore and build
         run: |
-          dotnet restore Hexalith.FrontComposer.sln
-          dotnet build Hexalith.FrontComposer.sln --configuration Release --no-restore
+          dotnet restore Hexalith.FrontComposer.slnx
+          dotnet build Hexalith.FrontComposer.slnx --configuration Release --no-restore
 
       - name: Validate quarantine metadata
         run: python3 .github/scripts/ci_governance.py validate-quarantine-metadata --root .
@@ -49,7 +49,7 @@ jobs:
         continue-on-error: true
         env:
           DiffEngine_Disabled: true
-        run: dotnet test Hexalith.FrontComposer.sln --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
+        run: dotnet test Hexalith.FrontComposer.slnx --configuration Release --no-build --filter "Category=Quarantined" --results-directory ./TestResults --logger "trx;LogFilePrefix=test-results-quarantine"
 
       - name: Summarize quarantine evidence
         if: always()

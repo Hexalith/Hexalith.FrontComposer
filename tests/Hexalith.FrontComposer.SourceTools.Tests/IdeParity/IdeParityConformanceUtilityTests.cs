@@ -376,14 +376,14 @@ internal static class IdeParityRepositoryRoot
         get
         {
             DirectoryInfo? directory = new(ResolveLinkTarget(Path.GetFullPath(AppContext.BaseDirectory)));
-            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.sln")))
+            while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx")))
             {
                 directory = directory.Parent;
             }
 
             if (directory is null)
             {
-                throw new InvalidOperationException("Tests must run under the repository checkout (Hexalith.FrontComposer.sln not found in any ancestor).");
+                throw new InvalidOperationException("Tests must run under the repository checkout (Hexalith.FrontComposer.slnx not found in any ancestor).");
             }
 
             return directory.FullName;

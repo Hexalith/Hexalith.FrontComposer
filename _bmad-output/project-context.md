@@ -90,7 +90,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 ### Development Workflow Rules
 
 - Default validation is `dotnet test`; use narrower project tests when the change is scoped.
-- For main-lane CI parity, use `dotnet test Hexalith.FrontComposer.sln --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`.
+- For main-lane CI parity, use `dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined"`.
 - Playwright E2E commands run from the root via `npm --prefix tests/e2e ...`; the E2E web server defaults to `http://127.0.0.1:5070`.
 - Do not run recursive submodule initialization or updates. Only root-level submodules may be initialized/updated unless nested submodules are explicitly requested.
 - Treat `Hexalith.EventStore` and `Hexalith.Tenants` as separate roots. Do not mix their generated artifacts, tests, or package governance into FrontComposer changes unless the task says so.
