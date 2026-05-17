@@ -62,6 +62,15 @@ TRUTHY_LITERALS = {"true"}
 FALSY_LITERALS = {"false"}
 APPROVAL_TRUTHY = TRUTHY_LITERALS | {"1", "yes", "approved"}
 APPROVAL_FALSY = FALSY_LITERALS | {"0", "no", "denied"}
+USER_FACING_EVIDENCE_FILES = {
+    "concurrency-guard.json",
+    "manifest-diagnostics.json",
+    "package-inventory.json",
+    "partial-publish-incident.json",
+    "release-readiness.json",
+    "release-verification.json",
+    "test-results.json",
+}
 
 
 def sanitize(value: Any, max_len: int = MAX_FIELD) -> str:
@@ -101,6 +110,11 @@ def sha256_file(path: pathlib.Path) -> str:
 
 def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def canonical_sha256(value: Any) -> str:
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"))
+    return sha256_text(canonical)
 
 
 def normalize_under_root(root: pathlib.Path, name: str) -> pathlib.Path:
@@ -190,23 +204,22 @@ def parse_approval_bool(value: Any, *, field: str, default: bool = False) -> tup
 
 
 def parse_expiry(value: Any) -> tuple[dt.date | None, str | None]:
-    """Parse YYYY-MM-DD or ISO-8601 datetime into a UTC date. Returns (date, diagnostic)."""
+    """Parse a timezone-aware ISO-8601 datetime into a UTC date."""
     if value is None or str(value).strip() == "":
         return None, "expires_at is missing"
     text = str(value).strip()
     try:
-        return dt.date.fromisoformat(text), None
+        dt.date.fromisoformat(text)
+        return None, "expires_at must be a timezone-aware ISO-8601 datetime; date-only values are interpreted ambiguously across release-owner time zones"
     except ValueError:
         pass
     try:
         normalized = text.replace("Z", "+00:00")
         parsed = dt.datetime.fromisoformat(normalized)
     except ValueError:
-        return None, f"expires_at must be YYYY-MM-DD or ISO-8601 datetime; actual={sanitize(value)}"
-    # Treat naive datetimes as UTC to avoid silent local-zone drift; normalize aware
-    # datetimes to UTC so the date comparison cannot be off-by-one near midnight.
+        return None, f"expires_at must be a timezone-aware ISO-8601 datetime; actual={sanitize(value)}"
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        return None, "expires_at must include a timezone offset or Z suffix"
     return parsed.astimezone(dt.timezone.utc).date(), None
 
 
@@ -224,14 +237,14 @@ def fingerprint_diff(current: dict[str, str], baseline: dict[str, str]) -> list[
         elif expected == "missing":
             diagnostics.append(f"{name}: baseline records file as missing (current={actual})")
         elif expected != actual:
-            diagnostics.append(f"{name}: fingerprint {actual} != baseline {expected}")
+            diagnostics.append(f"{name}: fingerprint {actual} != baseline {expected} (re-run prepare-manifest to refresh the baseline after legitimate release-definition changes)")
     for name in current:
         if name not in baseline:
-            diagnostics.append(f"{name}: fingerprint has no baseline entry")
+            diagnostics.append(f"{name}: fingerprint has no baseline entry (re-run prepare-manifest to refresh the baseline after legitimate release-definition changes)")
     return diagnostics
 
 
-def parse_signing_verification(text: str) -> dict[str, dict[str, str]]:
+def parse_signing_verification(text: str, package_ids: list[str] | None = None) -> dict[str, dict[str, str]]:
     """Parse `dotnet nuget verify --all` output for per-package verification status.
 
     `dotnet nuget verify --all` succeeds only when both the author signature and the
@@ -239,14 +252,32 @@ def parse_signing_verification(text: str) -> dict[str, dict[str, str]]:
     'Successfully verified package' line is sufficient evidence for both gates.
     """
     statuses: dict[str, dict[str, str]] = {}
-    pattern = re.compile(
-        r"Successfully verified package '([A-Za-z0-9._-]+?)\.(\d[0-9A-Za-z.+\-]*)'"
-    )
+    if package_ids:
+        for package_id in sorted(package_ids, key=len, reverse=True):
+            pattern = re.compile(
+                rf"Successfully verified package '{re.escape(package_id)}\.(\d[0-9A-Za-z.+\-]*)'"
+            )
+            match = pattern.search(text)
+            if match:
+                next_match = re.search(r"Successfully verified package '", text[match.end():])
+                block_end = match.end() + next_match.start() if next_match else len(text)
+                block = text[match.start():block_end]
+                timestamp_verified = bool(
+                    re.search(r"(?is)timestamp(?: signing certificate|:).*?(?:verified|valid|trusted|RFC\s*3161)", block)
+                )
+                statuses[package_id.lower()] = {
+                    "signing_status": "verified",
+                    "timestamp_status": "verified" if timestamp_verified else "missing",
+                }
+        return statuses
+
+    pattern = re.compile(r"Successfully verified package '(.+)\.(\d[0-9]+(?:\.[0-9A-Za-z.+\-]+)*)'")
     for match in pattern.finditer(text):
-        statuses[match.group(1)] = {
-            "signing_status": "verified",
-            "timestamp_status": "verified",
-        }
+        next_match = re.search(r"Successfully verified package '", text[match.end():])
+        block_end = match.end() + next_match.start() if next_match else len(text)
+        block = text[match.start():block_end]
+        timestamp_verified = bool(re.search(r"(?is)timestamp(?: signing certificate|:).*?(?:verified|valid|trusted|RFC\s*3161)", block))
+        statuses[match.group(1).lower()] = {"signing_status": "verified", "timestamp_status": "verified" if timestamp_verified else "missing"}
     return statuses
 
 
@@ -276,15 +307,22 @@ def deep_merge(base: Any, override: Any) -> Any:
 def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = None) -> list[str]:
     diagnostics: list[str] = []
     rows = manifest.get("packages", [])
+    row_items = rows if isinstance(rows, list) else []
+    typed_rows = [row for row in row_items if isinstance(row, dict)]
+    if isinstance(rows, list) and len(typed_rows) != len(rows):
+        diagnostics.append("package rows must be objects")
+    root_exists = root is None or root.is_dir()
+    if root is not None and not root_exists:
+        diagnostics.append("--root must be an existing directory")
     if not isinstance(rows, list) or not rows:
         diagnostics.append("package rows are required")
     if isinstance(rows, list):
-        versions = {row.get("version") for row in rows if isinstance(row, dict)}
+        versions = {row.get("version") for row in typed_rows}
         if None in versions or "" in versions:
             diagnostics.append("package version evidence is required for every row")
         if len(versions) > 1:
             diagnostics.append("lockstep version drift")
-    for row in rows if isinstance(rows, list) else []:
+    for row in typed_rows:
         for field in REQUIRED_ROW_FIELDS:
             if not row.get(field):
                 diagnostics.append(f"{row.get('package_id', '<unknown>')}: missing {field}")
@@ -298,7 +336,7 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
             diagnostics.append(f"{row.get('package_id')}: checksum must be a concrete sha256")
         if str(row.get("artifact_path", "")).startswith("nupkgs/"):
             diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
-        if root is not None:
+        if root is not None and root_exists:
             artifact_path = str(row.get("artifact_path", ""))
             try:
                 artifact = normalize_under_root(root, artifact_path)
@@ -307,6 +345,12 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
             else:
                 if not artifact.exists():
                     diagnostics.append(f"{row.get('package_id')}: sealed artifact missing on disk")
+                elif artifact.is_symlink():
+                    diagnostics.append(f"{row.get('package_id')}: sealed artifact must not be a symlink")
+                elif not artifact.is_file():
+                    diagnostics.append(f"{row.get('package_id')}: sealed artifact must be a file")
+                elif artifact.stat().st_size == 0:
+                    diagnostics.append(f"{row.get('package_id')}: sealed artifact must not be empty")
                 elif looks_like_sha256(row.get("checksum")) and sha256_file(artifact) != row.get("checksum"):
                     diagnostics.append(f"{row.get('package_id')}: sealed artifact checksum does not match on-disk artifact")
     for field in ["commit_sha", "tag", "run_id", "workflow_ref", "sbom_hash", "benchmark_summary_hash"]:
@@ -328,7 +372,7 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
     # Release-definition drift: when a root is provided, recompute current fingerprints
     # and compare to the manifest's embedded baseline. The baseline is written by
     # prepare_manifest, so absence from the manifest is itself a drift signal.
-    if root is not None:
+    if root is not None and root_exists:
         embedded = manifest.get("release_definition_fingerprints")
         if embedded is None:
             diagnostics.append("manifest missing release_definition_fingerprints")
@@ -349,23 +393,65 @@ def evidence_status_file(path: pathlib.Path) -> tuple[str, list[str]]:
     except SystemExit as exc:
         return "partial", [f"{path.name}: {exc}"]
     status = payload.get("status") if isinstance(payload, dict) else None
-    diagnostics = payload.get("diagnostics", []) if isinstance(payload, dict) else []
+    raw_diagnostics = payload.get("diagnostics", []) if isinstance(payload, dict) else []
+    diagnostics = raw_diagnostics if isinstance(raw_diagnostics, list) else []
     if status in {"valid", "success"}:
         return "success", []
-    if status in {"invalid", "partial", "missing"}:
+    if status == "missing":
+        return "missing", [f"{path.name}: status=missing", *[sanitize(d) for d in diagnostics[:10]]]
+    if status in {"invalid", "partial"}:
         return "partial", [f"{path.name}: status={status}", *[sanitize(d) for d in diagnostics[:10]]]
     return "partial", [f"{path.name}: status is missing or unknown"]
+
+
+def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
+    raw_parts: list[str] = []
+    diagnostics: list[str] = []
+    if not root.exists():
+        return "", diagnostics
+    for current, dirs, files in os.walk(root, followlinks=False):
+        current_path = pathlib.Path(current)
+        kept_dirs = []
+        for directory in dirs:
+            candidate = current_path / directory
+            try:
+                if candidate.is_symlink():
+                    diagnostics.append(f"{candidate.name}: skipped symlinked evidence directory")
+                    continue
+            except OSError as exc:
+                diagnostics.append(f"{candidate.name}: unable to inspect evidence directory: {sanitize(exc)}")
+                continue
+            kept_dirs.append(directory)
+        dirs[:] = kept_dirs
+        for file_name in files:
+            if file_name not in USER_FACING_EVIDENCE_FILES:
+                continue
+            child = current_path / file_name
+            try:
+                if child.is_symlink():
+                    diagnostics.append(f"{child.name}: skipped symlinked evidence file")
+                    continue
+                if child.is_file() and child.stat().st_size <= 1024 * 1024:
+                    raw_parts.append(child.read_text(encoding="utf-8", errors="replace"))
+            except OSError as exc:
+                diagnostics.append(f"{child.name}: unable to read evidence file: {sanitize(exc)}")
+    return "\n".join(raw_parts), diagnostics
 
 
 def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], test_payload: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
     diagnostics: list[str] = []
     evidence_root = pathlib.Path(args.evidence_root) if args.evidence_root else None
+    root = pathlib.Path(args.root)
+    root_exists = root.is_dir()
+    if not root_exists:
+        diagnostics.append("--root must be an existing directory")
 
     verification_status = "missing"
     inventory_status = args.inventory_status
     paths_status = args.paths_status
     redaction_status = args.redaction_status
     helper_state = args.helper_state
+    scanned_evidence = str(args.raw_evidence or "")
     if evidence_root:
         helper_diagnostics: list[str] = []
         verification_state, verification_diags = evidence_status_file(evidence_root / "release-verification.json")
@@ -374,17 +460,17 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
         helper_diagnostics.extend(inventory_diags)
         verification_status = "valid" if verification_state == "success" else verification_state
         inventory_status = "valid" if inventory_state == "success" else "invalid"
-        paths_status = "normalized" if not manifest_diagnostics(manifest, None) else "invalid"
+        manifest_diags = manifest_diagnostics(manifest, root)
+        paths_status = "normalized" if not manifest_diags else "invalid"
 
-        raw_parts: list[str] = []
-        for child in evidence_root.rglob("*") if evidence_root.exists() else []:
-            if child.is_file() and child.stat().st_size <= 1024 * 1024:
-                raw_parts.append(child.read_text(encoding="utf-8", errors="replace"))
-        raw_text = "\n".join(raw_parts)
-        redaction_status = "unsafe" if contains_dangerous_evidence(raw_text) else "passed"
+        raw_text, read_diagnostics = read_bounded_evidence(evidence_root)
+        helper_diagnostics.extend(read_diagnostics)
+        scanned_evidence = f"{raw_text}\n{args.raw_evidence}" if args.raw_evidence else raw_text
+        redaction_status = "unsafe" if contains_dangerous_evidence(scanned_evidence) else "passed"
         if args.raw_evidence:
-            raw_text = f"{raw_text}\n{args.raw_evidence}"
-        args.raw_evidence = raw_text
+            args.raw_evidence = sanitize(args.raw_evidence)
+        else:
+            args.raw_evidence = ""
         helper_state = "success" if not helper_diagnostics else "partial"
         diagnostics.extend(helper_diagnostics)
 
@@ -404,19 +490,22 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
     if isinstance(manifest_rows, list) and manifest_rows:
         checksum_status = "valid" if all(looks_like_sha256(row.get("checksum")) for row in manifest_rows if isinstance(row, dict)) else "mismatch"
 
-    manifest_diags = manifest_diagnostics(manifest, pathlib.Path(args.root)) if isinstance(manifest, dict) else ["manifest evidence is required"]
+    manifest_diags = manifest_diagnostics(manifest, root) if isinstance(manifest, dict) else ["manifest evidence is required"]
     release_definition_drift = args.release_definition_drift or any("release-definition drift" in diagnostic for diagnostic in manifest_diags)
     post_seal_mutation = args.post_seal_artifact_mutation or any("sealed artifact checksum does not match" in diagnostic for diagnostic in manifest_diags)
+    diagnostics.extend(diagnostic for diagnostic in manifest_diags if "release-definition drift" not in diagnostic and "sealed artifact checksum does not match" not in diagnostic)
 
     return {
         "checksums_status": checksum_status,
         "concurrent_same_version": args.concurrent_same_version,
         "dry_run_side_effect_attempt": args.dry_run_side_effect_attempt,
+        "diagnostics": [sanitize(diagnostic) for diagnostic in diagnostics[:20]],
         "helper_state": helper_state,
         "inventory_status": inventory_status,
         "paths_status": paths_status,
         "post_seal_artifact_mutation": post_seal_mutation,
         "raw_evidence": args.raw_evidence,
+        "raw_evidence_sha256": canonical_sha256(scanned_evidence),
         "recursive_submodule_command": args.recursive_submodule_command,
         "redaction_status": redaction_status,
         "release_definition_drift": release_definition_drift,
@@ -435,6 +524,8 @@ def safe_run_attempt(value: Any) -> tuple[int, str | None]:
     if value is None or value == "":
         return 1, None
     try:
+        if isinstance(value, float):
+            return 1, f"run_attempt must be numeric integer text; actual={sanitize(value)}"
         return int(value), None
     except (TypeError, ValueError):
         return 1, f"run_attempt must be numeric; actual={sanitize(value)}"
@@ -463,6 +554,11 @@ def classify_context(context: dict[str, Any]) -> tuple[str, list[str]]:
         diagnostics.append(diag)
     partial_publish_raw = context.get("partial_publish_state", "none")
     partial_publish = "none" if partial_publish_raw is None else str(partial_publish_raw).strip().lower()
+    if partial_publish == "":
+        partial_publish = "none"
+    if partial_publish not in {"none", "partial", "full", "recovered"}:
+        diagnostics.append(f"partial_publish_state must be one of ['full', 'none', 'partial', 'recovered']; actual={sanitize(partial_publish_raw)}")
+        partial_publish = "partial"
     # Fork status takes precedence over rerun status: remediation paths differ.
     if from_fork:
         return "fork-pr", diagnostics
@@ -487,7 +583,7 @@ def release_definition_fingerprints(root: pathlib.Path) -> dict[str, str]:
     return fingerprints
 
 
-def fallback_complete(fallback: dict[str, Any]) -> tuple[bool, str | None]:
+def fallback_complete(fallback: dict[str, Any], fingerprints: dict[str, str] | None = None) -> tuple[bool, str | None]:
     """Validate fallback completeness. Returns (complete, diagnostic-or-None)."""
     required = [
         "affected_artifact",
@@ -498,6 +594,7 @@ def fallback_complete(fallback: dict[str, Any]) -> tuple[bool, str | None]:
         "release_note_impact",
         "reopen_event",
         "scope",
+        "approved_against_fingerprints_sha256",
     ]
     missing = [field for field in required if not fallback.get(field)]
     if missing:
@@ -507,6 +604,11 @@ def fallback_complete(fallback: dict[str, Any]) -> tuple[bool, str | None]:
         return False, expiry_diagnostic
     if expiry < dt.datetime.now(dt.timezone.utc).date():
         return False, f"fallback expired on {expiry.isoformat()}"
+    if fingerprints is not None:
+        approved_digest = str(fallback.get("approved_against_fingerprints_sha256", ""))
+        current_digest = canonical_sha256(fingerprints)
+        if approved_digest != current_digest:
+            return False, "fallback approved against drifted release definition"
     return True, None
 
 
@@ -524,13 +626,33 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
     context_class, context_diagnostics = classify_context(context if isinstance(context, dict) else {})
     blocking: list[str] = []
     fallback_reasons: list[str] = []
+    bool_diagnostics: list[str] = []
+
+    approval_approved, approval_diagnostic = parse_approval_bool(approval.get("approved"), field="approval.approved")
+    if approval_diagnostic:
+        bool_diagnostics.append(approval_diagnostic)
+    bool_checks: dict[str, bool] = {}
+    for key in [
+        "dry_run_side_effect_attempt",
+        "recursive_submodule_command",
+        "release_definition_drift",
+        "post_seal_artifact_mutation",
+        "concurrent_same_version",
+        "trx_present",
+    ]:
+        parsed, diagnostic = parse_strict_bool(checks.get(key), field=key)
+        bool_checks[key] = parsed
+        if diagnostic:
+            bool_diagnostics.append(diagnostic)
 
     for diag in context_diagnostics:
         blocking.append(f"context: {diag}")
+    for diag in bool_diagnostics:
+        blocking.append(f"evidence: {diag}")
 
     if context_class != "trusted-main-or-release":
         blocking.append(f"candidate evidence from {context_class} cannot authorize publishing")
-    if not approval.get("approved") or not approval.get("approver"):
+    if not approval_approved or not approval.get("approver"):
         blocking.append("explicit release-owner approval is required before side effects")
 
     for key, expected in BLOCKING_CHECKS.items():
@@ -543,17 +665,17 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
 
     if int(checks.get("test_count", 0) or 0) <= 0:
         blocking.append("release tests must record at least one executed test")
-    if not checks.get("trx_present"):
+    if not bool_checks["trx_present"]:
         blocking.append("release TRX evidence is required")
-    if checks.get("dry_run_side_effect_attempt"):
+    if bool_checks["dry_run_side_effect_attempt"]:
         blocking.append("dry-run side-effect attempt was detected")
-    if checks.get("recursive_submodule_command"):
+    if bool_checks["recursive_submodule_command"]:
         blocking.append("recursive nested submodule command is not allowed")
-    if checks.get("release_definition_drift"):
+    if bool_checks["release_definition_drift"]:
         blocking.append("release-definition fingerprints drifted after evidence generation")
-    if checks.get("post_seal_artifact_mutation"):
+    if bool_checks["post_seal_artifact_mutation"]:
         blocking.append("post-seal artifact mutation detected")
-    if checks.get("concurrent_same_version"):
+    if bool_checks["concurrent_same_version"]:
         blocking.append("same-version concurrent or stale release attempt requires owner review")
     if contains_dangerous_evidence(checks.get("raw_evidence")) and checks.get("redaction_status") != "sanitized":
         blocking.append("redaction scan found unsafe raw evidence")
@@ -569,21 +691,37 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         blocking.append("manifest evidence is required")
 
     status = attestation.get("status")
+    fallback_record: dict[str, str] | None = None
     if status == "approved-unsupported":
         fallback = attestation.get("fallback", {})
         if not isinstance(fallback, dict):
             blocking.append("unsupported-attestation fallback is missing, stale, or incomplete")
         else:
-            complete, fallback_diagnostic = fallback_complete(fallback)
+            manifest_fingerprints = manifest.get("release_definition_fingerprints") if isinstance(manifest, dict) else None
+            complete, fallback_diagnostic = fallback_complete(fallback, manifest_fingerprints if isinstance(manifest_fingerprints, dict) else None)
             if complete:
                 fallback_reasons.append("GitHub artifact attestation unavailable; approved unsupported-attestation fallback is in force")
+                fallback_record = {
+                    key: sanitize(fallback.get(key, ""))
+                    for key in [
+                        "affected_artifact",
+                        "approver",
+                        "evidence",
+                        "expires_at",
+                        "reason",
+                        "release_note_impact",
+                        "reopen_event",
+                        "scope",
+                        "approved_against_fingerprints_sha256",
+                    ]
+                }
             else:
                 blocking.append(fallback_diagnostic or "unsupported-attestation fallback is missing, stale, or incomplete")
     elif status != "attested":
         blocking.append(f"attestation status must be attested or approved-unsupported; actual={sanitize(status)}")
 
     classification = "blocked" if blocking else ("fallback-approved" if fallback_reasons else "ready")
-    publish_authorized = classification in {"ready", "fallback-approved"} and context_class == "trusted-main-or-release" and bool(approval.get("approved"))
+    publish_authorized = classification in {"ready", "fallback-approved"} and context_class == "trusted-main-or-release" and approval_approved
     next_action = "publish may proceed with approved owner action" if publish_authorized else "resolve blocking release gates before publishing"
     if context_class == "rerun-review":
         next_action = "rerun-review contexts are never publish-authorized; create a fresh dispatch or new tag to retry"
@@ -592,7 +730,7 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
 
     return {
         "approval": {
-            "approved": bool(approval.get("approved")),
+            "approved": approval_approved,
             "approver": sanitize(approval.get("approver", "")),
             "mechanism": sanitize(approval.get("mechanism", "")),
         },
@@ -608,6 +746,7 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
             "blocking": [sanitize(reason) for reason in blocking],
             "fallback": [sanitize(reason) for reason in fallback_reasons],
         },
+        "fallback_record": fallback_record,
         "next_owner_action": next_action,
         "publish_authorized": publish_authorized,
         "release_definition_fingerprints": release_definition_fingerprints(root),
@@ -713,10 +852,17 @@ def test_results(args: argparse.Namespace) -> int:
 
 def verify_manifest(args: argparse.Namespace) -> int:
     manifest = read_json(args.manifest)
-    # `--root` enables release-definition drift comparison against current files.
-    # Verifier invocations from fixtures may omit it; production callers always pass it.
-    root = pathlib.Path(args.root) if args.root else None
-    diagnostics = manifest_diagnostics(manifest, root)
+    diagnostics: list[str] = []
+    if args.no_root:
+        root = None
+    elif args.root:
+        root = pathlib.Path(args.root)
+        if not root.is_dir():
+            diagnostics.append("--root must be an existing directory")
+    else:
+        root = None
+        diagnostics.append("--root is required for live manifest verification; pass --no-root only for offline fixture verification")
+    diagnostics.extend(manifest_diagnostics(manifest, root))
     if args.output:
         write_json(args.output, {"status": "valid" if not diagnostics else "invalid", "diagnostics": diagnostics})
     return 0 if not diagnostics else 1
@@ -752,18 +898,37 @@ def prepare_manifest(args: argparse.Namespace) -> int:
     # Parse per-package signing/timestamp evidence from `dotnet nuget verify --all` output.
     # A package is marked verified only when the verification text names it as successful.
     verification_statuses: dict[str, dict[str, str]] = {}
+    packable_package_ids = [
+        str(row.get("package_id", ""))
+        for row in inventory_payload.get("rows", [])
+        if isinstance(row, dict) and row.get("packable") and row.get("package_id")
+    ]
     if args.signing_verification:
         verification_path = pathlib.Path(args.signing_verification)
         if not verification_path.exists():
             diagnostics.append(f"signing verification evidence is missing: {sanitize(str(verification_path))}")
         else:
             verification_text = verification_path.read_text(encoding="utf-8", errors="replace")
-            verification_statuses = parse_signing_verification(verification_text)
+            verification_statuses = parse_signing_verification(verification_text, packable_package_ids)
             if not verification_statuses:
                 diagnostics.append("signing verification evidence did not name any verified package")
-    elif args.attestation_status != "approved-unsupported":
-        # When the workflow claims a real attestation path it must also provide signing evidence.
-        diagnostics.append("signing verification evidence is required for non-fallback releases")
+    else:
+        diagnostics.append("signing verification evidence is required before sealing the manifest")
+    attestation_bundle: dict[str, str] | None = None
+    if args.attestation_status == "attested":
+        if not args.attestation_bundle:
+            diagnostics.append("attestation bundle evidence is required for attested releases")
+        else:
+            bundle_path = pathlib.Path(args.attestation_bundle)
+            if not bundle_path.exists() or not bundle_path.is_file():
+                diagnostics.append(f"attestation bundle evidence is missing: {sanitize(str(bundle_path))}")
+            elif bundle_path.stat().st_size == 0:
+                diagnostics.append("attestation bundle evidence must not be empty")
+            else:
+                attestation_bundle = {
+                    "path": str(bundle_path).replace("\\", "/"),
+                    "sha256": sha256_file(bundle_path),
+                }
     for row in inventory_payload.get("rows", []):
         if not row.get("packable"):
             continue
@@ -775,7 +940,7 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             diagnostics.append(f"{package_id}: signed package checksum is missing")
         if row.get("symbol_required") and snupkg not in checksums_by_path:
             diagnostics.append(f"{package_id}: symbol package checksum is missing")
-        verification = verification_statuses.get(package_id, {})
+        verification = verification_statuses.get(package_id.lower(), {})
         signing_status = verification.get("signing_status", "missing")
         timestamp_status = verification.get("timestamp_status", "missing")
         if signing_status != "verified":
@@ -793,6 +958,7 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             "signing_status": signing_status,
             "timestamp_status": timestamp_status,
             "attestation_status": args.attestation_status,
+            "attestation_bundle_sha256": attestation_bundle["sha256"] if attestation_bundle else "",
             "publish_status": "pending",
         })
     manifest = {
@@ -805,6 +971,8 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         "packages": packages,
         "release_definition_fingerprints": release_definition_fingerprints(pathlib.Path(args.root)),
     }
+    if attestation_bundle:
+        manifest["attestation_bundle"] = attestation_bundle
     write_json(args.output, manifest)
     if diagnostics:
         if args.diagnostics_output:
@@ -824,6 +992,8 @@ def release_budget(args: argparse.Namespace) -> int:
     if not isinstance(releases, list):
         raise SystemExit("invalid release budget evidence: expected releases list")
     if args.append_current:
+        if not args.started_at:
+            raise SystemExit("RELEASE_STARTED_AT must be set before --append-current")
         started = dt.datetime.fromisoformat(args.started_at.replace("Z", "+00:00"))
         ended = dt.datetime.fromisoformat(args.ended_at.replace("Z", "+00:00")) if args.ended_at else dt.datetime.now(dt.timezone.utc)
         minutes = max(0, (ended - started).total_seconds() / 60)
@@ -881,18 +1051,25 @@ def path_check(args: argparse.Namespace) -> int:
 
 
 def partial_publish_incident(args: argparse.Namespace) -> int:
-    manifest = read_json(args.manifest) if args.manifest else {}
+    manifest_diagnostic = ""
+    try:
+        manifest = read_json(args.manifest) if args.manifest else {}
+    except SystemExit as exc:
+        manifest = {}
+        manifest_diagnostic = f"manifest unreadable: {sanitize(exc)}"
     payload = {
-        "classification": "partial-publish-incident",
+        "classification": sanitize(args.classification),
         "decision_contract": "frontcomposer.partial-publish-incident.v1",
         "failed_phase": sanitize(args.phase),
         "manifest_seal": manifest.get("seal", {}) if isinstance(manifest, dict) else {},
-        "next_owner_action": "release owner must reconcile NuGet packages, symbols, tags, changelog, GitHub Release assets, and attestations before retry",
+        "next_owner_action": "no partial publish incident recorded" if args.classification == "none" else "release owner must reconcile NuGet packages, symbols, tags, changelog, GitHub Release assets, and attestations before retry",
         "run_attempt": sanitize(args.run_attempt),
         "run_id": sanitize(args.run_id),
         "tag": sanitize(args.tag),
         "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
+    if manifest_diagnostic:
+        payload["diagnostics"] = [manifest_diagnostic]
     write_json(args.output, payload)
     return 0
 
@@ -902,30 +1079,44 @@ def _cli_bool(value: Any, *, field: str, approval: bool = False) -> bool:
     parser = parse_approval_bool if approval else parse_strict_bool
     parsed, diagnostic = parser(value, field=field)
     if diagnostic:
-        raise SystemExit(f"classify-release: invalid --{field.replace('_', '-')}: {diagnostic}")
+        print(f"classify-release: invalid --{field.replace('_', '-')}: {diagnostic}", file=sys.stderr)
+        raise SystemExit(2)
     return parsed
 
 
 def classify_release(args: argparse.Namespace) -> int:
+    cli_diagnostics: list[str] = []
+
+    def parse_cli_bool(value: Any, *, field: str, approval: bool = False) -> bool:
+        parser = parse_approval_bool if approval else parse_strict_bool
+        parsed, diagnostic = parser(value, field=field)
+        if diagnostic:
+            cli_diagnostics.append(f"classify-release: invalid --{field.replace('_', '-')}: {diagnostic}")
+        return parsed
+
     if args.evidence:
         evidence = read_json(args.evidence)
     else:
         manifest = read_json(args.manifest) if args.manifest else {}
         test_payload = read_json(args.test_results) if args.test_results else {}
-        args.concurrent_same_version = _cli_bool(args.concurrent_same_version, field="concurrent_same_version")
-        args.dry_run_side_effect_attempt = _cli_bool(args.dry_run_side_effect_attempt, field="dry_run_side_effect_attempt")
-        args.post_seal_artifact_mutation = _cli_bool(args.post_seal_artifact_mutation, field="post_seal_artifact_mutation")
-        args.recursive_submodule_command = _cli_bool(args.recursive_submodule_command, field="recursive_submodule_command")
-        args.release_definition_drift = _cli_bool(args.release_definition_drift, field="release_definition_drift")
-        args.trx_present = _cli_bool(args.trx_present, field="trx_present")
+        args.concurrent_same_version = parse_cli_bool(args.concurrent_same_version, field="concurrent_same_version")
+        args.dry_run_side_effect_attempt = parse_cli_bool(args.dry_run_side_effect_attempt, field="dry_run_side_effect_attempt")
+        args.post_seal_artifact_mutation = parse_cli_bool(args.post_seal_artifact_mutation, field="post_seal_artifact_mutation")
+        args.recursive_submodule_command = parse_cli_bool(args.recursive_submodule_command, field="recursive_submodule_command")
+        args.release_definition_drift = parse_cli_bool(args.release_definition_drift, field="release_definition_drift")
+        args.trx_present = parse_cli_bool(args.trx_present, field="trx_present")
+        args.dry_run = parse_cli_bool(args.dry_run, field="dry_run")
+        args.from_fork = parse_cli_bool(args.from_fork, field="from_fork")
+        args.ref_protected = parse_cli_bool(args.ref_protected, field="ref_protected")
         checks, helper_diagnostics = derive_release_checks(args, manifest, test_payload if isinstance(test_payload, dict) else {})
+        helper_diagnostics.extend(cli_diagnostics)
         if helper_diagnostics and checks["helper_state"] == "success":
             checks["helper_state"] = "partial"
         if helper_diagnostics:
-            checks["raw_evidence"] = "\n".join([str(checks.get("raw_evidence", "")), *helper_diagnostics])
+            checks["diagnostics"] = [*checks.get("diagnostics", []), *[sanitize(diagnostic) for diagnostic in helper_diagnostics[:20]]]
         evidence = {
             "approval": {
-                "approved": _cli_bool(args.owner_approved, field="owner_approved", approval=True),
+                "approved": parse_cli_bool(args.owner_approved, field="owner_approved", approval=True),
                 "approver": args.approver,
                 "mechanism": args.approval_mechanism,
             },
@@ -939,6 +1130,7 @@ def classify_release(args: argparse.Namespace) -> int:
                     "release_note_impact": args.fallback_release_note_impact,
                     "reopen_event": args.fallback_reopen_event,
                     "scope": args.fallback_scope,
+                    "approved_against_fingerprints_sha256": args.fallback_approved_against_fingerprints_sha256,
                 },
                 "status": args.attestation_status,
             },
@@ -958,6 +1150,10 @@ def classify_release(args: argparse.Namespace) -> int:
     decision = classify_release_payload(evidence, pathlib.Path(args.root))
     if args.output:
         write_json(args.output, decision)
+    if cli_diagnostics:
+        for diagnostic in cli_diagnostics:
+            print(diagnostic, file=sys.stderr)
+        return 2
     if args.require_publishable and not decision["publish_authorized"]:
         print("; ".join(decision["grouped_reasons"]["blocking"]) or decision["classification"], file=sys.stderr)
         return 1
@@ -1027,7 +1223,8 @@ def main() -> int:
 
     ver = sub.add_parser("verify-manifest")
     ver.add_argument("--manifest", required=True)
-    ver.add_argument("--root", default="")
+    ver.add_argument("--root")
+    ver.add_argument("--no-root", action="store_true")
     ver.add_argument("--output")
     ver.set_defaults(func=verify_manifest)
 
@@ -1049,6 +1246,7 @@ def main() -> int:
     prep.add_argument("--sbom-hash", default="")
     prep.add_argument("--benchmark-summary-hash", default="")
     prep.add_argument("--attestation-status", default=os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported"))
+    prep.add_argument("--attestation-bundle", default="")
     prep.add_argument("--signing-verification", default="")
     prep.add_argument("--diagnostics-output")
     prep.set_defaults(func=prepare_manifest)
@@ -1083,6 +1281,7 @@ def main() -> int:
     incident.add_argument("--manifest", required=True)
     incident.add_argument("--output", required=True)
     incident.add_argument("--phase", required=True)
+    incident.add_argument("--classification", default="partial-publish-incident")
     incident.add_argument("--run-id", default=os.environ.get("GITHUB_RUN_ID", "local"))
     incident.add_argument("--run-attempt", default=os.environ.get("GITHUB_RUN_ATTEMPT", "1"))
     incident.add_argument("--tag", default=os.environ.get("GITHUB_REF_NAME", "local"))
@@ -1115,6 +1314,7 @@ def main() -> int:
     classify.add_argument("--fallback-release-note-impact", default="Release notes must mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.")
     classify.add_argument("--fallback-reopen-event", default="GitHub artifact attestations become available or release evidence contract changes")
     classify.add_argument("--fallback-scope", default="current release attempt")
+    classify.add_argument("--fallback-approved-against-fingerprints-sha256", default=os.environ.get("RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256", ""))
     classify.add_argument("--checksums-status", default="missing")
     classify.add_argument("--concurrent-same-version", default="true")
     classify.add_argument("--dry-run-side-effect-attempt", default="false")
@@ -1151,5 +1351,5 @@ if __name__ == "__main__":
     except SystemExit:
         raise
     except Exception as exc:  # pragma: no cover - final guard for release scripts.
-        print(f"release_evidence helper crashed: {exc}", file=sys.stderr)
+        print(f"release_evidence helper crashed: {sanitize(str(exc))}", file=sys.stderr)
         sys.exit(2)

@@ -14,6 +14,11 @@ on:
         description: 'Named release owner approving publish/tag/release side effects'
         required: true
         type: string
+      dry_run:
+        description: 'Classify release readiness without NuGet, tag, GitHub Release, or attestation side effects'
+        required: true
+        type: boolean
+        default: false
 
 concurrency:
   group: release
@@ -24,14 +29,14 @@ permissions:
 
 env:
   RELEASE_APPROVAL_MECHANISM: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch_input' || '' }}
-  RELEASE_APPROVER: ${{ github.event_name == 'workflow_dispatch' && inputs.release_approver || '' }}
-  RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || inputs.release_approver || vars.RELEASE_APPROVER || '' }}
+  RELEASE_APPROVER: ''
+  RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || '' }}
   RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT || '' }}
-  RELEASE_ATTESTATION_STATUS: approved-unsupported
+  RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}
   RELEASE_CONCURRENT_SAME_VERSION: true
-  RELEASE_DRY_RUN: ${{ (github.event_name != 'push' && github.event_name != 'workflow_dispatch') && 'true' || 'false' }}
-  RELEASE_FROM_FORK: ${{ github.event.pull_request.head.repo.fork || false }}
-  RELEASE_OWNER_APPROVED: ${{ github.event_name == 'workflow_dispatch' && inputs.release_owner_approved || 'false' }}
+  RELEASE_DRY_RUN: 'false'
+  RELEASE_FROM_FORK: ${{ ((github.event.pull_request.head.repo.fork == true) || (github.event.workflow_run.head_repository.fork == true)) && 'true' || 'false' }}
+  RELEASE_OWNER_APPROVED: 'false'
 
 jobs:
   release:
@@ -106,13 +111,50 @@ jobs:
       - name: Start release budget timer
         run: echo "RELEASE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
-      - name: Record release concurrency guard
+      - name: Record workflow-dispatch release inputs
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
-          echo "RELEASE_CONCURRENT_SAME_VERSION=false" >> "$GITHUB_ENV"
+          printf 'RELEASE_OWNER_APPROVED=%s\n' '${{ inputs.release_owner_approved }}' >> "$GITHUB_ENV"
+          printf 'RELEASE_APPROVER=%s\n' '${{ inputs.release_approver }}' >> "$GITHUB_ENV"
+          printf 'RELEASE_DRY_RUN=%s\n' '${{ inputs.dry_run }}' >> "$GITHUB_ENV"
+
+      - name: Record release concurrency guard
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p release-evidence
+          runs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100")"
+          concurrent_runs="$(
+            RUNS_JSON="$runs_json" python3 - <<'PY'
+          import json
+          import os
+
+          payload = json.loads(os.environ["RUNS_JSON"])
+          current = str(os.environ.get("GITHUB_RUN_ID", ""))
+          matches = []
+          for run in payload.get("workflow_runs", []):
+              if str(run.get("id", "")) == current:
+                  continue
+              path = str(run.get("path", ""))
+              if path.endswith(".github/workflows/release.yml"):
+                  matches.append({"id": run.get("id"), "html_url": run.get("html_url")})
+          print(json.dumps(matches, separators=(",", ":")))
+          PY
+          )"
+          if [ "$concurrent_runs" != "[]" ]; then
+            echo "RELEASE_CONCURRENT_SAME_VERSION=true" >> "$GITHUB_ENV"
+            status="true"
+          else
+            echo "RELEASE_CONCURRENT_SAME_VERSION=false" >> "$GITHUB_ENV"
+            status="false"
+          fi
+          printf '{"status":"%s","concurrent_runs":%s}\n' "$status" "$concurrent_runs" > release-evidence/concurrency-guard.json
           {
             echo '## Release concurrency guard'
             echo
-            echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns are still blocked separately by run-attempt classification.'
+            echo "Same-version concurrency signal: \`$status\`"
+            echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns and same-version attempts are blocked separately by typed readiness classification.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require governed attestation fallback before publish
