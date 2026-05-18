@@ -389,12 +389,18 @@ public sealed class CiGovernanceTests {
             Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
             Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
 
+            // CR-12-4-D8 (round-5): Directory.Packages.props is no longer in the
+            // release-definition fingerprint set (routine dependency bumps would
+            // otherwise invalidate fallback approvals weekly). Directory.Build.props
+            // and Directory.Build.targets are now included (CR-12-4-P103) because
+            // they encode pack/sign/symbol policy.
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
                 ".releaserc.json",
                 "eng/release_evidence.py",
                 "eng/release-package-inventory.json",
-                "Directory.Packages.props",
+                "Directory.Build.props",
+                "Directory.Build.targets",
             ];
             foreach (string file in releaseDefinitionFiles) {
                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
@@ -471,12 +477,18 @@ public sealed class CiGovernanceTests {
             Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
             Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
 
+            // CR-12-4-D8 (round-5): Directory.Packages.props is no longer in the
+            // release-definition fingerprint set (routine dependency bumps would
+            // otherwise invalidate fallback approvals weekly). Directory.Build.props
+            // and Directory.Build.targets are now included (CR-12-4-P103) because
+            // they encode pack/sign/symbol policy.
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
                 ".releaserc.json",
                 "eng/release_evidence.py",
                 "eng/release-package-inventory.json",
-                "Directory.Packages.props",
+                "Directory.Build.props",
+                "Directory.Build.targets",
             ];
             foreach (string file in releaseDefinitionFiles) {
                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
@@ -662,12 +674,45 @@ public sealed class CiGovernanceTests {
         workflow.ShouldNotContain("RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER");
         workflow.ShouldContain("RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}");
         workflow.ShouldContain("github.event.workflow_run.head_repository.fork");
+        // CR-12-4-D6 (round-5): `push: main` removed from publish triggers; only
+        // workflow_dispatch can produce a release-approver env, so any push event
+        // would have permanently blocked at the owner gate anyway. The workflow now
+        // makes that explicit by having no `push:` trigger at all.
+        workflow.ShouldNotContain("push:\n    branches: [main]");
+        // CR-12-4-P96 (round-5): RELEASE_APPROVER must use the documented `name<<DELIM`
+        // heredoc form when reading workflow_dispatch input, because the value is free-
+        // form text that may contain newlines.
+        workflow.ShouldContain("RELEASE_APPROVER<<");
+        // CR-12-4-P99 (round-5): concurrency guard fallback that classifies same-branch
+        // in-flight release runs as same_version.
+        workflow.ShouldContain("CURRENT_BRANCH:");
+        // CR-12-4-P106 (round-5): release-budget step uses dynamic RELEASE_FROM_FORK.
+        workflow.ShouldContain("--from-fork \"${{ env.RELEASE_FROM_FORK }}\"");
 
         releaseConfig.ShouldContain("classify-release");
         releaseConfig.ShouldContain("--require-publishable");
         releaseConfig.ShouldContain("--fallback-approved-against-fingerprints-sha256");
         releaseConfig.ShouldContain("repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}");
-        releaseConfig.ShouldContain("if [ \\\"$RELEASE_DRY_RUN\\\" = \\\"true\\\" ]");
+        // CR-12-4-P97 (round-5): RELEASE_DRY_RUN parsing now goes through `case` on a
+        // lowercased value so non-canonical truthy values (TRUE, 1, yes) don't fall
+        // through to the live publish branch.
+        releaseConfig.ShouldContain("release_dry_run_lower=");
+        releaseConfig.ShouldContain("case \\\"$release_dry_run_lower\\\" in true|1|yes)");
+        // CR-12-4-P89 (round-5): after dry-run classification, force a non-zero exit so
+        // semantic-release halts before the `@semantic-release/github` and `git`
+        // plugins create tags / releases on what was supposed to be a no-side-effect run.
+        releaseConfig.ShouldContain("Dry-run classification complete; halting before publish side effects.");
+        // CR-12-4-P100 (round-5): prior-release.json placeholder written in prepareCmd.
+        releaseConfig.ShouldContain("\\\"status\\\":\\\"no-prior-release\\\"");
+        // CR-12-4-P102 (round-5): partial-publish-incident.json placeholder written in
+        // prepareCmd so semantic-release's GitHub plugin can always upload it.
+        releaseConfig.ShouldContain("partial-publish-incident.json --phase none --classification none");
+        // CR-12-4-P105 (round-5): prior-tag probe captures stderr separately so a
+        // stderr warning during a successful gh api call does not corrupt the JSON
+        // written to prior-release.json.
+        releaseConfig.ShouldContain("prior_stderr=");
+        releaseConfig.ShouldNotContain("gh api \\\"repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}\\\" 2>&1");
+
         releaseConfig.ShouldContain("gh attestation verify ./nupkgs-signed/*.nupkg");
         releaseConfig.ShouldContain("--attestation-bundle");
         releaseConfig.ShouldContain("--evidence-root ./release-evidence");
@@ -683,6 +728,138 @@ public sealed class CiGovernanceTests {
             releaseConfig.IndexOf("classify-release", StringComparison.Ordinal));
         releaseConfig.IndexOf("classify-release", StringComparison.Ordinal).ShouldBeLessThan(
             releaseConfig.IndexOf("dotnet nuget push", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_EmitsApprovalMatrixAndPackageSetFingerprint() {
+        // CR-12-4-D7 (round-5): the AC26 approval matrix must be a machine-readable
+        // top-level field of the classify-release output. CR-12-4-D8 (round-5): the
+        // separate `package_set_fingerprint` field lets consumers tell "package set
+        // changed" apart from generic release-definition drift.
+        string root = RepositoryRoot();
+        string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-classify-fixtures-{Guid.NewGuid():N}.json");
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "classify-fixtures",
+            "--fixtures", fixtures,
+            "--root", root,
+            "--output", output,
+        ]);
+        result.ExitCode.ShouldBe(0);
+        // Classify a single trusted-ready case via classify-release to inspect the
+        // top-level payload that the workflow gates publish on.
+        string evidence = Path.Combine(Path.GetTempPath(), $"fc-classify-trusted-{Guid.NewGuid():N}.json");
+        string trusted = """
+        {
+          "approval": {"approved": true, "approver": "release-owner", "mechanism": "workflow_dispatch"},
+          "attestation": {"status": "attested"},
+          "checks": {
+            "checksums_status": "valid", "concurrent_same_version": false,
+            "dry_run_side_effect_attempt": false, "helper_state": "success",
+            "inventory_status": "valid", "paths_status": "normalized",
+            "post_seal_artifact_mutation": false, "recursive_submodule_command": false,
+            "redaction_status": "passed", "release_definition_drift": false,
+            "sbom_status": "present", "semantic_release_state": "matches",
+            "signing_status": "verified", "test_count": 42, "test_status": "passed",
+            "timestamp_status": "verified", "trx_present": true
+          },
+          "context": {
+            "dry_run": false, "event_name": "workflow_dispatch", "from_fork": false,
+            "partial_publish_state": "none", "ref": "refs/heads/main",
+            "ref_protected": true, "run_attempt": 1
+          },
+          "manifest": {}
+        }
+        """;
+        File.WriteAllText(evidence, trusted);
+        string decisionPath = Path.Combine(Path.GetTempPath(), $"fc-decision-{Guid.NewGuid():N}.json");
+        ProcessResult classify = RunPython(root, [
+            "eng/release_evidence.py",
+            "classify-release",
+            "--root", root,
+            "--evidence", evidence,
+            "--output", decisionPath,
+        ]);
+        // We expect a non-zero exit because the inline evidence has no real manifest;
+        // the test asserts on the JSON shape, not the success of the classification.
+        File.Exists(decisionPath).ShouldBeTrue();
+        using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(decisionPath));
+        JsonElement root_el = decision.RootElement;
+        root_el.TryGetProperty("approval_matrix", out JsonElement matrix).ShouldBeTrue();
+        matrix.ValueKind.ShouldBe(JsonValueKind.Array);
+        matrix.GetArrayLength().ShouldBe(7);
+        // Each row must carry the AC26-required fields.
+        foreach (JsonElement row in matrix.EnumerateArray()) {
+            row.TryGetProperty("action", out _).ShouldBeTrue();
+            row.TryGetProperty("owner", out _).ShouldBeTrue();
+            row.TryGetProperty("mechanism", out _).ShouldBeTrue();
+            row.TryGetProperty("evidence", out _).ShouldBeTrue();
+            row.TryGetProperty("effect", out _).ShouldBeTrue();
+        }
+        root_el.TryGetProperty("package_set_fingerprint", out JsonElement packageSet).ShouldBeTrue();
+        packageSet.GetString().ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_TestResults_FailsClosedOnTrxFailedCounter() {
+        // CR-12-4-P92 (round-5): TRX `failed`/`error`/`aborted`/`timeout` counters now
+        // fail closed. Previously only `executed <= 0` blocked, so a run with
+        // `executed=100, failed=100` classified as `valid` and bypassed AC3.
+        string root = RepositoryRoot();
+        string trxDir = Path.Combine(Path.GetTempPath(), $"fc-trx-failed-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(trxDir);
+        string trxBody = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+          <ResultSummary>
+            <Counters total="3" executed="3" passed="2" failed="1" error="0" aborted="0" timeout="0" />
+          </ResultSummary>
+        </TestRun>
+        """;
+        File.WriteAllText(Path.Combine(trxDir, "release-results.trx"), trxBody);
+        string output = Path.Combine(Path.GetTempPath(), $"fc-test-results-{Guid.NewGuid():N}.json");
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "test-results",
+            "--results-dir", trxDir,
+            "--output", output,
+        ]);
+        result.ExitCode.ShouldNotBe(0);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
+        string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
+        diagnostics.ShouldContain("failed test");
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_FallbackComplete_RejectsMalformedDigest() {
+        // CR-12-4-P108 (round-5): fallback `approved_against_fingerprints_sha256` must be
+        // a well-formed 64-char hex sha256 string. A malformed value now produces a
+        // typed `malformed-fallback-digest` reason instead of the generic "drifted
+        // release definition" message.
+        string root = RepositoryRoot();
+        string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-classify-malformed-{Guid.NewGuid():N}.json");
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "classify-fixtures",
+            "--fixtures", fixtures,
+            "--root", root,
+            "--output", output,
+        ]);
+        result.ExitCode.ShouldBe(0);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        JsonElement results = doc.RootElement.GetProperty("results");
+        bool foundCase = false;
+        foreach (JsonElement c in results.EnumerateArray()) {
+            if (c.GetProperty("name").GetString() == "fallback-malformed-digest") {
+                foundCase = true;
+                c.GetProperty("classification").GetString().ShouldBe("blocked");
+                c.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
+            }
+        }
+        foundCase.ShouldBeTrue("fixture `fallback-malformed-digest` is required for CR-12-4-P108 coverage");
     }
 
     [Fact]

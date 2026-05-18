@@ -1,8 +1,12 @@
 name: Release
 
 on:
-  push:
-    branches: [main]
+  # NOTE (CR-12-4-D6, round-5): `push: main` removed. Release publication is gated on the
+  # workflow_dispatch `release_approver` input; a push event has no path to supply that
+  # input, so the owner-approval step always blocked anyway. Keeping the trigger surface
+  # to workflow_dispatch only matches the documented governance model in `12-4-...md`
+  # (Cheat Sheet → Current workflow state). Continuous main validation runs under the
+  # main CI workflow, not this release workflow.
   workflow_dispatch:
     inputs:
       release_owner_approved:
@@ -116,10 +120,16 @@ jobs:
           INPUT_RELEASE_OWNER_APPROVED: ${{ inputs.release_owner_approved }}
           INPUT_RELEASE_APPROVER: ${{ inputs.release_approver }}
           INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        # CR-12-4-P96 (round-5): use GitHub Actions `name<<DELIM` heredoc form for the
+        # free-form `release_approver` input so an approver value containing a literal
+        # newline cannot inject additional `$GITHUB_ENV` assignments.
         run: |
+          delim="__EOF_RELEASE_APPROVER_${GITHUB_RUN_ID}_${RANDOM}__"
           {
             printf 'RELEASE_OWNER_APPROVED=%s\n' "$INPUT_RELEASE_OWNER_APPROVED"
-            printf 'RELEASE_APPROVER=%s\n' "$INPUT_RELEASE_APPROVER"
+            printf 'RELEASE_APPROVER<<%s\n' "$delim"
+            printf '%s\n' "$INPUT_RELEASE_APPROVER"
+            printf '%s\n' "$delim"
             printf 'RELEASE_DRY_RUN=%s\n' "$INPUT_DRY_RUN"
           } >> "$GITHUB_ENV"
 
@@ -127,31 +137,86 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_HEAD_SHA: ${{ github.sha }}
+          CURRENT_BRANCH: ${{ github.ref_name }}
+        # CR-12-4-P90/P91/P99 (round-5):
+        # P90 — `gh api --paginate ... --jq '[expr]'` concatenates one JSON array per page,
+        #       which is not valid JSON; drop `--jq` and aggregate pages in Python via a
+        #       streaming JSONDecoder so all pages are collected.
+        # P91 — replace `|| echo '[]'` (fail-open on gh outage) with explicit capture of
+        #       gh exit codes; when the probe fails, fail closed by classifying the run as
+        #       concurrent-same-version and emit a diagnostic in the typed payload + step
+        #       summary so release owners see the degraded mode.
+        # P99 — supplement the head_sha match with a branch-based fallback: any other
+        #       release run on the same head_branch is recorded as same_version because
+        #       semantic-release on the same branch will typically produce the same tag.
         run: |
           set -euo pipefail
           mkdir -p release-evidence
-          runs_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" --jq '[.workflow_runs[]?]' || echo '[]')"
-          queued_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" --jq '[.workflow_runs[]?]' || echo '[]')"
+          set +e
+          runs_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" 2>release-evidence/.concurrency-in-progress-stderr.txt)"
+          in_progress_rc=$?
+          queued_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" 2>release-evidence/.concurrency-queued-stderr.txt)"
+          queued_rc=$?
+          set -e
           guard_json="$(
-            RUNS_JSON="$runs_json" QUEUED_JSON="$queued_json" python3 - <<'PY'
+            RUNS_JSON="$runs_json" \
+            QUEUED_JSON="$queued_json" \
+            IN_PROGRESS_RC="$in_progress_rc" \
+            QUEUED_RC="$queued_rc" \
+            python3 - <<'PY'
           import json
           import os
 
-          def load(name):
-              raw = os.environ.get(name, "[]")
-              try:
-                  payload = json.loads(raw)
-              except json.JSONDecodeError:
-                  return []
-              if isinstance(payload, list):
-                  return payload
-              if isinstance(payload, dict):
-                  return payload.get("workflow_runs", []) or []
-              return []
+          def load_pages(name):
+              """Parse a stream produced by `gh api --paginate` into a flat list of runs.
 
-          runs = load("RUNS_JSON") + load("QUEUED_JSON")
+              `gh api --paginate` emits one JSON object per page concatenated without a
+              delimiter. We walk the stream with `JSONDecoder.raw_decode` to recover each
+              page, then flatten `workflow_runs`. Returns `None` on parse failure so the
+              caller can fail closed.
+              """
+              raw = (os.environ.get(name, "") or "").strip()
+              if not raw:
+                  return []
+              decoder = json.JSONDecoder()
+              pages = []
+              idx = 0
+              while idx < len(raw):
+                  try:
+                      obj, end = decoder.raw_decode(raw, idx)
+                  except json.JSONDecodeError:
+                      return None
+                  pages.append(obj)
+                  idx = end
+                  while idx < len(raw) and raw[idx] in " \r\n\t":
+                      idx += 1
+              runs = []
+              for page in pages:
+                  if isinstance(page, dict):
+                      runs.extend(page.get("workflow_runs", []) or [])
+                  elif isinstance(page, list):
+                      runs.extend(page)
+              return runs
+
+          probe_diagnostics = []
+          if os.environ.get("IN_PROGRESS_RC", "0") != "0":
+              probe_diagnostics.append("gh api in_progress probe exited non-zero; failing closed")
+          if os.environ.get("QUEUED_RC", "0") != "0":
+              probe_diagnostics.append("gh api queued probe exited non-zero; failing closed")
+
+          runs_pages = load_pages("RUNS_JSON")
+          queued_pages = load_pages("QUEUED_JSON")
+          if runs_pages is None:
+              probe_diagnostics.append("RUNS_JSON: failed to parse paginated gh api stream")
+              runs_pages = []
+          if queued_pages is None:
+              probe_diagnostics.append("QUEUED_JSON: failed to parse paginated gh api stream")
+              queued_pages = []
+
+          runs = runs_pages + queued_pages
           current_id = str(os.environ.get("GITHUB_RUN_ID", ""))
           current_sha = str(os.environ.get("CURRENT_HEAD_SHA", ""))
+          current_branch = str(os.environ.get("CURRENT_BRANCH", ""))
           same_version = []
           other_release = []
           for run in runs:
@@ -166,17 +231,29 @@ jobs:
                   "id": run.get("id"),
                   "status": run.get("status"),
                   "head_sha": run.get("head_sha"),
+                  "head_branch": run.get("head_branch"),
                   "run_attempt": run.get("run_attempt"),
               }
-              if current_sha and str(run.get("head_sha", "")) == current_sha:
+              run_sha = str(run.get("head_sha", ""))
+              run_branch = str(run.get("head_branch", ""))
+              if current_sha and run_sha == current_sha:
+                  same_version.append(entry)
+              elif current_branch and run_branch == current_branch:
+                  # P99: same branch likely targets the same semantic-release tag
                   same_version.append(entry)
               else:
                   other_release.append(entry)
-          status = "true" if same_version else "false"
+
+          if probe_diagnostics:
+              status = "true"  # P91: fail closed when probe is degraded
+          else:
+              status = "true" if same_version else "false"
+
           guard = {
               "status": status,
               "same_version_runs": same_version,
               "other_release_runs": other_release,
+              "probe_diagnostics": probe_diagnostics,
           }
           print(json.dumps(guard, separators=(",", ":"), sort_keys=True))
           PY
@@ -184,12 +261,14 @@ jobs:
           status="$(printf '%s' "$guard_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
           echo "RELEASE_CONCURRENT_SAME_VERSION=$status" >> "$GITHUB_ENV"
           printf '%s\n' "$guard_json" > release-evidence/concurrency-guard.json
+          rm -f release-evidence/.concurrency-in-progress-stderr.txt release-evidence/.concurrency-queued-stderr.txt
           {
             echo '## Release concurrency guard'
             echo
             echo "Same-version concurrency signal: \`$status\`"
             echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns and same-version attempts are blocked separately by typed readiness classification.'
-            echo 'Same-version match keys on identical `head_sha`; other in-flight release runs are recorded for audit but do not set the blocking signal.'
+            echo 'Same-version match keys on identical `head_sha` OR identical `head_branch` (P99 fallback); other in-flight release runs are recorded for audit but do not set the blocking signal.'
+            echo 'gh api probe failures fail closed (signal forced to `true`) and surface in `probe_diagnostics`.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require governed attestation fallback before publish
@@ -240,4 +319,7 @@ jobs:
 
       - name: Release budget monitor
         if: always()
-        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "false" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"
+        # CR-12-4-P106 (round-5): forward the real `RELEASE_FROM_FORK` value rather than
+        # hardcoding "false"; keeps the publish path and budget path consistent if a future
+        # trigger change makes fork status meaningful.
+        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "${{ env.RELEASE_FROM_FORK }}" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"

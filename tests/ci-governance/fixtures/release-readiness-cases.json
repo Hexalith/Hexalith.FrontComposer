@@ -395,6 +395,50 @@
           "run_attempt": 2
         }
       }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "rerun-review",
+      "expected_next_owner_action_contains": "create a fresh dispatch or new tag",
+      "expected_publish_authorized": false,
+      "name": "partial-publish-state-rerun-attempt1",
+      "override": {
+        "context": {
+          "partial_publish_state": "partial",
+          "run_attempt": 1
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_publish_authorized": false,
+      "name": "concurrent-same-version-string-input",
+      "override": {
+        "checks": {
+          "concurrent_same_version": "true"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_publish_authorized": false,
+      "name": "fallback-malformed-digest",
+      "override": {
+        "attestation": {
+          "fallback": {
+            "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+            "approved_against_fingerprints_sha256": "not-a-hex-sha256",
+            "approver": "release-owner",
+            "evidence": "release-evidence/attestation-unavailable.md",
+            "expires_at": "2026-12-31T23:59:59Z",
+            "reason": "GitHub artifact attestations unavailable for this repository context",
+            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
+            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
+            "scope": "v1 release candidate"
+          },
+          "status": "approved-unsupported"
+        }
+      }
     }
   ]
 }
