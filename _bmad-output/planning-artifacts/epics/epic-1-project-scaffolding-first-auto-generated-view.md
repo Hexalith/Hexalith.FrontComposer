@@ -20,7 +20,7 @@ So that all subsequent framework packages build cleanly from a single `dotnet re
 **When** the solution structure is inspected
 **Then** solution folders src/, samples/, tests/ exist
 **And** Directory.Packages.props pins: Microsoft.CodeAnalysis.CSharp >=4.12.0, Fluxor.Blazor.Web 6.9.0, Fluent UI Blazor v5 (exact RC pin), xUnit 2.9.3, bUnit 2.7.2, FluentAssertions, coverlet.collector
-**And** global.json pins .NET SDK 10.0.5
+**And** global.json pins the current release-certification .NET 10 SDK baseline (`10.0.300` as of 2026-05-18)
 **And** .editorconfig and nuget.config are present
 
 **Given** the deps.local.props and deps.nuget.props files exist
@@ -313,4 +313,4 @@ So that my development inner loop is fast and I'm protected against upstream Flu
 - Stories are sequentially completable: 1.1 (build infra) -> 1.2 (contracts) -> 1.3 (Fluxor) -> 1.4 (parse) -> 1.5 (transform/emit) -> 1.6 (sample) -> 1.7 (CI) -> 1.8 (hot reload)
 
 ---
-
+

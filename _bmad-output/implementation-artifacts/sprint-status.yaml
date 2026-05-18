@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-17 (Story 12.4 round-3 review follow-ups CR-12-4-P26..P61 implemented and validated; helper, governance, and release-filtered solution lane passed; story moved to review.)"
+last_updated: "2026-05-18 (Story 12.4 round-4 review follow-ups CR-12-4-P62..P88 implemented; P74 deferred to CR-12-4-Def14 for structural workflow rework, P80 verified false positive; py_compile, JSON/YAML parse, classify-fixtures (27 cases valid), verify-manifest valid, inventory valid, path-check valid, 23 CiGovernanceTests pass; story remains in review pending P74 follow-up.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system

@@ -7,7 +7,6 @@ on:
     inputs:
       release_owner_approved:
         description: 'Approve release side effects after reviewing sealed readiness evidence'
-        required: true
         type: boolean
         default: false
       release_approver:
@@ -16,9 +15,8 @@ on:
         type: string
       dry_run:
         description: 'Classify release readiness without NuGet, tag, GitHub Release, or attestation side effects'
-        required: true
         type: boolean
-        default: false
+        default: true
 
 concurrency:
   group: release
@@ -32,8 +30,9 @@ env:
   RELEASE_APPROVER: ''
   RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || '' }}
   RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT || '' }}
+  RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 || '' }}
   RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}
-  RELEASE_CONCURRENT_SAME_VERSION: true
+  RELEASE_CONCURRENT_SAME_VERSION: 'true'
   RELEASE_DRY_RUN: 'false'
   RELEASE_FROM_FORK: ${{ ((github.event.pull_request.head.repo.fork == true) || (github.event.workflow_run.head_repository.fork == true)) && 'true' || 'false' }}
   RELEASE_OWNER_APPROVED: 'false'
@@ -113,48 +112,84 @@ jobs:
 
       - name: Record workflow-dispatch release inputs
         if: ${{ github.event_name == 'workflow_dispatch' }}
+        env:
+          INPUT_RELEASE_OWNER_APPROVED: ${{ inputs.release_owner_approved }}
+          INPUT_RELEASE_APPROVER: ${{ inputs.release_approver }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
         run: |
-          printf 'RELEASE_OWNER_APPROVED=%s\n' '${{ inputs.release_owner_approved }}' >> "$GITHUB_ENV"
-          printf 'RELEASE_APPROVER=%s\n' '${{ inputs.release_approver }}' >> "$GITHUB_ENV"
-          printf 'RELEASE_DRY_RUN=%s\n' '${{ inputs.dry_run }}' >> "$GITHUB_ENV"
+          {
+            printf 'RELEASE_OWNER_APPROVED=%s\n' "$INPUT_RELEASE_OWNER_APPROVED"
+            printf 'RELEASE_APPROVER=%s\n' "$INPUT_RELEASE_APPROVER"
+            printf 'RELEASE_DRY_RUN=%s\n' "$INPUT_DRY_RUN"
+          } >> "$GITHUB_ENV"
 
       - name: Record release concurrency guard
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CURRENT_HEAD_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           mkdir -p release-evidence
-          runs_json="$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100")"
-          concurrent_runs="$(
-            RUNS_JSON="$runs_json" python3 - <<'PY'
+          runs_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" --jq '[.workflow_runs[]?]' || echo '[]')"
+          queued_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" --jq '[.workflow_runs[]?]' || echo '[]')"
+          guard_json="$(
+            RUNS_JSON="$runs_json" QUEUED_JSON="$queued_json" python3 - <<'PY'
           import json
           import os
 
-          payload = json.loads(os.environ["RUNS_JSON"])
-          current = str(os.environ.get("GITHUB_RUN_ID", ""))
-          matches = []
-          for run in payload.get("workflow_runs", []):
-              if str(run.get("id", "")) == current:
+          def load(name):
+              raw = os.environ.get(name, "[]")
+              try:
+                  payload = json.loads(raw)
+              except json.JSONDecodeError:
+                  return []
+              if isinstance(payload, list):
+                  return payload
+              if isinstance(payload, dict):
+                  return payload.get("workflow_runs", []) or []
+              return []
+
+          runs = load("RUNS_JSON") + load("QUEUED_JSON")
+          current_id = str(os.environ.get("GITHUB_RUN_ID", ""))
+          current_sha = str(os.environ.get("CURRENT_HEAD_SHA", ""))
+          same_version = []
+          other_release = []
+          for run in runs:
+              if not isinstance(run, dict):
+                  continue
+              if str(run.get("id", "")) == current_id:
                   continue
               path = str(run.get("path", ""))
-              if path.endswith(".github/workflows/release.yml"):
-                  matches.append({"id": run.get("id"), "html_url": run.get("html_url")})
-          print(json.dumps(matches, separators=(",", ":")))
+              if not path.endswith(".github/workflows/release.yml"):
+                  continue
+              entry = {
+                  "id": run.get("id"),
+                  "status": run.get("status"),
+                  "head_sha": run.get("head_sha"),
+                  "run_attempt": run.get("run_attempt"),
+              }
+              if current_sha and str(run.get("head_sha", "")) == current_sha:
+                  same_version.append(entry)
+              else:
+                  other_release.append(entry)
+          status = "true" if same_version else "false"
+          guard = {
+              "status": status,
+              "same_version_runs": same_version,
+              "other_release_runs": other_release,
+          }
+          print(json.dumps(guard, separators=(",", ":"), sort_keys=True))
           PY
           )"
-          if [ "$concurrent_runs" != "[]" ]; then
-            echo "RELEASE_CONCURRENT_SAME_VERSION=true" >> "$GITHUB_ENV"
-            status="true"
-          else
-            echo "RELEASE_CONCURRENT_SAME_VERSION=false" >> "$GITHUB_ENV"
-            status="false"
-          fi
-          printf '{"status":"%s","concurrent_runs":%s}\n' "$status" "$concurrent_runs" > release-evidence/concurrency-guard.json
+          status="$(printf '%s' "$guard_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
+          echo "RELEASE_CONCURRENT_SAME_VERSION=$status" >> "$GITHUB_ENV"
+          printf '%s\n' "$guard_json" > release-evidence/concurrency-guard.json
           {
             echo '## Release concurrency guard'
             echo
             echo "Same-version concurrency signal: \`$status\`"
             echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns and same-version attempts are blocked separately by typed readiness classification.'
+            echo 'Same-version match keys on identical `head_sha`; other in-flight release runs are recorded for audit but do not set the blocking signal.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require governed attestation fallback before publish

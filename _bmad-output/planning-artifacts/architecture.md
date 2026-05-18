@@ -234,7 +234,7 @@ Per Barry's prioritization — the 5 things the architecture must enable by week
 
 | Dependency | Current Version | PRD Assumption | Status |
 |---|---|---|---|
-| **.NET SDK** | 10.0.5 (GA, LTS) | .NET 10 | Aligned |
+| **.NET SDK** | 10.0.300 current release-certification baseline; original W1 baseline was 10.0.5 | .NET 10 | Aligned |
 | **Fluent UI Blazor** | **v5 still RC/preview**; v4.12.2 stable | v5 GA | **Risk — see ADR-003** |
 | **DAPR** | 1.17.4 | 1.17.7+ | **Pin to 1.17.4** |
 | **.NET Aspire** | 13.2.1 | Aspire | Aligned |
@@ -1061,7 +1061,7 @@ Hexalith.FrontComposer/
 ├── deps.nuget.props                                     [W1] # NuGet PackageReferences (release validation)
 ├── Directory.Build.props                                [W1] # Shared settings + deps import switch
 ├── Directory.Packages.props                             [W1] # Central package management — ALL versions pinned
-├── global.json                                          [W1] # .NET SDK 10.0.5 pin
+├── global.json                                          [W1] # .NET SDK current release-certification pin
 ├── nuget.config                                         [W1] # Package sources
 ├── .editorconfig                                        [W1] # Code style enforcement
 ├── .gitmodules                                          [W1] # EventStore + Tenants submodule refs

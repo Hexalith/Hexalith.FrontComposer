@@ -60,13 +60,18 @@ DANGEROUS_EVIDENCE_PATTERNS = [
 ]
 TRUTHY_LITERALS = {"true"}
 FALSY_LITERALS = {"false"}
-APPROVAL_TRUTHY = TRUTHY_LITERALS | {"1", "yes", "approved"}
-APPROVAL_FALSY = FALSY_LITERALS | {"0", "no", "denied"}
+# Approval booleans accept the standard true/false serialization (used by GitHub Actions
+# boolean inputs) PLUS the explicit approved/denied tokens. Drops the ambiguous
+# 1/0/yes/no tokens that an operator typo could silently accept.
+APPROVAL_TRUTHY = TRUTHY_LITERALS | {"approved"}
+APPROVAL_FALSY = FALSY_LITERALS | {"denied"}
 USER_FACING_EVIDENCE_FILES = {
     "concurrency-guard.json",
     "manifest-diagnostics.json",
     "package-inventory.json",
     "partial-publish-incident.json",
+    "partial-publish-placeholder.json",
+    "prior-release.json",
     "release-readiness.json",
     "release-verification.json",
     "test-results.json",
@@ -95,9 +100,17 @@ def read_json(path: str | pathlib.Path) -> Any:
 
 
 def write_json(path: str | pathlib.Path, payload: Any) -> None:
+    """Write JSON atomically: serialize to a sibling .tmp file, then replace the target.
+
+    A partial write followed by an error would otherwise leave a corrupt file that the
+    next pipeline step would read; the tmp+replace pattern guarantees the target either
+    holds the previous valid content or the complete new content.
+    """
     p = pathlib.Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp = p.with_suffix(p.suffix + ".tmp")
+    tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    os.replace(tmp, p)
 
 
 def sha256_file(path: pathlib.Path) -> str:
@@ -244,6 +257,24 @@ def fingerprint_diff(current: dict[str, str], baseline: dict[str, str]) -> list[
     return diagnostics
 
 
+_TIMESTAMP_BLOCK_MAX_LINES = 40
+_TIMESTAMP_EVIDENCE = re.compile(
+    r"^[ \t]*Timestamp(?:[ \t]+signing[ \t]+certificate)?[: \t][^\n]*(?:verified|valid|trusted|RFC[ \t]*3161)",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+def _bounded_timestamp_evidence(block: str) -> bool:
+    """Return True when the per-package block contains a real Timestamp evidence line.
+
+    The block is intentionally truncated to the first _TIMESTAMP_BLOCK_MAX_LINES so trailing
+    `dotnet nuget verify` summary text following the last verified package cannot leak
+    "valid" / "trusted" matches across packages.
+    """
+    bounded = "\n".join(block.splitlines()[:_TIMESTAMP_BLOCK_MAX_LINES])
+    return bool(_TIMESTAMP_EVIDENCE.search(bounded))
+
+
 def parse_signing_verification(text: str, package_ids: list[str] | None = None) -> dict[str, dict[str, str]]:
     """Parse `dotnet nuget verify --all` output for per-package verification status.
 
@@ -262,12 +293,9 @@ def parse_signing_verification(text: str, package_ids: list[str] | None = None) 
                 next_match = re.search(r"Successfully verified package '", text[match.end():])
                 block_end = match.end() + next_match.start() if next_match else len(text)
                 block = text[match.start():block_end]
-                timestamp_verified = bool(
-                    re.search(r"(?is)timestamp(?: signing certificate|:).*?(?:verified|valid|trusted|RFC\s*3161)", block)
-                )
                 statuses[package_id.lower()] = {
                     "signing_status": "verified",
-                    "timestamp_status": "verified" if timestamp_verified else "missing",
+                    "timestamp_status": "verified" if _bounded_timestamp_evidence(block) else "missing",
                 }
         return statuses
 
@@ -276,8 +304,10 @@ def parse_signing_verification(text: str, package_ids: list[str] | None = None) 
         next_match = re.search(r"Successfully verified package '", text[match.end():])
         block_end = match.end() + next_match.start() if next_match else len(text)
         block = text[match.start():block_end]
-        timestamp_verified = bool(re.search(r"(?is)timestamp(?: signing certificate|:).*?(?:verified|valid|trusted|RFC\s*3161)", block))
-        statuses[match.group(1).lower()] = {"signing_status": "verified", "timestamp_status": "verified" if timestamp_verified else "missing"}
+        statuses[match.group(1).lower()] = {
+            "signing_status": "verified",
+            "timestamp_status": "verified" if _bounded_timestamp_evidence(block) else "missing",
+        }
     return statuses
 
 
@@ -404,6 +434,18 @@ def evidence_status_file(path: pathlib.Path) -> tuple[str, list[str]]:
     return "partial", [f"{path.name}: status is missing or unknown"]
 
 
+_EVIDENCE_MAX_BYTES = 1024 * 1024
+
+
+def _is_reparse_point(path: pathlib.Path) -> bool:
+    """Detect Windows NTFS junctions and reparse points that pathlib.is_symlink() misses."""
+    try:
+        attrs = getattr(path.stat(follow_symlinks=False), "st_file_attributes", 0)
+    except (AttributeError, OSError, TypeError):
+        return False
+    return bool(attrs & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+
+
 def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
     raw_parts: list[str] = []
     diagnostics: list[str] = []
@@ -415,8 +457,8 @@ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
         for directory in dirs:
             candidate = current_path / directory
             try:
-                if candidate.is_symlink():
-                    diagnostics.append(f"{candidate.name}: skipped symlinked evidence directory")
+                if candidate.is_symlink() or _is_reparse_point(candidate):
+                    diagnostics.append(f"{candidate.name}: skipped symlinked or junction evidence directory")
                     continue
             except OSError as exc:
                 diagnostics.append(f"{candidate.name}: unable to inspect evidence directory: {sanitize(exc)}")
@@ -428,11 +470,16 @@ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
                 continue
             child = current_path / file_name
             try:
-                if child.is_symlink():
-                    diagnostics.append(f"{child.name}: skipped symlinked evidence file")
+                if child.is_symlink() or _is_reparse_point(child):
+                    diagnostics.append(f"{child.name}: skipped symlinked or junction evidence file")
                     continue
-                if child.is_file() and child.stat().st_size <= 1024 * 1024:
-                    raw_parts.append(child.read_text(encoding="utf-8", errors="replace"))
+                if not child.is_file():
+                    continue
+                size = child.stat().st_size
+                if size > _EVIDENCE_MAX_BYTES:
+                    diagnostics.append(f"{child.name}: skipped oversized evidence file ({size} bytes; max {_EVIDENCE_MAX_BYTES})")
+                    continue
+                raw_parts.append(child.read_text(encoding="utf-8", errors="replace"))
             except OSError as exc:
                 diagnostics.append(f"{child.name}: unable to read evidence file: {sanitize(exc)}")
     return "\n".join(raw_parts), diagnostics
@@ -446,7 +493,6 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
     if not root_exists:
         diagnostics.append("--root must be an existing directory")
 
-    verification_status = "missing"
     inventory_status = args.inventory_status
     paths_status = args.paths_status
     redaction_status = args.redaction_status
@@ -458,7 +504,8 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
         inventory_state, inventory_diags = evidence_status_file(evidence_root / "package-inventory.json")
         helper_diagnostics.extend(verification_diags)
         helper_diagnostics.extend(inventory_diags)
-        verification_status = "valid" if verification_state == "success" else verification_state
+        # Both states share a uniform 2-state vocabulary so downstream BLOCKING_CHECKS
+        # ("valid"/"invalid") comparisons treat verification and inventory the same way.
         inventory_status = "valid" if inventory_state == "success" else "invalid"
         manifest_diags = manifest_diagnostics(manifest, root)
         paths_status = "normalized" if not manifest_diags else "invalid"
@@ -523,6 +570,9 @@ def safe_run_attempt(value: Any) -> tuple[int, str | None]:
     """Coerce a run_attempt value to int. Returns (value, diagnostic-or-None)."""
     if value is None or value == "":
         return 1, None
+    # Python bool is a subtype of int; True/False would otherwise silently coerce to 1/0.
+    if isinstance(value, bool):
+        return 1, f"run_attempt must be numeric integer text; actual={sanitize(value)}"
     try:
         if isinstance(value, float):
             return 1, f"run_attempt must be numeric integer text; actual={sanitize(value)}"
@@ -558,7 +608,9 @@ def classify_context(context: dict[str, Any]) -> tuple[str, list[str]]:
         partial_publish = "none"
     if partial_publish not in {"none", "partial", "full", "recovered"}:
         diagnostics.append(f"partial_publish_state must be one of ['full', 'none', 'partial', 'recovered']; actual={sanitize(partial_publish_raw)}")
-        partial_publish = "partial"
+        # Default to "none" + emit diagnostic. Earlier code coerced to "partial" which
+        # silently misclassified successful publishes as partial recoveries.
+        partial_publish = "none"
     # Fork status takes precedence over rerun status: remediation paths differ.
     if from_fork:
         return "fork-pr", diagnostics
@@ -605,8 +657,8 @@ def fallback_complete(fallback: dict[str, Any], fingerprints: dict[str, str] | N
     if expiry < dt.datetime.now(dt.timezone.utc).date():
         return False, f"fallback expired on {expiry.isoformat()}"
     if fingerprints is not None:
-        approved_digest = str(fallback.get("approved_against_fingerprints_sha256", ""))
-        current_digest = canonical_sha256(fingerprints)
+        approved_digest = str(fallback.get("approved_against_fingerprints_sha256", "")).strip().lower()
+        current_digest = canonical_sha256(fingerprints).lower()
         if approved_digest != current_digest:
             return False, "fallback approved against drifted release definition"
     return True, None
@@ -698,7 +750,12 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
             blocking.append("unsupported-attestation fallback is missing, stale, or incomplete")
         else:
             manifest_fingerprints = manifest.get("release_definition_fingerprints") if isinstance(manifest, dict) else None
-            complete, fallback_diagnostic = fallback_complete(fallback, manifest_fingerprints if isinstance(manifest_fingerprints, dict) else None)
+            if not isinstance(manifest_fingerprints, dict):
+                blocking.append("manifest release_definition_fingerprints baseline is missing or malformed")
+                fingerprints_for_drift = None
+            else:
+                fingerprints_for_drift = manifest_fingerprints
+            complete, fallback_diagnostic = fallback_complete(fallback, fingerprints_for_drift)
             if complete:
                 fallback_reasons.append("GitHub artifact attestation unavailable; approved unsupported-attestation fallback is in force")
                 fallback_record = {
@@ -958,7 +1015,6 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             "signing_status": signing_status,
             "timestamp_status": timestamp_status,
             "attestation_status": args.attestation_status,
-            "attestation_bundle_sha256": attestation_bundle["sha256"] if attestation_bundle else "",
             "publish_status": "pending",
         })
     manifest = {
@@ -1050,7 +1106,14 @@ def path_check(args: argparse.Namespace) -> int:
     return 0
 
 
+_PARTIAL_PUBLISH_CLASSIFICATIONS = {"none", "partial-publish-incident", "recovered"}
+
+
 def partial_publish_incident(args: argparse.Namespace) -> int:
+    classification = str(args.classification).strip().lower()
+    if classification not in _PARTIAL_PUBLISH_CLASSIFICATIONS:
+        accepted = sorted(_PARTIAL_PUBLISH_CLASSIFICATIONS)
+        raise SystemExit(f"--classification must be one of {accepted}; actual={sanitize(args.classification)}")
     manifest_diagnostic = ""
     try:
         manifest = read_json(args.manifest) if args.manifest else {}
@@ -1058,11 +1121,11 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
         manifest = {}
         manifest_diagnostic = f"manifest unreadable: {sanitize(exc)}"
     payload = {
-        "classification": sanitize(args.classification),
+        "classification": classification,
         "decision_contract": "frontcomposer.partial-publish-incident.v1",
         "failed_phase": sanitize(args.phase),
         "manifest_seal": manifest.get("seal", {}) if isinstance(manifest, dict) else {},
-        "next_owner_action": "no partial publish incident recorded" if args.classification == "none" else "release owner must reconcile NuGet packages, symbols, tags, changelog, GitHub Release assets, and attestations before retry",
+        "next_owner_action": "no partial publish incident recorded" if classification == "none" else "release owner must reconcile NuGet packages, symbols, tags, changelog, GitHub Release assets, and attestations before retry",
         "run_attempt": sanitize(args.run_attempt),
         "run_id": sanitize(args.run_id),
         "tag": sanitize(args.tag),
@@ -1075,11 +1138,15 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
 
 
 def _cli_bool(value: Any, *, field: str, approval: bool = False) -> bool:
-    """Parse a CLI boolean flag, failing loudly on unrecognized input."""
+    """Parse a CLI boolean flag, failing loudly on unrecognized input.
+
+    Used by `require_trusted_context` for release-budget --apply where any parse error
+    must abort with exit 2 rather than degrade to a default.
+    """
     parser = parse_approval_bool if approval else parse_strict_bool
     parsed, diagnostic = parser(value, field=field)
     if diagnostic:
-        print(f"classify-release: invalid --{field.replace('_', '-')}: {diagnostic}", file=sys.stderr)
+        print(f"release_evidence: invalid --{field.replace('_', '-')}: {diagnostic}", file=sys.stderr)
         raise SystemExit(2)
     return parsed
 
@@ -1148,8 +1215,16 @@ def classify_release(args: argparse.Namespace) -> int:
             "manifest": manifest,
         }
     decision = classify_release_payload(evidence, pathlib.Path(args.root))
-    if args.output:
-        write_json(args.output, decision)
+    # If the caller omitted --output but CLI parse errors occurred, still write a typed
+    # readiness JSON to a default path so downstream tooling can distinguish CLI-parse
+    # exit 2 from "helper crashed" exit 2 by reading the typed contract.
+    output_path = args.output or ("./release-evidence/release-readiness.json" if cli_diagnostics else None)
+    if output_path:
+        try:
+            write_json(output_path, decision)
+        except OSError as exc:
+            print(f"classify-release: failed to write readiness output to {output_path}: {sanitize(exc)}", file=sys.stderr)
+            return 3
     if cli_diagnostics:
         for diagnostic in cli_diagnostics:
             print(diagnostic, file=sys.stderr)

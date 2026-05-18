@@ -652,9 +652,11 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("dry_run");
         workflow.ShouldContain("RELEASE_OWNER_APPROVED");
         workflow.ShouldContain("RELEASE_APPROVER");
-        workflow.ShouldContain("RELEASE_CONCURRENT_SAME_VERSION: true");
+        workflow.ShouldContain("RELEASE_CONCURRENT_SAME_VERSION: 'true'");
         workflow.ShouldContain("Record release concurrency guard");
         workflow.ShouldContain("repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress");
+        workflow.ShouldContain("repos/${GITHUB_REPOSITORY}/actions/runs?status=queued");
+        workflow.ShouldContain("RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256:");
         workflow.ShouldContain("Release owner approval gate");
         workflow.ShouldNotContain("vars.RELEASE_OWNER_APPROVED");
         workflow.ShouldNotContain("RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER");
