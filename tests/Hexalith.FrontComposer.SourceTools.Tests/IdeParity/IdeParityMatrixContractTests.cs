@@ -26,7 +26,7 @@ public sealed class IdeParityMatrixContractTests
         ValidateMatrixDocument(root).ShouldBeEmpty("IDE parity matrix JSON must reject unknown fields with a named category.");
 
         JsonElement metadata = root.GetProperty("metadata");
-        RequiredString(metadata, "dotnetSdk").ShouldBe("10.0.103");
+        RequiredString(metadata, "dotnetSdk").ShouldBe("10.0.300");
         RequiredString(metadata, "visualStudio").ShouldContain("Visual Studio 2022 17.13");
         RequiredString(metadata, "rider").ShouldContain("Rider 2026.1");
         RequiredString(metadata, "vsCode").ShouldContain("C# Dev Kit");

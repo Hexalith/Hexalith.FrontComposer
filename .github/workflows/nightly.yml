@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4.3.1
         with:
-          dotnet-version: '10.0.x'
+          dotnet-version: '10.0.300'
 
       - name: Validate embedded v1 prompt contract
         run: python3 eng/llm_benchmark.py validate-prompt-set --root . --output artifacts/benchmark/prompt-set.json

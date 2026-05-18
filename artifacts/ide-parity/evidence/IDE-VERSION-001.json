@@ -8,7 +8,7 @@
     "visualStudio": "Visual Studio 2022 17.13+",
     "rider": "JetBrains Rider 2026.1.x",
     "vsCodeDevKit": "VS Code stable + C# Dev Kit pinned minor",
-    "dotnetSdk": "10.0.103"
+    "dotnetSdk": "10.0.300"
   },
   "osOrContainerImage": "Release validation job",
   "validationCommandOrManualSteps": "pwsh -NoProfile -File jobs/ide-parity-version-revalidation.ps1; exit code 0 = pins in range, 1 = drift detected (dry-run artifact written or live GitHub issue created). Required env vars (optional, validated only when set): FRONTCOMPOSER_IDE_VERSION_VISUALSTUDIO, FRONTCOMPOSER_IDE_VERSION_RIDER, FRONTCOMPOSER_DOTNET_SDK_VERSION.",

@@ -18,7 +18,7 @@ _This file contains critical rules and patterns that AI agents must follow when 
 
 ## Technology Stack & Versions
 
-- Use .NET SDK `10.0.103` from `global.json`; roll forward only to latest patch.
+- Use .NET SDK `10.0.300` from `global.json`; roll forward only to latest patch.
 - C# uses `LangVersion=latest`, nullable enabled, implicit usings enabled, and `TreatWarningsAsErrors=true` from `Directory.Build.props`.
 - Package versions are centrally managed in `Directory.Packages.props`; do not add inline `Version=` attributes to project `PackageReference`s.
 - Roslyn SourceTools target `netstandard2.0`, set `IsRoslynComponent=true`, and must use Microsoft.CodeAnalysis `4.12.0` with analyzer dependencies marked `PrivateAssets="all"`.
