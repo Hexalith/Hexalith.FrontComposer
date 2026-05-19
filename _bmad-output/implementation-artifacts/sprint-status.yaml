@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-19 (Story 12.4 round-8 review patches CR-12-4-P185..P192 implemented. HIGH: P185 dry-run dispatch reaches the no-side-effect classifier; P186 release-evidence/** is summarized and uploaded with if: always(); P187 concurrency-guard diagnostics feed classification before authorization; P188 post-version same-version probe fails closed. MEDIUM: P189 release job token scopes narrowed to actions: read, contents: write, attestations: read; P190 malformed direct evidence sections/test_count block cleanly; P191 fallback approval record requires approved_at; P192 release-budget prefers sealed manifest tag. Validation: py_compile OK; JSON/YAML parse OK; classify-fixtures status=valid; inventory status=valid; 33 CiGovernanceTests pass; git diff --check OK. CR-12-4-Def14 remains the sole production release blocker. Story remains in review pending Def14 follow-up.)"
+last_updated: "2026-05-19 (Story 12.4 round-8 verification code review complete via /bmad-code-review. 58 raw findings across Blind Hunter, Edge Case Hunter, Acceptance Auditor; after triage: 4 decisions resolved (CR-12-4-D14..D17 — D14/D16/D17 routed to patches P214/P215/P216, D15 dismissed in favor of single-job status quo); 24 patches left as action items (5 HIGH: P193..P197 fixture/production divergence, git-credentials gate consistency, TRX skipped tests; 13 MEDIUM: P198..P210 covering attestation-bundle empty-on-failure, docstring drift, path-prefix bypass, tag-dispatch concurrency, jq quoting, string-bool truthiness, approval-matrix completeness, classification-output distinguishability, version-substring anchoring; 3 LOW: P211..P213 traceback import, prior-release JSON validation, safe_run_attempt sentinel); 24 deferred (CR-12-4-Def35..Def58 — operator-misuse fail-closed gaps, Windows-runner concerns, theoretical edge cases); 5 dismissed (auditor A1-A4/A10 covered by prior items or decisions). CR-12-4-Def14 remains the sole production release blocker. Story moved review → in-progress to land round-9 patches before Def14 follow-up.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -160,6 +160,6 @@ development_status:
   12-2-mcp-ledger-closure-and-contract-snapshot-decisions: done
   12-3-eventstore-pending-command-provider-release-gate: done
   12-3-1-pending-status-reopen-governance-test: done
-  12-4-trusted-release-evidence-dry-run: review
+  12-4-trusted-release-evidence-dry-run: in-progress
   12-5-accessibility-and-stakeholder-acceptance-evidence-pack: review
   epic-12-retrospective: optional
