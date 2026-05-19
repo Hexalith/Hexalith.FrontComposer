@@ -696,8 +696,13 @@ public sealed class CiGovernanceTests {
         // CR-12-4-P97 (round-5): RELEASE_DRY_RUN parsing now goes through `case` on a
         // lowercased value so non-canonical truthy values (TRUE, 1, yes) don't fall
         // through to the live publish branch.
+        // CR-12-4-P119 (round-6): the `case` polarity is inverted — only literal
+        // `false|0|no` routes to live publish; any whitespace-padded, unrecognized, or
+        // mistyped value defaults to dry-run (fail closed). Whitespace stripped via
+        // `tr -d '[:space:]'`.
         releaseConfig.ShouldContain("release_dry_run_lower=");
-        releaseConfig.ShouldContain("case \\\"$release_dry_run_lower\\\" in true|1|yes)");
+        releaseConfig.ShouldContain("tr -d '[:space:]'");
+        releaseConfig.ShouldContain("case \\\"$release_dry_run_lower\\\" in false|0|no)");
         // CR-12-4-P89 (round-5): after dry-run classification, force a non-zero exit so
         // semantic-release halts before the `@semantic-release/github` and `git`
         // plugins create tags / releases on what was supposed to be a no-side-effect run.
@@ -781,21 +786,31 @@ public sealed class CiGovernanceTests {
             "--evidence", evidence,
             "--output", decisionPath,
         ]);
-        // We expect a non-zero exit because the inline evidence has no real manifest;
-        // the test asserts on the JSON shape, not the success of the classification.
+        // CR-12-4-P138 (round-6): expect either 0 (rejected unconditionally because
+        // manifest is empty → `blocked`) or 1 (require-publishable rejection). Exit-2
+        // would indicate a helper crash before the readiness JSON is written and the
+        // test must NOT silently accept that. The prior assertion `File.Exists` alone
+        // could pass even when classifier crashed before writing.
+        classify.ExitCode.ShouldBeOneOf(0, 1);
         File.Exists(decisionPath).ShouldBeTrue();
         using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(decisionPath));
         JsonElement root_el = decision.RootElement;
         root_el.TryGetProperty("approval_matrix", out JsonElement matrix).ShouldBeTrue();
         matrix.ValueKind.ShouldBe(JsonValueKind.Array);
         matrix.GetArrayLength().ShouldBe(7);
-        // Each row must carry the AC26-required fields.
+        // Each row must carry the AC26-required fields plus the round-6 gate_id and
+        // fallback_action additions (CR-12-4-P136/P140).
         foreach (JsonElement row in matrix.EnumerateArray()) {
             row.TryGetProperty("action", out _).ShouldBeTrue();
+            row.TryGetProperty("gate_id", out _).ShouldBeTrue();
             row.TryGetProperty("owner", out _).ShouldBeTrue();
             row.TryGetProperty("mechanism", out _).ShouldBeTrue();
             row.TryGetProperty("evidence", out _).ShouldBeTrue();
-            row.TryGetProperty("effect", out _).ShouldBeTrue();
+            row.TryGetProperty("effect", out JsonElement effect).ShouldBeTrue();
+            // Effect vocabulary must be one of the normalized set; old
+            // `blocking-with-approved-unsupported-fallback` is gone (P140).
+            effect.GetString().ShouldBeOneOf("blocking", "blocking-with-fallback", "fallback");
+            row.TryGetProperty("fallback_action", out _).ShouldBeTrue();
         }
         root_el.TryGetProperty("package_set_fingerprint", out JsonElement packageSet).ShouldBeTrue();
         packageSet.GetString().ShouldNotBeNullOrEmpty();

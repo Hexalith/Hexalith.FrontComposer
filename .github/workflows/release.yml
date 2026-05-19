@@ -37,7 +37,11 @@ env:
   RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 || '' }}
   RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}
   RELEASE_CONCURRENT_SAME_VERSION: 'true'
-  RELEASE_DRY_RUN: 'false'
+  # CR-12-4-P135 (round-6): default to dry-run at the workflow-env level so a skipped
+  # or failed "Record workflow-dispatch release inputs" step does NOT fail-open to
+  # live publish. The explicit input-override step flips this to `'false'` only when
+  # the dispatch input deliberately sets `dry_run: false`.
+  RELEASE_DRY_RUN: 'true'
   RELEASE_FROM_FORK: ${{ ((github.event.pull_request.head.repo.fork == true) || (github.event.workflow_run.head_repository.fork == true)) && 'true' || 'false' }}
   RELEASE_OWNER_APPROVED: 'false'
 
@@ -123,8 +127,13 @@ jobs:
         # CR-12-4-P96 (round-5): use GitHub Actions `name<<DELIM` heredoc form for the
         # free-form `release_approver` input so an approver value containing a literal
         # newline cannot inject additional `$GITHUB_ENV` assignments.
+        # CR-12-4-P126 (round-6): replace the 15-bit `$RANDOM`-derived delim with a
+        # 128-bit `openssl rand -hex 16` value so a workflow_dispatch caller cannot
+        # brute-force the delim (1/32768 collision per submission with the previous
+        # form). Falls back to a /dev/urandom-derived value if `openssl` is missing.
         run: |
-          delim="__EOF_RELEASE_APPROVER_${GITHUB_RUN_ID}_${RANDOM}__"
+          random_hex="$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | xxd -p -c 32)"
+          delim="__EOF_RELEASE_APPROVER_${random_hex}__"
           {
             printf 'RELEASE_OWNER_APPROVED=%s\n' "$INPUT_RELEASE_OWNER_APPROVED"
             printf 'RELEASE_APPROVER<<%s\n' "$delim"
@@ -149,25 +158,35 @@ jobs:
         # P99 — supplement the head_sha match with a branch-based fallback: any other
         #       release run on the same head_branch is recorded as same_version because
         #       semantic-release on the same branch will typically produce the same tag.
+        # CR-12-4-P134 (round-6): write paginated `gh api` output to temp FILES rather
+        # than capture into shell vars. Linux `execve(2)` env-var size limit (~128 KiB
+        # per var) silently truncated the env-passed body in busy repos, which fed a
+        # parse error into the JSONDecoder.raw_decode path and (correctly) failed
+        # closed — but blocked every release in busy repos. File-based handoff lets
+        # arbitrary stream sizes flow through.
         run: |
           set -euo pipefail
           mkdir -p release-evidence
+          runs_file=release-evidence/.concurrency-in-progress.json
+          queued_file=release-evidence/.concurrency-queued.json
           set +e
-          runs_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" 2>release-evidence/.concurrency-in-progress-stderr.txt)"
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" \
+            >"$runs_file" 2>release-evidence/.concurrency-in-progress-stderr.txt
           in_progress_rc=$?
-          queued_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" 2>release-evidence/.concurrency-queued-stderr.txt)"
+          gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" \
+            >"$queued_file" 2>release-evidence/.concurrency-queued-stderr.txt
           queued_rc=$?
           set -e
           guard_json="$(
-            RUNS_JSON="$runs_json" \
-            QUEUED_JSON="$queued_json" \
+            RUNS_FILE="$runs_file" \
+            QUEUED_FILE="$queued_file" \
             IN_PROGRESS_RC="$in_progress_rc" \
             QUEUED_RC="$queued_rc" \
             python3 - <<'PY'
           import json
           import os
 
-          def load_pages(name):
+          def load_pages(path_env):
               """Parse a stream produced by `gh api --paginate` into a flat list of runs.
 
               `gh api --paginate` emits one JSON object per page concatenated without a
@@ -175,7 +194,14 @@ jobs:
               page, then flatten `workflow_runs`. Returns `None` on parse failure so the
               caller can fail closed.
               """
-              raw = (os.environ.get(name, "") or "").strip()
+              path = os.environ.get(path_env, "")
+              if not path or not os.path.isfile(path):
+                  return []
+              try:
+                  with open(path, "r", encoding="utf-8") as fh:
+                      raw = fh.read().strip()
+              except OSError:
+                  return None
               if not raw:
                   return []
               decoder = json.JSONDecoder()
@@ -203,14 +229,19 @@ jobs:
               probe_diagnostics.append("gh api in_progress probe exited non-zero; failing closed")
           if os.environ.get("QUEUED_RC", "0") != "0":
               probe_diagnostics.append("gh api queued probe exited non-zero; failing closed")
+          # CR-12-4-P133 (round-6): if current_branch is empty (future tag-dispatch
+          # or detached-ref context), the head_branch fallback cannot fire. Fail
+          # closed by recording the gap and forcing the same-version signal `true`.
+          if not str(os.environ.get("CURRENT_BRANCH", "")).strip():
+              probe_diagnostics.append("CURRENT_BRANCH is empty; head_branch concurrency fallback disabled — failing closed")
 
-          runs_pages = load_pages("RUNS_JSON")
-          queued_pages = load_pages("QUEUED_JSON")
+          runs_pages = load_pages("RUNS_FILE")
+          queued_pages = load_pages("QUEUED_FILE")
           if runs_pages is None:
-              probe_diagnostics.append("RUNS_JSON: failed to parse paginated gh api stream")
+              probe_diagnostics.append("in_progress runs: failed to parse paginated gh api stream")
               runs_pages = []
           if queued_pages is None:
-              probe_diagnostics.append("QUEUED_JSON: failed to parse paginated gh api stream")
+              probe_diagnostics.append("queued runs: failed to parse paginated gh api stream")
               queued_pages = []
 
           runs = runs_pages + queued_pages
@@ -261,7 +292,8 @@ jobs:
           status="$(printf '%s' "$guard_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
           echo "RELEASE_CONCURRENT_SAME_VERSION=$status" >> "$GITHUB_ENV"
           printf '%s\n' "$guard_json" > release-evidence/concurrency-guard.json
-          rm -f release-evidence/.concurrency-in-progress-stderr.txt release-evidence/.concurrency-queued-stderr.txt
+          rm -f release-evidence/.concurrency-in-progress-stderr.txt release-evidence/.concurrency-queued-stderr.txt \
+                release-evidence/.concurrency-in-progress.json release-evidence/.concurrency-queued.json
           {
             echo '## Release concurrency guard'
             echo

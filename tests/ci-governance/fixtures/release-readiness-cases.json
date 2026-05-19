@@ -88,7 +88,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "48ada263f29446f699da7077617cfa0b42c6d139c7b4126115c559a6efaa7672",
+            "approved_against_fingerprints_sha256": "81ee8391ee8f1f1983cdc383db9372fb31526888377fc471ead78f70ef2c179c",
             "approver": "release-owner",
             "evidence": "release-evidence/attestation-unavailable.md",
             "expires_at": "2026-12-31T23:59:59Z",

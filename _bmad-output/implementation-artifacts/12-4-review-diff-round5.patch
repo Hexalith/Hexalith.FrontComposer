@@ -1,0 +1,1321 @@
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index f3581da..7adb13c 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -1,8 +1,12 @@
+ name: Release
+ 
+ on:
+-  push:
+-    branches: [main]
++  # NOTE (CR-12-4-D6, round-5): `push: main` removed. Release publication is gated on the
++  # workflow_dispatch `release_approver` input; a push event has no path to supply that
++  # input, so the owner-approval step always blocked anyway. Keeping the trigger surface
++  # to workflow_dispatch only matches the documented governance model in `12-4-...md`
++  # (Cheat Sheet → Current workflow state). Continuous main validation runs under the
++  # main CI workflow, not this release workflow.
+   workflow_dispatch:
+     inputs:
+       release_owner_approved:
+@@ -116,10 +120,16 @@ jobs:
+           INPUT_RELEASE_OWNER_APPROVED: ${{ inputs.release_owner_approved }}
+           INPUT_RELEASE_APPROVER: ${{ inputs.release_approver }}
+           INPUT_DRY_RUN: ${{ inputs.dry_run }}
++        # CR-12-4-P96 (round-5): use GitHub Actions `name<<DELIM` heredoc form for the
++        # free-form `release_approver` input so an approver value containing a literal
++        # newline cannot inject additional `$GITHUB_ENV` assignments.
+         run: |
++          delim="__EOF_RELEASE_APPROVER_${GITHUB_RUN_ID}_${RANDOM}__"
+           {
+             printf 'RELEASE_OWNER_APPROVED=%s\n' "$INPUT_RELEASE_OWNER_APPROVED"
+-            printf 'RELEASE_APPROVER=%s\n' "$INPUT_RELEASE_APPROVER"
++            printf 'RELEASE_APPROVER<<%s\n' "$delim"
++            printf '%s\n' "$INPUT_RELEASE_APPROVER"
++            printf '%s\n' "$delim"
+             printf 'RELEASE_DRY_RUN=%s\n' "$INPUT_DRY_RUN"
+           } >> "$GITHUB_ENV"
+ 
+@@ -127,31 +137,86 @@ jobs:
+         env:
+           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+           CURRENT_HEAD_SHA: ${{ github.sha }}
++          CURRENT_BRANCH: ${{ github.ref_name }}
++        # CR-12-4-P90/P91/P99 (round-5):
++        # P90 — `gh api --paginate ... --jq '[expr]'` concatenates one JSON array per page,
++        #       which is not valid JSON; drop `--jq` and aggregate pages in Python via a
++        #       streaming JSONDecoder so all pages are collected.
++        # P91 — replace `|| echo '[]'` (fail-open on gh outage) with explicit capture of
++        #       gh exit codes; when the probe fails, fail closed by classifying the run as
++        #       concurrent-same-version and emit a diagnostic in the typed payload + step
++        #       summary so release owners see the degraded mode.
++        # P99 — supplement the head_sha match with a branch-based fallback: any other
++        #       release run on the same head_branch is recorded as same_version because
++        #       semantic-release on the same branch will typically produce the same tag.
+         run: |
+           set -euo pipefail
+           mkdir -p release-evidence
+-          runs_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" --jq '[.workflow_runs[]?]' || echo '[]')"
+-          queued_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" --jq '[.workflow_runs[]?]' || echo '[]')"
++          set +e
++          runs_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress&per_page=100" 2>release-evidence/.concurrency-in-progress-stderr.txt)"
++          in_progress_rc=$?
++          queued_json="$(gh api --paginate "repos/${GITHUB_REPOSITORY}/actions/runs?status=queued&per_page=100" 2>release-evidence/.concurrency-queued-stderr.txt)"
++          queued_rc=$?
++          set -e
+           guard_json="$(
+-            RUNS_JSON="$runs_json" QUEUED_JSON="$queued_json" python3 - <<'PY'
++            RUNS_JSON="$runs_json" \
++            QUEUED_JSON="$queued_json" \
++            IN_PROGRESS_RC="$in_progress_rc" \
++            QUEUED_RC="$queued_rc" \
++            python3 - <<'PY'
+           import json
+           import os
+ 
+-          def load(name):
+-              raw = os.environ.get(name, "[]")
+-              try:
+-                  payload = json.loads(raw)
+-              except json.JSONDecodeError:
++          def load_pages(name):
++              """Parse a stream produced by `gh api --paginate` into a flat list of runs.
++
++              `gh api --paginate` emits one JSON object per page concatenated without a
++              delimiter. We walk the stream with `JSONDecoder.raw_decode` to recover each
++              page, then flatten `workflow_runs`. Returns `None` on parse failure so the
++              caller can fail closed.
++              """
++              raw = (os.environ.get(name, "") or "").strip()
++              if not raw:
+                   return []
+-              if isinstance(payload, list):
+-                  return payload
+-              if isinstance(payload, dict):
+-                  return payload.get("workflow_runs", []) or []
+-              return []
++              decoder = json.JSONDecoder()
++              pages = []
++              idx = 0
++              while idx < len(raw):
++                  try:
++                      obj, end = decoder.raw_decode(raw, idx)
++                  except json.JSONDecodeError:
++                      return None
++                  pages.append(obj)
++                  idx = end
++                  while idx < len(raw) and raw[idx] in " \r\n\t":
++                      idx += 1
++              runs = []
++              for page in pages:
++                  if isinstance(page, dict):
++                      runs.extend(page.get("workflow_runs", []) or [])
++                  elif isinstance(page, list):
++                      runs.extend(page)
++              return runs
++
++          probe_diagnostics = []
++          if os.environ.get("IN_PROGRESS_RC", "0") != "0":
++              probe_diagnostics.append("gh api in_progress probe exited non-zero; failing closed")
++          if os.environ.get("QUEUED_RC", "0") != "0":
++              probe_diagnostics.append("gh api queued probe exited non-zero; failing closed")
++
++          runs_pages = load_pages("RUNS_JSON")
++          queued_pages = load_pages("QUEUED_JSON")
++          if runs_pages is None:
++              probe_diagnostics.append("RUNS_JSON: failed to parse paginated gh api stream")
++              runs_pages = []
++          if queued_pages is None:
++              probe_diagnostics.append("QUEUED_JSON: failed to parse paginated gh api stream")
++              queued_pages = []
+ 
+-          runs = load("RUNS_JSON") + load("QUEUED_JSON")
++          runs = runs_pages + queued_pages
+           current_id = str(os.environ.get("GITHUB_RUN_ID", ""))
+           current_sha = str(os.environ.get("CURRENT_HEAD_SHA", ""))
++          current_branch = str(os.environ.get("CURRENT_BRANCH", ""))
+           same_version = []
+           other_release = []
+           for run in runs:
+@@ -166,17 +231,29 @@ jobs:
+                   "id": run.get("id"),
+                   "status": run.get("status"),
+                   "head_sha": run.get("head_sha"),
++                  "head_branch": run.get("head_branch"),
+                   "run_attempt": run.get("run_attempt"),
+               }
+-              if current_sha and str(run.get("head_sha", "")) == current_sha:
++              run_sha = str(run.get("head_sha", ""))
++              run_branch = str(run.get("head_branch", ""))
++              if current_sha and run_sha == current_sha:
++                  same_version.append(entry)
++              elif current_branch and run_branch == current_branch:
++                  # P99: same branch likely targets the same semantic-release tag
+                   same_version.append(entry)
+               else:
+                   other_release.append(entry)
+-          status = "true" if same_version else "false"
++
++          if probe_diagnostics:
++              status = "true"  # P91: fail closed when probe is degraded
++          else:
++              status = "true" if same_version else "false"
++
+           guard = {
+               "status": status,
+               "same_version_runs": same_version,
+               "other_release_runs": other_release,
++              "probe_diagnostics": probe_diagnostics,
+           }
+           print(json.dumps(guard, separators=(",", ":"), sort_keys=True))
+           PY
+@@ -184,12 +261,14 @@ jobs:
+           status="$(printf '%s' "$guard_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
+           echo "RELEASE_CONCURRENT_SAME_VERSION=$status" >> "$GITHUB_ENV"
+           printf '%s\n' "$guard_json" > release-evidence/concurrency-guard.json
++          rm -f release-evidence/.concurrency-in-progress-stderr.txt release-evidence/.concurrency-queued-stderr.txt
+           {
+             echo '## Release concurrency guard'
+             echo
+             echo "Same-version concurrency signal: \`$status\`"
+             echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns and same-version attempts are blocked separately by typed readiness classification.'
+-            echo 'Same-version match keys on identical `head_sha`; other in-flight release runs are recorded for audit but do not set the blocking signal.'
++            echo 'Same-version match keys on identical `head_sha` OR identical `head_branch` (P99 fallback); other in-flight release runs are recorded for audit but do not set the blocking signal.'
++            echo 'gh api probe failures fail closed (signal forced to `true`) and surface in `probe_diagnostics`.'
+           } >> "$GITHUB_STEP_SUMMARY"
+ 
+       - name: Require governed attestation fallback before publish
+@@ -240,4 +319,7 @@ jobs:
+ 
+       - name: Release budget monitor
+         if: always()
+-        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "false" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"
++        # CR-12-4-P106 (round-5): forward the real `RELEASE_FROM_FORK` value rather than
++        # hardcoding "false"; keeps the publish path and budget path consistent if a future
++        # trigger change makes fork status meaningful.
++        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "${{ env.RELEASE_FROM_FORK }}" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"
+diff --git a/.releaserc.json b/.releaserc.json
+index f82964b..186d938 100644
+--- a/.releaserc.json
++++ b/.releaserc.json
+@@ -8,8 +8,8 @@
+     [
+       "@semantic-release/exec",
+       {
+-        "prepareCmd": "mkdir -p ./release-evidence ./release-evidence/attestations && dotnet build --configuration Release -p:Version=${nextRelease.version} && dotnet pack --no-build --configuration Release --include-symbols --include-source --output ./nupkgs -p:Version=${nextRelease.version} && dotnet CycloneDX Hexalith.FrontComposer.slnx -o ./release-evidence/sbom --json --disable-github-licenses && python eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output ./release-evidence/package-inventory.json && dotnet nuget sign ./nupkgs/*.nupkg --certificate-path \"$NUGET_SIGNING_CERTIFICATE_PATH\" --certificate-password \"$NUGET_SIGNING_CERTIFICATE_PASSWORD\" --timestamper \"$NUGET_SIGNING_TIMESTAMPER\" --output ./nupkgs-signed && dotnet nuget verify ./nupkgs-signed/*.nupkg --all --verbosity normal > ./release-evidence/signing-verification.txt && if [ \"$RELEASE_ATTESTATION_STATUS\" = \"attested\" ]; then gh attestation verify ./nupkgs-signed/*.nupkg --repo \"$GITHUB_REPOSITORY\" --format json > ./release-evidence/attestations/attestation-bundle.json; fi && python eng/release_evidence.py release-budget --evidence ./release-evidence/release-budget-history.json --append-current --started-at \"$RELEASE_STARTED_AT\" --tag v${nextRelease.version} --run-id \"$GITHUB_RUN_ID\" --publish-status pre-publish --output ./release-evidence/release-budget-prepublish.json && python eng/release_evidence.py checksums --root . --pattern 'nupkgs-signed/*.nupkg' --pattern 'nupkgs/*.snupkg' --pattern 'release-evidence/sbom/**/*.json' --pattern 'release-evidence/signing-verification.txt' --pattern 'release-evidence/attestation-unavailable.md' --pattern 'release-evidence/attestations/*.json' --pattern 'release-evidence/test-results.json' --pattern 'release-evidence/release-budget-prepublish.json' --pattern 'release-evidence/concurrency-guard.json' --output ./release-evidence/checksums.json && python eng/release_evidence.py prepare-manifest --root . --inventory ./release-evidence/package-inventory.json --checksums ./release-evidence/checksums.json --signing-verification ./release-evidence/signing-verification.txt --attestation-bundle ./release-evidence/attestations/attestation-bundle.json --version ${nextRelease.version} --tag v${nextRelease.version} --benchmark-summary-hash \"$(sha256sum ./release-evidence/release-budget-prepublish.json | cut -d' ' -f1)\" --attestation-status \"$RELEASE_ATTESTATION_STATUS\" --output ./release-evidence/pre-publish-manifest.json --diagnostics-output ./release-evidence/manifest-diagnostics.json && python eng/release_evidence.py seal-manifest --manifest ./release-evidence/pre-publish-manifest.json --output ./release-evidence/sealed-manifest.json && python eng/release_evidence.py partial-publish-incident --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/partial-publish-placeholder.json --phase none --classification none --tag v${nextRelease.version} && python eng/release_evidence.py verify-manifest --root . --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/release-verification.json",
+-        "publishCmd": "python eng/release_evidence.py verify-manifest --root . --manifest ./release-evidence/sealed-manifest.json && if [ \"$RELEASE_DRY_RUN\" = \"true\" ]; then python eng/release_evidence.py classify-release --root . --evidence-root ./release-evidence --manifest ./release-evidence/sealed-manifest.json --test-results ./release-evidence/test-results.json --output ./release-evidence/release-readiness.json --require-publishable --semantic-release-state matches --concurrent-same-version \"$RELEASE_CONCURRENT_SAME_VERSION\" --event-name \"$GITHUB_EVENT_NAME\" --ref \"$GITHUB_REF\" --ref-protected \"$GITHUB_REF_PROTECTED\" --from-fork \"$RELEASE_FROM_FORK\" --dry-run true --run-attempt \"${GITHUB_RUN_ATTEMPT:-1}\" --owner-approved \"$RELEASE_OWNER_APPROVED\" --approver \"$RELEASE_APPROVER\" --approval-mechanism \"$RELEASE_APPROVAL_MECHANISM\" --attestation-status \"$RELEASE_ATTESTATION_STATUS\" --fallback-approver \"$RELEASE_ATTESTATION_FALLBACK_APPROVER\" --fallback-expires-at \"$RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT\" --fallback-approved-against-fingerprints-sha256 \"$RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256\"; exit $?; fi && { prior_release_response=$(gh api \"repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}\" 2>&1); gh_rc=$?; if [ $gh_rc -eq 0 ]; then printf '%s' \"$prior_release_response\" > ./release-evidence/prior-release.json; RELEASE_CONCURRENT_SAME_VERSION=true; elif printf '%s' \"$prior_release_response\" | grep -q 'HTTP 404'; then :; else echo \"Prior-tag probe failed transient: $prior_release_response\" >&2; exit 1; fi; } && python eng/release_evidence.py classify-release --root . --evidence-root ./release-evidence --manifest ./release-evidence/sealed-manifest.json --test-results ./release-evidence/test-results.json --output ./release-evidence/release-readiness.json --require-publishable --semantic-release-state matches --concurrent-same-version \"$RELEASE_CONCURRENT_SAME_VERSION\" --event-name \"$GITHUB_EVENT_NAME\" --ref \"$GITHUB_REF\" --ref-protected \"$GITHUB_REF_PROTECTED\" --from-fork \"$RELEASE_FROM_FORK\" --dry-run \"$RELEASE_DRY_RUN\" --run-attempt \"${GITHUB_RUN_ATTEMPT:-1}\" --owner-approved \"$RELEASE_OWNER_APPROVED\" --approver \"$RELEASE_APPROVER\" --approval-mechanism \"$RELEASE_APPROVAL_MECHANISM\" --attestation-status \"$RELEASE_ATTESTATION_STATUS\" --fallback-approver \"$RELEASE_ATTESTATION_FALLBACK_APPROVER\" --fallback-expires-at \"$RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT\" --fallback-approved-against-fingerprints-sha256 \"$RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256\" && (dotnet nuget push ./nupkgs-signed/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY --skip-duplicate || (python eng/release_evidence.py partial-publish-incident --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/partial-publish-incident.json --phase package-push --tag v${nextRelease.version} && exit 1)) && (dotnet nuget push ./nupkgs/*.snupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY --skip-duplicate || (python eng/release_evidence.py partial-publish-incident --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/partial-publish-incident.json --phase symbol-push --tag v${nextRelease.version} && exit 1))"
++        "prepareCmd": "mkdir -p ./release-evidence ./release-evidence/attestations && dotnet build --configuration Release -p:Version=${nextRelease.version} && dotnet pack --no-build --configuration Release --include-symbols --include-source --output ./nupkgs -p:Version=${nextRelease.version} && dotnet CycloneDX Hexalith.FrontComposer.slnx -o ./release-evidence/sbom --json --disable-github-licenses && python eng/release_evidence.py inventory --root . --expected eng/release-package-inventory.json --output ./release-evidence/package-inventory.json && dotnet nuget sign ./nupkgs/*.nupkg --certificate-path \"$NUGET_SIGNING_CERTIFICATE_PATH\" --certificate-password \"$NUGET_SIGNING_CERTIFICATE_PASSWORD\" --timestamper \"$NUGET_SIGNING_TIMESTAMPER\" --output ./nupkgs-signed && dotnet nuget verify ./nupkgs-signed/*.nupkg --all --verbosity normal > ./release-evidence/signing-verification.txt && if [ \"$RELEASE_ATTESTATION_STATUS\" = \"attested\" ]; then gh attestation verify ./nupkgs-signed/*.nupkg --repo \"$GITHUB_REPOSITORY\" --format json > ./release-evidence/attestations/attestation-bundle.json; fi && python eng/release_evidence.py release-budget --evidence ./release-evidence/release-budget-history.json --append-current --started-at \"$RELEASE_STARTED_AT\" --tag v${nextRelease.version} --run-id \"$GITHUB_RUN_ID\" --publish-status pre-publish --output ./release-evidence/release-budget-prepublish.json && python eng/release_evidence.py checksums --root . --pattern 'nupkgs-signed/*.nupkg' --pattern 'nupkgs/*.snupkg' --pattern 'release-evidence/sbom/**/*.json' --pattern 'release-evidence/signing-verification.txt' --pattern 'release-evidence/attestation-unavailable.md' --pattern 'release-evidence/attestations/*.json' --pattern 'release-evidence/test-results.json' --pattern 'release-evidence/release-budget-prepublish.json' --pattern 'release-evidence/concurrency-guard.json' --output ./release-evidence/checksums.json && python eng/release_evidence.py prepare-manifest --root . --inventory ./release-evidence/package-inventory.json --checksums ./release-evidence/checksums.json --signing-verification ./release-evidence/signing-verification.txt --attestation-bundle ./release-evidence/attestations/attestation-bundle.json --version ${nextRelease.version} --tag v${nextRelease.version} --benchmark-summary-hash \"$(sha256sum ./release-evidence/release-budget-prepublish.json | cut -d' ' -f1)\" --attestation-status \"$RELEASE_ATTESTATION_STATUS\" --output ./release-evidence/pre-publish-manifest.json --diagnostics-output ./release-evidence/manifest-diagnostics.json && python eng/release_evidence.py seal-manifest --manifest ./release-evidence/pre-publish-manifest.json --output ./release-evidence/sealed-manifest.json && python eng/release_evidence.py partial-publish-incident --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/partial-publish-placeholder.json --phase none --classification none --tag v${nextRelease.version} && python eng/release_evidence.py partial-publish-incident --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/partial-publish-incident.json --phase none --classification none --tag v${nextRelease.version} && printf '{\"status\":\"no-prior-release\",\"tag\":\"v${nextRelease.version}\"}\\n' > ./release-evidence/prior-release.json && python eng/release_evidence.py verify-manifest --root . --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/release-verification.json",
++        "publishCmd": "python eng/release_evidence.py verify-manifest --root . --manifest ./release-evidence/sealed-manifest.json && release_dry_run_lower=$(printf '%s' \"${RELEASE_DRY_RUN:-true}\" | tr 'A-Z' 'a-z') && { case \"$release_dry_run_lower\" in true|1|yes) is_dry_run=true ;; *) is_dry_run=false ;; esac; if [ \"$is_dry_run\" = \"true\" ]; then python eng/release_evidence.py classify-release --root . --evidence-root ./release-evidence --manifest ./release-evidence/sealed-manifest.json --test-results ./release-evidence/test-results.json --output ./release-evidence/release-readiness.json --require-publishable --semantic-release-state matches --concurrent-same-version \"$RELEASE_CONCURRENT_SAME_VERSION\" --event-name \"$GITHUB_EVENT_NAME\" --ref \"$GITHUB_REF\" --ref-protected \"$GITHUB_REF_PROTECTED\" --from-fork \"$RELEASE_FROM_FORK\" --dry-run true --run-attempt \"${GITHUB_RUN_ATTEMPT:-1}\" --owner-approved \"$RELEASE_OWNER_APPROVED\" --approver \"$RELEASE_APPROVER\" --approval-mechanism \"$RELEASE_APPROVAL_MECHANISM\" --attestation-status \"$RELEASE_ATTESTATION_STATUS\" --fallback-approver \"$RELEASE_ATTESTATION_FALLBACK_APPROVER\" --fallback-expires-at \"$RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT\" --fallback-approved-against-fingerprints-sha256 \"$RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256\"; classifier_rc=$?; if [ $classifier_rc -ne 0 ]; then exit $classifier_rc; fi; echo 'Dry-run classification complete; halting before publish side effects.' >&2; exit 1; fi; } && { prior_stderr=$(mktemp 2>/dev/null || echo ./release-evidence/.prior-tag-stderr.$$); prior_release_response=$(gh api \"repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}\" 2>\"$prior_stderr\"); gh_rc=$?; if [ $gh_rc -eq 0 ]; then printf '%s' \"$prior_release_response\" > ./release-evidence/prior-release.json; RELEASE_CONCURRENT_SAME_VERSION=true; elif grep -q 'HTTP 404\\|Not Found' \"$prior_stderr\" 2>/dev/null; then :; else echo \"Prior-tag probe failed transient (rc=$gh_rc): $(cat \"$prior_stderr\" 2>/dev/null)\" >&2; rm -f \"$prior_stderr\"; exit 1; fi; rm -f \"$prior_stderr\"; } && python eng/release_evidence.py classify-release --root . --evidence-root ./release-evidence --manifest ./release-evidence/sealed-manifest.json --test-results ./release-evidence/test-results.json --output ./release-evidence/release-readiness.json --require-publishable --semantic-release-state matches --concurrent-same-version \"$RELEASE_CONCURRENT_SAME_VERSION\" --event-name \"$GITHUB_EVENT_NAME\" --ref \"$GITHUB_REF\" --ref-protected \"$GITHUB_REF_PROTECTED\" --from-fork \"$RELEASE_FROM_FORK\" --dry-run \"$RELEASE_DRY_RUN\" --run-attempt \"${GITHUB_RUN_ATTEMPT:-1}\" --owner-approved \"$RELEASE_OWNER_APPROVED\" --approver \"$RELEASE_APPROVER\" --approval-mechanism \"$RELEASE_APPROVAL_MECHANISM\" --attestation-status \"$RELEASE_ATTESTATION_STATUS\" --fallback-approver \"$RELEASE_ATTESTATION_FALLBACK_APPROVER\" --fallback-expires-at \"$RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT\" --fallback-approved-against-fingerprints-sha256 \"$RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256\" && (dotnet nuget push ./nupkgs-signed/*.nupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY --skip-duplicate || (python eng/release_evidence.py partial-publish-incident --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/partial-publish-incident.json --phase package-push --tag v${nextRelease.version} && exit 1)) && (dotnet nuget push ./nupkgs/*.snupkg --source https://api.nuget.org/v3/index.json --api-key $NUGET_API_KEY --skip-duplicate || (python eng/release_evidence.py partial-publish-incident --manifest ./release-evidence/sealed-manifest.json --output ./release-evidence/partial-publish-incident.json --phase symbol-push --tag v${nextRelease.version} && exit 1))"
+       }
+     ],
+     [
+diff --git a/_bmad-output/implementation-artifacts/12-4-trusted-release-evidence-dry-run.md b/_bmad-output/implementation-artifacts/12-4-trusted-release-evidence-dry-run.md
+index a2e76e7..31d5938 100644
+--- a/_bmad-output/implementation-artifacts/12-4-trusted-release-evidence-dry-run.md
++++ b/_bmad-output/implementation-artifacts/12-4-trusted-release-evidence-dry-run.md
+@@ -31,7 +31,7 @@ A release owner should be able to inspect Story 12.4 evidence and know whether t
+ | Area | Required outcome |
+ | --- | --- |
+ | Primary release files | `.github/workflows/release.yml`, `.releaserc.json`, `eng/release_evidence.py`, and `eng/release-package-inventory.json`. |
+-| Current workflow state | Release runs on `main` push or `workflow_dispatch`, checks out root-level submodules only, runs release tests, generates inventory/SBOM/checksums/signing verification, seals a manifest, publishes through semantic-release, and records release-budget evidence. |
++| Current workflow state | Release runs on `workflow_dispatch` only (CR-12-4-D6, round-5: `push: main` removed because no path supplies `RELEASE_APPROVER` for push events). The workflow checks out root-level submodules only, runs release tests, generates inventory/SBOM/checksums/signing verification, seals a manifest, publishes through semantic-release, and records release-budget evidence. AC2 wording supersedes the prior `push: main`+`workflow_dispatch` formulation. |
+ | Trusted-context proof | Dry run must happen from trusted `main`/protected release context or a deliberately equivalent local proof that cannot exercise credentialed writes. PR/fork/untrusted contexts are read-only candidate evidence. |
+ | No irreversible side effects | Do not create tags, push changelog commits, publish NuGet packages, create GitHub Releases, upload attestations, or mutate external state during the dry run unless the step is explicitly approved as part of a real release. |
+ | Blocking checks before publish | Package inventory, blocking tests, SBOM, symbol package inventory, checksums, signing verification, attestation/approved fallback, redaction scan, sealed manifest verification, and rerun/partial-publish policy must pass before any publish/tag/release mutation. |
+@@ -302,7 +302,7 @@ _Code review 2026-05-17 (bmad-code-review, round 4). Layers: Blind Hunter, Edge
+ - [x] [Review][Defer] CR-12-4-Def8 [LOW] `manifest_diagnostics` continues evaluating after `--root must be an existing directory` diagnostic [`eng/release_evidence.py:314-316` approx] — P52 promised early exit; the implementation queues the diagnostic and continues, producing extra noise. Defer: minor UX issue; pick up when the diagnostics output is restructured.
+ - [x] [Review][Defer] CR-12-4-Def9 [LOW] Operator-facing `fingerprint-digest` helper subcommand absent [Edge Case Hunter E16] — operators computing fallback digests by hand can get serialization mismatches versus `canonical_sha256`. Defer: add a CLI subcommand when the first fallback approval is needed in production.
+ - [x] [Review][Defer] CR-12-4-Def10 [LOW] `verify-manifest` accepts both `--root` and `--no-root` simultaneously [Edge Case Hunter E17] — `--no-root` silently wins; operator awareness is incidental. Defer: add mutually-exclusive group when the test surface flagged a real misuse.
+-- [x] [Review][Defer] CR-12-4-Def11 [LOW] Documentation drift in Dev Agent Cheat Sheet [`12-4-trusted-release-evidence-dry-run.md` cheat sheet "Current workflow state"] — says "Release runs on `main` push or `workflow_dispatch`", but `push: main` is now read-only since P2. Defer: update the cheat sheet during epic-12 retrospective documentation pass.
++- [x] [Review][Defer→Resolved 2026-05-18] CR-12-4-Def11 [LOW] Documentation drift in Dev Agent Cheat Sheet [`12-4-trusted-release-evidence-dry-run.md` cheat sheet "Current workflow state"] — round-5 CR-12-4-D6 removed `push: main` from publish triggers and updated the cheat sheet to match. No longer deferred.
+ - [x] [Review][Defer] CR-12-4-Def12 [LOW] Null-manifest test does not assert specific diagnostic message [`tests/.../CiGovernanceTests.cs:962-963`] — `nullPackageManifest.Error.ShouldBeEmpty()` checks exit code without binding to the diagnostic text. A future code change that returns exit-1 for any reason still passes. Defer: tighten assertion when the test suite next gets a coverage hardening pass.
+ - [x] [Review][Defer] CR-12-4-Def13 [LOW] `parse_strict_bool` does not reject `bool` instances for non-boolean callers [Edge Case Hunter E14] — related to safe_run_attempt P76 above; the bool-vs-int conflation across `parse_strict_bool` callers is incidental in current callsites but a latent footgun. Defer: pick up alongside P76.
+ 
+@@ -311,6 +311,53 @@ _Code review 2026-05-17 (bmad-code-review, round 4). Layers: Blind Hunter, Edge
+ - [x] [Review][Dismiss] `fallback_record` only populated on `approved-unsupported` branch (Acceptance Auditor LOW) — scope-acceptable: `fallback-approved` classification is only reachable via the unsupported-attestation fallback path; broadening would require a parallel fallback pathway that does not exist.
+ - [x] [Review][Dismiss] `derive_release_checks` boolean normalization for `release_definition_drift` is fragile (Acceptance Auditor MEDIUM) — analyzed: the `or` short-circuit returns bool from the `any(...)` side or the unchanged CLI string `"false"`; `parse_strict_bool` handles both cleanly. No actual defect.
+ 
++_Round-5 code review 2026-05-18 (bmad-code-review). Layers: Blind Hunter, Edge Case Hunter, Acceptance Auditor. Reviewed scope: cumulative Story 12.4 diff (`_bmad-output/implementation-artifacts/.review-12-4-diff.patch`, 7 files, +2261/-57). Three parallel layers produced ~120 raw findings; consolidated below after dedup and verification against current code._
++
++- [x] [Review][Decision→Applied 2026-05-18] CR-12-4-D6 [HIGH] `RELEASE_APPROVER` env defaults to `''` and is only assigned on `workflow_dispatch`; `push: main` is permanently blocked at the owner gate [`.github/workflows/release.yml:30, 113-124, 216-225`] — AC2 says the workflow runs on `main` push or `workflow_dispatch`, but with the current wiring `push: main` always blocks because no path supplies `RELEASE_APPROVER`. Decide: (a) remove `push: main` from publish triggers and document that workflow_dispatch is the sole publish-capable trigger; (b) add a `push: main` approval source (protected env var with audit logging); or (c) accept the inconsistency and update AC2 wording. Cheat-sheet `CR-12-4-Def11` already flagged related doc drift.
++- [x] [Review][Decision→Applied 2026-05-18] CR-12-4-D7 [MEDIUM] AC26 approval matrix is not surfaced as a machine-readable artifact [spec AC26 + no corresponding file] — implementation has approval mechanism via `RELEASE_APPROVAL_MECHANISM` workflow_dispatch input but no enumerable matrix listing the seven action types (NuGet publish, tag/changelog push, GitHub Release creation, attestation upload, attestation fallback, partial-publish recovery, rerun after failure) with owner/mechanism/evidence/blocking-effect fields. Decide: emit a typed `approval_matrix` block inside `classify_release_payload` output OR ship an `eng/release-approval-matrix.json` reference doc OR accept the gap as story-doc-only governance.
++- [x] [Review][Decision→Applied 2026-05-18] CR-12-4-D8 [MEDIUM] `Directory.Packages.props` is fingerprinted as a release-definition file; routine Dependabot/Renovate bumps invalidate every fallback approval [`eng/release_evidence.py:34-40, 630-635`] — operationally, weekly dependency bumps would force re-approval of any active unsupported-attestation fallback. Decide: keep strict (current fail-closed behavior, accept operational cost) OR scope fingerprint to a subset of `Directory.Packages.props` (e.g., only `<PackageReference Include="Microsoft.FluentUI...` lines) OR move package versions outside the release-definition fingerprint set with a documented rationale.
++
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P89 [CRITICAL] publishCmd dry-run branch returns classifier exit code via `exit $?`; semantic-release proceeds to `@semantic-release/github` and `@semantic-release/git` plugins when classifier exits 0 [`.releaserc.json:12`] — `if [ "$RELEASE_DRY_RUN" = "true" ]; then python ... classify-release --require-publishable ...; exit $?; fi`. If `--require-publishable` returns 0 (e.g., a trusted-main dry-run that passes all gates), semantic-release treats publishCmd as successful and runs the next plugins → tag pushed, GitHub Release created. Defense-in-depth missing. Fix: force `exit 1` after the classifier in the dry-run branch regardless of its code, OR conditionally exclude `@semantic-release/github` / `@semantic-release/git` plugins from the dry-run plugin chain.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P90 [CRITICAL] `gh api --paginate ... --jq '[.workflow_runs[]?]'` concatenates one JSON array per page; Python `json.load(sys.stdin)` fails or sees only the first page, silently authorizing concurrent same-version publishes during pagination [`.github/workflows/release.yml:133-134`] — combined with `... || echo '[]'` (see P91), a busy repo's >100 in-progress runs become invisible to the guard. Fix: switch to `gh api --paginate "...?per_page=100" --jq '.workflow_runs[]?' | jq -s '.'` (slurp into single array) OR aggregate pages explicitly in Python via the GitHub API client.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P91 [CRITICAL] Concurrency probe `gh api ... || echo '[]'` makes the same-version concurrency gate fail-open on GitHub outage, rate limit, auth failure, or 5xx [`.github/workflows/release.yml:133-134`] — a real concurrent run during a GitHub degraded mode classifies as safe. Fix: fail closed — on `gh api` non-zero, set `RELEASE_CONCURRENT_SAME_VERSION=true` and emit a diagnostic to the step summary.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P92 [HIGH] `test_results` ignores TRX `failed`, `error`, `aborted`, `timeout` counters; a run with `executed=100, failed=100` classifies as `valid` and `test_count=100`, bypassing the test gate [`eng/release_evidence.py:875-907`] — current implementation only checks `executed <= 0`. Defense-in-depth violates AC3 if `dotnet test` is ever set to `continue-on-error` or if the workflow ordering changes. Fix: read `failed`/`error`/`aborted`/`timeout` from each `<Counters>` element; append diagnostic and fail-closed if any non-zero.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P93 [HIGH] `manifest_diagnostics` symlink-rejection guard is dead code: `normalize_under_root` calls `.resolve()` which follows symlinks; subsequent `artifact.is_symlink()` is always False [`eng/release_evidence.py:455-468`] — symlinked artifacts pass the symlink check. Fix: check `(resolved_root / row['artifact_path']).is_symlink()` BEFORE `.resolve()`, or compare `os.path.realpath` to the unresolved path.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P94 [HIGH] Redaction scan allowlist `USER_FACING_EVIDENCE_FILES` excludes `signing-verification.txt`, SBOM JSON, and attestation bundles — sensitive content (certificate DN, machine paths, runner usernames) bypasses redaction [`eng/release_evidence.py:68-78, 1154-1156`] — `dotnet nuget verify` output and CycloneDX SBOM can contain Subject DN, serials, and absolute paths. Fix: extend `USER_FACING_EVIDENCE_FILES` to include `signing-verification.txt`, `attestations/*.json`, `sbom/**/*.json`, AND keep the 1MB per-file + aggregate cap (see P95).
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P95 [HIGH] `read_bounded_evidence` per-file cap 1MB but no aggregate cap; concatenated `"\n".join(raw_parts)` could grow to GBs and the canonical_sha256 over it [`eng/release_evidence.py:1165-1168`] — pathological evidence directories crash the helper. Fix: enforce aggregate cap (e.g., 8MB) and abort with typed diagnostic.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P96 [HIGH] `printf '%s\n' "$INPUT_RELEASE_APPROVER" >> "$GITHUB_ENV"` is newline-injection vulnerable; an approver value containing a literal `\n` injects arbitrary env vars [`.github/workflows/release.yml:117-124`] — GitHub Actions documents `name<<DELIM` heredoc form for multi-line values. Fix: replace plain printf with the documented heredoc pattern using a delimiter unlikely to appear in user input (e.g., `RELEASE_APPROVER<<__EOF__\n$INPUT_RELEASE_APPROVER\n__EOF__`).
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P97 [HIGH] `RELEASE_DRY_RUN` string compared with strict `= "true"`; non-canonical truthy values (`"True"`, `"TRUE"`, `"1"`, `"yes"`) fall through to the live publish branch [`.releaserc.json:12`] — GitHub Actions boolean inputs emit lowercase `true`/`false`, so safe today, but the asymmetric parsing between shell (strict) and Python (`parse_strict_bool`, liberal) creates a latent gap. Fix: normalize via `tr '[:upper:]' '[:lower:]'` before compare, or invoke a Python helper for the dry-run decision.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P98 [HIGH] `parse_signing_verification` last-package block extends to EOF; `_bounded_timestamp_evidence` 40-line cap can absorb trailing `dotnet nuget verify` summary lines containing "valid"/"verified" [`eng/release_evidence.py:262-275, 947-961`] — for releases with 6+ packages, the last package's block bleeds into the closing summary; the regex `Timestamp...(?:verified|valid|trusted|RFC\s*3161)` then matches a summary line that does not bind to the package's actual timestamp. Fix: anchor regex on a per-package `Timestamp signature is valid: <package_id>` line OR cap block by min(next-package offset, 80 lines) AND require the line to follow `Successfully verified package '<id>'` within N lines.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P99 [HIGH] Concurrency same-version detection matches on `head_sha` only; two release attempts targeting the same `nextRelease.version` from different commits classify as independent [`.github/workflows/release.yml:171-175`] — AC33 lists "package version, tag" as required signals. Fix: include a tag/version-name secondary match (e.g., search workflow_runs whose `display_title` or `name` contains `v${nextRelease.version}`), AND feed the publishCmd prior-tag probe result (`prior-release.json` presence) back into `RELEASE_CONCURRENT_SAME_VERSION` via `$GITHUB_ENV`.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P100 [HIGH] `prior-release.json` listed in `@semantic-release/github` assets but only written on prior-tag hit; healthy first releases will trigger an asset-upload warning or error [`.releaserc.json:31` + publishCmd `if [ $gh_rc -eq 0 ]` write logic] — fix: write a `{"status":"no-prior-release"}` placeholder to `prior-release.json` in prepareCmd unconditionally, mirroring the `partial-publish-placeholder.json` pattern.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P101 [HIGH] `classify-release --test-count` is run through `int(checks.get("test_count", 0) or 0)`; non-numeric values (`"unknown"`, `"3.14"`) crash with unhandled ValueError → exit 2 (helper crash) instead of typed `blocked` [`eng/release_evidence.py:718`] — caller sees crash exit instead of a deterministic `blocked` classification. Fix: wrap in try/except; on parse failure, set `test_count=0` and append a typed diagnostic to grouped_reasons.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P102 [MEDIUM] `partial-publish-placeholder.json` and `partial-publish-incident.json` are BOTH in the GitHub Release assets list but only one is written per run [`.releaserc.json:31-32`] — on a healthy release, `partial-publish-incident.json` does not exist; `@semantic-release/github` asset upload may warn or fail (plugin-version dependent). Fix: either (a) write a placeholder `partial-publish-incident.json` with `classification: none` in prepareCmd alongside the existing placeholder, or (b) remove `partial-publish-incident.json` from the static assets list and have the failure path attach it via the github plugin's dynamic-asset API.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P103 [MEDIUM] `Directory.Build.targets` and `Directory.Build.props` not in `RELEASE_DEFINITION_FILES`; symbol-package format and trim/IsTrimmable settings can drift undetected [`eng/release_evidence.py:34-40`] — AC30 binds hashes for release-definition inputs; these files define release-relevant pack/sign policy. Fix: add `"Directory.Build.targets"` and `"Directory.Build.props"` (if present) to the fingerprint list.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P104 [MEDIUM] `inventory` only scans `src/**/*.csproj`; a test or sample project misconfigured with `<IsPackable>true</IsPackable>` outside `src/` is never flagged [`eng/release_evidence.py:169-176`] — AC4 says unexpected packable projects must fail closed. Fix: expand `discover_projects` to scan the repo (excluding `bin/`, `obj/`, `_bmad-output/`, submodule roots) OR add a `CiGovernanceTests` static check that no project outside `src/` is `IsPackable=true`.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P105 [MEDIUM] `gh api ... 2>&1` in prior-tag probe mixes stderr into the captured response written to `prior-release.json` [`.releaserc.json:12`] — `gh` warnings on stderr corrupt the JSON file on success. Fix: drop `2>&1`, capture stderr separately into a diagnostic variable.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P106 [MEDIUM] `python ... release-budget ... --from-fork "false"` hardcodes the fork flag instead of using `$RELEASE_FROM_FORK` [`.github/workflows/release.yml:243`] — inconsistent with publishCmd's dynamic forwarding; not exploitable today but creates a divergence that future fork-policy changes will miss. Fix: change to `--from-fork "$RELEASE_FROM_FORK"`.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P107 [MEDIUM] `derive_release_checks` reads `--signing-verification` and `--attestation-bundle` paths without `normalize_under_root` [`eng/release_evidence.py:595-606`] — an attacker who controls these CLI args could point at any readable file. Fix: route both through `normalize_under_root` against the evidence root.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P108 [MEDIUM] `fallback_complete` accepts any string for `approved_against_fingerprints_sha256` with `.strip().lower()` only; no length or hex-format validation [`eng/release_evidence.py:1346-1349`] — a malformed digest silently mismatches and is reported as "drifted release definition" instead of a typed format diagnostic. Fix: validate `len == 64` and `re.fullmatch(r"[0-9a-f]{64}", value)` before compare; emit typed `malformed-fallback-digest` reason otherwise.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P109 [MEDIUM] `fallback.evidence` path is accepted as a string without existence check; `attestation-unavailable.md` may be missing in `ATTESTATION_UNSUPPORTED=true` runs if the "Record approved attestation fallback" step is skipped [`eng/release_evidence.py:638-664`] — phantom fallback approval. Fix: in `fallback_complete`, path-check `fallback.evidence` exists under the evidence root and is non-empty.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P110 [MEDIUM] `manifest_diagnostics` runs twice per `classify-release` invocation (once in `derive_release_checks` for paths_status, once in `classify_release_payload` for mutation/drift) [`eng/release_evidence.py:540, 740`] — double IO (per-artifact sha256 computed twice). Fix: cache the first result and pass it through.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P111 [LOW] `derive_release_checks` mutates `args.raw_evidence` in place (sanitize, then later clear) [`eng/release_evidence.py:1199-1206`] — a second invocation in the same process sees pre-sanitized data. Fix: use a local variable; do not mutate the argparse namespace.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P112 [LOW] `safe_run_attempt` accepts negative integers silently [`eng/release_evidence.py:1255-1267`] — `-5` is valid → `run_attempt > 1` false → no rerun-review classification. Fix: `if int_val < 1: return 1, "run_attempt must be ≥1 (got <value>)"`.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P113 [LOW] `parse_signing_verification` fallback regex when `package_ids=None` is non-anchored; greedy `(.+)` can mis-bind a manipulated verify line [`eng/release_evidence.py:287-296`] — caller always supplies `package_ids`, so dead path in production; only exercised by tests/fixtures. Fix: remove the fallback path OR anchor with `(?:^|\n)\s*Successfully verified package '...`.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P114 [LOW] `partial-publish-incident --classification none` writes `timestamp_utc = dt.datetime.now(...)`; the placeholder file's checksum changes every run, defeating reproducibility of the manifest seal [`eng/release_evidence.py:1132`] — fix: when `classification == "none"`, omit `timestamp_utc` (or use a fixed sentinel like `"1970-01-01T00:00:00+00:00"`).
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P115 [LOW] `partial-publish-incident --phase` accepts arbitrary string; operator typos (`packagepush` vs `package-push`) silently land in forensic JSON [`eng/release_evidence.py:1126, 1690`] — fix: validate against enum `{none, package-push, symbol-push, tag-push, github-release, attestation-upload}`.
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P116 [LOW] Missing fixture coverage for: (a) attested release without `manifest.attestation_bundle`; (b) `fallback.evidence` pointing to nonexistent file; (c) `partial_publish_state=partial` with `run_attempt=1` only; (d) string `concurrent_same_version: "true"` (boolean-only coverage today) [`tests/ci-governance/fixtures/release-readiness-cases.json`] — extend fixtures to cover the negative space called out by Edge Case Hunter (F58/F59/F60/F62).
++- [x] [Review][Patch][Applied 2026-05-18] CR-12-4-P117 [LOW] `atomic write_json` uses `p.with_suffix(p.suffix + ".tmp")` which corrupts dot-prefixed filenames (`/.hidden` → `/.tmp`) [`eng/release_evidence.py:834-838`] — no current evidence file starts with `.`, but the pattern is fragile. Fix: `p.parent / (p.name + ".tmp")`.
++
++- [x] [Review][Defer] CR-12-4-Def14 [CRITICAL] No `actions/attest-build-provenance` workflow step; `Require governed attestation fallback before publish` always exits 1 when `ATTESTATION_UNSUPPORTED != 'true'`, making the attested path structurally unreachable in production [`.github/workflows/release.yml:195-203`] — AC9 is contradicted: workflow can only release via the `approved-unsupported` fallback. Already documented as deferred (CR-12-4-P74 → CR-12-4-Def14, structural workflow restructure) in 2026-05-18 change log. Reopens when the attested path is wired.
++- [x] [Review][Defer] CR-12-4-Def15 [LOW] `release-budget` step records metrics on every event (push, dispatch, scheduled) without an `if:` guard; minor API/quota cost on non-publish triggers [`.github/workflows/release.yml:241-243`] — defer: cosmetic optimization, not a correctness defect.
++- [x] [Review][Defer] CR-12-4-Def16 [LOW] `classify_context` returns `"rerun-review"` for `run_attempt > 1` even on local-candidate evidence (developer running `--run-attempt 2` locally) [`eng/release_evidence.py:617-622`] — typed output then advises "create a fresh dispatch or new tag" which is misleading for the local case. Defer: low-impact UX issue, the local classification is still fail-closed.
++- [x] [Review][Defer] CR-12-4-Def17 [LOW] `parse_expiry` accepts years up to 9999+ (no upper bound on expiry distance) [`eng/release_evidence.py:911-922`] — operationally low risk; fallback approvals are reviewed against fingerprint drift which forces re-approval on real config changes regardless. Defer.
++
++- [x] [Review][Dismiss] `RELEASE_CONCURRENT_SAME_VERSION=true` shell-var reassignment inside publishCmd `{ }` group works only within one `sh -c` (Edge Case Hunter F17) — verified: semantic-release `@semantic-release/exec` invokes the publishCmd as a single shell, so the reassignment is visible to the immediately-following `python ... classify-release ... --concurrent-same-version "$RELEASE_CONCURRENT_SAME_VERSION"`. No defect.
++- [x] [Review][Dismiss] `snupkg` symbol packages are unsigned (Acceptance Auditor F7) — verified intentional: NuGet deprecated author-signing for `.snupkg`; the inventory and AC7 wording cover `.nupkg` signing only. No defect; documentable as a non-finding.
++- [x] [Review][Dismiss] `parse_expiry` lowercase `z` not normalized; `--expires-at 2026-12-31t23:59:59z` rejected (Edge Case Hunter F20) — verified low-impact: ISO-8601 callers in this codebase produce uppercase `Z`; the rejection is fail-closed not fail-open. No defect.
++- [x] [Review][Dismiss] `release_definition_fingerprints` invalidates fallback on every dependency bump (Edge Case Hunter F21) — promoted to decision CR-12-4-D8 above instead.
++- [x] [Review][Dismiss] Multiple Edge Case Hunter LOW items on `manifest_diagnostics` typed-row checks (F26, F27), `os.path.isabs` semantics on cross-platform manifests (F29), `read_bounded_evidence` reparse-point detection only on Windows (F31), test infra micro-issues (F52-F56) — all working as designed with intentional fail-closed defaults; no defect.
++
+ ---
+ 
+ ## Critical Decisions
+@@ -474,6 +521,7 @@ GPT-5 Codex
+ - 2026-05-17: `python jobs\preflight-code-review.py --repo . --out artifacts\release\story-12-4-status-consistency.json` reported status-artifact consistency OK across 74 story keys and failed only working-tree-cleanliness because this Story 12.4 implementation is intentionally dirty.
+ - 2026-05-17: Resolved round-3 review findings CR-12-4-P26..P61. Validation commands run: `python -m py_compile eng\release_evidence.py`; `python -m json.tool .releaserc.json > $null`; `python -m json.tool tests\ci-governance\fixtures\release-readiness-cases.json > $null`; `python eng\release_evidence.py classify-fixtures --fixtures tests\ci-governance\fixtures\release-readiness-cases.json --output artifacts\release\story-12-4-readiness-fixtures.json`; `python eng\release_evidence.py verify-manifest --manifest tests\ci-governance\fixtures\release-manifest-valid.json --no-root --output artifacts\release\story-12-4-valid-manifest-check.json`; `python eng\release_evidence.py inventory --root . --expected eng\release-package-inventory.json --output artifacts\release\story-12-4-package-inventory.json`; `python eng\release_evidence.py path-check --root . --name artifacts/release/story-12-4-package-inventory.json --output artifacts\release\story-12-4-path-check.json`; YAML parse of `.github/workflows/release.yml`; `git diff --check`.
+ - 2026-05-17: Focused governance validation passed: `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter FullyQualifiedName~CiGovernanceTests --no-restore` (23 tests). The initial full `.slnx` run exposed a transient `EventStoreTelemetryTests.QueryNotModifiedTwiceWithoutCache_TagsProtocolDriftRetry` failure and stale Windows testhost locks; isolated rerun of the telemetry test passed, the stale FrontComposer test processes were stopped, `Hexalith.FrontComposer.Testing.Tests` passed with `--blame-hang-timeout 60s --blame-hang-dump-type none`, and the final release-filtered solution lane passed: `dotnet test Hexalith.FrontComposer.slnx --configuration Release --filter "Category!=Performance&Category!=e2e-palette&Category!=NightlyProperty&Category!=Quarantined" --no-restore -m:1`.
++- 2026-05-18: Resolved round-5 review decisions CR-12-4-D6/D7/D8 and patches CR-12-4-P89..P117. D6: removed `push: main` from publish triggers (`workflow_dispatch`-only); D7: emit typed `approval_matrix` (7 rows: nuget-publish/tag-and-changelog-push/github-release-create/attestation-upload/attestation-fallback/partial-publish-recovery/rerun) inside `classify_release_payload`; D8: split fingerprint scope — `Directory.Packages.props` removed from `RELEASE_DEFINITION_FILES`, added `package_set_fingerprint` field bound from `eng/release-package-inventory.json`, `Directory.Build.props`/`Directory.Build.targets` added per P103. Critical patches: P89 dry-run forces `exit 1` after classifier; P90 `gh api --paginate` aggregated via Python `JSONDecoder.raw_decode`; P91 concurrency probe failure fails closed (`RELEASE_CONCURRENT_SAME_VERSION=true`); P92 TRX `failed`/`error`/`aborted`/`timeout` counters now fail closed; P93 symlink check moved before `normalize_under_root` resolve; P94 redaction allowlist extended to `signing-verification.txt`, attestation bundles, SBOM JSON; P95 added 8 MB aggregate evidence cap; P96 `RELEASE_APPROVER<<DELIM` heredoc env passthrough; P97 RELEASE_DRY_RUN normalized via `tr 'A-Z' 'a-z'` + `case`; P98 `_TIMESTAMP_EVIDENCE` regex anchored on `Timestamp (signature|signing certificate)` and bumped to 80-line cap; P99 concurrency probe also matches `head_branch`; P100/P102 placeholder writes for `prior-release.json` and `partial-publish-incident.json` in prepareCmd; P101 `test_count` parse failure → typed diagnostic; P104 added `discover_unexpected_packable_outside_src` (src/-only inventory + defense-in-depth scan); P105 prior-tag probe captures stderr separately; P106 release-budget step uses `$RELEASE_FROM_FORK`; P107 `normalize_under_root` applied to `--signing-verification`/`--attestation-bundle`; P108 fallback digest validated as 64-char hex; P109 fallback `evidence` file existence checked under evidence root; P110 cached manifest_diagnostics result; P111 stopped mutating `args.raw_evidence`; P112 `safe_run_attempt` rejects values < 1; P113 anchored fallback regex on line start; P114 omit `timestamp_utc` from placeholder incidents; P115 enum-validated `--phase`; P116 added 3 fixtures (`partial-publish-state-rerun-attempt1`, `concurrent-same-version-string-input`, `fallback-malformed-digest`); P117 `write_json` tmp suffix fixed via `parent / (name + ".tmp")`. CR-12-4-Def11 resolved (cheat-sheet now reflects workflow_dispatch-only triggers). Validation commands run: `python -m py_compile eng\release_evidence.py`; `python -m json.tool .releaserc.json > /dev/null`; `python -m json.tool tests\ci-governance\fixtures\release-readiness-cases.json > /dev/null`; `python -m json.tool tests\ci-governance\fixtures\release-manifest-valid.json > /dev/null`; YAML parse of `.github/workflows/release.yml`; `python eng\release_evidence.py classify-fixtures --fixtures tests\ci-governance\fixtures\release-readiness-cases.json --root . --output artifacts\release\round5-fixture-classify.json` (30 cases, status=valid); `python eng\release_evidence.py verify-manifest --no-root --manifest tests\ci-governance\fixtures\release-manifest-valid.json --output artifacts\release\round5-valid-manifest-check.json` (status=valid); `python eng\release_evidence.py inventory --root . --expected eng\release-package-inventory.json --output artifacts\release\round5-package-inventory.json` (status=valid, 7 rows, no diagnostics); `python eng\release_evidence.py path-check --root . --name artifacts/release/round5-package-inventory.json --output artifacts\release\round5-path-check.json`; `git diff --check` (no whitespace errors; CRLF warnings on sprint-status.yaml and sprint-change-proposal are expected); `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter FullyQualifiedName~CiGovernanceTests --no-restore` (26 tests passed; 23 prior + 3 new — `ReleaseEvidenceScript_EmitsApprovalMatrixAndPackageSetFingerprint`, `ReleaseEvidenceScript_TestResults_FailsClosedOnTrxFailedCounter`, `ReleaseEvidenceScript_FallbackComplete_RejectsMalformedDigest`). CR-12-4-Def14 (attestation workflow restructure) remains deferred as the sole outstanding release blocker; attested path stays unreachable in production until that lands.
+ - 2026-05-18: Resolved round-4 review findings CR-12-4-P62..P88 (excluding P74 which is deferred as `CR-12-4-Def14` for structural workflow rework; P80 verified false positive and dismissed). Applied: (a) `.github/workflows/release.yml` — wired missing `RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256` env (P62), normalized `RELEASE_CONCURRENT_SAME_VERSION` to a quoted-string default `'true'`, paginated concurrency probe across `queued` and `in_progress` runs with same-version head-SHA matching (P63/P64), removed contradictory `required: true` on `dry_run` and inverted its default to `true` (P65), routed approver/dry-run inputs through env-passthrough to neutralize printf single-quote injection (P75), wrote concurrency-guard payload via Python `json.dumps` (P73); (b) `.releaserc.json` — switched SBOM step to `.slnx` (P79), split partial-publish placeholder vs failure incident file paths (P70), added `--require-publishable` to the dry-run classify branch and propagated its exit code (P66), replaced silent prior-tag probe with explicit 404-vs-5xx fail-closed handling (P86), added `partial-publish-placeholder.json` and `prior-release.json` to GitHub Release assets (P70/P84); (c) `eng/release_evidence.py` — bounded the per-package timestamp-evidence search to a 40-line window with line-anchored regex to stop EOF-bleed (P67), uniform 2-state inventory/verification normalization (P68), added oversized-file diagnostic + Windows NTFS junction detection in `read_bounded_evidence` (P69/P87), narrowed `parse_approval_bool` truthy/falsy literals (P71), `safe_run_attempt` rejects bool instances (P76), removed per-package `attestation_bundle_sha256` (P77), `partial_publish` unknown defaults to `none` with diagnostic (P78), added baseline-fingerprint dict guard in `classify_release_payload` (P81), case-insensitive digest comparison in `fallback_complete` (P88), atomic `write_json` via tmp+replace (P85), validated `partial-publish-incident --classification` against enum (P83), `prior-release.json`/`partial-publish-placeholder.json` added to `USER_FACING_EVIDENCE_FILES` (P84), default readiness-output path when CLI parse fails without `--output` (P82), distinct exit-3 for `classify-release` output-write OSError (P72); (d) `tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs` — updated `RELEASE_CONCURRENT_SAME_VERSION: 'true'` assertion and added `?status=queued` + `RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256` assertions. Validation commands run: `python -m py_compile eng\release_evidence.py`; `python -m json.tool .releaserc.json > $null`; `python -m json.tool tests\ci-governance\fixtures\release-readiness-cases.json > $null`; YAML parse of `.github/workflows/release.yml`; `python eng\release_evidence.py classify-fixtures --fixtures tests\ci-governance\fixtures\release-readiness-cases.json --output artifacts\release\round4-fixture-classify.json` (27 cases, status=valid); `python eng\release_evidence.py verify-manifest --manifest tests\ci-governance\fixtures\release-manifest-valid.json --no-root --output artifacts\release\round4-valid-manifest-check.json` (status=valid); `python eng\release_evidence.py inventory --root . --expected eng\release-package-inventory.json --output artifacts\release\round4-package-inventory.json` (status=valid); `python eng\release_evidence.py path-check --root . --name artifacts/release/round4-package-inventory.json --output artifacts\release\round4-path-check.json`; `dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --filter FullyQualifiedName~CiGovernanceTests --no-restore` (23 tests passed).
+ 
+ ### Completion Notes List
+@@ -488,6 +536,7 @@ GPT-5 Codex
+ - 2026-05-17: Resolved the remaining Story 12.4 review follow-ups. The release helper now fails closed for missing publish evidence, verifies sealed artifact digests against disk, separates approval-domain booleans from security booleans, gives rerun owners a typed fresh-dispatch/new-tag action, and emits advisory artifact metadata. The release workflow/config now removes repository-variable publish approval bypasses, forwards fork/dry-run/concurrency evidence, records pre-publish budget hash evidence, and emits phase-specific partial-publish incident JSON only from failed NuGet push phases.
+ - 2026-05-17: Addressed round-3 code review findings CR-12-4-P26..P61. The release helper now normalizes evidence-file booleans, scopes redaction scanning to bounded user-facing evidence, avoids publishing raw evidence blobs, rejects ambiguous fallback expiry dates, validates manifest roots and artifact identity, emits fallback fingerprint metadata, and writes typed output for malformed CLI booleans. The workflow/config now removes fallback-approver variable bypasses, records workflow-dispatch dry-run input directly, probes concurrent release runs and prior tag releases, restores conditional attestation status, requires attestation bundle evidence for attested releases, writes a successful-release placeholder partial-publish incident, and blocks dry-run publish side effects.
+ - 2026-05-18: Addressed round-4 code review findings CR-12-4-P62..P88. Critical fixes wire the missing fallback-fingerprints env var, paginate the concurrency probe with same-version head-SHA matching, remove the contradictory `required: true` on the `dry_run` input and invert its default to dry-run-by-default, and force the dry-run classify branch to honor `--require-publishable` with exit-code propagation. High/medium fixes anchor the timestamp-evidence regex to a bounded per-package window, normalize inventory/verification states to a uniform vocabulary, narrow approval-token literals to {true,false,approved,denied}, reject bool-as-int run_attempts, validate `partial-publish-incident` classification, route concurrency-guard payload through `json.dumps`, atomic-write JSON outputs, case-insensitive fallback fingerprint comparison, oversize-evidence diagnostics + Windows NTFS-junction skipping, and an explicit 404-vs-5xx distinction on the prior-tag probe. CR-12-4-P74 (`actions/attest-build-provenance` workflow step) deferred to `CR-12-4-Def14` as a structural workflow restructure; CR-12-4-P80 verified false (the `_cli_bool` helper is still referenced by `require_trusted_context`).
++- 2026-05-18: Addressed round-5 code review decisions and patches CR-12-4-D6/D7/D8 + CR-12-4-P89..P117 (29 patches, 3 decisions). D6 removed `push: main` from publish triggers — workflow_dispatch is now the sole publish-capable trigger; D7 emitted a typed 7-row `approval_matrix` from `classify_release_payload` so AC26 is machine-readable; D8 split fingerprint scope so routine `Directory.Packages.props` bumps no longer invalidate fallback approvals (`package_set_fingerprint` is now a separate field bound from `eng/release-package-inventory.json`); `Directory.Build.props` and `Directory.Build.targets` joined the release-definition fingerprint set per P103. Critical defense-in-depth fixes: P89 dry-run now forces `exit 1` after classifier so `@semantic-release/github`/`git` plugins cannot fire on a successful dry-run; P90 `gh api --paginate` aggregates pages via Python `JSONDecoder.raw_decode`; P91 concurrency probe failure now fails closed; P92 TRX `failed`/`error`/`aborted`/`timeout` counters block release; P93 symlink check moved before path resolution (was dead code); P94 redaction scan now covers `signing-verification.txt`, attestation bundles, and SBOM JSON; P95 added 8 MB aggregate evidence cap. High patches: P96 RELEASE_APPROVER env passthrough now uses heredoc form to defeat newline injection; P97 RELEASE_DRY_RUN normalized via `tr` + `case`; P98 timestamp-evidence regex anchored to `Timestamp (signature|signing certificate)` and bumped to an 80-line per-package cap; P99 concurrency probe also matches `head_branch`; P100/P102 placeholder writes for `prior-release.json` and `partial-publish-incident.json` in prepareCmd so GitHub Release asset upload never warns; P101 typed diagnostic for non-numeric `test_count`. Medium/low patches: P104 added `discover_unexpected_packable_outside_src` defense-in-depth scan (kept src/-only primary inventory diff); P105 prior-tag probe captures stderr separately; P106 release-budget step uses `$RELEASE_FROM_FORK`; P107 `normalize_under_root` applied to signing-verification and attestation-bundle paths; P108 fallback digest validated as 64-char hex with typed reason; P109 fallback `evidence` file existence checked under evidence root; P110 cached manifest_diagnostics result across the two derive sites; P111 stopped mutating `args.raw_evidence`; P112 `safe_run_attempt` rejects values < 1; P113 anchored fallback regex on line start; P114 omit `timestamp_utc` from placeholder incidents (reproducible); P115 enum-validated `--phase`; P116 added 3 fixtures (`partial-publish-state-rerun-attempt1`, `concurrent-same-version-string-input`, `fallback-malformed-digest`); P117 `write_json` tmp suffix fixed for dot-prefixed names. CR-12-4-Def11 resolved (cheat-sheet now matches workflow_dispatch-only triggers). Round-5 also reopens CR-12-4-Def14 (attestation workflow restructure) as the sole outstanding production release blocker.
+ 
+ ### Party-Mode Review Trace
+ 
+@@ -524,6 +573,8 @@ GPT-5 Codex
+ - 2026-05-15: Implemented trusted release-readiness classification, owner approval gating, sealed-manifest verification hardening, negative fixtures, release workflow side-effect guards, and validation evidence; moved story to review.
+ - 2026-05-17: Addressed remaining Story 12.4 code review findings CR-12-4-P1..P15, M1..M7, and L1..L2; moved story to review after focused and release-filtered solution validation passed.
+ - 2026-05-17: Addressed Story 12.4 round-3 review findings CR-12-4-P26..P61; moved story to review after helper, governance, and release-filtered solution validation passed.
++- 2026-05-18: Addressed Story 12.4 round-4 review findings CR-12-4-P62..P88 and resolved them inline; story remained in review pending P74 (deferred as CR-12-4-Def14).
++- 2026-05-18: Addressed Story 12.4 round-5 review decisions CR-12-4-D6/D7/D8 and patches CR-12-4-P89..P117. Resolved CR-12-4-Def11 (cheat-sheet drift fixed by D6). CR-12-4-Def14 (attestation workflow restructure) remains the sole release blocker. Story status `review` retained pending Def14 follow-up; 26 governance tests pass.
+ 
+ ### File List
+ 
+diff --git a/eng/release_evidence.py b/eng/release_evidence.py
+index 5b5a6fe..40e02d2 100644
+--- a/eng/release_evidence.py
++++ b/eng/release_evidence.py
+@@ -31,12 +31,80 @@ REQUIRED_ROW_FIELDS = [
+     "attestation_status",
+     "publish_status",
+ ]
++# CR-12-4-D8 (round-5): `Directory.Packages.props` was removed from the release-definition
++# fingerprint set because routine Dependabot/Renovate bumps invalidate any active
++# unsupported-attestation fallback approval. Package-set drift is still caught by
++# `inventory` (which compares against `eng/release-package-inventory.json`) and the
++# per-row `version` checks in `manifest_diagnostics`.
++# CR-12-4-P103 (round-5): added `Directory.Build.targets` and `Directory.Build.props`
++# because they encode symbol-package format, trim/IsTrimmable, and other release-relevant
++# pack/sign policy. Files that are listed but missing on disk are simply skipped by
++# `release_definition_fingerprints`.
+ RELEASE_DEFINITION_FILES = [
+     ".github/workflows/release.yml",
+     ".releaserc.json",
+     "eng/release_evidence.py",
+     "eng/release-package-inventory.json",
+-    "Directory.Packages.props",
++    "Directory.Build.props",
++    "Directory.Build.targets",
++]
++
++# CR-12-4-D7 (round-5): the AC26 approval matrix is now a machine-readable constant
++# emitted in `classify_release_payload` so consumers can enumerate the seven approval-
++# dependent action types without parsing prose. Each entry binds: the action, the
++# required approver, the mechanism (workflow_dispatch input vs sealed fallback record),
++# the evidence that must be present, and whether the action is `blocking` (no fallback)
++# or has an `approved-unsupported` style fallback.
++APPROVAL_MATRIX = [
++    {
++        "action": "nuget-publish",
++        "owner": "release-owner",
++        "mechanism": "workflow_dispatch.release_owner_approved + release_approver",
++        "evidence": "release-readiness.json: classification=ready or fallback-approved, publish_authorized=true",
++        "effect": "blocking",
++    },
++    {
++        "action": "tag-and-changelog-push",
++        "owner": "release-owner",
++        "mechanism": "workflow_dispatch.release_owner_approved + release_approver",
++        "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/git",
++        "effect": "blocking",
++    },
++    {
++        "action": "github-release-create",
++        "owner": "release-owner",
++        "mechanism": "workflow_dispatch.release_owner_approved + release_approver",
++        "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/github",
++        "effect": "blocking",
++    },
++    {
++        "action": "attestation-upload",
++        "owner": "release-owner",
++        "mechanism": "workflow attestations: write + gh attestation verify; OR approved fallback",
++        "evidence": "manifest.attestation_status=attested with attestation_bundle, OR fallback-approved",
++        "effect": "blocking-with-approved-unsupported-fallback",
++    },
++    {
++        "action": "attestation-fallback",
++        "owner": "release-owner",
++        "mechanism": "vars.ATTESTATION_UNSUPPORTED=true + fallback_approver + fallback_expires_at + fallback_approved_against_fingerprints_sha256",
++        "evidence": "attestation-unavailable.md + sealed fallback_record (approver, expiry, fingerprint baseline)",
++        "effect": "approved-unsupported",
++    },
++    {
++        "action": "partial-publish-recovery",
++        "owner": "release-owner",
++        "mechanism": "manual review of partial-publish-incident.json + fresh workflow_dispatch with new tag",
++        "evidence": "partial-publish-incident.json (failed_phase != none) + reconciled NuGet/symbol state",
++        "effect": "blocking",
++    },
++    {
++        "action": "rerun-after-failed-or-partial-release",
++        "owner": "release-owner",
++        "mechanism": "fresh workflow_dispatch (run_attempt resets) OR new tag",
++        "evidence": "release-readiness.json: classification != rerun-review with explicit owner approval",
++        "effect": "blocking",
++    },
+ ]
+ BLOCKING_CHECKS = {
+     "checksums_status": "valid",
+@@ -76,6 +144,20 @@ USER_FACING_EVIDENCE_FILES = {
+     "release-verification.json",
+     "test-results.json",
+ }
++# CR-12-4-P94 (round-5): tool-generated evidence directories whose every file should be
++# scanned for redaction. Globs are resolved by `read_bounded_evidence`; entries are
++# relative to the evidence root. Each file is still subject to the per-file size cap
++# in `read_bounded_evidence` and the aggregate cap in CR-12-4-P95.
++USER_FACING_EVIDENCE_GLOBS = (
++    "signing-verification.txt",
++    "attestation-unavailable.md",
++    "attestations/*.json",
++    "sbom/**/*.json",
++)
++# CR-12-4-P95 (round-5): aggregate cap across all evidence files scanned by
++# `read_bounded_evidence`. Per-file cap stays at 1 MB; aggregate cap of 8 MB keeps
++# pathological evidence trees from exploding the canonical_sha256 over concatenated text.
++EVIDENCE_AGGREGATE_BYTES = 8 * 1024 * 1024
+ 
+ 
+ def sanitize(value: Any, max_len: int = MAX_FIELD) -> str:
+@@ -106,9 +188,12 @@ def write_json(path: str | pathlib.Path, payload: Any) -> None:
+     next pipeline step would read; the tmp+replace pattern guarantees the target either
+     holds the previous valid content or the complete new content.
+     """
++    # CR-12-4-P117 (round-5): `with_suffix(suffix + ".tmp")` mangles dot-prefixed names
++    # (`/.hidden` → `/.tmp`, losing the original name). Construct the tmp sibling via
++    # `parent / (name + ".tmp")` so any filename round-trips correctly.
+     p = pathlib.Path(path)
+     p.parent.mkdir(parents=True, exist_ok=True)
+-    tmp = p.with_suffix(p.suffix + ".tmp")
++    tmp = p.parent / (p.name + ".tmp")
+     tmp.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+     os.replace(tmp, p)
+ 
+@@ -166,6 +251,22 @@ def is_packable(project: pathlib.Path) -> bool:
+     return value.lower() != "false"
+ 
+ 
++_INVENTORY_OUTSIDE_SRC_DENYLIST = {
++    "bin",
++    "obj",
++    "node_modules",
++    ".git",
++    "_bmad-output",
++    "_bmad",
++    "release-evidence",
++    "nupkgs",
++    "nupkgs-signed",
++    "testresults",
++    "src",  # primary inventory surface — scanned separately by discover_projects
++    "artifacts",  # generated docs snippets etc.
++}
++
++
+ def discover_projects(repo: pathlib.Path) -> list[pathlib.Path]:
+     src = repo / "src"
+     projects = []
+@@ -176,6 +277,49 @@ def discover_projects(repo: pathlib.Path) -> list[pathlib.Path]:
+     return sorted(projects, key=lambda p: str(p.relative_to(repo)).replace("\\", "/"))
+ 
+ 
++def _is_submodule_root(repo: pathlib.Path, directory: pathlib.Path) -> bool:
++    """Return True when `directory` lies inside one of the repo's git submodule roots."""
++    gitmodules = repo / ".gitmodules"
++    if not gitmodules.exists():
++        return False
++    try:
++        text = gitmodules.read_text(encoding="utf-8")
++    except OSError:
++        return False
++    rel = str(directory.relative_to(repo)).replace("\\", "/")
++    submodule_paths = set()
++    for line in text.splitlines():
++        line = line.strip()
++        if line.startswith("path"):
++            _, _, value = line.partition("=")
++            value = value.strip()
++            if value:
++                submodule_paths.add(value)
++    return rel in submodule_paths or any(rel.startswith(path + "/") for path in submodule_paths)
++
++
++def discover_unexpected_packable_outside_src(repo: pathlib.Path) -> list[pathlib.Path]:
++    """Scan the repo for packable projects that should NOT be packable.
++
++    CR-12-4-P104 (round-5): the primary inventory diff (`discover_projects`) is keyed on
++    `src/` to preserve the expected-inventory contract. AC4 also requires that no
++    project OUTSIDE `src/` declares `<IsPackable>true</IsPackable>`; this scan reports
++    any such drift so the inventory step fails closed. Build artifacts, submodule
++    roots, and generated trees are excluded.
++    """
++    unexpected = []
++    for project in repo.rglob("*.csproj"):
++        parts_lower = [p.lower() for p in project.relative_to(repo).parts]
++        if set(parts_lower) & _INVENTORY_OUTSIDE_SRC_DENYLIST:
++            continue
++        if _is_submodule_root(repo, project.parent):
++            continue
++        if not is_packable(project):
++            continue
++        unexpected.append(project)
++    return sorted(unexpected, key=lambda p: str(p.relative_to(repo)).replace("\\", "/"))
++
++
+ def is_placeholder(value: Any) -> bool:
+     text = str(value or "")
+     return not text or text.startswith("pending-")
+@@ -257,9 +401,15 @@ def fingerprint_diff(current: dict[str, str], baseline: dict[str, str]) -> list[
+     return diagnostics
+ 
+ 
+-_TIMESTAMP_BLOCK_MAX_LINES = 40
++# CR-12-4-P98 (round-5): bound the per-package timestamp block tighter — was 40 lines,
++# now 80 lines (covers worst-case multi-line cert chain output) AND require the regex
++# to anchor on `Timestamp signature` or `Timestamp signing certificate` rather than the
++# bare word `Timestamp`. The trailing summary line `All packages verified valid` could
++# previously match the last package's block when it bled to EOF; the new regex matches
++# only true per-line Timestamp evidence.
++_TIMESTAMP_BLOCK_MAX_LINES = 80
+ _TIMESTAMP_EVIDENCE = re.compile(
+-    r"^[ \t]*Timestamp(?:[ \t]+signing[ \t]+certificate)?[: \t][^\n]*(?:verified|valid|trusted|RFC[ \t]*3161)",
++    r"^[ \t]*Timestamp(?:[ \t]+(?:signature|signing[ \t]+certificate))[: \t][^\n]*(?:verified|valid|trusted|RFC[ \t]*3161)",
+     re.IGNORECASE | re.MULTILINE,
+ )
+ 
+@@ -299,7 +449,11 @@ def parse_signing_verification(text: str, package_ids: list[str] | None = None)
+                 }
+         return statuses
+ 
+-    pattern = re.compile(r"Successfully verified package '(.+)\.(\d[0-9]+(?:\.[0-9A-Za-z.+\-]+)*)'")
++    # CR-12-4-P113 (round-5): anchor the fallback pattern at the start of a line so a
++    # maliciously crafted `dotnet nuget verify` line cannot embed a fake "verified" line
++    # inside another package's evidence and shift the package_id capture. Caller always
++    # supplies `package_ids` in production; this fallback is for tests/fixtures.
++    pattern = re.compile(r"(?:^|\n)\s*Successfully verified package '(.+?)\.(\d[0-9]+(?:\.[0-9A-Za-z.+\-]+)*)'")
+     for match in pattern.finditer(text):
+         next_match = re.search(r"Successfully verified package '", text[match.end():])
+         block_end = match.end() + next_match.start() if next_match else len(text)
+@@ -368,15 +522,35 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
+             diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
+         if root is not None and root_exists:
+             artifact_path = str(row.get("artifact_path", ""))
++            # CR-12-4-P93 (round-5): the symlink-rejection check MUST happen on the
++            # unresolved candidate path. `normalize_under_root` calls `.resolve()` which
++            # follows symlinks; calling `is_symlink()` on the resolved path always
++            # returns False, so the previous guard was dead code. Check the unresolved
++            # `root / artifact_path` (or any parent component) first; only then resolve
++            # for the existence/size/checksum checks.
+             try:
++                unresolved_candidate = (root / artifact_path) if not os.path.isabs(artifact_path) else None
++                if unresolved_candidate is None:
++                    diagnostics.append(f"{row.get('package_id')}: artifact path invalid: evidence path must be relative")
++                    continue
++                # Walk parents to catch symlinked intermediate directories.
++                symlinked = unresolved_candidate.is_symlink()
++                if not symlinked:
++                    for parent in unresolved_candidate.parents:
++                        if parent == root or parent == root.resolve():
++                            break
++                        if parent.exists() and parent.is_symlink():
++                            symlinked = True
++                            break
++                if symlinked:
++                    diagnostics.append(f"{row.get('package_id')}: sealed artifact must not be a symlink")
++                    continue
+                 artifact = normalize_under_root(root, artifact_path)
+             except SystemExit as exc:
+                 diagnostics.append(f"{row.get('package_id')}: artifact path invalid: {exc}")
+             else:
+                 if not artifact.exists():
+                     diagnostics.append(f"{row.get('package_id')}: sealed artifact missing on disk")
+-                elif artifact.is_symlink():
+-                    diagnostics.append(f"{row.get('package_id')}: sealed artifact must not be a symlink")
+                 elif not artifact.is_file():
+                     diagnostics.append(f"{row.get('package_id')}: sealed artifact must be a file")
+                 elif artifact.stat().st_size == 0:
+@@ -446,11 +620,48 @@ def _is_reparse_point(path: pathlib.Path) -> bool:
+     return bool(attrs & 0x400)  # FILE_ATTRIBUTE_REPARSE_POINT
+ 
+ 
++def _file_matches_evidence_glob(rel_path: pathlib.PurePosixPath) -> bool:
++    """Return True if a path (relative to the evidence root, POSIX-style) is in the
++    redaction-scan allowlist. CR-12-4-P94 (round-5): broadened beyond flat file names so
++    `signing-verification.txt`, attestation bundles, and SBOM JSON are scanned."""
++    name = rel_path.name
++    if name in USER_FACING_EVIDENCE_FILES:
++        return True
++    posix = rel_path.as_posix()
++    for glob in USER_FACING_EVIDENCE_GLOBS:
++        # fnmatch via PurePosixPath.match handles ** correctly with `match` only on
++        # full paths; simulate `**` by matching segment-by-segment.
++        if rel_path.match(glob):
++            return True
++        # PurePosixPath.match treats `**` as `*`; emulate recursive match manually.
++        if "**" in glob:
++            prefix, _, suffix = glob.partition("**")
++            prefix = prefix.rstrip("/")
++            suffix = suffix.lstrip("/")
++            if (not prefix or posix.startswith(prefix + "/")) and (
++                not suffix or pathlib.PurePosixPath(posix).match("*/" + suffix) or rel_path.match(suffix) or posix.endswith("/" + suffix)
++            ):
++                return True
++    return False
++
++
+ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
++    """Scan evidence files for redaction. Per-file cap + aggregate cap fail closed.
++
++    CR-12-4-P94 (round-5): the allowlist now covers `signing-verification.txt`,
++    `attestation-unavailable.md`, attestation bundle JSON, and SBOM CycloneDX JSON in
++    addition to the user-facing helper outputs.
++    CR-12-4-P95 (round-5): an aggregate cap (`EVIDENCE_AGGREGATE_BYTES`) caps the total
++    text scanned, so a pathological evidence directory cannot blow up the canonical hash
++    or memory.
++    """
+     raw_parts: list[str] = []
+     diagnostics: list[str] = []
+     if not root.exists():
+         return "", diagnostics
++    root_resolved = root.resolve()
++    aggregate_bytes = 0
++    aggregate_capped = False
+     for current, dirs, files in os.walk(root, followlinks=False):
+         current_path = pathlib.Path(current)
+         kept_dirs = []
+@@ -465,10 +676,16 @@ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
+                 continue
+             kept_dirs.append(directory)
+         dirs[:] = kept_dirs
++        if aggregate_capped:
++            break
+         for file_name in files:
+-            if file_name not in USER_FACING_EVIDENCE_FILES:
+-                continue
+             child = current_path / file_name
++            try:
++                rel = pathlib.PurePosixPath(child.resolve().relative_to(root_resolved).as_posix())
++            except (OSError, ValueError):
++                continue
++            if not _file_matches_evidence_glob(rel):
++                continue
+             try:
+                 if child.is_symlink() or _is_reparse_point(child):
+                     diagnostics.append(f"{child.name}: skipped symlinked or junction evidence file")
+@@ -479,7 +696,15 @@ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
+                 if size > _EVIDENCE_MAX_BYTES:
+                     diagnostics.append(f"{child.name}: skipped oversized evidence file ({size} bytes; max {_EVIDENCE_MAX_BYTES})")
+                     continue
++                if aggregate_bytes + size > EVIDENCE_AGGREGATE_BYTES:
++                    diagnostics.append(
++                        f"evidence aggregate cap reached ({aggregate_bytes + size} bytes; "
++                        f"cap {EVIDENCE_AGGREGATE_BYTES}); skipping remaining files starting with {child.name}"
++                    )
++                    aggregate_capped = True
++                    break
+                 raw_parts.append(child.read_text(encoding="utf-8", errors="replace"))
++                aggregate_bytes += size
+             except OSError as exc:
+                 diagnostics.append(f"{child.name}: unable to read evidence file: {sanitize(exc)}")
+     return "\n".join(raw_parts), diagnostics
+@@ -497,7 +722,18 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
+     paths_status = args.paths_status
+     redaction_status = args.redaction_status
+     helper_state = args.helper_state
+-    scanned_evidence = str(args.raw_evidence or "")
++    # CR-12-4-P111 (round-5): work against a local snapshot of `raw_evidence` rather
++    # than mutating the argparse namespace. The earlier in-place mutation meant a
++    # second invocation in the same process saw pre-sanitized data; the new local
++    # variable preserves the original arg for any downstream consumer (and for tests
++    # that reuse the namespace).
++    raw_evidence_input = str(args.raw_evidence or "")
++    raw_evidence_output = raw_evidence_input
++    scanned_evidence = raw_evidence_input
++    # CR-12-4-P110 (round-5): cache the manifest_diagnostics result so the duplicate
++    # call later (for release-definition-drift and post-seal-mutation detection) reuses
++    # the same per-artifact sha256 work rather than re-reading every .nupkg twice.
++    manifest_diags_cache: list[str] | None = None
+     if evidence_root:
+         helper_diagnostics: list[str] = []
+         verification_state, verification_diags = evidence_status_file(evidence_root / "release-verification.json")
+@@ -507,17 +743,14 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
+         # Both states share a uniform 2-state vocabulary so downstream BLOCKING_CHECKS
+         # ("valid"/"invalid") comparisons treat verification and inventory the same way.
+         inventory_status = "valid" if inventory_state == "success" else "invalid"
+-        manifest_diags = manifest_diagnostics(manifest, root)
+-        paths_status = "normalized" if not manifest_diags else "invalid"
++        manifest_diags_cache = manifest_diagnostics(manifest, root) if isinstance(manifest, dict) else []
++        paths_status = "normalized" if not manifest_diags_cache else "invalid"
+ 
+         raw_text, read_diagnostics = read_bounded_evidence(evidence_root)
+         helper_diagnostics.extend(read_diagnostics)
+-        scanned_evidence = f"{raw_text}\n{args.raw_evidence}" if args.raw_evidence else raw_text
++        scanned_evidence = f"{raw_text}\n{raw_evidence_input}" if raw_evidence_input else raw_text
+         redaction_status = "unsafe" if contains_dangerous_evidence(scanned_evidence) else "passed"
+-        if args.raw_evidence:
+-            args.raw_evidence = sanitize(args.raw_evidence)
+-        else:
+-            args.raw_evidence = ""
++        raw_evidence_output = sanitize(raw_evidence_input) if raw_evidence_input else ""
+         helper_state = "success" if not helper_diagnostics else "partial"
+         diagnostics.extend(helper_diagnostics)
+ 
+@@ -537,11 +770,25 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
+     if isinstance(manifest_rows, list) and manifest_rows:
+         checksum_status = "valid" if all(looks_like_sha256(row.get("checksum")) for row in manifest_rows if isinstance(row, dict)) else "mismatch"
+ 
+-    manifest_diags = manifest_diagnostics(manifest, root) if isinstance(manifest, dict) else ["manifest evidence is required"]
++    if manifest_diags_cache is None:
++        manifest_diags = manifest_diagnostics(manifest, root) if isinstance(manifest, dict) else ["manifest evidence is required"]
++    else:
++        manifest_diags = manifest_diags_cache
+     release_definition_drift = args.release_definition_drift or any("release-definition drift" in diagnostic for diagnostic in manifest_diags)
+     post_seal_mutation = args.post_seal_artifact_mutation or any("sealed artifact checksum does not match" in diagnostic for diagnostic in manifest_diags)
+     diagnostics.extend(diagnostic for diagnostic in manifest_diags if "release-definition drift" not in diagnostic and "sealed artifact checksum does not match" not in diagnostic)
+ 
++    # CR-12-4-P101 (round-5): defend against non-numeric test_count values. A producer
++    # writing `"test_count": "unknown"` used to crash `int(...)` and bubble up as exit 2
++    # (helper crash) instead of producing a typed `blocked` classification. Now the
++    # crash branch records a diagnostic and forces test_count=0.
++    raw_test_count = test_payload.get("test_count", args.test_count)
++    try:
++        coerced_test_count = int(raw_test_count or 0)
++    except (TypeError, ValueError):
++        diagnostics.append(f"test_count must be numeric; actual={sanitize(raw_test_count)}")
++        coerced_test_count = 0
++
+     return {
+         "checksums_status": checksum_status,
+         "concurrent_same_version": args.concurrent_same_version,
+@@ -551,7 +798,7 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
+         "inventory_status": inventory_status,
+         "paths_status": paths_status,
+         "post_seal_artifact_mutation": post_seal_mutation,
+-        "raw_evidence": args.raw_evidence,
++        "raw_evidence": raw_evidence_output,
+         "raw_evidence_sha256": canonical_sha256(scanned_evidence),
+         "recursive_submodule_command": args.recursive_submodule_command,
+         "redaction_status": redaction_status,
+@@ -559,7 +806,7 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
+         "sbom_status": sbom_status,
+         "semantic_release_state": args.semantic_release_state,
+         "signing_status": signing_status,
+-        "test_count": int(test_payload.get("test_count", args.test_count) or 0),
++        "test_count": coerced_test_count,
+         "test_status": "passed" if test_payload.get("status", args.test_status) == "valid" else test_payload.get("status", args.test_status),
+         "timestamp_status": timestamp_status,
+         "trx_present": bool(test_payload.get("trx_present", args.trx_present)),
+@@ -576,9 +823,15 @@ def safe_run_attempt(value: Any) -> tuple[int, str | None]:
+     try:
+         if isinstance(value, float):
+             return 1, f"run_attempt must be numeric integer text; actual={sanitize(value)}"
+-        return int(value), None
++        coerced = int(value)
+     except (TypeError, ValueError):
+         return 1, f"run_attempt must be numeric; actual={sanitize(value)}"
++    # CR-12-4-P112 (round-5): reject negative or zero run_attempt values; semantic
++    # `run_attempt >= 1` (GitHub Actions starts at 1) protects the rerun-review path
++    # from being silently bypassed by, e.g., `--run-attempt -5`.
++    if coerced < 1:
++        return 1, f"run_attempt must be >= 1; actual={sanitize(value)}"
++    return coerced, None
+ 
+ 
+ def classify_context(context: dict[str, Any]) -> tuple[str, list[str]]:
+@@ -635,7 +888,21 @@ def release_definition_fingerprints(root: pathlib.Path) -> dict[str, str]:
+     return fingerprints
+ 
+ 
+-def fallback_complete(fallback: dict[str, Any], fingerprints: dict[str, str] | None = None) -> tuple[bool, str | None]:
++def package_set_fingerprint(root: pathlib.Path) -> str:
++    """Compute a fingerprint of the expected package set only.
++
++    CR-12-4-D8 (round-5): split out from `release_definition_fingerprints` so routine
++    package-version bumps in `Directory.Packages.props` do not invalidate fallback
++    approvals. Drift in the package set (new/removed/renamed packages, exception status
++    changes, lockstep version contract) is captured here from `release-package-inventory.json`.
++    """
++    inventory_path = root / "eng" / "release-package-inventory.json"
++    if not inventory_path.exists():
++        return "missing"
++    return sha256_file(inventory_path)
++
++
++def fallback_complete(fallback: dict[str, Any], fingerprints: dict[str, str] | None = None, *, evidence_root: pathlib.Path | None = None) -> tuple[bool, str | None]:
+     """Validate fallback completeness. Returns (complete, diagnostic-or-None)."""
+     required = [
+         "affected_artifact",
+@@ -651,13 +918,33 @@ def fallback_complete(fallback: dict[str, Any], fingerprints: dict[str, str] | N
+     missing = [field for field in required if not fallback.get(field)]
+     if missing:
+         return False, f"fallback missing required field(s): {', '.join(missing)}"
++    # CR-12-4-P108 (round-5): validate the digest is a well-formed sha256 hex string
++    # before comparing. A malformed value (truncated, non-hex, swapped algorithm) used
++    # to be reported as a generic "drifted release definition" — operators could spend
++    # significant time chasing a release-definition drift that doesn't exist. Now they
++    # get a typed reason and a clear corrective action.
++    approved_digest_raw = str(fallback.get("approved_against_fingerprints_sha256", "")).strip()
++    if not SHA256_RE.fullmatch(approved_digest_raw):
++        return False, f"fallback approved_against_fingerprints_sha256 must be a 64-char hex sha256; actual={sanitize(approved_digest_raw)}"
+     expiry, expiry_diagnostic = parse_expiry(fallback["expires_at"])
+     if expiry is None:
+         return False, expiry_diagnostic
+     if expiry < dt.datetime.now(dt.timezone.utc).date():
+         return False, f"fallback expired on {expiry.isoformat()}"
++    # CR-12-4-P109 (round-5): path-check the evidence pointer. A fallback record with
++    # `evidence: "release-evidence/attestation-unavailable.md"` is meaningless if the
++    # file is not present — the document is the record. Phantom evidence pointers used
++    # to silently authorize releases under `fallback-approved`; now they fail closed.
++    if evidence_root is not None:
++        evidence_name = str(fallback.get("evidence", ""))
++        try:
++            evidence_path = normalize_under_root(evidence_root, evidence_name)
++        except SystemExit as exc:
++            return False, f"fallback evidence path is not normalizable under root: {sanitize(exc)}"
++        if not evidence_path.is_file() or evidence_path.stat().st_size == 0:
++            return False, f"fallback evidence file missing or empty: {sanitize(evidence_name)}"
+     if fingerprints is not None:
+-        approved_digest = str(fallback.get("approved_against_fingerprints_sha256", "")).strip().lower()
++        approved_digest = approved_digest_raw.lower()
+         current_digest = canonical_sha256(fingerprints).lower()
+         if approved_digest != current_digest:
+             return False, "fallback approved against drifted release definition"
+@@ -669,7 +956,7 @@ def contains_dangerous_evidence(value: Any) -> bool:
+     return any(pattern.search(text) for pattern in DANGEROUS_EVIDENCE_PATTERNS)
+ 
+ 
+-def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, verify_drift: bool = True) -> dict[str, Any]:
++def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, verify_drift: bool = True, evidence_root: pathlib.Path | None = None) -> dict[str, Any]:
+     context = evidence.get("context", {})
+     checks = evidence.get("checks", {})
+     approval = evidence.get("approval", {})
+@@ -755,7 +1042,10 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
+                 fingerprints_for_drift = None
+             else:
+                 fingerprints_for_drift = manifest_fingerprints
+-            complete, fallback_diagnostic = fallback_complete(fallback, fingerprints_for_drift)
++            # CR-12-4-P109 (round-5): pass the evidence root so `fallback_complete`
++            # can path-check the `evidence` pointer. A fallback that references a
++            # missing or empty `attestation-unavailable.md` is treated as incomplete.
++            complete, fallback_diagnostic = fallback_complete(fallback, fingerprints_for_drift, evidence_root=evidence_root)
+             if complete:
+                 fallback_reasons.append("GitHub artifact attestation unavailable; approved unsupported-attestation fallback is in force")
+                 fallback_record = {
+@@ -791,6 +1081,11 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
+             "approver": sanitize(approval.get("approver", "")),
+             "mechanism": sanitize(approval.get("mechanism", "")),
+         },
++        # CR-12-4-D7 (round-5): emit the AC26 approval matrix as a top-level field so
++        # consumers can enumerate the seven approval-dependent action types without
++        # parsing the story-doc prose. The matrix is the constant `APPROVAL_MATRIX`
++        # defined at module scope.
++        "approval_matrix": APPROVAL_MATRIX,
+         "advisory_artifacts": [
+             "release-evidence/release-readiness.json",
+             "release-evidence/test-results.json",
+@@ -805,6 +1100,13 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
+         },
+         "fallback_record": fallback_record,
+         "next_owner_action": next_action,
++        # CR-12-4-D8 (round-5): publish the package-set fingerprint as a separate
++        # fingerprint surface so consumers can distinguish "package set changed" (new
++        # or removed packages, exception status drift) from generic release-definition
++        # drift (workflow/helper/inventory file edits). Routine Dependabot bumps inside
++        # `Directory.Packages.props` no longer invalidate approved fallbacks because
++        # that file is no longer in `RELEASE_DEFINITION_FILES`.
++        "package_set_fingerprint": package_set_fingerprint(root),
+         "publish_authorized": publish_authorized,
+         "release_definition_fingerprints": release_definition_fingerprints(root),
+         "sanitized_raw_evidence": sanitize(checks.get("raw_evidence", "")),
+@@ -830,6 +1132,14 @@ def inventory(args: argparse.Namespace) -> int:
+         if path not in expected_by_path:
+             state = "packable" if is_packable(discovered_by_path[path]) else "non-packable"
+             diagnostics.append(f"{path}: unexpected {state} project missing from release package inventory")
++    # CR-12-4-P104 (round-5): in addition to the src/-keyed inventory diff above,
++    # report any project OUTSIDE src/ that declares `<IsPackable>true</IsPackable>`.
++    # AC4 requires unexpected packable projects to fail closed. Build artifacts,
++    # generated docs snippets, and submodule roots are excluded by
++    # `discover_unexpected_packable_outside_src`.
++    for project in discover_unexpected_packable_outside_src(repo):
++        rel = str(project.relative_to(repo)).replace("\\", "/")
++        diagnostics.append(f"{rel}: packable project outside src/ is not allowed by AC4 inventory contract")
+     for path in sorted(expected_by_path):
+         item = expected_by_path[path]
+         project = repo / item["project"]
+@@ -888,8 +1198,34 @@ def test_results(args: argparse.Namespace) -> int:
+         if counters is None:
+             diagnostics.append(f"{trx.name}: missing Counters element")
+             continue
+-        executed += int(counters.attrib.get("executed", counters.attrib.get("total", "0")))
+-        total += int(counters.attrib.get("total", "0"))
++        # CR-12-4-P92 (round-5): read failed/error/aborted/timeout counters and fail
++        # closed if ANY are non-zero. The previous implementation only checked
++        # `executed > 0`, which meant a TRX with `failed=100` would still classify
++        # `test_status: valid` and `test_count: 100`. Combined with a workflow change
++        # to `continue-on-error` (or a future helper invocation that doesn't depend on
++        # `dotnet test` exiting non-zero), failing tests could bypass AC3.
++        def _counter(attr_name: str) -> int:
++            raw = counters.attrib.get(attr_name, "0")
++            try:
++                return int(raw)
++            except (TypeError, ValueError):
++                diagnostics.append(f"{trx.name}: counter '{attr_name}' is not numeric: {sanitize(raw)}")
++                return 0
++
++        executed += _counter("executed") if "executed" in counters.attrib else _counter("total")
++        total += _counter("total")
++        failed_count = _counter("failed")
++        error_count = _counter("error")
++        aborted_count = _counter("aborted")
++        timeout_count = _counter("timeout")
++        if failed_count > 0:
++            diagnostics.append(f"{trx.name}: TRX records {failed_count} failed test(s); release tests must all pass")
++        if error_count > 0:
++            diagnostics.append(f"{trx.name}: TRX records {error_count} error test(s); release tests must all pass")
++        if aborted_count > 0:
++            diagnostics.append(f"{trx.name}: TRX records {aborted_count} aborted test(s); release tests must all pass")
++        if timeout_count > 0:
++            diagnostics.append(f"{trx.name}: TRX records {timeout_count} timed-out test(s); release tests must all pass")
+     if not trx_files:
+         diagnostics.append("release TRX evidence is missing")
+     if executed <= 0:
+@@ -960,9 +1296,20 @@ def prepare_manifest(args: argparse.Namespace) -> int:
+         for row in inventory_payload.get("rows", [])
+         if isinstance(row, dict) and row.get("packable") and row.get("package_id")
+     ]
++    # CR-12-4-P107 (round-5): route both `--signing-verification` and
++    # `--attestation-bundle` through `normalize_under_root` so an attacker (or a
++    # misconfigured operator) cannot point them at any readable file outside the
++    # release-evidence root.
++    prepare_root = pathlib.Path(args.root) if getattr(args, "root", None) else pathlib.Path(".")
+     if args.signing_verification:
+-        verification_path = pathlib.Path(args.signing_verification)
+-        if not verification_path.exists():
++        try:
++            verification_path = normalize_under_root(prepare_root, args.signing_verification)
++        except SystemExit as exc:
++            diagnostics.append(f"signing verification path invalid: {sanitize(exc)}")
++            verification_path = None
++        if verification_path is None:
++            pass  # diagnostic already appended
++        elif not verification_path.exists():
+             diagnostics.append(f"signing verification evidence is missing: {sanitize(str(verification_path))}")
+         else:
+             verification_text = verification_path.read_text(encoding="utf-8", errors="replace")
+@@ -976,8 +1323,14 @@ def prepare_manifest(args: argparse.Namespace) -> int:
+         if not args.attestation_bundle:
+             diagnostics.append("attestation bundle evidence is required for attested releases")
+         else:
+-            bundle_path = pathlib.Path(args.attestation_bundle)
+-            if not bundle_path.exists() or not bundle_path.is_file():
++            try:
++                bundle_path = normalize_under_root(prepare_root, args.attestation_bundle)
++            except SystemExit as exc:
++                diagnostics.append(f"attestation bundle path invalid: {sanitize(exc)}")
++                bundle_path = None
++            if bundle_path is None:
++                pass
++            elif not bundle_path.exists() or not bundle_path.is_file():
+                 diagnostics.append(f"attestation bundle evidence is missing: {sanitize(str(bundle_path))}")
+             elif bundle_path.stat().st_size == 0:
+                 diagnostics.append("attestation bundle evidence must not be empty")
+@@ -1026,6 +1379,11 @@ def prepare_manifest(args: argparse.Namespace) -> int:
+         "benchmark_summary_hash": args.benchmark_summary_hash,
+         "packages": packages,
+         "release_definition_fingerprints": release_definition_fingerprints(pathlib.Path(args.root)),
++        # CR-12-4-D8 (round-5): separate fingerprint scope for the package set so a
++        # routine Dependabot bump in Directory.Packages.props no longer invalidates
++        # active unsupported-attestation fallbacks. Package-set drift is still caught
++        # by inventory + this fingerprint.
++        "package_set_fingerprint": package_set_fingerprint(pathlib.Path(args.root)),
+     }
+     if attestation_bundle:
+         manifest["attestation_bundle"] = attestation_bundle
+@@ -1107,6 +1465,17 @@ def path_check(args: argparse.Namespace) -> int:
+ 
+ 
+ _PARTIAL_PUBLISH_CLASSIFICATIONS = {"none", "partial-publish-incident", "recovered"}
++# CR-12-4-P115 (round-5): validate --phase against an enum so operator typos like
++# `packagepush` vs `package-push` are caught instead of silently landing in forensic JSON.
++_PARTIAL_PUBLISH_PHASES = {
++    "none",
++    "package-push",
++    "symbol-push",
++    "tag-push",
++    "github-release",
++    "attestation-upload",
++    "post-seal-verification",
++}
+ 
+ 
+ def partial_publish_incident(args: argparse.Namespace) -> int:
+@@ -1114,6 +1483,10 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
+     if classification not in _PARTIAL_PUBLISH_CLASSIFICATIONS:
+         accepted = sorted(_PARTIAL_PUBLISH_CLASSIFICATIONS)
+         raise SystemExit(f"--classification must be one of {accepted}; actual={sanitize(args.classification)}")
++    phase = str(args.phase).strip().lower()
++    if phase not in _PARTIAL_PUBLISH_PHASES:
++        accepted_phases = sorted(_PARTIAL_PUBLISH_PHASES)
++        raise SystemExit(f"--phase must be one of {accepted_phases}; actual={sanitize(args.phase)}")
+     manifest_diagnostic = ""
+     try:
+         manifest = read_json(args.manifest) if args.manifest else {}
+@@ -1123,14 +1496,20 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
+     payload = {
+         "classification": classification,
+         "decision_contract": "frontcomposer.partial-publish-incident.v1",
+-        "failed_phase": sanitize(args.phase),
++        "failed_phase": phase,
+         "manifest_seal": manifest.get("seal", {}) if isinstance(manifest, dict) else {},
+         "next_owner_action": "no partial publish incident recorded" if classification == "none" else "release owner must reconcile NuGet packages, symbols, tags, changelog, GitHub Release assets, and attestations before retry",
+         "run_attempt": sanitize(args.run_attempt),
+         "run_id": sanitize(args.run_id),
+         "tag": sanitize(args.tag),
+-        "timestamp_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+     }
++    # CR-12-4-P114 (round-5): omit `timestamp_utc` from placeholder records so the
++    # placeholder file's checksum is reproducible across runs. Placeholders exist only
++    # to keep `@semantic-release/github` asset uploads from warning on missing files;
++    # they should not change every run. Real incidents (classification != "none") keep
++    # the timestamp because the record needs forensic provenance.
++    if classification != "none":
++        payload["timestamp_utc"] = dt.datetime.now(dt.timezone.utc).isoformat()
+     if manifest_diagnostic:
+         payload["diagnostics"] = [manifest_diagnostic]
+     write_json(args.output, payload)
+@@ -1214,7 +1593,11 @@ def classify_release(args: argparse.Namespace) -> int:
+             },
+             "manifest": manifest,
+         }
+-    decision = classify_release_payload(evidence, pathlib.Path(args.root))
++    # CR-12-4-P109 (round-5): forward `--evidence-root` to the payload classifier so
++    # `fallback_complete` can path-check the `evidence` pointer against the same root
++    # that `read_bounded_evidence` scanned.
++    evidence_root_arg = pathlib.Path(args.evidence_root) if getattr(args, "evidence_root", None) else None
++    decision = classify_release_payload(evidence, pathlib.Path(args.root), evidence_root=evidence_root_arg)
+     # If the caller omitted --output but CLI parse errors occurred, still write a typed
+     # readiness JSON to a default path so downstream tooling can distinguish CLI-parse
+     # exit 2 from "helper crashed" exit 2 by reading the typed contract.
+diff --git a/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs b/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
+index 2455b11..c7a4ee0 100644
+--- a/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
++++ b/tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
+@@ -389,12 +389,18 @@ public sealed class CiGovernanceTests {
+             Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
+             Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
+ 
++            // CR-12-4-D8 (round-5): Directory.Packages.props is no longer in the
++            // release-definition fingerprint set (routine dependency bumps would
++            // otherwise invalidate fallback approvals weekly). Directory.Build.props
++            // and Directory.Build.targets are now included (CR-12-4-P103) because
++            // they encode pack/sign/symbol policy.
+             string[] releaseDefinitionFiles = [
+                 ".github/workflows/release.yml",
+                 ".releaserc.json",
+                 "eng/release_evidence.py",
+                 "eng/release-package-inventory.json",
+-                "Directory.Packages.props",
++                "Directory.Build.props",
++                "Directory.Build.targets",
+             ];
+             foreach (string file in releaseDefinitionFiles) {
+                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
+@@ -471,12 +477,18 @@ public sealed class CiGovernanceTests {
+             Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
+             Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
+ 
++            // CR-12-4-D8 (round-5): Directory.Packages.props is no longer in the
++            // release-definition fingerprint set (routine dependency bumps would
++            // otherwise invalidate fallback approvals weekly). Directory.Build.props
++            // and Directory.Build.targets are now included (CR-12-4-P103) because
++            // they encode pack/sign/symbol policy.
+             string[] releaseDefinitionFiles = [
+                 ".github/workflows/release.yml",
+                 ".releaserc.json",
+                 "eng/release_evidence.py",
+                 "eng/release-package-inventory.json",
+-                "Directory.Packages.props",
++                "Directory.Build.props",
++                "Directory.Build.targets",
+             ];
+             foreach (string file in releaseDefinitionFiles) {
+                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
+@@ -662,12 +674,45 @@ public sealed class CiGovernanceTests {
+         workflow.ShouldNotContain("RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER");
+         workflow.ShouldContain("RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}");
+         workflow.ShouldContain("github.event.workflow_run.head_repository.fork");
++        // CR-12-4-D6 (round-5): `push: main` removed from publish triggers; only
++        // workflow_dispatch can produce a release-approver env, so any push event
++        // would have permanently blocked at the owner gate anyway. The workflow now
++        // makes that explicit by having no `push:` trigger at all.
++        workflow.ShouldNotContain("push:\n    branches: [main]");
++        // CR-12-4-P96 (round-5): RELEASE_APPROVER must use the documented `name<<DELIM`
++        // heredoc form when reading workflow_dispatch input, because the value is free-
++        // form text that may contain newlines.
++        workflow.ShouldContain("RELEASE_APPROVER<<");
++        // CR-12-4-P99 (round-5): concurrency guard fallback that classifies same-branch
++        // in-flight release runs as same_version.
++        workflow.ShouldContain("CURRENT_BRANCH:");
++        // CR-12-4-P106 (round-5): release-budget step uses dynamic RELEASE_FROM_FORK.
++        workflow.ShouldContain("--from-fork \"${{ env.RELEASE_FROM_FORK }}\"");
+ 
+         releaseConfig.ShouldContain("classify-release");
+         releaseConfig.ShouldContain("--require-publishable");
+         releaseConfig.ShouldContain("--fallback-approved-against-fingerprints-sha256");
+         releaseConfig.ShouldContain("repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}");
+-        releaseConfig.ShouldContain("if [ \\\"$RELEASE_DRY_RUN\\\" = \\\"true\\\" ]");
++        // CR-12-4-P97 (round-5): RELEASE_DRY_RUN parsing now goes through `case` on a
++        // lowercased value so non-canonical truthy values (TRUE, 1, yes) don't fall
++        // through to the live publish branch.
++        releaseConfig.ShouldContain("release_dry_run_lower=");
++        releaseConfig.ShouldContain("case \\\"$release_dry_run_lower\\\" in true|1|yes)");
++        // CR-12-4-P89 (round-5): after dry-run classification, force a non-zero exit so
++        // semantic-release halts before the `@semantic-release/github` and `git`
++        // plugins create tags / releases on what was supposed to be a no-side-effect run.
++        releaseConfig.ShouldContain("Dry-run classification complete; halting before publish side effects.");
++        // CR-12-4-P100 (round-5): prior-release.json placeholder written in prepareCmd.
++        releaseConfig.ShouldContain("\\\"status\\\":\\\"no-prior-release\\\"");
++        // CR-12-4-P102 (round-5): partial-publish-incident.json placeholder written in
++        // prepareCmd so semantic-release's GitHub plugin can always upload it.
++        releaseConfig.ShouldContain("partial-publish-incident.json --phase none --classification none");
++        // CR-12-4-P105 (round-5): prior-tag probe captures stderr separately so a
++        // stderr warning during a successful gh api call does not corrupt the JSON
++        // written to prior-release.json.
++        releaseConfig.ShouldContain("prior_stderr=");
++        releaseConfig.ShouldNotContain("gh api \\\"repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}\\\" 2>&1");
++
+         releaseConfig.ShouldContain("gh attestation verify ./nupkgs-signed/*.nupkg");
+         releaseConfig.ShouldContain("--attestation-bundle");
+         releaseConfig.ShouldContain("--evidence-root ./release-evidence");
+@@ -685,6 +730,138 @@ public sealed class CiGovernanceTests {
+             releaseConfig.IndexOf("dotnet nuget push", StringComparison.Ordinal));
+     }
+ 
++    [Fact]
++    public void ReleaseEvidenceScript_EmitsApprovalMatrixAndPackageSetFingerprint() {
++        // CR-12-4-D7 (round-5): the AC26 approval matrix must be a machine-readable
++        // top-level field of the classify-release output. CR-12-4-D8 (round-5): the
++        // separate `package_set_fingerprint` field lets consumers tell "package set
++        // changed" apart from generic release-definition drift.
++        string root = RepositoryRoot();
++        string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
++        string output = Path.Combine(Path.GetTempPath(), $"fc-classify-fixtures-{Guid.NewGuid():N}.json");
++        ProcessResult result = RunPython(root, [
++            "eng/release_evidence.py",
++            "classify-fixtures",
++            "--fixtures", fixtures,
++            "--root", root,
++            "--output", output,
++        ]);
++        result.ExitCode.ShouldBe(0);
++        // Classify a single trusted-ready case via classify-release to inspect the
++        // top-level payload that the workflow gates publish on.
++        string evidence = Path.Combine(Path.GetTempPath(), $"fc-classify-trusted-{Guid.NewGuid():N}.json");
++        string trusted = """
++        {
++          "approval": {"approved": true, "approver": "release-owner", "mechanism": "workflow_dispatch"},
++          "attestation": {"status": "attested"},
++          "checks": {
++            "checksums_status": "valid", "concurrent_same_version": false,
++            "dry_run_side_effect_attempt": false, "helper_state": "success",
++            "inventory_status": "valid", "paths_status": "normalized",
++            "post_seal_artifact_mutation": false, "recursive_submodule_command": false,
++            "redaction_status": "passed", "release_definition_drift": false,
++            "sbom_status": "present", "semantic_release_state": "matches",
++            "signing_status": "verified", "test_count": 42, "test_status": "passed",
++            "timestamp_status": "verified", "trx_present": true
++          },
++          "context": {
++            "dry_run": false, "event_name": "workflow_dispatch", "from_fork": false,
++            "partial_publish_state": "none", "ref": "refs/heads/main",
++            "ref_protected": true, "run_attempt": 1
++          },
++          "manifest": {}
++        }
++        """;
++        File.WriteAllText(evidence, trusted);
++        string decisionPath = Path.Combine(Path.GetTempPath(), $"fc-decision-{Guid.NewGuid():N}.json");
++        ProcessResult classify = RunPython(root, [
++            "eng/release_evidence.py",
++            "classify-release",
++            "--root", root,
++            "--evidence", evidence,
++            "--output", decisionPath,
++        ]);
++        // We expect a non-zero exit because the inline evidence has no real manifest;
++        // the test asserts on the JSON shape, not the success of the classification.
++        File.Exists(decisionPath).ShouldBeTrue();
++        using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(decisionPath));
++        JsonElement root_el = decision.RootElement;
++        root_el.TryGetProperty("approval_matrix", out JsonElement matrix).ShouldBeTrue();
++        matrix.ValueKind.ShouldBe(JsonValueKind.Array);
++        matrix.GetArrayLength().ShouldBe(7);
++        // Each row must carry the AC26-required fields.
++        foreach (JsonElement row in matrix.EnumerateArray()) {
++            row.TryGetProperty("action", out _).ShouldBeTrue();
++            row.TryGetProperty("owner", out _).ShouldBeTrue();
++            row.TryGetProperty("mechanism", out _).ShouldBeTrue();
++            row.TryGetProperty("evidence", out _).ShouldBeTrue();
++            row.TryGetProperty("effect", out _).ShouldBeTrue();
++        }
++        root_el.TryGetProperty("package_set_fingerprint", out JsonElement packageSet).ShouldBeTrue();
++        packageSet.GetString().ShouldNotBeNullOrEmpty();
++    }
++
++    [Fact]
++    public void ReleaseEvidenceScript_TestResults_FailsClosedOnTrxFailedCounter() {
++        // CR-12-4-P92 (round-5): TRX `failed`/`error`/`aborted`/`timeout` counters now
++        // fail closed. Previously only `executed <= 0` blocked, so a run with
++        // `executed=100, failed=100` classified as `valid` and bypassed AC3.
++        string root = RepositoryRoot();
++        string trxDir = Path.Combine(Path.GetTempPath(), $"fc-trx-failed-{Guid.NewGuid():N}");
++        Directory.CreateDirectory(trxDir);
++        string trxBody = """
++        <?xml version="1.0" encoding="UTF-8"?>
++        <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
++          <ResultSummary>
++            <Counters total="3" executed="3" passed="2" failed="1" error="0" aborted="0" timeout="0" />
++          </ResultSummary>
++        </TestRun>
++        """;
++        File.WriteAllText(Path.Combine(trxDir, "release-results.trx"), trxBody);
++        string output = Path.Combine(Path.GetTempPath(), $"fc-test-results-{Guid.NewGuid():N}.json");
++        ProcessResult result = RunPython(root, [
++            "eng/release_evidence.py",
++            "test-results",
++            "--results-dir", trxDir,
++            "--output", output,
++        ]);
++        result.ExitCode.ShouldNotBe(0);
++        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
++        doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
++        string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
++        diagnostics.ShouldContain("failed test");
++    }
++
++    [Fact]
++    public void ReleaseEvidenceScript_FallbackComplete_RejectsMalformedDigest() {
++        // CR-12-4-P108 (round-5): fallback `approved_against_fingerprints_sha256` must be
++        // a well-formed 64-char hex sha256 string. A malformed value now produces a
++        // typed `malformed-fallback-digest` reason instead of the generic "drifted
++        // release definition" message.
++        string root = RepositoryRoot();
++        string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
++        string output = Path.Combine(Path.GetTempPath(), $"fc-classify-malformed-{Guid.NewGuid():N}.json");
++        ProcessResult result = RunPython(root, [
++            "eng/release_evidence.py",
++            "classify-fixtures",
++            "--fixtures", fixtures,
++            "--root", root,
++            "--output", output,
++        ]);
++        result.ExitCode.ShouldBe(0);
++        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
++        JsonElement results = doc.RootElement.GetProperty("results");
++        bool foundCase = false;
++        foreach (JsonElement c in results.EnumerateArray()) {
++            if (c.GetProperty("name").GetString() == "fallback-malformed-digest") {
++                foundCase = true;
++                c.GetProperty("classification").GetString().ShouldBe("blocked");
++                c.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
++            }
++        }
++        foundCase.ShouldBeTrue("fixture `fallback-malformed-digest` is required for CR-12-4-P108 coverage");
++    }
++
+     [Fact]
+     public void GovernanceAutomation_UsesTrustedWriteContextsAndStableMarkers() {
+         string root = RepositoryRoot();
+diff --git a/tests/ci-governance/fixtures/release-readiness-cases.json b/tests/ci-governance/fixtures/release-readiness-cases.json
+index 34e33bc..ddd031d 100644
+--- a/tests/ci-governance/fixtures/release-readiness-cases.json
++++ b/tests/ci-governance/fixtures/release-readiness-cases.json
+@@ -395,6 +395,50 @@
+           "run_attempt": 2
+         }
+       }
++    },
++    {
++      "expected_classification": "blocked",
++      "expected_context_class": "rerun-review",
++      "expected_next_owner_action_contains": "create a fresh dispatch or new tag",
++      "expected_publish_authorized": false,
++      "name": "partial-publish-state-rerun-attempt1",
++      "override": {
++        "context": {
++          "partial_publish_state": "partial",
++          "run_attempt": 1
++        }
++      }
++    },
++    {
++      "expected_classification": "blocked",
++      "expected_publish_authorized": false,
++      "name": "concurrent-same-version-string-input",
++      "override": {
++        "checks": {
++          "concurrent_same_version": "true"
++        }
++      }
++    },
++    {
++      "expected_classification": "blocked",
++      "expected_publish_authorized": false,
++      "name": "fallback-malformed-digest",
++      "override": {
++        "attestation": {
++          "fallback": {
++            "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
++            "approved_against_fingerprints_sha256": "not-a-hex-sha256",
++            "approver": "release-owner",
++            "evidence": "release-evidence/attestation-unavailable.md",
++            "expires_at": "2026-12-31T23:59:59Z",
++            "reason": "GitHub artifact attestations unavailable for this repository context",
++            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
++            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
++            "scope": "v1 release candidate"
++          },
++          "status": "approved-unsupported"
++        }
++      }
+     }
+   ]
+ }
