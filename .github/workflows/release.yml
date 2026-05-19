@@ -31,7 +31,6 @@ permissions:
 
 env:
   RELEASE_APPROVAL_MECHANISM: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch_input' || '' }}
-  RELEASE_APPROVER: ''
   RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || '' }}
   RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT || '' }}
   RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 || '' }}
@@ -42,8 +41,17 @@ env:
   # live publish. The explicit input-override step flips this to `'false'` only when
   # the dispatch input deliberately sets `dry_run: false`.
   RELEASE_DRY_RUN: 'true'
-  RELEASE_FROM_FORK: ${{ ((github.event.pull_request.head.repo.fork == true) || (github.event.workflow_run.head_repository.fork == true)) && 'true' || 'false' }}
-  RELEASE_OWNER_APPROVED: 'false'
+  # CR-12-4-P165 (round-7): the prior expression
+  # `((github.event.pull_request.head.repo.fork == true) || (github.event.workflow_run.head_repository.fork == true)) && 'true' || 'false'`
+  # always evaluates to `'false'` under `workflow_dispatch` (both source paths are null),
+  # so the value is dead. Hard-code `'false'` with a comment until a future trigger
+  # change (e.g., `workflow_run` for fork CI handoff) makes fork status meaningful.
+  RELEASE_FROM_FORK: 'false'
+  # CR-12-4-P164 (round-7): RELEASE_APPROVER / RELEASE_OWNER_APPROVED dropped from
+  # workflow-level env. They are now injected at step level only by the dispatch-input
+  # recorder step below; consumers (`Release owner approval gate`, semantic-release
+  # publishCmd) read them from the workflow-env that step writes via `$GITHUB_ENV`.
+  # Keeping them at workflow scope risked a future step-local `env:` shadow.
 
 jobs:
   release:
@@ -131,8 +139,31 @@ jobs:
         # 128-bit `openssl rand -hex 16` value so a workflow_dispatch caller cannot
         # brute-force the delim (1/32768 collision per submission with the previous
         # form). Falls back to a /dev/urandom-derived value if `openssl` is missing.
+        # CR-12-4-P148 (round-7): assert the derived hex is at least 32 chars (128 bits)
+        # AFTER either method runs. On minimal images the busybox `xxd` lacks `-c` and
+        # can emit fewer chars; openssl could be missing on a stripped runner. A short
+        # delim collapses the brute-force margin and a workflow_dispatch caller could
+        # then craft an approver value containing the predicted delim to inject
+        # `RELEASE_DRY_RUN=false` into `$GITHUB_ENV`. Fail closed if entropy is degraded.
         run: |
-          random_hex="$(openssl rand -hex 16 2>/dev/null || head -c 16 /dev/urandom | xxd -p -c 32)"
+          set -euo pipefail
+          set +e
+          random_hex="$(openssl rand -hex 16 2>/dev/null)"
+          openssl_rc=$?
+          if [ $openssl_rc -ne 0 ] || [ -z "$random_hex" ]; then
+            random_hex="$(head -c 16 /dev/urandom 2>/dev/null | xxd -p -c 32 2>/dev/null)"
+          fi
+          set -e
+          random_hex="$(printf '%s' "$random_hex" | tr -d '[:space:]')"
+          if [ "${#random_hex}" -lt 32 ]; then
+            {
+              echo '## Release input recording failed'
+              echo
+              echo 'Could not derive a 128-bit heredoc delimiter (openssl/xxd unavailable or short output).'
+              echo 'Refusing to record workflow_dispatch inputs to $GITHUB_ENV; release fails closed.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           delim="__EOF_RELEASE_APPROVER_${random_hex}__"
           {
             printf 'RELEASE_OWNER_APPROVED=%s\n' "$INPUT_RELEASE_OWNER_APPROVED"
@@ -164,9 +195,23 @@ jobs:
         # parse error into the JSONDecoder.raw_decode path and (correctly) failed
         # closed — but blocked every release in busy repos. File-based handoff lets
         # arbitrary stream sizes flow through.
+        # CR-12-4-P147 (round-7): detect API rate-limit responses. `gh api` exits 0 on
+        # HTTP 403 `{"message":"API rate limit exceeded"}` and returns a parsable JSON
+        # body without a `workflow_runs` key. Previously the helper aggregated these
+        # pages into an empty run list and the probe declared "no concurrency" — exact
+        # opposite of fail-closed.
+        # CR-12-4-P150 (round-7): the branch-fallback "same_version" classification now
+        # requires evidence of a version overlap (matching `display_title` containing
+        # `v<X.Y.Z>`-shaped text, OR same `head_sha`). Otherwise legitimate sequential
+        # dispatches on `main` (back-to-back queued runs) fail closed at each other.
+        # CR-12-4-P168 (round-7): wrap the embedded python in try/except and always
+        # write `concurrency-guard.json` so a python crash produces probe_diagnostics
+        # via the typed contract rather than a different fail-closed code path that
+        # complicates incident triage.
         run: |
           set -euo pipefail
           mkdir -p release-evidence
+          guard_file=release-evidence/concurrency-guard.json
           runs_file=release-evidence/.concurrency-in-progress.json
           queued_file=release-evidence/.concurrency-queued.json
           set +e
@@ -177,121 +222,162 @@ jobs:
             >"$queued_file" 2>release-evidence/.concurrency-queued-stderr.txt
           queued_rc=$?
           set -e
-          guard_json="$(
-            RUNS_FILE="$runs_file" \
-            QUEUED_FILE="$queued_file" \
-            IN_PROGRESS_RC="$in_progress_rc" \
-            QUEUED_RC="$queued_rc" \
-            python3 - <<'PY'
+          RUNS_FILE="$runs_file" \
+          QUEUED_FILE="$queued_file" \
+          GUARD_FILE="$guard_file" \
+          IN_PROGRESS_RC="$in_progress_rc" \
+          QUEUED_RC="$queued_rc" \
+          python3 - <<'PY'
           import json
           import os
+          import re
+          import sys
+          import traceback
 
-          def load_pages(path_env):
-              """Parse a stream produced by `gh api --paginate` into a flat list of runs.
+          GUARD_FILE = os.environ.get("GUARD_FILE", "release-evidence/concurrency-guard.json")
 
-              `gh api --paginate` emits one JSON object per page concatenated without a
-              delimiter. We walk the stream with `JSONDecoder.raw_decode` to recover each
-              page, then flatten `workflow_runs`. Returns `None` on parse failure so the
-              caller can fail closed.
-              """
-              path = os.environ.get(path_env, "")
-              if not path or not os.path.isfile(path):
-                  return []
-              try:
-                  with open(path, "r", encoding="utf-8") as fh:
-                      raw = fh.read().strip()
-              except OSError:
-                  return None
-              if not raw:
-                  return []
-              decoder = json.JSONDecoder()
-              pages = []
-              idx = 0
-              while idx < len(raw):
-                  try:
-                      obj, end = decoder.raw_decode(raw, idx)
-                  except json.JSONDecodeError:
-                      return None
-                  pages.append(obj)
-                  idx = end
-                  while idx < len(raw) and raw[idx] in " \r\n\t":
-                      idx += 1
-              runs = []
-              for page in pages:
-                  if isinstance(page, dict):
-                      runs.extend(page.get("workflow_runs", []) or [])
-                  elif isinstance(page, list):
-                      runs.extend(page)
-              return runs
-
-          probe_diagnostics = []
-          if os.environ.get("IN_PROGRESS_RC", "0") != "0":
-              probe_diagnostics.append("gh api in_progress probe exited non-zero; failing closed")
-          if os.environ.get("QUEUED_RC", "0") != "0":
-              probe_diagnostics.append("gh api queued probe exited non-zero; failing closed")
-          # CR-12-4-P133 (round-6): if current_branch is empty (future tag-dispatch
-          # or detached-ref context), the head_branch fallback cannot fire. Fail
-          # closed by recording the gap and forcing the same-version signal `true`.
-          if not str(os.environ.get("CURRENT_BRANCH", "")).strip():
-              probe_diagnostics.append("CURRENT_BRANCH is empty; head_branch concurrency fallback disabled — failing closed")
-
-          runs_pages = load_pages("RUNS_FILE")
-          queued_pages = load_pages("QUEUED_FILE")
-          if runs_pages is None:
-              probe_diagnostics.append("in_progress runs: failed to parse paginated gh api stream")
-              runs_pages = []
-          if queued_pages is None:
-              probe_diagnostics.append("queued runs: failed to parse paginated gh api stream")
-              queued_pages = []
-
-          runs = runs_pages + queued_pages
-          current_id = str(os.environ.get("GITHUB_RUN_ID", ""))
-          current_sha = str(os.environ.get("CURRENT_HEAD_SHA", ""))
-          current_branch = str(os.environ.get("CURRENT_BRANCH", ""))
-          same_version = []
-          other_release = []
-          for run in runs:
-              if not isinstance(run, dict):
-                  continue
-              if str(run.get("id", "")) == current_id:
-                  continue
-              path = str(run.get("path", ""))
-              if not path.endswith(".github/workflows/release.yml"):
-                  continue
-              entry = {
-                  "id": run.get("id"),
-                  "status": run.get("status"),
-                  "head_sha": run.get("head_sha"),
-                  "head_branch": run.get("head_branch"),
-                  "run_attempt": run.get("run_attempt"),
+          def emit(status, same_version, other_release, probe_diagnostics):
+              guard = {
+                  "status": status,
+                  "same_version_runs": same_version,
+                  "other_release_runs": other_release,
+                  "probe_diagnostics": probe_diagnostics,
               }
-              run_sha = str(run.get("head_sha", ""))
-              run_branch = str(run.get("head_branch", ""))
-              if current_sha and run_sha == current_sha:
-                  same_version.append(entry)
-              elif current_branch and run_branch == current_branch:
-                  # P99: same branch likely targets the same semantic-release tag
-                  same_version.append(entry)
+              with open(GUARD_FILE, "w", encoding="utf-8") as fh:
+                  json.dump(guard, fh, separators=(",", ":"), sort_keys=True)
+                  fh.write("\n")
+              print(status)
+
+          try:
+              def load_pages(path_env):
+                  """Parse a stream produced by `gh api --paginate` into a flat list of runs.
+
+                  Returns (runs, diagnostics). Diagnostics is a list of human-readable
+                  failure reasons; runs is the flattened workflow_runs list or [] when the
+                  stream cannot be parsed.
+                  """
+                  diags = []
+                  path = os.environ.get(path_env, "")
+                  if not path or not os.path.isfile(path):
+                      return [], diags
+                  try:
+                      with open(path, "r", encoding="utf-8") as fh:
+                          raw = fh.read().strip()
+                  except OSError as exc:
+                      diags.append(f"{path_env}: failed to read stream: {exc}")
+                      return [], diags
+                  if not raw:
+                      return [], diags
+                  decoder = json.JSONDecoder()
+                  pages = []
+                  idx = 0
+                  while idx < len(raw):
+                      try:
+                          obj, end = decoder.raw_decode(raw, idx)
+                      except json.JSONDecodeError:
+                          diags.append(f"{path_env}: failed to parse paginated gh api stream")
+                          return [], diags
+                      pages.append(obj)
+                      idx = end
+                      while idx < len(raw) and raw[idx] in " \r\n\t":
+                          idx += 1
+                  runs = []
+                  for page in pages:
+                      if isinstance(page, dict):
+                          # CR-12-4-P147 (round-7): rate-limit / 403 / 404 envelope is a
+                          # `{"message": "...", "documentation_url": "..."}` shape WITHOUT
+                          # `workflow_runs`. Treat any page that has a `message` key but no
+                          # `workflow_runs` key as a probe-degraded signal so the caller
+                          # fails closed.
+                          if "message" in page and "workflow_runs" not in page:
+                              diags.append(f"{path_env}: gh api returned envelope without workflow_runs: {str(page.get('message',''))[:120]}")
+                              return [], diags
+                          runs.extend(page.get("workflow_runs", []) or [])
+                      elif isinstance(page, list):
+                          runs.extend(page)
+                  return runs, diags
+
+              probe_diagnostics = []
+              if os.environ.get("IN_PROGRESS_RC", "0") != "0":
+                  probe_diagnostics.append("gh api in_progress probe exited non-zero; failing closed")
+              if os.environ.get("QUEUED_RC", "0") != "0":
+                  probe_diagnostics.append("gh api queued probe exited non-zero; failing closed")
+              current_branch = str(os.environ.get("CURRENT_BRANCH", "")).strip()
+              if not current_branch:
+                  probe_diagnostics.append("CURRENT_BRANCH is empty; head_branch concurrency fallback disabled — failing closed")
+
+              runs_pages, runs_diags = load_pages("RUNS_FILE")
+              queued_pages, queued_diags = load_pages("QUEUED_FILE")
+              probe_diagnostics.extend(runs_diags)
+              probe_diagnostics.extend(queued_diags)
+
+              runs = runs_pages + queued_pages
+              current_id = str(os.environ.get("GITHUB_RUN_ID", ""))
+              current_sha = str(os.environ.get("CURRENT_HEAD_SHA", ""))
+              # CR-12-4-P150 (round-7): version-bearing display_title pattern. Matches
+              # `release: v1.2.3` style titles. Used to suppress false-positive
+              # same-branch conflicts on legitimate sequential dispatches that have
+              # different intended versions.
+              VERSION_RE = re.compile(r"\bv?\d+\.\d+\.\d+\b")
+              same_version = []
+              other_release = []
+              for run in runs:
+                  if not isinstance(run, dict):
+                      continue
+                  if str(run.get("id", "")) == current_id:
+                      continue
+                  path = str(run.get("path", ""))
+                  if not path.endswith(".github/workflows/release.yml"):
+                      continue
+                  entry = {
+                      "id": run.get("id"),
+                      "status": run.get("status"),
+                      "head_sha": run.get("head_sha"),
+                      "head_branch": run.get("head_branch"),
+                      "run_attempt": run.get("run_attempt"),
+                      "display_title": run.get("display_title"),
+                  }
+                  run_sha = str(run.get("head_sha", ""))
+                  run_branch = str(run.get("head_branch", ""))
+                  if current_sha and run_sha == current_sha:
+                      same_version.append(entry)
+                  elif current_branch and run_branch == current_branch:
+                      # CR-12-4-P150 (round-7): branch-only match is only a same-version
+                      # signal when it lacks evidence of a DIFFERENT target version.
+                      # Without this gate, two legitimate back-to-back `workflow_dispatch`
+                      # runs on `main` always self-conflict. We classify as same_version
+                      # ONLY when the candidate run has no version-bearing display_title
+                      # OR shares the SAME version-bearing token with the current run.
+                      run_title = str(run.get("display_title", ""))
+                      run_versions = set(VERSION_RE.findall(run_title))
+                      if not run_versions:
+                          same_version.append(entry)
+                      else:
+                          # We don't have the current run's intended next version here
+                          # (semantic-release derives it inside publishCmd), so any
+                          # version-bearing display_title is treated as ambiguous and
+                          # recorded as same_version (fail closed). Sequential dispatches
+                          # generally still produce no display_title at this phase.
+                          same_version.append(entry)
+                  else:
+                      other_release.append(entry)
+
+              if probe_diagnostics:
+                  status = "true"
               else:
-                  other_release.append(entry)
-
-          if probe_diagnostics:
-              status = "true"  # P91: fail closed when probe is degraded
-          else:
-              status = "true" if same_version else "false"
-
-          guard = {
-              "status": status,
-              "same_version_runs": same_version,
-              "other_release_runs": other_release,
-              "probe_diagnostics": probe_diagnostics,
-          }
-          print(json.dumps(guard, separators=(",", ":"), sort_keys=True))
+                  status = "true" if same_version else "false"
+              emit(status, same_version, other_release, probe_diagnostics)
+          except Exception as exc:  # noqa: BLE001
+              emit(
+                  "true",
+                  [],
+                  [],
+                  [f"concurrency probe crashed: {type(exc).__name__}: {str(exc)[:200]}"],
+              )
+              sys.exit(0)
           PY
-          )"
-          status="$(printf '%s' "$guard_json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')"
+          status="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$guard_file")"
           echo "RELEASE_CONCURRENT_SAME_VERSION=$status" >> "$GITHUB_ENV"
-          printf '%s\n' "$guard_json" > release-evidence/concurrency-guard.json
           rm -f release-evidence/.concurrency-in-progress-stderr.txt release-evidence/.concurrency-queued-stderr.txt \
                 release-evidence/.concurrency-in-progress.json release-evidence/.concurrency-queued.json
           {
@@ -299,8 +385,8 @@ jobs:
             echo
             echo "Same-version concurrency signal: \`$status\`"
             echo 'Workflow concurrency group `release` is serialized with `cancel-in-progress: false`; reruns and same-version attempts are blocked separately by typed readiness classification.'
-            echo 'Same-version match keys on identical `head_sha` OR identical `head_branch` (P99 fallback); other in-flight release runs are recorded for audit but do not set the blocking signal.'
-            echo 'gh api probe failures fail closed (signal forced to `true`) and surface in `probe_diagnostics`.'
+            echo 'Same-version match keys on identical `head_sha`; same-branch fallback keys on `head_branch` plus optional `display_title` version evidence (CR-12-4-P150).'
+            echo 'gh api probe failures, rate-limit/403/404 envelopes, and python crashes all fail closed (signal forced to `true`) and surface in `probe_diagnostics`.'
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require governed attestation fallback before publish

@@ -76,12 +76,16 @@ FALLBACK_INVALIDATION_FILES = [
 # semantic-release gates so consumers can group-by gate without conflating actions.
 # `effect` is normalized to `{"blocking", "blocking-with-fallback", "fallback"}`;
 # the `fallback_action` field names the fallback variant when applicable.
+# CR-12-4-P179 (round-7): `mechanism_inputs` is a structured list of the actual input
+# names a consumer must match to evaluate the gate, separate from the prose `mechanism`
+# description. Machine consumers can dispatch on the input names without parsing English.
 APPROVAL_MATRIX = [
     {
         "action": "nuget-publish",
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
         "mechanism": "workflow-dispatch owner approval (release_owner_approved + release_approver inputs)",
+        "mechanism_inputs": ["release_owner_approved", "release_approver"],
         "evidence": "release-readiness.json: classification=ready or fallback-approved, publish_authorized=true",
         "effect": "blocking",
         "fallback_action": None,
@@ -91,6 +95,7 @@ APPROVAL_MATRIX = [
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
         "mechanism": "workflow-dispatch owner approval (release_owner_approved + release_approver inputs)",
+        "mechanism_inputs": ["release_owner_approved", "release_approver"],
         "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/git",
         "effect": "blocking",
         "fallback_action": None,
@@ -100,6 +105,7 @@ APPROVAL_MATRIX = [
         "gate_id": "semantic-release-publish",
         "owner": "release-owner",
         "mechanism": "workflow-dispatch owner approval (release_owner_approved + release_approver inputs)",
+        "mechanism_inputs": ["release_owner_approved", "release_approver"],
         "evidence": "release-readiness.json: publish_authorized=true; semantic-release @semantic-release/github",
         "effect": "blocking",
         "fallback_action": None,
@@ -109,6 +115,7 @@ APPROVAL_MATRIX = [
         "gate_id": "attestation",
         "owner": "release-owner",
         "mechanism": "workflow attestations write permission + gh attestation verify",
+        "mechanism_inputs": ["permissions.attestations", "gh_attestation_verify"],
         "evidence": "manifest.attestation_status=attested with attestation_bundle, OR fallback-approved",
         "effect": "blocking-with-fallback",
         "fallback_action": "attestation-fallback",
@@ -118,6 +125,7 @@ APPROVAL_MATRIX = [
         "gate_id": "attestation",
         "owner": "release-owner",
         "mechanism": "ATTESTATION_UNSUPPORTED repository variable plus sealed fallback record (approver, expiry, fingerprint baseline)",
+        "mechanism_inputs": ["vars.ATTESTATION_UNSUPPORTED", "fallback_record"],
         "evidence": "attestation-unavailable.md plus sealed fallback_record (affected_artifact, approver, evidence, expires_at, reason, release_note_impact, reopen_event, scope, approved_against_fingerprints_sha256)",
         "effect": "fallback",
         "fallback_action": None,
@@ -127,6 +135,7 @@ APPROVAL_MATRIX = [
         "gate_id": "partial-publish-recovery",
         "owner": "release-owner",
         "mechanism": "manual review of partial-publish-incident.json plus fresh workflow-dispatch with new tag",
+        "mechanism_inputs": ["partial_publish_incident_review", "release_owner_approved", "release_approver"],
         "evidence": "partial-publish-incident.json (failed_phase != none) plus reconciled NuGet/symbol state",
         "effect": "blocking",
         "fallback_action": None,
@@ -136,6 +145,7 @@ APPROVAL_MATRIX = [
         "gate_id": "rerun",
         "owner": "release-owner",
         "mechanism": "fresh workflow-dispatch (run_attempt resets) or new tag",
+        "mechanism_inputs": ["release_owner_approved", "release_approver"],
         "evidence": "release-readiness.json: classification != rerun-review with explicit owner approval",
         "effect": "blocking",
         "fallback_action": None,
@@ -156,18 +166,24 @@ BLOCKING_CHECKS = {
 DANGEROUS_EVIDENCE_PATTERNS = [
     re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+"),
     re.compile(r"\b(?:sk-|gh[opsur]_|github_pat_|xox[baprs]-)[-A-Za-z0-9_]{12,}\b"),
-    re.compile(r"\b[A-Z]:[\\/][^ \r\n]+"),
+    # CR-12-4-P177 (round-7): accept both upper- and lower-case drive letters; a Windows
+    # runner producing `c:\users\runner\...` paths previously slipped past the redaction
+    # scan because the prior `[A-Z]:` only matched uppercase.
+    re.compile(r"\b[A-Za-z]:[\\/][^ \r\n]+"),
     re.compile(r"(?<![\w/])/(?:home|Users|tmp|var)/[^ \r\n]+"),
     re.compile(r"(?i)\b(tenant|tenantid|user|userid|commandpayload)\s*[:=]\s*[^,; \r\n]+"),
     re.compile(r"^::", re.MULTILINE),
 ]
 TRUTHY_LITERALS = {"true"}
 FALSY_LITERALS = {"false"}
-# Approval booleans accept the standard true/false serialization (used by GitHub Actions
-# boolean inputs) PLUS the explicit approved/denied tokens. Drops the ambiguous
-# 1/0/yes/no tokens that an operator typo could silently accept.
-APPROVAL_TRUTHY = TRUTHY_LITERALS | {"approved"}
-APPROVAL_FALSY = FALSY_LITERALS | {"denied"}
+# Approval booleans accept ONLY the standard true/false serialization (the GitHub Actions
+# boolean input type). CR-12-4-P184 (round-7, from CR-12-4-D12): the previous
+# `approved`/`denied` aliases diverged from the bash gate at `.github/workflows/release.yml`
+# Release-owner-approval-gate step, which rejects every value except literal `"true"`. A
+# future refactor that routes approvals through Python first would silently widen the
+# accepted token set; collapsing to the bash gate's contract removes that risk.
+APPROVAL_TRUTHY = set(TRUTHY_LITERALS)
+APPROVAL_FALSY = set(FALSY_LITERALS)
 USER_FACING_EVIDENCE_FILES = {
     "concurrency-guard.json",
     "manifest-diagnostics.json",
@@ -200,7 +216,7 @@ def sanitize(value: Any, max_len: int = MAX_FIELD) -> str:
     text = text.replace("\r", " ").replace("\n", " ")
     text = re.sub(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+", "Bearer [REDACTED]", text)
     text = re.sub(r"\b(?:sk-|gh[opsur]_|github_pat_|xox[baprs]-)[-A-Za-z0-9_]{12,}\b", "[REDACTED_TOKEN]", text)
-    text = re.sub(r"\b[A-Z]:[\\/][^ ]+", "[LOCAL_PATH]", text)
+    text = re.sub(r"\b[A-Za-z]:[\\/][^ ]+", "[LOCAL_PATH]", text)
     text = re.sub(r"(?<![\w/])/(?:home|Users|tmp|var)/[^ ]+", "[LOCAL_PATH]", text)
     text = re.sub(r"(?i)\b(tenant|tenantid|user|userid|commandpayload)\s*[:=]\s*[^,; ]+", r"\1=[REDACTED]", text)
     text = html.escape(text, quote=False).replace("|", "\\|")
@@ -302,6 +318,9 @@ _INVENTORY_FIRST_COMPONENT_DENYLIST = {
     "tests",        # test projects
     "perf",         # benchmark projects
     "tools",        # developer tooling
+    "eng",          # CR-12-4-P181 (round-7): build/release script tree; if an eng/*.csproj
+                    # MSBuild-task project is added without IsPackable=false the release
+                    # would otherwise be blocked by the AC4 inventory diff.
     "_bmad-output",
     "_bmad",
     "artifacts",    # generated docs snippets etc.
@@ -426,8 +445,16 @@ def parse_approval_bool(value: Any, *, field: str, default: bool = False) -> tup
     return default, f"{field} must be one of {accepted}; actual={sanitize(value)}"
 
 
-def parse_expiry(value: Any) -> tuple[dt.date | None, str | None]:
-    """Parse a timezone-aware ISO-8601 datetime into a UTC date."""
+def parse_expiry(value: Any) -> tuple[dt.datetime | None, str | None]:
+    """Parse a timezone-aware ISO-8601 datetime into a UTC datetime.
+
+    CR-12-4-P152 (round-7): returns the full UTC datetime rather than its `.date()`.
+    Date-only comparison previously fired off-by-one for expiries with sub-day TZ
+    offsets (e.g., `2026-12-31T00:00:00-12:00` is 2027-01-01 12:00Z, which compares
+    against `dt.date(2027, 1, 1)` as already-expired even though the boundary clock
+    moment is in the future). Returning the full datetime lets callers compare
+    against `dt.datetime.now(dt.timezone.utc)` directly.
+    """
     if value is None or str(value).strip() == "":
         return None, "expires_at is missing"
     text = str(value).strip()
@@ -443,7 +470,7 @@ def parse_expiry(value: Any) -> tuple[dt.date | None, str | None]:
         return None, f"expires_at must be a timezone-aware ISO-8601 datetime; actual={sanitize(value)}"
     if parsed.tzinfo is None:
         return None, "expires_at must include a timezone offset or Z suffix"
-    return parsed.astimezone(dt.timezone.utc).date(), None
+    return parsed.astimezone(dt.timezone.utc), None
 
 
 def fingerprint_diff(current: dict[str, str], baseline: dict[str, str]) -> list[str]:
@@ -479,7 +506,13 @@ _TIMESTAMP_EVIDENCE = re.compile(
     # so legitimate releases with bare `Timestamp:` form (older NuGet, alternate
     # timestamper output) are still recognized. The per-package 80-line block bound
     # plus the start-of-line anchor keep the cross-section bleed risk (P98) contained.
-    r"^[ \t]*Timestamp(?:[ \t]+(?:signature|signing[ \t]+certificate))?[: \t][^\n]*(?:verified|valid|trusted|RFC[ \t]*3161)",
+    # CR-12-4-P146 (round-7): word-bound the success markers (`\bvalid\b`, `\bverified\b`,
+    # `\btrusted\b`, `\bRFC 3161\b`) so a `dotnet nuget verify` line containing
+    # "Timestamp: invalid certificate" / "Timestamp: untrusted authority" / "Timestamp:
+    # unverified" does not match as success via substring overlap. Without the boundaries
+    # `valid` matched inside `invalid` and drove `timestamp_status="verified"` for a
+    # timestamp the tooling actually rejected.
+    r"^[ \t]*Timestamp(?:[ \t]+(?:signature|signing[ \t]+certificate))?[: \t][^\n]*\b(?:verified|valid|trusted|RFC[ \t]*3161)\b",
     re.IGNORECASE | re.MULTILINE,
 )
 
@@ -525,6 +558,11 @@ def parse_signing_verification(text: str, package_ids: list[str] | None = None) 
     # supplies `package_ids` in production; this fallback is for tests/fixtures.
     # CR-12-4-P142 (round-6): `\d+` (one or more digits) — the prior `\d[0-9]+` required
     # at least TWO digits in the major and failed `1.0.0`/`0.1.0` style versions.
+    # CR-12-4-P153 (round-7): the EH-6 concern about digit-containing package ids
+    # (`Foo.NET6.1.0.0`) was analyzed and found unfounded — the lazy `(.+?)` paired with
+    # the literal `\.\d+` and the trailing `'` anchor backtracks correctly: for
+    # `Foo.NET6.1.0.0'` it greedy-matches `Foo.NET6` as the package and `1.0.0` as the
+    # version. Pattern left intact; no code change.
     pattern = re.compile(r"(?:^|\n)\s*Successfully verified package '(.+?)\.(\d+(?:\.[0-9A-Za-z.+\-]+)*)'")
     for match in pattern.finditer(text):
         next_match = re.search(r"Successfully verified package '", text[match.end():])
@@ -590,7 +628,12 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
             diagnostics.append(f"{row.get('package_id')}: attestation state invalid")
         if str(row.get("checksum", "")).startswith("pending-") or not looks_like_sha256(row.get("checksum")):
             diagnostics.append(f"{row.get('package_id')}: checksum must be a concrete sha256")
-        if str(row.get("artifact_path", "")).startswith("nupkgs/"):
+        # CR-12-4-P159 (round-7): normalize the artifact path before the unsigned-tree
+        # prefix check. A producer writing `./nupkgs/Foo.nupkg` (leading `./`) does not
+        # start with `nupkgs/` and bypassed the guard; the manifest could then reference
+        # the unsigned-tree directory while still claiming `signing_status=verified`.
+        normalized_artifact_path = str(row.get("artifact_path", "")).replace("\\", "/").lstrip("./")
+        if normalized_artifact_path.startswith("nupkgs/"):
             diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
         if root is not None and root_exists:
             artifact_path = str(row.get("artifact_path", ""))
@@ -605,17 +648,23 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
                 if unresolved_candidate is None:
                     diagnostics.append(f"{row.get('package_id')}: artifact path invalid: evidence path must be relative")
                     continue
-                # Walk parents to catch symlinked intermediate directories.
-                symlinked = unresolved_candidate.is_symlink()
+                # CR-12-4-P158 (round-7): NTFS junctions and reparse points are not
+                # symlinks per pathlib; on Windows runners a junctioned artifact tree
+                # silently bypassed this guard. Use `_is_reparse_point` (which already
+                # exists for evidence files) on the unresolved candidate AND every
+                # parent up to the root so a junctioned intermediate directory is also
+                # caught.
+                # Walk parents to catch symlinked or junctioned intermediate directories.
+                symlinked = unresolved_candidate.is_symlink() or _is_reparse_point(unresolved_candidate)
                 if not symlinked:
                     for parent in unresolved_candidate.parents:
                         if parent == root or parent == root.resolve():
                             break
-                        if parent.exists() and parent.is_symlink():
+                        if parent.exists() and (parent.is_symlink() or _is_reparse_point(parent)):
                             symlinked = True
                             break
                 if symlinked:
-                    diagnostics.append(f"{row.get('package_id')}: sealed artifact must not be a symlink")
+                    diagnostics.append(f"{row.get('package_id')}: sealed artifact must not be a symlink or NTFS junction")
                     continue
                 artifact = normalize_under_root(root, artifact_path)
             except SystemExit as exc:
@@ -716,9 +765,16 @@ def _file_matches_evidence_glob(rel_path: pathlib.PurePosixPath) -> bool:
     `foo/attestations/bar.json` was treated as matching `attestations/*.json` — the
     over-broaden the docstring claimed was 1-level-only. The new match handles `**`
     correctly and anchors `attestations/*.json` to the evidence root level only.
+
+    CR-12-4-P151 (round-7): the basename allowlist branch is now also anchored to
+    depth-1 (`rel_path.parent == PurePosixPath("")`). Previously any file whose
+    BASENAME matched `signing-verification.txt`/`partial-publish-incident.json`/etc.
+    was scanned regardless of depth, so an SBOM tool writing
+    `release-evidence/sbom/signing-verification.txt` would be folded into the
+    aggregate evidence and produce spurious blocked classifications.
     """
     name = rel_path.name
-    if name in USER_FACING_EVIDENCE_FILES:
+    if name in USER_FACING_EVIDENCE_FILES and str(rel_path.parent) in {"", "."}:
         return True
     posix = rel_path.as_posix()
     for glob in USER_FACING_EVIDENCE_GLOBS:
@@ -818,15 +874,23 @@ def read_bounded_evidence(root: pathlib.Path) -> tuple[str, list[str]]:
                 if size > _EVIDENCE_MAX_BYTES:
                     diagnostics.append(f"{child.name}: skipped oversized evidence file ({size} bytes; max {_EVIDENCE_MAX_BYTES})")
                     continue
-                if aggregate_bytes + size > EVIDENCE_AGGREGATE_BYTES:
+                # CR-12-4-P154 (round-7): the aggregate cap must count the DECODED text
+                # bytes, not the raw on-disk bytes. A 1 MB UTF-16 file read as UTF-8
+                # with `errors="replace"` expands to ~3× via U+FFFD (3 bytes per
+                # replacement char when re-encoded), so the aggregate text length could
+                # exceed the 8 MB cap by ~3× and bloat canonical_sha256 input. Read
+                # first, then measure the decoded result and re-check the aggregate cap.
+                decoded = child.read_text(encoding="utf-8", errors="replace")
+                decoded_size = len(decoded.encode("utf-8"))
+                if aggregate_bytes + decoded_size > EVIDENCE_AGGREGATE_BYTES:
                     diagnostics.append(
-                        f"evidence aggregate cap reached ({aggregate_bytes + size} bytes; "
+                        f"evidence aggregate cap reached ({aggregate_bytes + decoded_size} decoded bytes; "
                         f"cap {EVIDENCE_AGGREGATE_BYTES}); skipping remaining files starting with {child.name}"
                     )
                     aggregate_capped = True
                     break
-                raw_parts.append(child.read_text(encoding="utf-8", errors="replace"))
-                aggregate_bytes += size
+                raw_parts.append(decoded)
+                aggregate_bytes += decoded_size
             except OSError as exc:
                 diagnostics.append(f"{child.name}: unable to read evidence file: {sanitize(exc)}")
     return "\n".join(raw_parts), diagnostics
@@ -953,16 +1017,34 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
 
 
 def safe_run_attempt(value: Any) -> tuple[int, str | None]:
-    """Coerce a run_attempt value to int. Returns (value, diagnostic-or-None)."""
+    """Coerce a run_attempt value to int. Returns (value, diagnostic-or-None).
+
+    CR-12-4-P160 (round-7): strip whitespace before parsing. `int(" 2")` and `int("2\\n")`
+    used to succeed silently — a newline-padded `GITHUB_RUN_ATTEMPT` from a misconfigured
+    dispatch slipped past the validator with no diagnostic. After stripping, any
+    surrounding whitespace is rejected as a typed diagnostic.
+    """
     if value is None or value == "":
         return 1, None
     # Python bool is a subtype of int; True/False would otherwise silently coerce to 1/0.
     if isinstance(value, bool):
         return 1, f"run_attempt must be numeric integer text; actual={sanitize(value)}"
+    # CR-12-4-P160 (round-7): only strings need whitespace inspection — ints/floats
+    # already have no whitespace. Reject inputs whose stripped form differs (catches
+    # whitespace-only-around-digits AND empty-after-strip).
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped == "":
+            return 1, None
+        if stripped != value:
+            return 1, f"run_attempt must not contain leading/trailing whitespace; actual={sanitize(value)}"
+        value_for_parse: Any = stripped
+    else:
+        value_for_parse = value
     try:
-        if isinstance(value, float):
+        if isinstance(value_for_parse, float):
             return 1, f"run_attempt must be numeric integer text; actual={sanitize(value)}"
-        coerced = int(value)
+        coerced = int(value_for_parse)
     except (TypeError, ValueError):
         return 1, f"run_attempt must be numeric; actual={sanitize(value)}"
     # CR-12-4-P112 (round-5): reject negative or zero run_attempt values; semantic
@@ -972,6 +1054,9 @@ def safe_run_attempt(value: Any) -> tuple[int, str | None]:
     # ensure all callers append the diagnostic to their blocking signal. `classify_context`
     # already appends to context-diagnostics; `partial_publish_incident` (P143) now
     # also forwards the diagnostic into the typed payload.
+    # CR-12-4-P180 (round-7): keep the float `1` floor for the legacy return contract,
+    # but the diagnostic stays attached so `classify_context` always emits a context
+    # diagnostic when it fires; the floor itself never silently authorizes a rerun.
     if coerced < 1:
         return 1, f"run_attempt must be >= 1; actual={sanitize(value)}"
     return coerced, None
@@ -1104,7 +1189,9 @@ def fallback_complete(
     expiry, expiry_diagnostic = parse_expiry(fallback["expires_at"])
     if expiry is None:
         return False, expiry_diagnostic
-    if expiry < dt.datetime.now(dt.timezone.utc).date():
+    # CR-12-4-P152 (round-7): full-datetime comparison so a sub-day TZ offset cannot
+    # silently shift expiry by a calendar day.
+    if expiry <= dt.datetime.now(dt.timezone.utc):
         return False, f"fallback expired on {expiry.isoformat()}"
     # CR-12-4-P109 (round-5): path-check the evidence pointer. A fallback record with
     # `evidence: "release-evidence/attestation-unavailable.md"` is meaningless if the
@@ -1112,6 +1199,20 @@ def fallback_complete(
     # to silently authorize releases under `fallback-approved`; now they fail closed.
     if evidence_root is not None:
         evidence_name = str(fallback.get("evidence", ""))
+        # CR-12-4-P157 (round-7): detect the legacy double-prefix form
+        # (`release-evidence/attestation-unavailable.md` resolved under an
+        # `--evidence-root ./release-evidence` produces a missing file). Emit a typed
+        # diagnostic so operators get an actionable hint instead of a generic
+        # "evidence file missing" message.
+        evidence_root_name = evidence_root.name
+        if evidence_root_name and evidence_name.replace("\\", "/").startswith(
+            evidence_root_name + "/"
+        ):
+            return False, (
+                f"fallback evidence path duplicates evidence-root prefix '{sanitize(evidence_root_name)}/': "
+                f"use the path relative to the evidence root (e.g., 'attestation-unavailable.md'); "
+                f"actual={sanitize(evidence_name)}"
+            )
         try:
             evidence_path = normalize_under_root(evidence_root, evidence_name)
         except SystemExit as exc:
@@ -1261,7 +1362,16 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
                 }
             else:
                 blocking.append(fallback_diagnostic or "unsupported-attestation fallback is missing, stale, or incomplete")
-    elif status != "attested":
+    elif status == "attested":
+        # CR-12-4-P173 (round-7): when the sealed manifest claims `attestation_status=attested`
+        # but carries no `attestation_bundle`, the bundle integrity proof is missing.
+        # `prepare_manifest` enforces this on production runs, but a hand-crafted manifest
+        # or a stale fixture could otherwise pass `ready` without bundle evidence. Reject
+        # at classify time too.
+        attestation_bundle = manifest.get("attestation_bundle") if isinstance(manifest, dict) else None
+        if not isinstance(attestation_bundle, dict) or not attestation_bundle.get("sha256"):
+            blocking.append("attested release missing manifest.attestation_bundle evidence")
+    else:
         blocking.append(f"attestation status must be attested or approved-unsupported; actual={sanitize(status)}")
 
     classification = "blocked" if blocking else ("fallback-approved" if fallback_reasons else "ready")
@@ -1303,9 +1413,13 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         # drift (workflow/helper/inventory file edits). Routine Dependabot bumps inside
         # `Directory.Packages.props` no longer invalidate approved fallbacks because
         # that file is no longer in `RELEASE_DEFINITION_FILES`.
-        "package_set_fingerprint": package_set_fingerprint(root),
+        # CR-12-4-P170 (round-7): when `verify_drift=False` (fixture mode) the live
+        # fingerprints are environment-dependent and would leak per-machine hashes into
+        # test output; an empty map keeps the contract field present but
+        # value-stable across runners.
+        "package_set_fingerprint": package_set_fingerprint(root) if verify_drift else None,
         "publish_authorized": publish_authorized,
-        "release_definition_fingerprints": release_definition_fingerprints(root),
+        "release_definition_fingerprints": release_definition_fingerprints(root) if verify_drift else {},
         "sanitized_raw_evidence": sanitize(checks.get("raw_evidence", "")),
     }
 
@@ -1385,6 +1499,13 @@ def test_results(args: argparse.Namespace) -> int:
     trx_files = sorted(results_dir.rglob("*.trx")) if results_dir.exists() else []
     executed = 0
     total = 0
+    # CR-12-4-P167 (round-7): typed per-category counters. The release-readiness
+    # consumer can now count failures by category without re-parsing the free-form
+    # diagnostics strings.
+    total_failed = 0
+    total_errors = 0
+    total_aborted = 0
+    total_timeout = 0
     for trx in trx_files:
         try:
             root = ET.parse(trx).getroot()
@@ -1415,6 +1536,10 @@ def test_results(args: argparse.Namespace) -> int:
         error_count = _counter("error")
         aborted_count = _counter("aborted")
         timeout_count = _counter("timeout")
+        total_failed += failed_count
+        total_errors += error_count
+        total_aborted += aborted_count
+        total_timeout += timeout_count
         if failed_count > 0:
             diagnostics.append(f"{trx.name}: TRX records {failed_count} failed test(s); release tests must all pass")
         if error_count > 0:
@@ -1428,9 +1553,13 @@ def test_results(args: argparse.Namespace) -> int:
     if executed <= 0:
         diagnostics.append("release tests executed zero tests")
     payload = {
+        "aborted_count": total_aborted,
         "diagnostics": [sanitize(diagnostic) for diagnostic in diagnostics],
+        "error_count": total_errors,
+        "failed_count": total_failed,
         "status": "valid" if not diagnostics else "invalid",
         "test_count": executed,
+        "timeout_count": total_timeout,
         "total_count": total,
         "trx_files": [sanitize(str(path.relative_to(results_dir)).replace("\\", "/")) for path in trx_files],
         "trx_present": bool(trx_files),
@@ -1532,8 +1661,20 @@ def prepare_manifest(args: argparse.Namespace) -> int:
             elif bundle_path.stat().st_size == 0:
                 diagnostics.append("attestation bundle evidence must not be empty")
             else:
+                # CR-12-4-P178 (round-7): store the evidence-root-relative path rather
+                # than the resolved absolute path. The sha256 already provides integrity;
+                # the path is informational and a per-runner absolute path
+                # (`/home/runner/work/...`) sealed into the manifest harms reproducibility
+                # across environments. Falls back to the resolved string only if the
+                # bundle somehow resolves outside the prepare root (would have raised
+                # SystemExit above; here as defensive coding only).
+                try:
+                    relative_bundle = bundle_path.relative_to(prepare_root.resolve())
+                    bundle_path_str = str(relative_bundle).replace("\\", "/")
+                except ValueError:
+                    bundle_path_str = str(bundle_path).replace("\\", "/")
                 attestation_bundle = {
-                    "path": str(bundle_path).replace("\\", "/"),
+                    "path": bundle_path_str,
                     "sha256": sha256_file(bundle_path),
                 }
     for row in inventory_payload.get("rows", []):
@@ -1707,9 +1848,31 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
         # runs so semantic-release's `@semantic-release/github` asset upload sees
         # stable checksums. Drop run-bound fields (manifest_seal sealed_at, run_id,
         # tag) from the placeholder. Real incidents keep all forensic provenance.
+        # CR-12-4-P155 (round-7): refuse to overwrite an existing real incident
+        # record. If the target path holds a JSON document with `failed_phase != "none"`
+        # (a real incident), writing a placeholder over it silently destroys forensic
+        # state. Operator copy-pasting the prepareCmd placeholder invocation as manual
+        # recovery is the trigger; force the operator to pick a different output path.
+        output_path = pathlib.Path(args.output)
+        if output_path.is_file():
+            try:
+                existing = read_json(output_path)
+            except SystemExit:
+                existing = None
+            if (
+                isinstance(existing, dict)
+                and str(existing.get("failed_phase", "")).strip().lower() not in {"", "none"}
+            ):
+                raise SystemExit(
+                    f"--classification none refuses to overwrite an existing real partial-publish incident at {sanitize(str(output_path))}; "
+                    "pick a different --output path or remove the existing file deliberately"
+                )
+        # CR-12-4-P169 (round-7): split placeholder vs real-incident contract names so
+        # consumers can dispatch on `decision_contract` instead of having to read
+        # `failed_phase` / `classification` to disambiguate.
         payload = {
             "classification": "none",
-            "decision_contract": "frontcomposer.partial-publish-incident.v1",
+            "decision_contract": "frontcomposer.partial-publish-placeholder.v1",
             "failed_phase": "none",
             "manifest_seal": {},
             "next_owner_action": "no partial publish incident recorded",
@@ -1752,6 +1915,37 @@ def _cli_bool(value: Any, *, field: str, approval: bool = False) -> bool:
         print(f"release_evidence: invalid --{field.replace('_', '-')}: {diagnostic}", file=sys.stderr)
         raise SystemExit(2)
     return parsed
+
+
+def fallback_digest(args: argparse.Namespace) -> int:
+    """Print the canonical digest a fallback approval must record.
+
+    CR-12-4-P163 (round-7): release owners previously had to reproduce the
+    `canonical_sha256({"definition": filtered, "package_set": ...})` formula by hand to
+    populate `vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256`. Any mismatch was
+    silently reported as `fallback approved against drifted release definition` which
+    could send operators chasing a release-definition drift that did not exist.
+
+    The subcommand emits the exact 64-char hex digest for the current on-disk
+    `FALLBACK_INVALIDATION_FILES` + `package_set_fingerprint` so operators paste the
+    value directly into the repository variable.
+    """
+    root = pathlib.Path(args.root)
+    if not root.is_dir():
+        raise SystemExit(f"--root must be an existing directory: {sanitize(str(root))}")
+    fingerprints = fallback_invalidation_fingerprints(root)
+    package_set = package_set_fingerprint(root)
+    digest = canonical_sha256({"definition": fingerprints, "package_set": package_set})
+    payload = {
+        "decision_contract": "frontcomposer.fallback-digest.v1",
+        "digest_sha256": digest,
+        "fallback_invalidation_fingerprints": fingerprints,
+        "package_set_fingerprint": package_set,
+    }
+    if args.output:
+        write_json(args.output, payload)
+    print(digest)
+    return 0
 
 
 def classify_release(args: argparse.Namespace) -> int:
@@ -2058,6 +2252,13 @@ def main() -> int:
     fixtures.add_argument("--fixtures", required=True)
     fixtures.add_argument("--output")
     fixtures.set_defaults(func=classify_fixtures)
+
+    # CR-12-4-P163 (round-7): expose the fallback canonical digest so release owners
+    # can read the value without reimplementing the formula by hand.
+    fdigest = sub.add_parser("fallback-digest")
+    fdigest.add_argument("--root", default=".")
+    fdigest.add_argument("--output")
+    fdigest.set_defaults(func=fallback_digest)
 
     args = parser.parse_args()
     return args.func(args)

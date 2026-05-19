@@ -1,6 +1,7 @@
 {
   "benchmark_summary_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "commit_sha": "abc123",
+  "package_set_fingerprint": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd",
   "packages": [
     {
       "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
@@ -19,6 +20,8 @@
   "release_definition_fingerprints": {
     ".github/workflows/release.yml": "04adc9b92bac844bbc444ab31cbcf957e770d32a3de009fb2c13145990585a07",
     ".releaserc.json": "4e0a6288e9391bfcf27c4881f74eb51fbe25a42729a261ed9b8e656423450a23",
+    "Directory.Build.props": "11111111111111111111111111111111111111111111111111111111111111aa",
+    "Directory.Build.targets": "11111111111111111111111111111111111111111111111111111111111111bb",
     "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
     "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd",
     "eng/release_evidence.py": "d0b37bf7284eb352ef48219e5ecfd3fd467370d29acbdb3bd05364838cd5463b"
@@ -27,8 +30,8 @@
   "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "seal": {
     "algorithm": "sha256",
-    "hash": "6a836eafcacbee0b747ea208ab7ce5be2d5e6914cabab2f0b03d25e8f9d31f3c",
-    "sealed_at": "2026-05-17T00:00:00+00:00"
+    "hash": "7e019c6ae0a76624ea73477de1afcbc07f95cc64f2f05772a0f78fbcd6af7d6b",
+    "sealed_at": "2026-05-19T00:00:00+00:00"
   },
   "tag": "v1.2.3",
   "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3"

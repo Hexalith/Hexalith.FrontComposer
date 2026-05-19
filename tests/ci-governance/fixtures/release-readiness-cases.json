@@ -65,11 +65,15 @@
       "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "seal": {
         "algorithm": "sha256",
-        "hash": "a2688c49e3eccb69824283ed3b1472c9a0f2c7bf3729f048fe5cafd623e01d44",
-        "sealed_at": "2026-05-17T00:00:00+00:00"
+        "hash": "9f34479d3d5570a1105097d2bfd75e42d38f167701bfcd96049667781d203ad2",
+        "sealed_at": "2026-05-19T00:00:00+00:00"
       },
       "tag": "v1.2.3",
-      "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3"
+      "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
+      "attestation_bundle": {
+        "path": "attestations/attestation-bundle.json",
+        "sha256": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd0"
+      }
     }
   },
   "cases": [
@@ -107,7 +111,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "6a836eafcacbee0b747ea208ab7ce5be2d5e6914cabab2f0b03d25e8f9d31f3c",
+            "hash": "e09269e443b8390ccde1504f91e3bbc7a31a28bc9b2b9a1e9f28fd37d0fd2343",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
@@ -173,7 +177,12 @@
             {
               "signing_status": "unsigned"
             }
-          ]
+          ],
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "3c6acef3c3748efb9824a866c9caaf2cbe259cc3f58cad186e20838dc821d78e",
+            "sealed_at": "2026-05-19T00:00:00+00:00"
+          }
         }
       }
     },
@@ -189,7 +198,12 @@
             {
               "timestamp_status": "missing"
             }
-          ]
+          ],
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "823c5ccfcb35f831d52415c087e6a652537a515c6daf6b089d9b0ba3c993494a",
+            "sealed_at": "2026-05-19T00:00:00+00:00"
+          }
         }
       }
     },
@@ -201,7 +215,12 @@
           "sbom_status": "missing"
         },
         "manifest": {
-          "sbom_hash": ""
+          "sbom_hash": "",
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "52f2c1db6a206b5d2306a417e4e6c2c40413f178197803eac67b84cb99c1bd10",
+            "sealed_at": "2026-05-19T00:00:00+00:00"
+          }
         }
       }
     },
@@ -217,7 +236,12 @@
             {
               "checksum": "pending-checksum"
             }
-          ]
+          ],
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "d645f7b711ad84bcf738d4ce371a8f2f1a82362f077d46029939c9994e770ac8",
+            "sealed_at": "2026-05-19T00:00:00+00:00"
+          }
         }
       }
     },
@@ -437,6 +461,68 @@
             "scope": "v1 release candidate"
           },
           "status": "approved-unsupported"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": false,
+      "name": "attested-without-bundle",
+      "override": {
+        "manifest": {
+          "attestation_bundle": false,
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "35cb9fe2552fc877cec2a47ebd35a04de5576b10b87bfd658c7021ffa9cff321",
+            "sealed_at": "2026-05-19T00:00:00+00:00"
+          }
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": false,
+      "expected_next_owner_action_contains": "resolve blocking",
+      "name": "concurrency-probe-degraded",
+      "override": {
+        "checks": {
+          "concurrent_same_version": true
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "trusted-main-or-release",
+      "expected_publish_authorized": false,
+      "name": "fallback-evidence-empty-file",
+      "override": {
+        "attestation": {
+          "fallback": {
+            "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+            "approved_against_fingerprints_sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+            "approver": "release-owner",
+            "evidence": "attestation-unavailable.md",
+            "expires_at": "2026-12-31T23:59:59Z",
+            "reason": "GitHub artifact attestations unavailable for this repository context",
+            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
+            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
+            "scope": "v1 release candidate"
+          },
+          "status": "approved-unsupported"
+        },
+        "manifest": {
+          "packages": [
+            {
+              "attestation_status": "approved-unsupported"
+            }
+          ],
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "e09269e443b8390ccde1504f91e3bbc7a31a28bc9b2b9a1e9f28fd37d0fd2343",
+            "sealed_at": "2026-05-19T00:00:00+00:00"
+          }
         }
       }
     }

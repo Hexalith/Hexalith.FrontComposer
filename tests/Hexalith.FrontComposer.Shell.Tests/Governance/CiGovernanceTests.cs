@@ -389,11 +389,16 @@ public sealed class CiGovernanceTests {
             Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
             Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
 
-            // CR-12-4-D8 (round-5): Directory.Packages.props is no longer in the
-            // release-definition fingerprint set (routine dependency bumps would
-            // otherwise invalidate fallback approvals weekly). Directory.Build.props
-            // and Directory.Build.targets are now included (CR-12-4-P103) because
-            // they encode pack/sign/symbol policy.
+            // CR-12-4-D8 (round-5): Directory.Packages.props was removed from
+            // FALLBACK_INVALIDATION_FILES so routine Dependabot bumps do not invalidate
+            // fallback approvals. CR-12-4-P124 (round-6) restored it to
+            // RELEASE_DEFINITION_FILES (drift detection) while keeping it out of
+            // fallback invalidation. CR-12-4-P172 (round-7): the test baseline must
+            // include all 7 RELEASE_DEFINITION_FILES so `fingerprint_diff` does NOT
+            // emit a spurious "fingerprint has no baseline entry" diagnostic for
+            // Directory.Packages.props — that would let a future regression on a
+            // different file slip past the assertion which only checks for the test's
+            // specific drift string.
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
                 ".releaserc.json",
@@ -401,6 +406,7 @@ public sealed class CiGovernanceTests {
                 "eng/release-package-inventory.json",
                 "Directory.Build.props",
                 "Directory.Build.targets",
+                "Directory.Packages.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
@@ -436,6 +442,10 @@ public sealed class CiGovernanceTests {
                         ["version"] = "1.2.3",
                     },
                 },
+                // CR-12-4-P172 (round-7): include `package_set_fingerprint` so
+                // manifest_diagnostics doesn't accumulate a spurious "manifest missing
+                // package_set_fingerprint" message in this test's output.
+                ["package_set_fingerprint"] = Sha256File(Path.Combine(tempRoot, "eng", "release-package-inventory.json")),
                 ["release_definition_fingerprints"] = fingerprints,
                 ["run_id"] = "42",
                 ["sbom_hash"] = new string('a', 64),
@@ -477,11 +487,16 @@ public sealed class CiGovernanceTests {
             Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
             Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
 
-            // CR-12-4-D8 (round-5): Directory.Packages.props is no longer in the
-            // release-definition fingerprint set (routine dependency bumps would
-            // otherwise invalidate fallback approvals weekly). Directory.Build.props
-            // and Directory.Build.targets are now included (CR-12-4-P103) because
-            // they encode pack/sign/symbol policy.
+            // CR-12-4-D8 (round-5): Directory.Packages.props was removed from
+            // FALLBACK_INVALIDATION_FILES so routine Dependabot bumps do not invalidate
+            // fallback approvals. CR-12-4-P124 (round-6) restored it to
+            // RELEASE_DEFINITION_FILES (drift detection) while keeping it out of
+            // fallback invalidation. CR-12-4-P172 (round-7): the test baseline must
+            // include all 7 RELEASE_DEFINITION_FILES so `fingerprint_diff` does NOT
+            // emit a spurious "fingerprint has no baseline entry" diagnostic for
+            // Directory.Packages.props — that would let a future regression on a
+            // different file slip past the assertion which only checks for the test's
+            // specific drift string.
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
                 ".releaserc.json",
@@ -489,6 +504,7 @@ public sealed class CiGovernanceTests {
                 "eng/release-package-inventory.json",
                 "Directory.Build.props",
                 "Directory.Build.targets",
+                "Directory.Packages.props",
             ];
             foreach (string file in releaseDefinitionFiles) {
                 string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
@@ -524,6 +540,8 @@ public sealed class CiGovernanceTests {
                         ["version"] = "1.2.3",
                     },
                 },
+                // CR-12-4-P172 (round-7): see ReleaseEvidenceScript_DetectsPostSealArtifactMutationFromRealFiles.
+                ["package_set_fingerprint"] = Sha256File(Path.Combine(tempRoot, "eng", "release-package-inventory.json")),
                 ["release_definition_fingerprints"] = fingerprints,
                 ["run_id"] = "42",
                 ["sbom_hash"] = new string('a', 64),
@@ -562,6 +580,11 @@ public sealed class CiGovernanceTests {
         string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
         string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-{Guid.NewGuid():N}.json");
 
+        // CR-12-4-P156 (round-7): parse the fixture JSON and assert each required case
+        // name appears as a `cases[].name` key. The prior `fixtureJson.ShouldContain(...)`
+        // would pass when the substring happened to appear anywhere in the document
+        // (e.g., a `context_class: "local-candidate"` enum value elsewhere) even if the
+        // CASE itself was missing.
         string fixtureJson = File.ReadAllText(fixtures);
         string[] requiredCases = [
             "trusted-ready",
@@ -593,8 +616,19 @@ public sealed class CiGovernanceTests {
             "rerun-review",
         ];
 
-        foreach (string requiredCase in requiredCases) {
-            fixtureJson.ShouldContain(requiredCase);
+        using (JsonDocument fixtureDoc = JsonDocument.Parse(fixtureJson)) {
+            HashSet<string> caseNames = [];
+            foreach (JsonElement caseElement in fixtureDoc.RootElement.GetProperty("cases").EnumerateArray()) {
+                if (caseElement.TryGetProperty("name", out JsonElement nameElement) && nameElement.ValueKind == JsonValueKind.String) {
+                    string? caseName = nameElement.GetString();
+                    if (!string.IsNullOrWhiteSpace(caseName)) {
+                        caseNames.Add(caseName);
+                    }
+                }
+            }
+            foreach (string requiredCase in requiredCases) {
+                caseNames.ShouldContain(requiredCase, $"fixture '{requiredCase}' must be present as a cases[].name entry");
+            }
         }
 
         ProcessResult result = RunPython(root, [
@@ -811,9 +845,20 @@ public sealed class CiGovernanceTests {
             // `blocking-with-approved-unsupported-fallback` is gone (P140).
             effect.GetString().ShouldBeOneOf("blocking", "blocking-with-fallback", "fallback");
             row.TryGetProperty("fallback_action", out _).ShouldBeTrue();
+            // CR-12-4-P179 (round-7): structured mechanism_inputs per row.
+            row.TryGetProperty("mechanism_inputs", out JsonElement mechInputs).ShouldBeTrue();
+            mechInputs.ValueKind.ShouldBe(JsonValueKind.Array);
+            mechInputs.GetArrayLength().ShouldBeGreaterThan(0);
         }
         root_el.TryGetProperty("package_set_fingerprint", out JsonElement packageSet).ShouldBeTrue();
-        packageSet.GetString().ShouldNotBeNullOrEmpty();
+        // CR-12-4-P182 (round-7): the field may serialize to JSON null when the inventory
+        // file is absent on disk; `.GetString()` on a JSON null raises
+        // InvalidOperationException with a confusing error. Assert the value kind
+        // explicitly first so the test produces a clean failure.
+        packageSet.ValueKind.ShouldBeOneOf(JsonValueKind.String, JsonValueKind.Null);
+        if (packageSet.ValueKind == JsonValueKind.String) {
+            packageSet.GetString().ShouldNotBeNullOrEmpty();
+        }
     }
 
     [Fact]
@@ -845,6 +890,135 @@ public sealed class CiGovernanceTests {
         doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
         string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
         diagnostics.ShouldContain("failed test");
+    }
+
+    [Theory]
+    [InlineData("error", 1, 0, 0, "error test")]
+    [InlineData("aborted", 0, 1, 0, "aborted test")]
+    [InlineData("timeout", 0, 0, 1, "timed-out test")]
+    public void ReleaseEvidenceScript_TestResults_FailsClosedOnTrxNonFailedCounters(
+        string label, int errorCount, int abortedCount, int timeoutCount, string expectedDiag) {
+        // CR-12-4-P176 (round-7): the prior `..._FailsClosedOnTrxFailedCounter` covered
+        // only the `failed=1` axis. Lock the round-5 P92 contract for every other
+        // counter that AC3 expects to fail closed (`error`/`aborted`/`timeout`).
+        string root = RepositoryRoot();
+        string trxDir = Path.Combine(Path.GetTempPath(), $"fc-trx-{label}-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(trxDir);
+        string trxBody = $$"""
+        <?xml version="1.0" encoding="UTF-8"?>
+        <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+          <ResultSummary>
+            <Counters total="3" executed="3" passed="2" failed="0" error="{{errorCount}}" aborted="{{abortedCount}}" timeout="{{timeoutCount}}" />
+          </ResultSummary>
+        </TestRun>
+        """;
+        File.WriteAllText(Path.Combine(trxDir, "release-results.trx"), trxBody);
+        string output = Path.Combine(Path.GetTempPath(), $"fc-test-results-{label}-{Guid.NewGuid():N}.json");
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "test-results",
+            "--results-dir", trxDir,
+            "--output", output,
+        ]);
+        result.ExitCode.ShouldNotBe(0);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
+        string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
+        diagnostics.ShouldContain(expectedDiag);
+        // CR-12-4-P167 (round-7): the typed per-category counter fields are now part
+        // of the contract.
+        doc.RootElement.GetProperty("error_count").GetInt32().ShouldBe(errorCount);
+        doc.RootElement.GetProperty("aborted_count").GetInt32().ShouldBe(abortedCount);
+        doc.RootElement.GetProperty("timeout_count").GetInt32().ShouldBe(timeoutCount);
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_SealAndVerifyManifest_RoundTripsCleanly() {
+        // CR-12-4-P166 (round-7): regression test for seal-manifest → verify-manifest
+        // round-trip. Builds a fresh in-memory manifest with all current required
+        // fields (release_definition_fingerprints AND package_set_fingerprint, both
+        // round-6 additions), seals it, then verifies under --root. A future change
+        // that mutates the manifest between hashing and sealing would otherwise slip
+        // past CI because the existing tests intentionally introduce drift.
+        string root = RepositoryRoot();
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"fc-seal-roundtrip-{Guid.NewGuid():N}");
+        try {
+            Directory.CreateDirectory(Path.Combine(tempRoot, ".github", "workflows"));
+            Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
+            Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
+            string[] releaseDefinitionFiles = [
+                ".github/workflows/release.yml",
+                ".releaserc.json",
+                "eng/release_evidence.py",
+                "eng/release-package-inventory.json",
+                "Directory.Build.props",
+                "Directory.Build.targets",
+                "Directory.Packages.props",
+            ];
+            foreach (string file in releaseDefinitionFiles) {
+                string path = Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar));
+                Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+                File.WriteAllText(path, $"baseline {file}");
+            }
+            string artifactPath = Path.Combine(tempRoot, "nupkgs-signed", "Hexalith.FrontComposer.Contracts.1.2.3.nupkg");
+            File.WriteAllText(artifactPath, "package bytes");
+            string artifactChecksum = Sha256File(artifactPath);
+            Dictionary<string, string> fingerprints = releaseDefinitionFiles.ToDictionary(
+                file => file,
+                file => Sha256File(Path.Combine(tempRoot, file.Replace('/', Path.DirectorySeparatorChar))));
+            string preManifest = Path.Combine(tempRoot, "pre-manifest.json");
+            string sealedManifest = Path.Combine(tempRoot, "sealed-manifest.json");
+            string output = Path.Combine(tempRoot, "verification.json");
+            File.WriteAllText(preManifest, JsonSerializer.Serialize(new Dictionary<string, object?> {
+                ["benchmark_summary_hash"] = new string('c', 64),
+                ["commit_sha"] = "abc123",
+                ["package_set_fingerprint"] = Sha256File(Path.Combine(tempRoot, "eng", "release-package-inventory.json")),
+                ["packages"] = new[] {
+                    new Dictionary<string, object?> {
+                        ["artifact_path"] = "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+                        ["attestation_status"] = "attested",
+                        ["checksum"] = artifactChecksum,
+                        ["commit_sha"] = "abc123",
+                        ["package_id"] = "Hexalith.FrontComposer.Contracts",
+                        ["publish_status"] = "pending",
+                        ["sbom_component"] = "Hexalith.FrontComposer.Contracts",
+                        ["signing_status"] = "verified",
+                        ["symbol_artifact"] = "nupkgs/Hexalith.FrontComposer.Contracts.1.2.3.snupkg",
+                        ["timestamp_status"] = "verified",
+                        ["version"] = "1.2.3",
+                    },
+                },
+                ["release_definition_fingerprints"] = fingerprints,
+                ["run_id"] = "42",
+                ["sbom_hash"] = new string('a', 64),
+                ["tag"] = "v1.2.3",
+                ["workflow_ref"] = "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
+            }, new JsonSerializerOptions { WriteIndented = true }));
+
+            RunPython(root, [
+                "eng/release_evidence.py",
+                "seal-manifest",
+                "--manifest", preManifest,
+                "--output", sealedManifest,
+            ]).ExitCode.ShouldBe(0);
+
+            ProcessResult result = RunPython(root, [
+                "eng/release_evidence.py",
+                "verify-manifest",
+                "--root", tempRoot,
+                "--manifest", sealedManifest,
+                "--output", output,
+            ]);
+
+            result.ExitCode.ShouldBe(0, $"verify-manifest must succeed for a clean round-trip; got: {File.ReadAllText(output)}");
+            using JsonDocument verification = JsonDocument.Parse(File.ReadAllText(output));
+            verification.RootElement.GetProperty("status").GetString().ShouldBe("valid");
+        }
+        finally {
+            if (Directory.Exists(tempRoot)) {
+                Directory.Delete(tempRoot, recursive: true);
+            }
+        }
     }
 
     [Fact]
