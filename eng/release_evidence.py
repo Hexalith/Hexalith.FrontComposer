@@ -17,6 +17,15 @@ import xml.etree.ElementTree as ET
 from typing import Any
 
 
+# CR-12-4-P215 (round-8, from CR-12-4-D16): explicit semantic version for the release
+# evidence helper. Bumped intentionally when the helper logic changes in a way that
+# invalidates sealed manifests; bumping this constant alongside the helper file edit
+# is the operator-facing affirmation that the change was deliberate. The content
+# sha256 is computed at prepare-manifest time and embedded in the sealed manifest;
+# `manifest_diagnostics` compares both at verify time so a helper-bytes change without
+# a `__version__` bump produces a `release-definition drift` signal.
+__version__ = "1.0.0"
+
 PACKAGE_COLLAPSE_MARKER = "<!-- frontcomposer:package-count-collapse -->"
 MAX_FIELD = 600
 SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
@@ -43,10 +52,16 @@ REQUIRED_ROW_FIELDS = [
 # because they encode symbol-package format, trim/IsTrimmable, and other release-relevant
 # pack/sign policy. Files that are listed but missing on disk are simply skipped by
 # `release_definition_fingerprints`.
+# CR-12-4-P215 (round-8, from CR-12-4-D16): removed `eng/release_evidence.py`. Routine
+# helper refactors / type-hint additions / docstring polish previously invalidated every
+# fallback approval and every prior sealed manifest. The helper is now bound via the
+# sealed-manifest `helper_version` field (semver + content sha256) so a helper-bytes
+# change without an intentional `__version__` bump still surfaces as drift, but
+# refactors that bump `__version__` are recognized as deliberate and do not invalidate
+# unrelated fallback approvals.
 RELEASE_DEFINITION_FILES = [
     ".github/workflows/release.yml",
     ".releaserc.json",
-    "eng/release_evidence.py",
     "eng/release-package-inventory.json",
     "Directory.Build.props",
     "Directory.Build.targets",
@@ -56,10 +71,11 @@ RELEASE_DEFINITION_FILES = [
 # Excludes `Directory.Packages.props` so transitive package-version bumps do not force
 # re-approval. Drift in these files is still detected by `manifest_diagnostics` (drift
 # detection) but does not trigger `fallback_complete` rejection.
+# CR-12-4-P215 (round-8): `eng/release_evidence.py` excluded for the same reason as in
+# `RELEASE_DEFINITION_FILES`; drift is caught via the helper_version field instead.
 FALLBACK_INVALIDATION_FILES = [
     ".github/workflows/release.yml",
     ".releaserc.json",
-    "eng/release_evidence.py",
     "eng/release-package-inventory.json",
     "Directory.Build.props",
     "Directory.Build.targets",
@@ -124,8 +140,19 @@ APPROVAL_MATRIX = [
         "action": "attestation-fallback",
         "gate_id": "attestation",
         "owner": "release-owner",
-        "mechanism": "ATTESTATION_UNSUPPORTED repository variable plus sealed fallback record (approver, expiry, fingerprint baseline)",
-        "mechanism_inputs": ["vars.ATTESTATION_UNSUPPORTED", "fallback_record"],
+        "mechanism": "ATTESTATION_UNSUPPORTED repository variable plus sealed fallback record (approver, expiry, approved_at, fingerprint baseline)",
+        # CR-12-4-P208 (round-8): enumerate the actual workflow-env inputs that compose
+        # the fallback record. The prior list collapsed every individual var into the
+        # generic literal "fallback_record"; consumers parsing the matrix could not
+        # know which inputs to inspect when an approval failed completeness validation.
+        "mechanism_inputs": [
+            "vars.ATTESTATION_UNSUPPORTED",
+            "vars.RELEASE_ATTESTATION_FALLBACK_APPROVER",
+            "vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT",
+            "vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT",
+            "vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256",
+            "fallback_record",
+        ],
         "evidence": "attestation-unavailable.md plus sealed fallback_record (affected_artifact, approved_at, approver, evidence, expires_at, reason, release_note_impact, reopen_event, scope, approved_against_fingerprints_sha256)",
         "effect": "fallback",
         "fallback_action": None,
@@ -286,10 +313,30 @@ def require_trusted_context(args: argparse.Namespace) -> None:
 
 
 def project_property(project: pathlib.Path, name: str) -> str:
+    """Return the first UNCONDITIONAL ``PropertyGroup/<name>`` value in the csproj.
+
+    CR-12-4-P201 (round-8): ignore property elements that carry a ``Condition`` attribute
+    (or live under a ``<PropertyGroup Condition="...">``). Conditional declarations only
+    apply for matching MSBuild evaluation contexts (Configuration, TargetFramework, etc.);
+    they do not encode an unconditional release-time invariant. A csproj declaring
+    ``<IsPackable Condition="'$(Configuration)'=='Debug'">false</IsPackable>`` previously
+    read as "non-packable" for AC4 inventory regardless of context, hiding a Release-only
+    packable project. AC4 requires unconditional packability statements.
+    """
     root = ET.parse(project).getroot()
     for prop in root.findall(".//PropertyGroup/" + name):
+        if prop.attrib.get("Condition"):
+            continue
+        parent = prop  # element-tree lacks parent pointers; re-walk to detect conditional group
         if prop.text and prop.text.strip():
-            return prop.text.strip()
+            # The parent PropertyGroup may carry the condition. Re-scan top-level
+            # PropertyGroups and check whether this element lives under a conditional one.
+            for group in root.findall(".//PropertyGroup"):
+                if prop in list(group) and group.attrib.get("Condition"):
+                    parent = None
+                    break
+            if parent is not None:
+                return prop.text.strip()
     return ""
 
 
@@ -431,7 +478,15 @@ def parse_strict_bool(value: Any, *, field: str, default: bool = False) -> tuple
 
 
 def parse_approval_bool(value: Any, *, field: str, default: bool = False) -> tuple[bool, str | None]:
-    """Approval-domain boolean (true/false/yes/no/1/0/approved/denied)."""
+    """Approval-domain boolean (literal ``true``/``false`` only after CR-12-4-P184).
+
+    CR-12-4-P199 (round-8): the prior docstring still listed ``yes/no/1/0/approved/denied``
+    aliases. Round-7 CR-12-4-P184 collapsed ``APPROVAL_TRUTHY`` / ``APPROVAL_FALSY`` to
+    the literal ``{"true"}`` / ``{"false"}`` sets — every other vocabulary now returns a
+    typed diagnostic so this helper matches the bash gate at
+    ``.github/workflows/release.yml`` (Release-owner-approval-gate step), which itself
+    rejects any non-literal value.
+    """
     if isinstance(value, bool):
         return value, None
     text = "" if value is None else str(value).strip().lower()
@@ -659,8 +714,20 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
         # prefix check. A producer writing `./nupkgs/Foo.nupkg` (leading `./`) does not
         # start with `nupkgs/` and bypassed the guard; the manifest could then reference
         # the unsigned-tree directory while still claiming `signing_status=verified`.
-        normalized_artifact_path = str(row.get("artifact_path", "")).replace("\\", "/").lstrip("./")
-        if normalized_artifact_path.startswith("nupkgs/"):
+        # CR-12-4-P200 (round-8): the prior `lstrip("./")` treats `.` and `/` as a
+        # CHARACTER set, so `"..//nupkgs/Foo"` collapses to `"nupkgs/Foo"` and a leading
+        # `..` traversal silently bypasses the guard. Separately, the `startswith` was
+        # case-sensitive: `"Nupkgs/Foo.nupkg"` evaded the unsigned-tree check on
+        # case-insensitive filesystems. Strip explicit relative prefixes safely and
+        # lowercase the prefix compare.
+        normalized_artifact_path = str(row.get("artifact_path", "")).replace("\\", "/")
+        while normalized_artifact_path.startswith(("./", "../")):
+            normalized_artifact_path = (
+                normalized_artifact_path.split("/", 1)[1]
+                if "/" in normalized_artifact_path
+                else ""
+            )
+        if normalized_artifact_path.lower().startswith("nupkgs/"):
             diagnostics.append(f"{row.get('package_id')}: manifest must reference signed nupkg artifacts")
         if root is not None and root_exists:
             artifact_path = str(row.get("artifact_path", ""))
@@ -734,6 +801,27 @@ def manifest_diagnostics(manifest: dict[str, Any], root: pathlib.Path | None = N
             current = release_definition_fingerprints(root)
             for drift in fingerprint_diff(current, embedded):
                 diagnostics.append(f"release-definition drift: {drift}")
+        # CR-12-4-P215 (round-8): verify the sealed `helper_version` against the live
+        # helper. Mismatch on `version` OR `content_sha256` means either the helper
+        # was edited post-seal or someone forgot to bump `__version__`. Both fail
+        # closed via the existing `release-definition drift` blocking pipeline.
+        embedded_helper = manifest.get("helper_version")
+        if embedded_helper is None:
+            diagnostics.append("manifest missing helper_version (CR-12-4-P215)")
+        elif not isinstance(embedded_helper, dict):
+            diagnostics.append("manifest helper_version must be an object with version + content_sha256")
+        else:
+            live_helper = helper_version_record()
+            embedded_version = embedded_helper.get("version")
+            embedded_content_sha256 = embedded_helper.get("content_sha256")
+            if embedded_version != live_helper["version"]:
+                diagnostics.append(
+                    f"release-definition drift: helper_version.version drift (manifest={sanitize(embedded_version)}, live={sanitize(live_helper['version'])})"
+                )
+            if embedded_content_sha256 != live_helper["content_sha256"]:
+                diagnostics.append(
+                    "release-definition drift: helper_version.content_sha256 drift; bump __version__ in eng/release_evidence.py after deliberate helper changes and re-run prepare-manifest"
+                )
         # CR-12-4-P121 (round-6): also detect package-set drift. AC30 explicitly names
         # `eng/release-package-inventory.json` as a drift surface that must mark the
         # result `blocked`. Round-5 wrote `package_set_fingerprint` into the manifest
@@ -1012,13 +1100,29 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
     # writing `"test_count": "unknown"` used to crash `int(...)` and bubble up as exit 2
     # (helper crash) instead of producing a typed `blocked` classification. Now the
     # crash branch records a diagnostic and forces test_count=0.
+    # CR-12-4-P206 (round-8): also reject Python ``bool`` instances. ``bool`` is a
+    # subtype of ``int`` so ``True or 0`` short-circuits to ``True`` and ``int(True) == 1``
+    # passes the ``test_count > 0`` gate with a phantom value. A JSON producer writing
+    # ``"test_count": true`` previously satisfied the test gate without running tests.
     raw_test_count = test_payload.get("test_count", args.test_count)
-    try:
-        coerced_test_count = int(raw_test_count or 0)
-    except (TypeError, ValueError):
-        diagnostics.append(f"test_count must be numeric; actual={sanitize(raw_test_count)}")
+    if isinstance(raw_test_count, bool):
+        diagnostics.append(f"test_count must not be boolean; actual={sanitize(raw_test_count)}")
         coerced_test_count = 0
+    else:
+        try:
+            coerced_test_count = int(raw_test_count or 0)
+        except (TypeError, ValueError):
+            diagnostics.append(f"test_count must be numeric; actual={sanitize(raw_test_count)}")
+            coerced_test_count = 0
 
+    # CR-12-4-P204 (round-8): route trx_present through `parse_strict_bool` so a JSON
+    # producer writing `"trx_present": "false"` (non-empty string) is correctly read as
+    # False rather than silently coerced to True via `bool("false")`. Emit a typed
+    # diagnostic for unrecognized values.
+    trx_present_raw = test_payload.get("trx_present", args.trx_present)
+    trx_present_parsed, trx_present_diagnostic = parse_strict_bool(trx_present_raw, field="trx_present")
+    if trx_present_diagnostic:
+        diagnostics.append(trx_present_diagnostic)
     return {
         "checksums_status": checksum_status,
         "concurrent_same_version": args.concurrent_same_version,
@@ -1039,7 +1143,7 @@ def derive_release_checks(args: argparse.Namespace, manifest: dict[str, Any], te
         "test_count": coerced_test_count,
         "test_status": "passed" if test_payload.get("status", args.test_status) == "valid" else test_payload.get("status", args.test_status),
         "timestamp_status": timestamp_status,
-        "trx_present": bool(test_payload.get("trx_present", args.trx_present)),
+        "trx_present": trx_present_parsed,
     }, diagnostics
 
 
@@ -1084,6 +1188,13 @@ def safe_run_attempt(value: Any) -> tuple[int, str | None]:
     # CR-12-4-P180 (round-7): keep the float `1` floor for the legacy return contract,
     # but the diagnostic stays attached so `classify_context` always emits a context
     # diagnostic when it fires; the floor itself never silently authorizes a rerun.
+    # CR-12-4-P213 (round-8): the floor-with-diagnostic contract requires every caller
+    # to propagate the diagnostic into a blocking signal — callers that ignore the
+    # diagnostic would still see ``run_attempt=1`` and treat the run as a legitimate
+    # first attempt. Current callers (`classify_context`, `partial_publish_incident`)
+    # both forward the diagnostic; new callers MUST do the same. The unit-test surface
+    # in ``CiGovernanceTests`` exercises both call sites; adding a new caller without
+    # forwarding the diagnostic should be caught by review.
     if coerced < 1:
         return 1, f"run_attempt must be >= 1; actual={sanitize(value)}"
     return coerced, None
@@ -1141,6 +1252,24 @@ def release_definition_fingerprints(root: pathlib.Path) -> dict[str, str]:
         path = root / name
         fingerprints[name] = sha256_file(path) if path.exists() else "missing"
     return fingerprints
+
+
+def helper_version_record() -> dict[str, str]:
+    """Return the helper's semantic version plus its content sha256.
+
+    CR-12-4-P215 (round-8, from CR-12-4-D16): the helper file (this module) is no
+    longer in `RELEASE_DEFINITION_FILES`. Instead the sealed manifest carries a
+    structured `helper_version` field containing the module's `__version__` constant
+    and the running module's content sha256. `manifest_diagnostics` re-computes the
+    record at verify time and emits `release-definition drift` when either field
+    differs from the sealed baseline. Helper edits that bump `__version__` produce a
+    new baseline that matches; edits that forget to bump the version still fail closed.
+    """
+    helper_path = pathlib.Path(__file__)
+    return {
+        "version": __version__,
+        "content_sha256": sha256_file(helper_path) if helper_path.exists() else "missing",
+    }
 
 
 def package_set_fingerprint(root: pathlib.Path) -> str | None:
@@ -1334,12 +1463,20 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         elif actual != expected:
             blocking.append(f"{key} must be {expected}; actual={sanitize(actual)}")
 
+    # CR-12-4-P206 (round-8): mirror the bool guard in `derive_release_checks`. The
+    # classifier consumes the typed evidence file (e.g., when --evidence is passed) so a
+    # malformed ``"test_count": true`` JSON value must fail closed here too rather than
+    # silently coerce to 1.
     raw_test_count = checks.get("test_count", 0)
-    try:
-        test_count = int(raw_test_count or 0)
-    except (TypeError, ValueError):
-        blocking.append(f"evidence: test_count must be numeric; actual={sanitize(raw_test_count)}")
+    if isinstance(raw_test_count, bool):
+        blocking.append(f"evidence: test_count must not be boolean; actual={sanitize(raw_test_count)}")
         test_count = 0
+    else:
+        try:
+            test_count = int(raw_test_count or 0)
+        except (TypeError, ValueError):
+            blocking.append(f"evidence: test_count must be numeric; actual={sanitize(raw_test_count)}")
+            test_count = 0
     if test_count <= 0:
         blocking.append("release tests must record at least one executed test")
     if not bool_checks["trx_present"]:
@@ -1586,8 +1723,24 @@ def test_results(args: argparse.Namespace) -> int:
                 diagnostics.append(f"{trx.name}: counter '{attr_name}' is not numeric: {sanitize(raw)}")
                 return 0
 
-        executed += _counter("executed") if "executed" in counters.attrib else _counter("total")
-        total += _counter("total")
+        # CR-12-4-P196 (round-8): detect skipped/not-executed tests. A TRX with
+        # ``executed=50, total=100`` previously classified ``test_status: passed`` with
+        # ``test_count=50`` because the per-counter failure gates only checked
+        # ``failed``/``error``/``aborted``/``timeout``. A workflow change that adds
+        # ``--filter`` exclusions beyond the documented set, or a future regression that
+        # skips tests silently, would slip past the test gate. Compare ``executed`` to
+        # ``total`` per TRX and emit a typed diagnostic — failing closed via the same
+        # diagnostics list that drives the test_status invalid signal.
+        executed_per_trx = _counter("executed") if "executed" in counters.attrib else _counter("total")
+        total_per_trx = _counter("total")
+        if total_per_trx > executed_per_trx:
+            skipped = total_per_trx - executed_per_trx
+            diagnostics.append(
+                f"{trx.name}: TRX records {skipped} skipped/not-executed test(s) "
+                f"({executed_per_trx}/{total_per_trx} executed); release tests must all run"
+            )
+        executed += executed_per_trx
+        total += total_per_trx
         failed_count = _counter("failed")
         error_count = _counter("error")
         aborted_count = _counter("aborted")
@@ -1778,6 +1931,11 @@ def prepare_manifest(args: argparse.Namespace) -> int:
         # active unsupported-attestation fallbacks. Package-set drift is still caught
         # by inventory + this fingerprint.
         "package_set_fingerprint": package_set_fingerprint(pathlib.Path(args.root)),
+        # CR-12-4-P215 (round-8, from CR-12-4-D16): bind the helper's semantic version
+        # AND content sha256. Replaces the prior `eng/release_evidence.py` entry in
+        # `release_definition_fingerprints`. Helper-bytes change without a deliberate
+        # `__version__` bump still fails closed via `manifest_diagnostics`.
+        "helper_version": helper_version_record(),
     }
     if attestation_bundle:
         manifest["attestation_bundle"] = attestation_bundle
@@ -1904,6 +2062,14 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
     except SystemExit as exc:
         manifest = {}
         manifest_diagnostic = f"manifest unreadable: {sanitize(exc)}"
+    # CR-12-4-P207 (round-8): a non-dict manifest (list, scalar, null) previously slipped
+    # past existing isinstance checks because later code already uses `if isinstance(...)`
+    # guards, but the operator-facing forensic JSON ended up missing the diagnostic. Emit
+    # a typed `manifest is not an object` reason so downstream readers see WHY the
+    # incident record has an empty manifest_seal.
+    if not isinstance(manifest, dict):
+        manifest_diagnostic = "manifest is not an object"
+        manifest = {}
     if classification == "none":
         # CR-12-4-P127 (round-6): placeholder records must be reproducible across
         # runs so semantic-release's `@semantic-release/github` asset upload sees
@@ -2090,10 +2256,20 @@ def classify_release(args: argparse.Namespace) -> int:
                 concurrency_probe_diagnostics.append("concurrency-guard.json unreadable")
             else:
                 if isinstance(guard_payload, dict):
-                    raw_diags = guard_payload.get("probe_diagnostics") or []
+                    raw_diags = guard_payload.get("probe_diagnostics")
                     if isinstance(raw_diags, list):
                         concurrency_probe_diagnostics = [
                             f"concurrency-probe: {sanitize(d)}" for d in raw_diags if d
+                        ]
+                    elif raw_diags is not None:
+                        # CR-12-4-P205 (round-8): a producer writing a non-list
+                        # ``probe_diagnostics`` (string, dict, scalar) previously silently
+                        # iterated one character at a time (string case) or raised
+                        # (other types). Emit a typed diagnostic and force fail-closed
+                        # via concurrent_same_version=True so the malformed payload does
+                        # not silently authorize a publish.
+                        concurrency_probe_diagnostics = [
+                            f"concurrency-probe: malformed probe_diagnostics type {type(raw_diags).__name__}"
                         ]
         else:
             concurrency_probe_diagnostics.append(
@@ -2114,6 +2290,24 @@ def classify_release(args: argparse.Namespace) -> int:
             *concurrency_probe_diagnostics,
         ]
     decision = classify_release_payload(evidence, pathlib.Path(args.root), evidence_root=evidence_root_arg)
+    # CR-12-4-P209 (round-8): release owners reading only `grouped_reasons.blocking`
+    # need to distinguish PROBE-DEGRADED (infrastructure issue → retry) from a REAL
+    # concurrent run (operational issue → wait). The headline reason emitted by
+    # `classify_release_payload` is the generic "same-version concurrent or stale
+    # release attempt requires owner review"; rewrite it to a probe-degraded variant
+    # when the blocking trail originated from concurrency_probe_diagnostics. The full
+    # diagnostic detail is already in `checks.diagnostics`.
+    if concurrency_probe_diagnostics:
+        blocking = decision.get("grouped_reasons", {}).get("blocking", [])
+        decision["grouped_reasons"]["blocking"] = [
+            (
+                "concurrency-probe-degraded: same-version probe failed (see checks.diagnostics) "
+                "and cannot rule out concurrent release run"
+                if "same-version concurrent or stale release attempt" in b
+                else b
+            )
+            for b in blocking
+        ]
     # If the caller omitted --output but CLI parse errors occurred, still write a typed
     # readiness JSON to a default path so downstream tooling can distinguish CLI-parse
     # exit 2 from "helper crashed" exit 2 by reading the typed contract.
@@ -2129,7 +2323,26 @@ def classify_release(args: argparse.Namespace) -> int:
             print(diagnostic, file=sys.stderr)
         return 2
     if args.require_publishable and not decision["publish_authorized"]:
-        print("; ".join(decision["grouped_reasons"]["blocking"]) or decision["classification"], file=sys.stderr)
+        blocking = decision["grouped_reasons"]["blocking"]
+        # CR-12-4-P214 (round-8, from CR-12-4-D14): when the only remaining blockers
+        # are the dry-run / local-candidate context (i.e., the underlying evidence
+        # would classify as `ready` / `fallback-approved` in a trusted-write-capable
+        # context), exit 0 so release owners see a healthy dry-run as green. The
+        # typed readiness JSON still records the blocker for auditability; only the
+        # workflow EXIT code differs.
+        if getattr(args, "dry_run_clean_exit", False) and blocking:
+            allowed = lambda b: (
+                "candidate evidence from local-candidate" in b
+                or b.lower().startswith("dry-run")
+            )
+            if all(allowed(b) for b in blocking):
+                print(
+                    "Classification: would-be-publishable in trusted context "
+                    "(dry-run; publish blocked pending owner approval)",
+                    file=sys.stderr,
+                )
+                return 0
+        print("; ".join(blocking) or decision["classification"], file=sys.stderr)
         return 1
     return 0
 
@@ -2272,6 +2485,11 @@ def main() -> int:
     classify.add_argument("--manifest")
     classify.add_argument("--output")
     classify.add_argument("--require-publishable", action="store_true")
+    # CR-12-4-P214 (round-8, from CR-12-4-D14): allow the dry-run branch to exit 0 when
+    # the only blockers are the dry-run / local-candidate context state. Off by default
+    # so the existing trusted-context publish path (which expects ANY blocker to fail
+    # closed) is unchanged.
+    classify.add_argument("--dry-run-clean-exit", action="store_true")
     classify.add_argument("--test-results")
     classify.add_argument("--event-name", default=os.environ.get("GITHUB_EVENT_NAME", "local"))
     classify.add_argument("--ref", default=os.environ.get("GITHUB_REF", "local"))

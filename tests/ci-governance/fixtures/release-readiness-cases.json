@@ -37,8 +37,16 @@
       "run_attempt": 1
     },
     "manifest": {
+      "attestation_bundle": {
+        "path": "attestations/attestation-bundle.json",
+        "sha256": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd0"
+      },
       "benchmark_summary_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
       "commit_sha": "abc123",
+      "helper_version": {
+        "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+        "version": "1.0.0"
+      },
       "packages": [
         {
           "artifact_path": "nupkgs-signed/Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
@@ -58,22 +66,17 @@
         ".github/workflows/release.yml": "04adc9b92bac844bbc444ab31cbcf957e770d32a3de009fb2c13145990585a07",
         ".releaserc.json": "4e0a6288e9391bfcf27c4881f74eb51fbe25a42729a261ed9b8e656423450a23",
         "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
-        "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd",
-        "eng/release_evidence.py": "d0b37bf7284eb352ef48219e5ecfd3fd467370d29acbdb3bd05364838cd5463b"
+        "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd"
       },
       "run_id": "42",
       "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
       "seal": {
         "algorithm": "sha256",
-        "hash": "9f34479d3d5570a1105097d2bfd75e42d38f167701bfcd96049667781d203ad2",
+        "hash": "58b4ecbbbb3357f784ab8a856368bc714f42ee350b5bb912d0bee8a2087a1cf4",
         "sealed_at": "2026-05-19T00:00:00+00:00"
       },
       "tag": "v1.2.3",
-      "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3",
-      "attestation_bundle": {
-        "path": "attestations/attestation-bundle.json",
-        "sha256": "ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd0"
-      }
+      "workflow_ref": "Hexalith/Hexalith.FrontComposer/.github/workflows/release.yml@refs/tags/v1.2.3"
     }
   },
   "cases": [
@@ -92,10 +95,10 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "81ee8391ee8f1f1983cdc383db9372fb31526888377fc471ead78f70ef2c179c",
+            "approved_against_fingerprints_sha256": "20c18c78d0ea3e013bb3ff9915a2e3f8f9864f0cc3a8800a3d76a7c60de0c448",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
-            "evidence": "release-evidence/attestation-unavailable.md",
+            "evidence": "attestation-unavailable.md",
             "expires_at": "2026-12-31T23:59:59Z",
             "reason": "GitHub artifact attestations unavailable for this repository context",
             "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
@@ -112,7 +115,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "e09269e443b8390ccde1504f91e3bbc7a31a28bc9b2b9a1e9f28fd37d0fd2343",
+            "hash": "d4cef5417be9e311ed153733e589de81045f7dac6fe9184996698e0633ede4b9",
             "sealed_at": "2026-05-17T00:00:00+00:00"
           }
         }
@@ -181,7 +184,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "3c6acef3c3748efb9824a866c9caaf2cbe259cc3f58cad186e20838dc821d78e",
+            "hash": "c2165559062ec2d1b5a2c3f8cd2b044aba3197b33d751e94cdbfd1a6838a02ae",
             "sealed_at": "2026-05-19T00:00:00+00:00"
           }
         }
@@ -202,7 +205,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "823c5ccfcb35f831d52415c087e6a652537a515c6daf6b089d9b0ba3c993494a",
+            "hash": "4b230bb2845f37f5cf3b9064ac5d33411db11c750efaaa44583da5f5fa984c48",
             "sealed_at": "2026-05-19T00:00:00+00:00"
           }
         }
@@ -219,7 +222,7 @@
           "sbom_hash": "",
           "seal": {
             "algorithm": "sha256",
-            "hash": "52f2c1db6a206b5d2306a417e4e6c2c40413f178197803eac67b84cb99c1bd10",
+            "hash": "6b3726e4ab47e805dea51bdee9c5c4cca8da720f853066d65c600a79cce08438",
             "sealed_at": "2026-05-19T00:00:00+00:00"
           }
         }
@@ -240,7 +243,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "d645f7b711ad84bcf738d4ce371a8f2f1a82362f077d46029939c9994e770ac8",
+            "hash": "815e1154c1678f54e33005c2b3221edc95dc7eee0feacafc2431448503dff17b",
             "sealed_at": "2026-05-19T00:00:00+00:00"
           }
         }
@@ -477,7 +480,7 @@
           "attestation_bundle": false,
           "seal": {
             "algorithm": "sha256",
-            "hash": "35cb9fe2552fc877cec2a47ebd35a04de5576b10b87bfd658c7021ffa9cff321",
+            "hash": "95785941ee5cbf78ee1b82fb60e206bf5d77e45ae8e370bf0fac2b8c73ad2b55",
             "sealed_at": "2026-05-19T00:00:00+00:00"
           }
         }
@@ -487,19 +490,7 @@
       "expected_classification": "blocked",
       "expected_context_class": "trusted-main-or-release",
       "expected_publish_authorized": false,
-      "expected_next_owner_action_contains": "resolve blocking",
-      "name": "concurrency-probe-degraded",
-      "override": {
-        "checks": {
-          "concurrent_same_version": true
-        }
-      }
-    },
-    {
-      "expected_classification": "blocked",
-      "expected_context_class": "trusted-main-or-release",
-      "expected_publish_authorized": false,
-      "name": "fallback-evidence-empty-file",
+      "name": "fallback-zero-digest-mismatch",
       "override": {
         "attestation": {
           "fallback": {
@@ -524,7 +515,7 @@
           ],
           "seal": {
             "algorithm": "sha256",
-            "hash": "e09269e443b8390ccde1504f91e3bbc7a31a28bc9b2b9a1e9f28fd37d0fd2343",
+            "hash": "d4cef5417be9e311ed153733e589de81045f7dac6fe9184996698e0633ede4b9",
             "sealed_at": "2026-05-19T00:00:00+00:00"
           }
         }

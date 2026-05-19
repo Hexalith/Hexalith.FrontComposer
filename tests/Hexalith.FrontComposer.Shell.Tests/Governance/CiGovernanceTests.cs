@@ -959,10 +959,15 @@ public sealed class CiGovernanceTests {
             Directory.CreateDirectory(Path.Combine(tempRoot, ".github", "workflows"));
             Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
             Directory.CreateDirectory(Path.Combine(tempRoot, "nupkgs-signed"));
+            // CR-12-4-P215 (round-8, from CR-12-4-D16): `eng/release_evidence.py` is no
+            // longer in RELEASE_DEFINITION_FILES — the sealed manifest tracks helper
+            // identity via the structured `helper_version` field instead. The
+            // round-trip baseline now matches the live `RELEASE_DEFINITION_FILES` set
+            // (6 entries) and embeds the live `helper_version_record()` so
+            // `manifest_diagnostics` sees no drift.
             string[] releaseDefinitionFiles = [
                 ".github/workflows/release.yml",
                 ".releaserc.json",
-                "eng/release_evidence.py",
                 "eng/release-package-inventory.json",
                 "Directory.Build.props",
                 "Directory.Build.targets",
@@ -973,6 +978,12 @@ public sealed class CiGovernanceTests {
                 Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 File.WriteAllText(path, $"baseline {file}");
             }
+            // CR-12-4-P215: copy the live helper into the temp root and compute its sha256
+            // so `helper_version_record()` produces a matching baseline.
+            string liveHelper = Path.Combine(root, "eng/release_evidence.py");
+            Directory.CreateDirectory(Path.Combine(tempRoot, "eng"));
+            File.Copy(liveHelper, Path.Combine(tempRoot, "eng/release_evidence.py"), overwrite: true);
+            string helperContentSha256 = Sha256File(liveHelper);
             string artifactPath = Path.Combine(tempRoot, "nupkgs-signed", "Hexalith.FrontComposer.Contracts.1.2.3.nupkg");
             File.WriteAllText(artifactPath, "package bytes");
             string artifactChecksum = Sha256File(artifactPath);
@@ -985,6 +996,10 @@ public sealed class CiGovernanceTests {
             File.WriteAllText(preManifest, JsonSerializer.Serialize(new Dictionary<string, object?> {
                 ["benchmark_summary_hash"] = new string('c', 64),
                 ["commit_sha"] = "abc123",
+                ["helper_version"] = new Dictionary<string, object?> {
+                    ["version"] = "1.0.0",
+                    ["content_sha256"] = helperContentSha256,
+                },
                 ["package_set_fingerprint"] = Sha256File(Path.Combine(tempRoot, "eng", "release-package-inventory.json")),
                 ["packages"] = new[] {
                     new Dictionary<string, object?> {

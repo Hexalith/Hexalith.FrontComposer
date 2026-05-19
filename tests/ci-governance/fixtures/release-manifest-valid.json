@@ -1,6 +1,10 @@
 {
   "benchmark_summary_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
   "commit_sha": "abc123",
+  "helper_version": {
+    "content_sha256": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "version": "1.0.0"
+  },
   "package_set_fingerprint": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd",
   "packages": [
     {
@@ -23,14 +27,13 @@
     "Directory.Build.props": "11111111111111111111111111111111111111111111111111111111111111aa",
     "Directory.Build.targets": "11111111111111111111111111111111111111111111111111111111111111bb",
     "Directory.Packages.props": "0bd7e8e3e6cb6fcad019fbc070a86be84c5d48078ad75ba8b534b2440a5daa7d",
-    "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd",
-    "eng/release_evidence.py": "d0b37bf7284eb352ef48219e5ecfd3fd467370d29acbdb3bd05364838cd5463b"
+    "eng/release-package-inventory.json": "5ab5701816f1b22c924f27164a190fb5af764b3a00385f4f1b3e25b00f50ebfd"
   },
   "run_id": "42",
   "sbom_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "seal": {
     "algorithm": "sha256",
-    "hash": "7e019c6ae0a76624ea73477de1afcbc07f95cc64f2f05772a0f78fbcd6af7d6b",
+    "hash": "9a044abc213b6311454520dfc3dd4c0840399bacf1f83a5a533e8a14a58a5079",
     "sealed_at": "2026-05-19T00:00:00+00:00"
   },
   "tag": "v1.2.3",

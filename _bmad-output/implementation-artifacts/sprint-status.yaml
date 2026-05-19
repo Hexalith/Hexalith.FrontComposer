@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-19 (Story 12.5 code review complete via /bmad-code-review. 135 raw findings (50 Blind Hunter + 10 Acceptance Auditor + 75 Edge Case Hunter); after triage: 2 decisions resolved (CR-12-5-D1 four-role constraint approval, CR-12-5-D2 per-row roadmap rule); 22 patches applied (P1-P22) tightening template per-status fields, README required-fields restructure, ROADMAP gate split for zoom/forced-colors/reduced-motion, four-role constraint approval, duplicate gate-id precedence, schema drift fixes; 16 deferred (CR-12-5-Def01..Def16 — schema/process gaps not actionable until first non-blocked pack); ~97 dismissed as noise/duplicates. Story remains at review pending dev re-run of validation against patched files. Story 12.4 round-8 follow-up (CR-12-4-Def14 attestation blocker) still pending.)"
+last_updated: "2026-05-19 (Story 12.4 round-8 verification review CR-12-4-P193..P216 applied — 24 patches + 4 decisions D14/D15/D16/D17. HIGH: P193 fixture path fix, P194 fixture rename, P195 git-credentials gate normalized, P196 TRX skipped-test diagnostic, P197 duplicate fixture removed, P214 (D14) dry-run-clean-exit via npx semantic-release --dry-run + Classify-dry-run-release-readiness step, P215 (D16) helper removed from RELEASE_DEFINITION_FILES + sealed-manifest helper_version field, P216 (D17) partial-publish-incident.json added to GitHub Release assets. MEDIUM/LOW: P198-P213 covering atomic attestation writes, docstring + manifest_diagnostics artifact-path normalization, conditional <IsPackable> skip, tag-dispatch CURRENT_BRANCH fallback, jq --arg quoting, strict-bool coercion for trx_present/test_count/probe_diagnostics, APPROVAL_MATRIX inputs enumeration, probe-degraded prose differentiation, display_title word-boundary regex, traceback in concurrency-guard crash, prior-release JSON validation, safe_run_attempt contract documentation. Fixtures regenerated: release-manifest-valid.json + release-readiness-cases.json base manifest + per-case seal hashes recomputed. Validation: py_compile, .releaserc.json parse, fixtures JSON parse, workflow YAML parse, classify-fixtures (32 cases status=valid), inventory (7 rows), verify-manifest, git diff --check, and 3054 release-filtered tests pass (33 CiGovernanceTests + 1623 Shell + 929 SourceTools + 291 Mcp + 159 Contracts + 41 Cli + 11 Testing). Story moved to review. CR-12-4-Def14 attestation workflow restructure remains the sole outstanding production release blocker.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -160,6 +160,6 @@ development_status:
   12-2-mcp-ledger-closure-and-contract-snapshot-decisions: done
   12-3-eventstore-pending-command-provider-release-gate: done
   12-3-1-pending-status-reopen-governance-test: done
-  12-4-trusted-release-evidence-dry-run: in-progress
+  12-4-trusted-release-evidence-dry-run: review
   12-5-accessibility-and-stakeholder-acceptance-evidence-pack: done
   epic-12-retrospective: optional

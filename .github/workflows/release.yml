@@ -185,7 +185,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CURRENT_HEAD_SHA: ${{ github.sha }}
-          CURRENT_BRANCH: ${{ github.ref_name }}
+          # CR-12-4-P202 (round-8): when a future workflow_dispatch is invoked against a
+          # tag ref (`github.ref_type == 'tag'`), `github.ref_name` is the tag name
+          # (e.g., `v1.2.3`) instead of a branch. The branch-fallback concurrency
+          # detection below compares against `head_branch`, which on workflow runs is
+          # always a branch name; an empty / tag-named CURRENT_BRANCH silently disables
+          # the branch fallback. Use the repository default branch for tag dispatches.
+          CURRENT_BRANCH: ${{ github.ref_type == 'tag' && github.event.repository.default_branch || github.ref_name }}
         # CR-12-4-P90/P91/P99 (round-5):
         # P90 — `gh api --paginate ... --jq '[expr]'` concatenates one JSON array per page,
         #       which is not valid JSON; drop `--jq` and aggregate pages in Python via a
@@ -376,11 +382,18 @@ jobs:
                   status = "true" if same_version else "false"
               emit(status, same_version, other_release, probe_diagnostics)
           except Exception as exc:  # noqa: BLE001
+              # CR-12-4-P211 (round-8): the surrounding heredoc imports `traceback` but
+              # the prior diagnostic only echoed the exception type and message. Include
+              # a bounded traceback excerpt so incident triage doesn't need to reproduce
+              # the crash locally to see where it originated.
               emit(
                   "true",
                   [],
                   [],
-                  [f"concurrency probe crashed: {type(exc).__name__}: {str(exc)[:200]}"],
+                  [
+                      f"concurrency probe crashed: {type(exc).__name__}: {str(exc)[:200]}",
+                      f"concurrency probe trace: {traceback.format_exc()[:500]}",
+                  ],
               )
               sys.exit(0)
           PY
@@ -464,12 +477,24 @@ jobs:
           fi
 
       - name: Configure git credentials
-        if: ${{ inputs.dry_run == false }}
+        # CR-12-4-P195 (round-8): pivot on the normalized `RELEASE_DRY_RUN` env var
+        # (which the "Record workflow-dispatch release inputs" step writes via
+        # `$GITHUB_ENV`) so every dry-run gate keys off a single canonical signal.
+        # The prior `inputs.dry_run == false` raw-boolean form is correct under
+        # `type: boolean` today, but a future refactor that drops the `type` or routes
+        # the input through a string wrapper would silently flip this gate while every
+        # other gate continued to honor `RELEASE_DRY_RUN`.
+        if: ${{ env.RELEASE_DRY_RUN != 'true' }}
         run: git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/Hexalith/Hexalith.FrontComposer.git
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Run semantic-release
+      - name: Run semantic-release (live publish)
+        # CR-12-4-P214 (round-8, from CR-12-4-D14): split semantic-release into two
+        # if-gated invocations. The LIVE path runs the full plugin chain (commit-
+        # analyzer → notes → changelog → exec → github → git). publishCmd dry-run
+        # branch is unreachable here because RELEASE_DRY_RUN is 'false'.
+        if: ${{ env.RELEASE_DRY_RUN != 'true' }}
         run: npx semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -477,6 +502,74 @@ jobs:
           NUGET_SIGNING_CERTIFICATE_PATH: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PATH }}
           NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
           NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
+
+      - name: Run semantic-release (dry-run prepare)
+        # CR-12-4-P214 (round-8, from CR-12-4-D14): the DRY-RUN path uses
+        # `npx semantic-release --dry-run`. Per semantic-release docs, --dry-run
+        # skips the publish/success/fail/addChannel plugin phases — so
+        # @semantic-release/github (GitHub Release creation), @semantic-release/git
+        # (tag/changelog push), AND the @semantic-release/exec publishCmd are ALL
+        # skipped. prepareCmd still runs and produces full evidence including the
+        # sealed manifest. The follow-up `Classify dry-run release readiness` step
+        # invokes classify-release directly against the sealed manifest. No
+        # `continue-on-error` is needed because publishCmd cannot reach the
+        # exit-1-after-classifier path.
+        if: ${{ env.RELEASE_DRY_RUN == 'true' }}
+        run: npx semantic-release --dry-run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+          NUGET_SIGNING_CERTIFICATE_PATH: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PATH }}
+          NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
+          NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
+
+      - name: Classify dry-run release readiness
+        # CR-12-4-P214 (round-8, from CR-12-4-D14): after `semantic-release --dry-run`
+        # writes the sealed manifest via prepareCmd, classify release readiness
+        # directly. `--dry-run-clean-exit` allows the helper to return 0 when the only
+        # blockers are dry-run / local-candidate context state (a would-be-publishable
+        # dispatch). Any non-dry-run blocker still fails the step and the workflow.
+        if: ${{ env.RELEASE_DRY_RUN == 'true' }}
+        run: |
+          set -euo pipefail
+          if [ ! -f release-evidence/sealed-manifest.json ]; then
+            {
+              echo '## Dry-run classification failed'
+              echo
+              echo '`release-evidence/sealed-manifest.json` was not produced by semantic-release --dry-run; failing closed.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          python3 eng/release_evidence.py classify-release \
+            --root . \
+            --evidence-root ./release-evidence \
+            --manifest ./release-evidence/sealed-manifest.json \
+            --test-results ./release-evidence/test-results.json \
+            --output ./release-evidence/release-readiness.json \
+            --require-publishable \
+            --dry-run-clean-exit \
+            --semantic-release-state matches \
+            --concurrent-same-version "$RELEASE_CONCURRENT_SAME_VERSION" \
+            --event-name "$GITHUB_EVENT_NAME" \
+            --ref "$GITHUB_REF" \
+            --ref-protected "${GITHUB_REF_PROTECTED:-false}" \
+            --from-fork "$RELEASE_FROM_FORK" \
+            --dry-run true \
+            --run-attempt "${GITHUB_RUN_ATTEMPT:-1}" \
+            --owner-approved "$RELEASE_OWNER_APPROVED" \
+            --approver "$RELEASE_APPROVER" \
+            --approval-mechanism "$RELEASE_APPROVAL_MECHANISM" \
+            --attestation-status "$RELEASE_ATTESTATION_STATUS" \
+            --fallback-approved-at "$RELEASE_ATTESTATION_FALLBACK_APPROVED_AT" \
+            --fallback-approver "$RELEASE_ATTESTATION_FALLBACK_APPROVER" \
+            --fallback-expires-at "$RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT" \
+            --fallback-approved-against-fingerprints-sha256 "$RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256" \
+            --concurrency-guard ./release-evidence/concurrency-guard.json
+          {
+            echo '## Dry-run classification'
+            echo
+            echo 'classify-release exited 0 (would-be-publishable in trusted context, blocked only by dry-run/local-candidate state).'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Release budget monitor
         if: always()
