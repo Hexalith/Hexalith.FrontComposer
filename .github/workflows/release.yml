@@ -126,6 +126,28 @@ jobs:
       - name: Start release budget timer
         run: echo "RELEASE_STARTED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
+      - name: Seed release-evidence directory with run metadata
+        # CR-12-4-P221 (round-9, BH-020): the upload-artifact step at the end of the
+        # job uses `if: always()` plus `if-no-files-found: error` (changed from the
+        # prior `ignore`). A run that crashes before semantic-release's prepareCmd
+        # creates `release-evidence/` would otherwise upload nothing AND succeed —
+        # post-mortem becomes impossible. Always seed the directory with bounded
+        # run metadata so the forensic artifact is never empty and the `error`
+        # discipline catches genuine missing-evidence regressions.
+        run: |
+          mkdir -p release-evidence
+          cat > release-evidence/run-metadata.json <<EOF
+          {
+            "decision_contract": "frontcomposer.release-run-metadata.v1",
+            "event_name": "${{ github.event_name }}",
+            "ref": "${{ github.ref }}",
+            "run_id": "${{ github.run_id }}",
+            "run_attempt": "${{ github.run_attempt }}",
+            "sha": "${{ github.sha }}",
+            "started_at": "${RELEASE_STARTED_AT:-unknown}"
+          }
+          EOF
+
       - name: Record workflow-dispatch release inputs
         if: ${{ github.event_name == 'workflow_dispatch' }}
         env:
@@ -540,6 +562,19 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
+          # CR-12-4-P227 (round-9, EC-17): validate the sealed manifest parses as JSON
+          # before invoking classify-release. A truncated/corrupt sealed manifest would
+          # otherwise cause classify-release to exit 2 (helper crash) instead of
+          # producing a typed dry-run blocked classification. Fail closed early with a
+          # bounded summary that names the file.
+          if ! python3 -c 'import json,sys; json.load(open("release-evidence/sealed-manifest.json"))' 2>/dev/null; then
+            {
+              echo '## Dry-run classification failed'
+              echo
+              echo '`release-evidence/sealed-manifest.json` exists but is not valid JSON; failing closed before classify-release.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
           python3 eng/release_evidence.py classify-release \
             --root . \
             --evidence-root ./release-evidence \
@@ -578,7 +613,18 @@ jobs:
         # trigger change makes fork status meaningful.
         run: |
           if [ -z "${RELEASE_STARTED_AT:-}" ]; then
-            echo 'RELEASE_STARTED_AT was not set; release budget monitor skipped because the run failed before timing started.' >> "$GITHUB_STEP_SUMMARY"
+            # CR-12-4-P220 (round-9, BH-018): surface the skip as a job-summary warning
+            # AND a workflow annotation so a future refactor that drops `Record release
+            # start` does not silently disable budget monitoring across all releases.
+            # The step still exits 0 because there is no useful budget data to
+            # compute, but the `::warning::` annotation is visible in the workflow run
+            # summary so the regression is observable.
+            {
+              echo '## Release budget monitor skipped'
+              echo
+              echo '`RELEASE_STARTED_AT` was not set; the run failed before timing started or the recorder step was bypassed. Investigate before promoting this run.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo '::warning::Release budget monitor skipped — RELEASE_STARTED_AT was not set.'
             exit 0
           fi
           python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --started-at "$RELEASE_STARTED_AT" --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "${{ env.RELEASE_FROM_FORK }}" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"
@@ -602,5 +648,10 @@ jobs:
         with:
           name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
           path: release-evidence/**
-          if-no-files-found: ignore
+          # CR-12-4-P221 (round-9, BH-020): fail closed when release-evidence is
+          # absent. The earlier `Seed release-evidence directory with run metadata`
+          # step always produces `run-metadata.json`, so `if-no-files-found: error`
+          # only fires when that step was skipped or wiped — a forensic regression
+          # that MUST be visible at the workflow level, not buried in step summary.
+          if-no-files-found: error
           retention-days: 30

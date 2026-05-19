@@ -1296,11 +1296,22 @@ def fallback_invalidation_fingerprints(root: pathlib.Path) -> dict[str, str]:
     CR-12-4-P124 (round-6): see `FALLBACK_INVALIDATION_FILES` comment — excludes
     `Directory.Packages.props` so routine Dependabot bumps do not invalidate fallbacks,
     while including all other release-definition files plus the package set inventory.
+
+    CR-12-4-P232 (round-9, from CR-12-4-D18): include `helper_version` (the helper's
+    semver `__version__` constant) so a deliberate operator-driven version bump
+    invalidates the fallback approval digest. Content-only refactors keep the same
+    `__version__` and DO NOT require re-approval; deliberate behavior changes MUST
+    bump `__version__` to force re-approval. The `content_sha256` is NOT included —
+    routine helper edits stay invisible to the digest until the operator signals
+    intent via the version bump. This couples AC34's "release-definition drift
+    invalidates fallback" invariant to an explicit operator action, matching D16's
+    "intentional version bump" contract.
     """
     fingerprints: dict[str, str] = {}
     for rel in FALLBACK_INVALIDATION_FILES:
         target = root / rel
         fingerprints[rel] = sha256_file(target) if target.exists() else "missing"
+    fingerprints["helper_version"] = helper_version_record()["version"]
     return fingerprints
 
 
@@ -1413,8 +1424,18 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
     checks = evidence_section(evidence, "checks", section_diagnostics)
     approval = evidence_section(evidence, "approval", section_diagnostics)
     attestation = evidence_section(evidence, "attestation", section_diagnostics)
+    # CR-12-4-P223 (round-9, BH-026/EC-4): the prior `manifest_raw if isinstance(...)
+    # else manifest_raw` was a no-op ternary that let a non-dict manifest section
+    # (list, scalar, null) leak through to downstream code. Existing isinstance
+    # guards prevented crashes but the operator-facing forensic JSON missed the
+    # typed diagnostic. Treat malformed manifest the same way as malformed
+    # approval/attestation sections.
     manifest_raw = evidence.get("manifest", {})
-    manifest = manifest_raw if isinstance(manifest_raw, dict) else manifest_raw
+    if isinstance(manifest_raw, dict):
+        manifest = manifest_raw
+    else:
+        manifest = {}
+        section_diagnostics.append("manifest section must be an object")
     context_class, context_diagnostics = classify_context(context if isinstance(context, dict) else {})
     blocking: list[str] = []
     fallback_reasons: list[str] = []
@@ -1507,6 +1528,15 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
     status = attestation.get("status")
     fallback_record: dict[str, str] | None = None
     if status == "approved-unsupported":
+        # CR-12-4-P219 (round-9, BH-010): inverse of the `attested` bundle-presence
+        # check below. A stale or hand-crafted manifest carrying both
+        # `attestation_status=approved-unsupported` AND a populated
+        # `manifest.attestation_bundle` is internally inconsistent — the fallback path
+        # is by definition the no-bundle path. Reject so an attacker cannot smuggle a
+        # stale bundle through alongside an approved fallback record.
+        leftover_bundle = manifest.get("attestation_bundle") if isinstance(manifest, dict) else None
+        if isinstance(leftover_bundle, dict) and leftover_bundle.get("sha256"):
+            blocking.append("approved-unsupported fallback must not carry attestation_bundle evidence")
         fallback = attestation.get("fallback", {})
         if not isinstance(fallback, dict):
             blocking.append("unsupported-attestation fallback is missing, stale, or incomplete")
@@ -1524,6 +1554,14 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
                     k: v for k, v in manifest_fingerprints.items()
                     if k in set(FALLBACK_INVALIDATION_FILES)
                 }
+                # CR-12-4-P232 (round-9, from CR-12-4-D18): fold the helper's semver
+                # `__version__` into the fallback digest input so a deliberate operator-
+                # driven version bump invalidates the fallback approval. The producer
+                # side (`fallback_invalidation_fingerprints`) embeds the same key/value
+                # shape; both sides must agree for `fallback_complete` to validate.
+                manifest_helper_version = manifest.get("helper_version") if isinstance(manifest, dict) else None
+                if isinstance(manifest_helper_version, dict):
+                    fingerprints_for_drift["helper_version"] = str(manifest_helper_version.get("version", ""))
             # CR-12-4-P120 (round-6): bind the current package-set fingerprint so the
             # fallback is invalidated by inventory drift per AC34/D19.
             current_package_set = manifest.get("package_set_fingerprint") if isinstance(manifest, dict) else None
@@ -1613,6 +1651,14 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         "package_set_fingerprint": package_set_fingerprint(root) if verify_drift else None,
         "publish_authorized": publish_authorized,
         "release_definition_fingerprints": release_definition_fingerprints(root) if verify_drift else {},
+        # CR-12-4-P230 (round-9, AA-005): AC30 lists `eng/release_evidence.py` as an
+        # input that must be bound by an immutable identifier. P215 (round-8) moved
+        # the helper out of `release_definition_fingerprints` and tracked it via the
+        # sealed-manifest `helper_version` field, but the release-readiness audit
+        # JSON did not expose the binding. Surface it alongside the other
+        # release-definition fingerprints so release owners can verify all
+        # release-definition identifiers from a single audit artifact.
+        "helper_version": helper_version_record() if verify_drift else {},
         "sanitized_raw_evidence": sanitize(checks.get("raw_evidence", "")),
     }
 
@@ -1970,7 +2016,15 @@ def release_budget(args: argparse.Namespace) -> int:
         package_count = int(args.package_count)
         tag = args.tag
         if manifest_payload is not None:
-            package_count = len(manifest_payload.get("packages", []))
+            # CR-12-4-P228 (round-9, EC-27): the prior `len(manifest_payload.get("packages", []))`
+            # crashes with TypeError if the manifest has `"packages": null` or any other
+            # non-list value. Guard via isinstance(list) and fall back to the CLI
+            # --package-count argument with a typed diagnostic in the future readiness
+            # surface (release_budget itself is monitoring-only; downstream consumers
+            # see package_count from --package-count instead).
+            packages_field = manifest_payload.get("packages")
+            if isinstance(packages_field, list):
+                package_count = len(packages_field)
             tag = str(manifest_payload.get("tag") or args.tag)
         releases = [
             *releases,
@@ -2085,7 +2139,15 @@ def partial_publish_incident(args: argparse.Namespace) -> int:
             try:
                 existing = read_json(output_path)
             except SystemExit:
-                existing = None
+                # CR-12-4-P224 (round-9, BH-031/EC-12): the prior `existing = None`
+                # fallback let a corrupted/truncated real incident be silently
+                # overwritten by the placeholder, destroying forensic state. Fail
+                # closed: the operator must investigate whether the unreadable file
+                # is a partial-write of a real incident before clearing it.
+                raise SystemExit(
+                    f"--classification none refuses to overwrite an unreadable existing file at {sanitize(str(output_path))}; "
+                    "the file may be a corrupted real partial-publish incident — investigate before clearing"
+                )
             if (
                 isinstance(existing, dict)
                 and str(existing.get("failed_phase", "")).strip().lower() not in {"", "none"}
@@ -2330,12 +2392,18 @@ def classify_release(args: argparse.Namespace) -> int:
         # context), exit 0 so release owners see a healthy dry-run as green. The
         # typed readiness JSON still records the blocker for auditability; only the
         # workflow EXIT code differs.
+        # CR-12-4-P217/P218 (round-9, BH-005/EC-1/EC-2/EC-3): tightened from
+        # prefix-match to an exact-string allowlist AND gated on
+        # `classification in {"ready", "fallback-approved"}`. A future blocking reason
+        # like "dry-run side-effect attempt detected" would have falsely matched the
+        # prior `startswith("dry-run")` predicate and slipped past the exit-0 gate.
         if getattr(args, "dry_run_clean_exit", False) and blocking:
-            allowed = lambda b: (
-                "candidate evidence from local-candidate" in b
-                or b.lower().startswith("dry-run")
-            )
-            if all(allowed(b) for b in blocking):
+            allowed_blockers = {
+                "candidate evidence from local-candidate cannot authorize publishing",
+                "dry-run dispatch cannot authorize publishing",
+            }
+            classification_ready = decision["classification"] in {"ready", "fallback-approved"}
+            if classification_ready and all(b in allowed_blockers for b in blocking):
                 print(
                     "Classification: would-be-publishable in trusted context "
                     "(dry-run; publish blocked pending owner approval)",

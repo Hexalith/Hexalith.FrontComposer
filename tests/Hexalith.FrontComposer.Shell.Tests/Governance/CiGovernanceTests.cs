@@ -723,6 +723,18 @@ public sealed class CiGovernanceTests {
         // would have permanently blocked at the owner gate anyway. The workflow now
         // makes that explicit by having no `push:` trigger at all.
         workflow.ShouldNotContain("push:\n    branches: [main]");
+        // CR-12-4-P222 (round-9, BH-024): the workflow's `on:` block must contain only
+        // `workflow_dispatch` because `RELEASE_FROM_FORK: 'false'` is hardcoded at the
+        // workflow-env level (per P165, round-7). A future trigger expansion to
+        // `pull_request`, `workflow_run`, or `push` would silently report every
+        // fork-originated event as `from_fork=false` and slip past the fork-rejection
+        // gate in classify-release. Lock the trigger surface here so any expansion
+        // forces a paired update to the fork-detection logic. Regex allows YAML
+        // comments between `on:` and the trigger declaration.
+        workflow.ShouldMatch(@"(?m)^on:\s*(?:\n\s*#[^\n]*)*\n\s*workflow_dispatch:");
+        workflow.ShouldNotContain("pull_request:");
+        workflow.ShouldNotContain("workflow_run:");
+        workflow.ShouldNotContain("schedule:");
         // CR-12-4-P96 (round-5): RELEASE_APPROVER must use the documented `name<<DELIM`
         // heredoc form when reading workflow_dispatch input, because the value is free-
         // form text that may contain newlines.
@@ -946,6 +958,40 @@ public sealed class CiGovernanceTests {
     }
 
     [Fact]
+    public void ReleaseEvidenceScript_TestResults_FailsClosedOnSkippedTests() {
+        // CR-12-4-P226 (round-9, BH-037): lock the round-8 P196 skipped-test contract.
+        // A TRX with executed < total (e.g., executed=50, total=100) used to classify
+        // `test_status: passed` and `test_count: 50` because the per-counter gates only
+        // checked failed/error/aborted/timeout. P196 added a typed diagnostic that
+        // surfaces the skip count and folds it into blocking. A regression that drops
+        // the executed-vs-total comparison would otherwise slip past CI.
+        string root = RepositoryRoot();
+        string trxDir = Path.Combine(Path.GetTempPath(), $"fc-trx-skipped-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(trxDir);
+        const string trxBody = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+          <ResultSummary>
+            <Counters total="100" executed="50" passed="50" failed="0" error="0" aborted="0" timeout="0" />
+          </ResultSummary>
+        </TestRun>
+        """;
+        File.WriteAllText(Path.Combine(trxDir, "release-results.trx"), trxBody);
+        string output = Path.Combine(Path.GetTempPath(), $"fc-test-results-skipped-{Guid.NewGuid():N}.json");
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "test-results",
+            "--results-dir", trxDir,
+            "--output", output,
+        ]);
+        result.ExitCode.ShouldNotBe(0);
+        using JsonDocument doc = JsonDocument.Parse(File.ReadAllText(output));
+        doc.RootElement.GetProperty("status").GetString().ShouldBe("invalid");
+        string diagnostics = doc.RootElement.GetProperty("diagnostics").ToString();
+        diagnostics.ShouldContain("skipped");
+    }
+
+    [Fact]
     public void ReleaseEvidenceScript_SealAndVerifyManifest_RoundTripsCleanly() {
         // CR-12-4-P166 (round-7): regression test for seal-manifest → verify-manifest
         // round-trip. Builds a fresh in-memory manifest with all current required
@@ -1081,6 +1127,13 @@ public sealed class CiGovernanceTests {
 
     [Fact]
     public void ReleaseEvidenceScript_ClassifyRelease_FailsClosedOnConcurrencyGuardDiagnostics() {
+        // CR-12-4-P225 (round-9, BH-006/BH-034/EC-30): the prior assertion
+        // `ExitCode.ShouldBe(0)` did not exercise `--require-publishable`, so the exit
+        // code was 0 unconditionally regardless of authorization. Add the flag and
+        // assert exit 1 so a regression that drops the concurrency-probe-diagnostic
+        // injection into `checks` would fail this test at the exit-code level (the
+        // prior JSON-level `publish_authorized=false` assertion alone could pass even
+        // if the helper returned `blocked` for a different reason).
         string root = RepositoryRoot();
         string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
         using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixtures));
@@ -1094,10 +1147,11 @@ public sealed class CiGovernanceTests {
             "--root", root,
             "--evidence", evidencePath,
             "--concurrency-guard", Path.Combine(Path.GetTempPath(), $"missing-guard-{Guid.NewGuid():N}.json"),
+            "--require-publishable",
             "--output", output,
         ]);
 
-        result.ExitCode.ShouldBe(0, result.Error);
+        result.ExitCode.ShouldBe(1, result.Error);
         using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(output));
         decision.RootElement.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
         string blocking = string.Join('\n', decision.RootElement.GetProperty("grouped_reasons").GetProperty("blocking").EnumerateArray().Select(r => r.GetString()));
