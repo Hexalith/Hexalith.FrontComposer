@@ -13,33 +13,32 @@ Arbitrary adopter-provided custom components remain governed by the custom-compo
 
 Create one dated log per release branch or package-promotion candidate. Do not record pass results for audits that were not performed.
 
-Required fields:
+### Core identity fields (always required)
 
 - Release branch or tag
-- Date
-- Tester
-- Operating system
-- Browser and version
-- Screen reader and version
-- Specimen route
-- Pass or fail
-- Issue links
-- Resolution status
-- Reviewer or sign-off owner
-- Evidence attachment paths or links
-
-Story 12.5 release-certification logs must also record:
-
+- Commit or immutable artifact reference
 - Stable gate id
 - Task and acceptance-criteria ids
 - Canonical gate status: `completed`, `not performed`, `blocked`, `accepted v1 constraint`, or `post-v1 roadmap`
-- Release impact and owner for any incomplete gate
-- Reopen event or revalidation trigger
-- Approval reference for completed or accepted gates
-- Sanitization/redaction status for every evidence path or retained artifact
-- Release classification summary: `ready`, `blocked`, or `ready-with-accepted-constraints`
+- Reviewer or sign-off owner
 
-Minimum manual matrix before release/package promotion:
+### Per-status required fields
+
+Use the per-status matrix to determine which additional fields are required for each row. The full matrix lives in [`manual-log-template.md`](./manual-log-template.md). Summary:
+
+- `completed` requires Date; Tester; OS; Browser and version; Screen reader and version; Specimen route or flow; UX baseline or responsive tier; Result (Pass / Fail); Issue links (when Result=Fail); Approval reference; Sanitization status; Evidence attachment paths or links. The tester for a manual AT or device `completed` row must be a human; AI-agent identifiers are valid as `Prepared by` on a pack but never as the tester of a manual `completed` row.
+- `not performed` requires Owner; Release impact; Reason; Next action; Reopen event or revalidation trigger.
+- `blocked` requires Owner; Release impact; Blocker ref; Decision needed; Reopen event or revalidation trigger.
+- `accepted v1 constraint` requires Owner; Release impact; Downstream consumer impact; Adopter communication need; Evidence reference; Expiry or revalidation trigger; Reopen event; Approval references for the four canonical roles (Product, Quality/Test, Accessibility/Stakeholder, Release Owner).
+- `post-v1 roadmap` requires Owner; Story or roadmap reference; Target release or non-planning rationale; Release impact; Reopen event.
+
+Sanitization/redaction status applies to every evidence path or retained artifact, regardless of canonical status.
+
+### Release classification summary
+
+Each release-candidate evidence pack includes a release classification summary: `ready`, `blocked`, or `ready-with-accepted-constraints` (see "Release Evidence Packs" below).
+
+### Minimum manual matrix before release/package promotion
 
 - NVDA with Firefox
 - JAWS with Chrome
@@ -51,9 +50,9 @@ Manual assistive-technology, tablet, and phone gates are complete only when date
 
 ## Release Evidence Packs
 
-Release evidence packs should include one canonical row per gate. If the same gate appears in multiple tables or notes, the stable gate id decides which row is canonical, and any contradiction blocks the release classification until resolved.
+Release evidence packs should include one canonical row per gate. If the same gate appears in multiple tables in the same pack, the Broader Accessibility Classification table is canonical; supplemental tables (such as the Post-v1 Roadmap Register) must not contradict the canonical status. If the same gate appears across multiple pack files, the most recent pack with a matching release-candidate identity is canonical, and any contradiction blocks the release classification until resolved.
 
-Each pack should include:
+Each pack must include:
 
 - Current evidence inventory before template or pack edits
 - Manual screen-reader matrix
@@ -66,11 +65,17 @@ Each pack should include:
 - Evidence manifest for screenshots, recordings, exported logs, external links, or retained artifacts
 - Machine-readable final classification summary
 
+### Per-row `post-v1 roadmap` rule
+
+Per-row `post-v1 roadmap` status is provisional. AC23 is satisfied at pack level whenever the overall `final_classification` is `blocked`. When a future pack proposes `ready` or `ready-with-accepted-constraints`, each ROADMAP-* row must obtain Product, Accessibility/Stakeholder, and Release Owner approval references before being claimed as roadmap rather than `blocked`. Approval references are recorded in the Post-v1 Roadmap Register.
+
+### Final classification
+
 Final classification is fail-closed:
 
-- `ready` requires every required gate to be completed with sanitized evidence and stakeholder sign-off.
-- `ready-with-accepted-constraints` requires every incomplete gate to be an approved accepted constraint or named post-v1 roadmap item.
-- `blocked` is required when a required gate is not performed, blocked, missing required fields, missing an owner, missing sanitization proof, or missing required stakeholder approval.
+- `ready` requires every required gate to be `completed` with sanitized evidence and stakeholder sign-off for all four canonical roles (Product, Quality/Test, Release Owner, Accessibility/Stakeholder).
+- `ready-with-accepted-constraints` requires every incomplete gate to be either an approved `accepted v1 constraint` (with the four-role approval references per `accepted v1 constraint` rules above) or a named `post-v1 roadmap` item with the per-row roadmap approval references.
+- `blocked` is required when a required gate is `not performed`, `blocked`, missing required fields, missing an owner, missing sanitization proof, or missing required stakeholder approval.
 
 ## Automated Evidence
 

@@ -34,7 +34,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-12
-last_updated: "2026-05-19 (Story 12.4 round-8 verification code review complete via /bmad-code-review. 58 raw findings across Blind Hunter, Edge Case Hunter, Acceptance Auditor; after triage: 4 decisions resolved (CR-12-4-D14..D17 — D14/D16/D17 routed to patches P214/P215/P216, D15 dismissed in favor of single-job status quo); 24 patches left as action items (5 HIGH: P193..P197 fixture/production divergence, git-credentials gate consistency, TRX skipped tests; 13 MEDIUM: P198..P210 covering attestation-bundle empty-on-failure, docstring drift, path-prefix bypass, tag-dispatch concurrency, jq quoting, string-bool truthiness, approval-matrix completeness, classification-output distinguishability, version-substring anchoring; 3 LOW: P211..P213 traceback import, prior-release JSON validation, safe_run_attempt sentinel); 24 deferred (CR-12-4-Def35..Def58 — operator-misuse fail-closed gaps, Windows-runner concerns, theoretical edge cases); 5 dismissed (auditor A1-A4/A10 covered by prior items or decisions). CR-12-4-Def14 remains the sole production release blocker. Story moved review → in-progress to land round-9 patches before Def14 follow-up.)"
+last_updated: "2026-05-19 (Story 12.5 code review complete via /bmad-code-review. 135 raw findings (50 Blind Hunter + 10 Acceptance Auditor + 75 Edge Case Hunter); after triage: 2 decisions resolved (CR-12-5-D1 four-role constraint approval, CR-12-5-D2 per-row roadmap rule); 22 patches applied (P1-P22) tightening template per-status fields, README required-fields restructure, ROADMAP gate split for zoom/forced-colors/reduced-motion, four-role constraint approval, duplicate gate-id precedence, schema drift fixes; 16 deferred (CR-12-5-Def01..Def16 — schema/process gaps not actionable until first non-blocked pack); ~97 dismissed as noise/duplicates. Story remains at review pending dev re-run of validation against patched files. Story 12.4 round-8 follow-up (CR-12-4-Def14 attestation blocker) still pending.)"
 project: Hexalith.FrontComposer
 project_key: NOKEY
 tracking_system: file-system
@@ -161,5 +161,5 @@ development_status:
   12-3-eventstore-pending-command-provider-release-gate: done
   12-3-1-pending-status-reopen-governance-test: done
   12-4-trusted-release-evidence-dry-run: in-progress
-  12-5-accessibility-and-stakeholder-acceptance-evidence-pack: review
+  12-5-accessibility-and-stakeholder-acceptance-evidence-pack: done
   epic-12-retrospective: optional
