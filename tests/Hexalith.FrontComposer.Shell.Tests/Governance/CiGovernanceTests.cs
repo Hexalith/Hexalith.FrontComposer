@@ -175,14 +175,17 @@ public sealed class CiGovernanceTests {
         string releaseConfig = File.ReadAllText(Path.Combine(root, ".releaserc.json"));
 
         workflow.ShouldContain("contents: read");
+        workflow.ShouldContain("actions: read");
         workflow.ShouldContain("contents: write");
-        workflow.ShouldContain("id-token: write");
-        workflow.ShouldContain("attestations: write");
+        workflow.ShouldContain("attestations: read");
+        workflow.ShouldNotContain("packages: write");
+        workflow.ShouldNotContain("id-token: write");
+        workflow.ShouldNotContain("attestations: write");
         workflow.ShouldContain("submodules: true");
         workflow.ShouldNotContain("submodules: recursive");
 
         workflow.IndexOf("Run All Tests", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
-        workflow.IndexOf("Record approved attestation fallback before publish", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
+        workflow.IndexOf("Record attestation fallback evidence before publish", StringComparison.Ordinal).ShouldBeLessThan(workflow.IndexOf("Run semantic-release", StringComparison.Ordinal));
         workflow.ShouldContain("Verify release test evidence");
         workflow.ShouldContain("release-evidence/test-results.json");
         workflow.ShouldContain("Preflight package inventory");
@@ -190,6 +193,8 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("attestation-unavailable.md");
         workflow.ShouldContain("release-budget");
         workflow.ShouldContain("--append-current");
+        workflow.ShouldContain("Upload release evidence artifact");
+        workflow.ShouldContain("actions/upload-artifact");
         workflow.ShouldNotContain("|| true");
 
         releaseConfig.ShouldContain("--include-symbols");
@@ -699,11 +704,16 @@ public sealed class CiGovernanceTests {
         workflow.ShouldContain("RELEASE_OWNER_APPROVED");
         workflow.ShouldContain("RELEASE_APPROVER");
         workflow.ShouldContain("RELEASE_CONCURRENT_SAME_VERSION: 'true'");
+        workflow.ShouldContain("RELEASE_ATTESTATION_FALLBACK_APPROVED_AT:");
         workflow.ShouldContain("Record release concurrency guard");
         workflow.ShouldContain("repos/${GITHUB_REPOSITORY}/actions/runs?status=in_progress");
         workflow.ShouldContain("repos/${GITHUB_REPOSITORY}/actions/runs?status=queued");
         workflow.ShouldContain("RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256:");
         workflow.ShouldContain("Release owner approval gate");
+        workflow.ShouldContain("Dry-run dispatch may classify release readiness without owner-approved publish/tag/release side effects.");
+        workflow.ShouldContain("RELEASE_ATTESTATION_STATUS=approved-unsupported");
+        workflow.ShouldContain("Upload release evidence artifact");
+        workflow.ShouldContain("release-evidence-${{ github.run_id }}-${{ github.run_attempt }}");
         workflow.ShouldNotContain("vars.RELEASE_OWNER_APPROVED");
         workflow.ShouldNotContain("RELEASE_APPROVER: ${{ inputs.release_approver || vars.RELEASE_APPROVER");
         workflow.ShouldContain("RELEASE_ATTESTATION_STATUS: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' && 'approved-unsupported' || 'attested' }}");
@@ -725,7 +735,10 @@ public sealed class CiGovernanceTests {
 
         releaseConfig.ShouldContain("classify-release");
         releaseConfig.ShouldContain("--require-publishable");
+        releaseConfig.ShouldContain("--fallback-approved-at");
         releaseConfig.ShouldContain("--fallback-approved-against-fingerprints-sha256");
+        releaseConfig.ShouldContain("same_version_rc=$?");
+        releaseConfig.ShouldNotContain("|| echo 0");
         releaseConfig.ShouldContain("repos/${GITHUB_REPOSITORY}/releases/tags/v${nextRelease.version}");
         // CR-12-4-P97 (round-5): RELEASE_DRY_RUN parsing now goes through `case` on a
         // lowercased value so non-canonical truthy values (TRUE, 1, yes) don't fall
@@ -1049,6 +1062,123 @@ public sealed class CiGovernanceTests {
             }
         }
         foundCase.ShouldBeTrue("fixture `fallback-malformed-digest` is required for CR-12-4-P108 coverage");
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_ClassifyRelease_FailsClosedOnConcurrencyGuardDiagnostics() {
+        string root = RepositoryRoot();
+        string fixtures = Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
+        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixtures));
+        string evidencePath = Path.Combine(Path.GetTempPath(), $"fc-classify-concurrency-{Guid.NewGuid():N}.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-classify-concurrency-out-{Guid.NewGuid():N}.json");
+        File.WriteAllText(evidencePath, fixtureDoc.RootElement.GetProperty("base_evidence").GetRawText());
+
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "classify-release",
+            "--root", root,
+            "--evidence", evidencePath,
+            "--concurrency-guard", Path.Combine(Path.GetTempPath(), $"missing-guard-{Guid.NewGuid():N}.json"),
+            "--output", output,
+        ]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        using JsonDocument decision = JsonDocument.Parse(File.ReadAllText(output));
+        decision.RootElement.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
+        string blocking = string.Join('\n', decision.RootElement.GetProperty("grouped_reasons").GetProperty("blocking").EnumerateArray().Select(r => r.GetString()));
+        blocking.ShouldContain("concurrency-probe");
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_DirectEvidenceMalformedSectionsFailClosed() {
+        string root = RepositoryRoot();
+        string evidence = Path.Combine(Path.GetTempPath(), $"fc-classify-malformed-sections-{Guid.NewGuid():N}.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-classify-malformed-sections-out-{Guid.NewGuid():N}.json");
+        File.WriteAllText(evidence, """
+        {
+          "approval": true,
+          "attestation": [],
+          "checks": {
+            "checksums_status": "valid",
+            "concurrent_same_version": false,
+            "dry_run_side_effect_attempt": false,
+            "helper_state": "success",
+            "inventory_status": "valid",
+            "paths_status": "normalized",
+            "post_seal_artifact_mutation": false,
+            "recursive_submodule_command": false,
+            "redaction_status": "passed",
+            "release_definition_drift": false,
+            "sbom_status": "present",
+            "semantic_release_state": "matches",
+            "signing_status": "verified",
+            "test_count": "unknown",
+            "test_status": "passed",
+            "timestamp_status": "verified",
+            "trx_present": true
+          },
+          "context": {
+            "dry_run": false,
+            "event_name": "workflow_dispatch",
+            "from_fork": false,
+            "partial_publish_state": "none",
+            "ref": "refs/heads/main",
+            "ref_protected": true,
+            "run_attempt": 1
+          },
+          "manifest": {}
+        }
+        """);
+
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "classify-release",
+            "--root", root,
+            "--evidence", evidence,
+            "--output", output,
+        ]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        string decisionJson = File.ReadAllText(output);
+        using JsonDocument decision = JsonDocument.Parse(decisionJson);
+        decision.RootElement.GetProperty("classification").GetString().ShouldBe("blocked");
+        decisionJson.ShouldContain("approval section must be an object");
+        decisionJson.ShouldContain("attestation section must be an object");
+        decisionJson.ShouldContain("test_count must be numeric");
+    }
+
+    [Fact]
+    public void ReleaseEvidenceScript_ReleaseBudgetUsesManifestTagWhenAppending() {
+        string root = RepositoryRoot();
+        string manifest = Path.Combine(Path.GetTempPath(), $"fc-budget-manifest-{Guid.NewGuid():N}.json");
+        string output = Path.Combine(Path.GetTempPath(), $"fc-budget-output-{Guid.NewGuid():N}.json");
+        File.WriteAllText(manifest, """
+        {
+          "tag": "v9.9.9",
+          "packages": [
+            { "package_id": "Hexalith.FrontComposer.Contracts" }
+          ]
+        }
+        """);
+
+        ProcessResult result = RunPython(root, [
+            "eng/release_evidence.py",
+            "release-budget",
+            "--evidence", Path.Combine(Path.GetTempPath(), $"missing-budget-{Guid.NewGuid():N}.json"),
+            "--append-current",
+            "--started-at", "2026-05-19T00:00:00Z",
+            "--ended-at", "2026-05-19T00:02:00Z",
+            "--manifest", manifest,
+            "--tag", "main",
+            "--run-id", "42",
+            "--output", output,
+        ]);
+
+        result.ExitCode.ShouldBe(0, result.Error);
+        using JsonDocument budget = JsonDocument.Parse(File.ReadAllText(output));
+        JsonElement release = budget.RootElement.GetProperty("releases").EnumerateArray().Last();
+        release.GetProperty("tag").GetString().ShouldBe("v9.9.9");
+        release.GetProperty("package_count").GetInt32().ShouldBe(1);
     }
 
     [Fact]

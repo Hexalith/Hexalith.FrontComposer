@@ -15,7 +15,7 @@ on:
         default: false
       release_approver:
         description: 'Named release owner approving publish/tag/release side effects'
-        required: true
+        required: false
         type: string
       dry_run:
         description: 'Classify release readiness without NuGet, tag, GitHub Release, or attestation side effects'
@@ -31,6 +31,7 @@ permissions:
 
 env:
   RELEASE_APPROVAL_MECHANISM: ${{ github.event_name == 'workflow_dispatch' && 'workflow_dispatch_input' || '' }}
+  RELEASE_ATTESTATION_FALLBACK_APPROVED_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVED_AT || '' }}
   RELEASE_ATTESTATION_FALLBACK_APPROVER: ${{ vars.RELEASE_ATTESTATION_FALLBACK_APPROVER || '' }}
   RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT: ${{ vars.RELEASE_ATTESTATION_FALLBACK_EXPIRES_AT || '' }}
   RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256: ${{ vars.RELEASE_ATTESTATION_FALLBACK_FINGERPRINTS_SHA256 || '' }}
@@ -58,10 +59,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 120
     permissions:
+      actions: read
       contents: write # For tag creation and GitHub Release
-      packages: write
-      id-token: write
-      attestations: write
+      attestations: read # For gh attestation verify; attestation creation remains deferred to CR-12-4-Def14
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
         with:
@@ -155,6 +155,11 @@ jobs:
           fi
           set -e
           random_hex="$(printf '%s' "$random_hex" | tr -d '[:space:]')"
+          input_dry_run_lower="$(printf '%s' "$INPUT_DRY_RUN" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
+          case "$input_dry_run_lower" in
+            false|0|no) normalized_dry_run=false ;;
+            *) normalized_dry_run=true ;;
+          esac
           if [ "${#random_hex}" -lt 32 ]; then
             {
               echo '## Release input recording failed'
@@ -170,7 +175,10 @@ jobs:
             printf 'RELEASE_APPROVER<<%s\n' "$delim"
             printf '%s\n' "$INPUT_RELEASE_APPROVER"
             printf '%s\n' "$delim"
-            printf 'RELEASE_DRY_RUN=%s\n' "$INPUT_DRY_RUN"
+            printf 'RELEASE_DRY_RUN=%s\n' "$normalized_dry_run"
+            if [ "$normalized_dry_run" = "true" ]; then
+              printf 'RELEASE_ATTESTATION_STATUS=approved-unsupported\n'
+            fi
           } >> "$GITHUB_ENV"
 
       - name: Record release concurrency guard
@@ -390,8 +398,20 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Require governed attestation fallback before publish
-        if: ${{ vars.ATTESTATION_UNSUPPORTED != 'true' }}
+        env:
+          ATTESTATION_UNSUPPORTED: ${{ vars.ATTESTATION_UNSUPPORTED || '' }}
         run: |
+          release_dry_run_lower="$(printf '%s' "${RELEASE_DRY_RUN:-true}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
+          case "$release_dry_run_lower" in
+            false|0|no) is_dry_run=false ;;
+            *) is_dry_run=true ;;
+          esac
+          if [ "$is_dry_run" = "true" ]; then
+            exit 0
+          fi
+          if [ "$ATTESTATION_UNSUPPORTED" = "true" ]; then
+            exit 0
+          fi
           {
             echo '## Release attestation mode required'
             echo
@@ -399,9 +419,18 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           exit 1
 
-      - name: Record approved attestation fallback before publish
-        if: ${{ vars.ATTESTATION_UNSUPPORTED == 'true' }}
+      - name: Record attestation fallback evidence before publish
+        env:
+          ATTESTATION_UNSUPPORTED: ${{ vars.ATTESTATION_UNSUPPORTED || '' }}
         run: |
+          release_dry_run_lower="$(printf '%s' "${RELEASE_DRY_RUN:-true}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
+          case "$release_dry_run_lower" in
+            false|0|no) is_dry_run=false ;;
+            *) is_dry_run=true ;;
+          esac
+          if [ "$is_dry_run" != "true" ] && [ "$ATTESTATION_UNSUPPORTED" != "true" ]; then
+            exit 0
+          fi
           mkdir -p release-evidence
           cat > release-evidence/attestation-unavailable.md <<'NOTE'
           # Artifact Attestation Unavailable
@@ -412,6 +441,19 @@ jobs:
 
       - name: Release owner approval gate
         run: |
+          release_dry_run_lower="$(printf '%s' "${RELEASE_DRY_RUN:-true}" | tr -d '[:space:]' | tr 'A-Z' 'a-z')"
+          case "$release_dry_run_lower" in
+            false|0|no) is_dry_run=false ;;
+            *) is_dry_run=true ;;
+          esac
+          if [ "$is_dry_run" = "true" ]; then
+            {
+              echo '## Release dry-run classification'
+              echo
+              echo 'Dry-run dispatch may classify release readiness without owner-approved publish/tag/release side effects.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
           if [ "$RELEASE_OWNER_APPROVED" != "true" ] || [ -z "$RELEASE_APPROVER" ]; then
             {
               echo '## Release owner approval required'
@@ -422,6 +464,7 @@ jobs:
           fi
 
       - name: Configure git credentials
+        if: ${{ inputs.dry_run == false }}
         run: git remote set-url origin https://x-access-token:${GITHUB_TOKEN}@github.com/Hexalith/Hexalith.FrontComposer.git
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -440,4 +483,31 @@ jobs:
         # CR-12-4-P106 (round-5): forward the real `RELEASE_FROM_FORK` value rather than
         # hardcoding "false"; keeps the publish path and budget path consistent if a future
         # trigger change makes fork status meaningful.
-        run: python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "${{ env.RELEASE_FROM_FORK }}" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"
+        run: |
+          if [ -z "${RELEASE_STARTED_AT:-}" ]; then
+            echo 'RELEASE_STARTED_AT was not set; release budget monitor skipped because the run failed before timing started.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --started-at "$RELEASE_STARTED_AT" --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "${{ env.RELEASE_FROM_FORK }}" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"
+
+      - name: Summarize release evidence artifacts
+        if: always()
+        run: |
+          {
+            echo '## Release evidence artifacts'
+            echo
+            if [ -d release-evidence ]; then
+              find release-evidence -maxdepth 4 -type f | sort | sed 's#^#- #'
+            else
+              echo '- release-evidence directory was not created.'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload release evidence artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: release-evidence/**
+          if-no-files-found: ignore
+          retention-days: 30

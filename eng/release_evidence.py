@@ -126,7 +126,7 @@ APPROVAL_MATRIX = [
         "owner": "release-owner",
         "mechanism": "ATTESTATION_UNSUPPORTED repository variable plus sealed fallback record (approver, expiry, fingerprint baseline)",
         "mechanism_inputs": ["vars.ATTESTATION_UNSUPPORTED", "fallback_record"],
-        "evidence": "attestation-unavailable.md plus sealed fallback_record (affected_artifact, approver, evidence, expires_at, reason, release_note_impact, reopen_event, scope, approved_against_fingerprints_sha256)",
+        "evidence": "attestation-unavailable.md plus sealed fallback_record (affected_artifact, approved_at, approver, evidence, expires_at, reason, release_note_impact, reopen_event, scope, approved_against_fingerprints_sha256)",
         "effect": "fallback",
         "fallback_action": None,
     },
@@ -471,6 +471,33 @@ def parse_expiry(value: Any) -> tuple[dt.datetime | None, str | None]:
     if parsed.tzinfo is None:
         return None, "expires_at must include a timezone offset or Z suffix"
     return parsed.astimezone(dt.timezone.utc), None
+
+
+def parse_release_timestamp(value: Any, field: str) -> tuple[dt.datetime | None, str | None]:
+    """Parse a required release-governance timestamp.
+
+    This mirrors the fallback-expiry parser's date-only rejection, but does not require
+    the timestamp to be in the future. Fallback approval timestamps document when the
+    owner accepted the risk; they must be precise enough to audit across time zones.
+    """
+    if value is None or str(value).strip() == "":
+        return None, f"{field} is missing"
+    text = str(value).strip()
+    try:
+        dt.date.fromisoformat(text)
+        return None, f"{field} must be a timezone-aware ISO-8601 datetime; date-only values are ambiguous"
+    except ValueError:
+        pass
+    try:
+        parsed = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None, f"{field} must be a timezone-aware ISO-8601 datetime; actual={sanitize(value)}"
+    if parsed.tzinfo is None:
+        return None, f"{field} must include a timezone offset or Z suffix"
+    parsed_utc = parsed.astimezone(dt.timezone.utc)
+    if parsed_utc > dt.datetime.now(dt.timezone.utc) + dt.timedelta(minutes=5):
+        return None, f"{field} must not be in the future"
+    return parsed_utc, None
 
 
 def fingerprint_diff(current: dict[str, str], baseline: dict[str, str]) -> list[str]:
@@ -1166,6 +1193,7 @@ def fallback_complete(
     """
     required = [
         "affected_artifact",
+        "approved_at",
         "approver",
         "evidence",
         "expires_at",
@@ -1189,6 +1217,9 @@ def fallback_complete(
     expiry, expiry_diagnostic = parse_expiry(fallback["expires_at"])
     if expiry is None:
         return False, expiry_diagnostic
+    approved_at, approved_at_diagnostic = parse_release_timestamp(fallback["approved_at"], "approved_at")
+    if approved_at is None:
+        return False, approved_at_diagnostic
     # CR-12-4-P152 (round-7): full-datetime comparison so a sub-day TZ offset cannot
     # silently shift expiry by a calendar day.
     if expiry <= dt.datetime.now(dt.timezone.utc):
@@ -1239,12 +1270,22 @@ def contains_dangerous_evidence(value: Any) -> bool:
     return any(pattern.search(text) for pattern in DANGEROUS_EVIDENCE_PATTERNS)
 
 
+def evidence_section(evidence: dict[str, Any], name: str, diagnostics: list[str]) -> dict[str, Any]:
+    value = evidence.get(name, {})
+    if isinstance(value, dict):
+        return value
+    diagnostics.append(f"{name} section must be an object")
+    return {}
+
+
 def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, verify_drift: bool = True, evidence_root: pathlib.Path | None = None) -> dict[str, Any]:
-    context = evidence.get("context", {})
-    checks = evidence.get("checks", {})
-    approval = evidence.get("approval", {})
-    attestation = evidence.get("attestation", {})
-    manifest = evidence.get("manifest", {})
+    section_diagnostics: list[str] = []
+    context = evidence_section(evidence, "context", section_diagnostics)
+    checks = evidence_section(evidence, "checks", section_diagnostics)
+    approval = evidence_section(evidence, "approval", section_diagnostics)
+    attestation = evidence_section(evidence, "attestation", section_diagnostics)
+    manifest_raw = evidence.get("manifest", {})
+    manifest = manifest_raw if isinstance(manifest_raw, dict) else manifest_raw
     context_class, context_diagnostics = classify_context(context if isinstance(context, dict) else {})
     blocking: list[str] = []
     fallback_reasons: list[str] = []
@@ -1269,8 +1310,16 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
 
     for diag in context_diagnostics:
         blocking.append(f"context: {diag}")
+    for diag in section_diagnostics:
+        blocking.append(f"evidence: {diag}")
     for diag in bool_diagnostics:
         blocking.append(f"evidence: {diag}")
+    check_diagnostics = checks.get("diagnostics", [])
+    if isinstance(check_diagnostics, list):
+        for diag in check_diagnostics[:20]:
+            blocking.append(f"evidence: {sanitize(diag)}")
+    elif check_diagnostics:
+        blocking.append("evidence: checks.diagnostics must be an array")
 
     if context_class != "trusted-main-or-release":
         blocking.append(f"candidate evidence from {context_class} cannot authorize publishing")
@@ -1285,7 +1334,13 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         elif actual != expected:
             blocking.append(f"{key} must be {expected}; actual={sanitize(actual)}")
 
-    if int(checks.get("test_count", 0) or 0) <= 0:
+    raw_test_count = checks.get("test_count", 0)
+    try:
+        test_count = int(raw_test_count or 0)
+    except (TypeError, ValueError):
+        blocking.append(f"evidence: test_count must be numeric; actual={sanitize(raw_test_count)}")
+        test_count = 0
+    if test_count <= 0:
         blocking.append("release tests must record at least one executed test")
     if not bool_checks["trx_present"]:
         blocking.append("release TRX evidence is required")
@@ -1350,6 +1405,7 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
                     key: sanitize(fallback.get(key, ""))
                     for key in [
                         "affected_artifact",
+                        "approved_at",
                         "approver",
                         "evidence",
                         "expires_at",
@@ -1743,6 +1799,10 @@ def release_budget(args: argparse.Namespace) -> int:
     releases = raw.get("releases", raw) if isinstance(raw, dict) else raw
     if not isinstance(releases, list):
         raise SystemExit("invalid release budget evidence: expected releases list")
+    manifest_payload: dict[str, Any] | None = None
+    if args.manifest and pathlib.Path(args.manifest).exists():
+        raw_manifest = read_json(args.manifest)
+        manifest_payload = raw_manifest if isinstance(raw_manifest, dict) else None
     if args.append_current:
         if not args.started_at:
             raise SystemExit("RELEASE_STARTED_AT must be set before --append-current")
@@ -1750,13 +1810,14 @@ def release_budget(args: argparse.Namespace) -> int:
         ended = dt.datetime.fromisoformat(args.ended_at.replace("Z", "+00:00")) if args.ended_at else dt.datetime.now(dt.timezone.utc)
         minutes = max(0, (ended - started).total_seconds() / 60)
         package_count = int(args.package_count)
-        if args.manifest and pathlib.Path(args.manifest).exists():
-            manifest = read_json(args.manifest)
-            package_count = len(manifest.get("packages", []))
+        tag = args.tag
+        if manifest_payload is not None:
+            package_count = len(manifest_payload.get("packages", []))
+            tag = str(manifest_payload.get("tag") or args.tag)
         releases = [
             *releases,
             {
-                "tag": args.tag,
+                "tag": tag,
                 "run_id": args.run_id,
                 "package_count": package_count,
                 "slow_jobs": args.slow_job or [],
@@ -1987,6 +2048,7 @@ def classify_release(args: argparse.Namespace) -> int:
             "attestation": {
                 "fallback": {
                     "affected_artifact": args.fallback_affected_artifact,
+                    "approved_at": args.fallback_approved_at,
                     "approver": args.fallback_approver,
                     "evidence": args.fallback_evidence,
                     "expires_at": args.fallback_expires_at,
@@ -2037,12 +2099,21 @@ def classify_release(args: argparse.Namespace) -> int:
             concurrency_probe_diagnostics.append(
                 f"concurrency-probe: --concurrency-guard path missing: {sanitize(guard_path_arg)}"
             )
-    decision = classify_release_payload(evidence, pathlib.Path(args.root), evidence_root=evidence_root_arg)
     if concurrency_probe_diagnostics:
-        grouped = decision.setdefault("grouped_reasons", {})
-        blocking_list = grouped.setdefault("blocking", [])
-        if isinstance(blocking_list, list):
-            blocking_list.extend(concurrency_probe_diagnostics)
+        checks = evidence.get("checks")
+        if not isinstance(checks, dict):
+            checks = {}
+            evidence["checks"] = checks
+            concurrency_probe_diagnostics.insert(0, "checks section missing or malformed while applying concurrency guard")
+        checks["concurrent_same_version"] = True
+        checks["helper_state"] = "partial"
+        raw_check_diagnostics = checks.get("diagnostics", [])
+        check_diagnostics = raw_check_diagnostics if isinstance(raw_check_diagnostics, list) else []
+        checks["diagnostics"] = [
+            *check_diagnostics,
+            *concurrency_probe_diagnostics,
+        ]
+    decision = classify_release_payload(evidence, pathlib.Path(args.root), evidence_root=evidence_root_arg)
     # If the caller omitted --output but CLI parse errors occurred, still write a typed
     # readiness JSON to a default path so downstream tooling can distinguish CLI-parse
     # exit 2 from "helper crashed" exit 2 by reading the typed contract.
@@ -2214,6 +2285,7 @@ def main() -> int:
     classify.add_argument("--approval-mechanism", default=os.environ.get("RELEASE_APPROVAL_MECHANISM", ""))
     classify.add_argument("--attestation-status", default=os.environ.get("RELEASE_ATTESTATION_STATUS", "approved-unsupported"))
     classify.add_argument("--fallback-affected-artifact", default="release package set")
+    classify.add_argument("--fallback-approved-at", default=os.environ.get("RELEASE_ATTESTATION_FALLBACK_APPROVED_AT", ""))
     classify.add_argument("--fallback-approver", default=os.environ.get("RELEASE_ATTESTATION_FALLBACK_APPROVER", ""))
     # CR-12-4-P118 (round-6): default is the filename only; `fallback_complete`
     # resolves it under `--evidence-root` (typically `./release-evidence`). The
