@@ -134,19 +134,45 @@ jobs:
         # post-mortem becomes impossible. Always seed the directory with bounded
         # run metadata so the forensic artifact is never empty and the `error`
         # discipline catches genuine missing-evidence regressions.
+        #
+        # CR-12-4-P234 (round-10, BH-F15/EC-3): the Seed step itself needs
+        # `if: always()`. Its prior placement after "Run All Tests" meant a
+        # `dotnet test` failure (the most common early-failure scenario) would
+        # skip Seed, leaving `release-evidence/` empty and triggering the upload
+        # step's `if-no-files-found: error` — defeating the "artifact never
+        # empty" claim. `if: always()` makes the seed bedrock unconditional.
+        #
+        # CR-12-4-P241 (round-10, BH-F5/EC-4): switched from a shell heredoc with
+        # unquoted `<<EOF` (which expanded `${...}` in arbitrary refs and produced
+        # invalid JSON for refs containing `"`) to a Python one-liner reading
+        # GHA values from env vars. JSON-safe escaping is handled by `json.dump`;
+        # special characters in refs/run-ids no longer corrupt the metadata file.
+        if: always()
+        env:
+          RUN_META_EVENT_NAME: ${{ github.event_name }}
+          RUN_META_REF: ${{ github.ref }}
+          RUN_META_RUN_ID: ${{ github.run_id }}
+          RUN_META_RUN_ATTEMPT: ${{ github.run_attempt }}
+          RUN_META_SHA: ${{ github.sha }}
         run: |
           mkdir -p release-evidence
-          cat > release-evidence/run-metadata.json <<EOF
-          {
-            "decision_contract": "frontcomposer.release-run-metadata.v1",
-            "event_name": "${{ github.event_name }}",
-            "ref": "${{ github.ref }}",
-            "run_id": "${{ github.run_id }}",
-            "run_attempt": "${{ github.run_attempt }}",
-            "sha": "${{ github.sha }}",
-            "started_at": "${RELEASE_STARTED_AT:-unknown}"
+          python3 - <<'PYEOF'
+          import json
+          import os
+
+          metadata = {
+              "decision_contract": "frontcomposer.release-run-metadata.v1",
+              "event_name": os.environ.get("RUN_META_EVENT_NAME", ""),
+              "ref": os.environ.get("RUN_META_REF", ""),
+              "run_id": os.environ.get("RUN_META_RUN_ID", ""),
+              "run_attempt": os.environ.get("RUN_META_RUN_ATTEMPT", ""),
+              "sha": os.environ.get("RUN_META_SHA", ""),
+              "started_at": os.environ.get("RELEASE_STARTED_AT", "unknown"),
           }
-          EOF
+          with open("release-evidence/run-metadata.json", "w", encoding="utf-8", newline="\n") as fh:
+              json.dump(metadata, fh, sort_keys=True, separators=(",", ":"))
+              fh.write("\n")
+          PYEOF
 
       - name: Record workflow-dispatch release inputs
         if: ${{ github.event_name == 'workflow_dispatch' }}
@@ -536,11 +562,20 @@ jobs:
         # invokes classify-release directly against the sealed manifest. No
         # `continue-on-error` is needed because publishCmd cannot reach the
         # exit-1-after-classifier path.
+        #
+        # CR-12-4-P248 (round-10, D22/BH-F6): dry-run prepareCmd intentionally signs
+        # with the production NuGet certificate so the dry-run exercises the full
+        # prepare-path fidelity (per D2: "Build, sign, SBOM, and verification
+        # exercise the same code as live publish"). `NUGET_API_KEY` is NOT passed
+        # because the push (`dotnet nuget push`) lives in publishCmd, which
+        # semantic-release --dry-run never reaches — passing the API key here
+        # widens blast radius without enabling any legitimate dry-run behavior.
+        # A dry-run that somehow reaches push code is a workflow misconfiguration
+        # we want to fail-closed via missing-auth, not silently succeed.
         if: ${{ env.RELEASE_DRY_RUN == 'true' }}
         run: npx semantic-release --dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
           NUGET_SIGNING_CERTIFICATE_PATH: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PATH }}
           NUGET_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.NUGET_SIGNING_CERTIFICATE_PASSWORD }}
           NUGET_SIGNING_TIMESTAMPER: ${{ vars.NUGET_SIGNING_TIMESTAMPER || 'http://timestamp.digicert.com' }}
@@ -619,12 +654,34 @@ jobs:
             # The step still exits 0 because there is no useful budget data to
             # compute, but the `::warning::` annotation is visible in the workflow run
             # summary so the regression is observable.
+            #
+            # CR-12-4-P239 (round-10, AA-003/AA-004): AC19 requires release-budget
+            # state to be either RECORDED or EXPLICITLY MARKED UNAVAILABLE; D17
+            # mandates a single typed classification contract. The job-summary
+            # warning alone is prose, not machine-readable evidence — a release
+            # owner reading only the typed contract cannot tell the budget step
+            # was skipped. Emit a typed `release-budget-skipped.json` marker
+            # under `release-evidence/` so the skip flows into the artifact
+            # contract and the CiGovernanceTests can assert on its shape.
+            #
+            # CR-12-4-P250 (round-11, blind+edge+auditor): the prior implementation
+            # used `python3 - <<'PYEOF' ... PYEOF` nested inside `if [ -z … ]; then`.
+            # After YAML's `|` block scalar strips the common indent, bash sees the
+            # closing `PYEOF` with leading whitespace. Non-dash heredocs require the
+            # terminator at column 0, so the heredoc never closes and bash exits
+            # with `syntax error: unexpected end of file` — the marker file is never
+            # written and AC19 is structurally unsatisfied. Switched to `python3 -c`
+            # inline form (matches the P241/Seed-step pattern that already works).
+            mkdir -p release-evidence
+            python3 -c "import datetime as dt, json; json.dump({'decision_contract': 'frontcomposer.release-budget-skipped.v1', 'classification': 'budget-unavailable', 'reason': 'RELEASE_STARTED_AT empty; release-budget monitor cannot compute elapsed minutes', 'skipped_at': dt.datetime.now(dt.timezone.utc).isoformat()}, open('release-evidence/release-budget-skipped.json', 'w', encoding='utf-8', newline='\n'), sort_keys=True, separators=(',', ':')); open('release-evidence/release-budget-skipped.json', 'a', encoding='utf-8', newline='\n').write('\n')"
             {
               echo '## Release budget monitor skipped'
               echo
               echo '`RELEASE_STARTED_AT` was not set; the run failed before timing started or the recorder step was bypassed. Investigate before promoting this run.'
+              echo
+              echo 'Typed evidence marker: `release-evidence/release-budget-skipped.json` (decision_contract `frontcomposer.release-budget-skipped.v1`).'
             } >> "$GITHUB_STEP_SUMMARY"
-            echo '::warning::Release budget monitor skipped — RELEASE_STARTED_AT was not set.'
+            echo '::warning::Release budget monitor skipped — RELEASE_STARTED_AT was not set; see release-budget-skipped.json.'
             exit 0
           fi
           python3 eng/release_evidence.py release-budget --evidence release-evidence/release-budget-history.json --append-current --started-at "$RELEASE_STARTED_AT" --manifest release-evidence/sealed-manifest.json --output release-evidence/release-budget-summary.json --event-name "${{ github.event_name }}" --ref "${{ github.ref }}" --ref-protected "${{ github.ref_protected }}" --from-fork "${{ env.RELEASE_FROM_FORK }}" --tag "${{ github.ref_name }}" --run-id "${{ github.run_id }}" --publish-status "${{ job.status }}"

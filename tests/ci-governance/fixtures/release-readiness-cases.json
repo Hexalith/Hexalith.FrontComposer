@@ -95,7 +95,7 @@
         "attestation": {
           "fallback": {
             "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
-            "approved_against_fingerprints_sha256": "629ca85057eee915e7b126f13643ec090b869b3ad27171d9fedd3b0a0cbe3f6e",
+            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
             "approved_at": "2026-05-19T00:00:00Z",
             "approver": "release-owner",
             "evidence": "attestation-unavailable.md",
@@ -133,13 +133,52 @@
       }
     },
     {
-      "expected_classification": "blocked",
+      "expected_classification": "ready",
       "expected_context_class": "local-candidate",
       "expected_publish_authorized": false,
       "name": "dry-run-from-dispatch",
       "override": {
         "context": {
           "dry_run": true
+        }
+      }
+    },
+    {
+      "expected_classification": "fallback-approved",
+      "expected_context_class": "local-candidate",
+      "expected_publish_authorized": false,
+      "name": "dry-run-from-dispatch-fallback-approved",
+      "override": {
+        "attestation": {
+          "fallback": {
+            "affected_artifact": "Hexalith.FrontComposer.Contracts.1.2.3.nupkg",
+            "approved_against_fingerprints_sha256": "07aaf9f9f83d789b0ffb91fe3ab3dd934c18e92e318fdb25c03c7e0926166fed",
+            "approved_at": "2026-05-19T00:00:00Z",
+            "approver": "release-owner",
+            "evidence": "attestation-unavailable.md",
+            "expires_at": "2026-12-31T23:59:59Z",
+            "reason": "GitHub artifact attestations unavailable for this repository context",
+            "release_note_impact": "Release notes mention checksum, signature, SBOM, commit, tag, run, and workflow provenance without GitHub attestation.",
+            "reopen_event": "GitHub artifact attestations become available or release evidence contract changes",
+            "scope": "v1 release candidate"
+          },
+          "status": "approved-unsupported"
+        },
+        "context": {
+          "dry_run": true
+        },
+        "manifest": {
+          "attestation_bundle": false,
+          "packages": [
+            {
+              "attestation_status": "approved-unsupported"
+            }
+          ],
+          "seal": {
+            "algorithm": "sha256",
+            "hash": "7eab6ec93d720598c9f4c40ba86d5cc7855f4c1d3f233f101672358e35d77ce0",
+            "sealed_at": "2026-05-17T00:00:00+00:00"
+          }
         }
       }
     },
@@ -287,12 +326,26 @@
       }
     },
     {
-      "expected_classification": "blocked",
+      "expected_classification": "ready",
       "expected_context_class": "local-candidate",
+      "expected_publish_authorized": false,
       "name": "local-candidate",
       "override": {
         "context": {
           "dry_run": true,
+          "event_name": "local",
+          "ref": "local"
+        }
+      }
+    },
+    {
+      "expected_classification": "blocked",
+      "expected_context_class": "local-candidate",
+      "expected_publish_authorized": false,
+      "name": "local-candidate-not-dry-run",
+      "override": {
+        "context": {
+          "dry_run": false,
           "event_name": "local",
           "ref": "local"
         }

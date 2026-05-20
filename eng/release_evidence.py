@@ -26,6 +26,26 @@ from typing import Any
 # a `__version__` bump produces a `release-definition drift` signal.
 __version__ = "1.0.0"
 
+# CR-12-4-P257 (round-11, blind): assert at module load that `__version__` is a
+# non-empty semver string. Without this guard, an operator typo (`__version__ = ""`)
+# would silently neutralize the helper-binding guard — both producer and consumer
+# `fallback_invalidation_fingerprints` would hash the empty string, the digest
+# would match, and a malformed manifest's `helper_version` would pass drift
+# validation. Failing closed at import time forces the helper version to remain
+# operator-visible.
+assert __version__ and re.fullmatch(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$", __version__), (
+    f"__version__ must be a non-empty semver string (got {__version__!r})"
+)
+
+# CR-12-4-P256 (round-11, edge): single-source the candidate-evidence blocker
+# template so the dry-run carve-out (`classify_release_payload`) and the
+# `--dry-run-clean-exit` allowlist gate (`classify_release`) cannot drift out of
+# sync. The two sites previously embedded the same f-string literal; a future
+# broadening of the carve-out (e.g., to add `rerun-review`) without updating the
+# allowlist (or vice versa) would silently produce exit-1 with JSON saying
+# `classification=ready`. The template is materialized once per call site.
+_CANDIDATE_BLOCKER_TEMPLATE = "candidate evidence from {context_class} cannot authorize publishing"
+
 PACKAGE_COLLAPSE_MARKER = "<!-- frontcomposer:package-count-collapse -->"
 MAX_FIELD = 600
 SHA256_RE = re.compile(r"^[a-fA-F0-9]{64}$")
@@ -462,11 +482,22 @@ def looks_like_sha256(value: Any) -> bool:
 
 
 def parse_strict_bool(value: Any, *, field: str, default: bool = False) -> tuple[bool, str | None]:
-    """Strict security-flag boolean (true/false only, case-insensitive). Empty -> default."""
+    """Strict security-flag boolean (true/false only, case-insensitive). Empty -> default.
+
+    CR-12-4-P237 (round-10, EC-9): when the caller supplies ``None`` for a security-flag
+    field (e.g., ``checks.concurrent_same_version`` missing from a direct-evidence payload),
+    emit a typed diagnostic instead of silently returning ``default``. Direct-evidence mode
+    previously fail-opened on missing keys; CLI mode defaulted to ``"true"`` which fails
+    closed. The typed diagnostic forces the caller (``classify_release_payload``) to surface
+    the missing-flag as a blocker. Callers that legitimately want a default on ``None`` can
+    detect the diagnostic and choose to ignore it; the security-flag loop in
+    ``classify_release_payload`` treats every diagnostic as blocking, restoring symmetry
+    with the CLI-default fail-closed path.
+    """
     if isinstance(value, bool):
         return value, None
     if value is None:
-        return default, None
+        return default, f"{field} must be true or false; actual=<missing>"
     text = str(value).strip().lower()
     if text == "":
         return default, f"{field} must be true or false; actual=<empty>"
@@ -1306,12 +1337,28 @@ def fallback_invalidation_fingerprints(root: pathlib.Path) -> dict[str, str]:
     intent via the version bump. This couples AC34's "release-definition drift
     invalidates fallback" invariant to an explicit operator action, matching D16's
     "intentional version bump" contract.
+
+    CR-12-4-P245 (round-10, BH-F13): hash the version string before insertion so every
+    value in the fingerprints dict is a 64-char sha256 hex. The original P232 placed
+    the literal `"1.0.0"` alongside file-content hashes — operator forensic tools
+    auditing the digest input saw a non-hex entry and assumed corruption. The hash is
+    deterministic per version, so the consumer side computes the same value when
+    `manifest.helper_version.version` matches; a future audit tool validating
+    "every fingerprint is sha256-hex" now passes uniformly.
+
+    CR-12-4-P261 (round-11, AA-006): also hash the `missing` sentinel for files that
+    are absent on disk so the "every value is sha256-hex" invariant holds for the
+    full dict. The hash of the literal `missing` is deterministic, so a future
+    inventory-rebuild that legitimately removes a file produces the same digest
+    contribution on both sides.
     """
     fingerprints: dict[str, str] = {}
+    missing_sentinel_hash = hashlib.sha256(b"missing").hexdigest()
     for rel in FALLBACK_INVALIDATION_FILES:
         target = root / rel
-        fingerprints[rel] = sha256_file(target) if target.exists() else "missing"
-    fingerprints["helper_version"] = helper_version_record()["version"]
+        fingerprints[rel] = sha256_file(target) if target.exists() else missing_sentinel_hash
+    helper_version = helper_version_record()["version"]
+    fingerprints["helper_version"] = hashlib.sha256(helper_version.encode("utf-8")).hexdigest()
     return fingerprints
 
 
@@ -1364,6 +1411,20 @@ def fallback_complete(
     # silently shift expiry by a calendar day.
     if expiry <= dt.datetime.now(dt.timezone.utc):
         return False, f"fallback expired on {expiry.isoformat()}"
+    # CR-12-4-P243 (round-10, BH-F21/EC-6): the parser rejects future-skewed
+    # `approved_at` values (>5 min in future) but the original code accepted any past
+    # value — `0001-01-01T00:00:00Z` would satisfy structural completeness. Document
+    # WHEN the owner accepted the risk requires the timestamp to be (a) before
+    # `expires_at`, and (b) within the last 365 days (operationally a 1-year approval
+    # window matches the typical signing-cert lifetime).
+    if approved_at >= expiry:
+        return False, f"approved_at ({approved_at.isoformat()}) must be before expires_at ({expiry.isoformat()})"
+    approval_age = dt.datetime.now(dt.timezone.utc) - approved_at
+    # CR-12-4-P259 (round-11, blind+edge): use `>=` so an approval at exactly
+    # 365 days, 0 microseconds old is rejected. The prior `>` allowed the exact
+    # boundary, contradicting the comment claim of strict 365-day enforcement.
+    if approval_age >= dt.timedelta(days=365):
+        return False, f"approved_at is 365+ days old ({approved_at.isoformat()}); re-approve the fallback"
     # CR-12-4-P109 (round-5): path-check the evidence pointer. A fallback record with
     # `evidence: "release-evidence/attestation-unavailable.md"` is meaningless if the
     # file is not present — the document is the record. Phantom evidence pointers used
@@ -1401,6 +1462,18 @@ def fallback_complete(
         else:
             current_digest = canonical_sha256(fingerprints).lower()
         if approved_digest != current_digest:
+            # CR-12-4-P260 (round-11, edge): distinguish "real drift" (file content
+            # changed) from "structural malformation" (e.g., `manifest.helper_version
+            # is null` — caught by `manifest_diagnostics` upstream but still
+            # contributes a sentinel hash here). When the consumer-side helper version
+            # sentinel `<missing>` is in play, the digest mismatch is a STRUCTURAL
+            # consequence of the upstream manifest defect, not a real drift event.
+            # The operator already sees the structural blocker from
+            # `manifest_diagnostics`; the secondary message scopes the diagnostic to
+            # the digest layer rather than incorrectly naming drift.
+            sentinel_helper_hash = hashlib.sha256(b"<missing>").hexdigest()
+            if fingerprints.get("helper_version") == sentinel_helper_hash:
+                return False, "fallback digest mismatch caused by malformed manifest.helper_version (see manifest diagnostics)"
             return False, "fallback approved against drifted release definition or package set"
     return True, None
 
@@ -1411,7 +1484,21 @@ def contains_dangerous_evidence(value: Any) -> bool:
 
 
 def evidence_section(evidence: dict[str, Any], name: str, diagnostics: list[str]) -> dict[str, Any]:
-    value = evidence.get(name, {})
+    # CR-12-4-P242 (round-10, BH-F10/EC-13): distinguish missing-section vs malformed.
+    # Operator forensic message previously couldn't tell whether `"checks": {}` was
+    # a deliberate empty payload, a missing key, or a malformed non-dict value.
+    # CR-12-4-P258 (round-11, blind): removed the "section is empty" diagnostic. A
+    # deliberately-empty dict is semantically distinct from missing/malformed AND
+    # was inconsistent with the `manifest_raw` branch which never went through
+    # `evidence_section`. The empty diagnostic also multiplied blockers for
+    # sparse-evidence dry-runs and could prevent the carve-out's `len(blocking)==1`
+    # check from firing for legitimate sparse-evidence cases. Sections that need
+    # required fields (e.g., `checks.concurrent_same_version`) still fail closed
+    # via the security-flag loop and P237's `parse_strict_bool(None)` diagnostic.
+    if name not in evidence:
+        diagnostics.append(f"{name} section missing")
+        return {}
+    value = evidence[name]
     if isinstance(value, dict):
         return value
     diagnostics.append(f"{name} section must be an object")
@@ -1420,6 +1507,15 @@ def evidence_section(evidence: dict[str, Any], name: str, diagnostics: list[str]
 
 def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, verify_drift: bool = True, evidence_root: pathlib.Path | None = None) -> dict[str, Any]:
     section_diagnostics: list[str] = []
+    # CR-12-4-P235 (round-10, EC-2): guard against non-dict top-level evidence. P223
+    # guarded only the `manifest` sub-section; an evidence file with `[]`, `null`, or
+    # scalar at top level still reached `evidence_section(evidence, ...)` and crashed
+    # with AttributeError on the first `evidence.get(name, {})` call. Treat the
+    # malformed payload the same way as malformed sub-sections: typed diagnostic,
+    # empty-dict fallthrough, classification=blocked via the section_diagnostics path.
+    if not isinstance(evidence, dict):
+        section_diagnostics.append("evidence payload must be an object")
+        evidence = {}
     context = evidence_section(evidence, "context", section_diagnostics)
     checks = evidence_section(evidence, "checks", section_diagnostics)
     approval = evidence_section(evidence, "approval", section_diagnostics)
@@ -1472,7 +1568,7 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         blocking.append("evidence: checks.diagnostics must be an array")
 
     if context_class != "trusted-main-or-release":
-        blocking.append(f"candidate evidence from {context_class} cannot authorize publishing")
+        blocking.append(_CANDIDATE_BLOCKER_TEMPLATE.format(context_class=context_class))
     if not approval_approved or not approval.get("approver"):
         blocking.append("explicit release-owner approval is required before side effects")
 
@@ -1534,9 +1630,19 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         # `manifest.attestation_bundle` is internally inconsistent — the fallback path
         # is by definition the no-bundle path. Reject so an attacker cannot smuggle a
         # stale bundle through alongside an approved fallback record.
+        #
+        # CR-12-4-P238 (round-10, EC-7): the original check only rejected dicts that
+        # ALSO carried a `sha256` field. A hand-crafted bundle like
+        # `{"path": "x.json", "kind": "..."}` (dict present, no sha256) slipped past.
+        # The symmetric inverse for the `attested` branch's "dict + sha256 required"
+        # is "any non-empty bundle is forbidden under approved-unsupported". Reject
+        # any non-empty dict, plus any non-dict truthy value (string, list, number).
         leftover_bundle = manifest.get("attestation_bundle") if isinstance(manifest, dict) else None
-        if isinstance(leftover_bundle, dict) and leftover_bundle.get("sha256"):
-            blocking.append("approved-unsupported fallback must not carry attestation_bundle evidence")
+        if isinstance(leftover_bundle, dict):
+            if leftover_bundle:  # non-empty dict
+                blocking.append("approved-unsupported fallback must not carry attestation_bundle evidence")
+        elif leftover_bundle:  # non-dict truthy (string, list, number)
+            blocking.append("approved-unsupported fallback must not carry attestation_bundle evidence (non-dict value)")
         fallback = attestation.get("fallback", {})
         if not isinstance(fallback, dict):
             blocking.append("unsupported-attestation fallback is missing, stale, or incomplete")
@@ -1559,9 +1665,39 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
                 # driven version bump invalidates the fallback approval. The producer
                 # side (`fallback_invalidation_fingerprints`) embeds the same key/value
                 # shape; both sides must agree for `fallback_complete` to validate.
+                #
+                # CR-12-4-P233 (round-10, BH-F3): the original consumer code only
+                # appended `helper_version` to `fingerprints_for_drift` when
+                # `manifest.helper_version` was a dict. A manifest with `helper_version:
+                # null` (or scalar/missing) would compute a digest WITHOUT the key while
+                # the producer ALWAYS adds it — guaranteed digest mismatch with no
+                # actionable diagnostic. Now: always include `helper_version` (default
+                # empty string when manifest field is missing or malformed) and append
+                # a typed diagnostic so the operator sees the structural cause.
+                #
+                # CR-12-4-P245 (round-10, BH-F13): hash the version string for type
+                # uniformity with the file-content hashes; mirrors the producer.
+                # `manifest_diagnostics` (called above for both attested and
+                # approved-unsupported paths) already emits a `manifest:` blocker when
+                # `helper_version` is missing or non-dict — we don't re-raise. We only
+                # need to compute the consumer-side digest contribution: hash an empty
+                # version string when the field is malformed so the digest is
+                # deterministically wrong and `fallback_complete` rejects via its
+                # canonical_sha256 comparison rather than via a phantom-key mismatch.
+                # CR-12-4-P257 (round-11, blind): use a non-empty sentinel when the
+                # manifest field is malformed (missing/non-dict/missing-version-key)
+                # so that an operator typo `__version__ = ""` cannot silently collide
+                # with the consumer's default empty string. The sentinel `<missing>`
+                # is not a valid semver (rejected at module load by the assertion at
+                # `eng/release_evidence.py:36`), so the producer hash and consumer
+                # hash of `<missing>` differ from any real `__version__`.
                 manifest_helper_version = manifest.get("helper_version") if isinstance(manifest, dict) else None
+                helper_version_value = "<missing>"
                 if isinstance(manifest_helper_version, dict):
-                    fingerprints_for_drift["helper_version"] = str(manifest_helper_version.get("version", ""))
+                    raw_version = manifest_helper_version.get("version")
+                    if isinstance(raw_version, str) and raw_version:
+                        helper_version_value = raw_version
+                fingerprints_for_drift["helper_version"] = hashlib.sha256(helper_version_value.encode("utf-8")).hexdigest()
             # CR-12-4-P120 (round-6): bind the current package-set fingerprint so the
             # fallback is invalidated by inventory drift per AC34/D19.
             current_package_set = manifest.get("package_set_fingerprint") if isinstance(manifest, dict) else None
@@ -1606,12 +1742,87 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         blocking.append(f"attestation status must be attested or approved-unsupported; actual={sanitize(status)}")
 
     classification = "blocked" if blocking else ("fallback-approved" if fallback_reasons else "ready")
+    # CR-12-4-P247 (round-10, D21/BH-F2/EC-1): dry-run carve-out. Round-9 P217/P218
+    # made the `--dry-run-clean-exit` path structurally unreachable: any dry-run
+    # always classifies as `local-candidate` (line 1474-1475 above), which appends
+    # the candidate-evidence blocker, which forces `classification = "blocked"`,
+    # which fails the P218 gate `classification in {ready, fallback-approved}`.
+    # Without this carve-out, every healthy dry-run reports red on the workflow
+    # step status — defeating P214's "healthy dry-run reports green" intent.
+    #
+    # Carve-out conditions (must ALL hold):
+    #   1. `context.dry_run` is True (the run is a dry-run dispatch);
+    #      [CR-12-4-P255 round-11: the source field is `context.dry_run`, NOT
+    #      `checks.dry_run` — `classify_context` reads from the context section
+    #      at L1229 and `--dry-run` CLI flag is injected into the context block
+    #      at L2423. The prior comment incorrectly named `checks.dry_run` and
+    #      could mislead a future refactor.]
+    #   2. `context_class == "local-candidate"` (the only context dry-runs reach);
+    #   3. `blocking == [candidate-evidence-blocker]` (no OTHER blockers — a real
+    #      defect like missing tests must keep classification=blocked);
+    #   4. NOT mutually exclusive with the fallback path — CR-12-4-P264 (round-11,
+    #      from D25) added a second arm: when fallback_reasons is non-empty AND
+    #      the only blocker is the candidate evidence blocker, classification is
+    #      reclassified to `fallback-approved` so the production attestation
+    #      fallback path (Def14: ATTESTATION_UNSUPPORTED=true) can reach the
+    #      dry-run-clean-exit gate.
+    #
+    # When EITHER arm fires, `classification` is promoted but `publish_authorized`
+    # stays False (the gate at line 1750 requires `trusted-main-or-release` context;
+    # local-candidate fails that). AC23 was reworded in round-11 (CR-12-4-D24/D21)
+    # to explicitly permit this combination — see the AC23 row text and CR-12-4-P263.
+    # A typed `helper_state` note records the carve-out for auditors (CR-12-4-P251
+    # round-11), and the blocking list is rewritten so the typed contract is
+    # internally consistent (no `classification=ready` + non-empty blocking).
+    # Parse dry_run from the context section (where `classify_context` reads it from).
+    # Re-parsing is safe: any diagnostic was already added by `classify_context` and
+    # surfaced via `context_diagnostics`, so the carve-out check sees the value
+    # without double-counting forensic noise.
+    dry_run_flag, _ = parse_strict_bool(context.get("dry_run"), field="dry_run")
+    candidate_blocker = _CANDIDATE_BLOCKER_TEMPLATE.format(context_class=context_class)
+    _dry_run_pre = (
+        dry_run_flag
+        and context_class == "local-candidate"
+        and classification == "blocked"
+        and len(blocking) == 1
+        and blocking[0] == candidate_blocker
+    )
+    dry_run_ready_carve_out = _dry_run_pre and not fallback_reasons
+    dry_run_fallback_carve_out = _dry_run_pre and bool(fallback_reasons)
+    dry_run_carve_out = dry_run_ready_carve_out or dry_run_fallback_carve_out
+    if dry_run_ready_carve_out:
+        classification = "ready"
+    elif dry_run_fallback_carve_out:
+        classification = "fallback-approved"
+    # CR-12-4-P251 (round-11, edge+auditor): when the carve-out fires, also rewrite
+    # `blocking` so the typed contract is internally consistent. A `classification=
+    # ready` (or `fallback-approved`) record alongside non-empty `grouped_reasons.
+    # blocking` previously violated D17 ("single typed classification contract").
+    # Move the candidate-evidence blocker out of `blocking` and into a separate
+    # `carve_out_advisory` field so audit trails preserve the trail without
+    # contradicting the headline classification.
+    carve_out_advisory: list[str] = []
+    if dry_run_carve_out:
+        carve_out_advisory = list(blocking)  # preserve trail
+        blocking = []
     publish_authorized = classification in {"ready", "fallback-approved"} and context_class == "trusted-main-or-release" and approval_approved
     next_action = "publish may proceed with approved owner action" if publish_authorized else "resolve blocking release gates before publishing"
     if context_class == "rerun-review":
         next_action = "rerun-review contexts are never publish-authorized; create a fresh dispatch or new tag to retry"
     if classification == "fallback-approved":
         next_action = "release owner must consciously accept the approved fallback before publish"
+    if dry_run_ready_carve_out:
+        next_action = "dry-run carve-out: classification=ready with publish_authorized=false; merge to trusted-main-or-release to publish"
+    elif dry_run_fallback_carve_out:
+        next_action = "dry-run carve-out (fallback): classification=fallback-approved with publish_authorized=false; merge to trusted-main-or-release with explicit owner approval to publish"
+
+    # CR-12-4-P251 (round-11): emit `helper_state` for the carve-out so auditors can
+    # see the trail without inferring it from `classification` + `grouped_reasons`.
+    helper_state_value = None
+    if dry_run_ready_carve_out:
+        helper_state_value = "dry-run-carve-out:ready"
+    elif dry_run_fallback_carve_out:
+        helper_state_value = "dry-run-carve-out:fallback-approved"
 
     return {
         "approval": {
@@ -1629,6 +1840,11 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
             "release-evidence/test-results.json",
         ],
         "candidate_evidence_used": context_class != "trusted-main-or-release",
+        # CR-12-4-P251 (round-11): when the carve-out fires, surface the original
+        # candidate-evidence blocker as a structured advisory rather than letting it
+        # contradict `classification`. Consumers reading the audit trail can still
+        # see what would have blocked publish in a trusted context.
+        "carve_out_advisory": [sanitize(reason) for reason in carve_out_advisory],
         "classification": classification,
         "context_class": context_class,
         "decision_contract": "frontcomposer.release-readiness.v1",
@@ -1637,6 +1853,7 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
             "fallback": [sanitize(reason) for reason in fallback_reasons],
         },
         "fallback_record": fallback_record,
+        "helper_state": helper_state_value,
         "next_owner_action": next_action,
         # CR-12-4-D8 (round-5): publish the package-set fingerprint as a separate
         # fingerprint surface so consumers can distinguish "package set changed" (new
@@ -1827,6 +2044,17 @@ def test_results(args: argparse.Namespace) -> int:
 def verify_manifest(args: argparse.Namespace) -> int:
     manifest = read_json(args.manifest)
     diagnostics: list[str] = []
+    # CR-12-4-P236 (round-10, EC-8): guard against non-dict top-level manifest. The
+    # workflow's pre-classify JSON parse check (P227) validates parseability but not
+    # dict shape. A sealed-manifest.json with top-level `[]`, `null`, or scalar
+    # previously crashed via AttributeError on the first `manifest.get(...)` call in
+    # `manifest_diagnostics` (exit 2 with traceback) instead of producing a typed
+    # release-definition blocker. Treat as invalid and surface a typed diagnostic.
+    if not isinstance(manifest, dict):
+        diagnostics.append("sealed manifest must be an object")
+        if args.output:
+            write_json(args.output, {"status": "invalid", "diagnostics": diagnostics})
+        return 1
     if args.no_root:
         root = None
     elif args.root:
@@ -2337,21 +2565,32 @@ def classify_release(args: argparse.Namespace) -> int:
             concurrency_probe_diagnostics.append(
                 f"concurrency-probe: --concurrency-guard path missing: {sanitize(guard_path_arg)}"
             )
+    # CR-12-4-P246 (round-10, BH-F12): build augmented checks in a local dict and
+    # spread `{**evidence, "checks": augmented}` into the classifier call rather than
+    # mutating `evidence["checks"]` in place. The mutation pattern leaked state into
+    # the caller's dict — a future refactor that calls `classify_release_payload`
+    # twice for comparison would see the second call's evidence already mutated.
+    # Mutation-free spread also pairs with the typed-evidence-as-read-only convention.
     if concurrency_probe_diagnostics:
-        checks = evidence.get("checks")
-        if not isinstance(checks, dict):
-            checks = {}
-            evidence["checks"] = checks
+        existing_checks = evidence.get("checks") if isinstance(evidence, dict) else None
+        if not isinstance(existing_checks, dict):
+            existing_checks = {}
             concurrency_probe_diagnostics.insert(0, "checks section missing or malformed while applying concurrency guard")
-        checks["concurrent_same_version"] = True
-        checks["helper_state"] = "partial"
-        raw_check_diagnostics = checks.get("diagnostics", [])
+        raw_check_diagnostics = existing_checks.get("diagnostics", [])
         check_diagnostics = raw_check_diagnostics if isinstance(raw_check_diagnostics, list) else []
-        checks["diagnostics"] = [
-            *check_diagnostics,
-            *concurrency_probe_diagnostics,
-        ]
-    decision = classify_release_payload(evidence, pathlib.Path(args.root), evidence_root=evidence_root_arg)
+        augmented_checks = {
+            **existing_checks,
+            "concurrent_same_version": True,
+            "helper_state": "partial",
+            "diagnostics": [
+                *check_diagnostics,
+                *concurrency_probe_diagnostics,
+            ],
+        }
+        evidence_for_classify = {**evidence, "checks": augmented_checks} if isinstance(evidence, dict) else {"checks": augmented_checks}
+    else:
+        evidence_for_classify = evidence
+    decision = classify_release_payload(evidence_for_classify, pathlib.Path(args.root), evidence_root=evidence_root_arg)
     # CR-12-4-P209 (round-8): release owners reading only `grouped_reasons.blocking`
     # need to distinguish PROBE-DEGRADED (infrastructure issue → retry) from a REAL
     # concurrent run (operational issue → wait). The headline reason emitted by
@@ -2397,10 +2636,19 @@ def classify_release(args: argparse.Namespace) -> int:
         # `classification in {"ready", "fallback-approved"}`. A future blocking reason
         # like "dry-run side-effect attempt detected" would have falsely matched the
         # prior `startswith("dry-run")` predicate and slipped past the exit-0 gate.
+        # CR-12-4-P247 (round-10, D21/BH-F2/EC-1): the P218 gate had made this path
+        # structurally dead because dry-runs always classified as `blocked`. The
+        # corresponding carve-out in `classify_release_payload` now reclassifies
+        # healthy dry-runs as `classification="ready"` (with `publish_authorized=false`),
+        # so the gate fires when intended. Also dropped the dead allowlist literal
+        # `"dry-run dispatch cannot authorize publishing"` — only the f-string
+        # `f"candidate evidence from {context_class} ..."` is emitted by the
+        # classifier, and only the `local-candidate` instance is allowed here.
         if getattr(args, "dry_run_clean_exit", False) and blocking:
+            # CR-12-4-P256 (round-11, edge): allowlist materialized from the
+            # module-level template so it cannot drift from the carve-out emitter.
             allowed_blockers = {
-                "candidate evidence from local-candidate cannot authorize publishing",
-                "dry-run dispatch cannot authorize publishing",
+                _CANDIDATE_BLOCKER_TEMPLATE.format(context_class="local-candidate"),
             }
             classification_ready = decision["classification"] in {"ready", "fallback-approved"}
             if classification_ready and all(b in allowed_blockers for b in blocking):

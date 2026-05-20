@@ -181,6 +181,16 @@ This ledger is append-only. Add new lessons at the bottom. Reference lessons by 
 
 ---
 
+## L16 — Multi-story review patches must NOT bundle status-flip or content edits from a different story's spec file
+
+**Pattern:** A code-review round for Story X should patch ONLY files named in Story X's `File List` (or files explicitly added as collateral via a documented Decision). When the diff also touches a different story's spec markdown (`{other-story-key}.md`), flips that other story's `Status:` field, rewrites documentation owned by another story (e.g., `docs/accessibility-verification/*.md` when reviewing a release-evidence story), or bumps submodule pointers without a named patch claim, the reviewer must surface this as a `Decision` BEFORE applying patches — not silently absorb it into the same round.
+
+**Apply:** During the gather-context step, the reviewer compares the diff's file set against the story's `File List` + `Source Tree Components To Touch`. Any file outside that set that ALSO touches another story's `_bmad-output/implementation-artifacts/{other-key}.md`, or modifies submodule pointers, or rewrites docs the story does not own → raise as a Decision item in the round-N findings section. Acceptable resolutions: (a) split into separate PRs; (b) document the bundle as a one-off process exception with rationale in the round Change Log; (c) Recommended — both: keep the bundle if the work is otherwise correct AND document the bundle in this lessons ledger so future stories know the precedent.
+
+**Triggered by:** Story 12.4 round-10 review (2026-05-19). The round-9 patches CR-12-4-P217..P232 were correctly scoped to release-evidence files, but the same diff also flipped Story 12.5 (`12-5-accessibility-and-stakeholder-acceptance-evidence-pack.md`) from `review` to `done`, rewrote three `docs/accessibility-verification/*.md` files, and bumped `Hexalith.EventStore` + `Hexalith.Tenants` submodule pointers — none named in any Story 12.4 patch claim. Story 12.4's spec T5 explicitly defers Story 12.5 work; `Source Tree Components To Touch` lists no submodule entries. CR-12-5-Def01 (created in the same diff) flagged the exact pattern. Resolution: D23 routed to P249 (this ledger entry); work kept, future bundling caught by reviewer scope-check.
+
+---
+
 ## Process: How to use this ledger
 
 - Before creating a new story, scan this file for relevant lessons
