@@ -1622,6 +1622,30 @@ def classify_release_payload(evidence: dict[str, Any], root: pathlib.Path, *, ve
         blocking.append("manifest evidence is required")
 
     status = attestation.get("status")
+    # CR-12-4-P271 (round-13, EH-R13-8 from D30): enforce top-level `attestation.status`
+    # and per-row `manifest.packages[*].attestation_status` agreement. A hand-crafted or
+    # tampered manifest with top-level `attested` but per-row `approved-unsupported`
+    # (or vice versa) could route through one gate while slipping the other:
+    #   - status="attested" routes to the bundle-required branch (L1738) but per-row
+    #     `approved-unsupported` would never surface its own missing-fallback evidence.
+    #   - status="approved-unsupported" routes to the fallback-validation branch
+    #     (L1626) but per-row `attested` would never surface its own missing-bundle
+    #     evidence.
+    # The producer (`prepare_manifest`) always writes them in lockstep from a single
+    # source (`RELEASE_ATTESTATION_STATUS`), so any divergence at classify time is a
+    # tampering signal. Reject before either branch fires.
+    if status in {"attested", "approved-unsupported"} and isinstance(manifest, dict):
+        manifest_packages = manifest.get("packages") if isinstance(manifest.get("packages"), list) else []
+        discordant = [
+            str(row.get("package_id", "<unknown>"))
+            for row in manifest_packages
+            if isinstance(row, dict) and row.get("attestation_status") not in {None, status}
+        ]
+        if discordant:
+            blocking.append(
+                f"manifest: per-row attestation_status disagrees with top-level attestation.status={sanitize(status)}; "
+                f"packages={','.join(sanitize(p) for p in discordant[:5])}"
+            )
     fallback_record: dict[str, str] | None = None
     if status == "approved-unsupported":
         # CR-12-4-P219 (round-9, BH-010): inverse of the `attested` bundle-presence
