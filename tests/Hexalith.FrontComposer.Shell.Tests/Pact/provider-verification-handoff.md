@@ -12,8 +12,8 @@ Required command shape:
 
 ```powershell
 dotnet test Hexalith.EventStore.sln --configuration Release --filter "Category=ContractProvider" -- `
-  --pact-source "..\tests\Hexalith.FrontComposer.Shell.Tests\Pact" `
-  --provider-state-catalog "..\tests\Hexalith.FrontComposer.Shell.Tests\Pact\provider-state-catalog.json" `
+  --pact-source "../tests/Hexalith.FrontComposer.Shell.Tests/Pact" `
+  --provider-state-catalog "../tests/Hexalith.FrontComposer.Shell.Tests/Pact/provider-state-catalog.json" `
   --report-output "artifacts/contracts/provider-verification.json"
 ```
 
