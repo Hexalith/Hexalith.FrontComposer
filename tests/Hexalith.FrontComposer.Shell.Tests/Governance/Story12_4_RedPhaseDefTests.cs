@@ -356,4 +356,330 @@ public sealed class Story12_4_RedPhaseDefTests {
             }
         }
     }
+
+    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def102 owner=release-owner reason=fallback-approved-at-equals-expires-at-boundary-missing reintroduction=5-nightly-passes
+    [Fact]
+    [Trait("Category", "Quarantined")]
+    public void Story12_4_Def102_FallbackApprovedAtEqualsExpiresAtFixture_IsPresentAndBlocked() {
+        // RED until Def102 lands: P243 requires fallback approvals to be strictly
+        // before their expiry. A future refactor that permits approved_at == expires_at
+        // would silently re-open the operator-footgun window unless the exact boundary
+        // is pinned in the release-readiness fixture corpus.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string fixturesPath = ReleaseReadinessFixturesPath(root);
+
+        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        JsonElement matchingCase = RequireFixtureCase(
+            fixtureDoc.RootElement,
+            "fallback-approved-at-equals-expires-at",
+            "Def102: fixture `fallback-approved-at-equals-expires-at` must exist as a cases[].name entry in release-readiness-cases.json.");
+
+        JsonElement fallback = matchingCase.GetProperty("override").GetProperty("attestation").GetProperty("fallback");
+        fallback.GetProperty("approved_at").GetString().ShouldBe(
+            fallback.GetProperty("expires_at").GetString(),
+            "Def102: the fixture must pin the exact approved_at == expires_at boundary.");
+        matchingCase.GetProperty("expected_classification").GetString().ShouldBe(
+            "blocked",
+            "Def102: a fallback approved at its expiry instant must classify as blocked.");
+        matchingCase.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse(
+            "Def102: a fallback approved at its expiry instant must not authorize publishing.");
+
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-def102-{Guid.NewGuid():N}.json");
+        try {
+            using JsonDocument resultDoc = ClassifyReleaseReadinessFixtures(root, fixturesPath, output);
+            JsonElement result = RequireClassifierResult(resultDoc.RootElement, "fallback-approved-at-equals-expires-at");
+            result.GetProperty("classification").GetString().ShouldBe("blocked");
+            BlockingReasonsContain(result, "approved_at", "expires_at").ShouldBeTrue(
+                "Def102: the classifier diagnostic must name the approved_at/expires_at boundary.");
+        } finally {
+            DeleteIfExists(output);
+        }
+    }
+
+    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def103 owner=release-owner reason=fallback-approved-at-365-day-boundary-missing reintroduction=5-nightly-passes
+    [Fact]
+    [Trait("Category", "Quarantined")]
+    public void Story12_4_Def103_FallbackApprovedAtExactly365DaysOldFixture_IsPresentAndBlocked() {
+        // RED until Def103 lands: P259 changed fallback approval age from `>` to
+        // `>=` 365 days. The exact boundary needs a fixture so the regression cannot
+        // slip back through as an apparently harmless off-by-one.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string fixturesPath = ReleaseReadinessFixturesPath(root);
+
+        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        JsonElement matchingCase = RequireFixtureCase(
+            fixtureDoc.RootElement,
+            "fallback-approved-at-365-day-boundary",
+            "Def103: fixture `fallback-approved-at-365-day-boundary` must exist as a cases[].name entry in release-readiness-cases.json.");
+
+        matchingCase.GetProperty("expected_classification").GetString().ShouldBe(
+            "blocked",
+            "Def103: a fallback approval that is exactly 365 days old must classify as blocked.");
+        matchingCase.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse(
+            "Def103: a 365-day-old fallback approval must not authorize publishing.");
+
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-def103-{Guid.NewGuid():N}.json");
+        try {
+            using JsonDocument resultDoc = ClassifyReleaseReadinessFixtures(root, fixturesPath, output);
+            JsonElement result = RequireClassifierResult(resultDoc.RootElement, "fallback-approved-at-365-day-boundary");
+            result.GetProperty("classification").GetString().ShouldBe("blocked");
+            BlockingReasonsContain(result, "365").ShouldBeTrue(
+                "Def103: the classifier diagnostic must name the 365-day fallback approval boundary.");
+        } finally {
+            DeleteIfExists(output);
+        }
+    }
+
+    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def104 owner=release-owner reason=partial-publish-recovered-and-full-fixtures-missing reintroduction=5-nightly-passes
+    [Fact]
+    [Trait("Category", "Quarantined")]
+    public void Story12_4_Def104_PartialPublishRecoveredAndFullFixtures_ArePresentAndRequireRerunReview() {
+        // RED until Def104 lands: the classifier treats every non-none partial publish
+        // state as rerun-review, but the fixture corpus only pins `partial`. Add
+        // `recovered` and `full` so future state-machine edits cannot accidentally
+        // route those publish-side-effect states through the trusted happy path.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string fixturesPath = ReleaseReadinessFixturesPath(root);
+
+        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        string[] caseNames = ["partial-publish-state-recovered", "partial-publish-state-full"];
+        string[] states = ["recovered", "full"];
+        for (int i = 0; i < caseNames.Length; i++) {
+            JsonElement matchingCase = RequireFixtureCase(
+                fixtureDoc.RootElement,
+                caseNames[i],
+                $"Def104: fixture `{caseNames[i]}` must exist as a cases[].name entry in release-readiness-cases.json.");
+
+            matchingCase.GetProperty("override").GetProperty("context").GetProperty("partial_publish_state").GetString().ShouldBe(
+                states[i],
+                $"Def104: `{caseNames[i]}` must set context.partial_publish_state={states[i]}.");
+            matchingCase.GetProperty("expected_context_class").GetString().ShouldBe(
+                "rerun-review",
+                $"Def104: `{caseNames[i]}` must require rerun-review.");
+            matchingCase.GetProperty("expected_classification").GetString().ShouldBe(
+                "blocked",
+                $"Def104: `{caseNames[i]}` must classify as blocked.");
+            matchingCase.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse(
+                $"Def104: `{caseNames[i]}` must not authorize publishing.");
+        }
+
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-def104-{Guid.NewGuid():N}.json");
+        try {
+            using JsonDocument resultDoc = ClassifyReleaseReadinessFixtures(root, fixturesPath, output);
+            foreach (string caseName in caseNames) {
+                JsonElement result = RequireClassifierResult(resultDoc.RootElement, caseName);
+                result.GetProperty("context_class").GetString().ShouldBe("rerun-review");
+                result.GetProperty("classification").GetString().ShouldBe("blocked");
+                result.GetProperty("publish_authorized").GetBoolean().ShouldBeFalse();
+            }
+        } finally {
+            DeleteIfExists(output);
+        }
+    }
+
+    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def105 owner=release-owner reason=string-boolean-symmetry-fixtures-missing reintroduction=5-nightly-passes
+    [Fact]
+    [Trait("Category", "Quarantined")]
+    public void Story12_4_Def105_StringBooleanSymmetryFixtures_ArePresentAndBlocked() {
+        // RED until Def105 lands: existing fixtures catch string false for approval
+        // and string true for concurrent publish. The inverse stringly-typed cases
+        // need fixtures too, otherwise truthy-string coercion regressions can survive.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string fixturesPath = ReleaseReadinessFixturesPath(root);
+
+        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        JsonElement stringTrueApproval = RequireFixtureCase(
+            fixtureDoc.RootElement,
+            "string-true-approval",
+            "Def105: fixture `string-true-approval` must exist as a cases[].name entry in release-readiness-cases.json.");
+        stringTrueApproval.GetProperty("override").GetProperty("approval").GetProperty("approved").GetString().ShouldBe(
+            "true",
+            "Def105: string-true-approval must pin approval.approved as a string literal, not a JSON boolean.");
+        stringTrueApproval.GetProperty("expected_classification").GetString().ShouldBe("blocked");
+        stringTrueApproval.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse();
+
+        JsonElement stringFalseConcurrent = RequireFixtureCase(
+            fixtureDoc.RootElement,
+            "concurrent-same-version-string-false",
+            "Def105: fixture `concurrent-same-version-string-false` must exist as a cases[].name entry in release-readiness-cases.json.");
+        stringFalseConcurrent.GetProperty("override").GetProperty("checks").GetProperty("concurrent_same_version").GetString().ShouldBe(
+            "false",
+            "Def105: concurrent-same-version-string-false must pin checks.concurrent_same_version as a string literal, not a JSON boolean.");
+        stringFalseConcurrent.GetProperty("expected_classification").GetString().ShouldBe("blocked");
+        stringFalseConcurrent.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse();
+
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-def105-{Guid.NewGuid():N}.json");
+        try {
+            using JsonDocument resultDoc = ClassifyReleaseReadinessFixtures(root, fixturesPath, output);
+            RequireClassifierResult(resultDoc.RootElement, "string-true-approval").GetProperty("classification").GetString().ShouldBe("blocked");
+            RequireClassifierResult(resultDoc.RootElement, "concurrent-same-version-string-false").GetProperty("classification").GetString().ShouldBe("blocked");
+        } finally {
+            DeleteIfExists(output);
+        }
+    }
+
+    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def106 owner=release-owner reason=credentialed-url-and-signing-material-evidence-fixtures-missing reintroduction=5-nightly-passes
+    [Fact]
+    [Trait("Category", "Quarantined")]
+    public void Story12_4_Def106_DangerousEvidenceFixtures_CoverCredentialedUrlsAndSigningMaterial() {
+        // RED until Def106 lands: AC29 calls out credentialed URLs and signing
+        // material markers, but the helper-side dangerous evidence patterns do not
+        // currently pin those categories. These fixtures should fail closed with
+        // unsafe raw evidence diagnostics.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string fixturesPath = ReleaseReadinessFixturesPath(root);
+
+        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        JsonElement credentialedUrl = RequireFixtureCase(
+            fixtureDoc.RootElement,
+            "credentialed-url-leakage",
+            "Def106: fixture `credentialed-url-leakage` must exist as a cases[].name entry in release-readiness-cases.json.");
+        (credentialedUrl.GetProperty("override").GetProperty("checks").GetProperty("raw_evidence").GetString() ?? string.Empty)
+            .Contains("https://user:pass@", StringComparison.Ordinal).ShouldBeTrue(
+            "Def106: credentialed-url-leakage must include a credentialed URL shape.");
+        credentialedUrl.GetProperty("expected_classification").GetString().ShouldBe("blocked");
+        credentialedUrl.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse();
+
+        JsonElement signingMaterial = RequireFixtureCase(
+            fixtureDoc.RootElement,
+            "signing-material-leakage",
+            "Def106: fixture `signing-material-leakage` must exist as a cases[].name entry in release-readiness-cases.json.");
+        string signingEvidence = signingMaterial.GetProperty("override").GetProperty("checks").GetProperty("raw_evidence").GetString() ?? string.Empty;
+        (
+            signingEvidence.Contains("-----BEGIN PRIVATE KEY-----", StringComparison.Ordinal)
+            || signingEvidence.Contains("-----BEGIN RSA PRIVATE KEY-----", StringComparison.Ordinal)
+            || signingEvidence.Contains("-----BEGIN CERTIFICATE-----", StringComparison.Ordinal)
+        ).ShouldBeTrue("Def106: signing-material-leakage must include a PEM private key or certificate marker.");
+        signingMaterial.GetProperty("expected_classification").GetString().ShouldBe("blocked");
+        signingMaterial.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse();
+
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-def106-{Guid.NewGuid():N}.json");
+        try {
+            using JsonDocument resultDoc = ClassifyReleaseReadinessFixtures(root, fixturesPath, output);
+            foreach (string caseName in new[] { "credentialed-url-leakage", "signing-material-leakage" }) {
+                JsonElement result = RequireClassifierResult(resultDoc.RootElement, caseName);
+                result.GetProperty("classification").GetString().ShouldBe("blocked");
+                BlockingReasonsContain(result, "unsafe raw evidence").ShouldBeTrue(
+                    $"Def106: `{caseName}` must surface the unsafe raw evidence diagnostic.");
+            }
+        } finally {
+            DeleteIfExists(output);
+        }
+    }
+
+    // frontcomposer-quarantine: issue=12-4-trusted-release-evidence-dry-run.md#CR-12-4-Def107 owner=release-owner reason=fallback-affected-artifact-mismatch-fixture-missing reintroduction=5-nightly-passes
+    [Fact]
+    [Trait("Category", "Quarantined")]
+    public void Story12_4_Def107_FallbackAffectedArtifactMismatchFixture_IsPresentAndBlocked() {
+        // RED until Def107 lands: AC34 says changed affected artifacts invalidate an
+        // approved fallback, but fallback_complete currently validates only presence.
+        // This fixture pins the mismatch so a fallback approved for artifact X cannot
+        // authorize a manifest shipping artifact Y.
+        string root = CiGovernanceTests.RepositoryRoot();
+        string fixturesPath = ReleaseReadinessFixturesPath(root);
+
+        using JsonDocument fixtureDoc = JsonDocument.Parse(File.ReadAllText(fixturesPath));
+        JsonElement matchingCase = RequireFixtureCase(
+            fixtureDoc.RootElement,
+            "fallback-affected-artifact-mismatch",
+            "Def107: fixture `fallback-affected-artifact-mismatch` must exist as a cases[].name entry in release-readiness-cases.json.");
+
+        JsonElement override_ = matchingCase.GetProperty("override");
+        string affectedArtifact = override_.GetProperty("attestation").GetProperty("fallback").GetProperty("affected_artifact").GetString() ?? string.Empty;
+        string shippedArtifactPath = override_.GetProperty("manifest").GetProperty("packages").EnumerateArray()
+            .First()
+            .GetProperty("artifact_path")
+            .GetString() ?? string.Empty;
+        shippedArtifactPath.EndsWith(affectedArtifact, StringComparison.Ordinal).ShouldBeFalse(
+            "Def107: the fixture must approve one affected_artifact while the manifest ships a different artifact.");
+        matchingCase.GetProperty("expected_classification").GetString().ShouldBe("blocked");
+        matchingCase.GetProperty("expected_publish_authorized").GetBoolean().ShouldBeFalse();
+
+        string output = Path.Combine(Path.GetTempPath(), $"fc-release-readiness-def107-{Guid.NewGuid():N}.json");
+        try {
+            using JsonDocument resultDoc = ClassifyReleaseReadinessFixtures(root, fixturesPath, output);
+            JsonElement result = RequireClassifierResult(resultDoc.RootElement, "fallback-affected-artifact-mismatch");
+            result.GetProperty("classification").GetString().ShouldBe("blocked");
+            BlockingReasonsContain(result, "affected_artifact").ShouldBeTrue(
+                "Def107: the classifier diagnostic must name the fallback affected_artifact mismatch.");
+        } finally {
+            DeleteIfExists(output);
+        }
+    }
+
+    private static string ReleaseReadinessFixturesPath(string root)
+        => Path.Combine(root, "tests/ci-governance/fixtures/release-readiness-cases.json");
+
+    private static JsonElement RequireFixtureCase(JsonElement root, string caseName, string because) {
+        JsonElement? matchingCase = null;
+        foreach (JsonElement caseElement in root.GetProperty("cases").EnumerateArray()) {
+            if (caseElement.TryGetProperty("name", out JsonElement nameElement)
+                && nameElement.ValueKind == JsonValueKind.String
+                && nameElement.GetString() == caseName) {
+                matchingCase = caseElement;
+                break;
+            }
+        }
+
+        matchingCase.ShouldNotBeNull(because);
+        return matchingCase!.Value;
+    }
+
+    private static JsonDocument ClassifyReleaseReadinessFixtures(string root, string fixturesPath, string output) {
+        CiGovernanceTests.ProcessResult result = CiGovernanceTests.RunPython(root, [
+            "eng/release_evidence.py",
+            "classify-fixtures",
+            "--fixtures", fixturesPath,
+            "--output", output,
+        ]);
+        result.ExitCode.ShouldBe(0, result.Error);
+        return JsonDocument.Parse(File.ReadAllText(output));
+    }
+
+    private static JsonElement RequireClassifierResult(JsonElement root, string caseName) {
+        JsonElement? matchingResult = null;
+        foreach (JsonElement resultElement in root.GetProperty("results").EnumerateArray()) {
+            if (resultElement.TryGetProperty("name", out JsonElement nameElement)
+                && nameElement.ValueKind == JsonValueKind.String
+                && nameElement.GetString() == caseName) {
+                matchingResult = resultElement;
+                break;
+            }
+        }
+
+        matchingResult.ShouldNotBeNull(
+            $"release_evidence.py classify-fixtures must include a result entry for `{caseName}`.");
+        return matchingResult!.Value;
+    }
+
+    private static bool BlockingReasonsContain(JsonElement result, params string[] fragments) {
+        if (!result.TryGetProperty("grouped_reasons", out JsonElement grouped)
+            || !grouped.TryGetProperty("blocking", out JsonElement blocking)
+            || blocking.ValueKind != JsonValueKind.Array) {
+            return false;
+        }
+
+        foreach (JsonElement reason in blocking.EnumerateArray()) {
+            string reasonText = reason.GetString() ?? string.Empty;
+            bool matched = true;
+            foreach (string fragment in fragments) {
+                if (!reasonText.Contains(fragment, StringComparison.OrdinalIgnoreCase)) {
+                    matched = false;
+                    break;
+                }
+            }
+
+            if (matched) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void DeleteIfExists(string path) {
+        if (File.Exists(path)) {
+            File.Delete(path);
+        }
+    }
 }

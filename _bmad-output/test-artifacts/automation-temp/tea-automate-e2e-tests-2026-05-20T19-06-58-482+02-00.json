@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "tests": [],
+  "fixture_needs": [],
+  "knowledge_fragments_used": [
+    "fixture-architecture",
+    "network-first",
+    "playwright-cli"
+  ],
+  "test_count": 0,
+  "priority_coverage": {
+    "P0": 0,
+    "P1": 0,
+    "P2": 0,
+    "P3": 0
+  },
+  "summary": "Skipped E2E generation because selected targets are governance/classifier contracts and the app endpoint was not available for snapshot."
+}

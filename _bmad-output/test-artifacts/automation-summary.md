@@ -1,20 +1,27 @@
 ---
-stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-04-validate-and-record']
-lastStep: 'step-04-validate-and-record'
-lastSaved: '2026-05-20'
+stepsCompleted: ['step-01-preflight-and-context', 'step-02-identify-targets', 'step-03-generate-tests', 'step-03c-aggregate', 'step-04-validate-and-summarize']
+lastStep: 'step-04-validate-and-summarize'
+lastSaved: '2026-05-20T19:06:58+02:00'
 author: 'Murat (TEA)'
 storyId: '12.4'
 storyKey: '12-4-trusted-release-evidence-dry-run'
 scope: 'Apply F3 + F4 + F5 from the Story 12.4 test review (test-review-12-4.md)'
-detectedStack: 'backend (xUnit v3 + Shouldly + Python shell-out)'
-testFramework: 'xUnit v3 + Shouldly + NSubstitute (C#); shells out to eng/release_evidence.py (Python)'
-executionMode: 'BMad-Integrated (sequential)'
+detectedStack: 'fullstack (.NET xUnit v3 + Shouldly + Playwright E2E)'
+testFramework: 'xUnit v3 + Shouldly + NSubstitute; Playwright + TypeScript + axe-core; PactNet contract assets'
+executionMode: 'BMad-Integrated'
 filesModified:
   - tests/Hexalith.FrontComposer.Shell.Tests/Governance/CiGovernanceTests.cs
+  - tests/Hexalith.FrontComposer.Shell.Tests/Governance/Story12_4_RedPhaseDefTests.cs
 helpersAdded:
   - 'FindStepBlockContaining(workflow, needle): scoped step-block search (F4 prerequisite)'
   - 'ExtractJobPermissionsBlock(workflow, jobId): job-scoped permissions extraction (F4 prerequisite)'
 testsAffected:
+  - 'Story12_4_Def102_FallbackApprovedAtEqualsExpiresAtFixture_IsPresentAndBlocked (added — red-phase)'
+  - 'Story12_4_Def103_FallbackApprovedAtExactly365DaysOldFixture_IsPresentAndBlocked (added — red-phase)'
+  - 'Story12_4_Def104_PartialPublishRecoveredAndFullFixtures_ArePresentAndRequireRerunReview (added — red-phase)'
+  - 'Story12_4_Def105_StringBooleanSymmetryFixtures_ArePresentAndBlocked (added — red-phase)'
+  - 'Story12_4_Def106_DangerousEvidenceFixtures_CoverCredentialedUrlsAndSigningMaterial (added — red-phase)'
+  - 'Story12_4_Def107_FallbackAffectedArtifactMismatchFixture_IsPresentAndBlocked (added — red-phase)'
   - 'Story12_4_Def14_AttestBuildProvenanceStep_IsWiredInReleaseWorkflow (refactored — F4)'
   - 'Story12_4_Def14_AttestationsWritePermission_IsRestored (refactored — F4)'
   - 'Story12_4_Def22_DryRunWithSideEffectAttemptFixture_IsPresent (extended — F3 classifier round-trip)'
@@ -30,6 +37,178 @@ inputDocuments:
   - .claude/skills/bmad-testarch-test-review/resources/knowledge/test-levels-framework.md
   - .claude/skills/bmad-testarch-test-review/resources/knowledge/test-priorities-matrix.md
 ---
+
+# Automation Expansion Preflight — Create Run 2026-05-20
+
+## Step 1 — Preflight & Context
+
+Detected stack: fullstack.
+
+Framework readiness: passed.
+
+- Frontend/browser automation: `tests/e2e/playwright.config.ts` plus `tests/e2e/package.json` with `@playwright/test`, `@axe-core/playwright`, TypeScript, and faker.
+- Backend/unit automation: solution `Hexalith.FrontComposer.slnx` plus xUnit test projects under `tests/Hexalith.FrontComposer.*.Tests`.
+- Existing Pact coverage: `tests/Hexalith.FrontComposer.Shell.Tests/Pact` and `PactNet` in the Shell test project.
+- Existing E2E conventions: `data-testid` is configured as the Playwright test id attribute; current specs include smoke, lifecycle, sidebar responsiveness, density transitions, and specimen accessibility/visual coverage.
+
+Execution mode: BMad-integrated.
+
+Loaded BMad context and artifacts:
+
+- `_bmad-output/project-context.md`
+- `_bmad-output/planning-artifacts/architecture.md`
+- `_bmad-output/planning-artifacts/prd/index.md`
+- `_bmad-output/planning-artifacts/epics/index.md`
+- `_bmad-output/implementation-artifacts/sprint-status.yaml`
+- Existing story artifacts under `_bmad-output/implementation-artifacts`
+- Existing test artifacts under `_bmad-output/test-artifacts`
+
+Loaded knowledge fragments:
+
+- Core: `test-levels-framework.md`, `test-priorities-matrix.md`, `data-factories.md`, `selective-testing.md`, `ci-burn-in.md`, `test-quality.md`
+- Playwright utilities: `overview.md`, `api-request.md`, `network-recorder.md`, `auth-session.md`, `intercept-network-call.md`, `recurse.md`, `log.md`, `file-utils.md`, `burn-in.md`, `network-error-monitor.md`, `fixtures-composition.md`
+- Traditional baseline: `fixture-architecture.md`, `network-first.md`
+- Specialized: `contract-testing.md` because Pact assets are present and Pact.js utilities are disabled
+- Browser automation: `playwright-cli.md` because `tea_browser_automation` is `auto`
+
+Relevant TEA config:
+
+- `tea_use_playwright_utils: true`
+- `tea_use_pactjs_utils: false`
+- `tea_pact_mcp: none`
+- `tea_browser_automation: auto`
+- `test_stack_type: auto`
+
+Preflight notes:
+
+- Submodules are present in the workspace; no recursive submodule initialization or update was performed.
+- The existing `automation-summary.md` contains a prior completed Story 12.4 run. This section records the new Create-mode preflight before target selection.
+
+## Step 2 — Coverage Plan
+
+Selected target: Story 12.4 release-evidence classifier red-phase automation for the newest deferred review gaps, `CR-12-4-Def102` through `CR-12-4-Def107`.
+
+Why this target:
+
+- The sprint status marks Epic 12 complete, but `deferred-work.md` contains fresh Story 12.4 follow-ups from 2026-05-20 that are explicit test gaps.
+- Existing red-phase scaffolds already live in `tests/Hexalith.FrontComposer.Shell.Tests/Governance/Story12_4_RedPhaseDefTests.cs`, outside the class-level Governance trait, with per-method `Quarantined` metadata. Reusing this pattern avoids main-lane breakage.
+- The gaps map directly to `eng/release_evidence.py` and `tests/ci-governance/fixtures/release-readiness-cases.json`; no provider endpoint map is required because this target is not a consumer-driven Pact generation task.
+- Browser exploration was attempted with `playwright-cli -s=tea-automate open http://127.0.0.1:5070`, but no app was listening (`ERR_CONNECTION_REFUSED`). The session was closed with `playwright-cli -s=tea-automate close`, so target selection relies on source and artifact analysis.
+
+Coverage plan:
+
+| Target | Test Level | Priority | Planned Spec | Justification |
+| --- | --- | --- | --- | --- |
+| Def102 fallback `approved_at >= expires_at` boundary | Unit/integration governance | P1 | Red-phase classifier fixture assertion that a case with equal timestamps exists and blocks | Regression pin for fallback approval validity; contained to release evidence classifier |
+| Def103 exact 365-day approval boundary | Unit/integration governance | P1 | Red-phase fixture/assertion that a 365-day-old approval is represented and blocks | Pins off-by-one behavior named in round-13 review |
+| Def104 `partial_publish_state` values `recovered` and `full` | Unit/integration governance | P1 | Red-phase cases requiring both states to classify as `rerun-review` / blocked | Prevents owner-review bypass after partial/recovered publish states |
+| Def105 asymmetric string boolean coverage | Unit/integration governance | P2 | Red-phase required cases for string true approval and string false concurrency | Completes typed parsing matrix without duplicating existing string false/true axes |
+| Def106 dangerous evidence patterns for credentialed URLs and signing material | Unit/integration governance | P0 | Red-phase cases requiring raw evidence with credentialed URL and certificate/private-key marker to block | Security/redaction gap; high impact if unsafe evidence leaks into artifacts |
+| Def107 fallback affected artifact mismatch | Unit/integration governance | P0 | Red-phase case requiring fallback approval for artifact X while manifest ships artifact Y to block | Release authorization integrity gap tied to AC34 invalidation trigger |
+
+Out of scope for this automation pass:
+
+- Implementing `eng/release_evidence.py` behavior changes. These red-phase tests intentionally define the missing contracts and remain quarantined until the matching implementation lands.
+- Pact provider endpoint mapping. Pact assets exist, but Pact.js utilities are disabled and the chosen target is release governance, not consumer-provider contract generation.
+- E2E browser tests. The sample app was not running and the selected gaps are classifier/governance contracts, not UI flows.
+
+## Step 3C — Test Generation Aggregate
+
+Generation mode: sequential.
+
+Reason: `tea_execution_mode` is `auto`, but subagent delegation was not authorized in this turn, so the API, E2E, and backend workers were represented as sequential worker outputs and aggregated through the BMad schema.
+
+Worker outputs:
+
+- API: 0 tests. No API endpoint tests generated because the selected targets are backend release-evidence classifier contracts.
+- E2E: 0 tests. Browser exploration found no running app at `http://127.0.0.1:5070`, and the selected targets are not UI flows.
+- Backend: 6 quarantined red-phase tests in `tests/Hexalith.FrontComposer.Shell.Tests/Governance/Story12_4_RedPhaseDefTests.cs`.
+
+Generated backend tests:
+
+| Test | Priority | Contract |
+| --- | --- | --- |
+| `Story12_4_Def102_FallbackApprovedAtEqualsExpiresAtFixture_IsPresentAndBlocked` | P1 | Requires an exact `approved_at == expires_at` fallback fixture and classifier block. |
+| `Story12_4_Def103_FallbackApprovedAtExactly365DaysOldFixture_IsPresentAndBlocked` | P1 | Requires an exact 365-day fallback approval boundary fixture and classifier block. |
+| `Story12_4_Def104_PartialPublishRecoveredAndFullFixtures_ArePresentAndRequireRerunReview` | P1 | Requires `recovered` and `full` partial-publish states to route to `rerun-review`, block, and deny publish. |
+| `Story12_4_Def105_StringBooleanSymmetryFixtures_ArePresentAndBlocked` | P2 | Requires inverse string-boolean fixtures for approval and concurrent publish parsing. |
+| `Story12_4_Def106_DangerousEvidenceFixtures_CoverCredentialedUrlsAndSigningMaterial` | P0 | Requires credentialed URL and PEM signing-material raw evidence fixtures to block as unsafe evidence. |
+| `Story12_4_Def107_FallbackAffectedArtifactMismatchFixture_IsPresentAndBlocked` | P0 | Requires fallback affected-artifact mismatch to block. |
+
+Shared helpers added to the red-phase test class:
+
+- `ReleaseReadinessFixturesPath`
+- `RequireFixtureCase`
+- `ClassifyReleaseReadinessFixtures`
+- `RequireClassifierResult`
+- `BlockingReasonsContain`
+- `DeleteIfExists`
+
+Summary statistics saved to `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-05-20T19-06-58-482+02-00.json`.
+
+Summary:
+
+- Stack type: fullstack (.NET xUnit v3 + Shouldly + Playwright E2E)
+- Total tests generated: 6
+- API tests: 0
+- E2E tests: 0
+- Backend tests: 6 in 1 file
+- Fixtures created: 0
+- Priority coverage: P0 = 2, P1 = 3, P2 = 1, P3 = 0
+- Performance: baseline (no parallel speedup)
+
+## Step 4 — Validation & Summary
+
+Checklist status:
+
+- Framework readiness: passed. Playwright E2E scaffolding and xUnit backend test projects are present.
+- Coverage mapping: passed. The generated tests map to `CR-12-4-Def102` through `CR-12-4-Def107`.
+- Test quality and structure: passed. Tests follow the existing quarantined red-phase pattern, use deterministic fixture lookup and classifier round trips, and clean temp classifier outputs with `try/finally`.
+- Fixtures/factories/helpers: N/A for new fixtures/factories. Helper methods were added inside `Story12_4_RedPhaseDefTests` because the target is release-governance fixture validation, not Playwright data setup.
+- CLI sessions cleaned up: passed. The `playwright-cli -s=tea-automate close` command was run after the refused browser-open attempt.
+- Temp artifacts: passed. Worker outputs and summary JSON were moved from `/tmp` into `_bmad-output/test-artifacts/automation-temp/`.
+
+Validation commands:
+
+```powershell
+dotnet build tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release
+```
+
+Result: build succeeded with 0 warnings and 0 errors.
+
+```powershell
+dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~Story12_4_Def102|FullyQualifiedName~Story12_4_Def103|FullyQualifiedName~Story12_4_Def104|FullyQualifiedName~Story12_4_Def105|FullyQualifiedName~Story12_4_Def106|FullyQualifiedName~Story12_4_Def107"
+```
+
+Result: 6 failed, 0 passed, 0 skipped. This is the expected red-phase outcome; each failure occurs at `RequireFixtureCase(...)` because the named release-readiness fixture does not yet exist.
+
+Failure axes:
+
+| Test | Current red reason |
+| --- | --- |
+| Def102 | Missing `fallback-approved-at-equals-expires-at` fixture. |
+| Def103 | Missing `fallback-approved-at-365-day-boundary` fixture. |
+| Def104 | Missing `partial-publish-state-recovered` fixture. |
+| Def105 | Missing `string-true-approval` fixture. |
+| Def106 | Missing `credentialed-url-leakage` fixture. |
+| Def107 | Missing `fallback-affected-artifact-mismatch` fixture. |
+
+```powershell
+dotnet test tests\Hexalith.FrontComposer.Shell.Tests\Hexalith.FrontComposer.Shell.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~Story12_4_Def10&Category!=Quarantined"
+```
+
+Result: no tests matched, confirming the newly added Def102-Def107 tests remain excluded from non-quarantined lanes.
+
+Files updated:
+
+- `tests/Hexalith.FrontComposer.Shell.Tests/Governance/Story12_4_RedPhaseDefTests.cs`
+- `_bmad-output/test-artifacts/automation-summary.md`
+- `_bmad-output/test-artifacts/automation-temp/tea-automate-api-tests-2026-05-20T19-06-58-482+02-00.json`
+- `_bmad-output/test-artifacts/automation-temp/tea-automate-e2e-tests-2026-05-20T19-06-58-482+02-00.json`
+- `_bmad-output/test-artifacts/automation-temp/tea-automate-backend-tests-2026-05-20T19-06-58-482+02-00.json`
+- `_bmad-output/test-artifacts/automation-temp/tea-automate-summary-2026-05-20T19-06-58-482+02-00.json`
+
+Recommended next workflow: implement the green-phase release-evidence fixture and classifier changes for Def102-Def107, then run `bmad-testarch-test-review` in Validate mode against the changed tests.
 
 # Automation Expansion — Story 12.4 Test-Review Findings F3 + F4 + F5
 
