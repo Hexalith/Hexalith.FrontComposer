@@ -2,6 +2,8 @@
 // Fails at compile until Task 6.1 (FcSettingsDialog) + Task 2.3 (UserPreferenceChangedAction etc.) land.
 
 using System.Collections.Immutable;
+using System.Collections.Concurrent;
+using System.Reflection;
 
 using Bunit;
 
@@ -14,6 +16,7 @@ using Hexalith.FrontComposer.Shell.State.Navigation;
 using Hexalith.FrontComposer.Shell.State.Theme;
 
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.FluentUI.AspNetCore.Components;
 
 using Shouldly;
 
@@ -98,6 +101,22 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
     }
 
     [Fact]
+    public async Task DoneButtonClosesDialog()
+    {
+        IDialogInstance dialog = CreateRegisteredDialogInstance();
+
+        IRenderedComponent<FcSettingsDialog> cut = Render<FcSettingsDialog>();
+        cut.Instance.Dialog = dialog;
+
+        await cut.InvokeAsync(() => cut.Find("[data-testid=\"fc-settings-done\"]").Click());
+
+        DialogResult result = await dialog.Result
+            .WaitAsync(TimeSpan.FromSeconds(1), Xunit.TestContext.Current.CancellationToken)
+            .ConfigureAwait(true);
+        result.Cancelled.ShouldBeFalse();
+    }
+
+    [Fact]
     public void RendersForcedDensityNoteAtTabletWhenUserPrefersCompact()
     {
         System.Globalization.CultureInfo previous = System.Globalization.CultureInfo.CurrentUICulture;
@@ -148,5 +167,28 @@ public sealed class FcSettingsDialogTests : LayoutComponentTestBase
         {
             System.Globalization.CultureInfo.CurrentUICulture = previous;
         }
+    }
+
+    private IDialogInstance CreateRegisteredDialogInstance()
+    {
+        IDialogService dialogService = Services.GetRequiredService<IDialogService>();
+        ConstructorInfo constructor = typeof(DialogInstance).GetConstructor(
+            BindingFlags.Instance | BindingFlags.NonPublic,
+            binder: null,
+            [typeof(IDialogService), typeof(Type), typeof(DialogOptions)],
+            modifiers: null) ?? throw new InvalidOperationException("Fluent UI DialogInstance constructor was not found.");
+
+        IDialogInstance dialog = (IDialogInstance)constructor.Invoke(
+            [dialogService, typeof(FcSettingsDialog), new DialogOptions()]);
+
+        FieldInfo itemsField = typeof(DialogService).BaseType?.GetField(
+            "_list",
+            BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Fluent UI dialog registry was not found.");
+
+        ConcurrentDictionary<string, IDialogInstance> items =
+            (ConcurrentDictionary<string, IDialogInstance>)itemsField.GetValue(dialogService)!;
+        items.TryAdd(dialog.Id, dialog).ShouldBeTrue();
+        return dialog;
     }
 }

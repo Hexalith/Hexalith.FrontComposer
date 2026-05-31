@@ -95,6 +95,7 @@ public sealed class FcShellResourcesTests {
     [Theory]
     [InlineData("SettingsDialogTitle", "Settings", "Paramètres")]
     [InlineData("SettingsDialogCloseAriaLabel", "Close settings", "Fermer les paramètres")]
+    [InlineData("SettingsDialogDoneLabel", "Done", "Terminer")]
     [InlineData("DensitySectionLabel", "Display density", "Densité d'affichage")]
     [InlineData("DensityCompactLabel", "Compact", "Compact")]
     [InlineData("DensityComfortableLabel", "Comfortable", "Confortable")]

@@ -14,13 +14,14 @@ namespace Hexalith.FrontComposer.Shell.Components.Layout;
 
 /// <summary>
 /// Settings modal content (Story 3-3 D13 / D14 / D15 / D17; AC2, AC4, AC5). Hosts the density radio,
-/// the embedded <see cref="FcThemeToggle"/>, a live preview panel, and a "Restore defaults" footer.
+/// the embedded <see cref="FcThemeToggle"/>, a live preview panel, and Restore defaults / Done footer actions.
 /// Opened via <see cref="Microsoft.FluentUI.AspNetCore.Components.IDialogService.ShowDialogAsync{TContent}"/>
 /// from <see cref="FcSettingsButton"/> or the <c>Ctrl+,</c> inline handler on
 /// <see cref="FrontComposerShell"/>.
 /// </summary>
 /// <remarks>
-/// No "Apply" / "Cancel" buttons — changes take effect immediately per epic AC §126. The
+/// No "Apply" / "Cancel" buttons — changes take effect immediately per epic AC §126. Done closes
+/// the dialog without re-applying values. The
 /// <see cref="SelectedDensity"/> setter resolves the new effective density via
 /// <see cref="DensityPrecedence.Resolve(DensityLevel?, DensityLevel?, DensitySurface, ViewportTier)"/>
 /// BEFORE dispatching — reducers stay pure (ADR-039).
@@ -104,4 +105,11 @@ public partial class FcSettingsDialog : Fluxor.Blazor.Web.Components.FluxorCompo
         Dispatcher.Dispatch(new ThemeChangedAction(UlidFactory.NewUlid(), ThemeValue.System));
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Closes the settings dialog. Preferences are already persisted through the live controls.
+    /// </summary>
+    /// <returns>The dialog close task when hosted by Fluent UI; otherwise a completed task for standalone tests.</returns>
+    private Task CloseAsync()
+        => Dialog?.CloseAsync() ?? Task.CompletedTask;
 }

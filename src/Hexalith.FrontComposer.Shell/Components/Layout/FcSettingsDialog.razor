@@ -9,7 +9,7 @@
 
 @* Story 3-3 Task 6.1 (D13, D14, D15, D17; AC2, AC4, AC5) — settings dialog with density radio,
    embedded FcThemeToggle, live preview panel, and a "Reset to defaults" footer button. No
-   Apply/Cancel — changes are live per epic AC §126. Opens via IDialogService.ShowDialogAsync
+   Apply/Cancel — changes are live per epic AC §126; Done closes the dialog. Opens via IDialogService.ShowDialogAsync
    (dispatched by FcSettingsButton and the Ctrl+, handler on FrontComposerShell). *@
 
 <FluentDialogBody>
@@ -46,15 +46,23 @@
         </div>
     </ChildContent>
     <ActionTemplate>
-        <div class="fc-settings-footer-stack">
-            <FluentButton Appearance="ButtonAppearance.Outline"
-                          OnClick="RestoreDefaultsAsync"
-                          data-testid="fc-settings-reset">
-                @Localizer["RestoreDefaultsLabel"].Value
+        <div class="fc-settings-footer">
+            <div class="fc-settings-footer-stack">
+                <FluentButton Appearance="ButtonAppearance.Outline"
+                              OnClick="RestoreDefaultsAsync"
+                              data-testid="fc-settings-reset">
+                    @Localizer["RestoreDefaultsLabel"].Value
+                </FluentButton>
+                <span class="fc-settings-footer-helper">
+                    @Localizer["RestoreDefaultsHelperText"].Value
+                </span>
+            </div>
+            <FluentButton Appearance="ButtonAppearance.Primary"
+                          OnClick="CloseAsync"
+                          Class="fc-settings-done"
+                          data-testid="fc-settings-done">
+                @Localizer["SettingsDialogDoneLabel"].Value
             </FluentButton>
-            <span class="fc-settings-footer-helper">
-                @Localizer["RestoreDefaultsHelperText"].Value
-            </span>
         </div>
     </ActionTemplate>
 </FluentDialogBody>

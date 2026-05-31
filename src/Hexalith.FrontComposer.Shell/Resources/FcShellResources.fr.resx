@@ -109,6 +109,9 @@
   <data name="SettingsDialogCloseAriaLabel" xml:space="preserve">
     <value>Fermer les paramètres</value>
   </data>
+  <data name="SettingsDialogDoneLabel" xml:space="preserve">
+    <value>Terminer</value>
+  </data>
   <data name="DensitySectionLabel" xml:space="preserve">
     <value>Densité d'affichage</value>
   </data>

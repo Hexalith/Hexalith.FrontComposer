@@ -16,14 +16,38 @@
     font-weight: var(--typeRampBase500FontWeight);
 }
 
+.fc-settings-footer {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+}
+
 .fc-settings-footer-stack {
     display: flex;
+    flex: 1 1 16rem;
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
 }
 
+.fc-settings-done {
+    flex: 0 0 auto;
+}
+
 .fc-settings-footer-helper {
     font-size: var(--typeRampBase200FontSize);
     color: var(--colorNeutralForeground3);
+}
+
+@media (max-width: 480px) {
+    .fc-settings-footer {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .fc-settings-done {
+        width: 100%;
+    }
 }
