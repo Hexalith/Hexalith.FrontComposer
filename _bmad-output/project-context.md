@@ -2,9 +2,9 @@
 project_name: 'Hexalith.FrontComposer'
 user_name: 'Administrator'
 date: '2026-06-02'
-sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules']
-existing_patterns_found: 11
-status: 'in-progress'
+sections_completed: ['technology_stack', 'language_rules', 'framework_rules', 'testing_rules', 'code_quality', 'workflow_rules', 'critical_rules']
+status: 'complete'
+rule_count: 77
 optimized_for_llm: true
 ---
 
@@ -217,3 +217,63 @@ _This file contains critical rules and patterns that AI agents must follow when 
 - **Release** (`release.yml`, merge to `main`): semantic-release → build/pack/**sign**/SBOM/evidence
   → publish signed `.nupkg`+`.snupkg` to nuget.org + GitHub Release. `RELEASE_DRY_RUN` defaults
   **true** (rehearsal); `eng/release-package-inventory.json` pins the exact expected package set
+
+### Critical Don't-Miss Rules
+
+**Never:**
+- **Never hand-edit generated code** (`obj/**/generated/HexalithFrontComposer/`) — change the
+  generator or the annotated types; that path is a public contract
+- **Never let an `ISymbol` escape the generator's parse stage** — it breaks incremental caching
+  (keep IR pure & `EquatableArray`-based)
+- **Never change `CanonicalSchemaMaterial`** (encoder / sentinel / `StringComparer.Ordinal` /
+  serialization) without regenerating baselines — it silently invalidates every fingerprint
+- **Never add `Version=` to a `.csproj`** — versions live in `Directory.Packages.props`
+- **Never create/use a `.sln`** (`.slnx` only); **never** make per-project `dotnet test` the rule —
+  FrontComposer is **solution-level + trait filters**
+- **Never add copyright headers** (this repo has none) or the Sonar/StyleCop/Roslynator stack
+  (built-in analyzers only)
+- **Never use a GUID for `messageId`/`correlationId`** — ULIDs via `IUlidFactory`
+- **Never `feat:` a refactor** (false minor bump + NuGet publish); **never commit directly to `main`**
+- **Never recurse into nested submodules** (`--init --recursive`) or modify submodule files without
+  explicit approval
+- **Never use `docs/` as scratch space** — it's the published, CI-gated DocFX site; generated docs go
+  to `_bmad-output/`
+- **Never leave `Debugger.Launch()` in `src/**/*.cs`** — the IDE-parity suite fails on it
+- **Never start the MCP server without both fail-closed gates registered**, and never accept
+  `TenantId`/`UserId`/`MessageId`/`CorrelationId` from agent tool input
+
+**Always:**
+- **Always `ConfigureAwait(false)`** on awaits (CA2007 → build error via TWAE)
+- **Always run tests with `DiffEngine_Disabled=true`** (else Verify hangs)
+- **Always guard net10/FluentUI code with `#if NET10_0_OR_GREATER`** in multi-targeted projects
+- **Always update `.verified.txt` snapshots, `PublicAPI.Shipped.txt`, and pacts intentionally** —
+  CI fails on stale ones
+- **Always build Release clean** (`TreatWarningsAsErrors=true`) and run `/bmad-code-review` before a
+  story is Done
+- **Always keep the dependency direction pointing down to `Contracts`** (`SourceTools` references only
+  `Contracts`)
+
+---
+
+## Usage Guidelines
+
+**For AI Agents:**
+
+- Read this file before implementing any code in `Hexalith.FrontComposer`.
+- Follow ALL rules exactly as documented; when in doubt, prefer the more restrictive option.
+- There is **no root `CLAUDE.md`** in this repo — this file plus the BMAD docs under
+  `_bmad-output/project-docs/` (architecture, api-contracts, data-models, dev/contribution/deployment
+  guides) are the primary agent context.
+- The three submodules (`Hexalith.Commons`, `Hexalith.EventStore`, `Hexalith.Tenants`) are **external
+  dependencies** with their own `CLAUDE.md`/`project-context.md`, and their rules differ from this
+  repo's (e.g. Commons uses copyright headers + the Sonar/StyleCop/Roslynator stack; EventStore runs
+  tests per-project). **Don't apply sibling-repo rules here.**
+
+**For Humans:**
+
+- Keep this file lean and focused on agent needs.
+- Update when the tech stack, analyzer policy, generator/IR contract, MCP gates, schema
+  canonicalization, test lanes, or release pipeline change.
+- Remove rules that become obvious over time.
+
+Last Updated: 2026-06-02
