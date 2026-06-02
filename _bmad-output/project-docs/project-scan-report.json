@@ -1,0 +1,97 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2026-06-02T14:48:40Z",
+    "last_updated": "2026-06-02T14:48:40Z",
+    "completed": "2026-06-02T14:48:40Z"
+  },
+  "mode": "initial_scan",
+  "scan_level": "deep",
+  "status": "completed",
+  "project_root": "/home/administrator/projects/hexalith/frontcomposer",
+  "project_knowledge": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/project-docs",
+  "output_redirect": {
+    "configured_project_knowledge": "/home/administrator/projects/hexalith/frontcomposer/docs",
+    "actual_output": "/home/administrator/projects/hexalith/frontcomposer/_bmad-output/project-docs",
+    "reason": "Configured project_knowledge (docs/) is the published DocFX documentation site and is referenced by 80+ product-code, test, CI, and validation-fixture sites. Per user decision, BMAD output was redirected to _bmad-output/project-docs/ so docs/ is left completely untouched."
+  },
+  "repository_type": "monolith",
+  "project_classification": {
+    "primary_type": "library",
+    "display_name": ".NET library / framework + developer tooling",
+    "facets": ["library", "source-generator", "blazor-ui", "mcp-server", "cli"],
+    "summary": "Hexalith.FrontComposer is a .NET 10 Blazor 'front shell' framework. A single Roslyn incremental source generator turns [Projection]/[Command]-annotated domain types into Blazor views, command forms, Fluxor state, DI registrations, and an MCP manifest. A runtime Blazor shell composes the generated UI; an MCP server exposes the same domain surface to AI agents; a CLI inspects and migrates generated output."
+  },
+  "project_types": [
+    {"part_id": "frontcomposer", "project_type_id": "library", "display_name": ".NET library / framework + developer tooling"}
+  ],
+  "scope": {
+    "documented": ["src/", "tests/", "samples/"],
+    "external_dependencies_not_deep_scanned": ["Hexalith.Commons", "Hexalith.EventStore", "Hexalith.Tenants"]
+  },
+  "size": {
+    "src_files_cs": 483, "src_loc": 63059,
+    "tests_files_cs": 397, "tests_loc": 68454,
+    "samples_files_cs": 20, "samples_loc": 584,
+    "src_projects": 7, "test_projects": 7, "sample_projects": 6
+  },
+  "technology_stack": {
+    "runtime": ".NET 10 (SDK 10.0.300, rollForward latestPatch)",
+    "language": "C# latest, Nullable enable, ImplicitUsings enable, TreatWarningsAsErrors true",
+    "target_frameworks": "net10.0 (most); net10.0 + netstandard2.0 multi-target for Contracts and SourceTools",
+    "ui": "Blazor + Microsoft.FluentUI.AspNetCore.Components 5.0.0-rc.3-26138.1 (FluentUI v5)",
+    "state_management": "Fluxor.Blazor.Web 6.9.0",
+    "source_generation": "Microsoft.CodeAnalysis.CSharp 5.3.0 (Roslyn incremental generator on netstandard2.0)",
+    "mcp": "ModelContextProtocol.AspNetCore 1.3.0",
+    "ids": "NUlid 1.7.3 (ULID, not GUID)",
+    "realtime": "Microsoft.AspNetCore.SignalR.Client 10.0.8",
+    "auth": "Microsoft.AspNetCore.Authentication.OpenIdConnect 10.0.8",
+    "reactive": "System.Reactive 6.1.0",
+    "orchestration": "Aspire.Hosting.AppHost 13.4.0 (Counter sample)",
+    "testing": "xUnit v3 3.2.2, Shouldly 4.3.0, NSubstitute 5.3.0, bUnit 2.7.2, Verify 31.19.0, FsCheck.Xunit.v3 3.3.3, PactNet 5.0.1, BenchmarkDotNet 0.15.8, coverlet 10.0.1; Playwright e2e (tests/e2e)",
+    "package_management": "Centralized (Directory.Packages.props, ManagePackageVersionsCentrally true)",
+    "release": "semantic-release (Conventional Commits) -> signed NuGet packages; no containers"
+  },
+  "completed_steps": [
+    {"step": "step_1", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Classified as monolith, single part, project_type=library with source-generator/blazor-ui/mcp-server/cli facets; 7 src + 7 test + 6 sample projects."},
+    {"step": "step_2", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Discovered existing docs: published DocFX site under docs/ (Diataxis), CONTRIBUTING.md, ONBOARDING.md, README.md, 7 .github/workflows. Submodules Commons/EventStore have their own project-context.md."},
+    {"step": "step_3", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Tech stack captured from Directory.Packages.props + Directory.Build.props/targets: .NET 10, Blazor FluentUI v5 RC3, Fluxor, Roslyn 5.3.0 generator, MCP SDK 1.3.0, NUlid, SignalR, OIDC; centralized packages; TreatWarningsAsErrors."},
+    {"step": "step_4", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Conditional analysis via 6 per-project subagents: MCP tools/resources, Blazor component catalog, source-generator attribute contract + HFC1001-HFC1070 diagnostics, CLI commands, test stack. Written into api-contracts.md, component-inventory.md, data-models.md."},
+    {"step": "step_5", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "source-tree-analysis.md written: annotated repo tree, per-project folders, critical folders, entry points."},
+    {"step": "step_6", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Dev/build/test/deploy/contribution info extracted from ci.yml, .releaserc.json, CONTRIBUTING.md, commitlint, package.json; written to development-guide.md, deployment-guide.md, contribution-guide.md."},
+    {"step": "step_7", "status": "skipped", "timestamp": "2026-06-02T14:48:40Z", "summary": "Single-part monolith; no cross-part integration architecture needed (submodule integration documented in architecture.md section 8)."},
+    {"step": "step_8", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "architecture.md written: layering, generation pipeline, runtime composition, MCP boundary, cross-cutting invariants, observed ADRs, submodule deps."},
+    {"step": "step_9", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Supporting docs written: project-overview.md, component-inventory.md, development-guide.md, deployment-guide.md, contribution-guide.md, api-contracts.md, data-models.md."},
+    {"step": "step_10", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Master index.md written (single-part navigation); all generated + existing docs linked; no incomplete markers."},
+    {"step": "step_11", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Validation: 10 md + 1 json present; zero incomplete-doc markers; all cross-doc ./*.md links resolve; checklist sections satisfied (multi-part items N/A)."},
+    {"step": "step_12", "status": "completed", "timestamp": "2026-06-02T14:48:40Z", "summary": "Finalized. workflow.on_complete resolved empty; no terminal instruction."}
+  ],
+  "current_step": "completed",
+  "findings": {
+    "project_classification": "monolith, 1 part, .NET 10 library/framework + tooling",
+    "technology_stack": ".NET 10, Blazor FluentUI v5, Fluxor, Roslyn incremental generator, MCP server, CLI",
+    "parts": {
+      "Contracts": "Leaf shared kernel (net10.0 + netstandard2.0): generator-discovered attributes, command/query/lifecycle interfaces, rendering model, DomainManifest, MCP descriptors, schema fingerprint/baseline/delta types, FcDiagnosticIds.",
+      "Schema": "Thin lib on Contracts: SchemaContractFamilyNames + SchemaMigrationDeltaAnalyzer.",
+      "Shell": "Blazor front-shell UI library: FrontComposerShell layout, Fc* component catalog, Fluxor state, EventStore SignalR/HTTP clients, theming/density/accessibility. FluentUI v5 + Fluxor + SignalR + OIDC + NUlid.",
+      "SourceTools": "Single Roslyn incremental generator (netstandard2.0). [Projection]->5 files, [Command]->6-7 files, MCP manifest; HFC1001-HFC1070 diagnostics; opt-in drift detection; pure equatable IR.",
+      "Mcp": "ASP.NET Core MCP server (HTTP streamable): dynamic command tools + lifecycle tool; projection + skill-corpus resources; fail-closed gates; schema fingerprint negotiation.",
+      "Cli": "frontcomposer dotnet tool: inspect + migrate; bespoke parser; OutputSanitizer; atomic writes; exit codes 0-4.",
+      "Testing": "Publishable bUnit test-host library: FrontComposerTestBase, AddFrontComposerTestHost, deterministic fakes, evidence + redaction, generated-component assertions."
+    }
+  },
+  "outputs_generated": [
+    "project-scan-report.json",
+    "index.md",
+    "project-overview.md",
+    "architecture.md",
+    "source-tree-analysis.md",
+    "component-inventory.md",
+    "api-contracts.md",
+    "data-models.md",
+    "development-guide.md",
+    "deployment-guide.md",
+    "contribution-guide.md"
+  ],
+  "resume_instructions": "Workflow complete (initial deep scan). Outputs are in _bmad-output/project-docs/ (NOT the configured docs/). To refresh, re-run /bmad-document-project; choose re-scan and keep output redirected to _bmad-output/project-docs/ to preserve the published docs/ site."
+}
