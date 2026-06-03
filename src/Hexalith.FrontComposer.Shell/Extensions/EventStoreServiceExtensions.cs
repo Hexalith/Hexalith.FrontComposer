@@ -34,6 +34,13 @@ public static class EventStoreServiceExtensions {
         Action<EventStoreOptions>? configure = null) {
         ArgumentNullException.ThrowIfNull(services);
 
+        // Story 1.1 AC2 — append the EventStore ordering marker and register the validation gate
+        // (idempotent). Registering the gate here means a host that wires ONLY AddHexalithEventStore
+        // (forgetting AddHexalithFrontComposerQuickstart) still fails fast at startup with a named
+        // message instead of an opaque IFrontComposerRegistry resolution error at first render.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IFrontComposerBootstrapMarker, EventStoreBootstrapMarker>());
+        _ = services.AddHostedService<FrontComposerBootstrapValidationGate>();
+
         _ = services.AddOptions<EventStoreOptions>()
             .Configure(options => configure?.Invoke(options))
             .ValidateOnStart();

@@ -72,6 +72,11 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddHexalithDomain<T>(this IServiceCollection services)
         where T : class
     {
+        // Story 1.1 AC2 — append the Domain ordering marker and register the validation gate
+        // (idempotent). See AddHexalithFrontComposer for the full guard rationale.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IFrontComposerBootstrapMarker, DomainBootstrapMarker>());
+        _ = services.AddHostedService<FrontComposerBootstrapValidationGate>();
+
         Assembly domainAssembly = typeof(T).Assembly;
         BoundedContextAttribute? markerContext = typeof(T).GetCustomAttribute<BoundedContextAttribute>();
         var commandGroups = new Dictionary<string, CommandGroup>(StringComparer.Ordinal);
@@ -167,6 +172,16 @@ public static class ServiceCollectionExtensions
         Action<FluxorOptions>? configureFluxor = null)
     {
         _ = services.AddLogging();
+
+        // Story 1.1 AC2 — bootstrap fail-fast guard. Append the foundational ordering marker and
+        // register the validation gate. Both registrations are idempotent (TryAddEnumerable —
+        // AddHostedService uses it under the hood) so calling Quickstart/AddHexalithFrontComposer
+        // twice neither double-registers the marker nor double-runs the gate. The gate is also
+        // registered by AddHexalithDomain/AddHexalithEventStore so a host that wires ONLY a
+        // downstream call (forgetting this foundational one) still fails fast with a named message.
+        services.TryAddEnumerable(ServiceDescriptor.Singleton<IFrontComposerBootstrapMarker, QuickstartBootstrapMarker>());
+        _ = services.AddHostedService<FrontComposerBootstrapValidationGate>();
+
         // Story 7-3 Pass 4 — the dispatch decorator and the empty-state CTA region both depend on
         // ASP.NET Core authorization services (IAuthorizationService is needed by the
         // CommandAuthorizationEvaluator that the decorator wraps). AddAuthorizationCore is
