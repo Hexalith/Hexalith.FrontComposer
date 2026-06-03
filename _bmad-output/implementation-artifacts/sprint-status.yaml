@@ -46,6 +46,10 @@ project: frontcomposer
 # 1-2 moved ready-for-dev → in-progress on 2026-06-03 (dev-story)
 # 1-2 moved in-progress → review on 2026-06-03 (dev-story)
 # 1-2 moved review → done on 2026-06-03 (story-automator-review)
+# 1-3 moved backlog → ready-for-dev on 2026-06-03 (create-story)
+# 1-3 moved ready-for-dev → in-progress on 2026-06-03 (dev-story)
+# 1-3 moved in-progress → review on 2026-06-03 (dev-story)
+# 1-3 moved review → done on 2026-06-03 (story-automator-review; 3 findings auto-fixed)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
@@ -56,7 +60,7 @@ development_status:
   1-0-shell-integration-spike-verify-the-bootstrap-table-apis: done
   1-1-bootstrap-a-minimal-bootable-shell: done
   1-2-confirm-and-apply-the-fc-lyt-page-layout-contract: done
-  1-3-establish-fc-a11y-accessibility-primitives-as-a-ready-gate: backlog
+  1-3-establish-fc-a11y-accessibility-primitives-as-a-ready-gate: done
   1-4-establish-fc-l10n-shell-string-ownership: backlog
   1-5-produce-the-fc-doc-component-documentation-contract: backlog
   1-6-theme-density-and-settings-persistence: backlog
