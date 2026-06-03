@@ -107,6 +107,81 @@ public class RoleSpecificProjectionApprovalTests {
             "falls back to Default DataGrid rendering in v1");
     }
 
+    // ---------- Story 2.1 AC2 — positive render/emit invariants (named, separate from the snapshot) ----------
+
+    [Fact]
+    public void ActionQueueProjection_EmitsWhenStateFilter_ForNamedMembers() {
+        // AC2 positive WhenState pin — complements WhenStateTypoProjection_EmitsHfc1022 (the
+        // negative/unknown-member pin above). The ActionQueue role must filter the rendered item
+        // list down to the enum members named in [ProjectionRole(..., WhenState = "Pending,Submitted")].
+        (string generatedSource, _) = RunGenerator(
+            RoleSpecificTestSources.ActionQueueProjection,
+            "RoleSpecific.Orders.ActionQueueProjection.g.razor.cs",
+            TestContext.Current.CancellationToken);
+
+        generatedSource.ShouldContain("\"WhenState\", \"Pending,Submitted\"");
+        generatedSource.ShouldContain("x.Status.ToString() == \"Pending\"");
+        generatedSource.ShouldContain("x.Status.ToString() == \"Submitted\"");
+    }
+
+    [Fact]
+    public void ActionQueueProjection_RendersBadgeColumn_ThroughFcStatusBadge_WithAccessibleColumnHeader() {
+        // AC2 badge a11y pin (FC-A11Y Layer-1 invariant for projection output): a [ProjectionBadge]-
+        // mapped enum column renders through FcStatusBadge carrying the ColumnHeader that FcStatusBadge
+        // turns into the mandatory aria-label (pinned by
+        // FcStatusBadgeTests.AriaLabelCombinesColumnHeaderAndLabelInEnglish → aria-label="Status: ...").
+        (string generatedSource, _) = RunGenerator(
+            RoleSpecificTestSources.ActionQueueProjection,
+            "RoleSpecific.Orders.ActionQueueProjection.g.razor.cs",
+            TestContext.Current.CancellationToken);
+
+        generatedSource.ShouldContain("Hexalith.FrontComposer.Shell.Components.Badges.FcStatusBadge");
+        generatedSource.ShouldContain("\"ColumnHeader\", \"Status\"");
+    }
+
+    [Fact]
+    public void TimelineProjection_EmitsChronologicalOrdering_OnTimestampProperty() {
+        // AC2 role-layout pin — Timeline. The Timeline role must order the rendered items
+        // chronologically by the timestamp property and lay them out as timeline rows (not a grid).
+        // Previously only implicit inside TimelineProjection_Approval's snapshot; a careless
+        // snapshot re-accept could silently drop the ordering.
+        (string generatedSource, _) = RunGenerator(
+            RoleSpecificTestSources.TimelineProjection,
+            "RoleSpecific.Audit.TimelineProjection.g.razor.cs",
+            TestContext.Current.CancellationToken);
+
+        generatedSource.ShouldContain("state.Items.OrderByDescending(x => x.OccurredAt)");
+        generatedSource.ShouldContain("\"fc-timeline-row\"");
+    }
+
+    [Fact]
+    public void StatusOverviewProjection_EmitsAggregation_GroupedByStatusWithCount() {
+        // AC2 role-layout pin — StatusOverview. The StatusOverview role must aggregate items by the
+        // status enum and surface a count, ordered by descending count. Previously only implicit
+        // inside StatusOverviewProjection_Approval's snapshot.
+        (string generatedSource, _) = RunGenerator(
+            RoleSpecificTestSources.StatusOverviewProjection,
+            "RoleSpecific.Tickets.StatusOverviewProjection.g.razor.cs",
+            TestContext.Current.CancellationToken);
+
+        generatedSource.ShouldContain(".GroupBy(x => x.Status)");
+        generatedSource.ShouldContain(".OrderByDescending(g => g.Count)");
+    }
+
+    [Fact]
+    public void DetailRecordProjection_EmitsSingleRecordLayout_NotGrid() {
+        // AC2 role-layout pin — DetailRecord. The DetailRecord role must render a single record
+        // (first item) inside a card layout rather than a DataGrid. Previously only implicit inside
+        // DetailRecordProjection_Approval's snapshot.
+        (string generatedSource, _) = RunGenerator(
+            RoleSpecificTestSources.DetailRecordProjection,
+            "RoleSpecific.Customers.DetailRecordProjection.g.razor.cs",
+            TestContext.Current.CancellationToken);
+
+        generatedSource.ShouldContain("state.Items[0]");
+        generatedSource.ShouldContain("OpenComponent<FluentCard>");
+    }
+
     // ---------- Helpers ----------
 
     private static Task VerifySynthetic(string source, string generatedFileName) {

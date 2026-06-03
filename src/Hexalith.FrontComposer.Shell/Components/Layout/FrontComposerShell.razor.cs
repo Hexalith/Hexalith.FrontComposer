@@ -115,7 +115,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     [Parameter] public RenderFragment? HeaderCenter { get; set; }
 
     /// <summary>
-    /// Header content rendered AFTER the theme toggle (right-aligned). Defaults to empty.
+    /// Header content rendered AFTER the theme toggle (right-aligned). When <see langword="null"/>
+    /// the shell renders its default right-side actions — <c>FcPaletteTriggerButton</c> followed by
+    /// <c>FcSettingsButton</c> (Story 3-4 D18). Supply a fragment to replace those defaults.
     /// </summary>
     [Parameter] public RenderFragment? HeaderEnd { get; set; }
 

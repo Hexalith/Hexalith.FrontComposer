@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-06-03
-last_updated: 2026-06-03
+last_updated: 2026-06-04
 project: frontcomposer
 # 1-0 moved ready-for-dev → review on 2026-06-03 (dev-story)
 # 1-1 moved backlog → ready-for-dev on 2026-06-03 (create-story)
@@ -62,6 +62,11 @@ project: frontcomposer
 # 1-6 moved ready-for-dev → in-progress on 2026-06-03 (dev-story)
 # 1-6 moved in-progress → review on 2026-06-03 (dev-story)
 # 1-6 moved review → done on 2026-06-03 (story-automator-review; 1 MED auto-fixed, 1 LOW folded in, 0 CRITICAL)
+# epic-1-retrospective moved optional → done on 2026-06-03 (bmad-retrospective, YOLO/autonomous)
+# epic-2 moved backlog → in-progress on 2026-06-03 (create-story; first story of epic)
+# 2-1 moved backlog → ready-for-dev on 2026-06-03 (create-story)
+# 2-1 moved ready-for-dev → in-progress on 2026-06-03 (dev-story)
+# 2-1 moved in-progress → review on 2026-06-04 (dev-story)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
@@ -76,11 +81,11 @@ development_status:
   1-4-establish-fc-l10n-shell-string-ownership: done
   1-5-produce-the-fc-doc-component-documentation-contract: done
   1-6-theme-density-and-settings-persistence: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # Epic 2: Read-Only Projection Experience (the read-only MVP)
-  epic-2: backlog
-  2-1-render-a-projection-from-a-projection-type: backlog
+  epic-2: in-progress
+  2-1-render-a-projection-from-a-projection-type: done
   2-2-registry-driven-navigation-and-home-directory: backlog
   2-3-datagrid-filtering-status-and-empty-loading-states: backlog
   2-4-accessible-expand-in-row-detail: backlog

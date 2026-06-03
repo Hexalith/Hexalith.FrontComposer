@@ -12,6 +12,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 | Component | Role |
 |---|---|
 | `FrontComposerShell` | **Root shell.** `FluentLayout` with Header/Navigation/Content/Footer; mounts Fluxor `StoreInitializer`, `FluentProviders`, skip links, global keyboard shortcuts (`Ctrl+,`, `Ctrl+K`). Adopter `MainLayout` reduces to `<FrontComposerShell>@Body</FrontComposerShell>`. Slots: `HeaderStart/Center/End`, `Navigation`, `Footer`. |
+| `FcPageLayout` | Opt-in page-measure wrapper (FC-LYT contract, Story 1.2). `Mode` parameter (`FcPageLayoutMode.FullWidth` default / `Constrained`) cascades through `FcPageLayoutCoordinator` to toggle `#fc-main-content[data-fc-page-layout]` + the constrained `--fc-page-max-inline-size` rule. Public enum `FcPageLayoutMode` lives in `Contracts.Rendering`. |
 | `FcHamburgerToggle` | `FluentLayoutHamburger` wrapper; mobile/tablet only. |
 | `FcCollapsedNavRail` | 48px icon rail at compact-desktop / manual collapse. |
 | `FcLayoutBreakpointWatcher` | Headless JS interop (`fc-layout-breakpoints.js`) → `ViewportChangedAction`. |
@@ -64,7 +65,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 | `FcCustomizationDiagnosticPanel` | Displays customization-contract mismatches. |
 
 ### Helper (C#-only) components
-`FcSettingsButton`, `FcPaletteTriggerButton`, `FcSettingsDialogLauncher`, `LayoutHamburgerCoordinator`, `FcFluentIcons` (inline-SVG icon factory — avoids the unavailable FluentUI v5 icons NuGet), `FcThemeToggle`.
+`FcSettingsButton`, `FcPaletteTriggerButton`, `FcSettingsDialogLauncher`, `LayoutHamburgerCoordinator`, `FcPageLayoutCoordinator` (internal child→shell cascade for `FcPageLayout`, Story 1.2), `FcFluentIcons` (inline-SVG icon factory — avoids the unavailable FluentUI v5 icons NuGet), `FcThemeToggle`.
 
 > **Authoring conventions:** `FluxorComponent` base for state-bound components; `[EditorRequired]` on mandatory params; FluentUI **v5** API (`FluentLayoutHamburger`, `FluentNavCategory`/`FluentNavItem`, `FluentDialogBody`, `FluentProviders`, `FluentBadge`, `FluentTextInput`, `FluentDataGrid`); accessibility attributes (`aria-label`, `role`, `aria-live`, `data-testid`) on every interactive element; JS loaded lazily as ES modules from `_content/Hexalith.FrontComposer.Shell/js/`.
 
