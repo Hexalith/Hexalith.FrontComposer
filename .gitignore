@@ -446,3 +446,4 @@ docs/reference/api/*.yml
 docs/reference/api/.manifest
 artifacts/docs/
 
+.claude/.story-automator-active
