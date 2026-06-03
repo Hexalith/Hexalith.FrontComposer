@@ -10,5 +10,7 @@
   items:
   - name: Diagnostics
     href: reference/diagnostics/index.md
+  - name: Components
+    href: reference/components/index.md
 - name: Concepts
   href: concepts/index.md

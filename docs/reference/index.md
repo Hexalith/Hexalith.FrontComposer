@@ -13,6 +13,7 @@ slug: reference/
 # Reference
 
 - [API reference](api/index.md)
+- [Components](components/index.md)
 - [Diagnostics](diagnostics/index.md)
 - [CLI inspect and migrate](cli.md)
 - [IDE parity](ide-parity.md)
