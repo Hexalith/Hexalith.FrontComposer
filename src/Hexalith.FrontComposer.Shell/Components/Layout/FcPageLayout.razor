@@ -1,0 +1,8 @@
+@namespace Hexalith.FrontComposer.Shell.Components.Layout
+@using Hexalith.FrontComposer.Contracts.Rendering
+
+@* Story 1.2 FC-LYT — a page drops this into its content to declare a non-default layout measure:
+   <FcPageLayout Mode="FcPageLayoutMode.Constrained">…</FcPageLayout>. It carries no markup of its own;
+   it registers the mode with the cascaded FcPageLayoutCoordinator and renders its ChildContent. *@
+
+@ChildContent

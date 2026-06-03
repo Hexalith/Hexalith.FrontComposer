@@ -3,6 +3,7 @@ using Fluxor.Blazor.Web.Components;
 
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Registration;
+using Hexalith.FrontComposer.Contracts.Rendering;
 using Hexalith.FrontComposer.Contracts.Shortcuts;
 using Hexalith.FrontComposer.Contracts.Storage;
 using Hexalith.FrontComposer.Shell.Resources;
@@ -95,6 +96,11 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
     private string? _initialRenderUri;
     private ElementReference _shellRoot;
     private readonly LayoutHamburgerCoordinator _hamburgerCoordinator = new();
+
+    // FC-LYT (Story 1.2) — instance-per-shell page-layout coordinator cascaded to @ChildContent so a
+    // page's <FcPageLayout> can declare its measure. Mirrors _hamburgerCoordinator (ADR-030 single-writer
+    // field, not DI). The shell subscribes to Changed to re-render #fc-main-content's mode attribute/class.
+    private readonly FcPageLayoutCoordinator _pageLayoutCoordinator = new();
 
     /// <summary>
     /// Header content rendered BEFORE the application title (left-aligned). When <see langword="null"/>
@@ -226,6 +232,24 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         : "220px";
 
     /// <summary>
+    /// FC-LYT (Story 1.2) — the <c>data-fc-page-layout</c> attribute value for <c>#fc-main-content</c>,
+    /// driven by the cascaded <see cref="FcPageLayoutCoordinator"/>: <c>"constrained"</c> when a page
+    /// declared it via <see cref="FcPageLayout"/>, otherwise the default <c>"full-width"</c>.
+    /// </summary>
+    protected string PageLayoutAttribute => _pageLayoutCoordinator.Mode == FcPageLayoutMode.Constrained
+        ? "constrained"
+        : "full-width";
+
+    /// <summary>
+    /// FC-LYT (Story 1.2) — the <c>#fc-main-content</c> class list. Always carries the base
+    /// <c>fc-page-layout</c> marker; adds <c>fc-page-layout--constrained</c> (the
+    /// <c>max-inline-size</c> rule) only when a page declared the constrained measure.
+    /// </summary>
+    protected string PageLayoutCssClass => _pageLayoutCoordinator.Mode == FcPageLayoutMode.Constrained
+        ? "fc-page-layout fc-page-layout--constrained"
+        : "fc-page-layout";
+
+    /// <summary>
     /// [JSInvokable] called by the <c>fc-beforeunload.js</c> module before the page unloads.
     /// </summary>
     /// <returns>A task representing the flush.</returns>
@@ -250,6 +274,17 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         // shortcuts stay global regardless of focus target.
         _ = await Shortcuts.TryInvokeAsync(e).ConfigureAwait(false);
     }
+
+    /// <inheritdoc />
+    protected override void OnInitialized() {
+        base.OnInitialized();
+        // FC-LYT (Story 1.2) — re-render #fc-main-content's mode attribute/class when a child
+        // <FcPageLayout> flips the coordinator (it registers in its OnAfterRender, after the shell's
+        // first paint). SetMode no-ops on an unchanged mode, so this cannot loop the render cycle.
+        _pageLayoutCoordinator.Changed += OnPageLayoutChanged;
+    }
+
+    private void OnPageLayoutChanged() => _ = InvokeAsync(StateHasChanged);
 
     /// <inheritdoc />
     protected override async Task OnAfterRenderAsync(bool firstRender) {
@@ -357,6 +392,9 @@ public partial class FrontComposerShell : FluxorComponent, IAsyncDisposable {
         // handler; without the lock a racing call could observe true → both call -= (idempotent
         // but fragile) → leave the field in a transient inconsistent state.
         DetachLocationTracking();
+
+        // FC-LYT (Story 1.2) — drop the coordinator subscription so the shell is not rooted by it.
+        _pageLayoutCoordinator.Changed -= OnPageLayoutChanged;
 
         if (_beforeUnloadSubscription is not null && _beforeUnloadModule is not null) {
             try {

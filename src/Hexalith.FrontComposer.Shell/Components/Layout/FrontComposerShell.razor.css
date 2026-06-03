@@ -38,3 +38,13 @@
 /* Story 3-3 Task 4.4 (D9 / ADR-041 / D20) — the density cascade + shared .fc-sr-only helper live
     in wwwroot/css/fc-density.css, NOT here. CSS isolation suffixes the body-level density selectors
     and utility selectors, which makes <body> overrides and aria-live-only helpers unreachable. */
+
+/* Story 1.2 FC-LYT — constrained page measure. This rule is SCOPED (not global) on purpose: it
+    targets #fc-main-content, which the shell renders itself, so CSS isolation's scope-id suffix
+    still matches this element. (Contrast the body-level / generator-emitted classes above, which
+    MUST be global.) The cap is a themeable custom property, not a magic number, and uses logical
+    properties (max-inline-size / margin-inline) for RTL-awareness per FluentUI v5 / FC-L10N. */
+.fc-page-layout--constrained {
+    max-inline-size: var(--fc-page-max-inline-size, 75rem);
+    margin-inline: auto;
+}

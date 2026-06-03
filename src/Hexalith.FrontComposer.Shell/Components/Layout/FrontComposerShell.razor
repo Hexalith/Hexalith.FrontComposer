@@ -33,6 +33,10 @@
     }
 
     <CascadingValue Value="_hamburgerCoordinator" IsFixed="true">
+    @* FC-LYT (Story 1.2) — cascade the page-layout coordinator so a page's <FcPageLayout> (inside
+       @ChildContent) can declare its measure without a shell [Parameter]. IsFixed: the coordinator
+       instance is stable; its Mode mutates and the shell re-renders via the Changed subscription. *@
+    <CascadingValue Value="_pageLayoutCoordinator" IsFixed="true">
         <FluentLayout>
             <FluentLayoutItem Area="@LayoutArea.Header" Height="48px">
                 <FluentStack Horizontal="true" VerticalAlignment="VerticalAlignment.Center"
@@ -98,7 +102,9 @@
                 <FcSystemThemeWatcher />
                 <FcDensityApplier />
                 <FcDensityAnnouncer />
-                <div id="fc-main-content" tabindex="-1">
+                @* FC-LYT (Story 1.2): id + tabindex stay adjacent (skip-link/focus target + locked test
+                   substring); the data-fc-page-layout attr + fc-page-layout class are appended after. *@
+                <div id="fc-main-content" tabindex="-1" data-fc-page-layout="@PageLayoutAttribute" class="@PageLayoutCssClass">
                     <FcProjectionConnectionStatus />
                     <FcPendingCommandSummary />
                     @ChildContent
@@ -116,6 +122,7 @@
                 }
             </FluentLayoutItem>
         </FluentLayout>
+    </CascadingValue>
     </CascadingValue>
 
     <FluentProviders />
