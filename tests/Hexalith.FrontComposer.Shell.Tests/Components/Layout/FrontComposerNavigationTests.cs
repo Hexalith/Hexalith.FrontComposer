@@ -12,11 +12,13 @@ using Fluxor;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Contracts.Registration;
 using Hexalith.FrontComposer.Shell.Components.Layout;
+using Hexalith.FrontComposer.Shell.Resources;
 using Hexalith.FrontComposer.Shell.State.CapabilityDiscovery;
 using Hexalith.FrontComposer.Shell.State.Navigation;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Localization;
 using Microsoft.FluentUI.AspNetCore.Components;
 
 using NSubstitute;
@@ -284,4 +286,224 @@ public sealed class FrontComposerNavigationTests : LayoutComponentTestBase {
             Should.Throw<Bunit.Rendering.ComponentNotFoundException>(() => cut.FindComponent<FcCollapsedNavRail>());
         });
     }
+
+    // ── Story 2.2 Task 1 (AC1) — count + projection-"New" badge RENDER pins ──────────────────
+    // The tree/grouping/route/click/visibility rules are pinned above and in
+    // FrontComposerNavigationCapabilityBadgeTests. What was NOT pinned before this story is the
+    // actual badge MARKUP: the count `FluentBadge` (Filled/Brand, fc-nav-badge-{bc}-{label}) and the
+    // projection-level "New" `FluentBadge` (Tint/Informative, fc-nav-new-{bc}-{label}). These pins
+    // seed BadgeCountsSeededAction + SeenCapabilitiesHydratedAction and assert the rendered output.
+    // Resolvable runtime types (System.String/System.Int32) are used so ProjectionTypeResolver maps
+    // them to live counts — the same pattern the home + capability-badge suites use.
+
+    private void SeedDiscovery(ImmutableHashSet<string> seen, ImmutableDictionary<Type, int> counts) {
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(seen));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(counts));
+    }
+
+    [Fact]
+    public void CountBadge_RendersBrandFilledBadgeWithValue_WhenProjectionCountPositive() {
+        // AC1 — count > 0 → FluentBadge Filled/Brand carrying the count text, keyed fc-nav-badge-{bc}-{label}.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!], Commands: []),
+        ]);
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 7));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IElement badge = cut.Find("[data-testid=\"fc-nav-badge-Counter-String\"]");
+            badge.TextContent.Trim().ShouldBe("7");
+        });
+    }
+
+    [Fact]
+    public void CountBadge_AbsentAndProjectionHidden_WhenResolvedCountIsZero() {
+        // AC1 — a resolved projection with count == 0 is filtered out by VisibleProjections once
+        // counts are seeded, so neither the nav item nor its count badge render.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!], Commands: []),
+        ]);
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 0));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldNotContain("data-testid=\"fc-nav-badge-Counter-String\"");
+            cut.Markup.ShouldNotContain("data-testid=\"fc-nav-category-Counter\"");
+        });
+    }
+
+    [Fact]
+    public void CountBadge_Absent_WhenProjectionVisibleButHasNoResolvedCount() {
+        // AC1 — exercises the `@if (count > 0)` markup guard with the nav item still visible: an
+        // unresolved projection FQN stays visible (VisibleProjections keeps unresolved types) while
+        // LookupCount yields 0, so the item renders with NO count badge.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+        // counts non-empty (seeded mode) but the manifest's projection does not resolve.
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 3));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            cut.Markup.ShouldContain("/counter/counter-view");
+            cut.Markup.ShouldNotContain("data-testid=\"fc-nav-badge-Counter-CounterView\"");
+        });
+    }
+
+    [Theory]
+    [InlineData(true, 3, false)]   // seen + count > 0 → no projection "New"
+    [InlineData(false, 3, true)]   // unseen + count > 0 → projection "New" visible
+    [InlineData(true, 0, false)]   // seen + count 0 → projection hidden → no "New"
+    [InlineData(false, 0, false)]  // unseen + count 0 → projection hidden → no "New"
+    public void ProjectionNewBadge_Matrix(bool alreadySeen, int count, bool expectNewBadge) {
+        // AC1 — projShowsNew = !seen.Contains(proj:{bc}:{type}) && count > 0, keyed fc-nav-new-{bc}-{label}.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!], Commands: []),
+        ]);
+        ImmutableHashSet<string> seen = ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal);
+        if (alreadySeen) {
+            seen = seen.Add($"proj:Counter:{typeof(string).FullName}");
+        }
+
+        SeedDiscovery(seen, ImmutableDictionary<Type, int>.Empty.Add(typeof(string), count));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            bool isRendered = cut.Markup.Contains(
+                "data-testid=\"fc-nav-new-Counter-String\"",
+                StringComparison.Ordinal);
+            isRendered.ShouldBe(expectNewBadge);
+        });
+    }
+
+    [Fact]
+    public void MultiProjectionManifest_RendersPerProjectionCountBadges_AndAggregateBcNew() {
+        // AC1 — multi-projection manifest exercises LookupCount per item AND
+        // AggregateBoundedContextCount for the BC-level "New" badge (bcShowsNew = unseen && Σcount > 0).
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!, typeof(int).FullName!], Commands: []),
+        ]);
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 2).Add(typeof(int), 3));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            cut.Find("[data-testid=\"fc-nav-badge-Counter-String\"]").TextContent.Trim().ShouldBe("2");
+            cut.Find("[data-testid=\"fc-nav-badge-Counter-Int32\"]").TextContent.Trim().ShouldBe("3");
+            // aggregate 5 > 0 and bc:Counter unseen → BC-level "New" renders.
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-bc-new-Counter\"");
+        });
+    }
+
+    [Fact]
+    public void BcNewBadge_Absent_WhenBoundedContextAlreadySeen() {
+        // AC1 — once bc:{BC} is in the seen-set the BC-level "New" badge is suppressed even though
+        // the aggregate count is positive.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!, typeof(int).FullName!], Commands: []),
+        ]);
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal).Add("bc:Counter"),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 2).Add(typeof(int), 3));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            // count badges still render…
+            cut.Markup.ShouldContain("data-testid=\"fc-nav-badge-Counter-String\"");
+            // …but the BC-level "New" is gone.
+            cut.Markup.ShouldNotContain("data-testid=\"fc-nav-bc-new-Counter\"");
+        });
+    }
+
+    // ── Story 2.2 QA gap-pins (AC1) — aria-label render + badge appearance/colour contract ────
+    // The dev-story pass pinned the badge TESTIDS + text and claimed the FluentNav aria-label and
+    // the Filled/Brand · Tint/Informative appearances were "already pinned", but no assertion
+    // covered them: the nav could lose its accessible name or have its badges restyled and every
+    // existing pin would still pass. These three pins close that gap.
+
+    [Fact]
+    public void FullNav_RendersLocalizedNavMenuAriaLabel() {
+        // AC1 / FC-A11Y in-scope pin — the full FluentNav exposes its accessible name bound to the
+        // localized NavMenuAriaLabel resource (not a hardcoded/empty string).
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", ["Counter.Domain.Projections.CounterView"], Commands: []),
+        ]);
+
+        string expected = Services
+            .GetRequiredService<IStringLocalizer<FcShellResources>>()["NavMenuAriaLabel"].Value;
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            expected.ShouldNotBeNullOrWhiteSpace();
+            cut.Markup.ShouldContain($"aria-label=\"{expected}\"");
+        });
+    }
+
+    [Fact]
+    public void CountBadge_UsesFilledBrandAppearance_AsShippedContract() {
+        // AC1 / Task 1 "do not restyle" — the count badge is FluentBadge Filled/Brand. Both
+        // bc:{BC} and proj:{...} are pre-seeded into the seen-set so the ONLY badge rendered is the
+        // count badge, making the appearance assertion unambiguous.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!], Commands: []),
+        ]);
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)
+                .Add("bc:Counter")
+                .Add($"proj:Counter:{typeof(string).FullName}"),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 7));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IRenderedComponent<FluentBadge> badge = FindBadgeByTestId(cut, "fc-nav-badge-Counter-String");
+            badge.Instance.Appearance.ShouldBe(BadgeAppearance.Filled);
+            badge.Instance.Color.ShouldBe(BadgeColor.Brand);
+        });
+    }
+
+    [Fact]
+    public void ProjectionNewBadge_UsesTintInformativeAppearance_AsShippedContract() {
+        // AC1 / Task 1 "do not restyle" — the projection-level "New" badge is FluentBadge
+        // Tint/Informative. Filtering by the exact fc-nav-new-* testid isolates it from the
+        // co-rendered count and BC-level "New" badges.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Counter", "Counter", [typeof(string).FullName!], Commands: []),
+        ]);
+        SeedDiscovery(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal),
+            ImmutableDictionary<Type, int>.Empty.Add(typeof(string), 4));
+
+        IRenderedComponent<FrontComposerNavigation> cut = Render<FrontComposerNavigation>();
+
+        cut.WaitForAssertion(() => {
+            IRenderedComponent<FluentBadge> badge = FindBadgeByTestId(cut, "fc-nav-new-Counter-String");
+            badge.Instance.Appearance.ShouldBe(BadgeAppearance.Tint);
+            badge.Instance.Color.ShouldBe(BadgeColor.Informative);
+        });
+    }
+
+    private static IRenderedComponent<FluentBadge> FindBadgeByTestId(
+        IRenderedComponent<FrontComposerNavigation> cut,
+        string testId)
+        => cut.FindComponents<FluentBadge>().Single(b =>
+            b.Instance.AdditionalAttributes is not null
+            && b.Instance.AdditionalAttributes.TryGetValue("data-testid", out object? value)
+            && value is string s
+            && string.Equals(s, testId, StringComparison.Ordinal));
 }

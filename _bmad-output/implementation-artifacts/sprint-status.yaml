@@ -67,6 +67,10 @@ project: frontcomposer
 # 2-1 moved backlog → ready-for-dev on 2026-06-03 (create-story)
 # 2-1 moved ready-for-dev → in-progress on 2026-06-03 (dev-story)
 # 2-1 moved in-progress → review on 2026-06-04 (dev-story)
+# 2-2 moved backlog → ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of registry nav + home + compact collapse)
+# 2-2 moved ready-for-dev → in-progress on 2026-06-04 (dev-story)
+# 2-2 moved in-progress → review on 2026-06-04 (dev-story; confirm-and-pin, 12 new pins, zero src change)
+# 2-2 moved review → done on 2026-06-04 (story-automator-review; AC1/AC2/AC3 re-proved true, build 0/0, 8-failure baseline unchanged, File List reconciled — 0 critical/high)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
@@ -86,7 +90,7 @@ development_status:
   # Epic 2: Read-Only Projection Experience (the read-only MVP)
   epic-2: in-progress
   2-1-render-a-projection-from-a-projection-type: done
-  2-2-registry-driven-navigation-and-home-directory: backlog
+  2-2-registry-driven-navigation-and-home-directory: done
   2-3-datagrid-filtering-status-and-empty-loading-states: backlog
   2-4-accessible-expand-in-row-detail: backlog
   2-5-column-prioritization-for-wide-projections: backlog

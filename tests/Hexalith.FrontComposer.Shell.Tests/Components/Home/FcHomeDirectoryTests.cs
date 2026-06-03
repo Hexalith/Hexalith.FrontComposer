@@ -336,6 +336,123 @@ public sealed class FcHomeDirectoryTests : LayoutComponentTestBase {
         });
     }
 
+    // ── Story 2.2 Task 2 (AC2) — progressive / flat / accordion sort-ordering pins ───────────
+    // The urgent-variant sort is pinned by RendersUrgencySortedCards_… above. The three remaining
+    // orderings (progressive, seeded-flat, accordion-zeros) were implemented but unpinned and could
+    // silently regress on a careless refactor. Expectations use StringComparer.Ordinal to mirror
+    // the component (culture stays "en" from the ctor for resource-key stability).
+
+    [Fact]
+    public void RendersProgressiveCards_ReadyFirstThenCountDescThenNameOrdinal() {
+        // AC2 — progressive (Seeding) order: OrderByDescending(IsReady)
+        //   .ThenByDescending(AggregateCount).ThenBy(Name, Ordinal).
+        // Ready = at least one projection count has arrived; not-ready cards render as skeletons last.
+        _registry.GetManifests().Returns([
+            new DomainManifest("Zulu", "Zulu", [typeof(string).FullName!], []),    // ready, count 3
+            new DomainManifest("Mike", "Mike", [typeof(double).FullName!], []),    // NOT seeded → not ready
+            new DomainManifest("Alpha", "Alpha", [typeof(int).FullName!], []),     // ready, count 8
+            new DomainManifest("Bravo", "Bravo", [typeof(long).FullName!], []),    // ready, count 8 (ties Alpha)
+        ]);
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+        // BadgeCountChangedAction keeps hydration at Seeding (progressive), never Seeded.
+        dispatcher.Dispatch(new BadgeCountChangedAction(typeof(string), 3));
+        dispatcher.Dispatch(new BadgeCountChangedAction(typeof(int), 8));
+        dispatcher.Dispatch(new BadgeCountChangedAction(typeof(long), 8));
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.WaitForAssertion(() => {
+            string markup = cut.Markup;
+            markup.ShouldContain("data-testid=\"fc-home-cards-progressive\"");
+            int alpha = markup.IndexOf("data-testid=\"fc-home-card-Alpha\"", StringComparison.Ordinal);
+            int bravo = markup.IndexOf("data-testid=\"fc-home-card-Bravo\"", StringComparison.Ordinal);
+            int zulu = markup.IndexOf("data-testid=\"fc-home-card-Zulu\"", StringComparison.Ordinal);
+            int mikeSkeleton = markup.IndexOf("data-testid=\"fc-home-card-skeleton-Mike\"", StringComparison.Ordinal);
+            alpha.ShouldBeGreaterThan(-1);
+            bravo.ShouldBeGreaterThan(-1);
+            zulu.ShouldBeGreaterThan(-1);
+            mikeSkeleton.ShouldBeGreaterThan(-1);
+            // ready group: count-desc, then name-ordinal for the 8/8 tie (Alpha before Bravo), then Zulu(3).
+            alpha.ShouldBeLessThan(bravo);
+            bravo.ShouldBeLessThan(zulu);
+            // not-ready card renders last.
+            zulu.ShouldBeLessThan(mikeSkeleton);
+        });
+    }
+
+    [Fact]
+    public void RendersSeededFlatCards_InNameOrdinalOrder_WhenAllCountsZero() {
+        // AC2 — seeded + totalActionable == 0 → flat list ordered OrderBy(Name, Ordinal).
+        _registry.GetManifests().Returns([
+            new DomainManifest("Yankee", "Yankee", [typeof(string).FullName!], []),
+            new DomainManifest("Alpha", "Alpha", [typeof(int).FullName!], []),
+            new DomainManifest("Mike", "Mike", [typeof(long).FullName!], []),
+        ]);
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(
+            ImmutableDictionary<Type, int>.Empty
+                .Add(typeof(string), 0)
+                .Add(typeof(int), 0)
+                .Add(typeof(long), 0)));
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.WaitForAssertion(() => {
+            string markup = cut.Markup;
+            markup.ShouldContain("data-testid=\"fc-home-cards-flat\"");
+            int alpha = markup.IndexOf("data-testid=\"fc-home-card-Alpha\"", StringComparison.Ordinal);
+            int mike = markup.IndexOf("data-testid=\"fc-home-card-Mike\"", StringComparison.Ordinal);
+            int yankee = markup.IndexOf("data-testid=\"fc-home-card-Yankee\"", StringComparison.Ordinal);
+            alpha.ShouldBeGreaterThan(-1);
+            alpha.ShouldBeLessThan(mike);
+            mike.ShouldBeLessThan(yankee);
+        });
+    }
+
+    [Fact]
+    public void RendersOtherAreasAccordionZeros_InNameOrdinalOrder() {
+        // AC2 / D17 — the collapsed zero-urgency cards inside fc-home-other-areas are
+        // ordered OrderBy(Name, Ordinal) when at least one context is actionable.
+        _registry.GetManifests().Returns([
+            new DomainManifest("UrgentZ", "UrgentZ", [typeof(string).FullName!], []), // urgent, count 5
+            new DomainManifest("Yankee", "Yankee", [typeof(int).FullName!], []),      // zero
+            new DomainManifest("Alpha", "Alpha", [typeof(long).FullName!], []),       // zero
+            new DomainManifest("Mike", "Mike", [typeof(double).FullName!], []),       // zero
+        ]);
+
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new SeenCapabilitiesHydratedAction(
+            ImmutableHashSet<string>.Empty.WithComparer(StringComparer.Ordinal)));
+        dispatcher.Dispatch(new BadgeCountsSeededAction(
+            ImmutableDictionary<Type, int>.Empty
+                .Add(typeof(string), 5)
+                .Add(typeof(int), 0)
+                .Add(typeof(long), 0)
+                .Add(typeof(double), 0)));
+
+        IRenderedComponent<FcHomeDirectory> cut = Render<FcHomeDirectory>();
+
+        cut.WaitForAssertion(() => {
+            string markup = cut.Markup;
+            int otherAreas = markup.IndexOf("data-testid=\"fc-home-other-areas\"", StringComparison.Ordinal);
+            int alpha = markup.IndexOf("data-testid=\"fc-home-card-Alpha\"", StringComparison.Ordinal);
+            int mike = markup.IndexOf("data-testid=\"fc-home-card-Mike\"", StringComparison.Ordinal);
+            int yankee = markup.IndexOf("data-testid=\"fc-home-card-Yankee\"", StringComparison.Ordinal);
+            otherAreas.ShouldBeGreaterThan(-1);
+            // zero cards live inside the accordion (after its marker)…
+            alpha.ShouldBeGreaterThan(otherAreas);
+            // …and are ordered alphabetically by ordinal.
+            alpha.ShouldBeLessThan(mike);
+            mike.ShouldBeLessThan(yankee);
+        });
+    }
+
     [Fact]
     public void NewBadge_BCLevel_DismissalDoesNotDismissProjectionLevel() {
         // D12 / G25 — dismissing the BC-level "New" (bc:Counter in seen-set) must NOT dismiss the
