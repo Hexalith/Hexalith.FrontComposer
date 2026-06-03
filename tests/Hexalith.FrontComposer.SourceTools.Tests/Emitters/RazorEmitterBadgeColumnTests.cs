@@ -54,8 +54,9 @@ public class RazorEmitterBadgeColumnTests {
     /// <c>FcStatusBadge</c> switch arms; declared-but-unannotated members emit plain-text
     /// arms that render the humanized label (partial coverage is an HFC1025 fallback, not
     /// an error); the <c>default</c> arm covers out-of-range runtime values (unsafe casts)
-    /// with the localised <c>StatusBadgeUnknownStateFallback</c> resource lookup. The
-    /// <c>Property</c> lambda stays intact for sort / filter / default-aria paths.
+    /// with the localised <c>StatusBadgeUnknownStateFallback</c> resource lookup. Badge columns
+    /// must use <c>TemplateColumn</c> because FluentUI <c>PropertyColumn</c> has no
+    /// <c>ChildContent</c> parameter.
     /// </summary>
     [Fact]
     public void PartialMappings_EmitsSwitchWithBadgeArmsPlusTextDefault() {
@@ -73,7 +74,8 @@ public class RazorEmitterBadgeColumnTests {
 
         string source = RazorEmitter.Emit(model);
 
-        source.ShouldContain("(Expression<Func<OrderProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30))");
+        source.ShouldContain("b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);");
+        source.ShouldNotContain("b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);");
         source.ShouldContain("case \"Pending\":");
         source.ShouldContain("BadgeSlot.Warning");
         source.ShouldContain("case \"Approved\":");

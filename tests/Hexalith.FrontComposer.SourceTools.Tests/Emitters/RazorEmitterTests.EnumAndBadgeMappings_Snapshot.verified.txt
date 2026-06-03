@@ -664,9 +664,8 @@ public partial class OrderProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<PropertyColumn<OrderProjection, string?>>(colSeq++);
+                b.OpenComponent<TemplateColumn<OrderProjection>>(colSeq++);
                 b.AddAttribute(colSeq++, "Title", "Status");
-                b.AddAttribute(colSeq++, "Property", (Expression<Func<OrderProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
                 b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<OrderProjection>)(item => (RenderTreeBuilder rb) =>
                 {
                     var _memberName = item.Status.ToString();

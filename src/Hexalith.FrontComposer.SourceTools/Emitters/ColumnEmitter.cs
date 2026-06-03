@@ -167,6 +167,18 @@ internal static class ColumnEmitter {
     private static void EmitEnumColumn(StringBuilder sb, ColumnModel col, string typeName, bool isDefaultSortColumn) {
         _ = sb.AppendLine("            // Enum column: " + col.PropertyName);
         EmitSlotColumnBranch(sb, col, typeName, isDefaultSortColumn);
+
+        if (col.BadgeMappings.Count > 0) {
+            _ = sb.AppendLine("                b.OpenComponent<TemplateColumn<" + typeName + ">>(colSeq++);");
+            _ = sb.AppendLine("                b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
+            EmitHeaderDescription(sb, col, indent: "                ");
+            EmitEnumBadgeChildContent(sb, col, typeName, indent: "                ");
+            EmitSortAttributes(sb, col, typeName, isDefaultSortColumn, indent: "                ");
+            _ = sb.AppendLine("                b.CloseComponent();");
+            _ = sb.AppendLine("            }");
+            return;
+        }
+
         _ = sb.AppendLine("                b.OpenComponent<PropertyColumn<" + typeName + ", string?>>(colSeq++);");
         _ = sb.AppendLine("                b.AddAttribute(colSeq++, \"Title\", \"" + RoleBodyHelpers.EscapeString(col.Header) + "\");");
         EmitHeaderDescription(sb, col, indent: "                ");
@@ -178,10 +190,6 @@ internal static class ColumnEmitter {
             _ = sb.AppendLine("                b.AddAttribute(colSeq++, \"Property\", (Expression<Func<" + typeName + ", string?>>)(x => Truncate(HumanizeEnumLabel(x." + col.PropertyName + ".ToString()), 30)));");
         }
 
-        if (col.BadgeMappings.Count > 0) {
-            EmitEnumBadgeChildContent(sb, col, typeName, indent: "                ");
-        }
-
         EmitSortAttributes(sb, col, typeName, isDefaultSortColumn, indent: "                ");
         _ = sb.AppendLine("                b.CloseComponent();");
         _ = sb.AppendLine("            }");
@@ -189,11 +197,9 @@ internal static class ColumnEmitter {
 
     /// <summary>
     /// Story 4-2 D1 / D5 / D8 / AC1 / AC3 — emits the <c>ChildContent</c> render fragment for a
-    /// DataGrid <c>PropertyColumn</c> that wraps annotated enum members in <c>FcStatusBadge</c>
+    /// DataGrid <c>TemplateColumn</c> that wraps annotated enum members in <c>FcStatusBadge</c>
     /// and falls back to humanized text / the localised unknown-state string for null / declared
-    /// but unannotated / out-of-range values respectively. The <c>Property</c> lambda on the
-    /// column is preserved verbatim so DataGrid sort / filter / default-aria paths continue to
-    /// operate on the text representation (unchanged from Story 1-5).
+    /// but unannotated / out-of-range values respectively.
     /// </summary>
     private static void EmitEnumBadgeChildContent(
         StringBuilder sb,

@@ -738,9 +738,8 @@ public partial class WhenStateTypoProjectionView : ComponentBase, IAsyncDisposab
             }
             else
             {
-                b.OpenComponent<PropertyColumn<WhenStateTypoProjection, string?>>(colSeq++);
+                b.OpenComponent<TemplateColumn<WhenStateTypoProjection>>(colSeq++);
                 b.AddAttribute(colSeq++, "Title", "Status");
-                b.AddAttribute(colSeq++, "Property", (Expression<Func<WhenStateTypoProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
                 b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<WhenStateTypoProjection>)(item => (RenderTreeBuilder rb) =>
                 {
                     var _memberName = item.Status.ToString();

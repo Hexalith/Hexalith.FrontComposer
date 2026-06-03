@@ -823,9 +823,8 @@ public partial class ActionQueueProjectionView : ComponentBase, IAsyncDisposable
             }
             else
             {
-                b.OpenComponent<PropertyColumn<ActionQueueProjection, string?>>(colSeq++);
+                b.OpenComponent<TemplateColumn<ActionQueueProjection>>(colSeq++);
                 b.AddAttribute(colSeq++, "Title", "Status");
-                b.AddAttribute(colSeq++, "Property", (Expression<Func<ActionQueueProjection, string?>>)(x => Truncate(HumanizeEnumLabel(x.Status.ToString()), 30)));
                 b.AddAttribute(colSeq++, "ChildContent", (RenderFragment<ActionQueueProjection>)(item => (RenderTreeBuilder rb) =>
                 {
                     var _memberName = item.Status.ToString();
