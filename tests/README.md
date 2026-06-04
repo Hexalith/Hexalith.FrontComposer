@@ -9,7 +9,7 @@ Top-level guide for every test layer in this repository. Each layer has its own 
 | **Unit — Contracts** | `tests/Hexalith.FrontComposer.Contracts.Tests/` | xUnit | Contract types, options, diagnostics |
 | **Unit — Shell** | `tests/Hexalith.FrontComposer.Shell.Tests/` | xUnit + bUnit | Services, lifecycle state machine, components |
 | **Unit — SourceTools** | `tests/Hexalith.FrontComposer.SourceTools.Tests/` | xUnit + FsCheck | Roslyn analyzers, source generators, property-based |
-| **E2E — Browser** | `tests/e2e/` | Playwright (TS) | Five-state command lifecycle, WCAG 2.1 AA, smoke |
+| **E2E — Browser** | `tests/e2e/` | Playwright (TS) | Six-state command lifecycle, WCAG 2.1 AA, smoke |
 
 Submodule test suites (`Hexalith.Tenants/**`, `Hexalith.EventStore/**`) are run from their own roots and are out of scope for this guide.
 
@@ -127,7 +127,7 @@ tests/e2e/
 ├── fixtures/                 Playwright fixture composition root
 │   ├── index.ts              mergeTests(tenantTest, lifecycleTest)
 │   ├── tenant.fixture.ts     TenantContext (tenantId + userId)
-│   └── lifecycle.fixture.ts  Five-state command lifecycle assertions
+│   └── lifecycle.fixture.ts  Six-state command lifecycle assertions
 ├── factories/                Faker-powered data builders
 │   └── counter.factory.ts    buildIncrementCommand + batch helper
 ├── helpers/                  Test-time utilities
@@ -138,7 +138,7 @@ tests/e2e/
 │   └── counter.page.ts       CounterPage
 ├── specs/                    Test cases
 │   ├── smoke.spec.ts         Render + axe-core zero-violations
-│   └── lifecycle.spec.ts     idle → submitting → success transition
+│   └── lifecycle.spec.ts     idle → submitting → acknowledged → syncing → terminal transition
 ├── playwright.config.ts      Timeouts, projects, reporters, artifacts
 ├── tsconfig.json             Strict TS, ESNext, path aliases
 ├── package.json              Isolated dependency graph

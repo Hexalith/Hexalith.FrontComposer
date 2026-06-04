@@ -23,9 +23,10 @@ DomainManifest
 
 | Record / type | Shape & role |
 |---|---|
-| `CommandResult` | Outcome of `ICommandService.DispatchAsync` (success/rejection). |
+| `CommandResult` | Outcome of `ICommandService.DispatchAsync`; carries accepted `MessageId`, optional EventStore `CorrelationId`, and optional retry hint. |
 | `QueryRequest` / `QueryResult` | Projection query request/response DTOs. |
-| `ProblemDetailsPayload` | RFC 7807 error payload. |
+| `ProblemDetailsPayload` | RFC 7807 error payload with optional bounded `CommandRejectionDetails`. |
+| `CommandRejectionDetails` | Typed rejection metadata (`errorCode`, `reasonCategory`, `suggestedAction`, `docsCode`) shown by command lifecycle UI. |
 | `CommandLifecycleState` (enum) | `Idle → Submitting → Acknowledged → Syncing → Confirmed / Rejected`. |
 | `CommandLifecycleTransition` | A single state-machine edge (for trackers/UI). |
 | `McpLifecycleStateNames` | Canonical MCP wire names for the lifecycle states. |
@@ -105,7 +106,7 @@ This is the backbone of FrontComposer's "drift detection" — how producer (gene
 
 | Type | Role |
 |---|---|
-| `FcShellOptions` | Runtime shell configuration (validated via DataAnnotations / `OptionsBuilder.ValidateDataAnnotations`). |
+| `FcShellOptions` | Runtime shell configuration (validated via DataAnnotations / `OptionsBuilder.ValidateDataAnnotations` plus cross-property validators). Includes lifecycle thresholds, command-status polling cadence, pending-command polling duration, per-tick cap, and retained pending-entry cap. |
 | `FrontComposerAuthenticationOptions` | OIDC/auth options (Shell). |
 | `FrontComposerMcpOptions` | MCP endpoint, API-key map, arg/render/lifecycle bounds, claim types. |
 | `LifecycleOptions` | Lifecycle tracker timing/retention. |

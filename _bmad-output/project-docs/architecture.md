@@ -23,7 +23,7 @@ FrontComposer is a **source-generation-driven Blazor application framework**. It
 │ LAYER 1 — Producer  (netstandard2.0 analyzer)                              │
 │   Hexalith.FrontComposer.SourceTools → FrontComposerGenerator              │
 │   Parse (Roslyn → pure IR) → Transform (IR → emit models) → Emit (C#/Razor)│
-│   Outputs: per-projection (5 files), per-command (6–7 files), MCP manifest │
+│   Outputs: per-projection (5 files), per-command (7+page), MCP manifest    │
 │   + opt-in drift detection vs a checked-in JSON baseline                   │
 ├──────────────────────────────────────────────────────────────────────────┤
 │ LAYER 2 — Consumers  (net10.0)                                             │
@@ -48,7 +48,7 @@ FrontComposer is a **source-generation-driven Blazor application framework**. It
 2. **Diagnostics-as-data.** Parsers emit `DiagnosticInfo` records (not Roslyn `Diagnostic`s); these are converted to real diagnostics only inside `RegisterSourceOutput` where `SourceProductionContext` exists.
 3. **Transform → Emit.** One transform + one emitter per artifact type produces:
    - **Per `[Projection]` (5 files):** `{T}.g.razor.cs` view (Loading/Empty/Data dispatched by `ProjectionRole`), `{T}Feature.g.cs`, `{T}Actions.g.cs`, `{T}Reducers.g.cs`, `{T}Registration.g.cs`.
-   - **Per `[Command]` (6–7 files, `.Command` segment):** `CommandForm`, `CommandActions`, `CommandLifecycleFeature`, `CommandRegistration`, `CommandRenderer`, `CommandLastUsedSubscriber`, `CommandLifecycleBridge`, plus `CommandPage` when density is `FullPage`.
+   - **Per `[Command]` (7 non-page files, `.Command` segment, plus optional page):** `CommandForm`, `CommandActions`, `CommandLifecycleFeature`, `CommandRegistration`, `CommandRenderer`, `CommandLastUsedSubscriber`, `CommandLifecycleBridge`, plus `CommandPage` when density is `FullPage`.
    - **Compilation-level:** `FrontComposerMcpManifest.g.cs` (tool/resource manifest with schema fingerprints) and the projection-template manifest.
 4. **Density rule (spec-locked):** non-derivable property count ≤1 → `Inline`, 2–4 → `CompactInline`, ≥5 → `FullPage`. Derivable fields (`MessageId`, `CorrelationId`, `TenantId`, `UserId`, timestamps, or `[DerivedFrom]`) are excluded from forms.
 5. **Drift detection (opt-in):** when `HfcDriftDetectionEnabled=true`, the current snapshot is compared to a `frontcomposer.*-baseline*.json` `AdditionalText`; structural/metadata drift raises HFC1065/HFC1066. This pipeline deliberately does **not** depend on `CompilationProvider`.
@@ -61,13 +61,13 @@ A consuming app reduces its layout to `<FrontComposerShell>@Body</FrontComposerS
 
 - `services.AddHexalithFrontComposerQuickstart()` registers Fluxor (scanning the Shell assembly for every state slice), `IStorageService` (scoped `LocalStorageService`), `IFrontComposerRegistry` (singleton), the command/query services (a stub wrapped by `AuthorizingCommandServiceDecorator`), badge/lifecycle/registry services, and projection slot/template/view-override registries.
 - `services.AddHexalithDomain<TMarker>()` reflects each domain assembly for generated `*Registration` types and `[Command]`/`[BoundedContext]` attributes, populating the registry.
-- `services.AddHexalithEventStore(...)` swaps the stub for real **SignalR + HTTP EventStore clients** (`EventStoreCommandClient`, `EventStoreQueryClient`, `ProjectionSubscriptionService`).
+- `services.AddHexalithEventStore(...)` swaps the stub for real **SignalR + HTTP EventStore clients** (`EventStoreCommandClient`, `EventStoreQueryClient`, `ProjectionSubscriptionService`) and replaces the default `NullPendingCommandStatusQuery` with the EventStore-backed command-status query.
 
 These three calls are **order- and presence-validated at startup** (Story 1.1): each entry point appends an immutable `IFrontComposerBootstrapMarker` (`TryAddEnumerable`) and registers an idempotent hosted gate (`FrontComposerBootstrapValidationGate`) that runs `FrontComposerBootstrapValidator` in DI-insertion order. A missing foundational `AddHexalithFrontComposerQuickstart()` or a mis-ordered call throws an `InvalidOperationException` naming the offending call — **failing fast at startup instead of with an opaque `IFrontComposerRegistry` DI error at first render.** `AddHexalithDomain<TMarker>()` is optional (an empty shell is valid). The gate depends only on the singleton markers + a logger, so it stays scope-safe under `ValidateScopes=true` (ADR-030).
 
-`FrontComposerShell` (`src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor`) mounts the Fluxor `StoreInitializer`, skip links, a `FluentLayout` with Header / Navigation / Content / Footer areas, global keyboard shortcuts (`Ctrl+,` settings, `Ctrl+K` palette), and `FluentProviders`. Generated projection pages render inside `FcLifecycleWrapper` → `FluentDataGrid` with filter/expand/status components; commands render through `FcAuthorizedCommandRegion` + forms guarded by `FcFormAbandonmentGuard`. Levels 2–4 customization (`ProjectionTemplate`, field-slot, full-view overrides) let external assemblies inject alternate render fragments.
+`FrontComposerShell` (`src/Hexalith.FrontComposer.Shell/Components/Layout/FrontComposerShell.razor`) mounts the Fluxor `StoreInitializer`, skip links, a `FluentLayout` with Header / Navigation / Content / Footer areas, global keyboard shortcuts (`Ctrl+,` settings, `Ctrl+K` palette), and `FluentProviders`. Generated projection pages render to `FluentDataGrid` with filter/expand/status components; generated commands render through `FcAuthorizedCommandRegion`, generated forms, and `FcLifecycleWrapper`, which surfaces Submitting, Acknowledged, Syncing, Confirmed, Rejected, idempotent-confirmed, and NeedsReview paths. Levels 2–4 customization (`ProjectionTemplate`, field-slot, full-view overrides) let external assemblies inject alternate render fragments.
 
-State is managed in Fluxor slices under `src/Hexalith.FrontComposer.Shell/State/` (Theme, Density, Navigation, CommandPalette, ETagCache, PendingCommands, ProjectionConnection, ReconnectionReconciliation, …) following a **single-writer discipline** (ADR-007): each action type has one dispatch source; effects own persistence and JS interop.
+State is managed in Fluxor slices under `src/Hexalith.FrontComposer.Shell/State/` (Theme, Density, Navigation, CommandPalette, ETagCache, PendingCommands, ProjectionConnection, ReconnectionReconciliation, …) following a **single-writer discipline** (ADR-007): each action type has one dispatch source; effects own persistence and JS interop. EventStore-enabled hosts run command-status polling through a scoped `PendingCommandPollingDriver`; pending-state mutation remains centralized in `PendingCommandPollingCoordinator` and `PendingCommandOutcomeResolver`.
 
 ## 5. AI-agent surface (MCP)
 

@@ -32,7 +32,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 | `FcCommandPalette` | `FluentDialogBody`: search input + `FcPaletteResultList`; ARIA combobox; keyboard nav via `fc-keyboard.js`. |
 | `FcDestructiveConfirmationDialog` | Cancel/confirm body for destructive commands. |
 | `FcFormAbandonmentGuard` | `NavigationLock` + `FluentMessageBar` on unsaved navigation. |
-| `FcLifecycleWrapper` | Wraps a command form; surfaces Submitting→Syncing→Confirmed/Rejected via `FluentBadge`/`FluentMessageBar`. |
+| `FcLifecycleWrapper` | Wraps a command form; surfaces Submitting→Acknowledged→Syncing→Confirmed/Rejected plus idempotent and NeedsReview paths via `FluentBadge`/`FluentMessageBar`. |
 
 ### Display & status
 | Component | Role |
@@ -40,7 +40,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 | `FcHomeDirectory` / `FcHomeCard` / `FcHomeRouteView` | Home landing page (`@page "/"`, `/home`): four progressive states; urgency-sorted bounded-context cards. |
 | `FcStatusBadge` / `FcDesaturatedBadge` | Semantic slot → `FluentBadge` (Color/Appearance) with mandatory `aria-label`; desaturated variant for non-urgent counts. |
 | `FcProjectionConnectionStatus` | `FluentMessageBar` for SignalR reconnect/reconciliation. |
-| `FcPendingCommandSummary` | `aria-live` list of pending/rejected commands. |
+| `FcPendingCommandSummary` | `aria-live` list of pending, rejected, and NeedsReview commands. |
 | `FcProjectionLoadingSkeleton` | `FluentSkeleton` in Card/Timeline/Grid layout. |
 
 ### DataGrid surface
@@ -78,9 +78,9 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 
 **Fluxor state slices** (`State/`): Theme, Density, Navigation, CommandPalette, CapabilityDiscovery, DataGridNavigation, ETagCache, ExpandedRow, PendingCommands, ProjectionConnection, ReconnectionReconciliation. *(Single-writer discipline per slice; effects own persistence + JS interop.)*
 
-**Services** (`Services/`, `Badges/`, `Infrastructure/`): `BadgeCountService` (Rx `Subject<T>`), auth + `AuthorizingCommandServiceDecorator`, authorization evaluator/gate, projection slot/template/view-override registries, derived-value provider chain, lifecycle state service, `LocalStorageService`, tenant context accessor, `EventStoreCommandClient`/`EventStoreQueryClient`/`ProjectionSubscriptionService`, `SignalRProjectionHubConnectionFactory`.
+**Services** (`Services/`, `Badges/`, `Infrastructure/`): `BadgeCountService` (Rx `Subject<T>`), auth + `AuthorizingCommandServiceDecorator`, authorization evaluator/gate, projection slot/template/view-override registries, derived-value provider chain, lifecycle state service, pending-command state/resolver/polling coordinator, `LocalStorageService`, tenant context accessor, `EventStoreCommandClient`/`EventStoreQueryClient`/`EventStorePendingCommandStatusQuery`/`ProjectionSubscriptionService`, `SignalRProjectionHubConnectionFactory`.
 
-**Options** (`Options/`): `FcShellOptions`, `FrontComposerAuthenticationOptions` + validators (DataAnnotations).
+**Options** (`Options/`): `FcShellOptions`, `FrontComposerAuthenticationOptions` + validators (DataAnnotations and cross-property checks for lifecycle thresholds, command-status polling interval, and pending-command expiry).
 
 ---
 
@@ -88,7 +88,7 @@ The shell ships a `Fc*`-prefixed component library (most inherit `Fluxor.Blazor.
 
 The vocabulary shared by generator + runtime + MCP. (Attributes are catalogued in [api-contracts.md](./api-contracts.md); data records in [data-models.md](./data-models.md).)
 
-**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, `QueryRequest`, `ProblemDetailsPayload`; exceptions `CommandRejectedException`, `CommandWarningException`, `CommandValidationException`, `AuthRedirectRequiredException`.
+**Communication:** `ICommandService`, `ICommandServiceWithLifecycle`, `IQueryService`, `IProjectionChangeNotifier`, `IProjectionSubscription`, `IProjectionSearchProvider`; records `CommandResult`, `QueryResult`, `QueryRequest`, `ProblemDetailsPayload`, `CommandRejectionDetails`; exceptions `CommandRejectedException`, `CommandWarningException`, `CommandValidationException`, `AuthRedirectRequiredException`.
 
 **Lifecycle:** `CommandLifecycleState` (Idle→Submitting→Acknowledged→Syncing→Confirmed/Rejected), `CommandLifecycleTransition`, `ICommandLifecycleTracker`, `ILifecycleStateService`, `IUlidFactory`, `LifecycleOptions`, `McpLifecycleStateNames`.
 

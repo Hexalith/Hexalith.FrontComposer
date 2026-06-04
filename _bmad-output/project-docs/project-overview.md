@@ -43,7 +43,7 @@ The `frontcomposer` **CLI** (`Hexalith.FrontComposer.Cli`) lets you `inspect` th
 | State management | Fluxor.Blazor.Web | `6.9.0` | single-writer discipline per state slice |
 | Source generation | Microsoft.CodeAnalysis.CSharp (Roslyn) | `5.3.0` | incremental generator on netstandard2.0 |
 | MCP | ModelContextProtocol.AspNetCore | `1.3.0` | HTTP streamable transport |
-| Identifiers | NUlid (ULID) | `1.7.3` | **ULIDs, never GUIDs**, for correlation IDs |
+| Identifiers | NUlid (ULID) | `1.7.3` | **ULIDs, never GUIDs**, for `messageId` / `correlationId` |
 | Real-time | Microsoft.AspNetCore.SignalR.Client | `10.0.8` | EventStore projection subscriptions |
 | Auth | Microsoft.AspNetCore.Authentication.OpenIdConnect | `10.0.8` | host-owned OIDC |
 | Reactive | System.Reactive | `6.1.0` | badge-count producer/consumer isolation |

@@ -110,6 +110,7 @@ project: frontcomposer
 # 3-6 moved backlog -> ready-for-dev on 2026-06-04 (create-story; apply confirming->degraded and polling budgets. Dev must record the FC-CMD budget contract, preserve existing lifecycle thresholds unless Product/UX + EventStore approve alternatives, decouple command-status polling cadence from projection fallback polling, keep EventStore status identity as pending MessageId, and leave Epic 4 retry/concurrency policy out of scope.)
 # 3-6 moved in-progress -> review on 2026-06-04 (dev-story; FC-CMD budget contract recorded; added PendingCommandPollingIntervalMs=1000 and MaxPendingCommandPollingDurationMs=120000; command-status polling now uses a scoped TimeProvider driver independent of projection fallback; expiry resolves to NeedsReview with first-wins semantics; build 0/0; focused Shell 127/127 + focused Contracts 25/25 green; solution VSTest locally socket-blocked, broad in-process Shell reproduced non-story baselines only; .verified.txt unchanged.)
 # 3-6 moved review -> done on 2026-06-04 (story-automator review; adversarial re-verification of all 5 ACs against live source. AC1 budget contract records v1 values/owners/Retry-After/0-retry + expiry-to-NeedsReview visible in FcPendingCommandSummary; AC2 FcLifecycleWrapper unchanged + FakeTimeProvider-driven, Rejected/IdempotentConfirmed replace the action-prompt and e2e proves later Confirmed replaces it; AC3 pending-command polling moved off ProjectionFallbackPollingDriver to a TimeProvider PendingCommandPollingDriver, driver test proves 1s cadence while projection scheduler stays 0 connected; AC4 PollOnceAsync stays single mutation boundary oldest-first/capped/re-check/cancellation, expiry+terminal via shared resolver, first-wins on concurrent expiry; AC5 range+cross-property validation incl. interval<=duration, duration>degraded, 0=disabled, focused tests cover boundaries/cadence/cap/expiry. Built Shell+Contracts+Counter.Web+tests 0/0 TWAE -m:1 /nr:false; re-ran focused lanes Shell 92/92 + Contracts 25/25 (solution VSTest still socket-blocked locally); .verified.txt unchanged. 0 Critical / 0 High; 1 Medium auto-fixed (added samples/Counter/Counter.Web/Program.cs + tests/e2e/playwright.config.ts + tests/e2e/specs/command-lifecycle-budgets.spec.ts to File List, verified StubCommandService config-binding ordering); 1 Low recorded (PendingCommandPollingDriver registered in base shell but only started on EventStore path — harmless, left as-is).)
+# epic-3-retrospective moved optional -> done on 2026-06-04 (bmad-retrospective YOLO/autonomous; Epic 3 reviewed, FC-CMD identity/status/budget follow-through captured, Epic 4 readiness constraints recorded, and verified documentation updates applied only where code/docs drift existed.)
 project_key: NOKEY
 tracking_system: file-system
 story_location: "{project-root}/_bmad-output/implementation-artifacts"
@@ -146,7 +147,7 @@ development_status:
   3-4-command-lifecycle-ui: done
   3-5-bind-the-polling-coordinator-to-the-eventstore-status-endpoint: done
   3-6-apply-confirming-degraded-and-polling-budgets: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   # Epic 4: Safe & Concurrent Command Execution
   epic-4: backlog
