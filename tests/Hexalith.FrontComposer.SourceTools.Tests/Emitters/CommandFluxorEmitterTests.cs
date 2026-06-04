@@ -135,7 +135,7 @@ public class CommandFluxorEmitterTests {
         source.ShouldContain("AcknowledgedAction(string CorrelationId,");
         source.ShouldContain("SyncingAction(string CorrelationId)");
         source.ShouldContain("ConfirmedAction(string CorrelationId)");
-        source.ShouldContain("RejectedAction(string CorrelationId,");
+        source.ShouldContain("string CorrelationId,");
     }
 
     [Fact]
@@ -143,5 +143,33 @@ public class CommandFluxorEmitterTests {
         string source = CommandFluxorFeatureEmitter.Emit(BuildModel());
 
         source.ShouldContain("CommandLifecycleState.Idle");
+    }
+
+    [Fact]
+    public void Actions_Emit_RejectedActionCarriesTypedMetadata() {
+        string source = CommandFluxorActionsEmitter.Emit(BuildModel());
+
+        source.ShouldContain("public sealed record RejectedAction(");
+        source.ShouldContain("string Reason,");
+        source.ShouldContain("string Resolution,");
+        source.ShouldContain("string? ErrorCode,");
+        source.ShouldContain("string? ReasonCategory,");
+        source.ShouldContain("string? SuggestedAction,");
+        source.ShouldContain("string? DocsCode);");
+    }
+
+    [Fact]
+    public void Feature_Emit_RejectedReducerPreservesTypedMetadataAndCorrelationGuard() {
+        string source = CommandFluxorFeatureEmitter.Emit(BuildModel());
+
+        source.ShouldContain("string? RejectionErrorCode,");
+        source.ShouldContain("string? RejectionReasonCategory,");
+        source.ShouldContain("string? RejectionSuggestedAction,");
+        source.ShouldContain("string? RejectionDocsCode);");
+        source.ShouldContain("state.CorrelationId != action.CorrelationId");
+        source.ShouldContain("RejectionErrorCode = action.ErrorCode");
+        source.ShouldContain("RejectionReasonCategory = action.ReasonCategory");
+        source.ShouldContain("RejectionSuggestedAction = action.SuggestedAction");
+        source.ShouldContain("RejectionDocsCode = action.DocsCode");
     }
 }

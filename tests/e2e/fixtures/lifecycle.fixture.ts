@@ -1,10 +1,10 @@
 import { expect, test as base, type Locator, type Page } from '@playwright/test';
 
 /**
- * Five-state command lifecycle contract (HFC architecture Row 2).
+ * Command lifecycle contract surfaced by FcLifecycleWrapper.
  * See `_bmad-output/planning-artifacts/architecture.md` for canonical state set.
  */
-export const LIFECYCLE_STATES = ['idle', 'validating', 'submitting', 'success', 'error'] as const;
+export const LIFECYCLE_STATES = ['idle', 'submitting', 'acknowledged', 'syncing', 'confirmed', 'rejected'] as const;
 export type LifecycleState = (typeof LIFECYCLE_STATES)[number];
 
 export interface LifecycleAssertions {
@@ -36,7 +36,7 @@ export const lifecycleTest = base.extend<LifecycleFixtures>({
       },
       waitForTerminal: async (commandId) => {
         const loc = lifecycleLocator(page, commandId);
-        await expect(loc).toHaveAttribute('data-lifecycle-state', /^(success|error)$/);
+        await expect(loc).toHaveAttribute('data-lifecycle-state', /^(confirmed|rejected)$/);
         const state = await readState(loc);
         if (!state) throw new Error(`lifecycle state missing for commandId=${commandId}`);
         return state;

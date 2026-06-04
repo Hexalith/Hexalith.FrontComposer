@@ -23,9 +23,11 @@ namespace Hexalith.FrontComposer.Shell.Tests.Components.Lifecycle;
 public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
     [Fact]
     public void Idle_state_renders_only_child_content_no_aria_live() {
-        IRenderedComponent<FcLifecycleWrapper> cut = RenderWrapperWithStubService();
+        IRenderedComponent<FcLifecycleWrapper> cut = RenderWrapperWithStubService(commandId: "increment");
 
         cut.Markup.ShouldContain("fc-lifecycle-wrapper");
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-testid").ShouldBe("fc-lifecycle-increment");
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("idle");
         cut.Markup.ShouldContain("child-content-marker");
         cut.FindAll("[role='status']").ShouldBeEmpty();
         cut.FindAll("[role='alert']").ShouldBeEmpty();
@@ -36,6 +38,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService();
         push(Transition(CommandLifecycleState.Idle, CommandLifecycleState.Submitting));
 
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("submitting");
         IElement region = cut.Find("[role='status']");
         region.GetAttribute("aria-live").ShouldBe("polite");
         region.TextContent.ShouldContain("Submitting", Case.Insensitive);
@@ -54,6 +57,12 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService();
         push(Transition(CommandLifecycleState.Submitting, CommandLifecycleState.Acknowledged));
 
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("acknowledged");
+        IElement region = cut.Find("[data-fc-phase='acknowledged']");
+        region.GetAttribute("aria-live")!.ShouldBe("polite");
+        region.GetAttribute("role")!.ShouldBe("status");
+        cut.Markup.ShouldContain("Submission acknowledged");
+        cut.FindAll("[data-testid='fc-acknowledged-badge']").Count.ShouldBe(1);
         cut.Find(".fc-lifecycle-wrapper").GetAttribute("class")!.ShouldNotContain("fc-lifecycle-pulse");
         cut.Markup.ShouldNotContain("Still syncing", Case.Insensitive);
         cut.FindAll("[data-testid='fc-action-prompt']").ShouldBeEmpty();
@@ -112,6 +121,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push) = RenderWrapperWithLiveService();
         push(Transition(CommandLifecycleState.Syncing, CommandLifecycleState.Confirmed));
 
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("confirmed");
         IElement region = cut.Find("[data-fc-phase='confirmed']");
         region.GetAttribute("aria-live")!.ShouldBe("polite");
         region.GetAttribute("role")!.ShouldBe("status");
@@ -134,6 +144,7 @@ public sealed class FcLifecycleWrapperTests : LifecycleWrapperTestBase {
         (IRenderedComponent<FcLifecycleWrapper> cut, Action<CommandLifecycleTransition> push, FakeTimeProvider time) = RenderWrapperWithFakeTime();
         push(TransitionAt(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected, time.GetUtcNow()));
 
+        cut.Find(".fc-lifecycle-wrapper").GetAttribute("data-lifecycle-state").ShouldBe("rejected");
         IElement region = cut.Find("[data-fc-phase='rejected']");
         region.GetAttribute("aria-live")!.ShouldBe("assertive");
         region.GetAttribute("role")!.ShouldBe("alert");

@@ -631,7 +631,7 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("        }");
         _ = sb.AppendLine("        catch (CommandRejectedException ex)");
         _ = sb.AppendLine("        {");
-        _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, ex.Message, ex.Resolution));");
+        _ = sb.AppendLine("            Dispatcher.Dispatch(new " + fluxor.ActionsWrapperName + ".RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode));");
         _ = sb.AppendLine("            // Notify validation pipeline so any stale error state redraws (patch P16).");
         _ = sb.AppendLine("            _editContext?.NotifyValidationStateChanged();");
         _ = sb.AppendLine("            Logger?.LogWarning(\"Command rejected. CorrelationId={CorrelationId} Reason={Reason}\", correlationId, ex.Message);");
@@ -677,6 +677,7 @@ public static class CommandFormEmitter {
 
     private static void EmitBuildRenderTree(StringBuilder sb, CommandFormModel form, CommandFluxorModel fluxor, string escapedButtonLabel) {
         bool hasAuthorizationPolicy = !string.IsNullOrWhiteSpace(form.AuthorizationPolicyName);
+        string lifecycleCommandId = BuildLifecycleCommandId(form.TypeName);
 
         _ = sb.AppendLine("    /// <inheritdoc />");
         _ = sb.AppendLine("    protected override void BuildRenderTree(RenderTreeBuilder builder)");
@@ -692,10 +693,12 @@ public static class CommandFormEmitter {
         // renders around every generated form without service-locator plumbing.
         _ = sb.AppendLine("        builder.OpenComponent<FcLifecycleWrapper>(seq++);");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CorrelationId\", _submittedCorrelationId);");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"CommandId\", \"" + lifecycleCommandId + "\");");
         // Story 2-5 Task 5.2 + D4 — emitted attributes forward rejection copy + domain-language title
         // computed from the Fluxor feature state's RejectionReason/RejectionResolution fields.
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RejectionMessage\", BuildFcLifecycleRejectionCopy());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RejectionTitle\", BuildFcLifecycleRejectionTitle());");
+        _ = sb.AppendLine("        builder.AddAttribute(seq++, \"RejectionDetails\", BuildFcLifecycleRejectionDetails());");
         _ = sb.AppendLine("        builder.AddAttribute(seq++, \"ChildContent\", (RenderFragment)(__wrap =>");
         _ = sb.AppendLine("        {");
         _ = sb.AppendLine("            int wseq = 0;");
@@ -982,6 +985,18 @@ public static class CommandFormEmitter {
         _ = sb.AppendLine("           ? \"" + escapedButtonLabel + " failed\"");
         _ = sb.AppendLine("           : null;");
         _ = sb.AppendLine();
+        _ = sb.AppendLine("    /// <summary>Story 3-4 — carries typed rejection metadata to the lifecycle wrapper.</summary>");
+        _ = sb.AppendLine("    private CommandRejectionDetails? BuildFcLifecycleRejectionDetails()");
+        _ = sb.AppendLine("    {");
+        _ = sb.AppendLine("        if (LifecycleState.Value.State != CommandLifecycleState.Rejected) return null;");
+        _ = sb.AppendLine("        return CommandRejectionDetails.FromOptional(");
+        _ = sb.AppendLine("            LifecycleState.Value.RejectionErrorCode,");
+        _ = sb.AppendLine("            LifecycleState.Value.RejectionReasonCategory,");
+        _ = sb.AppendLine("            LifecycleState.Value.RejectionSuggestedAction,");
+        _ = sb.AppendLine("            LifecycleState.Value.RejectionDocsCode,");
+        _ = sb.AppendLine("            LifecycleState.Value.RejectionResolution);");
+        _ = sb.AppendLine("    }");
+        _ = sb.AppendLine();
     }
 
     private static void EmitNumericConverters(StringBuilder sb, CommandFormModel form) {
@@ -1100,4 +1115,34 @@ public static class CommandFormEmitter {
     /// are handled correctly. Patch 2026-04-16 P-05.
     /// </summary>
     private static string EscapeString(string value) => Microsoft.CodeAnalysis.CSharp.SymbolDisplay.FormatLiteral(value, quote: false);
+
+    private static string BuildLifecycleCommandId(string typeName) {
+        string source = typeName.EndsWith("Command", StringComparison.Ordinal)
+            ? typeName.Substring(0, typeName.Length - "Command".Length)
+            : typeName;
+        if (string.IsNullOrEmpty(source)) {
+            return "command";
+        }
+
+        var sb = new StringBuilder(source.Length + 4);
+        for (int i = 0; i < source.Length; i++) {
+            char ch = source[i];
+            if (char.IsUpper(ch)) {
+                if (i > 0 && sb.Length > 0 && sb[sb.Length - 1] != '-') {
+                    _ = sb.Append('-');
+                }
+
+                _ = sb.Append(char.ToLowerInvariant(ch));
+            }
+            else if (char.IsLetterOrDigit(ch)) {
+                _ = sb.Append(char.ToLowerInvariant(ch));
+            }
+            else if (sb.Length > 0 && sb[sb.Length - 1] != '-') {
+                _ = sb.Append('-');
+            }
+        }
+
+        string result = sb.ToString().Trim('-');
+        return result.Length == 0 ? "command" : result;
+    }
 }

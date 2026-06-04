@@ -26,6 +26,11 @@ public sealed record ProblemDetailsPayload(
     string? EntityLabel,
     IReadOnlyDictionary<string, IReadOnlyList<string>> ValidationErrors,
     IReadOnlyList<string> GlobalErrors) {
+    /// <summary>
+    /// Gets typed command rejection metadata extracted from bounded ProblemDetails extension members.
+    /// </summary>
+    public CommandRejectionDetails? RejectionDetails { get; init; }
+
     /// <summary>An empty payload, used when the server returned no parseable body.</summary>
     public static ProblemDetailsPayload Empty { get; } = new(
         Title: null,

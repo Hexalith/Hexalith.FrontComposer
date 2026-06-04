@@ -59,6 +59,10 @@ public class StubCommandServiceTests {
         options.SimulateRejection = true;
         options.RejectionReason = "domain failure";
         options.RejectionResolution = "fix your input";
+        options.RejectionErrorCode = "STUB-409";
+        options.RejectionReasonCategory = "Stub";
+        options.RejectionSuggestedAction = "Change the stub input";
+        options.RejectionDocsCode = "FC-STUB-409";
         StubCommandService service = BuildService(options);
 
         CommandRejectedException? caught = null;
@@ -72,6 +76,10 @@ public class StubCommandServiceTests {
         _ = caught.ShouldNotBeNull();
         caught.Message.ShouldBe("domain failure");
         caught.Resolution.ShouldBe("fix your input");
+        caught.ErrorCode.ShouldBe("STUB-409");
+        caught.ReasonCategory.ShouldBe("Stub");
+        caught.SuggestedAction.ShouldBe("Change the stub input");
+        caught.DocsCode.ShouldBe("FC-STUB-409");
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Hexalith.FrontComposer.Contracts;
 using Hexalith.FrontComposer.Contracts.Diagnostics;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.State.ProjectionConnection;
 
@@ -42,6 +43,10 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     [Parameter]
     public RenderFragment? ChildContent { get; set; }
 
+    /// <summary>Gets or sets the stable command id used by browser E2E selectors.</summary>
+    [Parameter]
+    public string? CommandId { get; set; }
+
     /// <summary>Gets or sets the optional domain-specific rejection copy. Story 2-5 populates; null → generic fallback (D22 XSS: rendered as plain text, never MarkupString).</summary>
     [Parameter]
     public string? RejectionMessage { get; set; }
@@ -52,6 +57,12 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
     /// </summary>
     [Parameter]
     public string? RejectionTitle { get; set; }
+
+    /// <summary>
+    /// Gets or sets optional typed rejection metadata. Plain text only; rendered with normal Blazor encoding.
+    /// </summary>
+    [Parameter]
+    public CommandRejectionDetails? RejectionDetails { get; set; }
 
     /// <summary>
     /// Story 2-5 D3 / D7 / D17 — optional adopter-supplied idempotent Info copy override.
@@ -173,7 +184,7 @@ public partial class FcLifecycleWrapper : ComponentBase, IAsyncDisposable, IDisp
 
     private void ApplyTransition(CommandLifecycleTransition transition) {
         LifecycleTimerPhase phase = _timer?.CurrentPhase ?? LifecycleTimerPhase.NoPulse;
-        LifecycleUiState next = LifecycleUiState.From(transition, phase, RejectionMessage, RejectionTitle);
+        LifecycleUiState next = LifecycleUiState.From(transition, phase, RejectionMessage, RejectionTitle, RejectionDetails);
 
         switch (transition.NewState) {
             case CommandLifecycleState.Acknowledged:

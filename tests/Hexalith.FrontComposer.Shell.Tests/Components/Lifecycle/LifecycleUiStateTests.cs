@@ -1,3 +1,4 @@
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 
@@ -88,6 +89,17 @@ public sealed class LifecycleUiStateTests {
         LifecycleUiState state = LifecycleUiState.From(T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected), LifecycleTimerPhase.Terminal, DomainCopy);
 
         state.RejectionMessage.ShouldBe(DomainCopy);
+    }
+
+    [Fact]
+    public void Rejected_carries_typed_RejectionDetails_when_populated() {
+        CommandRejectionDetails details = new("INV-409", "Inventory", "Lower quantity", "FC-CMD-409");
+        LifecycleUiState state = LifecycleUiState.From(
+            T(CommandLifecycleState.Syncing, CommandLifecycleState.Rejected),
+            LifecycleTimerPhase.Terminal,
+            rejectionDetails: details);
+
+        state.RejectionDetails.ShouldBeSameAs(details);
     }
 
     [Fact]

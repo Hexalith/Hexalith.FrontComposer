@@ -41,7 +41,14 @@ public static class CommandFluxorActionsEmitter {
         _ = sb.AppendLine("    public sealed record ConfirmedAction(string CorrelationId);");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>Command rejected by the domain. Form retains its field values.</summary>");
-        _ = sb.AppendLine("    public sealed record RejectedAction(string CorrelationId, string Reason, string Resolution);");
+        _ = sb.AppendLine("    public sealed record RejectedAction(");
+        _ = sb.AppendLine("        string CorrelationId,");
+        _ = sb.AppendLine("        string Reason,");
+        _ = sb.AppendLine("        string Resolution,");
+        _ = sb.AppendLine("        string? ErrorCode,");
+        _ = sb.AppendLine("        string? ReasonCategory,");
+        _ = sb.AppendLine("        string? SuggestedAction,");
+        _ = sb.AppendLine("        string? DocsCode);");
         _ = sb.AppendLine();
         _ = sb.AppendLine("    /// <summary>");
         _ = sb.AppendLine("    /// Resets the lifecycle state to Idle -- dispatched after a Rejected terminal to allow resubmit,");

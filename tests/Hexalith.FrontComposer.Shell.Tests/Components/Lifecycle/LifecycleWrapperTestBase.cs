@@ -1,6 +1,7 @@
 using Bunit;
 
 using Hexalith.FrontComposer.Contracts;
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 using Hexalith.FrontComposer.Shell.Options;
@@ -68,19 +69,21 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
             LastTransitionAt: anchor,
             IdempotencyResolved: idempotencyResolved);
 
-    protected IRenderedComponent<FcLifecycleWrapper> RenderWrapperWithStubService() {
+    protected IRenderedComponent<FcLifecycleWrapper> RenderWrapperWithStubService(string? commandId = null) {
         ILifecycleStateService stub = Substitute.For<ILifecycleStateService>();
         _ = stub.Subscribe(Arg.Any<string>(), Arg.Any<Action<CommandLifecycleTransition>>())
             .Returns(Substitute.For<IDisposable>());
         RegisterLifecycleService(stub);
         return Render<FcLifecycleWrapper>(p => p
             .Add(c => c.CorrelationId, DefaultCorrelationId)
+            .Add(c => c.CommandId, commandId)
             .AddChildContent("<span class='child-content-marker'>child</span>"));
     }
 
     protected (IRenderedComponent<FcLifecycleWrapper> Cut, Action<CommandLifecycleTransition> Push) RenderWrapperWithLiveService(
         string? rejectionMessage = null,
         string? rejectionTitle = null,
+        CommandRejectionDetails? rejectionDetails = null,
         string? idempotentInfoMessage = null) {
         ILifecycleStateService service = Substitute.For<ILifecycleStateService>();
         Action<CommandLifecycleTransition>? captured = null;
@@ -92,6 +95,7 @@ public abstract class LifecycleWrapperTestBase : BunitContext {
             .Add(c => c.CorrelationId, DefaultCorrelationId)
             .Add(c => c.RejectionMessage, rejectionMessage)
             .Add(c => c.RejectionTitle, rejectionTitle)
+            .Add(c => c.RejectionDetails, rejectionDetails)
             .Add(c => c.IdempotentInfoMessage, idempotentInfoMessage)
             .AddChildContent("<span class='child-content-marker'>child</span>"));
 

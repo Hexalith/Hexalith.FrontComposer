@@ -94,6 +94,42 @@ public class Story52ResponseSurfaceTests {
 
         ex.Message.ShouldBe("Order locked");
         ex.Resolution.ShouldBe("Wait for the previous edit to commit.");
+        ex.ErrorCode.ShouldBe(CommandRejectionDetails.UnknownErrorCode);
+        ex.ReasonCategory.ShouldBe(CommandRejectionDetails.UnknownReasonCategory);
+        ex.SuggestedAction.ShouldBe("Wait for the previous edit to commit.");
+        ex.DocsCode.ShouldBe(CommandRejectionDetails.UnknownDocsCode);
+    }
+
+    [Fact]
+    public void CommandRejectedException_CarriesTypedRejectionDetailsWhenProvided() {
+        CommandRejectionDetails details = new(
+            ErrorCode: "ORDER_LOCKED",
+            ReasonCategory: "Concurrency",
+            SuggestedAction: "Reload the order.",
+            DocsCode: "FC-CMD-409");
+
+        CommandRejectedException ex = new("Order locked", "Retry later.", details);
+
+        ex.Details.ShouldBeSameAs(details);
+        ex.ErrorCode.ShouldBe("ORDER_LOCKED");
+        ex.ReasonCategory.ShouldBe("Concurrency");
+        ex.SuggestedAction.ShouldBe("Reload the order.");
+        ex.DocsCode.ShouldBe("FC-CMD-409");
+    }
+
+    [Fact]
+    public void CommandRejectionDetails_FromOptional_UsesSafeFallbackText() {
+        CommandRejectionDetails details = CommandRejectionDetails.FromOptional(
+            errorCode: null,
+            reasonCategory: "",
+            suggestedAction: " ",
+            docsCode: null,
+            fallbackSuggestedAction: "Correct the command.");
+
+        details.ErrorCode.ShouldBe(CommandRejectionDetails.UnknownErrorCode);
+        details.ReasonCategory.ShouldBe(CommandRejectionDetails.UnknownReasonCategory);
+        details.SuggestedAction.ShouldBe("Correct the command.");
+        details.DocsCode.ShouldBe(CommandRejectionDetails.UnknownDocsCode);
     }
 
     [Fact]

@@ -1,5 +1,6 @@
 using Bunit;
 
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 using Hexalith.FrontComposer.Shell.Components.Lifecycle;
 
@@ -41,6 +42,50 @@ public sealed class FcLifecycleWrapperRejectionTests : LifecycleWrapperTestBase 
 
         cut.Markup.ShouldContain("&lt;script&gt;");
         cut.Markup.ShouldNotContain("<script>alert", Case.Sensitive);
+    }
+
+    [Fact]
+    public void Rejection_typed_fields_render_as_plain_text() {
+        CommandRejectionDetails details = new(
+            ErrorCode: "<E409>",
+            ReasonCategory: "Inventory",
+            SuggestedAction: "Lower quantity",
+            DocsCode: "FC-CMD-409");
+        var (cut, push) = RenderWrapperWithLiveService(
+            rejectionMessage: "Rejected.",
+            rejectionDetails: details);
+
+        push(RejectedNow());
+
+        cut.Markup.ShouldContain("Error code");
+        cut.Markup.ShouldContain("&lt;E409&gt;");
+        cut.Markup.ShouldContain("Reason category");
+        cut.Markup.ShouldContain("Inventory");
+        cut.Markup.ShouldContain("Suggested action");
+        cut.Markup.ShouldContain("Lower quantity");
+        cut.Markup.ShouldContain("Docs code");
+        cut.Markup.ShouldContain("FC-CMD-409");
+        cut.Markup.ShouldNotContain("<E409>", Case.Sensitive);
+    }
+
+    [Fact]
+    public void Rejection_typed_fields_use_fallback_text_when_values_missing() {
+        CommandRejectionDetails details = CommandRejectionDetails.FromOptional(
+            errorCode: null,
+            reasonCategory: null,
+            suggestedAction: null,
+            docsCode: null,
+            fallbackSuggestedAction: null);
+        var (cut, push) = RenderWrapperWithLiveService(
+            rejectionMessage: "Rejected.",
+            rejectionDetails: details);
+
+        push(RejectedNow());
+
+        cut.Markup.ShouldContain(CommandRejectionDetails.UnknownErrorCode);
+        cut.Markup.ShouldContain(CommandRejectionDetails.UnknownReasonCategory);
+        cut.Markup.ShouldContain(CommandRejectionDetails.UnknownSuggestedAction);
+        cut.Markup.ShouldContain(CommandRejectionDetails.UnknownDocsCode);
     }
 
     [Fact]

@@ -323,7 +323,7 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         }
         catch (CommandRejectedException ex)
         {
-            Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution));
+            Dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode));
             // Notify validation pipeline so any stale error state redraws (patch P16).
             _editContext?.NotifyValidationStateChanged();
             Logger?.LogWarning("Command rejected. CorrelationId={CorrelationId} Reason={Reason}", correlationId, ex.Message);
@@ -367,8 +367,10 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
 
         builder.OpenComponent<FcLifecycleWrapper>(seq++);
         builder.AddAttribute(seq++, "CorrelationId", _submittedCorrelationId);
+        builder.AddAttribute(seq++, "CommandId", "increment");
         builder.AddAttribute(seq++, "RejectionMessage", BuildFcLifecycleRejectionCopy());
         builder.AddAttribute(seq++, "RejectionTitle", BuildFcLifecycleRejectionTitle());
+        builder.AddAttribute(seq++, "RejectionDetails", BuildFcLifecycleRejectionDetails());
         builder.AddAttribute(seq++, "ChildContent", (RenderFragment)(__wrap =>
         {
             int wseq = 0;
@@ -500,6 +502,18 @@ public partial class IncrementCommandForm : ComponentBase, IDisposable
         => LifecycleState.Value.State == CommandLifecycleState.Rejected
            ? "Send IncrementCommand failed"
            : null;
+
+    /// <summary>Story 3-4 — carries typed rejection metadata to the lifecycle wrapper.</summary>
+    private CommandRejectionDetails? BuildFcLifecycleRejectionDetails()
+    {
+        if (LifecycleState.Value.State != CommandLifecycleState.Rejected) return null;
+        return CommandRejectionDetails.FromOptional(
+            LifecycleState.Value.RejectionErrorCode,
+            LifecycleState.Value.RejectionReasonCategory,
+            LifecycleState.Value.RejectionSuggestedAction,
+            LifecycleState.Value.RejectionDocsCode,
+            LifecycleState.Value.RejectionResolution);
+    }
 
 
     private void OnAmountChanged(string? value)

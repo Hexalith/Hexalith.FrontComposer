@@ -55,9 +55,16 @@ public sealed class StubCommandService : ICommandServiceWithLifecycle {
         }
 
         if (opts.SimulateRejection) {
+            string resolution = opts.RejectionResolution ?? "Adjust input and retry";
             throw new CommandRejectedException(
                 opts.RejectionReason ?? "Simulated rejection",
-                opts.RejectionResolution ?? "Adjust input and retry");
+                resolution,
+                CommandRejectionDetails.FromOptional(
+                    opts.RejectionErrorCode,
+                    opts.RejectionReasonCategory,
+                    opts.RejectionSuggestedAction,
+                    opts.RejectionDocsCode,
+                    resolution));
         }
 
         string messageId = _ulidFactory.NewUlid();

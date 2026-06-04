@@ -26,4 +26,16 @@ public sealed class StubCommandServiceOptions {
 
     /// <summary>Gets or sets the resolution guidance used when <see cref="SimulateRejection"/> is <see langword="true"/>.</summary>
     public string? RejectionResolution { get; set; }
+
+    /// <summary>Gets or sets the typed rejection error code used when <see cref="SimulateRejection"/> is <see langword="true"/>.</summary>
+    public string? RejectionErrorCode { get; set; }
+
+    /// <summary>Gets or sets the typed rejection reason category used when <see cref="SimulateRejection"/> is <see langword="true"/>.</summary>
+    public string? RejectionReasonCategory { get; set; }
+
+    /// <summary>Gets or sets the typed rejection suggested action used when <see cref="SimulateRejection"/> is <see langword="true"/>.</summary>
+    public string? RejectionSuggestedAction { get; set; }
+
+    /// <summary>Gets or sets the typed rejection documentation code used when <see cref="SimulateRejection"/> is <see langword="true"/>.</summary>
+    public string? RejectionDocsCode { get; set; }
 }

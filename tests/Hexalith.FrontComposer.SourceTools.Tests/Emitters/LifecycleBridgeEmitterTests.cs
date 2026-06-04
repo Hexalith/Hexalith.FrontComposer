@@ -36,6 +36,15 @@ public class LifecycleBridgeEmitterTests {
     }
 
     [Fact]
+    public void Emit_RejectedAction_ForwardsExactlyOneRejectedTransitionToLifecycleService() {
+        string source = CommandLifecycleBridgeEmitter.Emit(BuildFluxor());
+
+        source.ShouldContain("_subscriber.SubscribeToAction<IncrementCommandActions.RejectedAction>(this,");
+        source.ShouldContain("a => _service.Transition(a.CorrelationId, global::Hexalith.FrontComposer.Contracts.Lifecycle.CommandLifecycleState.Rejected, null));");
+        source.Split("CommandLifecycleState.Rejected").Length.ShouldBe(2);
+    }
+
+    [Fact]
     public void Emit_CommandNamespace_MatchesCommand() {
         string source = CommandLifecycleBridgeEmitter.Emit(BuildFluxor("ConfigureCounterCommand", "Counter.Domain"));
 

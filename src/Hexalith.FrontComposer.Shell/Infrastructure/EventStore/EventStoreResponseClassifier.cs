@@ -101,7 +101,7 @@ public sealed class EventStoreResponseClassifier {
                     : problem.Title!;
                 string resolution = problem.Detail ?? string.Empty;
                 return EventStoreCommandClassification.FromFailure(
-                    new CommandRejectedException(reason, resolution));
+                    new CommandRejectedException(reason, resolution, problem.RejectionDetails));
             }
 
             case (HttpStatusCode)429: {
@@ -242,6 +242,7 @@ public sealed class EventStoreResponseClassifier {
         string? detail = TryGetString(root, "detail");
         int? status = TryGetInt(root, "status");
         string? entityLabel = TryGetString(root, "entityLabel");
+        CommandRejectionDetails? rejectionDetails = TryGetCommandRejectionDetails(root, detail);
 
         Dictionary<string, IReadOnlyList<string>> errors = new(StringComparer.Ordinal);
         if (root.TryGetProperty("errors", out JsonElement errorsElement)
@@ -301,7 +302,28 @@ public sealed class EventStoreResponseClassifier {
             Status: status,
             EntityLabel: entityLabel,
             ValidationErrors: errors,
-            GlobalErrors: globals);
+            GlobalErrors: globals) {
+            RejectionDetails = rejectionDetails,
+        };
+    }
+
+    private static CommandRejectionDetails? TryGetCommandRejectionDetails(JsonElement root, string? fallbackSuggestedAction) {
+        string? errorCode = TryGetString(root, "errorCode");
+        string? reasonCategory = TryGetString(root, "reasonCategory");
+        string? suggestedAction = TryGetString(root, "suggestedAction");
+        string? docsCode = TryGetString(root, "docsCode");
+
+        return errorCode is null
+            && reasonCategory is null
+            && suggestedAction is null
+            && docsCode is null
+            ? null
+            : CommandRejectionDetails.FromOptional(
+                errorCode,
+                reasonCategory,
+                suggestedAction,
+                docsCode,
+                fallbackSuggestedAction);
     }
 
     private static string? TryGetString(JsonElement root, string propertyName)

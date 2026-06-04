@@ -1,3 +1,4 @@
+using Hexalith.FrontComposer.Contracts.Communication;
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
 namespace Hexalith.FrontComposer.Shell.Components.Lifecycle;
@@ -33,7 +34,7 @@ public enum LifecycleTimerPhase {
 /// <list type="bullet">
 ///   <item><description>(Idle, *) → no announcement, no pulse, no message bar (AC1 quiet).</description></item>
 ///   <item><description>(Submitting, *) → polite "Submitting…" announcement; no pulse.</description></item>
-///   <item><description>(Acknowledged, NoPulse) → silent; timer started.</description></item>
+///   <item><description>(Acknowledged, NoPulse) → polite acknowledgement surfaces; timer started.</description></item>
 ///   <item><description>(Syncing, Pulse) → outline pulse CSS class applied (visual only, no announcement — Sally 2026-04-16).</description></item>
 ///   <item><description>(Syncing, StillSyncing) → polite "Still syncing…" badge + polite announcement (AC4).</description></item>
 ///   <item><description>(Syncing, ActionPrompt) → assertive warning message bar + "Start over" button (AC5).</description></item>
@@ -63,6 +64,9 @@ public sealed record LifecycleUiState {
 
     /// <summary>Optional domain-specific rejection TITLE (Story 2-5 D4); null falls back to "Submission rejected" (Story 2-4 localized).</summary>
     public string? RejectionTitle { get; init; }
+
+    /// <summary>Optional typed rejection metadata rendered as plain text in the rejected branch.</summary>
+    public CommandRejectionDetails? RejectionDetails { get; init; }
 
     /// <summary>When Confirmed, the wall-clock cutoff for auto-dismiss; otherwise null.</summary>
     public DateTimeOffset? ConfirmedDismissAt { get; init; }
@@ -95,12 +99,14 @@ public sealed record LifecycleUiState {
     /// <param name="phase">The current threshold phase from <see cref="LifecycleThresholdTimer"/>.</param>
     /// <param name="rejectionMessage">The optional <c>RejectionMessage</c> parameter of the wrapper (Story 2-5 populates).</param>
     /// <param name="rejectionTitle">The optional <c>RejectionTitle</c> parameter (Story 2-5 D4 domain-language title).</param>
+    /// <param name="rejectionDetails">The optional typed rejection details parameter.</param>
     /// <returns>A new <see cref="LifecycleUiState"/>.</returns>
     public static LifecycleUiState From(
         CommandLifecycleTransition transition,
         LifecycleTimerPhase phase,
         string? rejectionMessage = null,
-        string? rejectionTitle = null) {
+        string? rejectionTitle = null,
+        CommandRejectionDetails? rejectionDetails = null) {
         ArgumentNullException.ThrowIfNull(transition);
 
         // Terminal states ignore the timer phase — always Terminal in the UI state.
@@ -120,6 +126,7 @@ public sealed record LifecycleUiState {
             LastTransitionAt = transition.LastTransitionAt,
             RejectionMessage = rejectionMessage,
             RejectionTitle = rejectionTitle,
+            RejectionDetails = rejectionDetails,
             IsIdempotent = isIdempotent,
         };
     }

@@ -110,6 +110,43 @@ public class EventStoreResponseClassifierTests {
     }
 
     [Fact]
+    public async Task Command_409Conflict_CarriesTypedRejectionDetailsFromProblemExtensions() {
+        using HttpResponseMessage response = new(HttpStatusCode.Conflict) {
+            Content = new StringContent(
+                """{"title":"order locked","detail":"please retry","errorCode":"ORDER_LOCKED","reasonCategory":"Concurrency","suggestedAction":"Reload the order","docsCode":"FC-CMD-409"}""",
+                Encoding.UTF8,
+                "application/problem+json"),
+        };
+
+        EventStoreCommandClassification classification = await _classifier.ClassifyCommandAsync(response, TestContext.Current.CancellationToken);
+
+        CommandRejectedException ex = classification.Failure.ShouldBeOfType<CommandRejectedException>();
+        ex.ErrorCode.ShouldBe("ORDER_LOCKED");
+        ex.ReasonCategory.ShouldBe("Concurrency");
+        ex.SuggestedAction.ShouldBe("Reload the order");
+        ex.DocsCode.ShouldBe("FC-CMD-409");
+    }
+
+    [Fact]
+    public async Task Command_409Conflict_BoundsTypedRejectionDetailStrings() {
+        string longCode = new('X', 600);
+        using HttpResponseMessage response = new(HttpStatusCode.Conflict) {
+            Content = new StringContent(
+                $$"""{"title":"order locked","detail":"please retry","errorCode":"{{longCode}}"}""",
+                Encoding.UTF8,
+                "application/problem+json"),
+        };
+
+        EventStoreCommandClassification classification = await _classifier.ClassifyCommandAsync(response, TestContext.Current.CancellationToken);
+
+        CommandRejectedException ex = classification.Failure.ShouldBeOfType<CommandRejectedException>();
+        ex.ErrorCode.Length.ShouldBe(512);
+        ex.ReasonCategory.ShouldBe(CommandRejectionDetails.UnknownReasonCategory);
+        ex.SuggestedAction.ShouldBe("please retry");
+        ex.DocsCode.ShouldBe(CommandRejectionDetails.UnknownDocsCode);
+    }
+
+    [Fact]
     public async Task Command_429RateLimited_ProducesCommandWarningException_WithRetryAfter() {
         using HttpResponseMessage response = new((HttpStatusCode)429) {
             Content = new StringContent("""{"title":"rate limited"}""", Encoding.UTF8, "application/problem+json"),

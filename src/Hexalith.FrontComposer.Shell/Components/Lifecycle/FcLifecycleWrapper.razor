@@ -1,4 +1,5 @@
 @namespace Hexalith.FrontComposer.Shell.Components.Lifecycle
+@using Hexalith.FrontComposer.Contracts.Communication
 @using Hexalith.FrontComposer.Contracts.Lifecycle
 @using Microsoft.AspNetCore.Components
 @using Microsoft.FluentUI.AspNetCore.Components
@@ -7,7 +8,9 @@
    wrapper-initiated Start-over navigation. Today `OnStartOverClicked` uses forceLoad:true
    which bypasses NavigationLock anyway, but the cascade is correct defense-in-depth. *@
 <CascadingValue Name="WrapperInitiatedNavigation" Value="_wrapperInitiatedNavigation" IsFixed="false">
-<div class="fc-lifecycle-wrapper @PulseClass()">
+<div class="fc-lifecycle-wrapper @PulseClass()"
+     data-testid="@LifecycleTestId"
+     data-lifecycle-state="@LifecycleStateAttribute">
     @ChildContent
 
     @if (!string.IsNullOrEmpty(Announcement)) {
@@ -21,6 +24,22 @@
         <FluentBadge Appearance="BadgeAppearance.Filled"
                      Color="BadgeColor.Informative"
                      class="fc-lifecycle-still-syncing">Still syncing…</FluentBadge>
+    }
+
+    @if (_state.Current is CommandLifecycleState.Acknowledged) {
+        <FluentBadge Appearance="BadgeAppearance.Filled"
+                     Color="BadgeColor.Informative"
+                     class="fc-lifecycle-acknowledged"
+                     data-testid="fc-acknowledged-badge">Acknowledged</FluentBadge>
+
+        <FluentMessageBar Intent="MessageBarIntent.Info"
+                         Title="Submission acknowledged"
+                         AllowDismiss="false"
+                         data-testid="fc-acknowledged">
+            <ChildContent>
+                The command was accepted and is waiting for confirmation.
+            </ChildContent>
+        </FluentMessageBar>
     }
 
     @if (_state.Current is CommandLifecycleState.Syncing
@@ -67,6 +86,26 @@
                          data-testid="fc-rejected">
             <ChildContent>
                 @(RejectionMessage ?? "The command was rejected. Please review your input and try again.")
+                @if (RejectionDetails is not null) {
+                    <dl class="fc-rejection-details">
+                        <div>
+                            <dt>Error code</dt>
+                            <dd>@RejectionDetails.ErrorCode</dd>
+                        </div>
+                        <div>
+                            <dt>Reason category</dt>
+                            <dd>@RejectionDetails.ReasonCategory</dd>
+                        </div>
+                        <div>
+                            <dt>Suggested action</dt>
+                            <dd>@RejectionDetails.SuggestedAction</dd>
+                        </div>
+                        <div>
+                            <dt>Docs code</dt>
+                            <dd>@RejectionDetails.DocsCode</dd>
+                        </div>
+                    </dl>
+                }
             </ChildContent>
         </FluentMessageBar>
     }
@@ -77,6 +116,18 @@
     private string ResolveRejectionTitle()
         // Review 2026-04-17 P14 — IsNullOrEmpty already narrows to non-null; no `!` needed.
         => string.IsNullOrEmpty(RejectionTitle) ? "Submission rejected" : RejectionTitle;
+
+    private string? LifecycleTestId =>
+        string.IsNullOrWhiteSpace(CommandId) ? null : $"fc-lifecycle-{CommandId}";
+
+    private string LifecycleStateAttribute => _state.Current switch {
+        CommandLifecycleState.Submitting => "submitting",
+        CommandLifecycleState.Acknowledged => "acknowledged",
+        CommandLifecycleState.Syncing => "syncing",
+        CommandLifecycleState.Confirmed => "confirmed",
+        CommandLifecycleState.Rejected => "rejected",
+        _ => "idle",
+    };
 
     private string ActionPromptTitle =>
         _state.Current is CommandLifecycleState.Syncing
@@ -93,6 +144,7 @@
 
     private string Announcement => _state.Current switch {
         CommandLifecycleState.Submitting => "Submitting…",
+        CommandLifecycleState.Acknowledged => "Acknowledged",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "Still syncing…",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt && _projectionConnectionSnapshot.IsDisconnected => "Connection lost -- unable to confirm sync status",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "The system hasn't confirmed your submission. You can wait or start over.",
@@ -118,6 +170,7 @@
 
     private string DataPhase => _state.Current switch {
         CommandLifecycleState.Submitting => "submitting",
+        CommandLifecycleState.Acknowledged => "acknowledged",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.StillSyncing => "still-syncing",
         CommandLifecycleState.Syncing when _state.TimerPhase is LifecycleTimerPhase.ActionPrompt => "action-prompt",
         CommandLifecycleState.Confirmed when _state.IsIdempotent => "confirmed-idempotent",

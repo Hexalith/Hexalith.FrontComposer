@@ -100,7 +100,14 @@ public sealed class CounterPageLifecycleE2ETests : CommandRendererTestBase {
 
         dispatcher.Dispatch(new IncrementCommandActions.SubmittedAction(cid, new IncrementCommand()));
         dispatcher.Dispatch(new IncrementCommandActions.AcknowledgedAction(cid, "MSG-3"));
-        dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(cid, "test rejection", "check your input"));
+        dispatcher.Dispatch(new IncrementCommandActions.RejectedAction(
+            cid,
+            "test rejection",
+            "check your input",
+            "TEST-409",
+            "Test",
+            "check your input",
+            "FC-CMD-TEST"));
 
         SpinWait.SpinUntil(() => service.GetState(cid) == CommandLifecycleState.Rejected, TimeSpan.FromSeconds(2))
             .ShouldBeTrue();

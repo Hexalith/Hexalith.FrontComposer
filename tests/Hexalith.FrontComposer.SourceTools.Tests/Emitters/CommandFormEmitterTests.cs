@@ -114,7 +114,22 @@ public class CommandFormEmitterTests {
         source.ShouldContain("IncrementCommandActions.AcknowledgedAction(correlationId, result.MessageId)");
         source.ShouldContain("IncrementCommandActions.SyncingAction(correlationId)");
         source.ShouldContain("IncrementCommandActions.ConfirmedAction(correlationId)");
-        source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution)");
+        source.ShouldContain("IncrementCommandActions.RejectedAction(correlationId, ex.Message, ex.Resolution, ex.ErrorCode, ex.ReasonCategory, ex.SuggestedAction, ex.DocsCode)");
+    }
+
+    [Fact]
+    public void Emit_ForwardsTypedRejectionDetailsToLifecycleWrapper() {
+        CommandFormModel form = BuildForm([
+            new FormFieldModel("Amount", "Int32", FormFieldTypeCategory.NumberInput, "Amount", false, true, null),
+        ]);
+        string source = CommandFormEmitter.Emit(form, BuildFluxor());
+
+        source.ShouldContain("builder.AddAttribute(seq++, \"RejectionDetails\", BuildFcLifecycleRejectionDetails());");
+        source.ShouldContain("private CommandRejectionDetails? BuildFcLifecycleRejectionDetails()");
+        source.ShouldContain("LifecycleState.Value.RejectionErrorCode");
+        source.ShouldContain("LifecycleState.Value.RejectionReasonCategory");
+        source.ShouldContain("LifecycleState.Value.RejectionSuggestedAction");
+        source.ShouldContain("LifecycleState.Value.RejectionDocsCode");
     }
 
     [Fact]
