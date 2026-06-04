@@ -14,6 +14,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandOutcomeResolverTests {
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+    private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
+    private const string SecondCorrelationId = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
 
     [Fact]
     public void Resolve_FromMessageId_UsesSharedPendingStateTerminalPath() {
@@ -25,7 +27,7 @@ public sealed class PendingCommandOutcomeResolverTests {
 
         result.Status.ShouldBe(PendingCommandOutcomeResolutionStatus.Resolved);
         state.GetByMessageId(MessageId)!.Status.ShouldBe(PendingCommandStatus.Confirmed);
-        lifecycle.Received(1).Transition("corr-1", CommandLifecycleState.Confirmed, MessageId, false);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
     }
 
     [Fact]
@@ -45,7 +47,7 @@ public sealed class PendingCommandOutcomeResolverTests {
         ILifecycleStateService lifecycle = Substitute.For<ILifecycleStateService>();
         PendingCommandOutcomeResolver sut = Create(lifecycle, out PendingCommandStateService state);
         state.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
-        state.Register(Registration("corr-2", "01BRZ3NDEKTSV4RRFFQ69G5FAV")).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        state.Register(Registration(SecondCorrelationId, "01BRZ3NDEKTSV4RRFFQ69G5FAV")).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
         PendingCommandOutcomeResolutionResult result = sut.Resolve(Outcome(messageId: null));
 
@@ -67,7 +69,7 @@ public sealed class PendingCommandOutcomeResolverTests {
     }
 
     private static PendingCommandRegistration Registration(
-        string correlationId = "corr-1",
+        string correlationId = CorrelationId,
         string messageId = MessageId) =>
         new(
             CorrelationId: correlationId,
@@ -109,7 +111,7 @@ public sealed class PendingCommandOutcomeResolverTests {
         entry.RejectionDataImpact.ShouldBe("No data changed.");
         // Resolver MUST NOT call back into storage on the reject path.
         storage.ReceivedCalls().ShouldBeEmpty();
-        lifecycle.Received(1).Transition("corr-1", CommandLifecycleState.Rejected, MessageId, false);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId, false);
     }
 
     private static PendingCommandOutcomeObservation Outcome(string? messageId) =>

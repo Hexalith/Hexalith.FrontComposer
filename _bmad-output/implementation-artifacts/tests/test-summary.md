@@ -3,22 +3,23 @@
 ## Generated Tests
 
 ### API Tests
-- [x] Not applicable - Story 3.2 covers generated Blazor command-form density surfaces and does not introduce HTTP API endpoints.
+- [x] Not applicable - Story 3.3 does not bind an HTTP API endpoint. The Counter E2E host uses `StubCommandService`; Story 3.5 owns the concrete EventStore status endpoint binding.
 
 ### E2E Tests
-- [x] `tests/e2e/specs/command-form-generation.spec.ts` - Added Story 3.2 density-rule coverage for inline, compact inline, and full-page command surfaces in the Counter sample.
+- [x] `tests/e2e/specs/command-form-generation.spec.ts` - Added Story 3.3 coverage for the FC-CMD pending-identity/correlation browser contract.
+- [x] `tests/e2e/specs/command-form-generation.spec.ts` - Extended existing command-form assertions so inline, compact inline, and full-page forms keep `MessageId`, `CorrelationId`, `TenantId`, and `UserId` framework-owned and hidden from user-editable fields.
 
 ## Coverage
-- API endpoints: 0/0 applicable.
-- UI density surfaces covered by generated E2E tests: 3/3 sample command densities - inline `IncrementCommand`, compact inline `BatchIncrementCommand`, full-page `ConfigureCounterCommand`.
-- Happy path covered: Story 3.2 workflow opens the inline popover, verifies the compact inline card, navigates to the full-page command route, and returns through the breadcrumb.
-- Critical error cases covered: the same spec already keeps Story 3.1 invalid-number coverage for the generated full-page form.
-- Contract checks covered: accessible labels are used for editable fields; derivable `MessageId` and `TenantId` fields stay hidden; inline and compact surfaces do not emit full-page breadcrumbs; full-page output does not emit the expand-in-row card.
+- API endpoints: 0/0 applicable for Story 3.3.
+- UI command identity surfaces: 3/3 sample command densities covered - inline `IncrementCommand`, compact inline `BatchIncrementCommand`, full-page `ConfigureCounterCommand`.
+- Happy path covered: compact generated form submits through the pending-command lifecycle and reaches confirmed feedback while framework-owned identity fields remain hidden before and after submission.
+- Critical error cases covered: existing full-page invalid-number E2E coverage remains in the same spec; malformed `MessageId` and `CorrelationId` rejection is non-UI service behavior covered by the story 3.3 xUnit tests.
+- Contract checks covered: generated forms do not render user-editable `MessageId`, `CorrelationId`, `TenantId`, or `UserId` fields, and successful submission renders `fc-confirmed` rather than the idempotent already-confirmed path.
 
 ## Validation
 - `npm --prefix tests/e2e run typecheck` - passed.
-- `npm --prefix tests/e2e test -- specs/command-form-generation.spec.ts --project=chromium --list` - passed; 4 Chromium tests discovered, including the new Story 3.2 density-rule test.
-- `npm --prefix tests/e2e test -- specs/command-form-generation.spec.ts --project=chromium` - attempted; blocked locally because Kestrel cannot bind a loopback socket in this sandbox (`System.Net.Sockets.SocketException (13): Permission denied`).
+- `npm --prefix tests/e2e run test:chromium -- specs/command-form-generation.spec.ts --list` - passed; 5 Chromium tests discovered, including the new Story 3.3 test.
+- `npm --prefix tests/e2e run test:chromium -- specs/command-form-generation.spec.ts` - attempted; blocked before browser execution because this sandbox denies Kestrel loopback socket binding (`System.Net.Sockets.SocketException (13): Permission denied`).
 
 ## Next Steps
-- Run `npm --prefix tests/e2e test -- specs/command-form-generation.spec.ts --project=chromium` in CI or a local environment that permits loopback sockets.
+- Run `npm --prefix tests/e2e run test:chromium -- specs/command-form-generation.spec.ts` in CI or a local environment that permits loopback sockets.

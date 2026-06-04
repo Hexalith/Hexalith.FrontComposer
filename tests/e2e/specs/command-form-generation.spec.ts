@@ -22,14 +22,13 @@ test.describe('Story 3.1: generated command forms', () => {
     await expect(compactForm.getByLabel('Amount')).toBeVisible();
     await expect(compactForm.getByLabel('Note')).toBeVisible();
     await expect(compactForm.getByLabel('Effective Date')).toBeVisible();
-    await expect(compactForm.getByLabel('MessageId')).toHaveCount(0);
-    await expect(compactForm.getByLabel('TenantId')).toHaveCount(0);
+    await expectFrameworkIdentityHidden(compactForm);
 
     await page.getByRole('button', { name: 'Increment' }).click();
     const inlineForm = commandForm(page, 'Increment command form');
     await expect(inlineForm).toBeVisible();
     await expect(inlineForm.getByLabel('Amount')).toBeVisible();
-    await expect(inlineForm.getByLabel('TenantId')).toHaveCount(0);
+    await expectFrameworkIdentityHidden(inlineForm);
     await page.getByRole('button', { name: 'Cancel' }).click();
 
     await page.getByRole('link', { name: 'Configure Counter' }).click();
@@ -40,8 +39,7 @@ test.describe('Story 3.1: generated command forms', () => {
     for (const label of ['Name', 'Description', 'Initial Value', 'Max Value', 'Category']) {
       await expect(fullPageForm.getByLabel(label), `${label} field is missing`).toBeVisible();
     }
-    await expect(fullPageForm.getByLabel('MessageId')).toHaveCount(0);
-    await expect(fullPageForm.getByLabel('TenantId')).toHaveCount(0);
+    await expectFrameworkIdentityHidden(fullPageForm);
   });
 
   test('compact generated form submits and reaches confirmed lifecycle feedback', async ({ page, tenant }) => {
@@ -106,8 +104,7 @@ test.describe('Story 3.2: command form density rule', () => {
     await expect(inlinePopover).toBeVisible();
     await expect(inlinePopover.locator(COMMAND_FORM)).toHaveAttribute('aria-label', 'Increment command form');
     await expect(inlinePopover.getByLabel('Amount')).toBeVisible();
-    await expect(inlinePopover.getByLabel('MessageId')).toHaveCount(0);
-    await expect(inlinePopover.getByLabel('TenantId')).toHaveCount(0);
+    await expectFrameworkIdentityHidden(inlinePopover);
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(inlinePopover).not.toBeVisible();
 
@@ -118,8 +115,7 @@ test.describe('Story 3.2: command form density rule', () => {
     await expect(compactCard.getByLabel('Amount')).toBeVisible();
     await expect(compactCard.getByLabel('Note')).toBeVisible();
     await expect(compactCard.getByLabel('Effective Date')).toBeVisible();
-    await expect(compactCard.getByLabel('MessageId')).toHaveCount(0);
-    await expect(compactCard.getByLabel('TenantId')).toHaveCount(0);
+    await expectFrameworkIdentityHidden(compactCard);
     await expect(compactSection.locator('[aria-label="breadcrumb"]')).toHaveCount(0);
 
     await page.getByRole('link', { name: 'Configure Counter' }).click();
@@ -135,12 +131,43 @@ test.describe('Story 3.2: command form density rule', () => {
     for (const label of ['Name', 'Description', 'Initial Value', 'Max Value', 'Category']) {
       await expect(fullPageForm.getByLabel(label), `${label} field is missing`).toBeVisible();
     }
-    await expect(fullPageForm.getByLabel('MessageId')).toHaveCount(0);
-    await expect(fullPageForm.getByLabel('TenantId')).toHaveCount(0);
+    await expectFrameworkIdentityHidden(fullPageForm);
 
     await counterReturnLink.click();
     await expect(page).toHaveURL(/\/counter$/);
     await expect(page.getByRole('heading', { name: 'Counter' })).toBeVisible();
+  });
+});
+
+test.describe('Story 3.3: FC-CMD pending identity and correlation contract', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => {
+      window.localStorage.clear();
+      window.sessionStorage.clear();
+    });
+  });
+
+  test('generated compact form keeps identity framework-owned while command reaches pending confirmation', async ({
+    page,
+    tenant,
+  }) => {
+    expect(tenant.tenantId).toBeTruthy();
+
+    await gotoCounter(page);
+
+    const compactForm = commandForm(page, 'Batch Increment command form');
+    await expect(compactForm).toBeVisible();
+    await expectFrameworkIdentityHidden(compactForm);
+
+    await fillField(compactForm, 'Amount', '3');
+    await fillField(compactForm, 'Note', 'QA story 3.3 identity contract');
+
+    await compactForm.getByRole('button', { name: 'Batch Increment' }).click();
+
+    await expect(compactForm.getByText(/Submitting/u)).toBeVisible();
+    await expect(compactForm.getByTestId('fc-confirmed')).toBeVisible();
+    await expect(compactForm.getByTestId('fc-idempotent')).toHaveCount(0);
+    await expectFrameworkIdentityHidden(compactForm);
   });
 });
 
@@ -156,4 +183,10 @@ const fillField = async (root: Locator, label: string, value: string): Promise<v
   const field = root.getByLabel(label);
   await field.fill(value);
   await field.blur();
+};
+
+const expectFrameworkIdentityHidden = async (root: Locator): Promise<void> => {
+  for (const label of ['MessageId', 'CorrelationId', 'TenantId', 'UserId']) {
+    await expect(root.getByLabel(label, { exact: true })).toHaveCount(0);
+  }
 };

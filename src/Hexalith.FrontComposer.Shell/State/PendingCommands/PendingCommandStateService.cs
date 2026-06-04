@@ -13,7 +13,7 @@ using Microsoft.Extensions.Options;
 namespace Hexalith.FrontComposer.Shell.State.PendingCommands;
 
 /// <summary>
-/// Story 5-5 T1: bounded circuit-local pending command index. It records only framework metadata and
+/// Story 3.3 T4: bounded circuit-local pending command index. It records only framework metadata and
 /// resolves terminal observations exactly once per ULID MessageId.
 /// </summary>
 public sealed class PendingCommandStateService : IPendingCommandStateService {
@@ -53,12 +53,20 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     public PendingCommandRegistrationResult Register(PendingCommandRegistration registration) {
         ArgumentNullException.ThrowIfNull(registration);
 
-        if (!TryNormalizeMessageId(registration.MessageId, out string? canonicalMessageId, out string? reason)) {
+        if (!TryNormalizeUlid(registration.MessageId, out string? canonicalMessageId, out string? reason)) {
             _logger.LogWarning("Pending command registration rejected. Reason={Reason}", reason);
             return PendingCommandRegistrationResult.InvalidMessageId();
         }
 
-        PendingCommandRegistration normalized = registration with { MessageId = canonicalMessageId };
+        if (!TryNormalizeUlid(registration.CorrelationId, out string? canonicalCorrelationId, out reason)) {
+            _logger.LogWarning("Pending command registration rejected. Reason={Reason}", reason);
+            return PendingCommandRegistrationResult.InvalidCorrelationId();
+        }
+
+        PendingCommandRegistration normalized = registration with {
+            CorrelationId = canonicalCorrelationId,
+            MessageId = canonicalMessageId,
+        };
 
         // DN3 — fail-closed on tenant/user transitions. Detected before mutation so the new
         // registration belongs to the new scope, not a leaked previous one.
@@ -126,7 +134,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     public PendingCommandResolutionResult ResolveTerminal(PendingCommandTerminalObservation observation) {
         ArgumentNullException.ThrowIfNull(observation);
 
-        if (!TryNormalizeMessageId(observation.MessageId, out string? canonicalMessageId, out string? reason)) {
+        if (!TryNormalizeUlid(observation.MessageId, out string? canonicalMessageId, out string? reason)) {
             _logger.LogWarning("Pending command terminal observation rejected. Reason={Reason}", reason);
             return PendingCommandResolutionResult.InvalidMessageId();
         }
@@ -221,7 +229,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
         // empty/whitespace which previously hid bugs.
         ArgumentException.ThrowIfNullOrWhiteSpace(messageId);
 
-        if (!TryNormalizeMessageId(messageId, out string? canonical, out _)) {
+        if (!TryNormalizeUlid(messageId, out string? canonical, out _)) {
             return null;
         }
 
@@ -492,17 +500,17 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
     /// canonical form stored in <c>_byMessageId</c> is uppercase so duplicate observations under
     /// either casing collapse to the same entry.
     /// </summary>
-    private static bool TryNormalizeMessageId(
-        [NotNullWhen(true)] string? messageId,
+    private static bool TryNormalizeUlid(
+        [NotNullWhen(true)] string? value,
         [NotNullWhen(true)] out string? canonical,
         [NotNullWhen(false)] out string? reason) {
-        if (string.IsNullOrWhiteSpace(messageId)) {
+        if (string.IsNullOrWhiteSpace(value)) {
             canonical = null;
             reason = "empty";
             return false;
         }
 
-        if (messageId.Length != 26) {
+        if (value.Length != 26) {
             canonical = null;
             reason = "invalid-length";
             return false;
@@ -510,7 +518,7 @@ public sealed class PendingCommandStateService : IPendingCommandStateService {
 
         Span<char> upper = stackalloc char[26];
         for (int i = 0; i < 26; i++) {
-            char c = messageId[i];
+            char c = value[i];
             char normalized = c switch {
                 >= 'a' and <= 'z' => (char)(c - 32),
                 _ => c,

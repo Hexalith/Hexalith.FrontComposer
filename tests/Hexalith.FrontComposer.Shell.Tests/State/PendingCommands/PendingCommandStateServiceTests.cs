@@ -15,6 +15,8 @@ namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandStateServiceTests {
     private const string MessageId = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+    private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
+    private const string SecondCorrelationId = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
 
     [Fact]
     public void Register_AcceptedCommand_StoresOnlyFrameworkMetadata() {
@@ -24,7 +26,7 @@ public sealed class PendingCommandStateServiceTests {
 
         result.Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
         PendingCommandEntry entry = sut.GetByMessageId(MessageId).ShouldNotBeNull();
-        entry.CorrelationId.ShouldBe("corr-1");
+        entry.CorrelationId.ShouldBe(CorrelationId);
         entry.MessageId.ShouldBe(MessageId);
         entry.CommandTypeName.ShouldBe("Counter.Increment");
         entry.EntityKey.ShouldBe("counter-1");
@@ -47,6 +49,23 @@ public sealed class PendingCommandStateServiceTests {
     [Fact]
     public void Registration_ConstructionFailsClosedOnEmptyMessageId() =>
         Should.Throw<ArgumentException>(() => Registration(messageId: ""));
+
+    [Theory]
+    [InlineData("not-a-ulid")]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FAI")]
+    [InlineData("01ARZ3NDEKTSV4RRFFQ69G5FAVEXTRA")]
+    public void Register_MalformedCorrelationId_FailsClosedWithoutStateMutation(string badCorrelationId) {
+        PendingCommandStateService sut = Create();
+
+        PendingCommandRegistrationResult result = sut.Register(Registration(correlationId: badCorrelationId));
+
+        result.Status.ShouldBe(PendingCommandRegistrationStatus.InvalidCorrelationId);
+        sut.Snapshot().ShouldBeEmpty();
+    }
+
+    [Fact]
+    public void Registration_ConstructionFailsClosedOnEmptyCorrelationId() =>
+        Should.Throw<ArgumentException>(() => Registration(correlationId: ""));
 
     [Fact]
     public void Register_DuplicateWithMatchingMetadata_Merges() {
@@ -82,8 +101,8 @@ public sealed class PendingCommandStateServiceTests {
         first.Status.ShouldBe(PendingCommandResolutionStatus.Resolved);
         first.Entry!.Status.ShouldBe(PendingCommandStatus.Confirmed);
         duplicate.Status.ShouldBe(PendingCommandResolutionStatus.DuplicateIgnored);
-        lifecycle.Received(1).Transition("corr-1", CommandLifecycleState.Confirmed, MessageId, false);
-        lifecycle.DidNotReceive().Transition("corr-1", CommandLifecycleState.Rejected, MessageId, Arg.Any<bool>());
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, false);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId, Arg.Any<bool>());
     }
 
     [Fact]
@@ -99,7 +118,7 @@ public sealed class PendingCommandStateServiceTests {
         result.Entry.DuplicateTerminalObservations.ShouldBe(0);
         // P8 — IdempotentConfirmed must surface idempotencyResolved=true so FcLifecycleWrapper
         // renders the "already confirmed" Info bar instead of the Success celebration.
-        lifecycle.Received(1).Transition("corr-1", CommandLifecycleState.Confirmed, MessageId, true);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, true);
     }
 
     [Fact]
@@ -120,7 +139,7 @@ public sealed class PendingCommandStateServiceTests {
         string nextMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
 
         PendingCommandRegistrationResult result = sut.Register(Registration(
-            correlationId: "corr-2",
+            correlationId: SecondCorrelationId,
             messageId: nextMessageId,
             entityKey: "counter-2"));
 
@@ -156,6 +175,17 @@ public sealed class PendingCommandStateServiceTests {
         sut.GetByMessageId(lower).ShouldNotBeNull();
     }
 
+    [Fact]
+    public void Register_AcceptsLowercaseCorrelationId_NormalizesStoredEntryToUppercase() {
+        PendingCommandStateService sut = Create();
+
+        PendingCommandRegistrationResult result = sut.Register(Registration(correlationId: CorrelationId.ToLowerInvariant()));
+
+        result.Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
+        result.Entry!.CorrelationId.ShouldBe(CorrelationId);
+        sut.GetByMessageId(MessageId)!.CorrelationId.ShouldBe(CorrelationId);
+    }
+
     // P20 / P17 — second registration after the entry already reached a terminal outcome surfaces
     // MergedTerminal so generated forms can skip duplicate AcknowledgedAction dispatch.
     [Fact]
@@ -184,8 +214,8 @@ public sealed class PendingCommandStateServiceTests {
         first.Status.ShouldBe(PendingCommandResolutionStatus.Resolved);
         first.Entry!.Status.ShouldBe(PendingCommandStatus.Rejected);
         later.Status.ShouldBe(PendingCommandResolutionStatus.DuplicateIgnored);
-        lifecycle.Received(1).Transition("corr-1", CommandLifecycleState.Rejected, MessageId, false);
-        lifecycle.DidNotReceive().Transition("corr-1", CommandLifecycleState.Confirmed, MessageId, Arg.Any<bool>());
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId, false);
+        lifecycle.DidNotReceive().Transition(CorrelationId, CommandLifecycleState.Confirmed, MessageId, Arg.Any<bool>());
     }
 
     // P20 / P5 — terminal resolution purges the message id from the insertion order so a steady
@@ -200,7 +230,7 @@ public sealed class PendingCommandStateServiceTests {
         // registration succeeds without evicting the terminal record.
         string nextMessageId = "01BRZ3NDEKTSV4RRFFQ69G5FAV";
         PendingCommandRegistrationResult result = sut.Register(Registration(
-            correlationId: "corr-2",
+            correlationId: SecondCorrelationId,
             messageId: nextMessageId,
             entityKey: "counter-2"));
         result.Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
@@ -225,11 +255,11 @@ public sealed class PendingCommandStateServiceTests {
         sut.Register(Registration()).Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
         accessor.TenantId.Returns("tenant-b");
-        sut.Register(Registration(correlationId: "corr-2", messageId: "01BRZ3NDEKTSV4RRFFQ69G5FAV", entityKey: "counter-2"))
+        sut.Register(Registration(correlationId: SecondCorrelationId, messageId: "01BRZ3NDEKTSV4RRFFQ69G5FAV", entityKey: "counter-2"))
             .Status.ShouldBe(PendingCommandRegistrationStatus.Registered);
 
         sut.GetByMessageId(MessageId).ShouldBeNull();
-        lifecycle.Received(1).Transition("corr-1", CommandLifecycleState.Rejected, MessageId);
+        lifecycle.Received(1).Transition(CorrelationId, CommandLifecycleState.Rejected, MessageId);
     }
 
     private static PendingCommandStateService Create(
@@ -243,7 +273,7 @@ public sealed class PendingCommandStateServiceTests {
             NullLogger<PendingCommandStateService>.Instance);
 
     private static PendingCommandRegistration Registration(
-        string correlationId = "corr-1",
+        string correlationId = CorrelationId,
         string messageId = MessageId,
         string entityKey = "counter-1") =>
         new(

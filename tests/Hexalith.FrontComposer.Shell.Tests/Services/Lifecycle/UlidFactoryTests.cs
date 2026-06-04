@@ -10,7 +10,7 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.Services.Lifecycle;
 
 /// <summary>
-/// Story 2-3 Task 3.6 — 5 unit tests for the <see cref="UlidFactory"/> contract.
+/// Story 3.3 Task 3 — unit tests for the <see cref="UlidFactory"/> command identity contract.
 /// </summary>
 public class UlidFactoryTests {
     private static readonly Regex UlidPattern = new("^[0-9A-HJKMNP-TV-Z]{26}$", RegexOptions.Compiled);
@@ -65,6 +65,31 @@ public class UlidFactoryTests {
     }
 
     [Fact]
+    public void ProductionCommandIdentityPaths_DoNotUseGuidIdentityApis() {
+        string root = ProjectRoot();
+        string[] relativePaths = [
+            "src/Hexalith.FrontComposer.SourceTools/Emitters/CommandFormEmitter.cs",
+            "src/Hexalith.FrontComposer.Shell/Services/Lifecycle/UlidFactory.cs",
+            "src/Hexalith.FrontComposer.Shell/Services/StubCommandService.cs",
+            "src/Hexalith.FrontComposer.Shell/Infrastructure/EventStore/EventStoreCommandClient.cs",
+        ];
+        string[] forbidden = [
+            "Guid.NewGuid()",
+            "Guid.Parse(",
+            "Guid.TryParse(",
+            ".ToString(\"N\")",
+            ".ToString(\"D\")",
+        ];
+
+        foreach (string relativePath in relativePaths) {
+            string text = File.ReadAllText(Path.Combine(root, relativePath));
+            foreach (string token in forbidden) {
+                text.ShouldNotContain(token, Case.Sensitive, $"{relativePath} must not use {token} for command MessageId/CorrelationId identity.");
+            }
+        }
+    }
+
+    [Fact]
     public void NewUlid_EntropyIsCryptographic_NotPredictableFromPriorOutputs() {
         UlidFactory factory = new();
         const int sampleSize = 1000;
@@ -89,5 +114,15 @@ public class UlidFactoryTests {
         const string alphabet = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
         int i = alphabet.IndexOf(char.ToUpperInvariant(c));
         return i >= 0 ? i : throw new ArgumentException($"invalid Crockford char '{c}'");
+    }
+
+    private static string ProjectRoot() {
+        DirectoryInfo? directory = new(AppContext.BaseDirectory);
+        while (directory is not null && !File.Exists(Path.Combine(directory.FullName, "Hexalith.FrontComposer.slnx"))) {
+            directory = directory.Parent;
+        }
+
+        return directory?.FullName
+            ?? throw new InvalidOperationException("Could not locate Hexalith.FrontComposer.slnx by walking up from " + AppContext.BaseDirectory);
     }
 }

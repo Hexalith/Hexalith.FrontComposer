@@ -1,8 +1,5 @@
 using Hexalith.FrontComposer.Contracts.Lifecycle;
 
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
-
 namespace Hexalith.FrontComposer.Shell.Services.Lifecycle;
 
 /// <summary>
@@ -10,31 +7,7 @@ namespace Hexalith.FrontComposer.Shell.Services.Lifecycle;
 /// Crockford Base32 identifier with millisecond-precision timestamp prefix + 80-bit cryptographic
 /// entropy (Decision D3 / ADR-018).
 /// </summary>
-/// <remarks>
-/// <para>
-/// Falls back to <see cref="Guid.NewGuid()"/> on <see cref="System.Security.Cryptography.CryptographicException"/>
-/// (Chaos Monkey CM2 — NUlid reads <see cref="System.Security.Cryptography.RandomNumberGenerator"/>; exotic
-/// Windows security policies can throw). FR36 deterministic dedup still works because Guids are unique;
-/// time-sortability is lost — an Epic 5 concern.
-/// </para>
-/// </remarks>
 public sealed class UlidFactory : IUlidFactory {
-    private readonly ILogger<UlidFactory> _logger;
-
-    public UlidFactory(ILogger<UlidFactory>? logger = null) {
-        _logger = logger ?? NullLogger<UlidFactory>.Instance;
-    }
-
     /// <inheritdoc/>
-    public string NewUlid() {
-        try {
-            return NUlid.Ulid.NewUlid().ToString();
-        }
-        catch (System.Security.Cryptography.CryptographicException ex) {
-            _logger.LogWarning(
-                "NUlid generation failed; falling back to Guid. Time-sortable MessageId lost for this submission. FailureCategory={FailureCategory}",
-                ex.GetType().Name);
-            return Guid.NewGuid().ToString("N");
-        }
-    }
+    public string NewUlid() => NUlid.Ulid.NewUlid().ToString();
 }

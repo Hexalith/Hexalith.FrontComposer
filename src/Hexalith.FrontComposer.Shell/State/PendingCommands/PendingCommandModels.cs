@@ -78,6 +78,7 @@ public enum PendingCommandRegistrationStatus {
     Merged,
     /// <summary>P17 — second registration observed after the entry already reached a terminal outcome.</summary>
     MergedTerminal,
+    InvalidCorrelationId,
     InvalidMessageId,
     ConflictingMetadata,
     Disposed,
@@ -134,6 +135,9 @@ public sealed record PendingCommandRegistrationResult(
     /// <summary>P17 — the existing entry is already terminal; callers should skip duplicate acknowledged dispatch.</summary>
     public static PendingCommandRegistrationResult MergedTerminal(PendingCommandEntry entry) =>
         new(PendingCommandRegistrationStatus.MergedTerminal, entry);
+
+    public static PendingCommandRegistrationResult InvalidCorrelationId() =>
+        new(PendingCommandRegistrationStatus.InvalidCorrelationId);
 
     public static PendingCommandRegistrationResult InvalidMessageId() =>
         new(PendingCommandRegistrationStatus.InvalidMessageId);

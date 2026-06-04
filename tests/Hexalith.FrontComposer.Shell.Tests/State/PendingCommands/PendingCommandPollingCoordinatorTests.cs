@@ -13,6 +13,9 @@ using Shouldly;
 namespace Hexalith.FrontComposer.Shell.Tests.State.PendingCommands;
 
 public sealed class PendingCommandPollingCoordinatorTests {
+    private const string CorrelationId = "01CPZ3NDEKTSV4RRFFQ69G5FAV";
+    private const string SecondCorrelationId = "01DPZ3NDEKTSV4RRFFQ69G5FAV";
+
     [Fact]
     public async Task PollOnce_ProcessesPendingCommandsOldestFirstWithinCap() {
         FakeTimeProvider time = new(new DateTimeOffset(2026, 4, 26, 12, 0, 0, TimeSpan.Zero));
@@ -22,9 +25,9 @@ public sealed class PendingCommandPollingCoordinatorTests {
             lifecycle,
             time,
             NullLogger<PendingCommandStateService>.Instance);
-        state.Register(Registration("corr-1", "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
         time.Advance(TimeSpan.FromSeconds(1));
-        state.Register(Registration("corr-2", "01BRZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        state.Register(Registration(SecondCorrelationId, "01BRZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
 
         IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
         query.QueryAsync(Arg.Any<PendingCommandEntry>(), Arg.Any<CancellationToken>())
@@ -54,7 +57,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
             Substitute.For<ILifecycleStateService>(),
             new FakeTimeProvider(),
             NullLogger<PendingCommandStateService>.Instance);
-        state.Register(Registration("corr-1", "01ARZ3NDEKTSV4RRFFQ69G5FAV", DateTimeOffset.UtcNow));
+        state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", DateTimeOffset.UtcNow));
 
         IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
         PendingCommandPollingCoordinator sut = new(
@@ -81,7 +84,7 @@ public sealed class PendingCommandPollingCoordinatorTests {
             lifecycle,
             time,
             NullLogger<PendingCommandStateService>.Instance);
-        state.Register(Registration("corr-1", "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
 
         // Resolve the only pending entry BEFORE the coordinator queries.
         state.ResolveTerminal(PendingCommandTerminalObservation.Confirmed("01ARZ3NDEKTSV4RRFFQ69G5FAV"));
@@ -111,8 +114,8 @@ public sealed class PendingCommandPollingCoordinatorTests {
             lifecycle,
             time,
             NullLogger<PendingCommandStateService>.Instance);
-        state.Register(Registration("corr-1", "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
-        state.Register(Registration("corr-2", "01BRZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        state.Register(Registration(CorrelationId, "01ARZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
+        state.Register(Registration(SecondCorrelationId, "01BRZ3NDEKTSV4RRFFQ69G5FAV", time.GetUtcNow()));
 
         IPendingCommandStatusQuery query = Substitute.For<IPendingCommandStatusQuery>();
         query.QueryAsync(Arg.Any<PendingCommandEntry>(), Arg.Any<CancellationToken>())
