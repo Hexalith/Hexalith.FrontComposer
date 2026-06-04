@@ -200,6 +200,57 @@ public sealed class FcPaletteResultListTests : LayoutComponentTestBase
         cut.Markup.ShouldContain("No matches found");
     }
 
+    [Fact]
+    public void ResultsContainer_RendersRoleListbox_WithRoleOptionRows()
+    {
+        // Story 2.7 Task 1 (AC1) — default-lane pin for the listbox/option ROLE set. Pre-existing pins
+        // asserted headings / badges / aria-disabled but never role="listbox" on the container or
+        // role="option" on the rows (verified gap).
+        EnsureStoreInitialized();
+        ImmutableArray<PaletteResult> results = [
+            new(PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter", null, 100, false, typeof(CounterProjectionStub)),
+            new(PaletteResultCategory.Command, "Increment", "Counter", null, "Counter.IncrementCommand", 90, false),
+        ];
+
+        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
+            .Add(c => c.Id, "fc-palette-results")
+            .Add(c => c.Results, results)
+            .Add(c => c.SelectedIndex, 0)
+            .Add(c => c.OnSelectionChanged, _ => { }));
+
+        cut.Markup.ShouldContain("role=\"listbox\"");
+        cut.Markup.ShouldContain("role=\"option\"");
+    }
+
+    [Fact]
+    public void AriaSelected_AndAriaActiveDescendant_TrackSelectedIndex()
+    {
+        // Story 2.7 Task 1 (AC1) — default-lane pin proving aria-activedescendant + aria-selected
+        // track SelectedIndex: the selected <li role="option"> carries the matching id +
+        // aria-selected="true", the listbox's aria-activedescendant points at it, and the
+        // non-selected row carries NO aria-selected.
+        EnsureStoreInitialized();
+        ImmutableArray<PaletteResult> results = [
+            new(PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter", null, 100, false, typeof(CounterProjectionStub)),
+            new(PaletteResultCategory.Projection, "Orders", "Orders", "/orders/orders", null, 90, false, typeof(CounterProjectionStub)),
+        ];
+
+        IRenderedComponent<FcPaletteResultList> cut = Render<FcPaletteResultList>(p => p
+            .Add(c => c.Id, "fc-palette-results")
+            .Add(c => c.Results, results)
+            .Add(c => c.SelectedIndex, 1)
+            .Add(c => c.OnSelectionChanged, _ => { }));
+
+        cut.Markup.ShouldContain("aria-activedescendant=\"fc-palette-result-1\"");
+
+        AngleSharp.Dom.IElement selected = cut.Find("#fc-palette-result-1");
+        selected.GetAttribute("role").ShouldBe("option");
+        selected.GetAttribute("aria-selected").ShouldBe("true");
+
+        AngleSharp.Dom.IElement other = cut.Find("#fc-palette-result-0");
+        other.GetAttribute("aria-selected").ShouldBeNull();
+    }
+
     private sealed class StubBadgeService : IBadgeCountService
     {
         public StubBadgeService(params (Type Type, int Count)[] entries)

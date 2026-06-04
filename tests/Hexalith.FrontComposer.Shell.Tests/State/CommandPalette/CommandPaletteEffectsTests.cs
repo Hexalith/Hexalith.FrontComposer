@@ -411,6 +411,68 @@ public class CommandPaletteEffectsTests
             Arg.Any<CancellationToken>());
     }
 
+    // Story 2.7 Task 2 (AC2) — the durable DEFAULT-LANE integration pin: drive live registry
+    // filtering end-to-end through the REAL PaletteScorer + effect across a MULTI-manifest registry
+    // and assert the dispatched results surface EXACTLY the matching projections, ranked by score
+    // (non-increasing), with a non-matching projection excluded. Mirrors the e2e-palette lane's AC2
+    // essence (which is EXCLUDED from the default blocking lane) so AC2's "live registry search
+    // surfaces matching projections" gets default-lane coverage.
+    [Fact]
+    public async Task HandlePaletteQueryChanged_MultiManifest_SurfacesMatchingProjectionsRanked()
+    {
+        CommandPaletteEffects sut = BuildEffects(
+            out FakeTimeProvider time,
+            out IDispatcher dispatcher,
+            out _,
+            manifests: [
+                new DomainManifest(
+                    "Orders",
+                    "Orders",
+                    ["Orders.Domain.Projections.OrderLineItemView", "Orders.Domain.Projections.OrderSummaryView"],
+                    []),
+                new DomainManifest("Billing", "Billing", ["Billing.Domain.Projections.InvoiceView"], []),
+            ]);
+
+        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "Order"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await pending;
+
+        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a =>
+            a.Results.Any(r => r.Category == PaletteResultCategory.Projection && r.RouteUrl == "/orders/order-line-item-view")
+            && a.Results.Any(r => r.Category == PaletteResultCategory.Projection && r.RouteUrl == "/orders/order-summary-view")
+            && !a.Results.Any(r => r.RouteUrl == "/billing/invoice-view")
+            && IsRankedByScoreDescending(a)));
+    }
+
+    [Fact]
+    public async Task HandlePaletteQueryChanged_NonMatchingQuery_SurfacesEmptyState()
+    {
+        CommandPaletteEffects sut = BuildEffects(
+            out FakeTimeProvider time,
+            out IDispatcher dispatcher,
+            out _,
+            manifests: [new DomainManifest("Orders", "Orders", ["Orders.Domain.Projections.OrderLineItemView"], [])]);
+
+        Task pending = sut.HandlePaletteQueryChanged(new PaletteQueryChangedAction("c1", "zzzznomatch"), dispatcher);
+        time.Advance(TimeSpan.FromMilliseconds(150));
+        await pending;
+
+        dispatcher.Received(1).Dispatch(Arg.Is<PaletteResultsComputedAction>(a => a.Results.IsEmpty));
+    }
+
+    private static bool IsRankedByScoreDescending(PaletteResultsComputedAction action)
+    {
+        for (int i = 1; i < action.Results.Length; i++)
+        {
+            if (action.Results[i - 1].Score < action.Results[i].Score)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private static CommandPaletteEffects BuildEffects(
         out FakeTimeProvider time,
         out IDispatcher dispatcher,

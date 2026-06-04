@@ -36,6 +36,7 @@
 
 generated: 2026-06-03
 last_updated: 2026-06-04
+# 2-7 moved backlog → ready-for-dev on 2026-06-04 (create-story; confirm-and-pin of command palette + registry global search — Ctrl+K/Cmd+K → FcCommandPalette ARIA combobox + keyboard nav (AC1), live registry scoring/filter/rank surfaces matching projections (AC2); palette/shortcut/scorer/hydration authored under Story 3-4/3-5/3-6/3-7 markers, expected. Gaps: AC1 ARIA role=combobox/listbox/option + aria-activedescendant + Arrow/Enter/Escape nav only proven in EXCLUDED e2e-palette lane or attribute-subset/reducer level → add DEFAULT-LANE pins; AC2 epic wording names FcProjectionGlobalSearch (a separate per-grid Story-4-3 input) → resolve honestly (palette = registry search surface). Expect ZERO src change)
 project: frontcomposer
 # 1-0 moved ready-for-dev → review on 2026-06-03 (dev-story)
 # 1-1 moved backlog → ready-for-dev on 2026-06-03 (create-story)
@@ -111,7 +112,7 @@ development_status:
   2-4-accessible-expand-in-row-detail: done
   2-5-column-prioritization-for-wide-projections: done
   2-6-live-projection-updates-with-reconnect-reconciliation: done
-  2-7-command-palette-discovery-and-global-search: backlog
+  2-7-command-palette-discovery-and-global-search: in-progress
   2-8-confirm-the-fc-tbl-table-api-contract: backlog
   epic-2-retrospective: optional
 

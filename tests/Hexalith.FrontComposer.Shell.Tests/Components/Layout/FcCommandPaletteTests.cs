@@ -187,5 +187,78 @@ public sealed class FcCommandPaletteTests : LayoutComponentTestBase
         FocusModule.Invocations.Count(i => i.Identifier == "focusBodyIfNeeded").ShouldBe(focusInvocationsBefore);
     }
 
+    [Fact]
+    public void SearchInput_RendersAsAriaCombobox()
+    {
+        // Story 2.7 Task 1 (AC1) — default-lane pin for the combobox ROLE itself. Pre-existing pins
+        // asserted aria-controls / aria-expanded / aria-autocomplete but never that the input carries
+        // role="combobox" + aria-haspopup="listbox" (the WAI-ARIA combobox pattern entry point).
+        EnsureStoreInitialized();
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+
+        cut.Markup.ShouldContain("role=\"combobox\"");
+        cut.Markup.ShouldContain("aria-haspopup=\"listbox\"");
+    }
+
+    [Fact]
+    public async Task ArrowKeys_MoveSelection_AndTrackAriaActiveDescendant()
+    {
+        // Story 2.7 Task 1 (AC1) — DEFAULT-LANE proof that ArrowDown/ArrowUp in the RENDERED palette
+        // advance the selection AND the input's aria-activedescendant. Previously this end-to-end path
+        // (rendered keydown → reducer → activedescendant) was only exercised in the EXCLUDED
+        // e2e-palette lane; the reducer clamp logic alone was the only default-lane coverage.
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(
+            string.Empty,
+            [
+                new PaletteResult(
+                    PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter-view", null, 120, false, typeof(CounterProjectionStub)),
+                new PaletteResult(
+                    PaletteResultCategory.Projection, "Orders", "Orders", "/orders/orders-view", null, 100, false, typeof(CounterProjectionStub)),
+            ]));
+
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+
+        // Initial selection sits on flat index 0.
+        cut.Markup.ShouldContain("aria-activedescendant=\"fc-palette-result-0\"");
+
+        await cut.InvokeAsync(() =>
+            cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "ArrowDown" }));
+        cut.WaitForAssertion(() =>
+            cut.Markup.ShouldContain("aria-activedescendant=\"fc-palette-result-1\""));
+
+        await cut.InvokeAsync(() =>
+            cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "ArrowUp" }));
+        cut.WaitForAssertion(() =>
+            cut.Markup.ShouldContain("aria-activedescendant=\"fc-palette-result-0\""));
+    }
+
+    [Fact]
+    public async Task Escape_DispatchesPaletteClosed_ClosingThePalette()
+    {
+        // Story 2.7 Task 1 (AC1) — DEFAULT-LANE proof that Escape in the rendered palette dispatches
+        // PaletteClosedAction (IsOpen → false). Previously only the excluded e2e-palette lane proved
+        // the rendered Escape path.
+        EnsureStoreInitialized();
+        IDispatcher dispatcher = Services.GetRequiredService<IDispatcher>();
+        IState<FrontComposerCommandPaletteState> state =
+            Services.GetRequiredService<IState<FrontComposerCommandPaletteState>>();
+        dispatcher.Dispatch(new PaletteOpenedAction("open-1"));
+        dispatcher.Dispatch(new PaletteResultsComputedAction(
+            string.Empty,
+            [new PaletteResult(
+                PaletteResultCategory.Projection, "Counter", "Counter", "/counter/counter-view", null, 100, false, typeof(CounterProjectionStub))]));
+
+        state.Value.IsOpen.ShouldBeTrue();
+
+        IRenderedComponent<FcCommandPalette> cut = Render<FcCommandPalette>();
+        await cut.InvokeAsync(() =>
+            cut.Find("[data-testid='fc-palette-root']").KeyDown(new KeyboardEventArgs { Key = "Escape" }));
+
+        cut.WaitForAssertion(() => state.Value.IsOpen.ShouldBeFalse());
+    }
+
     private sealed class CounterProjectionStub { }
 }
